@@ -477,6 +477,67 @@ export interface BulkImportGlossaryRow {
 /**
  * Result of glossary bulk import operation.
  */
+/**
+ * Dataset interface representing a RAG dataset (knowledgebase).
+ */
+export interface Dataset {
+    id: string;
+    name: string;
+    description?: string | null;
+    language: string;
+    embedding_model?: string | null;
+    parser_id: string;
+    parser_config: any;
+    access_control: any;
+    status: string;
+    doc_count: number;
+    chunk_count: number;
+    token_count: number;
+    created_by?: string | null;
+    updated_by?: string | null;
+    created_at: Date;
+    updated_at: Date;
+}
+
+/**
+ * Document interface representing a file within a dataset.
+ */
+export interface Document {
+    id: string;
+    dataset_id: string;
+    name: string;
+    size: number;
+    type?: string | null;
+    status: string;
+    progress: number;
+    progress_msg?: string | null;
+    chunk_count: number;
+    token_count: number;
+    storage_path?: string | null;
+    created_by?: string | null;
+    created_at: Date;
+    updated_at: Date;
+}
+
+/**
+ * ModelProvider interface representing a system-wide model provider config.
+ */
+export interface ModelProvider {
+    id: string;
+    factory_name: string;
+    model_type: string;
+    model_name: string;
+    api_key?: string | null;
+    api_base?: string | null;
+    max_tokens?: number | null;
+    status: string;
+    is_default: boolean;
+    created_by?: string | null;
+    updated_by?: string | null;
+    created_at: Date;
+    updated_at: Date;
+}
+
 export interface BulkImportGlossaryResult {
     /** Whether the operation completed successfully */
     success: boolean;

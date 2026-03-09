@@ -21,6 +21,10 @@ import { ExternalSearchRecordModel } from '@/modules/external/models/search-reco
 import { GlossaryTaskModel } from '@/modules/glossary/glossary-task.model.js';
 import { GlossaryKeywordModel } from '@/modules/glossary/glossary-keyword.model.js';
 
+import { DatasetModel } from '@/modules/rag/dataset.model.js';
+import { DocumentModel } from '@/modules/rag/document.model.js';
+import { ModelProviderModel } from '@/modules/rag/model-provider.model.js';
+
 /**
  * ModelFactory class implementing the Factory Pattern.
  * Provides lazy-loaded singletons for all data models.
@@ -62,10 +66,13 @@ export class ModelFactory {
 
 
   // Glossary Models
-  /** Glossary task model singleton instance */
   private static glossaryTaskModel: GlossaryTaskModel;
-  /** Glossary keyword model singleton instance */
   private static glossaryKeywordModel: GlossaryKeywordModel;
+
+  // RAG Models
+  private static datasetModel: DatasetModel;
+  private static documentModel: DocumentModel;
+  private static modelProviderModel: ModelProviderModel;
 
   /**
    * Get the User model singleton.
@@ -241,5 +248,20 @@ export class ModelFactory {
   static get glossaryKeyword() {
     if (!this.glossaryKeywordModel) this.glossaryKeywordModel = new GlossaryKeywordModel();
     return this.glossaryKeywordModel;
+  }
+
+  static get dataset() {
+    if (!this.datasetModel) this.datasetModel = new DatasetModel();
+    return this.datasetModel;
+  }
+
+  static get document() {
+    if (!this.documentModel) this.documentModel = new DocumentModel();
+    return this.documentModel;
+  }
+
+  static get modelProvider() {
+    if (!this.modelProviderModel) this.modelProviderModel = new ModelProviderModel();
+    return this.modelProviderModel;
   }
 }

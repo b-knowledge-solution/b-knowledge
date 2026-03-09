@@ -59,6 +59,9 @@ export const AuditResourceType = {
     SYSTEM: 'system',
     ROLE: 'role',
     PROMPT: 'prompt',
+    DATASET: 'dataset',
+    DOCUMENT: 'document',
+    MODEL_PROVIDER: 'model_provider',
 } as const;
 
 export type AuditResourceTypeValue = typeof AuditResourceType[keyof typeof AuditResourceType];

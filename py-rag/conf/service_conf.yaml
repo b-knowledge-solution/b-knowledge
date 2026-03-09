@@ -1,0 +1,47 @@
+# b-knowledge RAG service configuration
+# Values here are defaults; override via environment variables.
+# The config_utils.py reads this file and merges with local.service_conf.yaml.
+
+ragflow:
+  host: "0.0.0.0"
+  http_port: 9380
+
+# Database (PostgreSQL) — override via DB_TYPE, DB_HOST, etc.
+postgres:
+  name: "b_knowledge"
+  user: "postgres"
+  password: ""
+  host: "localhost"
+  port: 5432
+
+# Elasticsearch
+es:
+  hosts: "http://localhost:9200"
+  username: "elastic"
+  password: ""
+
+# MinIO
+minio:
+  name: "minio"
+  user: "minioadmin"
+  password: "minioadmin"
+  host: "localhost:9000"
+
+# Redis
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+  db: 0
+
+# User default LLM (system-level)
+user_default_llm:
+  factory: ""
+  api_key: ""
+  base_url: ""
+  default_models:
+    chat_model: ""
+    embedding_model: ""
+    rerank_model: ""
+    asr_model: ""
+    image2text_model: ""

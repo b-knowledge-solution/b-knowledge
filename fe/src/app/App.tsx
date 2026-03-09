@@ -52,6 +52,8 @@ const HistoriesPage = lazy(() => import('@/features/histories/pages/HistoriesPag
 
 const GlossaryPage = lazy(() => import('@/features/glossary/pages/GlossaryPage'));
 const AdminDashboardPage = lazy(() => import('@/features/dashboard/pages/AdminDashboardPage'));
+const DatasetsPage = lazy(() => import('@/features/datasets/pages/DatasetsPage'));
+const DatasetDetailPage = lazy(() => import('@/features/datasets/pages/DatasetDetailPage'));
 
 // ============================================================================
 // Loading Component (for initial app load / login page)
@@ -177,6 +179,18 @@ function App() {
                             <Route path="knowledge-base/glossary" element={
                               <RoleRoute allowedRoles={['admin', 'leader']}>
                                 <GlossaryPage />
+                              </RoleRoute>
+                            } />
+
+                            {/* Dataset routes */}
+                            <Route path="datasets" element={
+                              <RoleRoute allowedRoles={['admin', 'leader']}>
+                                <DatasetsPage />
+                              </RoleRoute>
+                            } />
+                            <Route path="datasets/:id" element={
+                              <RoleRoute allowedRoles={['admin', 'leader']}>
+                                <DatasetDetailPage />
                               </RoleRoute>
                             } />
 

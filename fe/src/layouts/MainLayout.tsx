@@ -47,6 +47,7 @@ import {
   History,
   Info, // Added Info icon
   BarChart3,
+  Database,
 } from 'lucide-react';
 
 import logo from '../assets/logo.png';
@@ -183,6 +184,8 @@ function Layout() {
 
       case '/knowledge-base/glossary':
         return t('glossary.title');
+      case '/datasets':
+        return t('datasets.title');
       case '/iam/users':
         return t('userManagement.title');
       case '/iam/teams':
@@ -201,12 +204,13 @@ function Layout() {
       case '/admin/dashboard':
         return t('dashboard.title');
       default:
+        if (location.pathname.startsWith('/datasets/')) return t('datasets.title');
         return t('common.appName');
     }
   };
 
   // Auto-expand parent menus when their children are active
-  const isKnowledgeBaseActive = ['/knowledge-base/config', '/knowledge-base/glossary'].includes(location.pathname);
+  const isKnowledgeBaseActive = ['/knowledge-base/config', '/knowledge-base/glossary', '/datasets'].includes(location.pathname) || location.pathname.startsWith('/datasets/');
   const isIamActive = ['/iam/users', '/iam/teams'].includes(location.pathname);
   const isAdministratorsActive = ['/admin/audit-log', '/admin/system-tools', '/admin/system-monitor', '/admin/tokenizer', '/admin/broadcast-messages', '/admin/histories', '/admin/dashboard'].includes(location.pathname);
   const isChatActive = ['/chat', '/chat/history'].includes(location.pathname);
@@ -342,6 +346,11 @@ function Layout() {
                   <NavLink to="/knowledge-base/glossary" onClick={handleNavClick('/knowledge-base/glossary')} className={({ isActive }: { isActive: boolean }) => `sidebar-link ${isActive ? 'active' : ''}`} title={t('nav.glossary')}>
                     <BookOpen size={18} />
                     <span>{t('nav.glossary')}</span>
+                  </NavLink>
+
+                  <NavLink to="/datasets" onClick={handleNavClick('/datasets')} className={({ isActive }: { isActive: boolean }) => `sidebar-link ${isActive ? 'active' : ''}`} title={t('nav.datasets')}>
+                    <Database size={18} />
+                    <span>{t('nav.datasets')}</span>
                   </NavLink>
                 </div>
               )}
@@ -526,7 +535,7 @@ function Layout() {
             )}
           </header>
         )}
-        <div className={`flex-1 overflow-hidden ${['/chat', '/search', '/admin/system-tools', '/ragflow-config', '/iam/teams', '/admin/histories', '/chat/history', '/search/history', '/knowledge-base/config'].includes(location.pathname) ? '' : 'p-8 overflow-auto'}`}>
+        <div className={`flex-1 overflow-hidden ${['/chat', '/search', '/admin/system-tools', '/ragflow-config', '/iam/teams', '/admin/histories', '/chat/history', '/search/history', '/knowledge-base/config', '/datasets'].includes(location.pathname) || location.pathname.startsWith('/datasets/') ? '' : 'p-8 overflow-auto'}`}>
           <Outlet />
         </div>
       </main>
