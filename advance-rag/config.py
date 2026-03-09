@@ -1,5 +1,5 @@
 """
-b-knowledge py-rag configuration.
+b-knowledge advance-rag configuration.
 
 All config is driven by environment variables.
 This module provides defaults and a central place to read them.

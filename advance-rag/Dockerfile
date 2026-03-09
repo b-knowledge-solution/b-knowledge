@@ -19,7 +19,7 @@ RUN pip install --no-cache-dir -e ".[all]" 2>/dev/null || pip install --no-cache
 # Copy source code
 COPY . .
 
-# Set py-rag as project base for common/file_utils.py
+# Set advance-rag as project base for common/file_utils.py
 ENV RAG_PROJECT_BASE=/app
 ENV DB_TYPE=postgres
 ENV PYTHONPATH=/app

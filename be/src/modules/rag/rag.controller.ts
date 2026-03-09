@@ -42,7 +42,7 @@ export class RagController {
 
             const dataset = await ragService.createDataset(req.body, user);
 
-            // Also create in py-rag so Peewee tables stay in sync
+            // Also create in advance-rag so Peewee tables stay in sync
             try {
                 await ragProxyService.createDataset({
                     id: dataset.id,
@@ -55,7 +55,7 @@ export class RagController {
                         ? JSON.parse(dataset.parser_config) : dataset.parser_config,
                 });
             } catch (proxyErr) {
-                log.warn('Failed to sync dataset to py-rag (non-blocking)', { error: String(proxyErr) });
+                log.warn('Failed to sync dataset to advance-rag (non-blocking)', { error: String(proxyErr) });
             }
 
             res.status(201).json(dataset);
@@ -81,7 +81,7 @@ export class RagController {
             try {
                 await ragProxyService.updateDataset(id, req.body);
             } catch (proxyErr) {
-                log.warn('Failed to sync dataset update to py-rag', { error: String(proxyErr) });
+                log.warn('Failed to sync dataset update to advance-rag', { error: String(proxyErr) });
             }
 
             res.json(dataset);
@@ -105,7 +105,7 @@ export class RagController {
             try {
                 await ragProxyService.deleteDataset(id);
             } catch (proxyErr) {
-                log.warn('Failed to sync dataset deletion to py-rag', { error: String(proxyErr) });
+                log.warn('Failed to sync dataset deletion to advance-rag', { error: String(proxyErr) });
             }
 
             res.status(204).send();
@@ -134,10 +134,10 @@ export class RagController {
         if (!datasetId) { res.status(400).json({ error: 'Dataset ID is required' }); return; }
 
         try {
-            // Forward the multipart upload to py-rag
+            // Forward the multipart upload to advance-rag
             const ragUrl = `${process.env['RAG_SERVICE_URL'] || 'http://localhost:9380'}/api/rag/datasets/${datasetId}/documents`;
 
-            // Re-construct FormData for py-rag
+            // Re-construct FormData for advance-rag
             const files = req.files as Express.Multer.File[] | undefined;
             if (!files || files.length === 0) {
                 res.status(400).json({ error: 'No files provided' });
@@ -182,6 +182,40 @@ export class RagController {
         } catch (error) {
             log.error('Failed to parse document', { error: String(error) });
             res.status(500).json({ error: 'Failed to trigger parsing' });
+        }
+    }
+
+    async downloadDocument(req: Request, res: Response): Promise<void> {
+        const { id: datasetId, docId } = req.params;
+        if (!datasetId || !docId) {
+            res.status(400).json({ error: 'Dataset ID and document ID are required' });
+            return;
+        }
+
+        try {
+            const ragUrl = `${process.env['RAG_SERVICE_URL'] || 'http://localhost:9380'}/api/rag/datasets/${datasetId}/documents/${docId}/download`;
+            const response = await fetch(ragUrl);
+
+            if (!response.ok) {
+                res.status(response.status).json({ error: 'Failed to download document' });
+                return;
+            }
+
+            // Forward headers
+            const contentType = response.headers.get('content-type') || 'application/octet-stream';
+            const contentDisposition = response.headers.get('content-disposition');
+            const contentLength = response.headers.get('content-length');
+
+            res.setHeader('Content-Type', contentType);
+            if (contentDisposition) res.setHeader('Content-Disposition', contentDisposition);
+            if (contentLength) res.setHeader('Content-Length', contentLength);
+
+            // Stream the response body
+            const buffer = await response.arrayBuffer();
+            res.send(Buffer.from(buffer));
+        } catch (error) {
+            log.error('Failed to download document', { error: String(error) });
+            res.status(500).json({ error: 'Failed to download document' });
         }
     }
 
@@ -276,6 +310,117 @@ export class RagController {
         } catch (error) {
             log.error('Failed to list chunks', { error: String(error) });
             res.status(500).json({ error: 'Failed to list chunks' });
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Advanced Tasks (GraphRAG, RAPTOR, Mindmap, Enrichment)
+    // -------------------------------------------------------------------------
+
+    async runAdvancedTask(req: Request, res: Response): Promise<void> {
+        const { id: datasetId, taskType } = req.params;
+        if (!datasetId || !taskType) {
+            res.status(400).json({ error: 'Dataset ID and task type are required' });
+            return;
+        }
+
+        try {
+            let result: any;
+            switch (taskType) {
+                case 'graphrag':
+                    result = await ragProxyService.runGraphRAG(datasetId, req.body);
+                    break;
+                case 'raptor':
+                    result = await ragProxyService.runRaptor(datasetId, req.body);
+                    break;
+                case 'mindmap':
+                    result = await ragProxyService.runMindmap(datasetId, req.body);
+                    break;
+                default:
+                    res.status(400).json({ error: `Unknown task type: ${taskType}` });
+                    return;
+            }
+            res.json(result);
+        } catch (error: any) {
+            const status = error.message?.includes('409') ? 409 : 500;
+            log.error(`Failed to run ${taskType}`, { error: String(error) });
+            res.status(status).json({ error: error.message || `Failed to run ${taskType}` });
+        }
+    }
+
+    async traceAdvancedTask(req: Request, res: Response): Promise<void> {
+        const { id: datasetId, taskType } = req.params;
+        if (!datasetId || !taskType) {
+            res.status(400).json({ error: 'Dataset ID and task type are required' });
+            return;
+        }
+
+        try {
+            let result: any;
+            switch (taskType) {
+                case 'graphrag':
+                    result = await ragProxyService.traceGraphRAG(datasetId);
+                    break;
+                case 'raptor':
+                    result = await ragProxyService.traceRaptor(datasetId);
+                    break;
+                case 'mindmap':
+                    result = await ragProxyService.traceMindmap(datasetId);
+                    break;
+                default:
+                    res.status(400).json({ error: `Unknown task type: ${taskType}` });
+                    return;
+            }
+            res.json(result);
+        } catch (error) {
+            log.error(`Failed to trace ${taskType}`, { error: String(error) });
+            res.status(500).json({ error: `Failed to trace ${taskType}` });
+        }
+    }
+
+    async runDocumentEnrichment(req: Request, res: Response): Promise<void> {
+        const { id: datasetId, docId, enrichType } = req.params;
+        if (!datasetId || !docId || !enrichType) {
+            res.status(400).json({ error: 'Dataset ID, document ID, and enrichment type are required' });
+            return;
+        }
+
+        try {
+            let result: any;
+            switch (enrichType) {
+                case 'keywords':
+                    result = await ragProxyService.runKeywordExtraction(datasetId, docId);
+                    break;
+                case 'questions':
+                    result = await ragProxyService.runQuestionGeneration(datasetId, docId);
+                    break;
+                case 'tags':
+                    result = await ragProxyService.runContentTagging(datasetId, docId);
+                    break;
+                case 'metadata':
+                    result = await ragProxyService.runMetadataGeneration(datasetId, docId);
+                    break;
+                default:
+                    res.status(400).json({ error: `Unknown enrichment type: ${enrichType}` });
+                    return;
+            }
+            res.json(result);
+        } catch (error) {
+            log.error(`Failed to run ${enrichType} enrichment`, { error: String(error) });
+            res.status(500).json({ error: `Failed to run ${enrichType}` });
+        }
+    }
+
+    async getTaskStatus(req: Request, res: Response): Promise<void> {
+        const { taskId } = req.params;
+        if (!taskId) { res.status(400).json({ error: 'Task ID is required' }); return; }
+
+        try {
+            const result = await ragProxyService.getTaskStatus(taskId);
+            res.json(result);
+        } catch (error) {
+            log.error('Failed to get task status', { error: String(error) });
+            res.status(500).json({ error: 'Failed to get task status' });
         }
     }
 }

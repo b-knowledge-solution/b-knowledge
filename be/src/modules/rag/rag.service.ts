@@ -144,7 +144,7 @@ export class RagService {
     }
 
     // -------------------------------------------------------------------------
-    // Document operations (metadata only — actual files managed by py-rag)
+    // Document operations (metadata only — actual files managed by advance-rag)
     // -------------------------------------------------------------------------
 
     async getDocuments(datasetId: string): Promise<Document[]> {

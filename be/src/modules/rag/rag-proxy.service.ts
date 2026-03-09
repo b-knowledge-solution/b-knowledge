@@ -1,5 +1,5 @@
 /**
- * HTTP client for proxying requests to the Python RAG service (py-rag).
+ * HTTP client for proxying requests to the Python RAG service (advance-rag).
  */
 
 const RAG_SERVICE_URL = process.env['RAG_SERVICE_URL'] || 'http://localhost:9380';
@@ -92,6 +92,51 @@ export class RagProxyService {
         const params = new URLSearchParams(query).toString();
         const path = `/api/rag/datasets/${datasetId}/chunks${params ? `?${params}` : ''}`;
         return proxyRequest({ method: 'GET', path });
+    }
+
+    // Advanced task operations
+    async runGraphRAG(datasetId: string, body?: { doc_ids?: string[] }): Promise<any> {
+        return proxyRequest({ method: 'POST', path: `/api/rag/datasets/${datasetId}/graphrag`, body });
+    }
+
+    async traceGraphRAG(datasetId: string): Promise<any> {
+        return proxyRequest({ method: 'GET', path: `/api/rag/datasets/${datasetId}/graphrag/status` });
+    }
+
+    async runRaptor(datasetId: string, body?: { doc_ids?: string[] }): Promise<any> {
+        return proxyRequest({ method: 'POST', path: `/api/rag/datasets/${datasetId}/raptor`, body });
+    }
+
+    async traceRaptor(datasetId: string): Promise<any> {
+        return proxyRequest({ method: 'GET', path: `/api/rag/datasets/${datasetId}/raptor/status` });
+    }
+
+    async runMindmap(datasetId: string, body?: { doc_ids?: string[] }): Promise<any> {
+        return proxyRequest({ method: 'POST', path: `/api/rag/datasets/${datasetId}/mindmap`, body });
+    }
+
+    async traceMindmap(datasetId: string): Promise<any> {
+        return proxyRequest({ method: 'GET', path: `/api/rag/datasets/${datasetId}/mindmap/status` });
+    }
+
+    async runKeywordExtraction(datasetId: string, docId: string): Promise<any> {
+        return proxyRequest({ method: 'POST', path: `/api/rag/datasets/${datasetId}/documents/${docId}/keywords` });
+    }
+
+    async runQuestionGeneration(datasetId: string, docId: string): Promise<any> {
+        return proxyRequest({ method: 'POST', path: `/api/rag/datasets/${datasetId}/documents/${docId}/questions` });
+    }
+
+    async runContentTagging(datasetId: string, docId: string): Promise<any> {
+        return proxyRequest({ method: 'POST', path: `/api/rag/datasets/${datasetId}/documents/${docId}/tags` });
+    }
+
+    async runMetadataGeneration(datasetId: string, docId: string): Promise<any> {
+        return proxyRequest({ method: 'POST', path: `/api/rag/datasets/${datasetId}/documents/${docId}/metadata` });
+    }
+
+    async getTaskStatus(taskId: string): Promise<any> {
+        return proxyRequest({ method: 'GET', path: `/api/rag/tasks/${taskId}/status` });
     }
 
     // Health check

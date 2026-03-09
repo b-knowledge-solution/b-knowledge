@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Upload, RefreshCw } from 'lucide-react';
-import { Button, Spin, Card, Descriptions, Tag } from 'antd';
+import { Button, Spin, Card, Descriptions, Tag, Drawer } from 'antd';
 import { useAuth } from '@/features/auth';
 import { datasetApi } from '../api/datasetApi';
 import { useDocuments } from '../hooks/useDatasets';
 import DocumentTable from '../components/DocumentTable';
 import FileUploadModal from '../components/FileUploadModal';
-import type { Dataset } from '../types';
+import { DocumentPreviewer } from '@/components/DocumentPreviewer';
+import type { Dataset, Document } from '../types';
 
 const DatasetDetailPage: React.FC = () => {
   const { t } = useTranslation();
@@ -20,6 +21,11 @@ const DatasetDetailPage: React.FC = () => {
   const [dataset, setDataset] = useState<Dataset | null>(null);
   const [loadingDataset, setLoadingDataset] = useState(true);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
+
+  const handleViewDocument = useCallback((doc: Document) => {
+    setPreviewDoc(doc);
+  }, []);
 
   const { documents, loading: loadingDocs, uploading, refresh, uploadFiles, deleteDocument, parseDocument } = useDocuments(id);
 
@@ -132,6 +138,7 @@ const DatasetDetailPage: React.FC = () => {
           isAdmin={isAdmin}
           onParse={parseDocument}
           onDelete={deleteDocument}
+          onView={handleViewDocument}
         />
       </Card>
 
@@ -142,6 +149,27 @@ const DatasetDetailPage: React.FC = () => {
         onUpload={handleUpload}
         onCancel={() => setUploadModalOpen(false)}
       />
+
+      {/* Document Preview Drawer */}
+      <Drawer
+        title={previewDoc?.name || t('datasets.viewDocument', 'Document Preview')}
+        placement="right"
+        width="85vw"
+        open={!!previewDoc}
+        onClose={() => setPreviewDoc(null)}
+        destroyOnClose
+        styles={{ body: { padding: 0, overflow: 'hidden' } }}
+      >
+        {previewDoc && id && (
+          <DocumentPreviewer
+            datasetId={id}
+            docId={previewDoc.id}
+            fileName={previewDoc.name}
+            downloadUrl={datasetApi.getDocumentDownloadUrl(id, previewDoc.id)}
+            showChunks={previewDoc.chunk_count > 0}
+          />
+        )}
+      </Drawer>
     </div>
   );
 };

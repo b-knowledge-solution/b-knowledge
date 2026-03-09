@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Play, Trash2 } from 'lucide-react';
+import { Play, Trash2, Eye } from 'lucide-react';
 import { Table, Button, Space, Progress, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { Document } from '../types';
@@ -11,6 +11,7 @@ interface DocumentTableProps {
   isAdmin: boolean;
   onParse: (docId: string) => void;
   onDelete: (docId: string) => void;
+  onView?: (doc: Document) => void;
 }
 
 const statusColorMap: Record<string, string> = {
@@ -34,6 +35,7 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
   isAdmin,
   onParse,
   onDelete,
+  onView,
 }) => {
   const { t } = useTranslation();
 
@@ -43,7 +45,18 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
       dataIndex: 'name',
       key: 'name',
       ellipsis: true,
-      render: (name: string) => <span className="font-medium">{name}</span>,
+      render: (name: string, record: Document) => (
+        record.status === 'completed' && onView ? (
+          <button
+            className="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 hover:underline text-left"
+            onClick={() => onView(record)}
+          >
+            {name}
+          </button>
+        ) : (
+          <span className="font-medium">{name}</span>
+        )
+      ),
     },
     {
       title: t('datasets.docSize'),
@@ -92,6 +105,16 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
             width: 120,
             render: (_: unknown, record: Document) => (
               <Space>
+                {record.status === 'completed' && onView && (
+                  <Tooltip title={t('datasets.viewDocument', 'View')}>
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<Eye size={14} />}
+                      onClick={() => onView(record)}
+                    />
+                  </Tooltip>
+                )}
                 {record.status === 'pending' && (
                   <Tooltip title={t('datasets.parse')}>
                     <Button

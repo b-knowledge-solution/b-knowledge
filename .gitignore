@@ -164,11 +164,11 @@ __pycache__/
 .venv/
 venv/
 
-# py-rag: ONNX/model weights (if any get copied)
-py-rag/**/*.onnx
-py-rag/**/*.bin
-py-rag/**/*.pt
-py-rag/**/*.pth
+# advance-rag: ONNX/model weights (if any get copied)
+advance-rag/**/*.onnx
+advance-rag/**/*.bin
+advance-rag/**/*.pt
+advance-rag/**/*.pth
 
 .claude
 .agent

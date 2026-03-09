@@ -140,7 +140,7 @@ services:
   # ==========================================================================
   rag-api:
     build:
-      context: ../py-rag
+      context: ../advance-rag
       dockerfile: Dockerfile
     image: ${RAG_IMAGE:-b-knowledge-rag}:${RAG_VERSION:-latest}
     container_name: kb-rag-api
@@ -191,7 +191,7 @@ services:
   # ==========================================================================
   task-executor:
     build:
-      context: ../py-rag
+      context: ../advance-rag
       dockerfile: Dockerfile
     image: ${RAG_IMAGE:-b-knowledge-rag}:${RAG_VERSION:-latest}
     container_name: kb-task-executor

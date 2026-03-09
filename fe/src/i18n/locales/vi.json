@@ -938,6 +938,11 @@
     "refresh": "Làm mới",
     "confirmDeleteDoc": "Xóa tài liệu",
     "confirmDeleteDocMessage": "Bạn có chắc muốn xóa tài liệu này?",
-    "deleteDocSuccess": "Xóa tài liệu thành công"
+    "deleteDocSuccess": "Xóa tài liệu thành công",
+    "viewDocument": "Xem",
+    "chunks": "Phân đoạn",
+    "chunksTotal": "tổng",
+    "noChunks": "Không tìm thấy phân đoạn",
+    "previewNotSupported": "Không hỗ trợ xem trước loại tệp này"
   }
 }

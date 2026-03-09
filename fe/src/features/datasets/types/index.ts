@@ -54,6 +54,24 @@ export interface Document {
 
 export type DocumentStatus = 'pending' | 'parsing' | 'completed' | 'failed';
 
+export interface Chunk {
+  chunk_id: string;
+  text: string;
+  doc_id?: string;
+  doc_name?: string;
+  page_num?: number[];
+  positions?: number[][];
+  score?: number;
+  method?: string;
+}
+
+export interface ChunksResponse {
+  chunks: Chunk[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export const PARSER_OPTIONS = [
   { value: 'naive', label: 'General' },
   { value: 'book', label: 'Book' },

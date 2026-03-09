@@ -923,6 +923,11 @@
     "refresh": "更新",
     "confirmDeleteDoc": "ドキュメント削除",
     "confirmDeleteDocMessage": "このドキュメントを削除しますか？",
-    "deleteDocSuccess": "ドキュメントが削除されました"
+    "deleteDocSuccess": "ドキュメントが削除されました",
+    "viewDocument": "表示",
+    "chunks": "チャンク",
+    "chunksTotal": "合計",
+    "noChunks": "チャンクが見つかりません",
+    "previewNotSupported": "このファイル形式のプレビューはサポートされていません"
   }
 }

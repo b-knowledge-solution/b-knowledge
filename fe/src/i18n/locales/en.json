@@ -964,6 +964,11 @@
     "refresh": "Refresh",
     "confirmDeleteDoc": "Delete Document",
     "confirmDeleteDocMessage": "Are you sure you want to delete this document?",
-    "deleteDocSuccess": "Document deleted successfully"
+    "deleteDocSuccess": "Document deleted successfully",
+    "viewDocument": "View",
+    "chunks": "Chunks",
+    "chunksTotal": "total",
+    "noChunks": "No chunks found",
+    "previewNotSupported": "Preview not supported for this file type"
   }
 }

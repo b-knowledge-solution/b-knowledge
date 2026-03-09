@@ -15,7 +15,7 @@ import logging
 import os
 import sys
 
-# Ensure py-rag root is on sys.path
+# Ensure advance-rag root is on sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import redis

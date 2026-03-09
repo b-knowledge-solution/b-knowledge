@@ -1,5 +1,5 @@
 import { api, apiFetch } from '@/lib/api';
-import type { Dataset, CreateDatasetDto, UpdateDatasetDto, Document } from '../types';
+import type { Dataset, CreateDatasetDto, UpdateDatasetDto, Document, ChunksResponse } from '../types';
 
 const BASE_URL = '/api/rag';
 
@@ -48,5 +48,23 @@ export const datasetApi = {
 
   parseDocument: async (datasetId: string, docId: string): Promise<void> => {
     return api.post<void>(`${BASE_URL}/datasets/${datasetId}/documents/${docId}/parse`);
+  },
+
+  getDocumentDownloadUrl: (datasetId: string, docId: string): string => {
+    const base = import.meta.env.VITE_API_BASE_URL || '';
+    return `${base}${BASE_URL}/datasets/${datasetId}/documents/${docId}/download`;
+  },
+
+  // Chunk operations
+  listChunks: async (
+    datasetId: string,
+    params?: { doc_id?: string; page?: number; limit?: number },
+  ): Promise<ChunksResponse> => {
+    const query = new URLSearchParams();
+    if (params?.doc_id) query.set('doc_id', params.doc_id);
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return api.get<ChunksResponse>(`${BASE_URL}/datasets/${datasetId}/chunks${qs ? `?${qs}` : ''}`);
   },
 };

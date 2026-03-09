@@ -125,6 +125,41 @@ async def parse_document(dataset_id: str, doc_id: str):
     return {"status": "parsing", "doc_id": doc_id}
 
 
+@router.get("/datasets/{dataset_id}/documents/{doc_id}/download")
+async def download_document(dataset_id: str, doc_id: str):
+    """Download a document file from MinIO storage."""
+    from fastapi.responses import StreamingResponse
+    from db.services.document_service import DocumentService
+    from common.settings import STORAGE_IMPL
+
+    found, doc = DocumentService.get_by_id(doc_id)
+    if not found:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    location = doc.location
+    if not location:
+        raise HTTPException(status_code=404, detail="File not found in storage")
+
+    try:
+        content = STORAGE_IMPL.get(location)
+    except Exception as e:
+        logger.error(f"Failed to retrieve file {location}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve file")
+
+    filename = doc.name or "download"
+    suffix = os.path.splitext(filename)[1].lower()
+    content_type = _get_content_type(suffix)
+
+    return StreamingResponse(
+        iter([content]),
+        media_type=content_type,
+        headers={
+            "Content-Disposition": f'inline; filename="{filename}"',
+            "Content-Length": str(len(content)),
+        },
+    )
+
+
 @router.delete("/datasets/{dataset_id}/documents/{doc_id}", status_code=204)
 async def delete_document(dataset_id: str, doc_id: str):
     """Delete a document."""
@@ -136,6 +171,36 @@ async def delete_document(dataset_id: str, doc_id: str):
 
     DocumentService.update_by_id(doc_id, {"status": "0"})
     return None
+
+
+def _get_content_type(suffix: str) -> str:
+    """Map file extension to MIME content type."""
+    mime_map = {
+        ".pdf": "application/pdf",
+        ".doc": "application/msword",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".xls": "application/vnd.ms-excel",
+        ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".ppt": "application/vnd.ms-powerpoint",
+        ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        ".txt": "text/plain",
+        ".md": "text/markdown",
+        ".csv": "text/csv",
+        ".json": "application/json",
+        ".html": "text/html",
+        ".htm": "text/html",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".gif": "image/gif",
+        ".bmp": "image/bmp",
+        ".tiff": "image/tiff",
+        ".svg": "image/svg+xml",
+        ".mp3": "audio/mpeg",
+        ".wav": "audio/wav",
+        ".ogg": "audio/ogg",
+    }
+    return mime_map.get(suffix, "application/octet-stream")
 
 
 def _get_file_type(suffix: str) -> str:

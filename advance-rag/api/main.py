@@ -1,5 +1,5 @@
 """
-FastAPI entry point for py-rag service.
+FastAPI entry point for advance-rag service.
 
 Initializes database, system tenant, and registers API routes.
 """
@@ -7,7 +7,7 @@ import logging
 import os
 import sys
 
-# Ensure py-rag root is on sys.path for imports
+# Ensure advance-rag root is on sys.path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from contextlib import asynccontextmanager
@@ -37,13 +37,13 @@ async def lifespan(app: FastAPI):
     from executor_wrapper import install_progress_hook
     install_progress_hook()
 
-    logger.info("py-rag service started")
+    logger.info("advance-rag service started")
     yield
-    logger.info("py-rag service shutting down")
+    logger.info("advance-rag service shutting down")
 
 
 app = FastAPI(
-    title="py-rag",
+    title="advance-rag",
     description="RAG pipeline service for b-knowledge",
     version="0.1.0",
     lifespan=lifespan,
@@ -56,6 +56,7 @@ from api.documents import router as documents_router
 from api.models import router as models_router
 from api.chunks import router as chunks_router
 from api.sync import router as sync_router
+from api.advanced_tasks import router as advanced_tasks_router
 
 app.include_router(health_router, tags=["health"])
 app.include_router(datasets_router, prefix="/api/rag", tags=["datasets"])
@@ -63,6 +64,7 @@ app.include_router(documents_router, prefix="/api/rag", tags=["documents"])
 app.include_router(models_router, prefix="/api/rag", tags=["models"])
 app.include_router(chunks_router, prefix="/api/rag", tags=["chunks"])
 app.include_router(sync_router, prefix="/api/rag", tags=["sync"])
+app.include_router(advanced_tasks_router, prefix="/api/rag", tags=["advanced-tasks"])
 
 
 if __name__ == "__main__":

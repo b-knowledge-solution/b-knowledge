@@ -6,4 +6,4 @@ router = APIRouter()
 
 @router.get("/health")
 async def health():
-    return {"status": "ok", "service": "py-rag"}
+    return {"status": "ok", "service": "advance-rag"}

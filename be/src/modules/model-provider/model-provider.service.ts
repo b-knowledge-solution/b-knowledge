@@ -40,7 +40,7 @@ export class ModelProviderService {
             updated_by: user?.id || null,
         });
 
-        // Sync to py-rag TenantLLM
+        // Sync to advance-rag TenantLLM
         try {
             await ragProxyService.syncModelProvider({
                 factory_name: provider.factory_name,
@@ -52,7 +52,7 @@ export class ModelProviderService {
                 is_default: provider.is_default,
             });
         } catch (err) {
-            log.warn('Failed to sync model provider to py-rag', { error: String(err) });
+            log.warn('Failed to sync model provider to advance-rag', { error: String(err) });
         }
 
         if (user) {
@@ -95,7 +95,7 @@ export class ModelProviderService {
                 is_default: provider.is_default,
             });
         } catch (err) {
-            log.warn('Failed to sync model provider update to py-rag', { error: String(err) });
+            log.warn('Failed to sync model provider update to advance-rag', { error: String(err) });
         }
 
         if (user) {

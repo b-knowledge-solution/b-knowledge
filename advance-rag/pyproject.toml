@@ -1,5 +1,5 @@
 [project]
-name = "py-rag"
+name = "advance-rag"
 version = "0.1.0"
 description = "RAG pipeline service for b-knowledge, extracted from RAGFlow"
 requires-python = ">=3.10"

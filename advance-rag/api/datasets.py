@@ -2,7 +2,7 @@
 Dataset CRUD endpoints.
 
 These endpoints are called by the Node.js API gateway (be/).
-The Node.js layer handles RBAC/access_control; py-rag handles the RAG pipeline.
+The Node.js layer handles RBAC/access_control; advance-rag handles the RAG pipeline.
 """
 import logging
 import os
