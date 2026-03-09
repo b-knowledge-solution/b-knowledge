@@ -1,0 +1,14 @@
+# Ignore everything
+*
+
+# Except these files and directories
+!package.json
+!package-lock.json
+!tsconfig.json
+!src/
+!public/
+
+# Ignore these within allowed directories
+src/**/*.test.ts
+src/**/*.spec.ts
+**/*.md
