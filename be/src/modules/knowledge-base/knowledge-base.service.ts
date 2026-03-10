@@ -3,16 +3,10 @@
 import { ModelFactory } from '@/shared/models/factory.js';
 import { log } from '@/shared/services/logger.service.js';
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/audit.service.js';
-import { KnowledgeBaseSource } from '@/shared/models/types.js';
+import { KnowledgeBaseSource, AccessControl } from '@/shared/models/types.js';
 import { teamService } from '@/modules/teams/team.service.js';
 
 import { config } from '@/shared/config/index.js';
-
-export interface AccessControl {
-    public: boolean;
-    team_ids: string[];
-    user_ids: string[];
-}
 
 /**
  * KnowledgeBaseService

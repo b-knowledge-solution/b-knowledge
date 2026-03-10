@@ -27,7 +27,7 @@ import userHistoryRoutes from '@/modules/user-history/user-history.routes.js';
 import dashboardRoutes from '@/modules/dashboard/dashboard.routes.js';
 import glossaryRoutes from '@/modules/glossary/glossary.routes.js';
 import ragRoutes from '@/modules/rag/rag.routes.js';
-import modelProviderRoutes from '@/modules/model-provider/model-provider.routes.js';
+import llmProviderRoutes from '@/modules/llm-provider/llm-provider.routes.js';
 
 // ============================================================================
 // Rate Limiters
@@ -137,8 +137,8 @@ function registerRoutes(apiRouter: Router): void {
     // RAG datasets and documents
     apiRouter.use('/rag', ragRoutes);
 
-    // Model provider management (admin only)
-    apiRouter.use('/rag/models', modelProviderRoutes);
+    // LLM provider management (admin only)
+    apiRouter.use('/llm-provider', llmProviderRoutes);
 }
 
 // ============================================================================

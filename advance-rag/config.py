@@ -23,10 +23,10 @@ REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
 ES_HOST = os.getenv("ES_HOST", "http://localhost:9200")
 ES_PASSWORD = os.getenv("ES_PASSWORD", "")
 
-# MinIO
-MINIO_HOST = os.getenv("MINIO_HOST", "localhost:9000")
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "")
+# S3-compatible storage (RustFS / MinIO / etc.)
+MINIO_HOST = os.getenv("S3_HOST", "localhost:9000")
+MINIO_ACCESS_KEY = os.getenv("S3_ACCESS_KEY", "")
+MINIO_SECRET_KEY = os.getenv("S3_SECRET_KEY", "")
 
 # System tenant
 SYSTEM_TENANT_ID = os.getenv(

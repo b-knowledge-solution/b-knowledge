@@ -74,20 +74,21 @@ services:
       - kb-network
 
   # ==========================================================================
-  # MinIO (object storage for uploaded documents)
+  # RustFS (S3-compatible object storage for uploaded documents)
+  # Licensed under Apache 2.0 (replaces MinIO due to license concerns)
   # ==========================================================================
-  minio:
-    image: minio/minio:latest
-    container_name: kb-minio
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: kb-rustfs
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+      RUSTFS_ROOT_USER: ${S3_ACCESS_KEY:-rustfsadmin}
+      RUSTFS_ROOT_PASSWORD: ${S3_SECRET_KEY:-rustfsadmin}
     volumes:
-      - minio_data:/data
+      - rustfs_data:/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -110,13 +111,20 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      rustfs:
+        condition: service_healthy
     env_file:
       - .env
     environment:
-      # Override DB host to use Docker network
       DB_HOST: postgres
       REDIS_HOST: redis
-      RAG_SERVICE_URL: http://rag-api:9380
+      ES_HOST: http://elasticsearch:9200
+      ES_PASSWORD: ${ES_PASSWORD:-elastic123}
+      S3_HOST: rustfs:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-rustfsadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-rustfsadmin}
     ports:
       - "${PORT:-3001}:3001"
     expose:
@@ -132,57 +140,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
-    networks:
-      - kb-network
-
-  # ==========================================================================
-  # Python RAG API Service
-  # ==========================================================================
-  rag-api:
-    build:
-      context: ../advance-rag
-      dockerfile: Dockerfile
-    image: ${RAG_IMAGE:-b-knowledge-rag}:${RAG_VERSION:-latest}
-    container_name: kb-rag-api
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-    env_file:
-      - .env
-    environment:
-      DB_TYPE: postgres
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      DB_NAME: ${DB_NAME:-knowledge_base}
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-change_me_in_production}
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      ES_HOST: http://elasticsearch:9200
-      ES_PASSWORD: ${ES_PASSWORD:-elastic123}
-      MINIO_HOST: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
-      RAG_PROJECT_BASE: /app
-      PYTHONPATH: /app
-    ports:
-      - "${RAG_PORT:-9380}:9380"
-    expose:
-      - "9380"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9380/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
     networks:
       - kb-network
 
@@ -204,7 +161,7 @@ services:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
-      minio:
+      rustfs:
         condition: service_healthy
     env_file:
       - .env
@@ -220,11 +177,16 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       ES_HOST: http://elasticsearch:9200
       ES_PASSWORD: ${ES_PASSWORD:-elastic123}
-      MINIO_HOST: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      S3_HOST: rustfs:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-rustfsadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-rustfsadmin}
       RAG_PROJECT_BASE: /app
       PYTHONPATH: /app
+      LOG_ROTATION: ${LOG_ROTATION:-50 MB}
+      LOG_RETENTION: ${LOG_RETENTION:-30 days}
+      LOG_COMPRESSION: ${LOG_COMPRESSION:-zip}
+    volumes:
+      - worker_logs:/app/logs
     networks:
       - kb-network
 
@@ -245,9 +207,11 @@ volumes:
     driver: local
   es_data:
     driver: local
-  minio_data:
+  rustfs_data:
     driver: local
   backend_logs:
     driver: local
   backend_data:
+    driver: local
+  worker_logs:
     driver: local

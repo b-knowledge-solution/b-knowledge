@@ -202,6 +202,25 @@ async def collect():
         redis_msg.ack()
         return None, None
 
+    # parse_init: Node.js requests parsing — we split into sub-tasks here
+    if msg.get("task_type") == "parse_init":
+        try:
+            from db.services.task_service import queue_tasks
+            from db.services.document_service import DocumentService
+            from db.services.file2document_service import File2DocumentService
+            doc_id = msg["doc_id"]
+            e, doc = DocumentService.get_by_id(doc_id)
+            if e and doc:
+                bucket, name = File2DocumentService.get_storage_address(doc_id=doc_id)
+                queue_tasks(doc.to_dict(), bucket, name, msg.get("priority", 0))
+                logging.info(f"parse_init: queued sub-tasks for doc {doc_id}")
+            else:
+                logging.warning(f"parse_init: document {doc_id} not found")
+        except Exception as ex:
+            logging.exception(f"parse_init failed for doc {msg.get('doc_id')}: {ex}")
+        redis_msg.ack()
+        return None, None
+
     canceled = False
     if msg.get("doc_id", "") in [GRAPH_RAPTOR_FAKE_DOC_ID, CANVAS_DEBUG_DOC_ID]:
         task = msg

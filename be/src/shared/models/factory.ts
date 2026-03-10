@@ -24,6 +24,11 @@ import { GlossaryKeywordModel } from '@/modules/glossary/glossary-keyword.model.
 import { DatasetModel } from '@/modules/rag/dataset.model.js';
 import { DocumentModel } from '@/modules/rag/document.model.js';
 import { ModelProviderModel } from '@/modules/rag/model-provider.model.js';
+import { TenantLlmModel } from '@/modules/llm-provider/tenant-llm.model.js';
+import { KnowledgebaseModel } from '@/modules/rag/knowledgebase.model.js';
+import { RagDocumentModel } from '@/modules/rag/rag-document.model.js';
+import { RagFileModel } from '@/modules/rag/rag-file.model.js';
+import { RagTaskModel } from '@/modules/rag/rag-task.model.js';
 
 /**
  * ModelFactory class implementing the Factory Pattern.
@@ -73,6 +78,16 @@ export class ModelFactory {
   private static datasetModel: DatasetModel;
   private static documentModel: DocumentModel;
   private static modelProviderModel: ModelProviderModel;
+  /** TenantLlm model singleton instance */
+  private static tenantLlmModel: TenantLlmModel;
+  /** Knowledgebase (Peewee) model singleton instance */
+  private static knowledgebaseModel: KnowledgebaseModel;
+  /** RagDocument (Peewee) model singleton instance */
+  private static ragDocumentModel: RagDocumentModel;
+  /** RagFile (Peewee) model singleton instance */
+  private static ragFileModel: RagFileModel;
+  /** RagTask (Peewee) model singleton instance */
+  private static ragTaskModel: RagTaskModel;
 
   /**
    * Get the User model singleton.
@@ -263,5 +278,36 @@ export class ModelFactory {
   static get modelProvider() {
     if (!this.modelProviderModel) this.modelProviderModel = new ModelProviderModel();
     return this.modelProviderModel;
+  }
+
+  /**
+   * Get the TenantLlm model singleton.
+   * Manages the shared tenant_llm table read by Python task executors.
+   * @returns TenantLlmModel instance for tenant LLM config operations
+   */
+  static get tenantLlm() {
+    // Create instance on first access (lazy initialization)
+    if (!this.tenantLlmModel) this.tenantLlmModel = new TenantLlmModel();
+    return this.tenantLlmModel;
+  }
+
+  static get knowledgebase() {
+    if (!this.knowledgebaseModel) this.knowledgebaseModel = new KnowledgebaseModel();
+    return this.knowledgebaseModel;
+  }
+
+  static get ragDocument() {
+    if (!this.ragDocumentModel) this.ragDocumentModel = new RagDocumentModel();
+    return this.ragDocumentModel;
+  }
+
+  static get ragFile() {
+    if (!this.ragFileModel) this.ragFileModel = new RagFileModel();
+    return this.ragFileModel;
+  }
+
+  static get ragTask() {
+    if (!this.ragTaskModel) this.ragTaskModel = new RagTaskModel();
+    return this.ragTaskModel;
   }
 }

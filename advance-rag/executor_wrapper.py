@@ -19,8 +19,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import redis
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
@@ -76,9 +75,10 @@ def install_progress_hook():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-
     os.environ.setdefault("DB_TYPE", "postgres")
+
+    from common.log_utils import init_root_logger
+    init_root_logger("task_executor")
 
     from common.settings import init_settings
     init_settings()

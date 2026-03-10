@@ -14,73 +14,131 @@
 #  limitations under the License.
 #
 
-import os
-import os.path
+"""
+Logging setup using Loguru with file rotation.
+
+Replaces Python stdlib logging with Loguru. Intercepts all stdlib logging
+calls so existing code (RAGFlow modules using `logging.getLogger()`) works
+unchanged.
+
+Rotation policy (configurable via env vars):
+  - LOG_ROTATION:    max file size before rotation  (default: "50 MB")
+  - LOG_RETENTION:   how long to keep old logs       (default: "30 days")
+  - LOG_COMPRESSION: compress rotated files           (default: "zip")
+  - LOG_LEVEL:       minimum log level                (default: "INFO")
+  - LOG_LEVELS:      per-package overrides            (e.g. "peewee=WARNING,pdfminer=WARNING")
+"""
+
 import logging
-from logging.handlers import RotatingFileHandler
+import os
+import sys
+
+from loguru import logger
+
 from common.file_utils import get_project_base_directory
 
 initialized_root_logger = False
 
-def init_root_logger(logfile_basename: str, log_format: str = "%(asctime)-15s %(levelname)-8s %(process)d %(message)s"):
+
+class InterceptHandler(logging.Handler):
+    """Route stdlib logging calls to Loguru."""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            level = logger.level(record.levelname).name
+        except ValueError:
+            level = record.levelno
+
+        frame, depth = sys._getframe(6), 6
+        while frame and frame.f_code.co_filename == logging.__file__:
+            frame = frame.f_back
+            depth += 1
+
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+
+
+def init_root_logger(
+    logfile_basename: str,
+    log_format: str | None = None,
+):
+    """
+    Initialize Loguru logger with console + rotating file sinks.
+
+    Args:
+        logfile_basename: Name prefix for the log file (e.g. "task_executor").
+        log_format: Ignored (kept for backward compat). Loguru uses its own format.
+    """
     global initialized_root_logger
     if initialized_root_logger:
         return
     initialized_root_logger = True
 
-    logger = logging.getLogger()
-    logger.handlers.clear()
-    log_path = os.path.abspath(os.path.join(get_project_base_directory(), "logs", f"{logfile_basename}.log"))
+    log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
+    log_rotation = os.environ.get("LOG_ROTATION", "50 MB")
+    log_retention = os.environ.get("LOG_RETENTION", "30 days")
+    log_compression = os.environ.get("LOG_COMPRESSION", "zip")
 
-    os.makedirs(os.path.dirname(log_path), exist_ok=True)
-    formatter = logging.Formatter(log_format)
+    log_dir = os.path.abspath(os.path.join(get_project_base_directory(), "logs"))
+    os.makedirs(log_dir, exist_ok=True)
+    log_path = os.path.join(log_dir, f"{logfile_basename}.log")
 
-    handler1 = RotatingFileHandler(log_path, maxBytes=10*1024*1024, backupCount=5)
-    handler1.setFormatter(formatter)
-    logger.addHandler(handler1)
+    # Remove default stderr sink, re-add with our level
+    logger.remove()
 
-    handler2 = logging.StreamHandler()
-    handler2.setFormatter(formatter)
-    logger.addHandler(handler2)
+    # Console sink — colorized
+    logger.add(
+        sys.stderr,
+        level=log_level,
+        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level:<8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+        colorize=True,
+    )
 
-    logging.captureWarnings(True)
+    # File sink — rotation + retention + compression
+    logger.add(
+        log_path,
+        level=log_level,
+        format="{time:YYYY-MM-DD HH:mm:ss} | {level:<8} | {name}:{function}:{line} - {message}",
+        rotation=log_rotation,
+        retention=log_retention,
+        compression=log_compression,
+        encoding="utf-8",
+        enqueue=True,  # thread-safe async writing
+    )
 
-    LOG_LEVELS = os.environ.get("LOG_LEVELS", "")
-    pkg_levels = {}
-    for pkg_name_level in LOG_LEVELS.split(","):
-        terms = pkg_name_level.split("=")
-        if len(terms)!= 2:
-            continue
-        pkg_name, pkg_level = terms[0], terms[1]
-        pkg_name = pkg_name.strip()
-        pkg_level = logging.getLevelName(pkg_level.strip().upper())
-        if not isinstance(pkg_level, int):
-            pkg_level = logging.INFO
-        pkg_levels[pkg_name] = logging.getLevelName(pkg_level)
+    # Intercept stdlib logging → Loguru
+    logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
 
-    for pkg_name in ['peewee', 'pdfminer']:
-        if pkg_name not in pkg_levels:
-            pkg_levels[pkg_name] = logging.getLevelName(logging.WARNING)
-    if 'root' not in pkg_levels:
-        pkg_levels['root'] = logging.getLevelName(logging.INFO)
+    # Apply per-package log levels from LOG_LEVELS env var
+    log_levels_str = os.environ.get("LOG_LEVELS", "")
+    pkg_levels: dict[str, str] = {}
+    for entry in log_levels_str.split(","):
+        parts = entry.strip().split("=")
+        if len(parts) == 2:
+            pkg_levels[parts[0].strip()] = parts[1].strip().upper()
+
+    # Default noisy packages to WARNING
+    for pkg in ("peewee", "pdfminer"):
+        if pkg not in pkg_levels:
+            pkg_levels[pkg] = "WARNING"
 
     for pkg_name, pkg_level in pkg_levels.items():
-        pkg_logger = logging.getLogger(pkg_name)
-        pkg_logger.setLevel(pkg_level)
+        logging.getLogger(pkg_name).setLevel(pkg_level)
 
-    msg = f"{logfile_basename} log path: {log_path}, log levels: {pkg_levels}"
-    logger.info(msg)
+    logger.info(
+        "Logger initialized | file={} | rotation={} | retention={} | compression={} | level={}",
+        log_path, log_rotation, log_retention, log_compression, log_level,
+    )
 
 
 def log_exception(e, *args):
-    logging.exception(e)
+    logger.exception(str(e))
     for a in args:
         try:
             text = getattr(a, "text")
         except Exception:
             text = None
         if text is not None:
-            logging.error(text)
+            logger.error(text)
             raise Exception(text)
-        logging.error(str(a))
+        logger.error(str(a))
     raise e

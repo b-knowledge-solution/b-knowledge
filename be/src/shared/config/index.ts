@@ -417,13 +417,6 @@ export const config = {
     pingInterval: parseInt(process.env['WEBSOCKET_PING_INTERVAL'] ?? '25000', 10),
   },
 
-  // --------------------------------------------------------------------------
-  // RAG Service Configuration
-  // --------------------------------------------------------------------------
-
-  ragService: {
-    url: process.env['RAG_SERVICE_URL'] ?? 'http://localhost:9380',
-  },
 } as const;
 
 /**

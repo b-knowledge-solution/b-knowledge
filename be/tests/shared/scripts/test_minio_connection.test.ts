@@ -8,8 +8,8 @@ describe('test-minio-connection script', () => {
 
   it('logs error and returns when credentials missing', async () => {
     // ensure env has no keys and avoid loading a .env file
-    delete process.env.MINIO_ACCESS_KEY
-    delete process.env.MINIO_SECRET_KEY
+    delete process.env.S3_ACCESS_KEY
+    delete process.env.S3_SECRET_KEY
     vi.mock('dotenv', () => ({ default: { config: () => ({}) }, config: () => ({}) }))
 
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -19,8 +19,8 @@ describe('test-minio-connection script', () => {
   })
 
   it('performs minio flow when credentials present', async () => {
-    process.env.MINIO_ACCESS_KEY = 'ak'
-    process.env.MINIO_SECRET_KEY = 'sk'
+    process.env.S3_ACCESS_KEY = 'ak'
+    process.env.S3_SECRET_KEY = 'sk'
 
     // Static implementation that returns resolved promises and logs
     vi.mock('minio', () => ({

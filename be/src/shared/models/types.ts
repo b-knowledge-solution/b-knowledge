@@ -538,6 +538,29 @@ export interface ModelProvider {
     updated_at: Date;
 }
 
+/**
+ * TenantLlm interface representing a row in the shared 'tenant_llm' table.
+ * This table is read by Python task executors to load LLM provider configs.
+ */
+export interface TenantLlm {
+    /** Primary key (hex UUID without hyphens) */
+    id: string;
+    /** Tenant UUID this config belongs to */
+    tenant_id: string;
+    /** LLM provider factory name (e.g., 'OpenAI', 'Azure') */
+    llm_factory: string;
+    /** Model type (e.g., 'chat', 'embedding') */
+    model_type: string;
+    /** Model identifier (e.g., 'gpt-4o') */
+    llm_name: string;
+    /** API key for the provider */
+    api_key: string;
+    /** Optional custom API base URL */
+    api_base: string;
+    /** Maximum tokens allowed */
+    max_tokens: number;
+}
+
 export interface BulkImportGlossaryResult {
     /** Whether the operation completed successfully */
     success: boolean;
@@ -547,4 +570,148 @@ export interface BulkImportGlossaryResult {
     skipped: number;
     /** Any error messages */
     errors: string[];
+}
+
+// ---------------------------------------------------------------------------
+// RAG Peewee-schema row types (shared with Python task executors)
+// ---------------------------------------------------------------------------
+
+/**
+ * DocumentRow represents a row in the Peewee 'document' table.
+ * Table schema matches advance-rag/db/db_models.py.
+ */
+export interface DocumentRow {
+    id: string;
+    kb_id: string;
+    parser_id: string;
+    parser_config: Record<string, unknown>;
+    source_type: string;
+    type: string;
+    created_by: string;
+    name: string;
+    location: string;
+    size: number;
+    suffix: string;
+    /** "0"=not started, "1"=running, "2"=cancelled, "3"=done, "4"=fail */
+    run: string;
+    /** "0"=deleted, "1"=valid */
+    status: string;
+    progress: number;
+    progress_msg: string;
+    token_num: number;
+    chunk_num: number;
+    [key: string]: unknown;
+}
+
+/**
+ * TaskRow represents a row in the Peewee 'task' table.
+ */
+export interface TaskRow {
+    id: string;
+    doc_id: string;
+    from_page: number;
+    to_page: number;
+    task_type: string;
+    priority: number;
+    progress: number;
+    progress_msg: string;
+    begin_at: string;
+    digest: string;
+    chunk_ids: string;
+    [key: string]: unknown;
+}
+
+/**
+ * KnowledgebaseRow represents a row in the Peewee 'knowledgebase' table.
+ */
+export interface KnowledgebaseRow {
+    id: string;
+    tenant_id: string;
+    name: string;
+    language: string;
+    description: string;
+    embd_id: string;
+    parser_id: string;
+    parser_config: Record<string, unknown>;
+    doc_num: number;
+    token_num: number;
+    chunk_num: number;
+    graphrag_task_id: string | null;
+    raptor_task_id: string | null;
+    mindmap_task_id: string | null;
+    status: string;
+    [key: string]: unknown;
+}
+
+// ---------------------------------------------------------------------------
+// Shared service interfaces
+// ---------------------------------------------------------------------------
+
+/**
+ * Access control definition for datasets and knowledge base sources.
+ */
+export interface AccessControl {
+    public: boolean;
+    team_ids: string[];
+    user_ids: string[];
+}
+
+/**
+ * Authenticated user context passed to service methods for audit logging.
+ */
+export interface UserContext {
+    id: string;
+    email: string;
+    role?: string;
+    ip?: string;
+}
+
+// ---------------------------------------------------------------------------
+// RAG search types
+// ---------------------------------------------------------------------------
+
+/**
+ * A single chunk result from Elasticsearch search.
+ */
+export interface ChunkResult {
+    chunk_id: string;
+    text: string;
+    doc_id?: string;
+    doc_name?: string;
+    page_num?: number[];
+    positions?: number[][];
+    score?: number;
+    method?: string;
+}
+
+/**
+ * Search request parameters for RAG search.
+ */
+export interface SearchRequest {
+    query: string;
+    method?: 'hybrid' | 'semantic' | 'full_text';
+    top_k?: number;
+    similarity_threshold?: number;
+}
+
+// ---------------------------------------------------------------------------
+// RAG Redis task types
+// ---------------------------------------------------------------------------
+
+/**
+ * Task message sent to Redis Streams for advance-rag task executors.
+ */
+export interface TaskMessage {
+    id: string;
+    doc_id: string;
+    from_page: number;
+    to_page: number;
+    task_type: string;
+    priority?: number;
+    progress?: number;
+    progress_msg?: string;
+    begin_at?: string;
+    digest?: string;
+    doc_ids?: string[];
+    [key: string]: unknown;
 }

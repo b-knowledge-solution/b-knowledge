@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import { ModelProviderController } from './model-provider.controller.js';
+import { LlmProviderController } from './llm-provider.controller.js';
 import { requirePermission } from '@/shared/middleware/auth.middleware.js';
 
 const router = Router();
-const controller = new ModelProviderController();
+const controller = new LlmProviderController();
 
-// All model provider endpoints require admin permission
+// All LLM provider endpoints require admin permission
 router.get('/', requirePermission('manage_model_providers'), controller.list.bind(controller));
 router.get('/defaults', requirePermission('manage_model_providers'), controller.getDefaults.bind(controller));
 router.get('/:id', requirePermission('manage_model_providers'), controller.getById.bind(controller));

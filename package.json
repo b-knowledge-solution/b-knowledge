@@ -9,12 +9,11 @@
     "fe"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:be\" \"npm run dev:fe\"",
-    "dev:all": "concurrently \"npm run dev:be\" \"npm run dev:fe\" \"npm run dev:rag\"",
+    "dev": "concurrently \"npm run dev:be\" \"npm run dev:fe\" \"npm run dev:worker\"",
     "dev:be": "npm run dev --workspace=be",
     "dev:fe": "npm run dev --workspace=fe",
-    "dev:rag": "cd advance-rag && .venv\\Scripts\\uvicorn api.main:app --host 0.0.0.0 --port 9380 --reload",
-    "setup:rag": "cd advance-rag && python -m venv .venv && .venv\\Scripts\\pip install -e .",
+    "dev:worker": "cd advance-rag && python -m executor_wrapper",
+    "setup:worker": "cd advance-rag && python -m venv .venv && .venv/Scripts/pip install -e .",
     "dev:https": "concurrently \"npm run dev:be\" \"npm run dev:fe\"",
     "generate:cert": "node scripts/generate-cert.js",
     "build": "npm run build --workspaces",
@@ -41,6 +40,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@elastic/elasticsearch": "^8.19.1",
     "bee-queue": "^2.0.0",
     "nprogress": "^0.2.0"
   }

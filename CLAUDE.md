@@ -195,6 +195,6 @@ npm run test
 - Node.js 22+ (ExpressJS)
 - Implement **Factory Pattern** for all data schemas and interfaces in `shared/models/`
 - Implement **Singleton Pattern** for all global services and utils
-- New modules must follow the `controller + routes + service +model + index.ts` convention
+- New modules must follow the `controller + routes + service + model + index.ts` convention
 - If changes impact the database, create a migration file in `be/src/shared/db/migrations/`
 - Always use Knex ORM for model files in `be/src/shared/models/`; raw SQL only when Knex ORM cannot support the query

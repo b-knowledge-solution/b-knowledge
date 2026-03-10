@@ -2,7 +2,6 @@ import { ModelFactory } from '@/shared/models/factory.js';
 import { log } from '@/shared/services/logger.service.js';
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/audit.service.js';
 import { ModelProvider } from '@/shared/models/types.js';
-import { ragProxyService } from '@/modules/rag/rag-proxy.service.js';
 
 interface UserContext {
     id: string;
@@ -10,7 +9,7 @@ interface UserContext {
     ip?: string;
 }
 
-export class ModelProviderService {
+export class LlmProviderService {
     async list(): Promise<ModelProvider[]> {
         return ModelFactory.modelProvider.findAll(
             { status: 'active' },
@@ -40,19 +39,11 @@ export class ModelProviderService {
             updated_by: user?.id || null,
         });
 
-        // Sync to advance-rag TenantLLM
+        // Sync to shared tenant_llm table (used by task executors)
         try {
-            await ragProxyService.syncModelProvider({
-                factory_name: provider.factory_name,
-                model_type: provider.model_type,
-                model_name: provider.model_name,
-                api_key: provider.api_key,
-                api_base: provider.api_base,
-                max_tokens: provider.max_tokens,
-                is_default: provider.is_default,
-            });
+            await ModelFactory.tenantLlm.syncFromProvider(provider);
         } catch (err) {
-            log.warn('Failed to sync model provider to advance-rag', { error: String(err) });
+            log.warn('Failed to sync model provider to tenant_llm', { error: String(err) });
         }
 
         if (user) {
@@ -85,17 +76,9 @@ export class ModelProviderService {
         if (!provider) return undefined;
 
         try {
-            await ragProxyService.syncModelProvider({
-                factory_name: provider.factory_name,
-                model_type: provider.model_type,
-                model_name: provider.model_name,
-                api_key: provider.api_key,
-                api_base: provider.api_base,
-                max_tokens: provider.max_tokens,
-                is_default: provider.is_default,
-            });
+            await ModelFactory.tenantLlm.syncFromProvider(provider);
         } catch (err) {
-            log.warn('Failed to sync model provider update to advance-rag', { error: String(err) });
+            log.warn('Failed to sync model provider update to tenant_llm', { error: String(err) });
         }
 
         if (user) {
@@ -129,4 +112,4 @@ export class ModelProviderService {
     }
 }
 
-export const modelProviderService = new ModelProviderService();
+export const llmProviderService = new LlmProviderService();
