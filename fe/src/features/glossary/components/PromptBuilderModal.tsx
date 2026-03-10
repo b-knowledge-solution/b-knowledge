@@ -17,10 +17,17 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Copy, Check, Sparkles, Send, Search, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
-    Modal, Select, Button, Empty, Spin, Steps, Input
-} from 'antd'
-import { Copy, Check, Sparkles, Send } from 'lucide-react'
+    Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
+import { Spinner } from '@/components/ui/spinner'
+import { EmptyState } from '@/components/ui/empty-state'
 import {
     glossaryApi,
     type GlossaryTask,
@@ -46,12 +53,6 @@ const DEBOUNCE_DELAY = 300
 
 /** Supported prompt languages */
 type PromptLang = 'en' | 'ja' | 'vi'
-
-/** Language option for the select control */
-interface LangOption {
-    value: PromptLang
-    label: string
-}
 
 // ============================================================================
 // Props
@@ -100,6 +101,37 @@ const getInstructionByLang = (task: GlossaryTask, lang: PromptLang): string => {
 }
 
 // ============================================================================
+// Step Indicator Component
+// ============================================================================
+
+/** Simple step indicator with numbered circles and dividers. */
+const StepIndicator = ({ steps, currentStep }: { steps: string[]; currentStep: number }) => (
+    <div className="flex items-center gap-2">
+        {steps.map((label, index) => (
+            <div key={index} className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                    <div
+                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                            index <= currentStep
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted text-muted-foreground'
+                        }`}
+                    >
+                        {index + 1}
+                    </div>
+                    <span className={`text-xs ${index <= currentStep ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                        {label}
+                    </span>
+                </div>
+                {index < steps.length - 1 && (
+                    <div className={`h-px w-6 ${index < currentStep ? 'bg-primary' : 'bg-muted'}`} />
+                )}
+            </div>
+        ))}
+    </div>
+)
+
+// ============================================================================
 // Component
 // ============================================================================
 
@@ -115,6 +147,7 @@ export const PromptBuilderModal = ({ open, onClose, onApply }: PromptBuilderModa
 
     // Step 2: task
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+    const [taskSearchText, setTaskSearchText] = useState('')
 
     // Step 3: single keyword + context
     const [selectedKeyword, setSelectedKeyword] = useState<string>('')
@@ -130,6 +163,7 @@ export const PromptBuilderModal = ({ open, onClose, onApply }: PromptBuilderModa
     const [keywordPage, setKeywordPage] = useState(1)
     const [keywordTotal, setKeywordTotal] = useState(0)
     const [keywordLoading, setKeywordLoading] = useState(false)
+    const [keywordDropdownOpen, setKeywordDropdownOpen] = useState(false)
 
     /** Ref for debounce timer to clear on unmount or new input */
     const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -137,12 +171,8 @@ export const PromptBuilderModal = ({ open, onClose, onApply }: PromptBuilderModa
     /** Ref to track current search term for stale-request prevention */
     const searchTermRef = useRef('')
 
-    // ── Language options ────────────────────────────────────────────────────
-    const langOptions: LangOption[] = useMemo(() => [
-        { value: 'en', label: 'English (EN)' },
-        { value: 'ja', label: '日本語 (JA)' },
-        { value: 'vi', label: 'Tiếng Việt (VI)' },
-    ], [])
+    /** Ref for the keyword dropdown scroll container */
+    const keywordListRef = useRef<HTMLDivElement>(null)
 
     // ── Keyword Fetch (paginated + server-side search) ─────────────────────
 
@@ -202,11 +232,13 @@ export const PromptBuilderModal = ({ open, onClose, onApply }: PromptBuilderModa
             // Default language to current display language
             setSelectedLang(mapI18nLangToPromptLang(i18n.language))
             setSelectedTaskId(null)
+            setTaskSearchText('')
             setSelectedKeyword('')
             setKeywordSearchText('')
             setContextInput('')
             setGeneratedPrompt('')
             setCopied(false)
+            setKeywordDropdownOpen(false)
 
             // Reset keyword lazy-load state and fetch first page
             setKeywordItems([])
@@ -236,55 +268,25 @@ export const PromptBuilderModal = ({ open, onClose, onApply }: PromptBuilderModa
     /** Whether there are more keyword pages to load */
     const hasMoreKeywords = keywordItems.length < keywordTotal
 
-    // ── Task search across all columns ─────────────────────────────────────
+    // ── Task filtering (client-side, search across all columns) ─────────
 
-    /**
-     * Custom filter for the task Select.
-     * Matches against name, description, and all instruction fields.
-     */
-    const taskFilterOption = useCallback(
-        (input: string, option: { value?: string } | undefined) => {
-            if (!input || !option?.value) return true
-            const task = tasks.find((t) => t.id === option.value)
-            if (!task) return false
-
-            const search = input.toLowerCase()
-            return (
-                task.name.toLowerCase().includes(search) ||
-                (task.description || '').toLowerCase().includes(search) ||
-                task.task_instruction_en.toLowerCase().includes(search) ||
-                (task.task_instruction_ja || '').toLowerCase().includes(search) ||
-                (task.task_instruction_vi || '').toLowerCase().includes(search)
-            )
-        },
-        [tasks],
-    )
-
-    // ── Keyword Options (built from paginated server data) ──────────────────
-
-    /** Build keyword options with rich template: name, en_keyword, description */
-    const keywordOptions = useMemo(() => {
-        return keywordItems.map((k) => ({
-            value: k.name,
-            label: (
-                <div className="flex flex-col py-1">
-                    <span className="font-medium text-sm">{k.name}</span>
-                    {(k.en_keyword || k.description) && (
-                        <span className="text-xs text-slate-400 truncate">
-                            {k.en_keyword && <span className="mr-2">{k.en_keyword}</span>}
-                            {k.description && <span>— {k.description}</span>}
-                        </span>
-                    )}
-                </div>
-            ),
-        }))
-    }, [keywordItems])
+    const filteredTasks = useMemo(() => {
+        if (!taskSearchText.trim()) return tasks
+        const s = taskSearchText.toLowerCase()
+        return tasks.filter((task) =>
+            task.name.toLowerCase().includes(s) ||
+            (task.description || '').toLowerCase().includes(s) ||
+            task.task_instruction_en.toLowerCase().includes(s) ||
+            (task.task_instruction_ja || '').toLowerCase().includes(s) ||
+            (task.task_instruction_vi || '').toLowerCase().includes(s)
+        )
+    }, [tasks, taskSearchText])
 
     // ── Handlers ───────────────────────────────────────────────────────────
 
     /** Step 1: Language changed */
-    const handleLangChange = (lang: PromptLang) => {
-        setSelectedLang(lang)
+    const handleLangChange = (lang: string) => {
+        setSelectedLang(lang as PromptLang)
         setGeneratedPrompt('')
     }
 
@@ -296,19 +298,22 @@ export const PromptBuilderModal = ({ open, onClose, onApply }: PromptBuilderModa
         setGeneratedPrompt('')
     }
 
-    /** Step 3: Keyword changed from dropdown */
-    const handleKeywordChange = (value: string) => {
-        setSelectedKeyword(value)
+    /** Step 3: Keyword selected from dropdown */
+    const handleKeywordSelect = (keyword: string) => {
+        setSelectedKeyword(keyword)
         setKeywordSearchText('')
+        setKeywordDropdownOpen(false)
         setGeneratedPrompt('')
     }
 
     /**
-     * Handle search text change in keyword select — debounced server-side search.
+     * Handle search text change in keyword input — debounced server-side search.
      * Clears previous timer and sets a new one to avoid excessive API calls.
      */
-    const handleKeywordSearch = (value: string) => {
+    const handleKeywordSearchChange = (value: string) => {
         setKeywordSearchText(value)
+        setSelectedKeyword('')
+        setKeywordDropdownOpen(true)
 
         // Clear any pending debounce timer
         if (debounceTimerRef.current) {
@@ -329,7 +334,7 @@ export const PromptBuilderModal = ({ open, onClose, onApply }: PromptBuilderModa
      * Handle infinite scroll: when user scrolls near the bottom of the
      * keyword dropdown, fetch the next page and append results.
      */
-    const handleKeywordPopupScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const handleKeywordListScroll = (e: React.UIEvent<HTMLDivElement>) => {
         const target = e.target as HTMLDivElement
         // Trigger when user is within 20px of the bottom
         const nearBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20
@@ -343,32 +348,28 @@ export const PromptBuilderModal = ({ open, onClose, onApply }: PromptBuilderModa
     /**
      * When user presses Enter and no option matched, auto-select the typed text.
      */
-    const handleKeywordInputKeyDown = (e: React.KeyboardEvent) => {
+    const handleKeywordInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && keywordSearchText.trim()) {
-            // Check if any option matches exactly
-            const exactMatch = keywordItems.find(
-                (k) => k.name.toLowerCase() === keywordSearchText.trim().toLowerCase(),
-            )
-            if (!exactMatch) {
-                // Use the typed text as a custom keyword
-                setSelectedKeyword(keywordSearchText.trim())
-                setKeywordSearchText('')
-                setGeneratedPrompt('')
-                e.preventDefault()
-                e.stopPropagation()
-            }
+            e.preventDefault()
+            handleKeywordSelect(keywordSearchText.trim())
+        }
+        if (e.key === 'Escape') {
+            setKeywordDropdownOpen(false)
         }
     }
 
     /**
      * On blur, if there's unmatched search text, auto-select it as custom keyword.
      */
-    const handleKeywordBlur = () => {
-        if (keywordSearchText.trim() && !selectedKeyword) {
-            setSelectedKeyword(keywordSearchText.trim())
-            setKeywordSearchText('')
-            setGeneratedPrompt('')
-        }
+    const handleKeywordInputBlur = () => {
+        // Delay so click on dropdown item can fire first
+        setTimeout(() => {
+            if (keywordSearchText.trim() && !selectedKeyword) {
+                setSelectedKeyword(keywordSearchText.trim())
+                setKeywordSearchText('')
+            }
+            setKeywordDropdownOpen(false)
+        }, 200)
     }
 
     /**
@@ -414,199 +415,223 @@ export const PromptBuilderModal = ({ open, onClose, onApply }: PromptBuilderModa
     // ── Render ─────────────────────────────────────────────────────────────
 
     return (
-        <Modal
-            title={
-                <div className="flex items-center gap-2">
-                    <Sparkles size={18} className="text-blue-500" />
-                    <span>{t('glossary.promptBuilder.title')}</span>
-                </div>
-            }
-            open={open}
-            onCancel={onClose}
-            footer={null}
-            width={700}
-            destroyOnClose
-        >
-            {loading ? (
-                <div className="flex justify-center py-12">
-                    <Spin size="large" />
-                </div>
-            ) : tasks.length === 0 ? (
-                <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={t('common.noData')}
-                />
-            ) : (
-                <div className="flex flex-col gap-5">
-                    {/* Progress indicator */}
-                    <Steps
-                        current={currentStep}
-                        size="small"
-                        items={[
-                            { title: t('glossary.promptBuilder.stepLanguage') },
-                            { title: t('glossary.promptBuilder.stepTask') },
-                            { title: t('glossary.promptBuilder.stepKeyword') },
-                        ]}
-                    />
+        <Dialog open={open} onOpenChange={(v: boolean) => !v && onClose()}>
+            <DialogContent className="sm:max-w-[700px]">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <Sparkles size={18} className="text-blue-500" />
+                        <span>{t('glossary.promptBuilder.title')}</span>
+                    </DialogTitle>
+                </DialogHeader>
 
-                    {/* Step 1: Choose Prompt Language */}
-                    <div>
-                        <label className="text-sm font-medium mb-1 block">
-                            {t('glossary.promptBuilder.selectLanguage')}
-                        </label>
-                        <Select
-                            className="w-full"
-                            value={selectedLang}
-                            onChange={handleLangChange}
-                            options={langOptions}
-                        />
+                {loading ? (
+                    <div className="flex justify-center py-12">
+                        <Spinner size={48} />
                     </div>
-
-                    {/* Step 2: Choose Task (search across all columns) */}
-                    <div>
-                        <label className="text-sm font-medium mb-1 block">
-                            {t('glossary.promptBuilder.selectTask')}
-                        </label>
-                        <Select
-                            className="w-full"
-                            placeholder={t('glossary.promptBuilder.selectTask')}
-                            value={selectedTaskId}
-                            onChange={handleTaskChange}
-                            options={tasks
-                                .map((task) => ({
-                                    value: task.id,
-                                    label: task.name,
-                                    instruction: getInstructionByLang(task, selectedLang),
-                                }))}
-                            showSearch
-                            filterOption={taskFilterOption}
-                            optionRender={(option: { label?: React.ReactNode; data: { instruction?: string } }) => (
-                                <div className="flex flex-col py-1">
-                                    <span className="font-medium text-sm">{option.label}</span>
-                                    {option.data.instruction && (
-                                        <span className="text-xs text-slate-400 truncate">
-                                            {option.data.instruction}
-                                        </span>
-                                    )}
-                                </div>
-                            )}
+                ) : tasks.length === 0 ? (
+                    <EmptyState title={t('common.noData')} />
+                ) : (
+                    <div className="flex flex-col gap-5">
+                        {/* Progress indicator */}
+                        <StepIndicator
+                            steps={[
+                                t('glossary.promptBuilder.stepLanguage'),
+                                t('glossary.promptBuilder.stepTask'),
+                                t('glossary.promptBuilder.stepKeyword'),
+                            ]}
+                            currentStep={currentStep}
                         />
-                        {/* Show selected task instruction preview */}
-                        {selectedTask && (
-                            <div className="mt-2 p-2 bg-slate-50 dark:bg-slate-800 rounded text-xs text-slate-600 dark:text-slate-300 border dark:border-slate-700">
-                                <span className="font-medium">{t('glossary.promptBuilder.instructionPreview')}:</span>{' '}
-                                {getInstructionByLang(selectedTask, selectedLang)}
-                            </div>
-                        )}
-                    </div>
 
-                    {/* Step 3: Choose Keyword + Context */}
-                    {selectedTaskId && (
+                        {/* Step 1: Choose Prompt Language */}
                         <div>
                             <label className="text-sm font-medium mb-1 block">
-                                {t('glossary.promptBuilder.selectKeyword')}
+                                {t('glossary.promptBuilder.selectLanguage')}
                             </label>
-                            <Select
-                                className="w-full"
-                                placeholder={t('glossary.promptBuilder.selectKeyword')}
-                                value={selectedKeyword || undefined}
-                                onChange={handleKeywordChange}
-                                onSearch={handleKeywordSearch}
-                                onBlur={handleKeywordBlur}
-                                onInputKeyDown={handleKeywordInputKeyDown}
-                                searchValue={keywordSearchText}
-                                options={keywordOptions}
-                                showSearch
-                                allowClear
-                                filterOption={false}
-                                onPopupScroll={handleKeywordPopupScroll}
-                                optionLabelProp="value"
-                                loading={keywordLoading}
-                                notFoundContent={
-                                    keywordLoading ? (
-                                        <div className="flex justify-center py-2">
-                                            <Spin size="small" />
-                                        </div>
-                                    ) : keywordSearchText.trim() ? (
-                                        <div className="text-xs text-slate-400 py-2 text-center">
-                                            {t('glossary.promptBuilder.pressEnterToUse', { keyword: keywordSearchText.trim() })}
-                                        </div>
-                                    ) : undefined
-                                }
-                            />
-
-                            {/* Context input */}
-                            <div className="mt-3">
-                                <label className="text-sm font-medium mb-1 block">
-                                    {t('glossary.promptBuilder.contextLabel')}
-                                </label>
-                                <Input.TextArea
-                                    placeholder={t('glossary.promptBuilder.contextPlaceholder')}
-                                    value={contextInput}
-                                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => { setContextInput(e.target.value); setGeneratedPrompt('') }}
-                                    rows={2}
-                                    className="w-full"
-                                />
-                            </div>
+                            <Select value={selectedLang} onValueChange={handleLangChange}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="en">English (EN)</SelectItem>
+                                    <SelectItem value="ja">日本語 (JA)</SelectItem>
+                                    <SelectItem value="vi">Tiếng Việt (VI)</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
-                    )}
 
-                    {/* Generate Button */}
-                    {selectedTaskId && selectedKeyword && (
-                        <Button
-                            type="primary"
-                            onClick={handleGenerate}
-                            icon={<Sparkles size={16} />}
-                            className="self-start"
-                        >
-                            {t('glossary.promptBuilder.generate')}
-                        </Button>
-                    )}
-
-                    {/* Generated Prompt (2 lines: instruction + context) */}
-                    {generatedPrompt && (
-                        <>
-                            <div className="border rounded-lg p-4 bg-slate-50 dark:bg-slate-800 dark:border-slate-600">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium">
-                                        {t('glossary.promptBuilder.generatedPrompt')}
-                                    </span>
-                                    <Button
-                                        type="text"
-                                        size="small"
-                                        icon={copied ? <Check size={14} /> : <Copy size={14} />}
-                                        onClick={handleCopy}
-                                        className={copied ? 'text-green-500' : ''}
-                                    >
-                                        {copied ? t('glossary.promptBuilder.copied') : t('glossary.promptBuilder.copy')}
-                                    </Button>
-                                </div>
-                                <Input.TextArea
-                                    value={generatedPrompt}
-                                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setGeneratedPrompt(e.target.value)}
-                                    className="text-sm font-mono"
-                                    autoSize={{ minRows: 2, maxRows: 8 }}
+                        {/* Step 2: Choose Task (search across all columns) */}
+                        <div>
+                            <label className="text-sm font-medium mb-1 block">
+                                {t('glossary.promptBuilder.selectTask')}
+                            </label>
+                            {/* Search input for task filtering */}
+                            <div className="relative mb-2">
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                <Input
+                                    placeholder={t('glossary.promptBuilder.selectTask')}
+                                    value={taskSearchText}
+                                    onChange={(e) => setTaskSearchText(e.target.value)}
+                                    className="pl-8 h-8 text-sm"
                                 />
                             </div>
+                            {/* Scrollable task list */}
+                            <div className="max-h-[180px] overflow-auto border rounded-md divide-y">
+                                {filteredTasks.length === 0 ? (
+                                    <div className="py-3 text-center text-sm text-muted-foreground">{t('common.noData')}</div>
+                                ) : filteredTasks.map((task) => (
+                                    <button
+                                        key={task.id}
+                                        type="button"
+                                        className={`w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors ${
+                                            selectedTaskId === task.id ? 'bg-accent' : ''
+                                        }`}
+                                        onClick={() => handleTaskChange(task.id)}
+                                    >
+                                        <div className="font-medium">{task.name}</div>
+                                        <div className="text-xs text-muted-foreground truncate">
+                                            {getInstructionByLang(task, selectedLang)}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                            {/* Show selected task instruction preview */}
+                            {selectedTask && (
+                                <div className="mt-2 p-2 bg-slate-50 dark:bg-slate-800 rounded text-xs text-slate-600 dark:text-slate-300 border dark:border-slate-700">
+                                    <span className="font-medium">{t('glossary.promptBuilder.instructionPreview')}:</span>{' '}
+                                    {getInstructionByLang(selectedTask, selectedLang)}
+                                </div>
+                            )}
+                        </div>
 
-                            {/* Apply to Chat button */}
-                            <Button
-                                type="primary"
-                                icon={<Send size={16} />}
-                                onClick={() => {
-                                    if (onApply) onApply(generatedPrompt)
-                                    globalMessage.success(t('glossary.promptBuilder.appliedToChat'))
-                                    onClose()
-                                }}
-                                className="self-start"
-                            >
-                                {t('glossary.promptBuilder.applyToChat')}
+                        {/* Step 3: Choose Keyword + Context */}
+                        {selectedTaskId && (
+                            <div>
+                                <label className="text-sm font-medium mb-1 block">
+                                    {t('glossary.promptBuilder.selectKeyword')}
+                                </label>
+
+                                {/* Keyword combobox: input + dropdown */}
+                                <div className="relative">
+                                    <Input
+                                        placeholder={t('glossary.promptBuilder.selectKeyword')}
+                                        value={selectedKeyword || keywordSearchText}
+                                        onChange={(e) => handleKeywordSearchChange(e.target.value)}
+                                        onFocus={() => setKeywordDropdownOpen(true)}
+                                        onBlur={handleKeywordInputBlur}
+                                        onKeyDown={handleKeywordInputKeyDown}
+                                    />
+
+                                    {/* Keyword dropdown */}
+                                    {keywordDropdownOpen && (
+                                        <div
+                                            ref={keywordListRef}
+                                            className="absolute z-50 top-full left-0 right-0 mt-1 max-h-[200px] overflow-auto bg-popover border rounded-md shadow-md"
+                                            onScroll={handleKeywordListScroll}
+                                        >
+                                            {keywordItems.length === 0 && !keywordLoading && keywordSearchText.trim() ? (
+                                                <div className="text-xs text-muted-foreground py-2 text-center">
+                                                    {t('glossary.promptBuilder.pressEnterToUse', { keyword: keywordSearchText.trim() })}
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    {keywordItems.map((k) => (
+                                                        <button
+                                                            key={k.id}
+                                                            type="button"
+                                                            className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                                                            onMouseDown={(e) => {
+                                                                e.preventDefault()
+                                                                handleKeywordSelect(k.name)
+                                                            }}
+                                                        >
+                                                            <div className="font-medium">{k.name}</div>
+                                                            {(k.en_keyword || k.description) && (
+                                                                <div className="text-xs text-muted-foreground truncate">
+                                                                    {k.en_keyword && <span className="mr-2">{k.en_keyword}</span>}
+                                                                    {k.description && <span>— {k.description}</span>}
+                                                                </div>
+                                                            )}
+                                                        </button>
+                                                    ))}
+                                                </>
+                                            )}
+                                            {keywordLoading && (
+                                                <div className="flex justify-center py-2">
+                                                    <Loader2 size={16} className="animate-spin text-muted-foreground" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Context input */}
+                                <div className="mt-3">
+                                    <label className="text-sm font-medium mb-1 block">
+                                        {t('glossary.promptBuilder.contextLabel')}
+                                    </label>
+                                    <textarea
+                                        placeholder={t('glossary.promptBuilder.contextPlaceholder')}
+                                        value={contextInput}
+                                        onChange={(e) => { setContextInput(e.target.value); setGeneratedPrompt('') }}
+                                        rows={2}
+                                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Generate Button */}
+                        {selectedTaskId && selectedKeyword && (
+                            <Button onClick={handleGenerate} className="self-start">
+                                <Sparkles size={16} className="mr-1" />
+                                {t('glossary.promptBuilder.generate')}
                             </Button>
-                        </>
-                    )}
-                </div>
-            )}
-        </Modal>
+                        )}
+
+                        {/* Generated Prompt (2 lines: instruction + context) */}
+                        {generatedPrompt && (
+                            <>
+                                <div className="border rounded-lg p-4 bg-slate-50 dark:bg-slate-800 dark:border-slate-600">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-sm font-medium">
+                                            {t('glossary.promptBuilder.generatedPrompt')}
+                                        </span>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={handleCopy}
+                                            className={copied ? 'text-green-500' : ''}
+                                        >
+                                            {copied ? <Check size={14} className="mr-1" /> : <Copy size={14} className="mr-1" />}
+                                            {copied ? t('glossary.promptBuilder.copied') : t('glossary.promptBuilder.copy')}
+                                        </Button>
+                                    </div>
+                                    <textarea
+                                        value={generatedPrompt}
+                                        onChange={(e) => setGeneratedPrompt(e.target.value)}
+                                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 min-h-[60px]"
+                                        rows={3}
+                                    />
+                                </div>
+
+                                {/* Apply to Chat button */}
+                                <Button
+                                    onClick={() => {
+                                        if (onApply) onApply(generatedPrompt)
+                                        globalMessage.success(t('glossary.promptBuilder.appliedToChat'))
+                                        onClose()
+                                    }}
+                                    className="self-start"
+                                >
+                                    <Send size={16} className="mr-1" />
+                                    {t('glossary.promptBuilder.applyToChat')}
+                                </Button>
+                            </>
+                        )}
+                    </div>
+                )}
+            </DialogContent>
+        </Dialog>
     )
 }
 

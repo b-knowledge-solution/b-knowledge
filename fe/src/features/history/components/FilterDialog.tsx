@@ -3,10 +3,9 @@
  * @module features/history/components/FilterDialog
  */
 import { useTranslation } from 'react-i18next'
-import { DatePicker } from 'antd'
-import dayjs from 'dayjs'
+import { DatePicker } from '@/components/ui/date-picker'
 
-import { Dialog } from '@/components/Dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import type { FilterState } from '../api/historyService'
 
 /**
@@ -46,51 +45,50 @@ export const FilterDialog = ({
     const { t } = useTranslation()
 
     return (
-        <Dialog
-            open={open}
-            onClose={onClose}
-            title={t('userHistory.filterTitle')}
-            footer={
-                <div className="flex justify-end gap-3 w-full">
-                    <button
-                        onClick={() => { onClose(); onReset() }}
-                        className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
-                    >
-                        {t('common.reset')}
-                    </button>
-                    <button
-                        onClick={onApply}
-                        className={`px-6 py-2 rounded-xl text-white text-sm font-bold shadow-lg hover:-translate-y-0.5 transition-all ${accentClass}`}
-                    >
-                        {t('userHistory.applyFilter')}
-                    </button>
-                </div>
-            }
-        >
+        <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) onClose() }}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{t('userHistory.filterTitle')}</DialogTitle>
+                </DialogHeader>
             <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t('common.startDate')}</label>
                         <DatePicker
-                            className="w-full"
-                            value={tempFilters.startDate ? dayjs(tempFilters.startDate) : null}
-                            onChange={(_, dateString) => setTempFilters({ ...tempFilters, startDate: dateString as string })}
+                            value={tempFilters.startDate ? new Date(tempFilters.startDate) : undefined}
+                            onChange={(date) => setTempFilters({ ...tempFilters, startDate: date ? date.toISOString().split('T')[0] ?? '' : '' })}
                             placeholder={t('common.startDate')}
-                            disabledDate={(current) => tempFilters.endDate ? current > dayjs(tempFilters.endDate) : false}
+                            disabledDates={(d) => tempFilters.endDate ? d > new Date(tempFilters.endDate) : false}
                         />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t('common.endDate')}</label>
                         <DatePicker
-                            className="w-full"
-                            value={tempFilters.endDate ? dayjs(tempFilters.endDate) : null}
-                            onChange={(_, dateString) => setTempFilters({ ...tempFilters, endDate: dateString as string })}
+                            value={tempFilters.endDate ? new Date(tempFilters.endDate) : undefined}
+                            onChange={(date) => setTempFilters({ ...tempFilters, endDate: date ? date.toISOString().split('T')[0] ?? '' : '' })}
                             placeholder={t('common.endDate')}
-                            disabledDate={(current) => tempFilters.startDate ? current < dayjs(tempFilters.startDate) : false}
+                            disabledDates={(d) => tempFilters.startDate ? d < new Date(tempFilters.startDate) : false}
                         />
                     </div>
                 </div>
             </div>
+                <DialogFooter className="w-full">
+                    <div className="flex justify-end gap-3 w-full">
+                        <button
+                            onClick={() => { onClose(); onReset() }}
+                            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
+                        >
+                            {t('common.reset')}
+                        </button>
+                        <button
+                            onClick={onApply}
+                            className={`px-6 py-2 rounded-xl text-white text-sm font-bold shadow-lg hover:-translate-y-0.5 transition-all ${accentClass}`}
+                        >
+                            {t('userHistory.applyFilter')}
+                        </button>
+                    </div>
+                </DialogFooter>
+            </DialogContent>
         </Dialog>
     )
 }

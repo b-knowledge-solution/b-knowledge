@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Switch, Button, Select, Table } from 'antd';
-import { Globe, Lock, Users, User, Trash2 } from 'lucide-react';
-import { Dialog } from '@/components/Dialog';
+import { Globe, Lock, Users, User, Trash2, Search } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AccessControl, KnowledgeBaseSource } from '../api/knowledgeBaseService';
 import { teamApi, type Team } from '@/features/teams';
 import { userApi } from '@/features/users';
@@ -33,7 +38,7 @@ export interface PermissionsSelectorProps {
 
 /**
  * PermissionsSelector - Inline component for selecting permissions in forms.
- * 
+ *
  * @param {PermissionsSelectorProps} props - Component props including selection state and data.
  * @returns {React.ReactElement} React component for selecting public/private access and specific ACLs.
  */
@@ -51,9 +56,39 @@ export const PermissionsSelector: React.FC<PermissionsSelectorProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  // Search filters for teams and users
+  const [teamSearch, setTeamSearch] = useState('');
+  const [userSearch, setUserSearch] = useState('');
+
+  // Filter available items by search
+  const filteredTeams = teams.filter(team =>
+    team.name.toLowerCase().includes(teamSearch.toLowerCase())
+  );
+  const filteredUsers = users.filter(user =>
+    `${user.displayName} ${user.email}`.toLowerCase().includes(userSearch.toLowerCase())
+  );
+
   // Filter selected entities to display in tables
   const selectedTeams = teams.filter(team => selectedTeamIds.includes(team.id));
   const selectedUsers = users.filter(user => selectedUserIds.includes(user.id));
+
+  const toggleTeam = (teamId: string) => {
+    if (!setSelectedTeamIds) return;
+    if (selectedTeamIds.includes(teamId)) {
+      setSelectedTeamIds(selectedTeamIds.filter(id => id !== teamId));
+    } else {
+      setSelectedTeamIds([...selectedTeamIds, teamId]);
+    }
+  };
+
+  const toggleUser = (userId: string) => {
+    if (!setSelectedUserIds) return;
+    if (selectedUserIds.includes(userId)) {
+      setSelectedUserIds(selectedUserIds.filter(id => id !== userId));
+    } else {
+      setSelectedUserIds([...selectedUserIds, userId]);
+    }
+  };
 
   return (
     <div className="space-y-4 h-full flex flex-col min-h-0">
@@ -64,7 +99,7 @@ export const PermissionsSelector: React.FC<PermissionsSelectorProps> = ({
         </h4>
       </div>
 
-      {/* Public/Private Toggle - Switches between global access and restricted access */}
+      {/* Public/Private Toggle */}
       <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600 shrink-0">
         <div className="flex items-center gap-3">
           {isPublic ? (
@@ -89,13 +124,12 @@ export const PermissionsSelector: React.FC<PermissionsSelectorProps> = ({
         </div>
         <Switch
           checked={isPublic}
-          onChange={setIsPublic}
+          onCheckedChange={setIsPublic}
           disabled={disabled}
-          className={isPublic ? 'bg-green-500' : 'bg-gray-300'}
         />
       </div>
 
-      {/* Private Access Detail Selectors - Only shown when public access is disabled */}
+      {/* Private Access Detail Selectors */}
       {!isPublic && (
         <div className="space-y-6 flex-1 min-h-0 overflow-y-auto pr-1 animate-in fade-in slide-in-from-top-1 duration-200">
           {/* Team Selection Section */}
@@ -105,58 +139,70 @@ export const PermissionsSelector: React.FC<PermissionsSelectorProps> = ({
                 <Users size={14} />
                 {t('knowledgeBaseConfig.selectTeams') || 'Select Teams'}
               </label>
-              <Select
-                mode="multiple"
-                showSearch
-                className="w-full"
-                placeholder={t('knowledgeBaseConfig.selectTeamsPlaceholder') || 'Select teams allowed to access this source'}
-                value={selectedTeamIds}
-                onChange={setSelectedTeamIds}
-                disabled={disabled || isLoading}
-                loading={isLoading}
-                optionFilterProp="label"
-                dropdownMatchSelectWidth={false}
-                listHeight={400}
-                options={teams.map(team => ({
-                  label: team.name,
-                  value: team.id
-                }))}
-              />
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Input
+                  placeholder={t('knowledgeBaseConfig.selectTeamsPlaceholder') || 'Search teams...'}
+                  value={teamSearch}
+                  onChange={(e) => setTeamSearch(e.target.value)}
+                  className="pl-9 h-8 text-sm"
+                  disabled={disabled || isLoading}
+                />
+              </div>
+              {/* Scrollable checkbox list */}
+              <div className="max-h-40 overflow-y-auto border rounded-md border-gray-200 dark:border-slate-600">
+                {isLoading ? (
+                  <div className="p-3 text-center text-sm text-gray-400">Loading...</div>
+                ) : filteredTeams.length === 0 ? (
+                  <div className="p-3 text-center text-sm text-gray-400">
+                    {teams.length === 0 ? 'No teams available' : 'No matches'}
+                  </div>
+                ) : filteredTeams.map(team => (
+                  <label
+                    key={team.id}
+                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedTeamIds.includes(team.id)}
+                      onChange={() => toggleTeam(team.id)}
+                      disabled={disabled}
+                      className="rounded"
+                    />
+                    <span className="text-gray-700 dark:text-gray-300">{team.name}</span>
+                  </label>
+                ))}
+              </div>
             </div>
 
             {/* Selected Teams Table */}
             {selectedTeams.length > 0 && (
               <div className="w-full overflow-x-auto">
-                <Table
-                  dataSource={selectedTeams}
-                  rowKey="id"
-                  size="small"
-                  pagination={false}
-                  className="border border-gray-100 dark:border-slate-700 rounded-md overflow-hidden"
-                  columns={[
-                    {
-                      title: t('common.name') || 'Name',
-                      dataIndex: 'name',
-                      key: 'name',
-                      className: 'text-xs'
-                    },
-                    {
-                      title: '',
-                      key: 'action',
-                      width: 50,
-                      align: 'center',
-                      render: (_: any, record: Team) => (
-                        <Button
-                          type="text"
-                          danger
-                          size="small"
-                          icon={<Trash2 size={14} />}
-                          onClick={() => setSelectedTeamIds?.(selectedTeamIds.filter(id => id !== record.id))}
-                        />
-                      )
-                    }
-                  ]}
-                />
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">{t('common.name') || 'Name'}</TableHead>
+                      <TableHead className="w-[50px]" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedTeams.map(team => (
+                      <TableRow key={team.id}>
+                        <TableCell className="text-xs">{team.name}</TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-destructive"
+                            onClick={() => setSelectedTeamIds?.(selectedTeamIds.filter(id => id !== team.id))}
+                          >
+                            <Trash2 size={14} />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             )}
           </div>
@@ -168,64 +214,72 @@ export const PermissionsSelector: React.FC<PermissionsSelectorProps> = ({
                 <User size={14} />
                 {t('knowledgeBaseConfig.selectUsers') || 'Select Users'}
               </label>
-              <Select
-                mode="multiple"
-                showSearch
-                className="w-full"
-                placeholder={t('knowledgeBaseConfig.selectUsersPlaceholder') || 'Select users allowed to access this source'}
-                value={selectedUserIds}
-                onChange={setSelectedUserIds}
-                disabled={disabled || isLoading}
-                loading={isLoading}
-                optionFilterProp="label"
-                dropdownMatchSelectWidth={false}
-                listHeight={400}
-                options={users.map(user => ({
-                  label: `${user.displayName} (${user.email})`,
-                  value: user.id
-                }))}
-              />
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Input
+                  placeholder={t('knowledgeBaseConfig.selectUsersPlaceholder') || 'Search users...'}
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="pl-9 h-8 text-sm"
+                  disabled={disabled || isLoading}
+                />
+              </div>
+              {/* Scrollable checkbox list */}
+              <div className="max-h-40 overflow-y-auto border rounded-md border-gray-200 dark:border-slate-600">
+                {isLoading ? (
+                  <div className="p-3 text-center text-sm text-gray-400">Loading...</div>
+                ) : filteredUsers.length === 0 ? (
+                  <div className="p-3 text-center text-sm text-gray-400">
+                    {users.length === 0 ? 'No users available' : 'No matches'}
+                  </div>
+                ) : filteredUsers.map(user => (
+                  <label
+                    key={user.id}
+                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedUserIds.includes(user.id)}
+                      onChange={() => toggleUser(user.id)}
+                      disabled={disabled}
+                      className="rounded"
+                    />
+                    <span className="text-gray-700 dark:text-gray-300">{user.displayName} ({user.email})</span>
+                  </label>
+                ))}
+              </div>
             </div>
 
             {/* Selected Users Table */}
             {selectedUsers.length > 0 && (
               <div className="w-full overflow-x-auto">
-                <Table
-                  dataSource={selectedUsers}
-                  rowKey="id"
-                  size="small"
-                  pagination={false}
-                  className="border border-gray-100 dark:border-slate-700 rounded-md overflow-hidden"
-                  columns={[
-                    {
-                      title: t('common.name') || 'Name',
-                      dataIndex: 'displayName',
-                      key: 'name',
-                      className: 'text-xs'
-                    },
-                    {
-                      title: t('common.email') || 'Email',
-                      dataIndex: 'email',
-                      key: 'email',
-                      className: 'text-xs text-gray-500 dark:text-gray-400'
-                    },
-                    {
-                      title: '',
-                      key: 'action',
-                      width: 50,
-                      align: 'center',
-                      render: (_: any, record: UserType) => (
-                        <Button
-                          type="text"
-                          danger
-                          size="small"
-                          icon={<Trash2 size={14} />}
-                          onClick={() => setSelectedUserIds?.(selectedUserIds.filter(id => id !== record.id))}
-                        />
-                      )
-                    }
-                  ]}
-                />
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">{t('common.name') || 'Name'}</TableHead>
+                      <TableHead className="text-xs">{t('common.email') || 'Email'}</TableHead>
+                      <TableHead className="w-[50px]" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedUsers.map(user => (
+                      <TableRow key={user.id}>
+                        <TableCell className="text-xs">{user.displayName}</TableCell>
+                        <TableCell className="text-xs text-gray-500 dark:text-gray-400">{user.email}</TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-destructive"
+                            onClick={() => setSelectedUserIds?.(selectedUserIds.filter(id => id !== user.id))}
+                          >
+                            <Trash2 size={14} />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             )}
           </div>
@@ -253,7 +307,7 @@ export interface SourcePermissionsModalProps {
 
 /**
  * SourcePermissionsModal - Standalone modal for editing source permissions.
- * 
+ *
  * @param {SourcePermissionsModalProps} props - Component props including open state and callbacks.
  * @returns {React.ReactElement | null} Modal dialog for editing source permissions or null if not open.
  */
@@ -304,7 +358,6 @@ export const SourcePermissionsModal: React.FC<SourcePermissionsModalProps> = ({
         } catch (error) {
           console.error('[SourcePermissionsModal] Failed to fetch teams/users:', error);
         } finally {
-          // Reset loading state regardless of outcome
           setIsLoadingData(false);
         }
       };
@@ -314,33 +367,27 @@ export const SourcePermissionsModal: React.FC<SourcePermissionsModalProps> = ({
 
   /**
    * Handle save button click.
-   * Constructs the access control object and calls onSave with ID and ACL.
    */
   const handleSave = () => {
-    // Ensure we have a valid source to update
     if (!source?.id) return;
 
-    // Construct ACL payload based on current state
     const accessControl: AccessControl = {
       public: isPublic,
       team_ids: isPublic ? [] : selectedTeamIds,
       user_ids: isPublic ? [] : selectedUserIds,
     };
 
-    // Callback to parent component
     onSave(source.id, accessControl);
   };
 
   if (!open) return null;
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      title={t('knowledgeBaseConfig.editPermissions') || 'Edit Permissions'}
-      maxWidth="none"
-      className="w-[40vw]"
-    >
+    <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) onClose() }}>
+      <DialogContent className="max-w-[40vw]">
+        <DialogHeader>
+          <DialogTitle>{t('knowledgeBaseConfig.editPermissions') || 'Edit Permissions'}</DialogTitle>
+        </DialogHeader>
       <div className="space-y-6">
         {/* Source Info */}
         {source && (
@@ -364,15 +411,16 @@ export const SourcePermissionsModal: React.FC<SourcePermissionsModalProps> = ({
         />
 
         {/* Actions */}
-        <div className="flex justify-end gap-3 pt-4 border-t dark:border-gray-700">
-          <Button onClick={onClose}>
+        <DialogFooter className="pt-4 border-t dark:border-gray-700">
+          <Button variant="outline" onClick={onClose}>
             {t('common.cancel') || 'Cancel'}
           </Button>
-          <Button type="primary" onClick={handleSave}>
+          <Button onClick={handleSave}>
             {t('common.save') || 'Save'}
           </Button>
-        </div>
+        </DialogFooter>
       </div>
+      </DialogContent>
     </Dialog>
   );
 };

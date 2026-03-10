@@ -1,8 +1,14 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Play, Trash2, Eye } from 'lucide-react';
-import { Table, Button, Space, Progress, Tag, Tooltip } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Spinner } from '@/components/ui/spinner';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
 import type { Document } from '../types';
 
 interface DocumentTableProps {
@@ -14,11 +20,11 @@ interface DocumentTableProps {
   onView?: (doc: Document) => void;
 }
 
-const statusColorMap: Record<string, string> = {
-  pending: 'default',
-  parsing: 'processing',
-  completed: 'success',
-  failed: 'error',
+const statusVariantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  pending: 'secondary',
+  parsing: 'outline',
+  completed: 'default',
+  failed: 'destructive',
 };
 
 function formatFileSize(bytes: number): string {
@@ -39,121 +45,104 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const columns: ColumnsType<Document> = [
-    {
-      title: t('datasets.docName'),
-      dataIndex: 'name',
-      key: 'name',
-      ellipsis: true,
-      render: (name: string, record: Document) => (
-        record.status === 'completed' && onView ? (
-          <button
-            className="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 hover:underline text-left"
-            onClick={() => onView(record)}
-          >
-            {name}
-          </button>
-        ) : (
-          <span className="font-medium">{name}</span>
-        )
-      ),
-    },
-    {
-      title: t('datasets.docSize'),
-      dataIndex: 'size',
-      key: 'size',
-      width: 100,
-      render: (size: number) => formatFileSize(size),
-    },
-    {
-      title: t('datasets.docStatus'),
-      dataIndex: 'status',
-      key: 'status',
-      width: 140,
-      render: (status: string, record: Document) => (
-        <div>
-          <Tag color={statusColorMap[status] || 'default'}>{status}</Tag>
-          {status === 'parsing' && (
-            <Progress
-              percent={Math.round(record.progress * 100)}
-              size="small"
-              className="mt-1"
-            />
-          )}
-        </div>
-      ),
-    },
-    {
-      title: t('datasets.chunkCount'),
-      dataIndex: 'chunk_count',
-      key: 'chunk_count',
-      width: 100,
-      align: 'right',
-    },
-    {
-      title: t('datasets.docUploadDate'),
-      dataIndex: 'created_at',
-      key: 'created_at',
-      width: 140,
-      render: (date: string) => new Date(date).toLocaleDateString(),
-    },
-    ...(isAdmin
-      ? [
-          {
-            title: t('common.actions'),
-            key: 'actions',
-            width: 120,
-            render: (_: unknown, record: Document) => (
-              <Space>
-                {record.status === 'completed' && onView && (
-                  <Tooltip title={t('datasets.viewDocument', 'View')}>
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<Eye size={14} />}
-                      onClick={() => onView(record)}
-                    />
-                  </Tooltip>
-                )}
-                {record.status === 'pending' && (
-                  <Tooltip title={t('datasets.parse')}>
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<Play size={14} />}
-                      onClick={() => onParse(record.id)}
-                    />
-                  </Tooltip>
-                )}
-                <Tooltip title={t('common.delete')}>
-                  <Button
-                    type="text"
-                    size="small"
-                    danger
-                    icon={<Trash2 size={14} />}
-                    onClick={() => onDelete(record.id)}
-                  />
-                </Tooltip>
-              </Space>
-            ),
-          },
-        ]
-      : []),
-  ];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Spinner size={48} />
+      </div>
+    );
+  }
 
   return (
-    <Table
-      columns={columns}
-      dataSource={documents}
-      rowKey="id"
-      loading={loading}
-      pagination={{
-        pageSize: 20,
-        showSizeChanger: true,
-        showTotal: (total: number) => `${total} ${t('datasets.documents')}`,
-      }}
-      scroll={{ x: true }}
-    />
+    <div className="overflow-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t('datasets.docName')}</TableHead>
+            <TableHead className="w-[100px]">{t('datasets.docSize')}</TableHead>
+            <TableHead className="w-[140px]">{t('datasets.docStatus')}</TableHead>
+            <TableHead className="w-[100px] text-right">{t('datasets.chunkCount')}</TableHead>
+            <TableHead className="w-[140px]">{t('datasets.docUploadDate')}</TableHead>
+            {isAdmin && <TableHead className="w-[120px]">{t('common.actions')}</TableHead>}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {documents.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={isAdmin ? 6 : 5} className="text-center py-8 text-muted-foreground">
+                {t('common.noData')}
+              </TableCell>
+            </TableRow>
+          ) : documents.map((doc) => (
+            <TableRow key={doc.id}>
+              <TableCell className="max-w-[300px] truncate">
+                {doc.status === 'completed' && onView ? (
+                  <button
+                    className="font-medium text-primary hover:underline text-left"
+                    onClick={() => onView(doc)}
+                  >
+                    {doc.name}
+                  </button>
+                ) : (
+                  <span className="font-medium">{doc.name}</span>
+                )}
+              </TableCell>
+              <TableCell>{formatFileSize(doc.size)}</TableCell>
+              <TableCell>
+                <div>
+                  <Badge variant={statusVariantMap[doc.status] || 'secondary'}>{doc.status}</Badge>
+                  {doc.status === 'parsing' && (
+                    <Progress value={Math.round(doc.progress * 100)} className="mt-1 h-1.5" />
+                  )}
+                </div>
+              </TableCell>
+              <TableCell className="text-right">{doc.chunk_count}</TableCell>
+              <TableCell>{new Date(doc.created_at).toLocaleDateString()}</TableCell>
+              {isAdmin && (
+                <TableCell>
+                  <div className="flex gap-1">
+                    {doc.status === 'completed' && onView && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onView(doc)}>
+                              <Eye size={14} />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t('datasets.viewDocument', 'View')}</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                    {doc.status === 'pending' && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onParse(doc.id)}>
+                              <Play size={14} />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t('datasets.parse')}</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onDelete(doc.id)}>
+                            <Trash2 size={14} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('common.delete')}</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </TableCell>
+              )}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 };
 

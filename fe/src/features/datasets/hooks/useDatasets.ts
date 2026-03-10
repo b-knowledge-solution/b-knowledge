@@ -1,9 +1,27 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Form, Modal } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { datasetApi } from '../api/datasetApi';
 import type { Dataset, CreateDatasetDto, Document } from '../types';
 import { globalMessage } from '@/app/App';
+
+// ============================================================================
+// Form data type
+// ============================================================================
+
+/** Form data shape for the dataset create/edit form. */
+export interface DatasetFormData {
+  name: string;
+  description: string;
+  language: string;
+  parser_id: string;
+}
+
+const EMPTY_FORM: DatasetFormData = {
+  name: '',
+  description: '',
+  language: 'English',
+  parser_id: 'naive',
+};
 
 // ============================================================================
 // useDatasets — Dataset list management
@@ -17,17 +35,17 @@ export interface UseDatasetsReturn {
   isModalOpen: boolean;
   editingDataset: Dataset | null;
   submitting: boolean;
-  form: ReturnType<typeof Form.useForm>[0];
+  formData: DatasetFormData;
+  setFormField: <K extends keyof DatasetFormData>(key: K, value: DatasetFormData[K]) => void;
   openModal: (dataset?: Dataset) => void;
   closeModal: () => void;
-  handleSubmit: (values: CreateDatasetDto) => Promise<void>;
+  handleSubmit: () => Promise<void>;
   handleDelete: (dataset: Dataset) => void;
   refresh: () => void;
 }
 
 export function useDatasets(): UseDatasetsReturn {
   const { t } = useTranslation();
-  const [form] = Form.useForm();
 
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [loading, setLoading] = useState(false);
@@ -35,6 +53,11 @@ export function useDatasets(): UseDatasetsReturn {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDataset, setEditingDataset] = useState<Dataset | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [formData, setFormData] = useState<DatasetFormData>(EMPTY_FORM);
+
+  const setFormField = useCallback(<K extends keyof DatasetFormData>(key: K, value: DatasetFormData[K]) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
+  }, []);
 
   const fetchDatasets = useCallback(async () => {
     setLoading(true);
@@ -66,36 +89,42 @@ export function useDatasets(): UseDatasetsReturn {
     (dataset?: Dataset) => {
       if (dataset) {
         setEditingDataset(dataset);
-        form.setFieldsValue({
+        setFormData({
           name: dataset.name,
           description: dataset.description || '',
-          language: dataset.language,
-          parser_id: dataset.parser_id,
+          language: dataset.language || 'English',
+          parser_id: dataset.parser_id || 'naive',
         });
       } else {
         setEditingDataset(null);
-        form.resetFields();
+        setFormData(EMPTY_FORM);
       }
       setIsModalOpen(true);
     },
-    [form],
+    [],
   );
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
     setEditingDataset(null);
-    form.resetFields();
-  }, [form]);
+    setFormData(EMPTY_FORM);
+  }, []);
 
   const handleSubmit = useCallback(
-    async (values: CreateDatasetDto) => {
+    async () => {
       setSubmitting(true);
       try {
+        const payload: CreateDatasetDto = {
+          name: formData.name,
+          description: formData.description,
+          language: formData.language,
+          parser_id: formData.parser_id,
+        };
         if (editingDataset) {
-          await datasetApi.updateDataset(editingDataset.id, values);
+          await datasetApi.updateDataset(editingDataset.id, payload);
           globalMessage.success(t('datasets.updateSuccess'));
         } else {
-          await datasetApi.createDataset(values);
+          await datasetApi.createDataset(payload);
           globalMessage.success(t('datasets.createSuccess'));
         }
         closeModal();
@@ -106,26 +135,20 @@ export function useDatasets(): UseDatasetsReturn {
         setSubmitting(false);
       }
     },
-    [editingDataset, closeModal, fetchDatasets, t],
+    [editingDataset, formData, closeModal, fetchDatasets, t],
   );
 
   const handleDelete = useCallback(
     (dataset: Dataset) => {
-      Modal.confirm({
-        title: t('datasets.confirmDelete'),
-        content: t('datasets.confirmDeleteMessage', { name: dataset.name }),
-        okText: t('common.delete'),
-        okButtonProps: { danger: true },
-        onOk: async () => {
-          try {
-            await datasetApi.deleteDataset(dataset.id);
-            globalMessage.success(t('datasets.deleteSuccess'));
-            fetchDatasets();
-          } catch (error: any) {
-            globalMessage.error(error?.message || t('common.error'));
-          }
-        },
-      });
+      if (!window.confirm(t('datasets.confirmDeleteMessage', { name: dataset.name }))) return;
+      datasetApi.deleteDataset(dataset.id)
+        .then(() => {
+          globalMessage.success(t('datasets.deleteSuccess'));
+          fetchDatasets();
+        })
+        .catch((error: any) => {
+          globalMessage.error(error?.message || t('common.error'));
+        });
     },
     [fetchDatasets, t],
   );
@@ -138,7 +161,8 @@ export function useDatasets(): UseDatasetsReturn {
     isModalOpen,
     editingDataset,
     submitting,
-    form,
+    formData,
+    setFormField,
     openModal,
     closeModal,
     handleSubmit,
@@ -204,21 +228,15 @@ export function useDocuments(datasetId: string | undefined): UseDocumentsReturn 
   const deleteDocument = useCallback(
     (docId: string) => {
       if (!datasetId) return;
-      Modal.confirm({
-        title: t('datasets.confirmDeleteDoc'),
-        content: t('datasets.confirmDeleteDocMessage'),
-        okText: t('common.delete'),
-        okButtonProps: { danger: true },
-        onOk: async () => {
-          try {
-            await datasetApi.deleteDocument(datasetId, docId);
-            globalMessage.success(t('datasets.deleteDocSuccess'));
-            fetchDocuments();
-          } catch (error: any) {
-            globalMessage.error(error?.message || t('common.error'));
-          }
-        },
-      });
+      if (!window.confirm(t('datasets.confirmDeleteDocMessage'))) return;
+      datasetApi.deleteDocument(datasetId, docId)
+        .then(() => {
+          globalMessage.success(t('datasets.deleteDocSuccess'));
+          fetchDocuments();
+        })
+        .catch((error: any) => {
+          globalMessage.error(error?.message || t('common.error'));
+        });
     },
     [datasetId, fetchDocuments, t],
   );

@@ -1,4 +1,4 @@
-import { Spin } from 'antd';
+import { Spinner } from '@/components/ui/spinner';
 import { useCallback, useEffect, useState } from 'react';
 
 interface VideoPreviewerProps {
@@ -38,7 +38,7 @@ export const VideoPreviewer: React.FC<VideoPreviewerProps> = ({ className, url }
     <div className={`relative w-full h-full p-4 bg-white dark:bg-gray-900 rounded-md overflow-auto ${className || ''}`}>
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <Spin size="large" />
+          <Spinner />
         </div>
       )}
       {!isLoading && videoSrc && (

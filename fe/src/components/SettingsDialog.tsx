@@ -14,7 +14,7 @@
 import { useTranslation } from 'react-i18next';
 import { useSettings, SUPPORTED_LANGUAGES, Theme } from '@/app/contexts/SettingsContext';
 import { LanguageCode } from '../i18n';
-import { Dialog } from './Dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { RadioGroup } from './RadioGroup';
 
 // ============================================================================
@@ -46,17 +46,11 @@ function SettingsDialog() {
   ];
 
   return (
-    <Dialog
-      open={isSettingsOpen}
-      onClose={closeSettings}
-      title={t('settings.title')}
-      maxWidth="xl"
-      footer={
-        <button onClick={closeSettings} className="btn btn-primary px-6">
-          {t('common.close')}
-        </button>
-      }
-    >
+    <Dialog open={isSettingsOpen} onOpenChange={(v: boolean) => { if (!v) closeSettings() }}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+            <DialogTitle>{t('settings.title')}</DialogTitle>
+        </DialogHeader>
       {/* Language Selection */}
       <div className="mb-6">
         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -82,6 +76,12 @@ function SettingsDialog() {
           columns={3}
         />
       </div>
+      <DialogFooter>
+        <button onClick={closeSettings} className="btn btn-primary px-6">
+          {t('common.close')}
+        </button>
+      </DialogFooter>
+      </DialogContent>
     </Dialog>
   );
 }

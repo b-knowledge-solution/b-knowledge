@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertCircle } from 'lucide-react'
-import { Dialog } from '@/components/Dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import type { User } from '@/features/auth'
 
 interface EditRoleDialogProps {
@@ -42,27 +42,11 @@ export function EditRoleDialog({ open, onClose, user, onSave, saveError }: EditR
     }
 
     return (
-        <Dialog
-            open={open}
-            onClose={onClose}
-            title={t('userManagement.editUserRole')}
-            footer={
-                <>
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                    >
-                        {t('common.cancel')}
-                    </button>
-                    <button
-                        onClick={handleSave}
-                        className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"
-                    >
-                        {t('userManagement.saveChanges')}
-                    </button>
-                </>
-            }
-        >
+        <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) onClose() }}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{t('userManagement.editUserRole')}</DialogTitle>
+                </DialogHeader>
             <div className="space-y-4 py-4">
                 {/* User info */}
                 {user && (
@@ -136,6 +120,21 @@ export function EditRoleDialog({ open, onClose, user, onSave, saveError }: EditR
                     )}
                 </div>
             </div>
+                <DialogFooter>
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                    >
+                        {t('common.cancel')}
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"
+                    >
+                        {t('userManagement.saveChanges')}
+                    </button>
+                </DialogFooter>
+            </DialogContent>
         </Dialog>
     )
 }

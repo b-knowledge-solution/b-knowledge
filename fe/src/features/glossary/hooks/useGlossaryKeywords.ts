@@ -6,10 +6,30 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Form } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { glossaryApi, type GlossaryKeyword, type CreateKeywordDto } from '../api/glossaryApi'
 import { globalMessage } from '@/app/App'
+
+// ============================================================================
+// Form data type
+// ============================================================================
+
+/** Form data shape for the keyword create/edit form. */
+export interface KeywordFormData {
+    name: string
+    en_keyword: string
+    description: string
+    sort_order: number
+    is_active: boolean
+}
+
+const EMPTY_FORM: KeywordFormData = {
+    name: '',
+    en_keyword: '',
+    description: '',
+    sort_order: 0,
+    is_active: true,
+}
 
 // ============================================================================
 // Return type
@@ -31,14 +51,16 @@ export interface UseGlossaryKeywordsReturn {
     editingKeyword: GlossaryKeyword | null
     /** Whether a form submission is in progress. */
     submitting: boolean
-    /** Ant Design form instance. */
-    form: ReturnType<typeof Form.useForm>[0]
+    /** Current form data for the keyword modal. */
+    formData: KeywordFormData
+    /** Update a single field in the form data. */
+    setFormField: <K extends keyof KeywordFormData>(key: K, value: KeywordFormData[K]) => void
     /** Open the modal for creating or editing a keyword. */
     openModal: (keyword?: GlossaryKeyword) => void
     /** Close the modal. */
     closeModal: () => void
     /** Handle form submission (create or update). */
-    handleSubmit: (values: CreateKeywordDto) => Promise<void>
+    handleSubmit: () => Promise<void>
     /** Handle keyword deletion with confirmation. */
     handleDelete: (keyword: GlossaryKeyword) => void
     /** Refresh the keyword list. */
@@ -56,7 +78,6 @@ export interface UseGlossaryKeywordsReturn {
  */
 export function useGlossaryKeywords(enabled = true): UseGlossaryKeywordsReturn {
     const { t } = useTranslation()
-    const [form] = Form.useForm()
 
     // State
     const [keywords, setKeywords] = useState<GlossaryKeyword[]>([])
@@ -65,6 +86,12 @@ export function useGlossaryKeywords(enabled = true): UseGlossaryKeywordsReturn {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingKeyword, setEditingKeyword] = useState<GlossaryKeyword | null>(null)
     const [submitting, setSubmitting] = useState(false)
+    const [formData, setFormData] = useState<KeywordFormData>(EMPTY_FORM)
+
+    /** Update a single form field. */
+    const setFormField = useCallback(<K extends keyof KeywordFormData>(key: K, value: KeywordFormData[K]) => {
+        setFormData(prev => ({ ...prev, [key]: value }))
+    }, [])
 
     // ========================================================================
     // Data Fetching
@@ -115,32 +142,26 @@ export function useGlossaryKeywords(enabled = true): UseGlossaryKeywordsReturn {
     const openModal = useCallback((keyword?: GlossaryKeyword) => {
         if (keyword) {
             setEditingKeyword(keyword)
-            form.setFieldsValue({
+            setFormData({
                 name: keyword.name,
                 en_keyword: keyword.en_keyword || '',
                 description: keyword.description || '',
-                sort_order: keyword.sort_order,
-                is_active: keyword.is_active,
+                sort_order: keyword.sort_order ?? 0,
+                is_active: keyword.is_active ?? true,
             })
         } else {
             setEditingKeyword(null)
-            form.setFieldsValue({
-                name: '',
-                en_keyword: '',
-                description: '',
-                sort_order: 0,
-                is_active: true,
-            })
+            setFormData(EMPTY_FORM)
         }
         setIsModalOpen(true)
-    }, [form])
+    }, [])
 
     /** Close the modal and reset form. */
     const closeModal = useCallback(() => {
         setIsModalOpen(false)
         setEditingKeyword(null)
-        form.resetFields()
-    }, [form])
+        setFormData(EMPTY_FORM)
+    }, [])
 
     // ========================================================================
     // CRUD Handlers
@@ -148,18 +169,22 @@ export function useGlossaryKeywords(enabled = true): UseGlossaryKeywordsReturn {
 
     /**
      * Handle form submission — create or update.
-     * @param values - Form values from Ant Design form
      */
-    const handleSubmit = useCallback(async (values: CreateKeywordDto) => {
+    const handleSubmit = useCallback(async () => {
         setSubmitting(true)
         try {
+            const payload: CreateKeywordDto = {
+                name: formData.name,
+                en_keyword: formData.en_keyword,
+                description: formData.description,
+                sort_order: formData.sort_order,
+                is_active: formData.is_active,
+            }
             if (editingKeyword) {
-                // Update existing keyword
-                await glossaryApi.updateKeyword(editingKeyword.id, values)
+                await glossaryApi.updateKeyword(editingKeyword.id, payload)
                 globalMessage.success(t('glossary.keyword.updateSuccess'))
             } else {
-                // Create new keyword
-                await glossaryApi.createKeyword(values)
+                await glossaryApi.createKeyword(payload)
                 globalMessage.success(t('glossary.keyword.createSuccess'))
             }
             closeModal()
@@ -169,7 +194,7 @@ export function useGlossaryKeywords(enabled = true): UseGlossaryKeywordsReturn {
         } finally {
             setSubmitting(false)
         }
-    }, [editingKeyword, closeModal, fetchKeywords, t])
+    }, [editingKeyword, formData, closeModal, fetchKeywords, t])
 
     /**
      * Handle keyword deletion with confirmation dialog.
@@ -200,7 +225,8 @@ export function useGlossaryKeywords(enabled = true): UseGlossaryKeywordsReturn {
         isModalOpen,
         editingKeyword,
         submitting,
-        form,
+        formData,
+        setFormField,
         openModal,
         closeModal,
         handleSubmit,

@@ -16,7 +16,18 @@ import {
     Globe,
     FileText,
 } from 'lucide-react'
-import { Table, Pagination, Card, Space, Avatar } from 'antd'
+import { Card, CardContent } from '@/components/ui/card'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Pagination } from '@/components/ui/pagination'
+import { Spinner } from '@/components/ui/spinner'
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table'
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
 import { AuditFilterProvider, useAuditFilters } from '../contexts/AuditFilterContext'
 import { useAuditLogs } from '../hooks/useAuditLogs'
@@ -66,82 +77,6 @@ function AuditLogPageContent() {
         )
     }
 
-    // Table column definitions
-    const columns = [
-        {
-            title: (
-                <div className="flex items-center gap-1 whitespace-nowrap">
-                    <Clock className="w-3 h-3" />
-                    {t('auditLog.timestamp')}
-                </div>
-            ),
-            dataIndex: 'created_at',
-            key: 'created_at',
-            width: 200,
-            render: (text: string) => <span className="whitespace-nowrap">{formatDateTime(text)}</span>,
-        },
-        {
-            title: (
-                <div className="flex items-center gap-1 whitespace-nowrap">
-                    <User className="w-3 h-3" />
-                    {t('auditLog.user')}
-                </div>
-            ),
-            dataIndex: 'user_email',
-            key: 'user_email',
-            render: (text: string) => (
-                <Space>
-                    <Avatar size="small" className="bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400">
-                        {text.charAt(0).toUpperCase()}
-                    </Avatar>
-                    <span className="truncate max-w-[200px]" title={text}>
-                        {text}
-                    </span>
-                </Space>
-            ),
-        },
-        {
-            title: <span className="whitespace-nowrap">{t('auditLog.action')}</span>,
-            dataIndex: 'action',
-            width: 160,
-            render: (action: string) => <AuditActionBadge action={action} />,
-        },
-        {
-            title: <span className="whitespace-nowrap">{t('auditLog.resourceType')}</span>,
-            dataIndex: 'resource_type',
-            key: 'resource_type',
-            width: 180,
-            render: (text: string) => <div className="whitespace-nowrap">{formatResourceType(text, t)}</div>,
-        },
-        {
-            title: (
-                <div className="flex items-center gap-1 whitespace-nowrap">
-                    <FileText className="w-3 h-3" />
-                    {t('auditLog.details')}
-                </div>
-            ),
-            dataIndex: 'details',
-            key: 'details',
-            width: 400,
-            render: (details: any) => (
-                <div className="whitespace-nowrap truncate max-w-[400px]" title={formatDetails(details)}>
-                    {formatDetails(details)}
-                </div>
-            ),
-        },
-        {
-            title: (
-                <div className="flex items-center gap-1 whitespace-nowrap">
-                    <Globe className="w-3 h-3" />
-                    {t('auditLog.ipAddress')}
-                </div>
-            ),
-            dataIndex: 'ip_address',
-            key: 'ip_address',
-            render: (text: string) => <span className="font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">{text || '-'}</span>,
-        },
-    ]
-
     return (
         <div className="w-full h-full flex flex-col p-6">
             {/* Header: Search + Filter Toggle + Refresh */}
@@ -190,30 +125,97 @@ function AuditLogPageContent() {
             </div>
 
             {/* Data Table */}
-            <Card
-                styles={{ body: { padding: 0, height: '100%', display: 'flex', flexDirection: 'column' } }}
-                className="dark:bg-slate-800 dark:border-slate-700 flex-1 min-h-0 overflow-hidden"
-            >
-                <div className="flex-1 overflow-auto p-4">
-                    <Table
-                        columns={columns}
-                        dataSource={logs}
-                        rowKey="id"
-                        loading={isLoading}
-                        pagination={false}
-                        scroll={{ x: true }}
-                    />
-                </div>
-                <div className="flex justify-end p-4 border-t border-slate-200 dark:border-slate-700">
-                    <Pagination
-                        current={pagination.page}
-                        total={pagination.total}
-                        pageSize={pagination.limit}
-                        showSizeChanger={true}
-                        pageSizeOptions={['10', '20', '25', '50', '100']}
-                        onChange={handlePageChange}
-                    />
-                </div>
+            <Card className="dark:bg-slate-800 dark:border-slate-700 flex-1 min-h-0 overflow-hidden">
+                <CardContent className="p-0 h-full flex flex-col">
+                    <div className="flex-1 overflow-auto p-4">
+                        {isLoading ? (
+                            <div className="flex justify-center items-center h-32">
+                                <Spinner />
+                            </div>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[200px]">
+                                            <div className="flex items-center gap-1 whitespace-nowrap">
+                                                <Clock className="w-3 h-3" />
+                                                {t('auditLog.timestamp')}
+                                            </div>
+                                        </TableHead>
+                                        <TableHead>
+                                            <div className="flex items-center gap-1 whitespace-nowrap">
+                                                <User className="w-3 h-3" />
+                                                {t('auditLog.user')}
+                                            </div>
+                                        </TableHead>
+                                        <TableHead className="w-[160px]">
+                                            <span className="whitespace-nowrap">{t('auditLog.action')}</span>
+                                        </TableHead>
+                                        <TableHead className="w-[180px]">
+                                            <span className="whitespace-nowrap">{t('auditLog.resourceType')}</span>
+                                        </TableHead>
+                                        <TableHead className="w-[400px]">
+                                            <div className="flex items-center gap-1 whitespace-nowrap">
+                                                <FileText className="w-3 h-3" />
+                                                {t('auditLog.details')}
+                                            </div>
+                                        </TableHead>
+                                        <TableHead>
+                                            <div className="flex items-center gap-1 whitespace-nowrap">
+                                                <Globe className="w-3 h-3" />
+                                                {t('auditLog.ipAddress')}
+                                            </div>
+                                        </TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {logs.map((log) => (
+                                        <TableRow key={log.id}>
+                                            <TableCell>
+                                                <span className="whitespace-nowrap">{formatDateTime(log.created_at)}</span>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    <Avatar className="h-6 w-6">
+                                                        <AvatarFallback className="bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-xs">
+                                                            {(log.user_email || '?').charAt(0).toUpperCase()}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <span className="truncate max-w-[200px]" title={log.user_email}>
+                                                        {log.user_email}
+                                                    </span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <AuditActionBadge action={log.action} />
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="whitespace-nowrap">{formatResourceType(log.resource_type, t)}</div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="whitespace-nowrap truncate max-w-[400px]" title={formatDetails(log.details)}>
+                                                    {formatDetails(log.details)}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <span className="font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">{log.ip_address || '-'}</span>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </div>
+                    {pagination.total > pagination.limit && (
+                        <div className="flex justify-end p-4 border-t border-slate-200 dark:border-slate-700">
+                            <Pagination
+                                currentPage={pagination.page}
+                                totalPages={Math.ceil(pagination.total / pagination.limit)}
+                                onPageChange={(page) => handlePageChange(page, pagination.limit)}
+                            />
+                        </div>
+                    )}
+                </CardContent>
             </Card>
 
             <GuidelineDialog

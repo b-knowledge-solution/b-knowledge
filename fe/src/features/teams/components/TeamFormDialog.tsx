@@ -4,8 +4,9 @@
  */
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Space, Button, Input } from 'antd'
-import { Dialog } from '@/components/Dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import type { Team, CreateTeamDTO } from '../types/team.types'
 
 interface TeamFormDialogProps {
@@ -48,22 +49,11 @@ export function TeamFormDialog({ open, onClose, team, onSave }: TeamFormDialogPr
     }
 
     return (
-        <Dialog
-            open={open}
-            onClose={onClose}
-            title={team ? t('iam.teams.edit') : t('iam.teams.create')}
-            maxWidth="xl"
-            footer={
-                <Space>
-                    <Button onClick={onClose}>
-                        {t('common.cancel')}
-                    </Button>
-                    <Button type="primary" onClick={handleSave}>
-                        {t('common.save')}
-                    </Button>
-                </Space>
-            }
-        >
+        <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) onClose() }}>
+            <DialogContent className="max-w-xl">
+                <DialogHeader>
+                    <DialogTitle>{team ? t('iam.teams.edit') : t('iam.teams.create')}</DialogTitle>
+                </DialogHeader>
             <div className="space-y-4 py-4">
                 <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
@@ -72,7 +62,7 @@ export function TeamFormDialog({ open, onClose, team, onSave }: TeamFormDialogPr
                     <Input
                         required
                         value={formData.name}
-                        onChange={(e: any) => setFormData({ ...formData, name: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         className="dark:bg-slate-800 dark:border-slate-600 dark:text-white"
                         placeholder={t('iam.teams.name')}
                     />
@@ -83,7 +73,7 @@ export function TeamFormDialog({ open, onClose, team, onSave }: TeamFormDialogPr
                     </label>
                     <Input
                         value={formData.project_name}
-                        onChange={(e: any) => setFormData({ ...formData, project_name: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, project_name: e.target.value })}
                         className="dark:bg-slate-800 dark:border-slate-600 dark:text-white"
                         placeholder={t('iam.teams.projectName')}
                     />
@@ -92,15 +82,26 @@ export function TeamFormDialog({ open, onClose, team, onSave }: TeamFormDialogPr
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                         {t('iam.teams.formDescription')}
                     </label>
-                    <Input.TextArea
+                    <textarea
                         rows={4}
                         value={formData.description}
-                        onChange={(e: any) => setFormData({ ...formData, description: e.target.value })}
-                        className="dark:bg-slate-800 dark:border-slate-600 dark:text-white"
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring dark:bg-slate-800 dark:border-slate-600 dark:text-white"
                         placeholder={t('iam.teams.formDescription')}
                     />
                 </div>
             </div>
+                <DialogFooter>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={onClose}>
+                            {t('common.cancel')}
+                        </Button>
+                        <Button onClick={handleSave}>
+                            {t('common.save')}
+                        </Button>
+                    </div>
+                </DialogFooter>
+            </DialogContent>
         </Dialog>
     )
 }

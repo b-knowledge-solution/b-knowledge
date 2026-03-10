@@ -29,6 +29,7 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@opensearch-project/opensearch": "^3.5.1",
     "@types/socket.io": "^3.0.1",
     "compression": "^1.8.1",
     "connect-redis": "^9.0.0",

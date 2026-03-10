@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Search, LayoutGrid, List } from 'lucide-react';
-import { Input, Button, Empty, Spin, Segmented } from 'antd';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
+import { EmptyState } from '@/components/ui/empty-state';
 import { useAuth } from '@/features/auth';
 import { useDatasets } from '../hooks/useDatasets';
 import DatasetCard from '../components/DatasetCard';
@@ -21,7 +24,8 @@ const DatasetsPage: React.FC = () => {
     isModalOpen,
     editingDataset,
     submitting,
-    form,
+    formData,
+    setFormField,
     openModal,
     closeModal,
     handleSubmit,
@@ -32,32 +36,37 @@ const DatasetsPage: React.FC = () => {
     <div className="h-full flex flex-col p-6 overflow-auto">
       {/* Toolbar */}
       <div className="flex items-center gap-3 mb-6">
-        <Input
-          placeholder={t('datasets.searchPlaceholder')}
-          allowClear
-          value={search}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-          prefix={<Search size={16} className="text-slate-400" />}
-          className="max-w-sm"
-        />
+        <div className="relative max-w-sm">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Input
+            placeholder={t('datasets.searchPlaceholder')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
 
-        <Segmented
-          value={viewMode}
-          onChange={(v: string | number) => setViewMode(v as 'grid' | 'list')}
-          options={[
-            { value: 'grid', icon: <LayoutGrid size={16} /> },
-            { value: 'list', icon: <List size={16} /> },
-          ]}
-        />
+        {/* View mode toggle (replaces antd Segmented) */}
+        <div className="flex border rounded-md overflow-hidden">
+          <button
+            className={`p-2 ${viewMode === 'grid' ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'}`}
+            onClick={() => setViewMode('grid')}
+          >
+            <LayoutGrid size={16} />
+          </button>
+          <button
+            className={`p-2 ${viewMode === 'list' ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'}`}
+            onClick={() => setViewMode('list')}
+          >
+            <List size={16} />
+          </button>
+        </div>
 
         <div className="flex-1" />
 
         {isAdmin && (
-          <Button
-            type="primary"
-            icon={<Plus size={16} />}
-            onClick={() => openModal()}
-          >
+          <Button onClick={() => openModal()}>
+            <Plus size={16} className="mr-1" />
             {t('datasets.add')}
           </Button>
         )}
@@ -66,12 +75,12 @@ const DatasetsPage: React.FC = () => {
       {/* Content */}
       {loading ? (
         <div className="flex-1 flex items-center justify-center">
-          <Spin size="large" />
+          <Spinner size={48} />
         </div>
       ) : datasets.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
-          <Empty
-            description={search ? t('datasets.noResults') : t('datasets.empty')}
+          <EmptyState
+            title={search ? t('datasets.noResults') : t('datasets.empty')}
           />
         </div>
       ) : viewMode === 'grid' ? (
@@ -105,7 +114,8 @@ const DatasetsPage: React.FC = () => {
         open={isModalOpen}
         editingDataset={editingDataset}
         submitting={submitting}
-        form={form}
+        formData={formData}
+        setFormField={setFormField}
         onSubmit={handleSubmit}
         onCancel={closeModal}
       />

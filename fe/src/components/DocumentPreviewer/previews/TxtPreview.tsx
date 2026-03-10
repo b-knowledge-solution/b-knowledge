@@ -1,4 +1,4 @@
-import { Spin } from 'antd';
+import { Spinner } from '@/components/ui/spinner';
 import { useEffect, useState } from 'react';
 
 interface TxtPreviewerProps {
@@ -35,7 +35,7 @@ export const TxtPreviewer: React.FC<TxtPreviewerProps> = ({ className, url }) =>
     <div className={`relative w-full h-full p-4 bg-white dark:bg-gray-900 rounded-md overflow-auto ${className || ''}`}>
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <Spin size="large" />
+          <Spinner />
         </div>
       )}
       {!loading && <pre className="whitespace-pre-wrap p-2 text-sm text-gray-800 dark:text-gray-200">{data}</pre>}

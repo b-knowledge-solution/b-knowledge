@@ -4,7 +4,23 @@
  */
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Card, Table, Select, Empty } from 'antd'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
+import { EmptyState } from '@/components/ui/empty-state'
 import type { TopUser } from '../types/dashboard.types'
 
 interface TopUsersTableProps {
@@ -27,7 +43,6 @@ export function TopUsersTable({ topUsers, limit, onLimitChange }: TopUsersTableP
     /** Sliced and ranked table data */
     const tableData = useMemo(() =>
         topUsers.slice(0, limit).map((user, index) => ({
-            key: user.email,
             rank: index + 1,
             email: user.email,
             sessionCount: user.sessionCount,
@@ -35,56 +50,57 @@ export function TopUsersTable({ topUsers, limit, onLimitChange }: TopUsersTableP
         [topUsers, limit]
     )
 
-    const columns = [
-        {
-            title: '#',
-            dataIndex: 'rank',
-            key: 'rank',
-            width: 50,
-        },
-        {
-            title: t('common.email'),
-            dataIndex: 'email',
-            key: 'email',
-            ellipsis: true,
-        },
-        {
-            title: t('dashboard.charts.sessions'),
-            dataIndex: 'sessionCount',
-            key: 'sessionCount',
-            width: 100,
-            sorter: (a: any, b: any) => a.sessionCount - b.sessionCount,
-        },
-    ]
-
     return (
-        <Card
-            title={t('dashboard.charts.topUsers')}
-            bordered={false}
-            className="shadow-sm"
-            extra={
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle>{t('dashboard.charts.topUsers')}</CardTitle>
                 <Select
-                    value={limit}
-                    onChange={onLimitChange}
-                    size="small"
-                    style={{ width: 100 }}
-                    options={[
-                        { label: 'Top 5', value: 5 },
-                        { label: 'Top 10', value: 10 },
-                        { label: 'Top 20', value: 20 },
-                        { label: 'Top 50', value: 50 },
-                    ]}
-                />
-            }
-        >
-            <Table
-                columns={columns}
-                dataSource={tableData}
-                pagination={false}
-                size="small"
-                scroll={{ y: 260 }}
-                locale={{ emptyText: <Empty description={t('common.noData')} /> }}
-            />
+                    value={String(limit)}
+                    onValueChange={(val: string) => onLimitChange(Number(val))}
+                >
+                    <SelectTrigger className="w-[100px] h-8">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="5">Top 5</SelectItem>
+                        <SelectItem value="10">Top 10</SelectItem>
+                        <SelectItem value="20">Top 20</SelectItem>
+                        <SelectItem value="50">Top 50</SelectItem>
+                    </SelectContent>
+                </Select>
+            </CardHeader>
+            <CardContent>
+                {tableData.length === 0 ? (
+                    <EmptyState title={t('common.noData')} />
+                ) : (
+                    <div className="max-h-[260px] overflow-y-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="w-[50px]">#</TableHead>
+                                    <TableHead>{t('common.email')}</TableHead>
+                                    <TableHead className="w-[100px] text-right">
+                                        {t('dashboard.charts.sessions')}
+                                    </TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {tableData.map((row) => (
+                                    <TableRow key={row.email}>
+                                        <TableCell>{row.rank}</TableCell>
+                                        <TableCell className="truncate max-w-[200px]">
+                                            {row.email}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            {row.sessionCount}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
+            </CardContent>
         </Card>
     )
 }

@@ -13,7 +13,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ConfigProvider, theme as antTheme } from 'antd';
+
 import { LanguageCode, SUPPORTED_LANGUAGES } from '@/i18n';
 
 // ============================================================================
@@ -196,14 +196,7 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
         closeSettings,
       }}
     >
-      {/* Configure Ant Design theme algorithm based on app state */}
-      <ConfigProvider
-        theme={{
-          algorithm: isDarkMode ? antTheme.darkAlgorithm : antTheme.defaultAlgorithm,
-        }}
-      >
-        {children as any}
-      </ConfigProvider>
+      {children}
     </SettingsContext.Provider>
   );
 }

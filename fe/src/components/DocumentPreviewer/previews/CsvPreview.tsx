@@ -1,4 +1,4 @@
-import { Spin } from 'antd';
+import { Spinner } from '@/components/ui/spinner';
 import Papa from 'papaparse';
 import React, { useEffect, useState } from 'react';
 
@@ -47,7 +47,7 @@ const CsvPreviewer: React.FC<CsvPreviewerProps> = ({ className, url }) => {
     <div className={`relative w-full h-full p-4 bg-white dark:bg-gray-900 rounded-md overflow-auto max-h-[80vh] ${className || ''}`}>
       {isLoading ? (
         <div className="absolute inset-0 flex items-center justify-center">
-          <Spin size="large" />
+          <Spinner />
         </div>
       ) : data ? (
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

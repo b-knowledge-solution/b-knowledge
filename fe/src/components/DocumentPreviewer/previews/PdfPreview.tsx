@@ -7,7 +7,7 @@ import {
   PdfLoader,
   Popup,
 } from 'react-pdf-highlighter';
-import { Spin } from 'antd';
+import { Spinner } from '@/components/ui/spinner';
 import { AlertCircle } from 'lucide-react';
 
 // react-pdf-highlighter uses class components incompatible with React 18 strict types
@@ -68,7 +68,7 @@ const PdfPreview = ({
         url={url}
         beforeLoad={
           <div className="absolute inset-0 flex items-center justify-center">
-            <Spin size="large" />
+            <Spinner />
           </div>
         }
         workerSrc="/pdfjs-dist/pdf.worker.min.js"

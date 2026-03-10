@@ -49,6 +49,7 @@ export interface CreateTaskDto {
   task_instruction_en: string;
   task_instruction_ja?: string;
   task_instruction_vi?: string;
+  context_template?: string;
 }
 
 /** DTO for creating/updating a keyword */

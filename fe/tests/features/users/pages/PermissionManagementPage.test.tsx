@@ -12,22 +12,6 @@ vi.mock('lucide-react', () => {
   })
 })
 
-vi.mock('antd', () => ({
-  Table: ({ dataSource, columns }: any) => {
-    return (
-      <div data-testid="permissions-table">
-        {dataSource?.map((item: any, idx: number) => (
-          <div key={idx}>{item.permission}</div>
-        ))}
-      </div>
-    )
-  },
-  Card: ({ children }: any) => <div data-testid="card">{children}</div>,
-  Typography: {
-    Title: ({ children }: any) => <h1>{children}</h1>,
-    Text: ({ children }: any) => <span>{children}</span>
-  }
-}))
 
 import PermissionManagementPage from '../../../../src/features/users/pages/PermissionManagementPage'
 

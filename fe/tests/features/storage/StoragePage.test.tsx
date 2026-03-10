@@ -24,33 +24,6 @@ vi.mock('../../../src/features/documents', () => ({
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }), initReactI18next: { type: '3rdParty', init: () => { } } }))
 vi.mock('@/utils/format', () => ({ formatFileSize: (bytes: number) => `${bytes}B` }))
-vi.mock('antd', () => ({
-  Table: ({ columns, dataSource }: any) => (
-    <div data-testid="table">
-      {(!dataSource || dataSource.length === 0) ? <div data-testid="spinner" /> : dataSource.map((row: any, idx: number) => (
-        <div key={idx}>
-          {row.name}
-          <button data-testid="refresh" onClick={() => vi_mockStorageService.getRawBuckets()} />
-          <button data-testid="trash" onClick={() => window.confirm('confirm')} />
-        </div>
-      ))}
-    </div>
-  ),
-  Card: ({ children }: any) => <div>{children}</div>,
-  Button: ({ children, onClick, icon }: any) => <button onClick={onClick}>{icon}{children}</button>,
-  Modal: ({ open, children }: any) => open ? <div data-testid="modal">{children}</div> : null,
-  Input: (props: any) => <input {...props} />,
-  Space: ({ children }: any) => <div>{children}</div>,
-  Statistic: ({ title, value }: any) => <div>{title}: {value}</div>,
-  Row: ({ children }: any) => <div>{children}</div>,
-  Col: ({ children }: any) => <div>{children}</div>,
-  Typography: { Title: ({ children }: any) => <h1>{children}</h1>, Text: ({ children }: any) => <span>{children}</span> },
-  Spin: () => <div data-testid="spinner" />,
-  Tag: ({ children }: any) => <span>{children}</span>,
-  Tooltip: ({ children }: any) => <div>{children}</div>,
-  Tabs: ({ items }: any) => <div>{items?.map((i: any) => <div key={i.key} data-key={i.key}>{i.label}{i.children}</div>)}</div>,
-  App: { useApp: () => ({ message: { error: vi.fn(), success: vi.fn() } }) }
-}))
 vi.mock('lucide-react', () => ({
   Database: () => <div />,
   Plus: () => <div data-testid="plus" />,

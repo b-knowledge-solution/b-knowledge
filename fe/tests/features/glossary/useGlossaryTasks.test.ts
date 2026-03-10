@@ -32,22 +32,6 @@ vi.mock('../../../src/app/App', () => ({
   },
 }))
 
-// Mock antd Form.useForm to avoid internal antd context requirements
-vi.mock('antd', async () => {
-  const actual = await vi.importActual('antd')
-  return {
-    ...(actual as any),
-    Form: {
-      ...(actual as any).Form,
-      useForm: () => [{
-        setFieldsValue: vi.fn(),
-        resetFields: vi.fn(),
-        getFieldsValue: vi.fn(),
-        validateFields: vi.fn(),
-      }],
-    },
-  }
-})
 
 // ============================================================================
 // Fixtures
@@ -176,18 +160,26 @@ describe('useGlossaryTasks', () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false))
 
+    act(() => {
+      result.current.openModal()
+      result.current.setFormField('name', 'New')
+      result.current.setFormField('task_instruction_en', 'x')
+      result.current.setFormField('context_template', 'y')
+    })
+
     await act(async () => {
-      await result.current.handleSubmit({
-        name: 'New',
-        task_instruction_en: 'x',
-        context_template: 'y',
-      })
+      await result.current.handleSubmit()
     })
 
     expect(glossaryApi.createTask).toHaveBeenCalledWith({
       name: 'New',
+      description: '',
       task_instruction_en: 'x',
+      task_instruction_ja: '',
+      task_instruction_vi: '',
       context_template: 'y',
+      sort_order: 0,
+      is_active: true,
     })
   })
 
@@ -204,21 +196,28 @@ describe('useGlossaryTasks', () => {
 
     expect(result.current.editingTask).toEqual(TASKS[0])
 
-    // Fire handleSubmit (source code uses fire-and-forget fetchTasks internally)
     act(() => {
-      result.current.handleSubmit({
-        name: 'Updated',
-        task_instruction_en: 'x',
-        context_template: 'y',
-      })
+      result.current.setFormField('name', 'Updated')
+      result.current.setFormField('task_instruction_en', 'x')
+      result.current.setFormField('context_template', 'y')
+    })
+
+    // Fire handleSubmit
+    await act(async () => {
+      await result.current.handleSubmit()
     })
 
     // Wait for updateTask to be called
     await waitFor(() => {
       expect(glossaryApi.updateTask).toHaveBeenCalledWith('t1', {
         name: 'Updated',
+        description: '',
         task_instruction_en: 'x',
+        task_instruction_ja: '',
+        task_instruction_vi: '',
         context_template: 'y',
+        sort_order: 0,
+        is_active: true,
       })
     })
   })
@@ -229,12 +228,15 @@ describe('useGlossaryTasks', () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false))
 
+    act(() => {
+      result.current.openModal()
+      result.current.setFormField('name', 'Fail')
+      result.current.setFormField('task_instruction_en', 'x')
+      result.current.setFormField('context_template', 'y')
+    })
+
     await act(async () => {
-      await result.current.handleSubmit({
-        name: 'Fail',
-        task_instruction_en: 'x',
-        context_template: 'y',
-      })
+      await result.current.handleSubmit()
     })
 
     // Should not throw, submitting should be reset

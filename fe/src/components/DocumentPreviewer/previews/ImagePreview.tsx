@@ -1,4 +1,4 @@
-import { Spin } from 'antd';
+import { Spinner } from '@/components/ui/spinner';
 import { useEffect, useState } from 'react';
 
 interface ImagePreviewerProps {
@@ -38,7 +38,7 @@ export const ImagePreviewer: React.FC<ImagePreviewerProps> = ({ className, url }
     <div className={`relative w-full h-full p-4 bg-white dark:bg-gray-900 rounded-md max-h-[80vh] overflow-auto ${className || ''}`}>
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <Spin size="large" />
+          <Spinner />
         </div>
       )}
       {!isLoading && imageSrc && (

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Spin, Pagination, Empty } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { Spinner } from '@/components/ui/spinner';
+import { Pagination } from '@/components/ui/pagination';
+import { EmptyState } from '@/components/ui/empty-state';
 import { datasetApi } from '@/features/datasets/api/datasetApi';
 import type { Chunk } from '@/features/datasets/types';
 import ChunkCard from './ChunkCard';
@@ -25,6 +27,8 @@ const ChunkList: React.FC<ChunkListProps> = ({
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const fetchChunks = useCallback(async () => {
     setLoading(true);
@@ -61,13 +65,10 @@ const ChunkList: React.FC<ChunkListProps> = ({
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {loading ? (
           <div className="flex items-center justify-center h-32">
-            <Spin />
+            <Spinner />
           </div>
         ) : chunks.length === 0 ? (
-          <Empty
-            description={t('datasets.noChunks', 'No chunks found')}
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-          />
+          <EmptyState title={t('datasets.noChunks', 'No chunks found')} />
         ) : (
           chunks.map((chunk, index) => (
             <ChunkCard
@@ -81,15 +82,12 @@ const ChunkList: React.FC<ChunkListProps> = ({
         )}
       </div>
 
-      {total > PAGE_SIZE && (
+      {totalPages > 1 && (
         <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-center">
           <Pagination
-            current={page}
-            pageSize={PAGE_SIZE}
-            total={total}
-            onChange={setPage}
-            size="small"
-            showSizeChanger={false}
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
           />
         </div>
       )}

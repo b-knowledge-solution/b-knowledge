@@ -1,4 +1,4 @@
-import { Spin } from 'antd';
+import { Spinner } from '@/components/ui/spinner';
 import mammoth from 'mammoth';
 import { useEffect, useState } from 'react';
 
@@ -62,7 +62,7 @@ export const DocPreviewer: React.FC<DocPreviewerProps> = ({ className, url }) =>
     <div className={`relative w-full h-full p-4 bg-white dark:bg-gray-900 rounded-md overflow-auto ${className || ''}`}>
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <Spin size="large" />
+          <Spinner />
         </div>
       )}
       {!loading && <div dangerouslySetInnerHTML={{ __html: htmlContent }} />}

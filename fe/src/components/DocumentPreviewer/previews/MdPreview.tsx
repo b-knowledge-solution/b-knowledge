@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Spin } from 'antd';
+import { Spinner } from '@/components/ui/spinner';
 import { AlertCircle } from 'lucide-react';
 
 interface MdPreviewerProps {
@@ -30,7 +30,7 @@ export const MdPreviewer: React.FC<MdPreviewerProps> = ({ url, className }) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <Spin size="large" />
+        <Spinner />
       </div>
     );
   }
