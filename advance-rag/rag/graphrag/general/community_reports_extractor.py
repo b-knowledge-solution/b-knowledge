@@ -18,7 +18,7 @@ from dataclasses import dataclass
 import networkx as nx
 import pandas as pd
 
-from api.db.services.task_service import has_canceled
+from db.services.task_service import has_canceled
 from common.exceptions import TaskCanceledException
 from common.connection_utils import timeout
 from rag.graphrag.general import leiden

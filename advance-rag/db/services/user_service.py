@@ -20,10 +20,10 @@ import logging
 import peewee
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from api.db import UserTenantRole
-from api.db.db_models import DB, UserTenant
-from api.db.db_models import User, Tenant
-from api.db.services.common_service import CommonService
+from db import UserTenantRole
+from db.db_models import DB, UserTenant
+from db.db_models import User, Tenant
+from db.services.common_service import CommonService
 from common.misc_utils import get_uuid
 from common.time_utils import current_timestamp, datetime_format
 from common.constants import StatusEnum
@@ -224,7 +224,7 @@ class TenantService(CommonService):
     @DB.connection_context()
     def user_gateway(cls, tenant_id):
         hash_obj = hashlib.sha256(tenant_id.encode("utf-8"))
-        return int(hash_obj.hexdigest(), 16)%len(settings.MINIO)
+        return int(hash_obj.hexdigest(), 16)%len(settings.S3)
 
     @classmethod
     @DB.connection_context()

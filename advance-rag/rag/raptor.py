@@ -21,7 +21,7 @@ import numpy as np
 import umap
 from sklearn.mixture import GaussianMixture
 
-from api.db.services.task_service import has_canceled
+from db.services.task_service import has_canceled
 from common.connection_utils import timeout
 from common.exceptions import TaskCanceledException
 from common.token_utils import truncate

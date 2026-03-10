@@ -1063,7 +1063,7 @@ def _call_llm(prompt: str, tenant_id , lang: str) -> Optional[dict]:
 
     """
     try:
-        from api.db.services.llm_service import LLMBundle
+        from db.services.llm_service import LLMBundle
         from common.constants import LLMType
 
         llm =  LLMBundle(tenant_id, LLMType.CHAT, lang=lang)

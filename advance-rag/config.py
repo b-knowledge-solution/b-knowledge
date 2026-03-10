@@ -28,10 +28,10 @@ MINIO_HOST = os.getenv("S3_HOST", "localhost:9000")
 MINIO_ACCESS_KEY = os.getenv("S3_ACCESS_KEY", "")
 MINIO_SECRET_KEY = os.getenv("S3_SECRET_KEY", "")
 
-# System tenant
+# System tenant (hex UUID without dashes to fit varchar(32))
 SYSTEM_TENANT_ID = os.getenv(
-    "SYSTEM_TENANT_ID", "00000000-0000-0000-0000-000000000001"
-)
+    "SYSTEM_TENANT_ID", "00000000000000000000000000000001"
+).replace("-", "")
 
 # Default models (used to initialize system tenant)
 DEFAULT_EMBEDDING_MODEL = os.getenv("DEFAULT_EMBEDDING_MODEL", "")

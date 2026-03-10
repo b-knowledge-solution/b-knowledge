@@ -16,7 +16,7 @@
 import asyncio
 import logging
 from functools import partial
-from api.db.services.llm_service import LLMBundle
+from db.services.llm_service import LLMBundle
 from rag.prompts import kb_prompt
 from rag.prompts.generator import sufficiency_check, multi_queries_gen
 from rag.utils.tavily_conn import Tavily

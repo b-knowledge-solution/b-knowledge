@@ -19,8 +19,8 @@ import logging
 from PIL import Image
 
 from common.constants import LLMType
-from api.db.services.llm_service import LLMBundle
-from api.db.joint_services.tenant_model_service import get_tenant_default_model_by_type
+from db.services.llm_service import LLMBundle
+from db.joint_services.tenant_model_service import get_tenant_default_model_by_type
 from common.connection_utils import timeout
 from rag.app.picture import vision_llm_chunk as picture_vision_llm_chunk
 from rag.prompts.generator import vision_llm_figure_describe_prompt, vision_llm_figure_describe_prompt_with_context

@@ -29,10 +29,10 @@ from common import settings
 def _build_minio_http_client():
     """
     Build an optional urllib3 HTTP client for MinIO when using SSL/TLS.
-    Respects MINIO.verify (default True) to allow self-signed certificates
+    Respects S3.verify (default True) to allow self-signed certificates
     when set to False.
     """
-    verify = settings.MINIO.get("verify", True)
+    verify = settings.S3.get("verify", True)
     if verify is True or verify == "true" or verify == "1":
         return None
     return urllib3.PoolManager(cert_reqs=ssl.CERT_NONE)
@@ -44,8 +44,8 @@ class RAGFlowMinio:
         self.conn = None
         # Use `or None` to convert empty strings to None, ensuring single-bucket
         # mode is truly disabled when not configured
-        self.bucket = settings.MINIO.get('bucket', None) or None
-        self.prefix_path = settings.MINIO.get('prefix_path', None) or None
+        self.bucket = settings.S3.get('bucket', None) or None
+        self.prefix_path = settings.S3.get('prefix_path', None) or None
         self.__open__()
 
     @staticmethod
@@ -97,20 +97,20 @@ class RAGFlowMinio:
             pass
 
         try:
-            secure = settings.MINIO.get("secure", False)
+            secure = settings.S3.get("secure", False)
             if isinstance(secure, str):
                 secure = secure.lower() in ("true", "1", "yes")
             http_client = _build_minio_http_client()
             self.conn = Minio(
-                settings.MINIO["host"],
-                access_key=settings.MINIO["user"],
-                secret_key=settings.MINIO["password"],
+                settings.S3["host"],
+                access_key=settings.S3["user"],
+                secret_key=settings.S3["password"],
                 secure=secure,
                 http_client=http_client,
             )
         except Exception:
             logging.exception(
-                "Fail to connect %s " % settings.MINIO["host"])
+                "Fail to connect %s " % settings.S3["host"])
 
     def __close__(self):
         del self.conn

@@ -4,7 +4,7 @@
  */
 import { Request, Response } from 'express'
 import { authService } from '@/modules/auth/auth.service.js'
-import { userService } from '@/modules/users/user.service.js'
+import { userService } from '@/modules/users/index.js'
 import { log } from '@/shared/services/logger.service.js'
 import { getClientIp } from '@/shared/utils/ip.js'
 import { config } from '@/shared/config/index.js'

@@ -316,9 +316,9 @@ class KGSearch(Dealer):
 if __name__ == "__main__":
     import argparse
     from common.constants import LLMType
-    from api.db.services.knowledgebase_service import KnowledgebaseService
-    from api.db.services.llm_service import LLMBundle
-    from api.db.joint_services.tenant_model_service import get_tenant_default_model_by_type, get_model_config_by_id, get_model_config_by_type_and_name
+    from db.services.knowledgebase_service import KnowledgebaseService
+    from db.services.llm_service import LLMBundle
+    from db.joint_services.tenant_model_service import get_tenant_default_model_by_type, get_model_config_by_id, get_model_config_by_type_and_name
     from rag.nlp import search
 
     settings.init_settings()

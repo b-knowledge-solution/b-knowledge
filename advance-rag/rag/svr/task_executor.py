@@ -30,10 +30,9 @@ import random
 import sys
 import threading
 
-from api.db import PIPELINE_SPECIAL_PROGRESS_FREEZE_TASK_TYPES
-from api.db.services.knowledgebase_service import KnowledgebaseService
-from api.db.services.pipeline_operation_log_service import PipelineOperationLogService
-from api.db.joint_services.memory_message_service import handle_save_to_memory_task
+from db import PIPELINE_SPECIAL_PROGRESS_FREEZE_TASK_TYPES
+from db.services.knowledgebase_service import KnowledgebaseService
+from db.services.pipeline_operation_log_service import PipelineOperationLogService
 from common.connection_utils import timeout
 from common.metadata_utils import turn2jsonschema, update_metadata_to
 from rag.utils.base64_image import image2id
@@ -60,14 +59,14 @@ import faulthandler
 import numpy as np
 from peewee import DoesNotExist
 from common.constants import LLMType, ParserType, PipelineTaskType
-from api.db.services.document_service import DocumentService
-from api.db.services.doc_metadata_service import DocMetadataService
-from api.db.services.llm_service import LLMBundle
-from api.db.services.task_service import TaskService, has_canceled, CANVAS_DEBUG_DOC_ID, GRAPH_RAPTOR_FAKE_DOC_ID
-from api.db.services.file2document_service import File2DocumentService
-from api.db.joint_services.tenant_model_service import get_model_config_by_type_and_name, get_tenant_default_model_by_type
+from db.services.document_service import DocumentService
+from db.services.doc_metadata_service import DocMetadataService
+from db.services.llm_service import LLMBundle
+from db.services.task_service import TaskService, has_canceled, CANVAS_DEBUG_DOC_ID, GRAPH_RAPTOR_FAKE_DOC_ID
+from db.services.file2document_service import File2DocumentService
+from db.joint_services.tenant_model_service import get_model_config_by_type_and_name, get_tenant_default_model_by_type
 from common.versions import get_ragflow_version
-from api.db.db_models import close_connection
+from db.db_models import close_connection
 from rag.app import laws, paper, presentation, manual, qa, table, book, resume, picture, naive, one, audio, \
     email, tag
 from rag.nlp import search, rag_tokenizer, add_positions
@@ -646,7 +645,7 @@ async def embedding(docs, mdl, parser_config=None, callback=None):
 
 
 async def run_dataflow(task: dict):
-    from api.db.services.canvas_service import UserCanvasService
+    from db.services.canvas_service import UserCanvasService
     from rag.flow.pipeline import Pipeline
 
     task_start_ts = timer()
@@ -974,10 +973,6 @@ async def insert_chunks(task_id, task_tenant_id, task_dataset_id, chunks, progre
 @timeout(60 * 60 * 3, 1)
 async def do_handle_task(task):
     task_type = task.get("task_type", "")
-
-    if task_type == "memory":
-        await handle_save_to_memory_task(task)
-        return
 
     if task_type == "dataflow" and task.get("doc_id", "") == CANVAS_DEBUG_DOC_ID:
         await run_dataflow(task)

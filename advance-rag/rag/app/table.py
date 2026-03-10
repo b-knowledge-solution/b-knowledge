@@ -28,7 +28,7 @@ from collections import Counter
 # from openpyxl import load_workbook, Workbook
 from dateutil.parser import parse as datetime_parse
 
-from api.db.services.knowledgebase_service import KnowledgebaseService
+from db.services.knowledgebase_service import KnowledgebaseService
 from deepdoc.parser.figure_parser import vision_figure_parser_figure_xlsx_wrapper
 from deepdoc.parser.utils import get_text
 from rag.nlp import rag_tokenizer, tokenize, tokenize_table

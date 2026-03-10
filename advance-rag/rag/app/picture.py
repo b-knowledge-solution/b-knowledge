@@ -21,8 +21,8 @@ import re
 import numpy as np
 from PIL import Image
 
-from api.db.services.llm_service import LLMBundle
-from api.db.joint_services.tenant_model_service import get_tenant_default_model_by_type
+from db.services.llm_service import LLMBundle
+from db.joint_services.tenant_model_service import get_tenant_default_model_by_type
 from common.constants import LLMType
 from common.string_utils import clean_markdown_block
 from deepdoc.vision import OCR

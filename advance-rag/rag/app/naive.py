@@ -31,8 +31,8 @@ from PIL import Image
 from common.token_utils import num_tokens_from_string
 
 from common.constants import LLMType
-from api.db.services.llm_service import LLMBundle
-from api.db.joint_services.tenant_model_service import get_model_config_by_type_and_name, get_tenant_default_model_by_type
+from db.services.llm_service import LLMBundle
+from db.joint_services.tenant_model_service import get_model_config_by_type_and_name, get_tenant_default_model_by_type
 from rag.utils.file_utils import extract_embed_file, extract_links_from_pdf, extract_links_from_docx, extract_html
 from rag.utils.lazy_image import LazyDocxImage
 from deepdoc.parser import DocxParser, ExcelParser, HtmlParser, JsonParser, MarkdownElementExtractor, MarkdownParser, PdfParser, TxtParser
@@ -117,7 +117,7 @@ def by_mineru(
     if tenant_id:
         if not mineru_llm_name:
             try:
-                from api.db.services.tenant_llm_service import TenantLLMService
+                from db.services.tenant_llm_service import TenantLLMService
 
                 env_name = TenantLLMService.ensure_mineru_from_env(tenant_id)
                 candidates = TenantLLMService.query(tenant_id=tenant_id, llm_factory="MinerU", model_type=LLMType.OCR)
@@ -197,7 +197,7 @@ def by_paddleocr(
     if tenant_id:
         if not paddleocr_llm_name:
             try:
-                from api.db.services.tenant_llm_service import TenantLLMService
+                from db.services.tenant_llm_service import TenantLLMService
 
                 env_name = TenantLLMService.ensure_paddleocr_from_env(tenant_id)
                 candidates = TenantLLMService.query(tenant_id=tenant_id, llm_factory="PaddleOCR", model_type=LLMType.OCR)

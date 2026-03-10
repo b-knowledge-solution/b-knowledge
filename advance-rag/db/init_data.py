@@ -23,24 +23,18 @@ from copy import deepcopy
 
 from peewee import IntegrityError
 
-from api.db import UserTenantRole
-from api.db.db_models import init_database_tables as init_web_db, LLMFactories, LLM, TenantLLM, Knowledgebase, Dialog, Memory
-from api.db.services import UserService
-from api.db.services.canvas_service import CanvasTemplateService
-from api.db.services.document_service import DocumentService
-from api.db.services.knowledgebase_service import KnowledgebaseService
-from api.db.services.memory_service import MemoryService
-from api.db.services.tenant_llm_service import LLMFactoriesService, TenantLLMService
-from api.db.services.llm_service import LLMService, LLMBundle, get_init_tenant_llm
-from api.db.services.user_service import TenantService, UserTenantService
-from api.db.services.system_settings_service import SystemSettingsService
-from api.db.services.dialog_service import DialogService
-from api.db.joint_services.memory_message_service import init_message_id_sequence, init_memory_size_cache, fix_missing_tokenized_memory
-from api.db.joint_services.tenant_model_service import get_tenant_default_model_by_type
+from db import UserTenantRole
+from db.db_models import init_database_tables as init_web_db, LLMFactories, LLM, TenantLLM, Knowledgebase
+from db.services.user_service import UserService, TenantService, UserTenantService
+from db.services.document_service import DocumentService
+from db.services.knowledgebase_service import KnowledgebaseService
+from db.services.tenant_llm_service import LLMFactoriesService, TenantLLMService
+from db.services.llm_service import LLMService, LLMBundle, get_init_tenant_llm
+from db.joint_services.tenant_model_service import get_tenant_default_model_by_type
 from common.constants import LLMType
 from common.file_utils import get_project_base_directory
 from common import settings
-from api.common.base64 import encode_to_base64
+from common.encoding_utils import encode_to_base64
 
 DEFAULT_SUPERUSER_NICKNAME = os.getenv("DEFAULT_SUPERUSER_NICKNAME", "admin")
 DEFAULT_SUPERUSER_EMAIL = os.getenv("DEFAULT_SUPERUSER_EMAIL", "admin@ragflow.io")
@@ -159,64 +153,13 @@ def init_llm_factory():
 
 
 
-def add_graph_templates():
-    dir = os.path.join(get_project_base_directory(), "agent", "templates")
-    CanvasTemplateService.filter_delete([1 == 1])
-    if not os.path.exists(dir):
-        logging.warning("Missing agent templates!")
-        return
-
-    for fnm in os.listdir(dir):
-        try:
-            cnvs = json.load(open(os.path.join(dir, fnm), "r",encoding="utf-8"))
-            try:
-                CanvasTemplateService.save(**cnvs)
-            except Exception:
-                CanvasTemplateService.update_by_id(cnvs["id"], cnvs)
-        except Exception as e:
-            logging.exception(f"Add agent templates error: {e}")
-
-
 def init_web_data():
     start_time = time.time()
 
-    init_table()
-
     init_llm_factory()
-    # if not UserService.get_all().count():
-    #    init_superuser()
 
-    add_graph_templates()
-    init_message_id_sequence()
-    init_memory_size_cache()
-    fix_missing_tokenized_memory()
     fix_empty_tenant_model_id()
     logging.info("init web data success:{}".format(time.time() - start_time))
-
-def init_table():
-    # init system_settings
-    with open(os.path.join(get_project_base_directory(), "conf", "system_settings.json"), "r") as f:
-        records_from_file = json.load(f)["system_settings"]
-
-    record_index = {}
-    records_from_db = SystemSettingsService.get_all()
-    for index, record in enumerate(records_from_db):
-        record_index[record.name] = index
-
-    to_save = []
-    for record in records_from_file:
-        setting_name = record["name"]
-        if setting_name not in record_index:
-            to_save.append(record)
-
-    len_to_save = len(to_save)
-    if len_to_save > 0:
-        # not initialized
-        try:
-            SystemSettingsService.insert_many(to_save, len_to_save)
-        except Exception as e:
-            logging.exception("System settings init error: {}".format(e))
-            raise e
 
 
 def fix_empty_tenant_model_id():
@@ -236,70 +179,6 @@ def fix_empty_tenant_model_id():
             if tenant_llm:
                 update_cnt += KnowledgebaseService.filter_update([Knowledgebase.id.in_(v)], {"tenant_embd_id": tenant_llm.id})
         logging.info(f"Update {update_cnt} tenant_embd_id in table knowledgebase.")
-    # dialog
-    empty_tenant_llm_id_dialog = DialogService.get_null_tenant_llm_id_row()
-    if empty_tenant_llm_id_dialog:
-        logging.info(f"Found {len(empty_tenant_llm_id_dialog)} empty tenant_llm_id dialogs.")
-        dialog_groups: dict = {}
-        for obj in empty_tenant_llm_id_dialog:
-            if dialog_groups.get((obj.tenant_id, obj.llm_id)):
-                dialog_groups[(obj.tenant_id, obj.llm_id)].append(obj.id)
-            else:
-                dialog_groups[(obj.tenant_id, obj.llm_id)] = [obj.id]
-        update_cnt = 0
-        for k, v in dialog_groups.items():
-            tenant_llm = TenantLLMService.get_api_key(k[0], k[1])
-            if tenant_llm:
-                update_cnt += DialogService.filter_update([Dialog.id.in_(v)], {"tenant_llm_id": tenant_llm.id})
-        logging.info(f"Update {update_cnt} tenant_llm_id in table dialog.")
-
-    empty_tenant_rerank_id_dialog = DialogService.get_null_tenant_rerank_id_row()
-    if empty_tenant_rerank_id_dialog:
-        logging.info(f"Found {len(empty_tenant_rerank_id_dialog)} empty tenant_rerank_id dialogs.")
-        dialog_groups: dict = {}
-        for obj in empty_tenant_rerank_id_dialog:
-            if dialog_groups.get((obj.tenant_id, obj.rerank_id)):
-                dialog_groups[(obj.tenant_id, obj.rerank_id)].append(obj.id)
-            else:
-                dialog_groups[(obj.tenant_id, obj.rerank_id)] = [obj.id]
-        update_cnt = 0
-        for k, v in dialog_groups.items():
-            tenant_llm = TenantLLMService.get_api_key(k[0], k[1])
-            if tenant_llm:
-                update_cnt += DialogService.filter_update([Dialog.id.in_(v)], {"tenant_rerank_id": tenant_llm.id})
-        logging.info(f"Update {update_cnt} tenant_rerank_id in table dialog.")
-    # memory
-    empty_tenant_embd_id_memories = MemoryService.get_null_tenant_embd_id_row()
-    if empty_tenant_embd_id_memories:
-        logging.info(f"Found {len(empty_tenant_embd_id_memories)} empty tenant_embd_id memories.")
-        memory_groups: dict = {}
-        for obj in empty_tenant_embd_id_memories:
-            if memory_groups.get((obj.tenant_id, obj.embd_id)):
-                memory_groups[(obj.tenant_id, obj.embd_id)].append(obj.id)
-            else:
-                memory_groups[(obj.tenant_id, obj.embd_id)] = [obj.id]
-        update_cnt = 0
-        for k, v in memory_groups.items():
-            tenant_llm = TenantLLMService.get_api_key(k[0], k[1])
-            if tenant_llm:
-                update_cnt += MemoryService.filter_update([Memory.id.in_(v)], {"tenant_embd_id": tenant_llm.id})
-        logging.info(f"Update {update_cnt} tenant_embd_id in table memory.")
-
-    empty_tenant_llm_id_memories = MemoryService.get_null_tenant_llm_id_row()
-    if empty_tenant_llm_id_memories:
-        logging.info(f"Found {len(empty_tenant_llm_id_memories)} empty tenant_llm_id memories.")
-        memory_groups: dict = {}
-        for obj in empty_tenant_llm_id_memories:
-            if memory_groups.get((obj.tenant_id, obj.llm_id)):
-                memory_groups[(obj.tenant_id, obj.llm_id)].append(obj.id)
-            else:
-                memory_groups[(obj.tenant_id, obj.llm_id)] = [obj.id]
-        update_cnt = 0
-        for k, v in memory_groups.items():
-            tenant_llm = TenantLLMService.get_api_key(k[0], k[1])
-            if tenant_llm:
-                update_cnt += MemoryService.filter_update([Memory.id.in_(v)], {"tenant_llm_id": tenant_llm.id})
-        logging.info(f"Update {update_cnt} tenant_llm_id in table memory.")
     # tenant
     empty_tenant_model_id_tenants = TenantService.get_null_tenant_model_id_rows()
     if empty_tenant_model_id_tenants:

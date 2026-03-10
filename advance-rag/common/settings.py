@@ -27,7 +27,6 @@ import rag.utils
 import rag.utils.es_conn
 import rag.utils.infinity_conn
 import rag.utils.ob_conn
-import rag.utils.opensearch_conn
 from rag.utils.azure_sas_conn import RAGFlowAzureSasBlob
 from rag.utils.azure_spn_conn import RAGFlowAzureSpnBlob
 from rag.utils.gcs_conn import RAGFlowGCS
@@ -66,7 +65,7 @@ SECRET_KEY = None
 FACTORY_LLM_INFOS = None
 ALLOWED_LLM_FACTORIES = None
 
-DATABASE_TYPE = os.getenv("DB_TYPE", "mysql")
+DATABASE_TYPE = os.getenv("DB_TYPE", "postgres")
 DATABASE = decrypt_database_config(name=DATABASE_TYPE)
 
 # authentication
@@ -78,7 +77,7 @@ HTTP_APP_KEY = None
 GITHUB_OAUTH = None
 FEISHU_OAUTH = None
 OAUTH_CONFIG = None
-DOC_ENGINE = os.getenv('DOC_ENGINE', 'elasticsearch')
+DOC_ENGINE = os.getenv('DOC_ENGINE', 'opensearch')
 DOC_ENGINE_INFINITY = (DOC_ENGINE.lower() == "infinity")
 DOC_ENGINE_OCEANBASE = (DOC_ENGINE.lower() == "oceanbase")
 
@@ -110,11 +109,10 @@ MAIL_DEFAULT_SENDER = ()
 MAIL_FRONTEND_URL = ""
 
 # move from rag.settings
-ES = {}
+VECTORDB = {}
 INFINITY = {}
 AZURE = {}
 S3 = {}
-MINIO = {}
 OB = {}
 OSS = {}
 OS = {}
@@ -151,7 +149,11 @@ def _get_or_create_secret_key():
     import logging
 
     generated_key = secrets.token_hex(32)
-    secret_key = REDIS_CONN.get_or_create_secret_key("ragflow:system:secret_key", generated_key)
+    try:
+        secret_key = REDIS_CONN.get_or_create_secret_key("ragflow:system:secret_key", generated_key)
+    except Exception as e:
+        logging.warning(f"Redis unavailable for SECRET_KEY storage: {e}. Using generated key.")
+        secret_key = generated_key
     logging.warning("SECURITY WARNING: Using auto-generated SECRET_KEY.")
     return secret_key
 
@@ -173,7 +175,7 @@ class StorageFactory:
 
 def init_settings():
     global DATABASE_TYPE, DATABASE
-    DATABASE_TYPE = os.getenv("DB_TYPE", "mysql")
+    DATABASE_TYPE = os.getenv("DB_TYPE", "postgres")
     DATABASE = decrypt_database_config(name=DATABASE_TYPE)
     
     global ALLOWED_LLM_FACTORIES, LLM_FACTORY, LLM_BASE_URL
@@ -257,13 +259,13 @@ def init_settings():
     FEISHU_OAUTH = get_base_config("oauth", {}).get("feishu")
     OAUTH_CONFIG = get_base_config("oauth", {})
 
-    global DOC_ENGINE, DOC_ENGINE_INFINITY, DOC_ENGINE_OCEANBASE, docStoreConn, ES, OB, OS, INFINITY
-    DOC_ENGINE = os.environ.get("DOC_ENGINE", "elasticsearch").strip()
+    global DOC_ENGINE, DOC_ENGINE_INFINITY, DOC_ENGINE_OCEANBASE, docStoreConn, VECTORDB, OB, OS, INFINITY
+    DOC_ENGINE = os.environ.get("DOC_ENGINE", "opensearch").strip()
     DOC_ENGINE_INFINITY = (DOC_ENGINE.lower() == "infinity")
     DOC_ENGINE_OCEANBASE = (DOC_ENGINE.lower() == "oceanbase")
     lower_case_doc_engine = DOC_ENGINE.lower()
-    if lower_case_doc_engine == "elasticsearch":
-        ES = get_base_config("es", {})
+    if lower_case_doc_engine in ("elasticsearch", "opensearch"):
+        VECTORDB = get_base_config("vectordb", {})
         docStoreConn = rag.utils.es_conn.ESConnection()
     elif lower_case_doc_engine == "infinity":
         INFINITY = get_base_config("infinity", {
@@ -272,9 +274,6 @@ def init_settings():
             "db_name": "default_db"
         })
         docStoreConn = rag.utils.infinity_conn.InfinityConnection()
-    elif lower_case_doc_engine == "opensearch":
-        OS = get_base_config("os", {})
-        docStoreConn = rag.utils.opensearch_conn.OSConnection()
     elif lower_case_doc_engine == "oceanbase":
         OB = get_base_config("oceanbase", {})
         docStoreConn = rag.utils.ob_conn.OBConnection()
@@ -286,10 +285,10 @@ def init_settings():
 
     global msgStoreConn
     # use the same engine for message store
-    if DOC_ENGINE == "elasticsearch":
-        ES = get_base_config("es", {})
+    if lower_case_doc_engine in ("elasticsearch", "opensearch"):
+        VECTORDB = get_base_config("vectordb", {})
         msgStoreConn = memory_es_conn.ESConnection()
-    elif DOC_ENGINE == "infinity":
+    elif lower_case_doc_engine == "infinity":
         INFINITY = get_base_config("infinity", {
             "uri": "infinity:23817",
             "postgres_port": 5432,
@@ -299,13 +298,13 @@ def init_settings():
     elif lower_case_doc_engine in ["oceanbase", "seekdb"]:
         msgStoreConn = memory_ob_conn.OBConnection()
 
-    global AZURE, S3, MINIO, OSS, GCS
+    global AZURE, S3, OSS, GCS
     if STORAGE_IMPL_TYPE in ['AZURE_SPN', 'AZURE_SAS']:
         AZURE = get_base_config("azure", {})
     elif STORAGE_IMPL_TYPE == 'AWS_S3':
         S3 = get_base_config("s3", {})
     elif STORAGE_IMPL_TYPE == 'MINIO':
-        MINIO = decrypt_database_config(name="minio")
+        S3 = decrypt_database_config(name="s3")
     elif STORAGE_IMPL_TYPE == 'OSS':
         OSS = get_base_config("oss", {})
     elif STORAGE_IMPL_TYPE == 'GCS':

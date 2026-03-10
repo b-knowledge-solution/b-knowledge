@@ -1,0 +1,100 @@
+{
+  "settings": {
+    "index": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "knn": true,
+      "knn.algo_param.ef_search": 512,
+      "max_result_window": 100000
+    },
+    "analysis": {
+      "analyzer": {
+        "default": {
+          "type": "standard"
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic_templates": [
+      {
+        "tks_fields": {
+          "match": "*_tks",
+          "mapping": {
+            "type": "text",
+            "analyzer": "standard"
+          }
+        }
+      },
+      {
+        "ltks_fields": {
+          "match": "*_ltks",
+          "mapping": {
+            "type": "text",
+            "analyzer": "standard"
+          }
+        }
+      },
+      {
+        "kwd_fields": {
+          "match": "*_kwd",
+          "mapping": {
+            "type": "keyword"
+          }
+        }
+      },
+      {
+        "int_fields": {
+          "match": "*_int",
+          "mapping": {
+            "type": "integer"
+          }
+        }
+      },
+      {
+        "flt_fields": {
+          "match": "*_flt",
+          "mapping": {
+            "type": "float"
+          }
+        }
+      },
+      {
+        "fea_fields": {
+          "match": "*_fea",
+          "mapping": {
+            "type": "rank_feature"
+          }
+        }
+      },
+      {
+        "feas_fields": {
+          "match": "*_feas",
+          "mapping": {
+            "type": "rank_features"
+          }
+        }
+      }
+    ],
+    "properties": {
+      "kb_id": { "type": "keyword" },
+      "doc_id": { "type": "keyword" },
+      "docnm_kwd": { "type": "keyword" },
+      "title_tks": { "type": "text", "analyzer": "standard" },
+      "content_with_weight": { "type": "text", "analyzer": "standard" },
+      "content_ltks": { "type": "text", "analyzer": "standard" },
+      "content_sm_ltks": { "type": "text", "analyzer": "standard" },
+      "page_num_int": { "type": "integer" },
+      "position_int": { "type": "integer" },
+      "top_int": { "type": "integer" },
+      "available_int": { "type": "integer" },
+      "important_kwd": { "type": "keyword" },
+      "create_time": { "type": "keyword" },
+      "create_timestamp_flt": { "type": "float" },
+      "img_id": { "type": "keyword" },
+      "tag_kwd": { "type": "keyword" },
+      "tag_feas": { "type": "rank_features" },
+      "pagerank_fea": { "type": "rank_feature" }
+    }
+  }
+}

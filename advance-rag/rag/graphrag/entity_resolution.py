@@ -29,7 +29,7 @@ import editdistance
 from rag.graphrag.entity_resolution_prompt import ENTITY_RESOLUTION_PROMPT
 from rag.llm.chat_model import Base as CompletionLLM
 from rag.graphrag.utils import perform_variable_replacements, chat_limiter, GraphChange
-from api.db.services.task_service import has_canceled
+from db.services.task_service import has_canceled
 from common.exceptions import TaskCanceledException
 
 from common.misc_utils import thread_pool_exec

@@ -18,7 +18,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 import peewee
 from peewee import InterfaceError, OperationalError
 
-from api.db.db_models import DB
+from db.db_models import DB
 from common.misc_utils import get_uuid
 from common.time_utils import current_timestamp, datetime_format
 

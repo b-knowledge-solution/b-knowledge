@@ -20,13 +20,13 @@ from datetime import datetime, timedelta
 
 from peewee import fn
 
-from api.db import VALID_PIPELINE_TASK_TYPES, PipelineTaskType
-from api.db.db_models import DB, Document, PipelineOperationLog
-from api.db.services.canvas_service import UserCanvasService
-from api.db.services.common_service import CommonService
-from api.db.services.document_service import DocumentService
-from api.db.services.knowledgebase_service import KnowledgebaseService
-from api.db.services.task_service import GRAPH_RAPTOR_FAKE_DOC_ID
+from db import VALID_PIPELINE_TASK_TYPES, PipelineTaskType
+from db.db_models import DB, Document, PipelineOperationLog
+from db.services.canvas_service import UserCanvasService
+from db.services.common_service import CommonService
+from db.services.document_service import DocumentService
+from db.services.knowledgebase_service import KnowledgebaseService
+from db.services.task_service import GRAPH_RAPTOR_FAKE_DOC_ID
 from common.misc_utils import get_uuid
 from common.time_utils import current_timestamp, datetime_format
 

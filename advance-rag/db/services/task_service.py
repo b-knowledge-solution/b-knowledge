@@ -19,14 +19,14 @@ import random
 import xxhash
 from datetime import datetime
 
-from api.db.db_utils import bulk_insert_into_db
+from db.db_utils import bulk_insert_into_db
 from deepdoc.parser import PdfParser
 from peewee import JOIN
-from api.db.db_models import DB, File2Document, File
-from api.db import FileType
-from api.db.db_models import Task, Document, Knowledgebase, Tenant
-from api.db.services.common_service import CommonService
-from api.db.services.document_service import DocumentService
+from db.db_models import DB, File2Document, File
+from db import FileType
+from db.db_models import Task, Document, Knowledgebase, Tenant
+from db.services.common_service import CommonService
+from db.services.document_service import DocumentService
 from common.misc_utils import get_uuid
 from common.time_utils import current_timestamp
 from common.constants import StatusEnum, TaskStatus

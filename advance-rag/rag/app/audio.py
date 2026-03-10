@@ -19,8 +19,8 @@ import re
 import tempfile
 
 from common.constants import LLMType
-from api.db.services.llm_service import LLMBundle
-from api.db.joint_services.tenant_model_service import get_tenant_default_model_by_type
+from db.services.llm_service import LLMBundle
+from db.joint_services.tenant_model_service import get_tenant_default_model_by_type
 from rag.nlp import rag_tokenizer, tokenize
 
 

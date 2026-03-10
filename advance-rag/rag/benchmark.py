@@ -23,9 +23,9 @@ from collections import defaultdict
 
 from common import settings
 from common.constants import LLMType
-from api.db.services.llm_service import LLMBundle
-from api.db.services.knowledgebase_service import KnowledgebaseService
-from api.db.joint_services.tenant_model_service import get_model_config_by_id, get_model_config_by_type_and_name
+from db.services.llm_service import LLMBundle
+from db.services.knowledgebase_service import KnowledgebaseService
+from db.joint_services.tenant_model_service import get_model_config_by_id, get_model_config_by_type_and_name
 from common.misc_utils import get_uuid
 from rag.nlp import tokenize, search
 from ranx import evaluate

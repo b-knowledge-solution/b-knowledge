@@ -171,4 +171,4 @@ advance-rag/**/*.pt
 advance-rag/**/*.pth
 
 .claude
-.agent
+.agents

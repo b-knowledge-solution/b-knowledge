@@ -19,9 +19,9 @@ import json
 import time
 
 import copy
-from elasticsearch import NotFoundError
-from elasticsearch_dsl import UpdateByQuery, Q, Search
-from elastic_transport import ConnectionTimeout
+from opensearchpy import NotFoundError
+from opensearchpy import UpdateByQuery, Q, Search
+from opensearchpy import ConnectionTimeout
 from common.decorator import singleton
 from common.doc_store.doc_store_base import MatchExpr, OrderByExpr, MatchTextExpr, MatchDenseExpr, FusionExpr
 from common.doc_store.es_conn_base import ESConnectionBase
@@ -52,10 +52,10 @@ class ESConnection(ESConnectionBase):
     @staticmethod
     def map_message_to_es_fields(message: dict) -> dict:
         """
-        Map message dictionary fields to Elasticsearch document/Infinity fields.
+        Map message dictionary fields to OpenSearch document fields.
 
         :param message: A dictionary containing message details.
-        :return: A dictionary formatted for Elasticsearch/Infinity indexing.
+        :return: A dictionary formatted for OpenSearch indexing.
         """
         storage_doc = {
             "id": message.get("id"),
@@ -80,9 +80,9 @@ class ESConnection(ESConnectionBase):
     @staticmethod
     def get_message_from_es_doc(doc: dict) -> dict:
         """
-        Convert an Elasticsearch/Infinity document back to a message dictionary.
+        Convert an OpenSearch document back to a message dictionary.
 
-        :param doc: A dictionary representing the Elasticsearch/Infinity document.
+        :param doc: A dictionary representing the OpenSearch document.
         :return: A dictionary formatted as a message.
         """
         embd_field_name = next((key for key in doc.keys() if re.match(r"q_\d+_vec", key)), None)
@@ -125,8 +125,9 @@ class ESConnection(ESConnectionBase):
             hide_forgotten: bool = True
     ):
         """
-        Refers to https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html
+        Refers to https://opensearch.org/docs/latest/query-dsl/
         """
+        use_knn = False
         if isinstance(index_names, str):
             index_names = index_names.split(",")
         assert isinstance(index_names, list) and len(index_names) > 0
@@ -165,6 +166,9 @@ class ESConnection(ESConnectionBase):
                     match_expressions[2], FusionExpr)
                 weights = m.fusion_params["weights"]
                 vector_similarity_weight = get_float(weights.split(",")[1])
+
+        # OpenSearch KNN query construction
+        knn_query = {}
         for m in match_expressions:
             if isinstance(m, MatchTextExpr):
                 minimum_should_match = m.extra_options.get("minimum_should_match", 0.0)
@@ -181,13 +185,14 @@ class ESConnection(ESConnectionBase):
                 similarity = 0.0
                 if "similarity" in m.extra_options:
                     similarity = m.extra_options["similarity"]
-                s = s.knn(self.convert_field_name(m.vector_column_name),
-                          m.topn,
-                          m.topn * 2,
-                          query_vector=list(m.embedding_data),
-                          filter=bool_query.to_dict(),
-                          similarity=similarity,
-                          )
+                use_knn = True
+                vector_column_name = self.convert_field_name(m.vector_column_name)
+                knn_query[vector_column_name] = {
+                    "vector": list(m.embedding_data),
+                    "k": m.topn,
+                    "filter": bool_query.to_dict(),
+                    "boost": similarity,
+                }
 
         if bool_query and rank_feature:
             for fld, sc in rank_feature.items():
@@ -218,23 +223,27 @@ class ESConnection(ESConnectionBase):
         if limit > 0:
             s = s[offset:offset + limit]
         q = s.to_dict()
+
+        # Replace query with KNN query for vector search
+        if use_knn:
+            q.pop("query", None)
+            q["query"] = {"knn": knn_query}
+
         self.logger.debug(f"ESConnection.search {str(index_names)} query: " + json.dumps(q))
 
         for i in range(ATTEMPT_TIME):
             try:
-                #print(json.dumps(q, ensure_ascii=False))
                 res = self.es.search(index=exist_index_list,
                                      body=q,
-                                     timeout="600s",
-                                     # search_type="dfs_query_then_fetch",
+                                     timeout=600,
                                      track_total_hits=True,
                                      _source=True)
                 if str(res.get("timed_out", "")).lower() == "true":
-                    raise Exception("Es Timeout.")
+                    raise Exception("OpenSearch Timeout.")
                 self.logger.debug(f"ESConnection.search {str(index_names)} res: " + str(res))
                 return res, self.get_total(res)
             except ConnectionTimeout:
-                self.logger.exception("ES request timeout")
+                self.logger.exception("OpenSearch request timeout")
                 self._connect()
                 continue
             except NotFoundError as e:
@@ -271,13 +280,13 @@ class ESConnection(ESConnectionBase):
         # search
         for i in range(ATTEMPT_TIME):
             try:
-                res = self.es.search(index=index_name, body=q, timeout="600s", track_total_hits=True, _source=True)
+                res = self.es.search(index=index_name, body=q, timeout=600, track_total_hits=True, _source=True)
                 if str(res.get("timed_out", "")).lower() == "true":
-                    raise Exception("Es Timeout.")
+                    raise Exception("OpenSearch Timeout.")
                 self.logger.debug(f"ESConnection.search {str(index_name)} res: " + str(res))
                 return res
             except ConnectionTimeout:
-                self.logger.exception("ES request timeout")
+                self.logger.exception("OpenSearch request timeout")
                 self._connect()
                 continue
             except NotFoundError as e:
@@ -316,13 +325,13 @@ class ESConnection(ESConnectionBase):
         # search
         for i in range(ATTEMPT_TIME):
             try:
-                res = self.es.search(index=index_name, body=q, timeout="600s", track_total_hits=True, _source=True)
+                res = self.es.search(index=index_name, body=q, timeout=600, track_total_hits=True, _source=True)
                 if str(res.get("timed_out", "")).lower() == "true":
-                    raise Exception("Es Timeout.")
+                    raise Exception("OpenSearch Timeout.")
                 self.logger.debug(f"ESConnection.search {str(index_name)} res: " + str(res))
                 return res
             except ConnectionTimeout:
-                self.logger.exception("ES request timeout")
+                self.logger.exception("OpenSearch request timeout")
                 self._connect()
                 continue
             except NotFoundError as e:
@@ -339,9 +348,9 @@ class ESConnection(ESConnectionBase):
         for i in range(ATTEMPT_TIME):
             try:
                 res = self.es.get(index=index_name,
-                                  id=doc_id, source=True, )
+                                  id=doc_id, _source=True)
                 if str(res.get("timed_out", "")).lower() == "true":
-                    raise Exception("Es Timeout.")
+                    raise Exception("OpenSearch Timeout.")
                 message = res["_source"]
                 message["id"] = doc_id
                 return self.get_message_from_es_doc(message)
@@ -354,7 +363,7 @@ class ESConnection(ESConnectionBase):
         raise Exception("ESConnection.get timeout.")
 
     def insert(self, documents: list[dict], index_name: str, memory_id: str = None) -> list[str]:
-        # Refers to https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
+        # Refers to https://opensearch.org/docs/latest/api-reference/document-apis/bulk/
         operations = []
         for d in documents:
             assert "_id" not in d
@@ -370,7 +379,7 @@ class ESConnection(ESConnectionBase):
         for _ in range(ATTEMPT_TIME):
             try:
                 res = []
-                r = self.es.bulk(index=index_name, operations=operations,
+                r = self.es.bulk(index=index_name, body=operations,
                                  refresh=False, timeout="60s")
                 if re.search(r"False", str(r["errors"]), re.IGNORECASE):
                     return res
@@ -381,7 +390,7 @@ class ESConnection(ESConnectionBase):
                             res.append(str(item[action]["_id"]) + ":" + str(item[action]["error"]))
                 return res
             except ConnectionTimeout:
-                self.logger.exception("ES request timeout")
+                self.logger.exception("OpenSearch request timeout")
                 time.sleep(3)
                 self._connect()
                 continue
@@ -407,11 +416,12 @@ class ESConnection(ESConnectionBase):
                     if "feas" != k.split("_")[-1]:
                         continue
                     try:
-                        self.es.update(index=index_name, id=message_id, script=f"ctx._source.remove(\"{k}\");")
+                        self.es.update(index=index_name, id=message_id,
+                                       body={"script": {"source": f"ctx._source.remove(\"{k}\")"}})
                     except Exception:
                         self.logger.exception(f"ESConnection.update(index={index_name}, id={message_id}, doc={json.dumps(condition, ensure_ascii=False)}) got exception")
                 try:
-                    self.es.update(index=index_name, id=message_id, doc=update_dict)
+                    self.es.update(index=index_name, id=message_id, body={"doc": update_dict})
                     return True
                 except Exception as e:
                     self.logger.exception(
@@ -477,7 +487,7 @@ class ESConnection(ESConnectionBase):
                 _ = ubq.execute()
                 return True
             except ConnectionTimeout:
-                self.logger.exception("ES request timeout")
+                self.logger.exception("OpenSearch request timeout")
                 time.sleep(3)
                 self._connect()
                 continue
@@ -525,7 +535,7 @@ class ESConnection(ESConnectionBase):
                     refresh=True)
                 return res["deleted"]
             except ConnectionTimeout:
-                self.logger.exception("ES request timeout")
+                self.logger.exception("OpenSearch request timeout")
                 time.sleep(3)
                 self._connect()
                 continue

@@ -17,8 +17,8 @@ import os
 import enum
 from common import settings
 from common.constants import LLMType
-from api.db.services.llm_service import LLMService
-from api.db.services.tenant_llm_service import TenantLLMService, TenantService
+from db.services.llm_service import LLMService
+from db.services.tenant_llm_service import TenantLLMService, TenantService
 
 
 def get_model_config_by_id(tenant_model_id: int) -> dict:

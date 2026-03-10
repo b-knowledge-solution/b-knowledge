@@ -26,10 +26,10 @@ import re
 from copy import deepcopy
 from typing import Dict, List, Optional
 
-from api.db.db_models import DB, Document
+from db.db_models import DB, Document
 from common import settings
 from common.metadata_utils import dedupe_list
-from api.db.db_models import Knowledgebase
+from db.db_models import Knowledgebase
 from common.doc_store.doc_store_base import OrderByExpr
 
 

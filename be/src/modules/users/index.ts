@@ -1,2 +1,2 @@
-export { default as userRoutes } from './users.routes.js'
-export { userService } from './user.service.js'
+export { default as userRoutes } from './routes/users.routes.js'
+export { userService } from './services/user.service.js'

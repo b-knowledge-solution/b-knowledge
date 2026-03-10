@@ -48,10 +48,9 @@ from peewee import (
 from playhouse.migrate import MySQLMigrator, PostgresqlMigrator, migrate
 from playhouse.pool import PooledMySQLDatabase, PooledPostgresqlDatabase
 
-from api import utils
-from api.db import SerializedType
-from api.utils.json_encode import json_dumps, json_loads
-from api.utils.configs import deserialize_b64, serialize_b64
+from db import SerializedType
+from common.json_utils import json_dumps, json_loads, from_dict_hook
+from common.serialization_utils import deserialize_b64, serialize_b64
 
 from common.time_utils import current_timestamp, timestamp_to_date, date_string_to_timestamp
 from common.decorator import singleton
@@ -253,7 +252,7 @@ class BaseModel(Model):
 
 
 class JsonSerializedField(SerializedField):
-    def __init__(self, object_hook=utils.from_dict_hook, object_pairs_hook=None, **kwargs):
+    def __init__(self, object_hook=from_dict_hook, object_pairs_hook=None, **kwargs):
         super(JsonSerializedField, self).__init__(serialized_type=SerializedType.JSON, object_hook=object_hook, object_pairs_hook=object_pairs_hook, **kwargs)
 
 
@@ -263,10 +262,10 @@ class RetryingPooledMySQLDatabase(PooledMySQLDatabase):
         self.retry_delay = kwargs.pop("retry_delay", 1)
         super().__init__(*args, **kwargs)
 
-    def execute_sql(self, sql, params=None, commit=True):
+    def execute_sql(self, sql, params=None):
         for attempt in range(self.max_retries + 1):
             try:
-                return super().execute_sql(sql, params, commit)
+                return super().execute_sql(sql, params)
             except (OperationalError, InterfaceError) as e:
                 error_codes = [2013, 2006]
                 error_messages = ['', 'Lost connection']
@@ -336,10 +335,10 @@ class RetryingPooledPostgresqlDatabase(PooledPostgresqlDatabase):
         self.retry_delay = kwargs.pop("retry_delay", 1)
         super().__init__(*args, **kwargs)
 
-    def execute_sql(self, sql, params=None, commit=True):
+    def execute_sql(self, sql, params=None):
         for attempt in range(self.max_retries + 1):
             try:
-                return super().execute_sql(sql, params, commit)
+                return super().execute_sql(sql, params)
             except (OperationalError, InterfaceError) as e:
                 # PostgreSQL specific error codes
                 # 57P01: admin_shutdown
@@ -412,10 +411,10 @@ class RetryingPooledOceanBaseDatabase(PooledMySQLDatabase):
         self.retry_delay = kwargs.pop("retry_delay", 1)
         super().__init__(*args, **kwargs)
 
-    def execute_sql(self, sql, params=None, commit=True):
+    def execute_sql(self, sql, params=None):
         for attempt in range(self.max_retries + 1):
             try:
-                return super().execute_sql(sql, params, commit)
+                return super().execute_sql(sql, params)
             except (OperationalError, InterfaceError) as e:
                 # OceanBase/MySQL specific error codes
                 # 2013: Lost connection to MySQL server during query
@@ -1347,8 +1346,12 @@ def alter_db_add_column(migrator, table_name, column_name, column_type):
             logging.critical(f"Failed to add {settings.DATABASE_TYPE.upper()}.{table_name} column {column_name}, operation error: {ex}")
 
     except Exception as ex:
-        logging.critical(f"Failed to add {settings.DATABASE_TYPE.upper()}.{table_name} column {column_name}, error: {ex}")
-        pass
+        # PostgreSQL raises ProgrammingError with "already exists" — skip silently
+        if "already exists" in str(ex).lower():
+            pass
+        else:
+            logging.critical(f"Failed to add {settings.DATABASE_TYPE.upper()}.{table_name} column {column_name}, error: {ex}")
+            pass
 
 def alter_db_column_type(migrator, table_name, column_name, new_column_type):
     try:
@@ -1367,16 +1370,25 @@ def alter_db_rename_column(migrator, table_name, old_column_name, new_column_nam
 
 def migrate_add_unique_email(migrator):
     """Deduplicates user emails and add UNIQUE constraint to email column (idempotent)"""
+    is_postgres = settings.DATABASE_TYPE.upper() == "POSTGRES"
     # step 0: check if UNIQUE index on email already exists
     try:
-        cursor = DB.execute_sql("""
-            SELECT COUNT(*)
-            FROM information_schema.statistics
-            WHERE table_schema = DATABASE()
-              AND table_name = 'user'
-              AND index_name = 'user_email'
-              AND non_unique = 0
-        """)
+        if is_postgres:
+            cursor = DB.execute_sql("""
+                SELECT COUNT(*)
+                FROM pg_indexes
+                WHERE tablename = 'user'
+                  AND indexname = 'user_email'
+            """)
+        else:
+            cursor = DB.execute_sql("""
+                SELECT COUNT(*)
+                FROM information_schema.statistics
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'user'
+                  AND index_name = 'user_email'
+                  AND non_unique = 0
+            """)
         result = cursor.fetchone()
         if result and result[0] > 0:
             logging.info("UNIQUE index on user.email already exists, skipping migration")
@@ -1421,57 +1433,63 @@ def migrate_add_unique_email(migrator):
 
 def update_tenant_llm_to_id_primary_key():
     """Add ID and set to primary key step by step."""
+    is_postgres = settings.DATABASE_TYPE.upper() == "POSTGRES"
     try:
         with DB.atomic():
-            # 0. Check if exist ID
-            cursor = DB.execute_sql("""
-                            SELECT COLUMN_NAME 
-                            FROM INFORMATION_SCHEMA.COLUMNS 
-                            WHERE TABLE_SCHEMA = DATABASE() 
-                            AND TABLE_NAME = 'tenant_llm' 
-                            AND COLUMN_NAME = 'id'
-                        """)
-            if cursor.rowcount > 0:
+            # 0. Check if 'id' column already exists
+            if is_postgres:
+                cursor = DB.execute_sql("""
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name = 'tenant_llm'
+                      AND column_name = 'id'
+                """)
+            else:
+                cursor = DB.execute_sql("""
+                    SELECT COLUMN_NAME
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = DATABASE()
+                      AND TABLE_NAME = 'tenant_llm'
+                      AND COLUMN_NAME = 'id'
+                """)
+            if cursor.fetchone():
                 return
 
-            # 1. Add nullable column
-            DB.execute_sql("ALTER TABLE tenant_llm ADD COLUMN temp_id INT NULL")
-
-            # 2. Set ID
-            DB.execute_sql("SET @row = 0;")
-            DB.execute_sql("UPDATE tenant_llm SET temp_id = (@row := @row + 1) ORDER BY tenant_id, llm_factory, llm_name;")
-
-            # 3. Drop old primary key
-            DB.execute_sql("ALTER TABLE tenant_llm DROP PRIMARY KEY")
-
-            # 4. Update ID column to primary key
-            DB.execute_sql("""
-            ALTER TABLE tenant_llm 
-            MODIFY COLUMN temp_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY
-            """)
-
-            # 5. Add unique key
-            DB.execute_sql("""
-                ALTER TABLE tenant_llm 
-                ADD CONSTRAINT uk_tenant_llm UNIQUE (tenant_id, llm_factory, llm_name)
-            """)
-
-            # 6. rename
-            DB.execute_sql("ALTER TABLE tenant_llm RENAME COLUMN temp_id TO id")
+            if is_postgres:
+                # PostgreSQL: add a SERIAL column as new primary key
+                DB.execute_sql("ALTER TABLE tenant_llm DROP CONSTRAINT IF EXISTS tenant_llm_pkey")
+                DB.execute_sql("ALTER TABLE tenant_llm ADD COLUMN id SERIAL PRIMARY KEY")
+                DB.execute_sql("""
+                    ALTER TABLE tenant_llm
+                    ADD CONSTRAINT uk_tenant_llm UNIQUE (tenant_id, llm_factory, llm_name)
+                """)
+            else:
+                # MySQL path
+                DB.execute_sql("ALTER TABLE tenant_llm ADD COLUMN temp_id INT NULL")
+                DB.execute_sql("SET @row = 0;")
+                DB.execute_sql("UPDATE tenant_llm SET temp_id = (@row := @row + 1) ORDER BY tenant_id, llm_factory, llm_name;")
+                DB.execute_sql("ALTER TABLE tenant_llm DROP PRIMARY KEY")
+                DB.execute_sql("ALTER TABLE tenant_llm MODIFY COLUMN temp_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY")
+                DB.execute_sql("ALTER TABLE tenant_llm ADD CONSTRAINT uk_tenant_llm UNIQUE (tenant_id, llm_factory, llm_name)")
+                DB.execute_sql("ALTER TABLE tenant_llm RENAME COLUMN temp_id TO id")
 
             logging.info("Successfully updated tenant_llm to id primary key.")
 
     except Exception as e:
         logging.error(str(e))
-        cursor = DB.execute_sql("""
-                                    SELECT COLUMN_NAME 
-                                    FROM INFORMATION_SCHEMA.COLUMNS 
-                                    WHERE TABLE_SCHEMA = DATABASE() 
-                                    AND TABLE_NAME = 'tenant_llm' 
-                                    AND COLUMN_NAME = 'temp_id'
-                                """)
-        if cursor.rowcount > 0:
-            DB.execute_sql("ALTER TABLE tenant_llm DROP COLUMN temp_id")
+        if not is_postgres:
+            try:
+                cursor = DB.execute_sql("""
+                    SELECT COLUMN_NAME
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = DATABASE()
+                      AND TABLE_NAME = 'tenant_llm'
+                      AND COLUMN_NAME = 'temp_id'
+                """)
+                if cursor.rowcount > 0:
+                    DB.execute_sql("ALTER TABLE tenant_llm DROP COLUMN temp_id")
+            except Exception:
+                pass
 
 
 def migrate_db():

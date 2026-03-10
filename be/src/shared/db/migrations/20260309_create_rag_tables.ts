@@ -15,8 +15,8 @@ export async function up(knex: Knex): Promise<void> {
         table.integer('doc_count').defaultTo(0);
         table.integer('chunk_count').defaultTo(0);
         table.integer('token_count').defaultTo(0);
-        table.uuid('created_by').references('id').inTable('users').onDelete('SET NULL');
-        table.uuid('updated_by').references('id').inTable('users').onDelete('SET NULL');
+        table.text('created_by').references('id').inTable('users').onDelete('SET NULL');
+        table.text('updated_by').references('id').inTable('users').onDelete('SET NULL');
         table.timestamps(true, true);
     });
 
@@ -33,7 +33,7 @@ export async function up(knex: Knex): Promise<void> {
         table.integer('chunk_count').defaultTo(0);
         table.integer('token_count').defaultTo(0);
         table.string('storage_path', 512);
-        table.uuid('created_by').references('id').inTable('users').onDelete('SET NULL');
+        table.text('created_by').references('id').inTable('users').onDelete('SET NULL');
         table.timestamps(true, true);
 
         table.index('dataset_id');
@@ -50,8 +50,8 @@ export async function up(knex: Knex): Promise<void> {
         table.integer('max_tokens');
         table.string('status', 16).defaultTo('active');
         table.boolean('is_default').defaultTo(false);
-        table.uuid('created_by').references('id').inTable('users').onDelete('SET NULL');
-        table.uuid('updated_by').references('id').inTable('users').onDelete('SET NULL');
+        table.text('created_by').references('id').inTable('users').onDelete('SET NULL');
+        table.text('updated_by').references('id').inTable('users').onDelete('SET NULL');
         table.timestamps(true, true);
 
         table.unique(['factory_name', 'model_name']);

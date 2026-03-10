@@ -23,7 +23,7 @@ from typing import Callable
 
 import networkx as nx
 
-from api.db.services.task_service import has_canceled
+from db.services.task_service import has_canceled
 from common.connection_utils import timeout
 from common.token_utils import truncate
 from rag.graphrag.general.graph_prompt import SUMMARIZE_DESCRIPTIONS_PROMPT

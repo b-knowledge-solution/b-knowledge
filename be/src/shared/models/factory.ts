@@ -2,33 +2,33 @@
 /**
  * Lazy-loaded singletons for all data models to keep connection sharing consistent.
  */
-import { UserModel } from '@/modules/users/user.model.js';
-import { TeamModel } from '@/modules/teams/team.model.js';
-import { UserTeamModel } from '@/modules/teams/user-team.model.js';
-import { ChatSessionModel } from '@/modules/chat/chat-session.model.js';
-import { ChatMessageModel } from '@/modules/chat/chat-message.model.js';
+import { UserModel } from '@/modules/users/models/user.model.js';
+import { TeamModel } from '@/modules/teams/models/team.model.js';
+import { UserTeamModel } from '@/modules/teams/models/user-team.model.js';
+import { ChatSessionModel } from '@/modules/chat/models/chat-session.model.js';
+import { ChatMessageModel } from '@/modules/chat/models/chat-message.model.js';
 import { SystemConfigModel } from '@/shared/models/system-config.model.js';
-import { KnowledgeBaseSourceModel } from '@/modules/knowledge-base/knowledge-base-source.model.js';
-import { AuditLogModel } from '@/modules/audit/audit-log.model.js';
-import { UserIpHistoryModel } from '@/modules/users/user-ip-history.model.js';
-import { BroadcastMessageModel } from '@/modules/broadcast/broadcast-message.model.js';
-import { UserDismissedBroadcastModel } from '@/modules/broadcast/user-dismissed-broadcast.model.js';
+import { KnowledgeBaseSourceModel } from '@/modules/knowledge-base/models/knowledge-base-source.model.js';
+import { AuditLogModel } from '@/modules/audit/models/audit-log.model.js';
+import { UserIpHistoryModel } from '@/modules/users/models/user-ip-history.model.js';
+import { BroadcastMessageModel } from '@/modules/broadcast/models/broadcast-message.model.js';
+import { UserDismissedBroadcastModel } from '@/modules/broadcast/models/user-dismissed-broadcast.model.js';
 import { ExternalChatSessionModel } from '@/modules/external/models/chat-session.model.js';
 import { ExternalChatMessageModel } from '@/modules/external/models/chat-message.model.js';
 import { ExternalSearchSessionModel } from '@/modules/external/models/search-session.model.js';
 import { ExternalSearchRecordModel } from '@/modules/external/models/search-record.model.js';
 
-import { GlossaryTaskModel } from '@/modules/glossary/glossary-task.model.js';
-import { GlossaryKeywordModel } from '@/modules/glossary/glossary-keyword.model.js';
+import { GlossaryTaskModel } from '@/modules/glossary/models/glossary-task.model.js';
+import { GlossaryKeywordModel } from '@/modules/glossary/models/glossary-keyword.model.js';
 
-import { DatasetModel } from '@/modules/rag/dataset.model.js';
-import { DocumentModel } from '@/modules/rag/document.model.js';
-import { ModelProviderModel } from '@/modules/rag/model-provider.model.js';
-import { TenantLlmModel } from '@/modules/llm-provider/tenant-llm.model.js';
-import { KnowledgebaseModel } from '@/modules/rag/knowledgebase.model.js';
-import { RagDocumentModel } from '@/modules/rag/rag-document.model.js';
-import { RagFileModel } from '@/modules/rag/rag-file.model.js';
-import { RagTaskModel } from '@/modules/rag/rag-task.model.js';
+import { DatasetModel } from '@/modules/rag/models/dataset.model.js';
+import { DocumentModel } from '@/modules/rag/models/document.model.js';
+import { ModelProviderModel } from '@/modules/rag/models/model-provider.model.js';
+import { TenantLlmModel } from '@/modules/llm-provider/models/tenant-llm.model.js';
+import { KnowledgebaseModel } from '@/modules/rag/models/knowledgebase.model.js';
+import { RagDocumentModel } from '@/modules/rag/models/rag-document.model.js';
+import { RagFileModel } from '@/modules/rag/models/rag-file.model.js';
+import { RagTaskModel } from '@/modules/rag/models/rag-task.model.js';
 
 /**
  * ModelFactory class implementing the Factory Pattern.

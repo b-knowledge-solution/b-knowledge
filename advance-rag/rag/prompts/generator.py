@@ -97,8 +97,8 @@ def message_fit_in(msg, max_length=4000):
 
 
 def kb_prompt(kbinfos, max_tokens, hash_id=False):
-    from api.db.services.document_service import DocumentService
-    from api.db.services.doc_metadata_service import DocMetadataService
+    from db.services.document_service import DocumentService
+    from db.services.doc_metadata_service import DocMetadataService
 
     knowledges = [get_value(ck, "content", "content_with_weight") for ck in kbinfos["chunks"]]
     kwlg_len = len(knowledges)
@@ -223,9 +223,9 @@ async def question_proposal(chat_mdl, content, topn=3):
 
 async def full_question(tenant_id=None, llm_id=None, messages=[], language=None, chat_mdl=None):
     from common.constants import LLMType
-    from api.db.services.llm_service import LLMBundle
-    from api.db.services.tenant_llm_service import TenantLLMService
-    from api.db.joint_services.tenant_model_service import get_model_config_by_type_and_name
+    from db.services.llm_service import LLMBundle
+    from db.services.tenant_llm_service import TenantLLMService
+    from db.joint_services.tenant_model_service import get_model_config_by_type_and_name
 
     if not chat_mdl:
         if TenantLLMService.llm_id2llm_type(llm_id) == "image2text":
@@ -259,9 +259,9 @@ async def full_question(tenant_id=None, llm_id=None, messages=[], language=None,
 
 async def cross_languages(tenant_id, llm_id, query, languages=[]):
     from common.constants import LLMType
-    from api.db.services.llm_service import LLMBundle
-    from api.db.services.tenant_llm_service import TenantLLMService
-    from api.db.joint_services.tenant_model_service import get_model_config_by_type_and_name
+    from db.services.llm_service import LLMBundle
+    from db.services.tenant_llm_service import TenantLLMService
+    from db.joint_services.tenant_model_service import get_model_config_by_type_and_name
 
     if llm_id and TenantLLMService.llm_id2llm_type(llm_id) == "image2text":
         chat_model_config = get_model_config_by_type_and_name(tenant_id, LLMType.IMAGE2TEXT, llm_id)

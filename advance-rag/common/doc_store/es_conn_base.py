@@ -17,14 +17,13 @@
 import logging
 import re
 import json
+import copy
 import time
 import os
 from abc import abstractmethod
 
-from elasticsearch import NotFoundError
-from elasticsearch_dsl import Index
-from elastic_transport import ConnectionTimeout
-from elasticsearch.client import IndicesClient
+from opensearchpy import NotFoundError, Index, ConnectionTimeout
+from opensearchpy.client import IndicesClient
 from common.file_utils import get_project_base_directory
 from common.misc_utils import convert_bytes
 from common.doc_store.doc_store_base import DocStoreConnection, OrderByExpr, MatchExpr
@@ -41,16 +40,16 @@ class ESConnectionBase(DocStoreConnection):
         self.logger = logging.getLogger(logger_name)
 
         self.info = {}
-        self.logger.info(f"Use Elasticsearch {settings.ES['hosts']} as the doc engine.")
+        self.logger.info(f"Use OpenSearch {settings.VECTORDB['hosts']} as the doc engine.")
         self.es = ES_CONN.get_conn()
         fp_mapping = os.path.join(get_project_base_directory(), "conf", mapping_file_name)
         if not os.path.exists(fp_mapping):
-            msg = f"Elasticsearch mapping file not found at {fp_mapping}"
+            msg = f"OpenSearch mapping file not found at {fp_mapping}"
             self.logger.error(msg)
             raise Exception(msg)
         with open(fp_mapping, "r") as f:
             self.mapping = json.load(f)
-        self.logger.info(f"Elasticsearch {settings.ES['hosts']} is healthy.")
+        self.logger.info(f"OpenSearch {settings.VECTORDB['hosts']} is healthy.")
 
     def _connect(self):
         from common.doc_store.es_conn_pool import ES_CONN
@@ -65,11 +64,11 @@ class ESConnectionBase(DocStoreConnection):
     """
 
     def db_type(self) -> str:
-        return "elasticsearch"
+        return "opensearch"
 
     def health(self) -> dict:
         health_dict = dict(self.es.cluster.health())
-        health_dict["type"] = "elasticsearch"
+        health_dict["type"] = "opensearch"
         return health_dict
 
     def get_cluster_stats(self):
@@ -96,13 +95,6 @@ class ESConnectionBase(DocStoreConnection):
             store_info = indices_status['store']
             res.update({
                 'store_size': convert_bytes(store_info['size_in_bytes']),
-                'total_dataset_size': convert_bytes(store_info['total_data_set_size_in_bytes'])
-            })
-            mappings_info = indices_status['mappings']
-            res.update({
-                'mappings_fields': mappings_info['total_field_count'],
-                'mappings_deduplicated_fields': mappings_info['total_deduplicated_field_count'],
-                'mappings_deduplicated_size': convert_bytes(mappings_info['total_deduplicated_mapping_size_in_bytes'])
             })
             node_info = raw_stats['nodes']
             res.update({
@@ -126,13 +118,28 @@ class ESConnectionBase(DocStoreConnection):
     """
 
     def create_idx(self, index_name: str, dataset_id: str, vector_size: int, parser_id: str = None):
-        # parser_id is used by Infinity but not needed for ES (kept for interface compatibility)
+        # parser_id is used by Infinity but not needed for OpenSearch (kept for interface compatibility)
         if self.index_exist(index_name, dataset_id):
             return True
         try:
-            return IndicesClient(self.es).create(index=index_name,
-                                                 settings=self.mapping["settings"],
-                                                 mappings=self.mapping["mappings"])
+            mapping = copy.deepcopy(self.mapping)
+            # Add vector field mapping with correct dimension for KNN
+            if vector_size and vector_size > 0:
+                mapping.setdefault("mappings", {}).setdefault("properties", {})
+                mapping["mappings"]["properties"][f"q_{vector_size}_vec"] = {
+                    "type": "knn_vector",
+                    "dimension": vector_size,
+                    "method": {
+                        "name": "hnsw",
+                        "space_type": "cosinesimil",
+                        "engine": "nmslib",
+                        "parameters": {
+                            "ef_construction": 512,
+                            "m": 32
+                        }
+                    }
+                }
+            return IndicesClient(self.es).create(index=index_name, body=mapping)
         except Exception:
             self.logger.exception("ESConnection.createIndex error %s" % index_name)
 
@@ -153,9 +160,7 @@ class ESConnectionBase(DocStoreConnection):
 
             with open(fp_mapping, "r") as f:
                 doc_meta_mapping = json.load(f)
-            return IndicesClient(self.es).create(index=index_name,
-                                                 settings=doc_meta_mapping["settings"],
-                                                 mappings=doc_meta_mapping["mappings"])
+            return IndicesClient(self.es).create(index=index_name, body=doc_meta_mapping)
         except Exception as e:
             self.logger.exception(f"Error creating document metadata index {index_name}: {e}")
 
@@ -176,7 +181,7 @@ class ESConnectionBase(DocStoreConnection):
             try:
                 return s.exists()
             except ConnectionTimeout:
-                self.logger.exception("ES request timeout")
+                self.logger.exception("OpenSearch request timeout")
                 time.sleep(3)
                 self._connect()
                 continue
@@ -193,9 +198,9 @@ class ESConnectionBase(DocStoreConnection):
         for i in range(ATTEMPT_TIME):
             try:
                 res = self.es.get(index=index_name,
-                                  id=doc_id, source=True, )
+                                  id=doc_id, _source=True)
                 if str(res.get("timed_out", "")).lower() == "true":
-                    raise Exception("Es Timeout.")
+                    raise Exception("OpenSearch Timeout.")
                 doc = res["_source"]
                 doc["id"] = doc_id
                 return doc
@@ -313,7 +318,7 @@ class ESConnectionBase(DocStoreConnection):
 
         for p, r in replaces:
             sql = sql.replace(p, r, 1)
-        self.logger.debug(f"ESConnection.sql to es: {sql}")
+        self.logger.debug(f"ESConnection.sql to OpenSearch: {sql}")
 
         for i in range(ATTEMPT_TIME):
             try:
@@ -321,7 +326,7 @@ class ESConnectionBase(DocStoreConnection):
                                         request_timeout="2s")
                 return res
             except ConnectionTimeout:
-                self.logger.exception("ES request timeout")
+                self.logger.exception("OpenSearch request timeout")
                 time.sleep(3)
                 self._connect()
                 continue

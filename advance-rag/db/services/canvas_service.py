@@ -13,18 +13,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-import json
 import logging
-import time
-from uuid import uuid4
-from agent.canvas import Canvas
-from api.db import CanvasCategory, TenantPermission
-from api.db.db_models import DB, CanvasTemplate, User, UserCanvas, API4Conversation
-from api.db.services.api_service import API4ConversationService
-from api.db.services.common_service import CommonService
-from common.misc_utils import get_uuid
-from api.utils.api_utils import get_data_openai
-import tiktoken
+from db import CanvasCategory, TenantPermission
+from db.db_models import DB, CanvasTemplate, User, UserCanvas
+from db.services.common_service import CommonService
 from peewee import fn
 
 
@@ -178,7 +170,7 @@ class UserCanvasService(CommonService):
     @classmethod
     @DB.connection_context()
     def accessible(cls, canvas_id, tenant_id):
-        from api.db.services.user_service import UserTenantService
+        from db.services.user_service import UserTenantService
         e, c = UserCanvasService.get_by_canvas_id(canvas_id)
         if not e:
             return False
@@ -189,185 +181,3 @@ class UserCanvasService(CommonService):
         return True
 
 
-async def completion(tenant_id, agent_id, session_id=None, **kwargs):
-    query = kwargs.get("query", "") or kwargs.get("question", "")
-    files = kwargs.get("files", [])
-    inputs = kwargs.get("inputs", {})
-    user_id = kwargs.get("user_id", "")
-    custom_header = kwargs.get("custom_header", "")
-    release_mode = str(kwargs.get("release", "")).strip().lower()
-
-    if session_id:
-        e, conv = API4ConversationService.get_by_id(session_id)
-        if not e:
-            raise LookupError("Session not found!")
-        if not conv.message:
-            conv.message = []
-        if not isinstance(conv.dsl, str):
-            conv.dsl = json.dumps(conv.dsl, ensure_ascii=False)
-        canvas = Canvas(conv.dsl, tenant_id, agent_id, canvas_id=agent_id, custom_header=custom_header)
-    else:
-        e, cvs = UserCanvasService.get_by_id(agent_id)
-        if not e:
-            raise LookupError("Agent not found.")
-        if cvs.user_id != tenant_id:
-            raise PermissionError("You do not own the agent.")
-        if release_mode == "true" and not bool(cvs.release):
-            raise PermissionError("No available published version")
-        if not isinstance(cvs.dsl, str):
-            cvs.dsl = json.dumps(cvs.dsl, ensure_ascii=False)
-
-        session_id=get_uuid()
-        canvas = Canvas(cvs.dsl, tenant_id, agent_id, canvas_id=cvs.id, custom_header=custom_header)
-        canvas.reset()
-        conv = {
-            "id": session_id,
-            "dialog_id": cvs.id,
-            "user_id": user_id,
-            "message": [],
-            "source": "agent",
-            "dsl": cvs.dsl,
-            "reference": []
-        }
-        API4ConversationService.save(**conv)
-        conv = API4Conversation(**conv)
-
-    message_id = str(uuid4())
-    conv.message.append({
-        "role": "user",
-        "content": query,
-        "id": message_id,
-        "files": files
-    })
-    txt = ""
-    async for ans in canvas.run(query=query, files=files, user_id=user_id, inputs=inputs):
-        ans["session_id"] = session_id
-        if ans["event"] == "message":
-            txt += ans["data"]["content"]
-            if ans["data"].get("start_to_think", False):
-                txt += "<think>"
-            elif ans["data"].get("end_to_think", False):
-                txt += "</think>"
-        yield "data:" + json.dumps(ans, ensure_ascii=False) + "\n\n"
-
-    conv.message.append({"role": "assistant", "content": txt, "created_at": time.time(), "id": message_id})
-    conv.reference = canvas.get_reference()
-    conv.errors = canvas.error
-    conv.dsl = str(canvas)
-    conv = conv.to_dict()
-    API4ConversationService.append_message(conv["id"], conv)
-
-
-async def completion_openai(tenant_id, agent_id, question, session_id=None, stream=True, **kwargs):
-    tiktoken_encoder = tiktoken.get_encoding("cl100k_base")
-    prompt_tokens = len(tiktoken_encoder.encode(str(question)))
-    user_id = kwargs.get("user_id", "")
-
-    if stream:
-        completion_tokens = 0
-        try:
-            async for ans in completion(
-                tenant_id=tenant_id,
-                agent_id=agent_id,
-                session_id=session_id,
-                query=question,
-                user_id=user_id,
-                **kwargs
-            ):
-                if isinstance(ans, str):
-                    try:
-                        ans = json.loads(ans[5:])  # remove "data:"
-                    except Exception as e:
-                        logging.exception(f"Agent OpenAI-Compatible completion_openai parse answer failed: {e}")
-                        continue
-                if ans.get("event") not in ["message", "message_end"]:
-                    continue
-
-                content_piece = ""
-                if ans["event"] == "message":
-                    content_piece = ans["data"]["content"]
-
-                completion_tokens += len(tiktoken_encoder.encode(content_piece))
-
-                openai_data = get_data_openai(
-                        id=session_id or str(uuid4()),
-                        model=agent_id,
-                        content=content_piece,
-                        prompt_tokens=prompt_tokens,
-                        completion_tokens=completion_tokens,
-                        stream=True
-                    )
-
-                if ans.get("data", {}).get("reference", None):
-                    openai_data["choices"][0]["delta"]["reference"] = ans["data"]["reference"]
-
-                yield "data: " + json.dumps(openai_data, ensure_ascii=False) + "\n\n"
-
-            yield "data: [DONE]\n\n"
-
-        except Exception as e:
-            logging.exception(e)
-            yield "data: " + json.dumps(
-                get_data_openai(
-                    id=session_id or str(uuid4()),
-                    model=agent_id,
-                    content=f"**ERROR**: {str(e)}",
-                    finish_reason="stop",
-                    prompt_tokens=prompt_tokens,
-                    completion_tokens=len(tiktoken_encoder.encode(f"**ERROR**: {str(e)}")),
-                    stream=True
-                ),
-                ensure_ascii=False
-            ) + "\n\n"
-            yield "data: [DONE]\n\n"
-
-    else:
-        try:
-            all_content = ""
-            reference = {}
-            async for ans in completion(
-                tenant_id=tenant_id,
-                agent_id=agent_id,
-                session_id=session_id,
-                query=question,
-                user_id=user_id,
-                **kwargs
-            ):
-                if isinstance(ans, str):
-                    ans = json.loads(ans[5:])
-                if ans.get("event") not in ["message", "message_end"]:
-                    continue
-
-                if ans["event"] == "message":
-                    all_content += ans["data"]["content"]
-
-                if ans.get("data", {}).get("reference", None):
-                    reference.update(ans["data"]["reference"])
-
-            completion_tokens = len(tiktoken_encoder.encode(all_content))
-
-            openai_data = get_data_openai(
-                id=session_id or str(uuid4()),
-                model=agent_id,
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-                content=all_content,
-                finish_reason="stop",
-                param=None
-            )
-
-            if reference:
-                openai_data["choices"][0]["message"]["reference"] = reference
-
-            yield openai_data
-        except Exception as e:
-            logging.exception(e)
-            yield get_data_openai(
-                id=session_id or str(uuid4()),
-                model=agent_id,
-                prompt_tokens=prompt_tokens,
-                completion_tokens=len(tiktoken_encoder.encode(f"**ERROR**: {str(e)}")),
-                content=f"**ERROR**: {str(e)}",
-                finish_reason="stop",
-                param=None
-            )

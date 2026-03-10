@@ -1,101 +1,12 @@
 # Knowledge Base - Docker Compose Configuration
-# This file sets up the complete infrastructure for the Knowledge Base system
+# Infrastructure (PostgreSQL, Valkey, OpenSearch, RustFS) is included from docker-compose-base.yml
+# This file only contains the application services that we build and develop.
+
+include:
+  - path: docker-compose-base.yml
+    env_file: .env
 
 services:
-  # ==========================================================================
-  # PostgreSQL Database
-  # ==========================================================================
-  postgres:
-    image: postgres:17-alpine
-    container_name: kb-postgres
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      POSTGRES_DB: ${DB_NAME:-knowledge_base}
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-change_me_in_production}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init-db:/docker-entrypoint-initdb.d:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-knowledge_base}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    networks:
-      - kb-network
-
-  # ==========================================================================
-  # Redis Session Store
-  # ==========================================================================
-  redis:
-    image: redis:7-alpine
-    container_name: kb-redis
-    restart: unless-stopped
-    command: >
-      redis-server
-      --appendonly yes
-      --requirepass ${REDIS_PASSWORD:-}
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
-    networks:
-      - kb-network
-
-  # ==========================================================================
-  # Elasticsearch (vector + text search for RAG chunks)
-  # ==========================================================================
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
-    container_name: kb-elasticsearch
-    restart: unless-stopped
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=true
-      - ELASTIC_PASSWORD=${ES_PASSWORD:-elastic123}
-      - xpack.security.http.ssl.enabled=false
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
-    volumes:
-      - es_data:/usr/share/elasticsearch/data
-    healthcheck:
-      test: ["CMD-SHELL", "curl -s -u elastic:${ES_PASSWORD:-elastic123} http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    networks:
-      - kb-network
-
-  # ==========================================================================
-  # RustFS (S3-compatible object storage for uploaded documents)
-  # Licensed under Apache 2.0 (replaces MinIO due to license concerns)
-  # ==========================================================================
-  rustfs:
-    image: rustfs/rustfs:latest
-    container_name: kb-rustfs
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      RUSTFS_ROOT_USER: ${S3_ACCESS_KEY:-rustfsadmin}
-      RUSTFS_ROOT_PASSWORD: ${S3_SECRET_KEY:-rustfsadmin}
-    volumes:
-      - rustfs_data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 10s
-    networks:
-      - kb-network
-
   # ==========================================================================
   # Knowledge Base Backend
   # ==========================================================================
@@ -109,9 +20,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
+      valkey:
         condition: service_healthy
-      elasticsearch:
+      opensearch:
         condition: service_healthy
       rustfs:
         condition: service_healthy
@@ -119,9 +30,10 @@ services:
       - .env
     environment:
       DB_HOST: postgres
-      REDIS_HOST: redis
-      ES_HOST: http://elasticsearch:9200
-      ES_PASSWORD: ${ES_PASSWORD:-elastic123}
+      REDIS_HOST: valkey
+      REDIS_PORT: "6379"
+      VECTORDB_HOST: http://opensearch:9201
+      VECTORDB_PASSWORD: ${VECTORDB_PASSWORD:-OpenSearch@123}
       S3_HOST: rustfs:9000
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-rustfsadmin}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-rustfsadmin}
@@ -155,11 +67,11 @@ services:
     restart: unless-stopped
     command: ["python", "-m", "executor_wrapper"]
     depends_on:
-      postgres:
+      backend:
         condition: service_healthy
-      redis:
+      valkey:
         condition: service_healthy
-      elasticsearch:
+      opensearch:
         condition: service_healthy
       rustfs:
         condition: service_healthy
@@ -172,11 +84,12 @@ services:
       DB_NAME: ${DB_NAME:-knowledge_base}
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-change_me_in_production}
-      REDIS_HOST: redis
+      REDIS_HOST: valkey
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      ES_HOST: http://elasticsearch:9200
-      ES_PASSWORD: ${ES_PASSWORD:-elastic123}
+      DOC_ENGINE: opensearch
+      VECTORDB_HOST: http://opensearch:9201
+      VECTORDB_PASSWORD: ${VECTORDB_PASSWORD:-OpenSearch@123}
       S3_HOST: rustfs:9000
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-rustfsadmin}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-rustfsadmin}
@@ -191,24 +104,9 @@ services:
       - kb-network
 
 # ==========================================================================
-# Networks
-# ==========================================================================
-networks:
-  kb-network:
-    driver: bridge
-
-# ==========================================================================
-# Volumes
+# Volumes (app-only — infrastructure volumes are in docker-compose-base.yml)
 # ==========================================================================
 volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
-  es_data:
-    driver: local
-  rustfs_data:
-    driver: local
   backend_logs:
     driver: local
   backend_data:

@@ -24,10 +24,10 @@ from litellm import logging
 import numpy as np
 from PIL import Image
 
-from api.db.services.file2document_service import File2DocumentService
-from api.db.services.file_service import FileService
-from api.db.services.llm_service import LLMBundle
-from api.db.joint_services.tenant_model_service import get_model_config_by_type_and_name, get_tenant_default_model_by_type
+from db.services.file2document_service import File2DocumentService
+from db.services.file_service import FileService
+from db.services.llm_service import LLMBundle
+from db.joint_services.tenant_model_service import get_model_config_by_type_and_name, get_tenant_default_model_by_type
 from common import settings
 from common.constants import LLMType
 from common.misc_utils import get_uuid
@@ -339,7 +339,7 @@ class Parser(ProcessBase):
                 if not tenant_id:
                     return None
 
-                from api.db.services.tenant_llm_service import TenantLLMService
+                from db.services.tenant_llm_service import TenantLLMService
 
                 env_name = TenantLLMService.ensure_mineru_from_env(tenant_id)
                 candidates = TenantLLMService.query(tenant_id=tenant_id, llm_factory="MinerU", model_type=LLMType.OCR.value)
@@ -421,7 +421,7 @@ class Parser(ProcessBase):
                 if not tenant_id:
                     return None
 
-                from api.db.services.tenant_llm_service import TenantLLMService
+                from db.services.tenant_llm_service import TenantLLMService
 
                 env_name = TenantLLMService.ensure_paddleocr_from_env(tenant_id)
                 candidates = TenantLLMService.query(tenant_id=tenant_id, llm_factory="PaddleOCR", model_type=LLMType.OCR.value)
@@ -931,10 +931,9 @@ class Parser(ProcessBase):
                 email_content["attachments"] = attachments
         else:
             # handle msg file
-            import extract_msg
+            import msglite
 
-            print("handle a msg file.")
-            msg = extract_msg.Message(blob)
+            msg = msglite.Message(blob)
             # handle header info
             basic_content = {
                 "from": msg.sender,

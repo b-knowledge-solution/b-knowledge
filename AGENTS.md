@@ -45,7 +45,7 @@ be/src/
 │   ├── external/             # External service integrations (RAGFlow, Langfuse, MinIO)
 │   ├── glossary/             # Glossary / terminology management
 │   ├── knowledge-base/       # Knowledge base CRUD
-│   ├── model-provider/       # AI model provider config
+│   ├── llm-provider/         # LLM / AI model provider config
 │   ├── preview/              # Document preview
 │   ├── rag/                  # RAG pipeline orchestration
 │   ├── system-tools/         # System tooling & utilities
@@ -56,7 +56,7 @@ be/src/
 ├── shared/                   # Cross-cutting concerns (shared libraries)
 │   ├── config/               # Environment config & secrets
 │   ├── db/                   # Database providers, knex config & migrations
-│   ├── middleware/            # Express middleware (auth, logging, error handling)
+│   ├── middleware/            # Express middleware (auth, validation, logging, error handling)
 │   ├── models/               # Shared data models & factory interfaces
 │   ├── services/             # Shared services (queue, cache, external clients)
 │   ├── types/                # Global TypeScript definitions
@@ -67,16 +67,34 @@ be/src/
 
 ### BE Module Internal Convention
 
-Each module under `modules/` follows this file pattern:
+Modules with ≥5 files use **sub-directory** layout:
 
 ```
 modules/<domain>/
-├── <domain>.controller.ts    # Request handler (calls service)
-├── <domain>.routes.ts        # Express route definitions
-├── <domain>.service.ts       # Business logic
-├── <domain>.model.ts         # (optional) Domain-specific models
+├── routes/                   # Express route definitions
+│   └── <domain>.routes.ts
+├── controllers/              # Request handlers (call services)
+│   └── <domain>.controller.ts
+├── services/                 # Business logic
+│   └── <domain>.service.ts
+├── models/                   # Domain-specific Knex models
+│   └── <domain>.model.ts
+├── schemas/                  # Zod validation schemas
+│   └── <domain>.schemas.ts
 └── index.ts                  # Barrel export (public API)
 ```
+
+Small modules (≤4 files) keep **flat** layout:
+
+```
+modules/<domain>/
+├── <domain>.controller.ts
+├── <domain>.routes.ts
+├── <domain>.service.ts
+└── index.ts
+```
+
+**Flat modules**: `auth`, `dashboard`, `preview`, `system-tools`, `user-history`
 
 ## 4. Frontend Architecture (`fe/`)
 
@@ -195,6 +213,10 @@ npm run test
 - Node.js 22+ (ExpressJS)
 - Implement **Factory Pattern** for all data schemas and interfaces in `shared/models/`
 - Implement **Singleton Pattern** for all global services and utils
-- New modules must follow the `controller + routes + service +model + index.ts` convention
+- New modules with ≥5 files must use the **sub-directory** layout (`routes/`, `controllers/`, `services/`, `models/`, `schemas/`, `index.ts`)
+- Small modules (≤4 files) may use the **flat** layout (`<domain>.controller.ts`, `<domain>.routes.ts`, `<domain>.service.ts`, `index.ts`)
+- All mutation routes (`POST`/`PUT`/`DELETE`) must use **Zod validation** via `validate()` middleware from `shared/middleware/validate.middleware.ts`
+- **Cross-module imports** must go through barrel files (`@/modules/<domain>/index.js`), never deep imports
+- **Same-module imports** may use direct paths within sub-directories (`./services/`, `./models/`, etc.)
 - If changes impact the database, create a migration file in `be/src/shared/db/migrations/`
 - Always use Knex ORM for model files in `be/src/shared/models/`; raw SQL only when Knex ORM cannot support the query

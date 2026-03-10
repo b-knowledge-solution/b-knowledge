@@ -15,7 +15,7 @@
 #
 import logging
 import time
-from elasticsearch import Elasticsearch
+from opensearchpy import OpenSearch
 
 from common import settings
 from common.decorator import singleton
@@ -27,37 +27,37 @@ ATTEMPT_TIME = 2
 class ElasticSearchConnectionPool:
 
     def __init__(self):
-        if hasattr(settings, "ES"):
-            self.ES_CONFIG = settings.ES
+        if hasattr(settings, "VECTORDB"):
+            self.ES_CONFIG = settings.VECTORDB
         else:
-            self.ES_CONFIG = settings.get_base_config("es", {})
+            self.ES_CONFIG = settings.get_base_config("vectordb", {})
 
         for _ in range(ATTEMPT_TIME):
             try:
                 if self._connect():
                     break
             except Exception as e:
-                logging.warning(f"{str(e)}. Waiting Elasticsearch {self.ES_CONFIG['hosts']} to be healthy.")
+                logging.warning(f"{str(e)}. Waiting OpenSearch {self.ES_CONFIG['hosts']} to be healthy.")
                 time.sleep(5)
 
         if not hasattr(self, "es_conn") or not self.es_conn or not self.es_conn.ping():
-            msg = f"Elasticsearch {self.ES_CONFIG['hosts']} is unhealthy in 10s."
+            msg = f"OpenSearch {self.ES_CONFIG['hosts']} is unhealthy in 10s."
             logging.error(msg)
             raise Exception(msg)
-        v = self.info.get("version", {"number": "8.11.3"})
+        v = self.info.get("version", {"number": "2.18.0"})
         v = v["number"].split(".")[0]
-        if int(v) < 8:
-            msg = f"Elasticsearch version must be greater than or equal to 8, current version: {v}"
+        if int(v) < 2:
+            msg = f"OpenSearch version must be greater than or equal to 2, current version: {v}"
             logging.error(msg)
             raise Exception(msg)
 
     def _connect(self):
-        self.es_conn = Elasticsearch(
+        self.es_conn = OpenSearch(
             self.ES_CONFIG["hosts"].split(","),
-            basic_auth=(self.ES_CONFIG["username"], self.ES_CONFIG[
+            http_auth=(self.ES_CONFIG["username"], self.ES_CONFIG[
                 "password"]) if "username" in self.ES_CONFIG and "password" in self.ES_CONFIG else None,
-            verify_certs= self.ES_CONFIG.get("verify_certs", False),
-            timeout=600 )
+            verify_certs=self.ES_CONFIG.get("verify_certs", False),
+            timeout=600)
         if self.es_conn:
             self.info = self.es_conn.info()
             return True

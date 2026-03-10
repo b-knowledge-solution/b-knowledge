@@ -20,7 +20,7 @@ import time
 from typing import Any, Optional
 
 import numpy as np
-from elasticsearch_dsl import Q, Search
+from opensearchpy import Q, Search
 from pydantic import BaseModel
 from pymysql.converters import escape_string
 from pyobvector import ARRAY

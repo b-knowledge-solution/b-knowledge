@@ -17,8 +17,8 @@ import logging
 import time
 import traceback
 
-from api.db.db_models import close_connection
-from api.db.services.task_service import TaskService
+from db.db_models import close_connection
+from db.services.task_service import TaskService
 from rag.utils.redis_conn import REDIS_CONN
 from common import settings
 

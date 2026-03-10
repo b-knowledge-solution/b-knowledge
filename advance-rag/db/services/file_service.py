@@ -26,17 +26,17 @@ from typing import Union
 import xxhash
 from peewee import fn
 
-from api.db import KNOWLEDGEBASE_FOLDER_NAME, FileType
-from api.db.db_models import DB, Document, File, File2Document, Knowledgebase, Task
-from api.db.services import duplicate_name
-from api.db.services.common_service import CommonService
-from api.db.services.document_service import DocumentService
-from api.db.services.file2document_service import File2DocumentService
+from db import KNOWLEDGEBASE_FOLDER_NAME, FileType
+from db.db_models import DB, Document, File, File2Document, Knowledgebase, Task
+from db.services import duplicate_name
+from db.services.common_service import CommonService
+from db.services.document_service import DocumentService
+from db.services.file2document_service import File2DocumentService
 from common.misc_utils import get_uuid
 from common.constants import TaskStatus, FileSource, ParserType
-from api.db.services.knowledgebase_service import KnowledgebaseService
-from api.db.services.task_service import TaskService
-from api.utils.file_utils import filename_type, read_potential_broken_pdf, thumbnail_img, sanitize_path
+from db.services.knowledgebase_service import KnowledgebaseService
+from db.services.task_service import TaskService
+from common.file_type_utils import filename_type, read_potential_broken_pdf, thumbnail_img, sanitize_path
 from rag.llm.cv_model import GptV4
 from common import settings
 
@@ -189,7 +189,7 @@ class FileService(CommonService):
     @classmethod
     @DB.connection_context()
     def create_folder(cls, file, parent_id, name, count):
-        from api.apps import current_user
+        current_user = None  # Not available in worker context (was from api.apps)
         # Recursively create folder structure
         # Args:
         #     file: Current file object
@@ -532,7 +532,7 @@ class FileService(CommonService):
     @staticmethod
     def parse(filename, blob, img_base64=True, tenant_id=None, layout_recognize=None):
         from rag.app import audio, email, naive, picture, presentation
-        from api.apps import current_user
+        current_user = None  # Not available in worker context (was from api.apps)
 
         def dummy(prog=None, msg=""):
             pass

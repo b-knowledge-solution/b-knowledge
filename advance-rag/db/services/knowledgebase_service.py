@@ -17,16 +17,16 @@ from datetime import datetime
 
 from peewee import fn, JOIN
 
-from api.db import TenantPermission
-from api.db.db_models import DB, Document, Knowledgebase, User, UserTenant, UserCanvas
-from api.db.services.common_service import CommonService
+from db import TenantPermission
+from db.db_models import DB, Document, Knowledgebase, User, UserTenant, UserCanvas
+from db.services.common_service import CommonService
 from common.time_utils import current_timestamp, datetime_format
-from api.db.services import duplicate_name
-from api.db.services.user_service import TenantService
+from db.services import duplicate_name
+from db.services.user_service import TenantService
 from common.misc_utils import get_uuid
 from common.constants import StatusEnum
-from api.constants import DATASET_NAME_LIMIT
-from api.utils.api_utils import get_parser_config, get_data_error_result
+DATASET_NAME_LIMIT = 256
+from common.api_helpers import get_parser_config, get_data_error_result
 
 
 class KnowledgebaseService(CommonService):
@@ -94,7 +94,7 @@ class KnowledgebaseService(CommonService):
         #     If all documents are parsed successfully, returns (True, None)
         #     If any document is not fully parsed, returns (False, error_message)
         from common.constants import TaskStatus
-        from api.db.services.document_service import DocumentService
+        from db.services.document_service import DocumentService
 
         # Get dataset information
         kbs = cls.query(id=kb_id)

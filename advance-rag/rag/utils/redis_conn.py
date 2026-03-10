@@ -124,9 +124,17 @@ class RedisDB:
 
     def __open__(self):
         try:
+            # Parse host — may be "host:port" or just "host"
+            raw_host = self.config.get("host", "localhost")
+            if ":" in str(raw_host):
+                host = str(raw_host).split(":")[0]
+                port = int(str(raw_host).split(":")[1])
+            else:
+                host = str(raw_host)
+                port = int(self.config.get("port", 6379))
             conn_params = {
-                "host": self.config["host"].split(":")[0],
-                "port": int(self.config.get("host", ":6379").split(":")[1]),
+                "host": host,
+                "port": port,
                 "db": int(self.config.get("db", 1)),
                 "decode_responses": True,
             }

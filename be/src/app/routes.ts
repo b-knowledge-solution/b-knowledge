@@ -12,22 +12,22 @@ import { log } from '@/shared/services/logger.service.js';
 
 // Route imports
 import authRoutes from '@/modules/auth/auth.routes.js';
-import knowledgeBaseRoutes from '@/modules/knowledge-base/knowledge-base.routes.js';
-import adminRoutes from '@/modules/admin/admin.routes.js';
-import userRoutes from '@/modules/users/users.routes.js';
-import teamRoutes from '@/modules/teams/teams.routes.js';
+import knowledgeBaseRoutes from '@/modules/knowledge-base/routes/knowledge-base.routes.js';
+import adminRoutes from '@/modules/admin/routes/admin.routes.js';
+import userRoutes from '@/modules/users/routes/users.routes.js';
+import teamRoutes from '@/modules/teams/routes/teams.routes.js';
 import systemToolsRoutes from '@/modules/system-tools/system-tools.routes.js';
-import auditRoutes from '@/modules/audit/audit.routes.js';
+import auditRoutes from '@/modules/audit/routes/audit.routes.js';
 import externalRoutes from '@/modules/external/routes/index.js';
-import broadcastMessageRoutes from '@/modules/broadcast/broadcast-message.routes.js';
-import adminHistoryRoutes from '@/modules/admin/admin-history.routes.js';
-import chatHistoryRoutes from '@/modules/chat/chat-history.routes.js';
+import broadcastMessageRoutes from '@/modules/broadcast/routes/broadcast-message.routes.js';
+import adminHistoryRoutes from '@/modules/admin/routes/admin-history.routes.js';
+import chatHistoryRoutes from '@/modules/chat/routes/chat-history.routes.js';
 import userHistoryRoutes from '@/modules/user-history/user-history.routes.js';
 
 import dashboardRoutes from '@/modules/dashboard/dashboard.routes.js';
-import glossaryRoutes from '@/modules/glossary/glossary.routes.js';
-import ragRoutes from '@/modules/rag/rag.routes.js';
-import llmProviderRoutes from '@/modules/llm-provider/llm-provider.routes.js';
+import glossaryRoutes from '@/modules/glossary/routes/glossary.routes.js';
+import ragRoutes from '@/modules/rag/routes/rag.routes.js';
+import llmProviderRoutes from '@/modules/llm-provider/routes/llm-provider.routes.js';
 
 // ============================================================================
 // Rate Limiters

@@ -20,6 +20,12 @@ import logging
 import importlib
 from filelock import FileLock
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 from common.file_utils import get_project_base_directory
 from common.constants import SERVICE_CONF
 from ruamel.yaml import YAML
@@ -139,6 +145,18 @@ def decrypt_database_password(password):
 def decrypt_database_config(database=None, passwd_key="password", name="database"):
     if not database:
         database = get_base_config(name, {})
+
+    # Allow environment variables to override YAML database config
+    env_overrides = {
+        "host": os.environ.get("DB_HOST"),
+        "port": os.environ.get("DB_PORT"),
+        "name": os.environ.get("DB_NAME"),
+        "user": os.environ.get("DB_USER"),
+        "password": os.environ.get("DB_PASSWORD"),
+    }
+    for key, val in env_overrides.items():
+        if val is not None:
+            database[key] = int(val) if key == "port" else val
 
     database[passwd_key] = decrypt_database_password(database[passwd_key])
     return database

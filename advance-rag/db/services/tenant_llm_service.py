@@ -20,10 +20,10 @@ from peewee import IntegrityError
 from langfuse import Langfuse
 from common import settings
 from common.constants import MINERU_DEFAULT_CONFIG, MINERU_ENV_KEYS, PADDLEOCR_DEFAULT_CONFIG, PADDLEOCR_ENV_KEYS, LLMType
-from api.db.db_models import DB, LLMFactories, TenantLLM
-from api.db.services.common_service import CommonService
-from api.db.services.langfuse_service import TenantLangfuseService
-from api.db.services.user_service import TenantService
+from db.db_models import DB, LLMFactories, TenantLLM
+from db.services.common_service import CommonService
+from db.services.langfuse_service import TenantLangfuseService
+from db.services.user_service import TenantService
 from rag.llm import ChatModel, CvModel, EmbeddingModel, OcrModel, RerankModel, Seq2txtModel, TTSModel
 
 
@@ -87,7 +87,7 @@ class TenantLLMService(CommonService):
     @classmethod
     @DB.connection_context()
     def get_model_config(cls, tenant_id, llm_type, llm_name=None):
-        from api.db.services.llm_service import LLMService
+        from db.services.llm_service import LLMService
 
         e, tenant = TenantService.get_by_id(tenant_id)
         if not e:
@@ -366,7 +366,7 @@ class TenantLLMService(CommonService):
 
     @staticmethod
     def llm_id2llm_type(llm_id: str) -> str | None:
-        from api.db.services.llm_service import LLMService
+        from db.services.llm_service import LLMService
 
         llm_id, *_ = TenantLLMService.split_model_name_and_factory(llm_id)
         llm_factories = settings.FACTORY_LLM_INFOS

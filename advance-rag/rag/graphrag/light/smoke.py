@@ -21,10 +21,10 @@ import networkx as nx
 import logging
 
 from common.constants import LLMType
-from api.db.services.document_service import DocumentService
-from api.db.services.knowledgebase_service import KnowledgebaseService
-from api.db.services.llm_service import LLMBundle
-from api.db.joint_services.tenant_model_service import get_model_config_by_id, get_model_config_by_type_and_name, get_tenant_default_model_by_type
+from db.services.document_service import DocumentService
+from db.services.knowledgebase_service import KnowledgebaseService
+from db.services.llm_service import LLMBundle
+from db.joint_services.tenant_model_service import get_model_config_by_id, get_model_config_by_type_and_name, get_tenant_default_model_by_type
 from rag.graphrag.general.index import update_graph
 from rag.graphrag.light.graph_extractor import GraphExtractor
 from common import settings
