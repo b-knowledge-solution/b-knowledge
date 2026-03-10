@@ -64,7 +64,13 @@ export default defineConfig(function (_a) {
         plugins: [
             wasm(),
             topLevelAwait(),
-            react()
+            react({
+                babel: {
+                    plugins: [
+                        ['babel-plugin-react-compiler', {}],
+                    ],
+                },
+            })
         ],
         resolve: {
             alias: {

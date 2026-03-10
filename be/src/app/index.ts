@@ -28,6 +28,7 @@ import { externalTraceService } from '@/modules/external/trace.service.js';
 import { socketService } from '@/shared/services/socket.service.js';
 
 import { setupApiRoutes } from '@/app/routes.js';
+import { registerAllAdapters } from '@/modules/sync/index.js';
 
 const app = express();
 
@@ -86,6 +87,9 @@ app.use(session(sessionConfig));
 
 // Setup all API routes and middleware
 setupApiRoutes(app);
+
+// Register sync connector adapters
+registerAllAdapters();
 
 // Bootstraps HTTP/HTTPS server and initializes background services that require the listener
 const startServer = async (): Promise<http.Server | https.Server> => {

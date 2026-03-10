@@ -23,110 +23,23 @@ from strenum import StrEnum
 
 
 class SupportedLiteLLMProvider(StrEnum):
-    Tongyi_Qianwen = "Tongyi-Qianwen"
-    Dashscope = "Dashscope"
-    Bedrock = "Bedrock"
-    Moonshot = "Moonshot"
-    xAI = "xAI"
-    DeepInfra = "DeepInfra"
-    Groq = "Groq"
-    Cohere = "Cohere"
     Gemini = "Gemini"
-    DeepSeek = "DeepSeek"
-    Nvidia = "NVIDIA"
-    TogetherAI = "TogetherAI"
-    Anthropic = "Anthropic"
     Ollama = "Ollama"
-    LongCat = "LongCat"
-    CometAPI = "CometAPI"
-    SILICONFLOW = "SILICONFLOW"
-    OpenRouter = "OpenRouter"
-    StepFun = "StepFun"
-    PPIO = "PPIO"
-    PerfXCloud = "PerfXCloud"
-    Upstage = "Upstage"
-    NovitaAI = "NovitaAI"
-    Lingyi_AI = "01.AI"
-    GiteeAI = "GiteeAI"
-    AI_302 = "302.AI"
-    JiekouAI = "Jiekou.AI"
-    ZHIPU_AI = "ZHIPU-AI"
-    MiniMax = "MiniMax"
-    DeerAPI = "DeerAPI"
-    GPUStack = "GPUStack"
     OpenAI = "OpenAI"
     Azure_OpenAI = "Azure-OpenAI"
-    n1n = "n1n"
-    HunYuan = "Tencent Hunyuan"
-    Avian = "Avian"
 
 
 FACTORY_DEFAULT_BASE_URL = {
-    SupportedLiteLLMProvider.Tongyi_Qianwen: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    SupportedLiteLLMProvider.Dashscope: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    SupportedLiteLLMProvider.Moonshot: "https://api.moonshot.cn/v1",
     SupportedLiteLLMProvider.Ollama: "",
-    SupportedLiteLLMProvider.LongCat: "https://api.longcat.chat/openai",
-    SupportedLiteLLMProvider.CometAPI: "https://api.cometapi.com/v1",
-    SupportedLiteLLMProvider.SILICONFLOW: "https://api.siliconflow.cn/v1",
-    SupportedLiteLLMProvider.OpenRouter: "https://openrouter.ai/api/v1",
-    SupportedLiteLLMProvider.StepFun: "https://api.stepfun.com/v1",
-    SupportedLiteLLMProvider.PPIO: "https://api.ppinfra.com/v3/openai",
-    SupportedLiteLLMProvider.PerfXCloud: "https://cloud.perfxlab.cn/v1",
-    SupportedLiteLLMProvider.Upstage: "https://api.upstage.ai/v1/solar",
-    SupportedLiteLLMProvider.NovitaAI: "https://api.novita.ai/v3/openai",
-    SupportedLiteLLMProvider.Lingyi_AI: "https://api.lingyiwanwu.com/v1",
-    SupportedLiteLLMProvider.GiteeAI: "https://ai.gitee.com/v1/",
-    SupportedLiteLLMProvider.AI_302: "https://api.302.ai/v1",
-    SupportedLiteLLMProvider.Anthropic: "https://api.anthropic.com/",
-    SupportedLiteLLMProvider.JiekouAI: "https://api.jiekou.ai/openai",
-    SupportedLiteLLMProvider.ZHIPU_AI: "https://open.bigmodel.cn/api/paas/v4",
-    SupportedLiteLLMProvider.MiniMax: "https://api.minimaxi.com/v1",
-    SupportedLiteLLMProvider.DeerAPI: "https://api.deerapi.com/v1",
     SupportedLiteLLMProvider.OpenAI: "https://api.openai.com/v1",
-    SupportedLiteLLMProvider.n1n: "https://api.n1n.ai/v1",
-    SupportedLiteLLMProvider.HunYuan: "https://api.hunyuan.cloud.tencent.com/v1",
-    SupportedLiteLLMProvider.Avian: "https://api.avian.io/v1",
 }
 
 
 LITELLM_PROVIDER_PREFIX = {
-    SupportedLiteLLMProvider.Tongyi_Qianwen: "dashscope/",
-    SupportedLiteLLMProvider.Dashscope: "dashscope/",
-    SupportedLiteLLMProvider.Bedrock: "bedrock/",
-    SupportedLiteLLMProvider.Moonshot: "moonshot/",
-    SupportedLiteLLMProvider.xAI: "xai/",
-    SupportedLiteLLMProvider.DeepInfra: "deepinfra/",
-    SupportedLiteLLMProvider.Groq: "groq/",
-    SupportedLiteLLMProvider.Cohere: "",  # don't need a prefix
     SupportedLiteLLMProvider.Gemini: "gemini/",
-    SupportedLiteLLMProvider.DeepSeek: "deepseek/",
-    SupportedLiteLLMProvider.Nvidia: "nvidia_nim/",
-    SupportedLiteLLMProvider.TogetherAI: "together_ai/",
-    SupportedLiteLLMProvider.Anthropic: "",  # don't need a prefix
     SupportedLiteLLMProvider.Ollama: "ollama_chat/",
-    SupportedLiteLLMProvider.LongCat: "openai/",
-    SupportedLiteLLMProvider.CometAPI: "openai/",
-    SupportedLiteLLMProvider.SILICONFLOW: "openai/",
-    SupportedLiteLLMProvider.OpenRouter: "openai/",
-    SupportedLiteLLMProvider.StepFun: "openai/",
-    SupportedLiteLLMProvider.PPIO: "openai/",
-    SupportedLiteLLMProvider.PerfXCloud: "openai/",
-    SupportedLiteLLMProvider.Upstage: "openai/",
-    SupportedLiteLLMProvider.NovitaAI: "openai/",
-    SupportedLiteLLMProvider.Lingyi_AI: "openai/",
-    SupportedLiteLLMProvider.GiteeAI: "openai/",
-    SupportedLiteLLMProvider.AI_302: "openai/",
-    SupportedLiteLLMProvider.JiekouAI: "openai/",
-    SupportedLiteLLMProvider.ZHIPU_AI: "openai/",
-    SupportedLiteLLMProvider.MiniMax: "openai/",
-    SupportedLiteLLMProvider.DeerAPI: "openai/",
-    SupportedLiteLLMProvider.GPUStack: "openai/",
     SupportedLiteLLMProvider.OpenAI: "openai/",
     SupportedLiteLLMProvider.Azure_OpenAI: "azure/",
-    SupportedLiteLLMProvider.n1n: "openai/",
-    SupportedLiteLLMProvider.HunYuan: "openai/",
-    SupportedLiteLLMProvider.Avian: "openai/",
 }
 
 ChatModel = globals().get("ChatModel", {})

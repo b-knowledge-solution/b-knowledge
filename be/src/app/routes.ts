@@ -28,6 +28,7 @@ import dashboardRoutes from '@/modules/dashboard/dashboard.routes.js';
 import glossaryRoutes from '@/modules/glossary/routes/glossary.routes.js';
 import ragRoutes from '@/modules/rag/routes/rag.routes.js';
 import llmProviderRoutes from '@/modules/llm-provider/routes/llm-provider.routes.js';
+import syncRoutes from '@/modules/sync/routes/sync.routes.js';
 
 // ============================================================================
 // Rate Limiters
@@ -139,6 +140,9 @@ function registerRoutes(apiRouter: Router): void {
 
     // LLM provider management (admin only)
     apiRouter.use('/llm-provider', llmProviderRoutes);
+
+    // Data source sync (connectors → MinIO → parse)
+    apiRouter.use('/sync', syncRoutes);
 }
 
 // ============================================================================

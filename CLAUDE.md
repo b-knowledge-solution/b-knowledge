@@ -103,7 +103,9 @@ The frontend follows a **feature-driven modular architecture** with clear separa
 ```
 fe/src/
 ├── app/                      # Application shell
-│   ├── App.tsx               # Root component, router, global providers
+│   ├── App.tsx               # Root component, router (uses Providers wrapper)
+│   ├── Providers.tsx         # Composable provider wrapper (all context providers)
+│   ├── routeConfig.ts        # Centralized route metadata (titles, feature IDs, layout)
 │   └── contexts/             # React contexts (theme, auth, etc.)
 │
 ├── features/                 # Domain feature modules (each is self-contained)
@@ -135,7 +137,10 @@ fe/src/
 │
 ├── hooks/                    # Global reusable hooks
 ├── layouts/                  # Page shell wrappers
-├── lib/                      # Third-party library config (Axios, React Query)
+│   ├── MainLayout.tsx        # Shell composition (Sidebar + Header + Outlet)
+│   ├── Sidebar.tsx           # Sidebar navigation (role-based, collapsible)
+│   └── Header.tsx            # Page header (title from routeConfig, actions, source selectors)
+├── lib/                      # Third-party library config (API client, socket)
 ├── i18n/                     # Internationalization (en, vi, ja)
 ├── utils/                    # Pure utility functions
 ├── main.tsx                  # Vite entry point
@@ -144,15 +149,25 @@ fe/src/
 
 ### FE Feature Internal Convention
 
-Each feature under `features/` follows this pattern:
+Each feature under `features/` MUST follow this pattern:
 
 ```
 features/<domain>/
+├── api/                      # API calls (TanStack Query hooks or raw api calls)
 ├── components/               # Feature-specific UI components
 ├── hooks/                    # Feature-specific hooks
 ├── pages/                    # Route-level page components
+├── types/                    # Feature-specific TypeScript types
 └── index.ts                  # Barrel export (public API)
 ```
+
+### FE Rules for New Features
+
+- **New page**: Always add route metadata to `app/routeConfig.ts` (title, guideline ID, layout flags)
+- **New provider**: Add it to `app/Providers.tsx` — never nest in App.tsx or other components
+- **New sidebar nav**: Add it to `layouts/Sidebar.tsx` with proper role checks
+- **Layout/header changes**: Modify `layouts/Header.tsx` or `layouts/Sidebar.tsx` — never modify `MainLayout.tsx` directly unless changing the shell composition
+- **React Compiler**: The project uses `babel-plugin-react-compiler` — avoid manual `React.memo`, `useMemo`, `useCallback` unless profiling shows a specific need
 
 ## 5. Build & Dev Instructions
 

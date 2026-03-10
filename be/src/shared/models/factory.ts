@@ -29,6 +29,8 @@ import { KnowledgebaseModel } from '@/modules/rag/models/knowledgebase.model.js'
 import { RagDocumentModel } from '@/modules/rag/models/rag-document.model.js';
 import { RagFileModel } from '@/modules/rag/models/rag-file.model.js';
 import { RagTaskModel } from '@/modules/rag/models/rag-task.model.js';
+import { ConnectorModel } from '@/modules/sync/models/connector.model.js';
+import { SyncLogModel } from '@/modules/sync/models/sync-log.model.js';
 
 /**
  * ModelFactory class implementing the Factory Pattern.
@@ -88,6 +90,10 @@ export class ModelFactory {
   private static ragFileModel: RagFileModel;
   /** RagTask (Peewee) model singleton instance */
   private static ragTaskModel: RagTaskModel;
+  /** Connector model singleton instance */
+  private static connectorModel: ConnectorModel;
+  /** SyncLog model singleton instance */
+  private static syncLogModel: SyncLogModel;
 
   /**
    * Get the User model singleton.
@@ -309,5 +315,23 @@ export class ModelFactory {
   static get ragTask() {
     if (!this.ragTaskModel) this.ragTaskModel = new RagTaskModel();
     return this.ragTaskModel;
+  }
+
+  /**
+   * Get the Connector model singleton.
+   * @returns ConnectorModel instance for connector CRUD operations
+   */
+  static get connector() {
+    if (!this.connectorModel) this.connectorModel = new ConnectorModel();
+    return this.connectorModel;
+  }
+
+  /**
+   * Get the SyncLog model singleton.
+   * @returns SyncLogModel instance for sync log operations
+   */
+  static get syncLog() {
+    if (!this.syncLogModel) this.syncLogModel = new SyncLogModel();
+    return this.syncLogModel;
   }
 }

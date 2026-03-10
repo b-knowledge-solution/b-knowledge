@@ -18,7 +18,6 @@ import base64
 import json
 import logging
 import os
-import re
 import tempfile
 from abc import ABC
 from copy import deepcopy
@@ -26,15 +25,12 @@ from io import BytesIO
 from pathlib import Path
 from urllib.parse import urljoin
 
-import requests
 from openai import OpenAI, AsyncOpenAI
 from openai.lib.azure import AzureOpenAI, AsyncAzureOpenAI
 
 from common.token_utils import num_tokens_from_string, total_token_count_from_response
 from rag.nlp import is_english
 from rag.prompts.generator import vision_llm_describe_prompt
-
-
 
 
 from common.misc_utils import thread_pool_exec
@@ -290,268 +286,6 @@ class AzureGptV4(GptV4):
         Base.__init__(self, **kwargs)
 
 
-class xAICV(GptV4):
-    _FACTORY_NAME = "xAI"
-
-    def __init__(self, key, model_name="grok-3", lang="Chinese", base_url=None, **kwargs):
-        if not base_url:
-            base_url = "https://api.x.ai/v1"
-        super().__init__(key, model_name, lang=lang, base_url=base_url, **kwargs)
-
-
-class QWenCV(GptV4):
-    _FACTORY_NAME = "Tongyi-Qianwen"
-
-    def __init__(self, key, model_name="qwen-vl-chat-v1", lang="Chinese", base_url=None, **kwargs):
-        if not base_url:
-            base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-        super().__init__(key, model_name, lang=lang, base_url=base_url, **kwargs)
-
-    @staticmethod
-    def _extract_text_from_content(content):
-        if isinstance(content, str):
-            return content.strip()
-        if isinstance(content, list):
-            texts = []
-            for blk in content:
-                if not isinstance(blk, dict):
-                    continue
-                if blk.get("type") in {"text", "input_text"} and blk.get("text"):
-                    texts.append(str(blk["text"]))
-                elif "text" in blk and isinstance(blk.get("text"), (str, int, float)):
-                    texts.append(str(blk["text"]))
-            return "\n".join(texts).strip()
-        return ""
-
-    def _resolve_video_prompt(self, system, history, **kwargs):
-        prompt = kwargs.get("video_prompt") or kwargs.get("prompt")
-        if isinstance(prompt, str) and prompt.strip():
-            return prompt.strip()
-
-        for h in reversed(history or []):
-            if h.get("role") != "user":
-                continue
-            txt = self._extract_text_from_content(h.get("content"))
-            if txt:
-                return txt
-
-        if isinstance(system, str) and system.strip():
-            return system.strip()
-
-        return "Please summarize this video in proper sentences."
-
-    async def async_chat(self, system, history, gen_conf, images=None, video_bytes=None, filename="", **kwargs):
-        if video_bytes:
-            try:
-                summary, summary_num_tokens = self._process_video(video_bytes, filename, self._resolve_video_prompt(system, history, **kwargs))
-                return summary, summary_num_tokens
-            except Exception as e:
-                return "**ERROR**: " + str(e), 0
-
-        return await super().async_chat(system, history, gen_conf, images=images, **kwargs)
-
-    def _process_video(self, video_bytes, filename, prompt):
-        from dashscope import MultiModalConversation
-
-        video_suffix = Path(filename).suffix or ".mp4"
-        tmp_path = None
-        with tempfile.NamedTemporaryFile(delete=False, suffix=video_suffix) as tmp:
-            tmp.write(video_bytes)
-            tmp_path = tmp.name
-
-        video_path = f"file://{tmp_path}"
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "video": video_path,
-                        "fps": 2,
-                    },
-                    {
-                        "text": prompt,
-                    },
-                ],
-            }
-        ]
-
-        def call_api():
-            response = MultiModalConversation.call(
-                api_key=self.api_key,
-                model=self.model_name,
-                messages=messages,
-            )
-            if response.get("message"):
-                raise Exception(response["message"])
-            summary = response["output"]["choices"][0]["message"].content[0]["text"]
-            return summary, num_tokens_from_string(summary)
-
-        try:
-            try:
-                return call_api()
-            except Exception as e1:
-                import dashscope
-
-                dashscope.base_http_api_url = "https://dashscope-intl.aliyuncs.com/api/v1"
-                try:
-                    return call_api()
-                except Exception as e2:
-                    raise RuntimeError(f"Both default and intl endpoint failed.\nFirst error: {e1}\nSecond error: {e2}")
-        finally:
-            if tmp_path and os.path.exists(tmp_path):
-                try:
-                    os.remove(tmp_path)
-                except Exception:
-                    logging.warning("[QWenCV] Failed to cleanup temp video file: %s", tmp_path)
-
-
-class HunyuanCV(GptV4):
-    _FACTORY_NAME = "Tencent Hunyuan"
-
-    def __init__(self, key, model_name, lang="Chinese", base_url=None, **kwargs):
-        if not base_url:
-            base_url = "https://api.hunyuan.cloud.tencent.com/v1"
-        super().__init__(key, model_name, lang=lang, base_url=base_url, **kwargs)
-
-
-class Zhipu4V(GptV4):
-    _FACTORY_NAME = "ZHIPU-AI"
-
-    def __init__(self, key, model_name="glm-4v", lang="Chinese", **kwargs):
-        self.client = OpenAI(api_key=key, base_url="https://open.bigmodel.cn/api/paas/v4/")
-        self.async_client = AsyncOpenAI(api_key=key, base_url="https://open.bigmodel.cn/api/paas/v4/")
-        self.model_name = model_name
-        self.lang = lang
-        Base.__init__(self, **kwargs)
-
-    def _clean_conf(self, gen_conf):
-        if "max_tokens" in gen_conf:
-            del gen_conf["max_tokens"]
-        gen_conf = self._clean_conf_plealty(gen_conf)
-        return gen_conf
-
-    def _clean_conf_plealty(self, gen_conf):
-        if "presence_penalty" in gen_conf:
-            del gen_conf["presence_penalty"]
-        if "frequency_penalty" in gen_conf:
-            del gen_conf["frequency_penalty"]
-        return gen_conf
-
-    def _request(self, msg, stream, gen_conf={}):
-        response = requests.post(
-            self.base_url,
-            json={"model": self.model_name, "messages": msg, "stream": stream, **gen_conf},
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
-        )
-        return response.json()
-
-    async def async_chat(self, system, history, gen_conf, images=None, **kwargs):
-        if system and history and history[0].get("role") != "system":
-            history.insert(0, {"role": "system", "content": system})
-
-        gen_conf = self._clean_conf(gen_conf)
-
-        logging.info(json.dumps(history, ensure_ascii=False, indent=2))
-        response = await self.async_client.chat.completions.create(model=self.model_name, messages=self._form_history(system, history, images), stream=False, **gen_conf)
-        content = response.choices[0].message.content.strip()
-
-        cleaned = re.sub(r"<\|(begin_of_box|end_of_box)\|>", "", content).strip()
-        return cleaned, total_token_count_from_response(response)
-
-    async def async_chat_streamly(self, system, history, gen_conf, images=None, **kwargs):
-        from rag.llm.chat_model import LENGTH_NOTIFICATION_CN, LENGTH_NOTIFICATION_EN
-        from rag.nlp import is_chinese
-
-        if system and history and history[0].get("role") != "system":
-            history.insert(0, {"role": "system", "content": system})
-        gen_conf = self._clean_conf(gen_conf)
-        ans = ""
-        tk_count = 0
-        try:
-            logging.info(json.dumps(history, ensure_ascii=False, indent=2))
-            response = await self.async_client.chat.completions.create(model=self.model_name, messages=self._form_history(system, history, images), stream=True, **gen_conf)
-            async for resp in response:
-                if not resp.choices[0].delta.content:
-                    continue
-                delta = resp.choices[0].delta.content
-                ans = delta
-                if resp.choices[0].finish_reason == "length":
-                    if is_chinese(ans):
-                        ans += LENGTH_NOTIFICATION_CN
-                    else:
-                        ans += LENGTH_NOTIFICATION_EN
-                    tk_count = total_token_count_from_response(resp)
-                if resp.choices[0].finish_reason == "stop":
-                    tk_count = total_token_count_from_response(resp)
-                yield ans
-        except Exception as e:
-            yield ans + "\n**ERROR**: " + str(e)
-
-        yield tk_count
-
-    def describe(self, image):
-        return self.describe_with_prompt(image)
-
-    def describe_with_prompt(self, image, prompt=None):
-        b64 = self.image2base64(image)
-        if prompt is None:
-            prompt = "Describe this image."
-
-        # Chat messages
-        messages = [{"role": "user", "content": [{"type": "image_url", "image_url": {"url": b64}}, {"type": "text", "text": prompt}]}]
-
-        resp = self.client.chat.completions.create(model=self.model_name, messages=messages, stream=False)
-
-        content = resp.choices[0].message.content.strip()
-        cleaned = re.sub(r"<\|(begin_of_box|end_of_box)\|>", "", content).strip()
-
-        return cleaned, num_tokens_from_string(cleaned)
-
-
-class StepFunCV(GptV4):
-    _FACTORY_NAME = "StepFun"
-
-    def __init__(self, key, model_name="step-1v-8k", lang="Chinese", base_url="https://api.stepfun.com/v1", **kwargs):
-        if not base_url:
-            base_url = "https://api.stepfun.com/v1"
-        self.client = OpenAI(api_key=key, base_url=base_url)
-        self.async_client = AsyncOpenAI(api_key=key, base_url=base_url)
-        self.model_name = model_name
-        self.lang = lang
-        Base.__init__(self, **kwargs)
-
-
-class VolcEngineCV(GptV4):
-    _FACTORY_NAME = "VolcEngine"
-
-    def __init__(self, key, model_name, lang="Chinese", base_url="https://ark.cn-beijing.volces.com/api/v3", **kwargs):
-        if not base_url:
-            base_url = "https://ark.cn-beijing.volces.com/api/v3"
-        ark_api_key = json.loads(key).get("ark_api_key", "")
-        self.client = OpenAI(api_key=ark_api_key, base_url=base_url)
-        self.async_client = AsyncOpenAI(api_key=ark_api_key, base_url=base_url)
-        self.model_name = json.loads(key).get("ep_id", "") + json.loads(key).get("endpoint_id", "")
-        self.lang = lang
-        Base.__init__(self, **kwargs)
-
-
-class LmStudioCV(GptV4):
-    _FACTORY_NAME = "LM-Studio"
-
-    def __init__(self, key, model_name, lang="Chinese", base_url="", **kwargs):
-        if not base_url:
-            raise ValueError("Local llm url cannot be None")
-        base_url = urljoin(base_url, "v1")
-        self.client = OpenAI(api_key="lm-studio", base_url=base_url)
-        self.async_client = AsyncOpenAI(api_key="lm-studio", base_url=base_url)
-        self.model_name = model_name
-        self.lang = lang
-        Base.__init__(self, **kwargs)
-
-
 class OpenAI_APICV(GptV4):
     _FACTORY_NAME = ["VLLM", "OpenAI-API-Compatible"]
 
@@ -564,115 +298,6 @@ class OpenAI_APICV(GptV4):
         self.model_name = model_name.split("___")[0]
         self.lang = lang
         Base.__init__(self, **kwargs)
-
-
-class TogetherAICV(GptV4):
-    _FACTORY_NAME = "TogetherAI"
-
-    def __init__(self, key, model_name, lang="Chinese", base_url="https://api.together.xyz/v1", **kwargs):
-        if not base_url:
-            base_url = "https://api.together.xyz/v1"
-        super().__init__(key, model_name, lang, base_url, **kwargs)
-
-
-class YiCV(GptV4):
-    _FACTORY_NAME = "01.AI"
-
-    def __init__(self, key, model_name, lang="Chinese", base_url="https://api.lingyiwanwu.com/v1", **kwargs):
-        if not base_url:
-            base_url = "https://api.lingyiwanwu.com/v1"
-        super().__init__(key, model_name, lang, base_url, **kwargs)
-
-
-class SILICONFLOWCV(GptV4):
-    _FACTORY_NAME = "SILICONFLOW"
-
-    def __init__(self, key, model_name, lang="Chinese", base_url="https://api.siliconflow.cn/v1", **kwargs):
-        if not base_url:
-            base_url = "https://api.siliconflow.cn/v1"
-        super().__init__(key, model_name, lang, base_url, **kwargs)
-
-
-class OpenRouterCV(GptV4):
-    _FACTORY_NAME = "OpenRouter"
-
-    def __init__(self, key, model_name, lang="Chinese", base_url="https://openrouter.ai/api/v1", **kwargs):
-        if not base_url:
-            base_url = "https://openrouter.ai/api/v1"
-        api_key = json.loads(key).get("api_key", "")
-        self.client = OpenAI(api_key=api_key, base_url=base_url)
-        self.async_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
-        self.model_name = model_name
-        self.lang = lang
-        Base.__init__(self, **kwargs)
-        provider_order = json.loads(key).get("provider_order", "")
-        self.extra_body = {}
-        if provider_order:
-
-            def _to_order_list(x):
-                if x is None:
-                    return []
-                if isinstance(x, str):
-                    return [s.strip() for s in x.split(",") if s.strip()]
-                if isinstance(x, (list, tuple)):
-                    return [str(s).strip() for s in x if str(s).strip()]
-                return []
-
-            provider_cfg = {}
-            provider_order = _to_order_list(provider_order)
-            provider_cfg["order"] = provider_order
-            provider_cfg["allow_fallbacks"] = False
-            self.extra_body["provider"] = provider_cfg
-
-
-class LocalAICV(GptV4):
-    _FACTORY_NAME = "LocalAI"
-
-    def __init__(self, key, model_name, base_url, lang="Chinese", **kwargs):
-        if not base_url:
-            raise ValueError("Local cv model url cannot be None")
-        base_url = urljoin(base_url, "v1")
-        self.client = OpenAI(api_key="empty", base_url=base_url)
-        self.async_client = AsyncOpenAI(api_key="empty", base_url=base_url)
-        self.model_name = model_name.split("___")[0]
-        self.lang = lang
-        Base.__init__(self, **kwargs)
-
-
-class XinferenceCV(GptV4):
-    _FACTORY_NAME = "Xinference"
-
-    def __init__(self, key, model_name="", lang="Chinese", base_url="", **kwargs):
-        base_url = urljoin(base_url, "v1")
-        self.client = OpenAI(api_key=key, base_url=base_url)
-        self.async_client = AsyncOpenAI(api_key=key, base_url=base_url)
-        self.model_name = model_name
-        self.lang = lang
-        Base.__init__(self, **kwargs)
-
-
-class GPUStackCV(GptV4):
-    _FACTORY_NAME = "GPUStack"
-
-    def __init__(self, key, model_name, lang="Chinese", base_url="", **kwargs):
-        if not base_url:
-            raise ValueError("Local llm url cannot be None")
-        base_url = urljoin(base_url, "v1")
-        self.client = OpenAI(api_key=key, base_url=base_url)
-        self.async_client = AsyncOpenAI(api_key=key, base_url=base_url)
-        self.model_name = model_name
-        self.lang = lang
-        Base.__init__(self, **kwargs)
-
-
-class LocalCV(Base):
-    _FACTORY_NAME = "Local"
-
-    def __init__(self, key, model_name="glm-4v", lang="Chinese", **kwargs):
-        pass
-
-    def describe(self, image):
-        return "", 0
 
 
 class OllamaCV(Base):
@@ -995,85 +620,6 @@ class GeminiCV(Base):
                 tmp_path.unlink()
 
 
-class NvidiaCV(Base):
-    _FACTORY_NAME = "NVIDIA"
-
-    def __init__(self, key, model_name, lang="Chinese", base_url="https://ai.api.nvidia.com/v1/vlm", **kwargs):
-        if not base_url:
-            base_url = ("https://ai.api.nvidia.com/v1/vlm",)
-        self.lang = lang
-        factory, llm_name = model_name.split("/")
-        if factory != "liuhaotian":
-            self.base_url = urljoin(base_url, f"{factory}/{llm_name}")
-        else:
-            self.base_url = urljoin(f"{base_url}/community", llm_name.replace("-v1.6", "16"))
-        self.key = key
-        Base.__init__(self, **kwargs)
-
-    def _image_prompt(self, text, images):
-        if not images:
-            return text
-        htmls = ""
-        for img in images:
-            htmls += ' <img src="{}"/>'.format(f"data:image/jpeg;base64,{img}" if img[:4] != "data" else img)
-        return text + htmls
-
-    def describe(self, image):
-        b64 = self.image2base64(image)
-        response = requests.post(
-            url=self.base_url,
-            headers={
-                "accept": "application/json",
-                "content-type": "application/json",
-                "Authorization": f"Bearer {self.key}",
-            },
-            json={"messages": self.prompt(b64)},
-        )
-        response = response.json()
-        return (
-            response["choices"][0]["message"]["content"].strip(),
-            total_token_count_from_response(response),
-        )
-
-    def _request(self, msg, gen_conf={}):
-        response = requests.post(
-            url=self.base_url,
-            headers={
-                "accept": "application/json",
-                "content-type": "application/json",
-                "Authorization": f"Bearer {self.key}",
-            },
-            json={"messages": msg, **gen_conf},
-        )
-        return response.json()
-
-    def describe_with_prompt(self, image, prompt=None):
-        b64 = self.image2base64(image)
-        vision_prompt = self.vision_llm_prompt(b64, prompt) if prompt else self.vision_llm_prompt(b64)
-        response = self._request(vision_prompt)
-        return (response["choices"][0]["message"]["content"].strip(), total_token_count_from_response(response))
-
-    async def async_chat(self, system, history, gen_conf, images=None, **kwargs):
-        try:
-            response = await thread_pool_exec(self._request, self._form_history(system, history, images), gen_conf)
-            return (response["choices"][0]["message"]["content"].strip(), total_token_count_from_response(response))
-        except Exception as e:
-            return "**ERROR**: " + str(e), 0
-
-    async def async_chat_streamly(self, system, history, gen_conf, images=None, **kwargs):
-        total_tokens = 0
-        try:
-            response = await thread_pool_exec(self._request, self._form_history(system, history, images), gen_conf)
-            cnt = response["choices"][0]["message"]["content"]
-            total_tokens += total_token_count_from_response(response)
-            for resp in cnt:
-                yield resp
-        except Exception as e:
-            yield "\n**ERROR**: " + str(e)
-
-        yield total_tokens
-
-
 class AnthropicCV(Base):
     _FACTORY_NAME = "Anthropic"
 
@@ -1245,33 +791,24 @@ class GoogleCV(AnthropicCV, GeminiCV):
                 yield ans
 
 
-class MoonshotCV(GptV4):
-    _FACTORY_NAME = "Moonshot"
-
-    def __init__(self, key, model_name="moonshot-v1-8k-vision-preview", lang="Chinese", base_url="https://api.moonshot.cn/v1", **kwargs):
-        if not base_url:
-            base_url = "https://api.moonshot.cn/v1"
-        super().__init__(key, model_name, lang=lang, base_url=base_url, **kwargs)
-
-
 class RAGconCV(GptV4):
     """
     RAGcon CV Provider - routes through LiteLLM proxy
-    
+
     Supports vision models through LiteLLM.
     Default Base URL: https://connect.ragcon.ai/v1
     """
     _FACTORY_NAME = "RAGcon"
-    
+
     def __init__(self, key, model_name, lang="Chinese", base_url="", **kwargs):
-        
+
         if not base_url:
             base_url = "https://connect.ragcon.com/v1"
-        
+
         # Initialize client
         self.client = OpenAI(api_key=key, base_url=base_url)
         self.async_client = AsyncOpenAI(api_key=key, base_url=base_url)
         self.model_name = model_name
         self.lang = lang
-        
+
         Base.__init__(self, **kwargs)
