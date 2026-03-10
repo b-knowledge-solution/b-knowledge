@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Database, FileText, Hash, Edit2, Trash2, Globe, Lock } from 'lucide-react';
+import { Database, FileText, Hash, Edit2, Trash2, Globe, Lock, Shield } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Dataset } from '../types';
@@ -10,10 +10,11 @@ interface DatasetCardProps {
   dataset: Dataset;
   onEdit: (dataset: Dataset) => void;
   onDelete: (dataset: Dataset) => void;
+  onManageAccess?: (dataset: Dataset) => void;
   isAdmin: boolean;
 }
 
-const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onEdit, onDelete, isAdmin }) => {
+const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onEdit, onDelete, onManageAccess, isAdmin }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -48,6 +49,22 @@ const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onEdit, onDelete, is
 
           {isAdmin && (
             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+              {/* Manage Access button */}
+              {onManageAccess && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => onManageAccess(dataset)}
+                        className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 hover:text-purple-600"
+                      >
+                        <Shield size={14} />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t('datasetAccess.manageAccess')}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>

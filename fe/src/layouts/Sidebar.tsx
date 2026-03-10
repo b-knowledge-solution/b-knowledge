@@ -105,7 +105,7 @@ export function Sidebar() {
   // Auto-expand parent menus when their children are active
   const isKnowledgeBaseActive = ['/knowledge-base/config', '/knowledge-base/glossary', '/datasets'].includes(location.pathname) || location.pathname.startsWith('/datasets/');
   const isIamActive = ['/iam/users', '/iam/teams'].includes(location.pathname);
-  const isAdministratorsActive = ['/admin/audit-log', '/admin/system-tools', '/admin/system-monitor', '/admin/tokenizer', '/admin/broadcast-messages', '/admin/histories', '/admin/dashboard'].includes(location.pathname);
+  const isAdministratorsActive = ['/admin/audit-log', '/admin/system-tools', '/admin/system-monitor', '/admin/tokenizer', '/admin/broadcast-messages', '/admin/histories', '/admin/dashboard', '/admin/chat-dialogs', '/admin/search-apps'].includes(location.pathname);
   const isChatActive = ['/chat', '/chat/history'].includes(location.pathname);
   const isSearchActive = ['/search', '/search/history'].includes(location.pathname);
 
@@ -280,6 +280,14 @@ export function Sidebar() {
                 <NavLink to="/admin/dashboard" onClick={handleNavClick('/admin/dashboard')} className={({ isActive }: { isActive: boolean }) => `sidebar-link ${isActive ? 'active' : ''}`} title={t('nav.dashboard')}>
                   <BarChart3 size={18} />
                   <span>{t('nav.dashboard')}</span>
+                </NavLink>
+                <NavLink to="/admin/chat-dialogs" onClick={handleNavClick('/admin/chat-dialogs')} className={({ isActive }: { isActive: boolean }) => `sidebar-link ${isActive ? 'active' : ''}`} title={t('nav.chatAssistants')}>
+                  <MessageSquare size={18} />
+                  <span>{t('nav.chatAssistants')}</span>
+                </NavLink>
+                <NavLink to="/admin/search-apps" onClick={handleNavClick('/admin/search-apps')} className={({ isActive }: { isActive: boolean }) => `sidebar-link ${isActive ? 'active' : ''}`} title={t('nav.searchApps')}>
+                  <Search size={18} />
+                  <span>{t('nav.searchApps')}</span>
                 </NavLink>
                 <NavLink to="/admin/audit-log" onClick={handleNavClick('/admin/audit-log')} className={({ isActive }: { isActive: boolean }) => `sidebar-link ${isActive ? 'active' : ''}`} title={t('nav.auditLog')}>
                   <ClipboardList size={18} />

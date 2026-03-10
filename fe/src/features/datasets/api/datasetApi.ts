@@ -1,5 +1,12 @@
 import { api, apiFetch } from '@/lib/api';
-import type { Dataset, CreateDatasetDto, UpdateDatasetDto, Document, ChunksResponse } from '../types';
+import type { Dataset, CreateDatasetDto, UpdateDatasetDto, Document, ChunksResponse, AccessControl } from '../types';
+
+/** @description Response shape from GET /api/rag/datasets/:id/access */
+export interface DatasetAccessResponse {
+  public: boolean;
+  teams: { id: string; name: string }[];
+  users: { id: string; display_name: string }[];
+}
 
 const BASE_URL = '/api/rag';
 
@@ -53,6 +60,20 @@ export const datasetApi = {
   getDocumentDownloadUrl: (datasetId: string, docId: string): string => {
     const base = import.meta.env.VITE_API_BASE_URL || '';
     return `${base}${BASE_URL}/datasets/${datasetId}/documents/${docId}/download`;
+  },
+
+  // Access control
+  /** @description Fetch current access control for a dataset */
+  getDatasetAccess: async (datasetId: string): Promise<DatasetAccessResponse> => {
+    return api.get<DatasetAccessResponse>(`${BASE_URL}/datasets/${datasetId}/access`);
+  },
+
+  /** @description Update access control for a dataset */
+  setDatasetAccess: async (
+    datasetId: string,
+    data: { public?: boolean; team_ids?: string[]; user_ids?: string[] },
+  ): Promise<void> => {
+    return api.put<void>(`${BASE_URL}/datasets/${datasetId}/access`, data);
   },
 
   // Chunk operations

@@ -99,6 +99,8 @@ export interface ChatSession {
     user_id: string;
     /** Title of the chat session, usually generated from first prompt */
     title: string;
+    /** Optional dialog ID linking to a RAGFlow dialog configuration */
+    dialog_id?: string | null;
     /** User ID who created this record */
     created_by?: string | null;
     /** User ID who last updated this record */
@@ -127,6 +129,104 @@ export interface ChatMessage {
     created_by?: string | null;
     /** User ID who last updated this record */
     updated_by?: string | null;
+    /** JSONB citations/references from RAGFlow */
+    citations?: unknown | null;
+    /** RAGFlow external message ID */
+    message_id?: string | null;
+}
+
+/**
+ * ChatDialog interface representing a RAGFlow dialog (chat assistant) configuration.
+ */
+export interface ChatDialog {
+    /** Unique UUID for the dialog */
+    id: string;
+    /** Display name of the dialog */
+    name: string;
+    /** Description of the dialog purpose */
+    description?: string | null;
+    /** Icon identifier or URL */
+    icon?: string | null;
+    /** Array of knowledge base IDs linked to this dialog */
+    kb_ids: string[];
+    /** LLM model identifier to use */
+    llm_id?: string | null;
+    /** Prompt configuration (system prompt, temperature, etc.) */
+    prompt_config: Record<string, unknown>;
+    /** Whether the dialog is publicly accessible to all users */
+    is_public: boolean;
+    /** User ID who created this record */
+    created_by?: string | null;
+    /** User ID who last updated this record */
+    updated_by?: string | null;
+    /** Timestamp of record creation */
+    created_at: Date;
+    /** Timestamp of last update */
+    updated_at: Date;
+}
+
+/**
+ * ChatDialogAccess interface representing an RBAC access entry for a chat dialog.
+ * Links a dialog to a user or team that has been granted access.
+ */
+export interface ChatDialogAccess {
+    /** Unique UUID for the access entry */
+    id: string;
+    /** UUID of the dialog this access entry belongs to */
+    dialog_id: string;
+    /** Type of entity granted access ('user' or 'team') */
+    entity_type: 'user' | 'team';
+    /** UUID of the user or team granted access */
+    entity_id: string;
+    /** User ID who created this access entry */
+    created_by?: string | null;
+    /** Timestamp of record creation */
+    created_at: Date;
+}
+
+/**
+ * SearchApp interface representing a saved search application configuration.
+ */
+export interface SearchApp {
+    /** Unique UUID for the search app */
+    id: string;
+    /** Display name */
+    name: string;
+    /** Description of the search app */
+    description?: string | null;
+    /** Array of dataset IDs to search across */
+    dataset_ids: string[];
+    /** Search configuration (top_k, method, threshold, etc.) */
+    search_config: Record<string, unknown>;
+    /** Whether the search app is publicly accessible to all users */
+    is_public: boolean;
+    /** User ID who created this record */
+    created_by?: string | null;
+    /** User ID who last updated this record */
+    updated_by?: string | null;
+    /** Timestamp of record creation */
+    created_at: Date;
+    /** Timestamp of last update */
+    updated_at: Date;
+}
+
+/**
+ * SearchAppAccess interface representing an RBAC access entry for a search app.
+ * Links a search app to a user or team that has been granted access.
+ */
+export interface SearchAppAccess {
+    /** Unique UUID for the access entry */
+    id: string;
+    /** UUID of the search app this access entry belongs to */
+    app_id: string;
+    /** Type of entity granted access ('user' or 'team') */
+    entity_type: 'user' | 'team';
+    /** UUID of the user or team granted access */
+    entity_id: string;
+    /** User ID who created this access entry */
+    created_by?: string | null;
+    /** Timestamp of record creation */
+    created_at: Date;
 }
 
 /**
@@ -682,6 +782,8 @@ export interface ChunkResult {
     positions?: number[][];
     score?: number;
     method?: string;
+    /** Image ID for image-type chunks */
+    img_id?: string;
 }
 
 /**

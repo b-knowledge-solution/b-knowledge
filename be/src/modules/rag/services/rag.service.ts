@@ -133,6 +133,151 @@ export class RagService {
     }
 
     // -------------------------------------------------------------------------
+    // Dataset RBAC Access Control
+    // -------------------------------------------------------------------------
+
+    /**
+     * Get enriched access control for a dataset, resolving user and team names.
+     * @param datasetId - UUID of the dataset
+     * @returns Object with public flag, enriched teams array, and enriched users array
+     */
+    async getDatasetAccess(datasetId: string): Promise<{
+        public: boolean;
+        teams: Array<{ id: string; name: string }>;
+        users: Array<{ id: string; display_name: string }>;
+    }> {
+        // Fetch the dataset record
+        const dataset = await ModelFactory.dataset.findById(datasetId);
+        if (!dataset) {
+            throw new Error('Dataset not found');
+        }
+
+        // Parse access_control from string if needed
+        const ac: AccessControl = typeof dataset.access_control === 'string'
+            ? JSON.parse(dataset.access_control)
+            : dataset.access_control || { public: true, team_ids: [], user_ids: [] };
+
+        const teamIds = ac.team_ids || [];
+        const userIds = ac.user_ids || [];
+
+        // Batch fetch team names for enrichment
+        let teams: Array<{ id: string; name: string }> = [];
+        if (teamIds.length > 0) {
+            teams = await ModelFactory.team.getKnex()
+                .select('id', 'name')
+                .whereIn('id', teamIds);
+        }
+
+        // Batch fetch user display names for enrichment
+        let users: Array<{ id: string; display_name: string }> = [];
+        if (userIds.length > 0) {
+            users = await ModelFactory.user.getKnex()
+                .select('id', 'display_name')
+                .whereIn('id', userIds);
+        }
+
+        return {
+            public: ac.public ?? true,
+            teams,
+            users,
+        };
+    }
+
+    /**
+     * Update the access_control JSONB field on a dataset.
+     * @param datasetId - UUID of the dataset to update
+     * @param accessControl - New access control settings (partial merge)
+     * @param user - Authenticated user context for audit logging
+     * @returns The updated dataset record
+     */
+    async setDatasetAccess(
+        datasetId: string,
+        accessControl: { public?: boolean; team_ids?: string[]; user_ids?: string[] },
+        user: UserContext
+    ): Promise<Dataset | undefined> {
+        // Build the new access_control payload
+        const newAc: AccessControl = {
+            public: accessControl.public ?? false,
+            team_ids: accessControl.team_ids ?? [],
+            user_ids: accessControl.user_ids ?? [],
+        };
+
+        // Persist the updated access_control JSONB column
+        const dataset = await ModelFactory.dataset.update(datasetId, {
+            access_control: JSON.stringify(newAc),
+            updated_by: user.id,
+        } as Partial<Dataset>);
+
+        // Audit log the access control change
+        await auditService.log({
+            userId: user.id,
+            userEmail: user.email,
+            action: AuditAction.UPDATE_SOURCE,
+            resourceType: AuditResourceType.DATASET,
+            resourceId: datasetId,
+            details: { access_control: newAc },
+            ipAddress: user.ip,
+        });
+
+        log.info('Dataset access control updated', { datasetId, userId: user.id });
+        return dataset;
+    }
+
+    /**
+     * Check whether a user has access to a specific dataset.
+     * Admins always have access. Otherwise checks public flag, creator, user_ids, and team_ids.
+     * @param datasetId - UUID of the dataset
+     * @param userId - UUID of the user to check
+     * @param userRole - Role of the user (e.g., 'admin', 'user')
+     * @param teamIds - Array of team UUIDs the user belongs to
+     * @returns True if the user can access the dataset
+     */
+    async checkDatasetAccess(
+        datasetId: string,
+        userId: string,
+        userRole: string,
+        teamIds: string[]
+    ): Promise<boolean> {
+        // Admins always have access
+        if (userRole === 'admin' || userRole === 'superadmin') {
+            return true;
+        }
+
+        // Fetch the dataset to inspect access_control
+        const dataset = await ModelFactory.dataset.findById(datasetId);
+        if (!dataset || dataset.status === 'deleted') {
+            return false;
+        }
+
+        // Creator always has access
+        if (dataset.created_by === userId) {
+            return true;
+        }
+
+        // Parse access_control
+        const ac: AccessControl = typeof dataset.access_control === 'string'
+            ? JSON.parse(dataset.access_control)
+            : dataset.access_control || { public: true, team_ids: [], user_ids: [] };
+
+        // Public datasets are accessible to everyone
+        if (ac.public === true) {
+            return true;
+        }
+
+        // Check explicit user grant
+        if (ac.user_ids?.includes(userId)) {
+            return true;
+        }
+
+        // Check team intersection
+        if (ac.team_ids?.some((tid: string) => teamIds.includes(tid))) {
+            return true;
+        }
+
+        return false;
+    }
+
+    // -------------------------------------------------------------------------
     // Document operations (metadata only — actual files managed by advance-rag)
     // -------------------------------------------------------------------------
 

@@ -39,6 +39,13 @@ export const updateDatasetSchema = z.object({
   }).optional(),
 });
 
+/** PUT /api/rag/datasets/:id/access – body */
+export const datasetAccessSchema = z.object({
+  public: z.boolean().optional(),
+  team_ids: z.array(z.string().uuid()).optional().default([]),
+  user_ids: z.array(z.string().uuid()).optional().default([]),
+})
+
 /** POST /api/rag/datasets/:id/search – body */
 export const searchChunksSchema = z.object({
   query: z.string().min(1, 'Search query is required'),

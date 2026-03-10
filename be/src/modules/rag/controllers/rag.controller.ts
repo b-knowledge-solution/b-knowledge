@@ -123,6 +123,60 @@ export class RagController {
     }
 
     // -------------------------------------------------------------------------
+    // Dataset RBAC Access Control
+    // -------------------------------------------------------------------------
+
+    /**
+     * GET /datasets/:id/access — return enriched access control for a dataset.
+     * @param req - Express request with dataset ID param
+     * @param res - Express response with enriched access data
+     */
+    async getDatasetAccess(req: Request, res: Response): Promise<void> {
+        const { id } = req.params;
+        if (!id) { res.status(400).json({ error: 'ID is required' }); return; }
+
+        try {
+            const access = await ragService.getDatasetAccess(id);
+            res.json(access);
+        } catch (error: any) {
+            // Return 404 if dataset not found, 500 otherwise
+            const status = error.message === 'Dataset not found' ? 404 : 500;
+            log.error('Failed to get dataset access', { error: String(error) });
+            res.status(status).json({ error: error.message || 'Failed to get dataset access' });
+        }
+    }
+
+    /**
+     * PUT /datasets/:id/access — update access control for a dataset.
+     * @param req - Express request with dataset ID param and access control body
+     * @param res - Express response with updated dataset
+     */
+    async setDatasetAccess(req: Request, res: Response): Promise<void> {
+        const { id } = req.params;
+        if (!id) { res.status(400).json({ error: 'ID is required' }); return; }
+
+        try {
+            // Build user context for audit logging
+            const user = req.user
+                ? { id: req.user.id, email: req.user.email, ip: getClientIp(req) }
+                : undefined;
+
+            if (!user) {
+                res.status(401).json({ error: 'Authentication required' });
+                return;
+            }
+
+            const dataset = await ragService.setDatasetAccess(id, req.body, user);
+            if (!dataset) { res.status(404).json({ error: 'Dataset not found' }); return; }
+
+            res.json(dataset);
+        } catch (error: any) {
+            log.error('Failed to set dataset access', { error: String(error) });
+            res.status(500).json({ error: error.message || 'Failed to set dataset access' });
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Documents
     // -------------------------------------------------------------------------
 

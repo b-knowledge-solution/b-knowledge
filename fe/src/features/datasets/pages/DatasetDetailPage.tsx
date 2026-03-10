@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Upload, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Upload, RefreshCw, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ import { datasetApi } from '../api/datasetApi';
 import { useDocuments } from '../hooks/useDatasets';
 import DocumentTable from '../components/DocumentTable';
 import FileUploadModal from '../components/FileUploadModal';
+import DatasetAccessDialog from '../components/DatasetAccessDialog';
 import { DocumentPreviewer } from '@/components/DocumentPreviewer';
 import type { Dataset, Document } from '../types';
 
@@ -28,6 +29,8 @@ const DatasetDetailPage: React.FC = () => {
   const [loadingDataset, setLoadingDataset] = useState(true);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
+  // State for access control dialog
+  const [accessDialogOpen, setAccessDialogOpen] = useState(false);
 
   const handleViewDocument = useCallback((doc: Document) => {
     setPreviewDoc(doc);
@@ -93,10 +96,17 @@ const DatasetDetailPage: React.FC = () => {
             {t('datasets.refresh')}
           </Button>
           {isAdmin && (
-            <Button onClick={() => setUploadModalOpen(true)}>
-              <Upload size={16} className="mr-1" />
-              {t('datasets.uploadFiles')}
-            </Button>
+            <>
+              {/* Manage Access button */}
+              <Button variant="outline" onClick={() => setAccessDialogOpen(true)}>
+                <Shield size={16} className="mr-1" />
+                {t('datasetAccess.manageAccess')}
+              </Button>
+              <Button onClick={() => setUploadModalOpen(true)}>
+                <Upload size={16} className="mr-1" />
+                {t('datasets.uploadFiles')}
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -155,6 +165,13 @@ const DatasetDetailPage: React.FC = () => {
           />
         </CardContent>
       </Card>
+
+      {/* Access Control Dialog */}
+      <DatasetAccessDialog
+        open={accessDialogOpen}
+        onClose={() => setAccessDialogOpen(false)}
+        dataset={dataset}
+      />
 
       {/* Upload Modal */}
       <FileUploadModal

@@ -82,6 +82,14 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     guidelineFeatureId: 'teams',
     fullBleed: true,
   },
+  '/admin/chat-dialogs': {
+    titleKey: 'chatAdmin.title',
+    fullBleed: true,
+  },
+  '/admin/search-apps': {
+    titleKey: 'searchAdmin.title',
+    fullBleed: true,
+  },
   '/admin/dashboard': {
     titleKey: 'dashboard.title',
   },

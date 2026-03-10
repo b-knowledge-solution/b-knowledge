@@ -31,6 +31,10 @@ import { RagFileModel } from '@/modules/rag/models/rag-file.model.js';
 import { RagTaskModel } from '@/modules/rag/models/rag-task.model.js';
 import { ConnectorModel } from '@/modules/sync/models/connector.model.js';
 import { SyncLogModel } from '@/modules/sync/models/sync-log.model.js';
+import { ChatDialogModel } from '@/modules/chat/models/chat-dialog.model.js';
+import { ChatDialogAccessModel } from '@/modules/chat/models/chat-dialog-access.model.js';
+import { SearchAppModel } from '@/modules/search/models/search-app.model.js'
+import { SearchAppAccessModel } from '@/modules/search/models/search-app-access.model.js';
 
 /**
  * ModelFactory class implementing the Factory Pattern.
@@ -94,6 +98,14 @@ export class ModelFactory {
   private static connectorModel: ConnectorModel;
   /** SyncLog model singleton instance */
   private static syncLogModel: SyncLogModel;
+  /** ChatDialog model singleton instance */
+  private static chatDialogModel: ChatDialogModel;
+  /** ChatDialogAccess model singleton instance */
+  private static chatDialogAccessModel: ChatDialogAccessModel;
+  /** SearchApp model singleton instance */
+  private static searchAppModel: SearchAppModel;
+  /** SearchAppAccess model singleton instance */
+  private static searchAppAccessModel: SearchAppAccessModel;
 
   /**
    * Get the User model singleton.
@@ -333,5 +345,45 @@ export class ModelFactory {
   static get syncLog() {
     if (!this.syncLogModel) this.syncLogModel = new SyncLogModel();
     return this.syncLogModel;
+  }
+
+  /**
+   * Get the ChatDialog model singleton.
+   * @returns ChatDialogModel instance for dialog configuration operations
+   */
+  static get chatDialog() {
+    if (!this.chatDialogModel) this.chatDialogModel = new ChatDialogModel();
+    return this.chatDialogModel;
+  }
+
+  /**
+   * Get the ChatDialogAccess model singleton.
+   * Manages RBAC access entries for chat dialogs.
+   * @returns ChatDialogAccessModel instance for access control operations
+   */
+  static get chatDialogAccess() {
+    // Create instance on first access (lazy initialization)
+    if (!this.chatDialogAccessModel) this.chatDialogAccessModel = new ChatDialogAccessModel();
+    return this.chatDialogAccessModel;
+  }
+
+  /**
+   * Get the SearchApp model singleton.
+   * @returns SearchAppModel instance for search app operations
+   */
+  static get searchApp() {
+    if (!this.searchAppModel) this.searchAppModel = new SearchAppModel();
+    return this.searchAppModel;
+  }
+
+  /**
+   * Get the SearchAppAccess model singleton.
+   * Manages RBAC access entries for search apps.
+   * @returns SearchAppAccessModel instance for access control operations
+   */
+  static get searchAppAccess() {
+    // Create instance on first access (lazy initialization)
+    if (!this.searchAppAccessModel) this.searchAppAccessModel = new SearchAppAccessModel();
+    return this.searchAppAccessModel;
   }
 }

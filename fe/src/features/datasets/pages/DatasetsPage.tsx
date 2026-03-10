@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Search, LayoutGrid, List } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
@@ -9,12 +9,16 @@ import { useAuth } from '@/features/auth';
 import { useDatasets } from '../hooks/useDatasets';
 import DatasetCard from '../components/DatasetCard';
 import CreateDatasetModal from '../components/CreateDatasetModal';
+import DatasetAccessDialog from '../components/DatasetAccessDialog';
+import type { Dataset } from '../types';
 
 const DatasetsPage: React.FC = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.role === 'leader';
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  // State for access control dialog
+  const [accessDataset, setAccessDataset] = useState<Dataset | null>(null);
 
   const {
     datasets,
@@ -91,6 +95,7 @@ const DatasetsPage: React.FC = () => {
               dataset={dataset}
               onEdit={openModal}
               onDelete={handleDelete}
+              onManageAccess={isAdmin ? setAccessDataset : undefined}
               isAdmin={isAdmin}
             />
           ))}
@@ -103,11 +108,19 @@ const DatasetsPage: React.FC = () => {
               dataset={dataset}
               onEdit={openModal}
               onDelete={handleDelete}
+              onManageAccess={isAdmin ? setAccessDataset : undefined}
               isAdmin={isAdmin}
             />
           ))}
         </div>
       )}
+
+      {/* Access Control Dialog */}
+      <DatasetAccessDialog
+        open={!!accessDataset}
+        onClose={() => setAccessDataset(null)}
+        dataset={accessDataset}
+      />
 
       {/* Create/Edit Modal */}
       <CreateDatasetModal

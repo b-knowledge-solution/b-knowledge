@@ -28,8 +28,8 @@ export { globalMessage } from '@/app/Providers';
 // Lazy-loaded Pages (Code Splitting)
 // ============================================================================
 
-const AiChatPage = lazy(() => import('@/features/ai/pages/AiChatPage'));
-const AiSearchPage = lazy(() => import('@/features/ai/pages/AiSearchPage'));
+const AiChatPage = lazy(() => import('@/features/ai/pages/DatasetChatPage'));
+const AiSearchPage = lazy(() => import('@/features/ai/pages/DatasetSearchPage'));
 const HistoryPage = lazy(() => import('@/features/history/pages/HistoryPage'));
 const ChatHistoryPage = lazy(() => import('@/features/history/pages/ChatHistoryPage'));
 const SearchHistoryPage = lazy(() => import('@/features/history/pages/SearchHistoryPage'));
@@ -49,6 +49,8 @@ const GlossaryPage = lazy(() => import('@/features/glossary/pages/GlossaryPage')
 const AdminDashboardPage = lazy(() => import('@/features/dashboard/pages/AdminDashboardPage'));
 const DatasetsPage = lazy(() => import('@/features/datasets/pages/DatasetsPage'));
 const DatasetDetailPage = lazy(() => import('@/features/datasets/pages/DatasetDetailPage'));
+const ChatDialogManagementPage = lazy(() => import('@/features/ai/pages/ChatDialogManagementPage'));
+const SearchAppManagementPage = lazy(() => import('@/features/ai/pages/SearchAppManagementPage'));
 
 // ============================================================================
 // Loading Component
@@ -165,6 +167,8 @@ function App() {
               <Route path="admin/tokenizer" element={<AdminRoute><TokenizerPage /></AdminRoute>} />
               <Route path="admin/broadcast-messages" element={<AdminRoute><BroadcastMessagePage /></AdminRoute>} />
               <Route path="admin/histories" element={<AdminRoute><HistoriesPage /></AdminRoute>} />
+              <Route path="admin/chat-dialogs" element={<AdminRoute><ChatDialogManagementPage /></AdminRoute>} />
+              <Route path="admin/search-apps" element={<AdminRoute><SearchAppManagementPage /></AdminRoute>} />
               <Route path="admin/dashboard" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
             </Route>
           </Route>

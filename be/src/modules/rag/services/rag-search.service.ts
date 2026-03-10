@@ -65,7 +65,7 @@ export class RagSearchService {
                     },
                 },
                 size: topK,
-                _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int'],
+                _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id'],
             },
         })
 
@@ -109,7 +109,7 @@ export class RagSearchService {
                     },
                 },
                 size: topK,
-                _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int'],
+                _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id'],
             },
         })
 
@@ -220,7 +220,7 @@ export class RagSearchService {
                 from: offset,
                 size: limit,
                 sort: [{ create_time: { order: 'desc' as const } }],
-                _source: ['content_with_weight', 'content_ltks', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int'],
+                _source: ['content_with_weight', 'content_ltks', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id'],
             },
         })
 
@@ -264,6 +264,7 @@ export class RagSearchService {
                 positions: src.position_int || [],
                 score: hit._score ?? 0,
                 ...(method ? { method } : {}),
+                ...(src.img_id ? { img_id: src.img_id } : {}),
             }
         })
     }

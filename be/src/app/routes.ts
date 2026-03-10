@@ -22,7 +22,10 @@ import externalRoutes from '@/modules/external/routes/index.js';
 import broadcastMessageRoutes from '@/modules/broadcast/routes/broadcast-message.routes.js';
 import adminHistoryRoutes from '@/modules/admin/routes/admin-history.routes.js';
 import chatHistoryRoutes from '@/modules/chat/routes/chat-history.routes.js';
+import chatConversationRoutes from '@/modules/chat/routes/chat-conversation.routes.js';
+import chatDialogRoutes from '@/modules/chat/routes/chat-dialog.routes.js';
 import userHistoryRoutes from '@/modules/user-history/user-history.routes.js';
+import searchRoutes from '@/modules/search/routes/search.routes.js';
 
 import dashboardRoutes from '@/modules/dashboard/dashboard.routes.js';
 import glossaryRoutes from '@/modules/glossary/routes/glossary.routes.js';
@@ -129,6 +132,15 @@ function registerRoutes(apiRouter: Router): void {
 
     // Chat history
     apiRouter.use('/chat', chatHistoryRoutes);
+
+    // Chat conversations (local DB + LLM)
+    apiRouter.use('/chat', chatConversationRoutes);
+
+    // Chat dialogs (assistant configuration)
+    apiRouter.use('/chat', chatDialogRoutes);
+
+    // Search apps
+    apiRouter.use('/search', searchRoutes);
 
 
 

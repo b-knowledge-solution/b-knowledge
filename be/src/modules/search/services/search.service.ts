@@ -1,0 +1,589 @@
+
+/**
+ * @fileoverview Search service for managing search apps and executing searches.
+ *
+ * Uses the existing RagSearchService for OpenSearch queries and
+ * stores search app configurations in PostgreSQL.
+ *
+ * @module services/search
+ */
+
+import { Response } from 'express'
+import { ModelFactory } from '@/shared/models/factory.js'
+import { SearchApp, SearchAppAccess, ChunkResult } from '@/shared/models/types.js'
+import { ragSearchService } from '@/modules/rag/services/rag-search.service.js'
+import { ragRerankService } from '@/modules/rag/services/rag-rerank.service.js'
+import { ragCitationService } from '@/modules/rag/services/rag-citation.service.js'
+import { llmClientService } from '@/shared/services/llm-client.service.js'
+import { askSummaryPrompt, citationPrompt, relatedQuestionPrompt } from '@/shared/prompts/index.js'
+import { log } from '@/shared/services/logger.service.js'
+
+/**
+ * Service class for search app CRUD and search execution.
+ */
+export class SearchService {
+  /**
+   * Create a new search app configuration.
+   * @param data - Search app creation data
+   * @param userId - ID of the user creating the app
+   * @returns The created SearchApp record
+   */
+  async createSearchApp(
+    data: {
+      name: string
+      description?: string
+      dataset_ids: string[]
+      search_config?: Record<string, unknown>
+      is_public?: boolean
+    },
+    userId: string
+  ): Promise<SearchApp> {
+    // Insert search app record
+    const app = await ModelFactory.searchApp.create({
+      name: data.name,
+      description: data.description || null,
+      dataset_ids: data.dataset_ids,
+      search_config: data.search_config || {},
+      is_public: data.is_public ?? false,
+      created_by: userId,
+      updated_by: userId,
+    } as Partial<SearchApp>)
+
+    log.info('Search app created', { appId: app.id, userId })
+    return app
+  }
+
+  /**
+   * Update an existing search app.
+   * @param searchId - UUID of the search app to update
+   * @param data - Partial search app data to update
+   * @param userId - ID of the user performing the update
+   * @returns The updated SearchApp if found, undefined otherwise
+   */
+  async updateSearchApp(
+    searchId: string,
+    data: Partial<Pick<SearchApp, 'name' | 'description' | 'dataset_ids' | 'search_config' | 'is_public'>>,
+    userId: string
+  ): Promise<SearchApp | undefined> {
+    const updated = await ModelFactory.searchApp.update(searchId, {
+      ...data,
+      updated_by: userId,
+    } as Partial<SearchApp>)
+
+    if (updated) {
+      log.info('Search app updated', { searchId, userId })
+    }
+    return updated
+  }
+
+  /**
+   * List all search apps, optionally filtered by creator.
+   * @param userId - Optional user ID to filter by
+   * @returns Array of SearchApp records
+   */
+  async listSearchApps(userId?: string): Promise<SearchApp[]> {
+    const filter = userId ? { created_by: userId } : undefined
+    return ModelFactory.searchApp.findAll(filter, { orderBy: { created_at: 'desc' } })
+  }
+
+  /**
+   * Get a single search app by ID.
+   * @param searchId - UUID of the search app
+   * @returns The SearchApp if found, undefined otherwise
+   */
+  async getSearchApp(searchId: string): Promise<SearchApp | undefined> {
+    return ModelFactory.searchApp.findById(searchId)
+  }
+
+  /**
+   * Delete a search app by ID.
+   * @param searchId - UUID of the search app to delete
+   */
+  async deleteSearchApp(searchId: string): Promise<void> {
+    await ModelFactory.searchApp.delete(searchId)
+    log.info('Search app deleted', { searchId })
+  }
+
+  /**
+   * List search apps accessible to a user based on RBAC rules.
+   * Admins see all apps. Other users see apps they created,
+   * public apps, and apps shared with them or their teams.
+   * @param userId - UUID of the requesting user
+   * @param userRole - Role of the requesting user (e.g., 'admin', 'user')
+   * @param teamIds - Array of team UUIDs the user belongs to
+   * @returns Array of accessible SearchApp records
+   */
+  async listAccessibleApps(
+    userId: string,
+    userRole: string,
+    teamIds: string[]
+  ): Promise<SearchApp[]> {
+    // Admins can see all apps without restriction
+    if (userRole === 'admin' || userRole === 'superadmin') {
+      return ModelFactory.searchApp.findAll(undefined, { orderBy: { created_at: 'desc' } })
+    }
+
+    // Get app IDs the user has been explicitly granted access to
+    const accessibleIds = await ModelFactory.searchAppAccess.findAccessibleAppIds(userId, teamIds)
+
+    // Build query: created_by user OR is_public OR in accessible IDs
+    const apps = await ModelFactory.searchApp.getKnex()
+      .where(function () {
+        // User's own apps
+        this.where('created_by', userId)
+        // Public apps
+        this.orWhere('is_public', true)
+        // Apps shared via access control entries
+        if (accessibleIds.length > 0) {
+          this.orWhereIn('id', accessibleIds)
+        }
+      })
+      .orderBy('created_at', 'desc')
+
+    return apps
+  }
+
+  /**
+   * Get access control entries for a search app, enriched with display names.
+   * Joins with users and teams tables to resolve entity names.
+   * @param appId - UUID of the search app
+   * @returns Array of access entries with display_name field
+   */
+  async getAppAccess(
+    appId: string
+  ): Promise<Array<SearchAppAccess & { display_name?: string | undefined }>> {
+    // Fetch raw access entries for the app
+    const entries = await ModelFactory.searchAppAccess.findByAppId(appId)
+
+    // Separate user and team entries for batch name resolution
+    const userIds = entries.filter((e) => e.entity_type === 'user').map((e) => e.entity_id)
+    const teamIds = entries.filter((e) => e.entity_type === 'team').map((e) => e.entity_id)
+
+    // Build lookup maps for display names
+    const userMap = new Map<string, string>()
+    const teamMap = new Map<string, string>()
+
+    // Batch fetch user display names
+    if (userIds.length > 0) {
+      const users = await ModelFactory.user.getKnex()
+        .select('id', 'display_name')
+        .whereIn('id', userIds)
+      for (const u of users) {
+        userMap.set(u.id, u.display_name)
+      }
+    }
+
+    // Batch fetch team names
+    if (teamIds.length > 0) {
+      const teams = await ModelFactory.team.getKnex()
+        .select('id', 'name')
+        .whereIn('id', teamIds)
+      for (const t of teams) {
+        teamMap.set(t.id, t.name)
+      }
+    }
+
+    // Enrich entries with resolved display names
+    return entries.map((entry) => ({
+      ...entry,
+      display_name:
+        entry.entity_type === 'user'
+          ? userMap.get(entry.entity_id)
+          : teamMap.get(entry.entity_id),
+    }))
+  }
+
+  /**
+   * Set (bulk replace) access control entries for a search app.
+   * Removes all existing entries and inserts the provided ones.
+   * @param appId - UUID of the search app
+   * @param entries - Array of access entries to set
+   * @param userId - UUID of the user performing the operation
+   * @returns Array of newly created access entries
+   */
+  async setAppAccess(
+    appId: string,
+    entries: Array<{ entity_type: 'user' | 'team'; entity_id: string }>,
+    userId: string
+  ): Promise<SearchAppAccess[]> {
+    // Bulk replace access entries within a transaction
+    const result = await ModelFactory.searchAppAccess.bulkReplace(appId, entries, userId)
+    log.info('Search app access updated', { appId, entryCount: entries.length, userId })
+    return result
+  }
+
+  /**
+   * Check if a user has access to a specific search app.
+   * Admins always have access. Other users need to be the creator,
+   * or the app must be public, or they must have an explicit grant.
+   * @param appId - UUID of the search app
+   * @param userId - UUID of the user to check
+   * @param userRole - Role of the user
+   * @param teamIds - Array of team UUIDs the user belongs to
+   * @returns True if the user can access the search app
+   */
+  async checkUserAccess(
+    appId: string,
+    userId: string,
+    userRole: string,
+    teamIds: string[]
+  ): Promise<boolean> {
+    // Admins always have access
+    if (userRole === 'admin' || userRole === 'superadmin') {
+      return true
+    }
+
+    // Fetch the app to check ownership and public flag
+    const app = await ModelFactory.searchApp.findById(appId)
+    if (!app) {
+      return false
+    }
+
+    // Creator always has access to their own app
+    if (app.created_by === userId) {
+      return true
+    }
+
+    // Public apps are accessible to everyone
+    if (app.is_public) {
+      return true
+    }
+
+    // Check explicit access grants for user or their teams
+    const accessibleIds = await ModelFactory.searchAppAccess.findAccessibleAppIds(userId, teamIds)
+    return accessibleIds.includes(appId)
+  }
+
+  /**
+   * Execute a search query against datasets configured in a search app.
+   * Searches across all dataset IDs and merges results.
+   * @param searchId - UUID of the search app
+   * @param query - The search query string
+   * @param topK - Maximum results per dataset
+   * @param method - Search method (full_text, semantic, hybrid)
+   * @param similarityThreshold - Minimum similarity score for semantic results
+   * @returns Object with chunks array and total count
+   */
+  async executeSearch(
+    searchId: string,
+    query: string,
+    topK: number = 10,
+    method: 'full_text' | 'semantic' | 'hybrid' = 'full_text',
+    similarityThreshold: number = 0
+  ): Promise<{ chunks: any[]; total: number }> {
+    // Load the search app to get dataset IDs
+    const app = await ModelFactory.searchApp.findById(searchId)
+    if (!app) {
+      throw new Error('Search app not found')
+    }
+
+    // Parse dataset_ids (may be stored as JSONB)
+    const datasetIds: string[] = Array.isArray(app.dataset_ids)
+      ? app.dataset_ids
+      : JSON.parse(app.dataset_ids as unknown as string)
+
+    // Search across all datasets and merge results
+    const allChunks: any[] = []
+    for (const datasetId of datasetIds) {
+      const result = await ragSearchService.search(
+        datasetId,
+        { query, top_k: topK, method, similarity_threshold: similarityThreshold },
+      )
+      allChunks.push(...result.chunks)
+    }
+
+    // Sort merged results by score descending and limit to topK
+    allChunks.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    const limited = allChunks.slice(0, topK)
+
+    return { chunks: limited, total: limited.length }
+  }
+
+  /**
+   * Retrieve chunks from all datasets of a search app, with optional reranking.
+   * @param app - The search app configuration
+   * @param query - Search query string
+   * @param topK - Maximum results
+   * @param method - Search method
+   * @param similarityThreshold - Minimum similarity score
+   * @returns Array of chunk results
+   * @description Shared retrieval logic used by askSearch and mindmap
+   */
+  private async retrieveChunks(
+    app: SearchApp,
+    query: string,
+    topK: number = 10,
+    method: 'full_text' | 'semantic' | 'hybrid' = 'full_text',
+    similarityThreshold: number = 0
+  ): Promise<ChunkResult[]> {
+    // Parse dataset_ids (may be stored as JSONB)
+    const datasetIds: string[] = Array.isArray(app.dataset_ids)
+      ? app.dataset_ids
+      : JSON.parse(app.dataset_ids as unknown as string)
+
+    // Search across all datasets and merge results
+    const allChunks: ChunkResult[] = []
+    for (const datasetId of datasetIds) {
+      const result = await ragSearchService.search(
+        datasetId,
+        { query, top_k: topK, method, similarity_threshold: similarityThreshold },
+      )
+      allChunks.push(...result.chunks)
+    }
+
+    // Sort by score descending and limit
+    allChunks.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    let chunks = allChunks.slice(0, topK)
+
+    // Rerank if configured
+    const config = app.search_config as Record<string, unknown>
+    if (config?.rerank_id) {
+      chunks = await ragRerankService.rerank(query, chunks, topK, config.rerank_id as string)
+    }
+
+    return chunks
+  }
+
+  /**
+   * Build formatted knowledge context from chunks for LLM prompts.
+   * @param chunks - Array of chunk results
+   * @returns Formatted knowledge string with chunk IDs
+   * @description Formats each chunk with an ID marker for citation referencing
+   */
+  private buildKnowledgeContext(chunks: ChunkResult[]): string {
+    return chunks
+      .map((chunk, i) => `### Chunk ID: ${i}\n**Source**: ${chunk.doc_name || 'Unknown'}\n\n${chunk.text}`)
+      .join('\n\n---\n\n')
+  }
+
+  /**
+   * Build document aggregation data from chunks for reference output.
+   * @param chunks - Array of chunk results
+   * @returns Array of document aggregation objects with doc_id, doc_name, and count
+   * @description Groups chunks by document and counts occurrences
+   */
+  private buildDocAggs(chunks: ChunkResult[]): { doc_id: string; doc_name: string; count: number }[] {
+    const docMap = new Map<string, { doc_id: string; doc_name: string; count: number }>()
+    for (const chunk of chunks) {
+      const docId = chunk.doc_id || 'unknown'
+      const existing = docMap.get(docId)
+      if (existing) {
+        existing.count++
+      } else {
+        docMap.set(docId, { doc_id: docId, doc_name: chunk.doc_name || 'Unknown', count: 1 })
+      }
+    }
+    return Array.from(docMap.values())
+  }
+
+  /**
+   * Stream an AI-generated summary answer for a search query via SSE.
+   * @param searchId - UUID of the search app
+   * @param params - Query parameters (query, top_k, method, similarity_threshold, vector_similarity_weight)
+   * @param res - Express response object for SSE streaming
+   * @description Retrieves chunks, builds context, streams LLM answer with citations,
+   *   and optionally generates related questions. Uses SSE protocol for real-time streaming.
+   */
+  async askSearch(
+    searchId: string,
+    params: {
+      query: string
+      top_k?: number
+      method?: 'full_text' | 'semantic' | 'hybrid'
+      similarity_threshold?: number
+      vector_similarity_weight?: number
+    },
+    res: Response
+  ): Promise<void> {
+    const startTime = Date.now()
+
+    // Load search app config
+    const app = await ModelFactory.searchApp.findById(searchId)
+    if (!app) {
+      throw new Error('Search app not found')
+    }
+
+    const config = app.search_config as Record<string, unknown>
+    const { query, top_k = 10, method = 'full_text', similarity_threshold = 0 } = params
+
+    // Send retrieving status
+    res.write(`data: ${JSON.stringify({ status: 'retrieving' })}\n\n`)
+
+    // Retrieve and optionally rerank chunks
+    const chunks = await this.retrieveChunks(app, query, top_k, method, similarity_threshold)
+
+    // Build knowledge context from chunks
+    const knowledge = this.buildKnowledgeContext(chunks)
+
+    // Build reference data
+    const reference = {
+      chunks: chunks.map((c, i) => ({ ...c, chunk_id: c.chunk_id, id: i })),
+      doc_aggs: this.buildDocAggs(chunks),
+    }
+
+    // Send generating status and reference
+    res.write(`data: ${JSON.stringify({ status: 'generating' })}\n\n`)
+    res.write(`data: ${JSON.stringify({ reference })}\n\n`)
+
+    // Build system prompt with knowledge context and citation instructions
+    const systemPrompt = `${askSummaryPrompt.build(knowledge)}\n\n${citationPrompt.system}`
+
+    // Stream LLM answer
+    let fullAnswer = ''
+    const stream = llmClientService.chatCompletionStream(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: query },
+      ],
+      {
+        providerId: config?.llm_id as string | undefined,
+        temperature: (config?.temperature as number) ?? 0.7,
+      }
+    )
+
+    // Write each delta token as an SSE event
+    for await (const chunk of stream) {
+      if (chunk.content) {
+        fullAnswer += chunk.content
+        res.write(`data: ${JSON.stringify({ delta: chunk.content })}\n\n`)
+      }
+    }
+
+    // Post-process citations
+    const citedAnswer = await ragCitationService.insertCitations(fullAnswer, chunks)
+
+    // Generate related questions if configured
+    let relatedQuestions: string[] = []
+    if (config?.related_search) {
+      try {
+        relatedQuestions = await this.generateRelatedQuestions(query, config?.llm_id as string | undefined)
+      } catch (err) {
+        log.warn('Failed to generate related questions', { error: (err as Error).message })
+      }
+    }
+
+    // Calculate metrics
+    const metrics = {
+      retrieval_ms: Date.now() - startTime,
+      chunks_retrieved: chunks.length,
+    }
+
+    // Send final event with complete answer, reference, related questions, and metrics
+    res.write(`data: ${JSON.stringify({
+      answer: citedAnswer,
+      reference,
+      related_questions: relatedQuestions,
+      metrics,
+    })}\n\n`)
+
+    // Signal stream completion
+    res.write('data: [DONE]\n\n')
+    res.end()
+  }
+
+  /**
+   * Generate related questions from a user query using LLM.
+   * @param query - The original user query
+   * @param providerId - Optional LLM provider ID
+   * @returns Array of related question strings
+   * @description Sends the query to the LLM with the related question prompt
+   *   and parses the response lines into an array
+   */
+  private async generateRelatedQuestions(query: string, providerId?: string): Promise<string[]> {
+    const response = await llmClientService.chatCompletion(
+      [
+        { role: 'system', content: relatedQuestionPrompt.system },
+        { role: 'user', content: query },
+      ],
+      { providerId }
+    )
+
+    // Parse response lines into array, filtering empty lines
+    return response
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+  }
+
+  /**
+   * Generate related questions for a search app query.
+   * @param searchId - UUID of the search app
+   * @param query - The user query to generate related questions from
+   * @returns Array of related question strings
+   * @description Loads search app config for LLM provider, then generates related questions
+   */
+  async relatedQuestions(searchId: string, query: string): Promise<string[]> {
+    // Load search app to get LLM provider config
+    const app = await ModelFactory.searchApp.findById(searchId)
+    if (!app) {
+      throw new Error('Search app not found')
+    }
+
+    const config = app.search_config as Record<string, unknown>
+
+    // Generate related questions via LLM
+    return this.generateRelatedQuestions(query, config?.llm_id as string | undefined)
+  }
+
+  /**
+   * Generate a mind map JSON tree from search results.
+   * @param searchId - UUID of the search app
+   * @param params - Query parameters (query, top_k, method, similarity_threshold)
+   * @returns Hierarchical JSON tree with name and children properties
+   * @description Retrieves chunks for the query and sends them to the LLM
+   *   to produce a hierarchical mind map structure
+   */
+  async mindmap(
+    searchId: string,
+    params: {
+      query: string
+      top_k?: number
+      method?: 'full_text' | 'semantic' | 'hybrid'
+      similarity_threshold?: number
+    }
+  ): Promise<{ name: string; children: unknown[] }> {
+    // Load search app config
+    const app = await ModelFactory.searchApp.findById(searchId)
+    if (!app) {
+      throw new Error('Search app not found')
+    }
+
+    const config = app.search_config as Record<string, unknown>
+    const { query, top_k = 10, method = 'full_text', similarity_threshold = 0 } = params
+
+    // Retrieve chunks for context
+    const chunks = await this.retrieveChunks(app, query, top_k, method, similarity_threshold)
+
+    // Build knowledge context
+    const knowledge = this.buildKnowledgeContext(chunks)
+
+    // Mindmap generation prompt
+    const systemPrompt = `Generate a mind map as JSON tree from the query and retrieved content. Output JSON only, no markdown fences or extra text. Output JSON: {"name": "<root topic>", "children": [{"name": "<subtopic>", "children": [...]}]}`
+
+    // Generate mindmap via LLM
+    const response = await llmClientService.chatCompletion(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Query: ${query}\n\nRetrieved content:\n${knowledge}` },
+      ],
+      {
+        providerId: config?.llm_id as string | undefined,
+        temperature: 0.3,
+      }
+    )
+
+    // Parse the JSON response, stripping any markdown fences
+    const cleaned = response.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
+
+    try {
+      return JSON.parse(cleaned)
+    } catch {
+      log.warn('Failed to parse mindmap JSON, returning fallback', { response: cleaned })
+      // Return a fallback structure with the raw response
+      return { name: query, children: [{ name: cleaned, children: [] }] }
+    }
+  }
+}
+
+/** Singleton instance of the search service */
+export const searchService = new SearchService()

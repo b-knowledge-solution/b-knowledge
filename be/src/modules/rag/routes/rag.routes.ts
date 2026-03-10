@@ -3,7 +3,7 @@ import multer from 'multer';
 import { RagController } from '../controllers/rag.controller.js';
 import { requireAuth, requirePermission } from '@/shared/middleware/auth.middleware.js';
 import { validate } from '@/shared/middleware/validate.middleware.js';
-import { createDatasetSchema, updateDatasetSchema, searchChunksSchema, uuidParamSchema } from '../schemas/rag.schemas.js';
+import { createDatasetSchema, updateDatasetSchema, searchChunksSchema, uuidParamSchema, datasetAccessSchema } from '../schemas/rag.schemas.js';
 
 const router = Router();
 const controller = new RagController();
@@ -15,6 +15,10 @@ router.get('/datasets/:id', requireAuth, controller.getDataset.bind(controller))
 router.post('/datasets', requirePermission('manage_datasets'), validate(createDatasetSchema), controller.createDataset.bind(controller));
 router.put('/datasets/:id', requirePermission('manage_datasets'), validate({ params: uuidParamSchema, body: updateDatasetSchema }), controller.updateDataset.bind(controller));
 router.delete('/datasets/:id', requirePermission('manage_datasets'), controller.deleteDataset.bind(controller));
+
+// Dataset RBAC access control endpoints
+router.get('/datasets/:id/access', requirePermission('manage_datasets'), controller.getDatasetAccess.bind(controller));
+router.put('/datasets/:id/access', requirePermission('manage_datasets'), validate({ params: uuidParamSchema, body: datasetAccessSchema }), controller.setDatasetAccess.bind(controller));
 
 // Document endpoints
 router.get('/datasets/:id/documents', requireAuth, controller.listDocuments.bind(controller));
