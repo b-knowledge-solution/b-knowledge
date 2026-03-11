@@ -136,7 +136,7 @@ if (!commandExists('docker')) {
     console.log('  Start Docker Desktop, then run: npm run docker:base')
   } else {
     console.log('  Starting PostgreSQL, Valkey, OpenSearch, RustFS...')
-    execSync('docker compose -f docker-compose-base.yml up -d', {
+    execSync('docker compose -p b-knowledge -f docker-compose-base.yml up -d', {
       cwd: dockerDir,
       stdio: 'inherit',
     })
