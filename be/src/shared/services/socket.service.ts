@@ -18,6 +18,7 @@
 import { Server as SocketIOServer, Socket } from 'socket.io'
 import * as http from 'http'
 import * as https from 'https'
+import { timingSafeEqual } from 'crypto'
 import { config } from '@/shared/config/index.js'
 import { log } from '@/shared/services/logger.service.js'
 
@@ -151,6 +152,28 @@ export class SocketService {
     }
 
     /**
+     * Timing-safe string comparison to prevent timing attacks on API key validation.
+     * Uses Node.js crypto.timingSafeEqual with Buffer conversion.
+     * Performs a dummy comparison when lengths differ to avoid leaking length info via timing.
+     *
+     * @param a - User-provided value
+     * @param b - Expected value
+     * @returns true if strings are equal
+     */
+    private timingSafeCompare(a: string, b: string): boolean {
+        const bufA = Buffer.from(a)
+        const bufB = Buffer.from(b)
+
+        // When lengths differ, compare bufA against itself to keep constant time
+        if (bufA.length !== bufB.length) {
+            timingSafeEqual(bufA, bufA)
+            return false
+        }
+
+        return timingSafeEqual(bufA, bufB)
+    }
+
+    /**
      * Handle socket authentication.
      * Supports two authentication methods:
      * 1. API Key authentication for external clients (Python)
@@ -169,9 +192,9 @@ export class SocketService {
         if (apiKey) {
             const configApiKey = config.websocket?.apiKey
 
-            // If API key is configured, validate it
+            // If API key is configured, validate it using timing-safe comparison
             if (configApiKey && configApiKey.length > 0) {
-                if (apiKey !== configApiKey) {
+                if (!this.timingSafeCompare(apiKey, configApiKey)) {
                     log.warn('Socket connection rejected: invalid API key', {
                         socketId: socket.id,
                     })

@@ -4,7 +4,7 @@
  */
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Dialog } from '@/components/Dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import type { User } from '@/features/auth'
 
 interface GrantPermissionsDialogProps {
@@ -57,28 +57,11 @@ export function GrantPermissionsDialog({ open, onClose, user, onSave }: GrantPer
     ]
 
     return (
-        <Dialog
-            open={open}
-            onClose={onClose}
-            title={t('userManagement.grantPermissions')}
-            maxWidth="2xl"
-            footer={
-                <>
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                    >
-                        {t('common.cancel')}
-                    </button>
-                    <button
-                        onClick={handleSave}
-                        className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"
-                    >
-                        {t('common.save')}
-                    </button>
-                </>
-            }
-        >
+        <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) onClose() }}>
+            <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>{t('userManagement.grantPermissions')}</DialogTitle>
+                </DialogHeader>
             <div className="py-4 space-y-4">
                 {/* User info */}
                 {user && (
@@ -113,6 +96,21 @@ export function GrantPermissionsDialog({ open, onClose, user, onSave }: GrantPer
                     </div>
                 </div>
             </div>
+                <DialogFooter>
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                    >
+                        {t('common.cancel')}
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"
+                    >
+                        {t('common.save')}
+                    </button>
+                </DialogFooter>
+            </DialogContent>
         </Dialog>
     )
 }

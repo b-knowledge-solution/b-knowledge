@@ -20,14 +20,15 @@ import { db, getAdapter, checkConnection, closePool } from '@/shared/db/index.js
 import knex from 'knex';
 import dbConfig from '@/shared/db/knexfile.js';
 import { cronService } from '@/shared/services/cron.service.js';
-import { knowledgeBaseService } from '@/modules/knowledge-base/knowledge-base.service.js';
+import { knowledgeBaseService } from '@/modules/knowledge-base/index.js';
 import { systemToolsService } from '@/modules/system-tools/system-tools.service.js';
-import { userService } from '@/modules/users/user.service.js';
+import { userService } from '@/modules/users/index.js';
 import { shutdownLangfuse } from '@/shared/services/langfuse.service.js';
-import { externalTraceService } from '@/modules/external/trace.service.js';
+import { traceAuthService } from '@/modules/trace/services/trace-auth.service.js';
 import { socketService } from '@/shared/services/socket.service.js';
 
 import { setupApiRoutes } from '@/app/routes.js';
+import { registerAllAdapters } from '@/modules/sync/index.js';
 
 const app = express();
 
@@ -86,6 +87,9 @@ app.use(session(sessionConfig));
 
 // Setup all API routes and middleware
 setupApiRoutes(app);
+
+// Register sync connector adapters
+registerAllAdapters();
 
 // Bootstraps HTTP/HTTPS server and initializes background services that require the listener
 const startServer = async (): Promise<http.Server | https.Server> => {
@@ -184,7 +188,7 @@ if (!isTest) {
       await shutdownRedis();
       await closePool();
       await shutdownLangfuse();
-      await externalTraceService.shutdown();
+      await traceAuthService.shutdown();
       await socketService.shutdown();
       process.exit(0);
     };

@@ -82,6 +82,7 @@ vi.mock('lucide-react', () => ({
   Users: () => <div />,
   Lock: () => <div />,
   Globe: () => <div />,
+  X: () => <div />,
 }))
 
 import KnowledgeBaseConfigPage from '../../../src/features/knowledge-base/pages/KnowledgeBaseConfigPage'

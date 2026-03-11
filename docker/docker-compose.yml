@@ -1,54 +1,12 @@
 # Knowledge Base - Docker Compose Configuration
-# This file sets up the complete infrastructure for the Knowledge Base system
+# Infrastructure (PostgreSQL, Valkey, OpenSearch, RustFS) is included from docker-compose-base.yml
+# This file only contains the application services that we build and develop.
+
+include:
+  - path: docker-compose-base.yml
+    env_file: .env
 
 services:
-  # ==========================================================================
-  # PostgreSQL Database
-  # ==========================================================================
-  postgres:
-    image: postgres:17-alpine
-    container_name: kb-postgres
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      POSTGRES_DB: ${DB_NAME:-knowledge_base}
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-change_me_in_production}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init-db:/docker-entrypoint-initdb.d:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-knowledge_base}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    networks:
-      - kb-network
-
-  # ==========================================================================
-  # Redis Session Store
-  # ==========================================================================
-  redis:
-    image: redis:7-alpine
-    container_name: kb-redis
-    restart: unless-stopped
-    command: >
-      redis-server
-      --appendonly yes
-      --requirepass ${REDIS_PASSWORD:-}
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
-    networks:
-      - kb-network
-
   # ==========================================================================
   # Knowledge Base Backend
   # ==========================================================================
@@ -62,14 +20,23 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
+      valkey:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+      rustfs:
         condition: service_healthy
     env_file:
       - .env
     environment:
-      # Override DB host to use Docker network
       DB_HOST: postgres
-      REDIS_HOST: redis
+      REDIS_HOST: valkey
+      REDIS_PORT: "6379"
+      VECTORDB_HOST: http://opensearch:9201
+      VECTORDB_PASSWORD: ${VECTORDB_PASSWORD:-OpenSearch@123}
+      S3_HOST: rustfs:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-rustfsadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-rustfsadmin}
     ports:
       - "${PORT:-3001}:3001"
     expose:
@@ -88,22 +55,96 @@ services:
     networks:
       - kb-network
 
-# ==========================================================================
-# Networks
-# ==========================================================================
-networks:
-  kb-network:
-    driver: bridge
+  # ==========================================================================
+  # RAG Task Executor (background worker for document parsing)
+  # ==========================================================================
+  task-executor:
+    build:
+      context: ../advance-rag
+      dockerfile: Dockerfile
+    image: ${RAG_IMAGE:-b-knowledge-rag}:${RAG_VERSION:-latest}
+    container_name: kb-task-executor
+    restart: unless-stopped
+    command: ["python", "-m", "executor_wrapper"]
+    depends_on:
+      backend:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+      rustfs:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:-knowledge_base}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-change_me_in_production}
+      REDIS_HOST: valkey
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      DOC_ENGINE: opensearch
+      VECTORDB_HOST: http://opensearch:9201
+      VECTORDB_PASSWORD: ${VECTORDB_PASSWORD:-OpenSearch@123}
+      S3_HOST: rustfs:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-rustfsadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-rustfsadmin}
+      RAG_PROJECT_BASE: /app
+      PYTHONPATH: /app
+      LOG_ROTATION: ${LOG_ROTATION:-50 MB}
+      LOG_RETENTION: ${LOG_RETENTION:-30 days}
+      LOG_COMPRESSION: ${LOG_COMPRESSION:-zip}
+    volumes:
+      - worker_logs:/app/logs
+    networks:
+      - kb-network
+
+  # ==========================================================================
+  # Document Converter Worker (Office → PDF conversion via LibreOffice)
+  # ==========================================================================
+  converter:
+    build:
+      context: ../converter
+      dockerfile: Dockerfile
+    image: ${CONVERTER_IMAGE:-b-knowledge-converter}:${CONVERTER_VERSION:-latest}
+    container_name: kb-converter
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      REDIS_HOST: valkey
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      POLL_INTERVAL: ${CONVERTER_POLL_INTERVAL:-30}
+      S3_HOST: rustfs:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-rustfsadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-rustfsadmin}
+    volumes:
+      - converter_data:/app/.data
+      - converter_logs:/app/logs
+    networks:
+      - kb-network
 
 # ==========================================================================
-# Volumes
+# Volumes (app-only — infrastructure volumes are in docker-compose-base.yml)
 # ==========================================================================
 volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
   backend_logs:
     driver: local
   backend_data:
+    driver: local
+  worker_logs:
+    driver: local
+  converter_data:
+    driver: local
+  converter_logs:
     driver: local

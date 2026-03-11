@@ -1,125 +1,208 @@
-# RAGFlow Simple UI
+# B-Knowledge
 
-A high-performance, enterprise-ready Management UI for RAGFlow, designed to bridge the gap between raw AI engines and business workflows. It provides a secure, localized, and feature-rich portal with Azure Entra ID authentication, advanced RBAC, and integrated observability.
+An open-source platform to centralize and manage AI Search, AI Chat, and Knowledge Base for the enterprise. B-Knowledge provides a complete RAG (Retrieval-Augmented Generation) pipeline — from document ingestion and parsing to intelligent search and conversational AI — with built-in team management, RBAC, and observability.
 
-## 🚀 Key Features
+## Key Features
 
 | Feature | Description |
 | :--- | :--- |
-| 🤖 **AI Chat & Search** | Refined interfaces for RAGFlow, with session history and full-text search. |
-| 📁 **Unified Storage Manager** | Enterprise document management with Multi-Cloud support (MinIO, S3, Azure). |
-| 🔐 **Azure Entra AD SSO** | Seamless Microsoft enterprise authentication with avatar synchronization. |
-| 👥 **Enterprise RBAC** | Granular multi-tier permissions: Admin, Manager, and User roles. |
-| 🏢 **Team Management** | Multi-tenant team structures for isolated document and flow access. |
-| 📢 **Broadcast System** | Real-time system-wide announcements for all active users. |
-| 🕵️ **Comprehensive Auditing** | Localized audit logs tracking every user action for compliance. |
-| 🖥️ **System Monitoring** | Real-time health metrics, resource usage, and diagnostics. |
-| 🌍 **Global Localization** | Full support for English, Vietnamese, and Japanese (i18n). |
-| 🎨 **Dynamic Theming** | Elegant Light, Dark, and System theme synchronization. |
-| 🔢 **AI Tokenizer** | Built-in tool for estimating token counts for various LLM models. |
-| 📊 **Observability** | Native Langfuse integration for tracing AI interactions. |
+| **AI Chat** | Multi-turn conversational AI with configurable assistants, session history, and citation-aware responses. |
+| **AI Search** | Semantic search across knowledge bases with re-ranking, graph-based retrieval, and hybrid search. |
+| **Knowledge Base** | End-to-end document management — upload, parse, chunk, embed, and index documents automatically. |
+| **Advanced RAG Engine** | Python-based pipeline with 15+ document parsers (PDF, DOCX, Excel, HTML, Markdown, OCR), hierarchical chunking, RAPTOR, and GraphRAG. |
+| **Document Converter** | Background worker for Office-to-PDF conversion via LibreOffice. |
+| **Dataset Management** | Version-controlled datasets with granular chunk-level editing and preview. |
+| **LLM Provider Config** | Connect multiple LLM providers (OpenAI, Azure OpenAI, Ollama, LiteLLM) with per-assistant model selection. |
+| **Team Management** | Multi-tenant team structures with isolated knowledge base and assistant access. |
+| **Enterprise RBAC** | Three-tier role system (Admin, Leader, User) with feature-level gating. |
+| **Glossary** | Domain terminology management to improve RAG accuracy and consistency. |
+| **Audit Logging** | Comprehensive audit trail tracking every user action for compliance. |
+| **Broadcast System** | Real-time system-wide announcements for all active users. |
+| **System Monitoring** | Health metrics, resource usage, and diagnostics dashboard. |
+| **Observability** | Native Langfuse integration for tracing AI interactions and evaluating response quality. |
+| **Localization** | Full i18n support for English, Vietnamese, and Japanese. |
+| **Theming** | Light, Dark, and System-synced themes. |
 
-## 🏗️ Architecture
+## Architecture
 
 ```mermaid
 graph TD
     Client[Frontend: React + Vite]
     BE[Backend: Express + TS]
+    Worker[advance-rag: RAG Pipeline]
+    Converter[converter: Doc Conversion]
     DB[(PostgreSQL)]
-    Redis[(Redis)]
-    MinIO[(MinIO Object Storage)]
-    RAGFlow[[RAGFlow AI Engine]]
-    Langfuse[[Langfuse Observability]]
+    Valkey[(Valkey)]
+    RustFS[(RustFS)]
+    OpenSearch[(OpenSearch)]
+    Langfuse[[Langfuse]]
 
     Client <--> BE
     BE <--> DB
-    BE <--> Redis
-    BE <--> MinIO
-    BE <--> RAGFlow
+    BE <--> Valkey
+    BE <--> RustFS
+    BE <--> OpenSearch
     BE -.-> Langfuse
+    Worker <--> DB
+    Worker <--> Valkey
+    Worker <--> RustFS
+    Worker <--> OpenSearch
+    Converter <--> Valkey
+    Converter <--> RustFS
 ```
 
 **Tech Stack:**
-- **Frontend**: React 19, Vite, Ant Design, Tailwind CSS, React Query, i18next
-- **Backend**: Express.js, TypeScript, Winston (Daily Rotate), Node-cron
-- **Database**: PostgreSQL (Knex.js migrations & query builder)
-- **Session**: Redis (Session persistence & rate limiting)
-- **Storage**: Multi-Cloud Provider (MinIO, S3, Azure, GCP ready)
-- **Auth**: Azure Entra ID (OAuth2/OpenID Connect)
-- **Monitoring**: Langfuse API integration
 
-## 📂 Project Structure
+| Layer | Technology |
+| :--- | :--- |
+| **Frontend** | React 19, Vite, shadcn/ui, Tailwind CSS, TanStack Query, i18next |
+| **Backend** | Express.js, TypeScript, Zod, Winston, Node-cron |
+| **RAG Worker** | Python 3.10+, Transformers, ONNX Runtime, scikit-learn, OpenAI SDK |
+| **Converter** | Python 3.10+, LibreOffice (headless), pypdf, pdfminer |
+| **Database** | PostgreSQL 17 (Knex.js ORM) |
+| **Cache & Queue** | Valkey 8 (Redis-compatible) |
+| **Search & Vectors** | OpenSearch 3.x (BM25 + kNN vector search) |
+| **Object Storage** | RustFS (S3-compatible) |
+| **Auth** | Azure Entra ID (OAuth2 / OpenID Connect) |
+| **Observability** | Langfuse (LLM tracing & evaluation) |
 
-```bash
-├── be/                 # Backend Workspace (Express + TypeScript)
-│   ├── src/
-│   │   ├── config/     # App configuration
-│   │   ├── controllers/# Request handlers (MVC pattern)
-│   │   ├── db/         # Knex migrations and seeds
-│   │   ├── middleware/ # Auth, rate-limit, and audit interceptors
-│   │   ├── models/     # Data access layer (BaseModel & Factory)
-│   │   ├── routes/     # API route definitions
-│   │   ├── services/   # Business logic (Storage Providers, RAGFlow, Audit)
-│   │   ├── scripts/    # Database maintenance scripts
-│   │   └── utils/      # Helper utilities
-├── fe/                 # Frontend Workspace (React + Vite)
-│   ├── src/
-│   │   ├── assets/     # Static assets
-│   │   ├── components/ # Reusable UI components
-│   │   ├── context/    # React Context providers
-│   │   ├── hooks/      # Custom React hooks
-│   │   ├── i18n/       # Localization files (en, vi, ja)
-│   │   ├── layouts/    # Page layouts
-│   │   ├── lib/        # Core libraries (API client)
-│   │   ├── pages/      # Application views
-│   │   ├── services/   # API service calls
-│   │   └── types/      # TypeScript definitions
-├── docker/             # Dockerization & deployment configs
-└── docs/               # Detailed technical documentation
+## Project Structure
+
+```
+b-knowledge/
+├── be/                       # Backend — Express API (Node.js)
+├── fe/                       # Frontend — React + Vite
+├── advance-rag/              # RAG pipeline worker (Python)
+│   ├── deepdoc/              #   Document parsers (PDF, DOCX, OCR, etc.)
+│   ├── rag/                  #   Chunking, embedding, retrieval, GraphRAG
+│   ├── graphrag/             #   Graph-based RAG (entity resolution, graph search)
+│   └── common/               #   Shared config & utilities
+├── converter/                # Document converter worker (Python)
+├── docker/                   # Docker Compose (base infra + app services)
+│   ├── docker-compose-base.yml   # PostgreSQL, Valkey, OpenSearch, RustFS
+│   └── docker-compose.yml        # App services (backend, worker, converter)
+├── scripts/                  # Setup & dev scripts
+├── docs/                     # Project documentation
+└── patches/                  # npm patch files
 ```
 
-## 🛠️ Developer Guide
+## Developer Guide
 
 ### Prerequisites
-- **Node.js**: 22+ (LTS)
-- **npm**: 10+
-- **PostgreSQL**: 15+
-- **MinIO**: High-performance object storage setup
-- **Redis**: Required for production session management
 
-### Local Development
+| Tool | Version | Purpose |
+| :--- | :--- | :--- |
+| **Node.js** | 22+ (LTS) | Backend & frontend runtime |
+| **npm** | 10+ | Package manager (workspaces) |
+| **Python** | 3.10+ | RAG worker & converter |
+| **Docker** | 24+ | Infrastructure services |
+
+### Quick Start (New Team Member)
+
+The fastest way to get everything running:
 
 ```bash
-# 1. Install dependencies for all workspaces
-npm install
+# Clone the repository
+git clone <repo-url> && cd b-knowledge
 
-# 2. Setup Environment Variables
-# Copy be/.env.example to be/.env and fill in Azure/MinIO/RAGFlow credentials
+# Run the full setup (installs everything + starts Docker infra)
+npm run setup
+```
 
-# 3. Run Database Migrations
-npm run db:migrate -w be
+This single command will:
+1. Check that Node.js, Python, and Docker are installed
+2. Copy `.env.example` → `.env` files where needed
+3. Install npm dependencies for all workspaces (`be/`, `fe/`)
+4. Create a centralized Python `.venv/` at the project root and install `advance-rag` + `converter` in editable mode
+5. Start Docker base infrastructure (PostgreSQL, Valkey, OpenSearch, RustFS)
 
-# 4. Start Development Servers
+Once setup completes, start development:
+
+```bash
 npm run dev
 ```
 
+### Manual Setup (Step by Step)
+
+If you prefer to set up each part individually:
+
+```bash
+# 1. Install npm dependencies
+npm install
+
+# 2. Set up environment variables
+#    Copy .env.example → .env in root, docker/, be/, advance-rag/ and fill in credentials
+
+# 3. Set up Python virtual environment (centralized at root .venv/)
+npm run setup:python
+
+# 4. Start Docker infrastructure
+npm run docker:base
+
+# 5. Run database migrations
+npm run db:migrate -w be
+
+# 6. Start all services
+npm run dev
+```
+
+### Python Virtual Environment
+
+The project uses a **centralized virtual environment** (`.venv/` at the project root) shared by all Python modules. Each module keeps its own `pyproject.toml` for independent Docker builds.
+
+```bash
+# Set up / reinstall all Python modules
+npm run setup:python
+
+# Set up individual modules (legacy, uses centralized .venv)
+npm run setup:worker       # advance-rag only
+npm run setup:converter    # converter only
+```
+
+To activate the venv manually (for IDE or debugging):
+
+```bash
+# Linux / macOS
+source .venv/bin/activate
+
+# Windows (Git Bash)
+source .venv/Scripts/activate
+
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+```
+
+### Available Commands
+
 | Command | Action |
 | :--- | :--- |
-| `npm run dev` | Spins up both FE (5173) and BE (3001) |
-| `npm run build` | Production build for both tiers |
+| `npm run setup` | Full project setup for new members |
+| `npm run dev` | Start all services (BE + FE + Worker + Converter) |
+| `npm run dev:be` | Backend only (port 3001) |
+| `npm run dev:fe` | Frontend only (port 5173) |
+| `npm run dev:worker` | RAG worker only |
+| `npm run dev:converter` | Converter worker only |
+| `npm run setup:python` | Create/update centralized Python venv |
+| `npm run docker:base` | Start infrastructure (PostgreSQL, Valkey, OpenSearch, RustFS) |
+| `npm run docker:down` | Stop infrastructure containers |
+| `npm run docker:up` | Build & start all app containers |
+| `npm run build` | Production build for all workspaces |
 | `npm run build:prod` | Optimized production build without source maps |
 | `npm run lint` | Run project-wide ESLint checks |
 | `npm run test` | Run tests with Vitest |
 
-## 📖 Documentation
+## Documentation
 
-Explore our detailed guides in the `docs/` folder:
+Explore the detailed guides in the `docs/` folder:
+- [Architecture & RBAC](docs/architecture.md)
 - [Configuration Guide](docs/configuration.md)
 - [Deployment Strategy](docs/deployment.md)
 - [API Reference](docs/api-reference.md)
-- [Architecture & RBAC](docs/architecture.md)
 - [External Integration](docs/external-trace-integration.md)
+- [Development Guide](docs/development.md)
+- [Security Review](docs/security-review.md)
+- [Testing](docs/testing.md)
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

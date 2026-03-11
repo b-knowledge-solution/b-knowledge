@@ -5,8 +5,7 @@
  */
 import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
-import { DatePicker } from 'antd'
-import dayjs from 'dayjs'
+import { DatePicker } from '@/components/ui/date-picker'
 import { useAuditFilters } from '../contexts/AuditFilterContext'
 import { getActionBadge, formatResourceType } from './AuditActionBadge'
 
@@ -103,12 +102,10 @@ export function AuditFilterPanel({ actionTypes, resourceTypes }: AuditFilterPane
                         {t('auditLog.startDate')}
                     </label>
                     <DatePicker
-                        showTime
-                        className="w-full"
-                        value={filters.startDate ? dayjs(filters.startDate) : null}
+                        value={filters.startDate ? new Date(filters.startDate) : undefined}
                         onChange={(date) => setFilter('startDate', date?.toISOString() || '')}
                         placeholder={t('auditLog.startDate')}
-                        disabledDate={(current) => filters.endDate ? current > dayjs(filters.endDate) : false}
+                        disabledDates={(d) => filters.endDate ? d > new Date(filters.endDate) : false}
                     />
                 </div>
 
@@ -118,12 +115,10 @@ export function AuditFilterPanel({ actionTypes, resourceTypes }: AuditFilterPane
                         {t('auditLog.endDate')}
                     </label>
                     <DatePicker
-                        showTime
-                        className="w-full"
-                        value={filters.endDate ? dayjs(filters.endDate) : null}
+                        value={filters.endDate ? new Date(filters.endDate) : undefined}
                         onChange={(date) => setFilter('endDate', date?.toISOString() || '')}
                         placeholder={t('auditLog.endDate')}
-                        disabledDate={(current) => filters.startDate ? current < dayjs(filters.startDate) : false}
+                        disabledDates={(d) => filters.startDate ? d < new Date(filters.startDate) : false}
                     />
                 </div>
             </div>

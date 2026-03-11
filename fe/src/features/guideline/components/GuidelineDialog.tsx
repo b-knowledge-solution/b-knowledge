@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Dialog } from '@/components/Dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useGuideline } from '../hooks/useGuideline';
 import { useAuth } from '@/features/auth';
 import { Play, Search } from 'lucide-react';
@@ -87,13 +87,11 @@ export function GuidelineDialog({ open, onClose, featureId }: GuidelineDialogPro
     const activeTab = guideline.tabs.find(t => t.tabId === activeTabId);
 
     return (
-        <Dialog
-            open={open}
-            onClose={handleClose}
-            title={t(`guideline.modules.${featureId}.title`, { defaultValue: getLocPath(guideline.overview).split('.')[0] })} // Fallback title
-            maxWidth="none"
-            className="h-[80vh] w-[70vw]"
-        >
+        <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) handleClose() }}>
+            <DialogContent className="h-[80vh] max-w-[70vw] flex flex-col">
+                <DialogHeader className="shrink-0 mb-2">
+                    <DialogTitle>{t(`guideline.modules.${featureId}.title`, { defaultValue: getLocPath(guideline.overview).split('.')[0] })}</DialogTitle>
+                </DialogHeader>
             <div className="flex h-full flex-col lg:flex-row gap-4">
                 {/* Sidebar / Tabs */}
                 <div className="w-full lg:w-64 shrink-0 border-r dark:border-slate-700 pr-4 flex flex-col gap-2">
@@ -280,6 +278,7 @@ export function GuidelineDialog({ open, onClose, featureId }: GuidelineDialogPro
                     )}
                 </div>
             </div>
+            </DialogContent>
         </Dialog>
     );
 }

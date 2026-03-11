@@ -6,7 +6,12 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Maximize2, Minimize2, RotateCcw, Sparkles } from 'lucide-react'
-import { Tooltip } from 'antd'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { ChatWidgetEmbed } from './ChatWidgetEmbed'
 import { PromptBuilderModal } from '@/features/glossary/components/PromptBuilderModal'
 
@@ -52,31 +57,39 @@ export function IframeActionButtons({
   const [showPromptBuilder, setShowPromptBuilder] = useState(false)
 
   return (
-    <>
+    <TooltipProvider>
       {/* Full Screen FAB */}
-      <Tooltip title={isFullScreen ? t('common.exitFullScreen') : t('common.fullScreen')} placement="left">
-        <button
-          onClick={onToggleFullScreen}
-          className="absolute right-6 p-3 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-full shadow-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition-all duration-200 z-[100] border border-slate-200 dark:border-slate-600 group cursor-pointer"
-          style={{ bottom: '9rem' }}
-        >
-          {isFullScreen ? <Minimize2 className="w-6 h-6" /> : <Maximize2 className="w-6 h-6" />}
-          <span className="sr-only">
-            {isFullScreen ? t('common.exitFullScreen') : t('common.fullScreen')}
-          </span>
-        </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={onToggleFullScreen}
+            className="absolute right-6 p-3 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-full shadow-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition-all duration-200 z-[100] border border-slate-200 dark:border-slate-600 group cursor-pointer"
+            style={{ bottom: '9rem' }}
+          >
+            {isFullScreen ? <Minimize2 className="w-6 h-6" /> : <Maximize2 className="w-6 h-6" />}
+            <span className="sr-only">
+              {isFullScreen ? t('common.exitFullScreen') : t('common.fullScreen')}
+            </span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="left">
+          {isFullScreen ? t('common.exitFullScreen') : t('common.fullScreen')}
+        </TooltipContent>
       </Tooltip>
 
       {/* Reset Session FAB */}
-      <Tooltip title={t('iframe.resetSession')} placement="left">
-        <button
-          onClick={onResetSession}
-          className="absolute right-6 p-3 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-full shadow-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition-all duration-200 z-[100] border border-slate-200 dark:border-slate-600 group cursor-pointer"
-          style={{ bottom: '12.5rem' }}
-        >
-          <RotateCcw className="w-6 h-6" />
-          <span className="sr-only">{t('iframe.resetSession')}</span>
-        </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={onResetSession}
+            className="absolute right-6 p-3 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-full shadow-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition-all duration-200 z-[100] border border-slate-200 dark:border-slate-600 group cursor-pointer"
+            style={{ bottom: '12.5rem' }}
+          >
+            <RotateCcw className="w-6 h-6" />
+            <span className="sr-only">{t('iframe.resetSession')}</span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="left">{t('iframe.resetSession')}</TooltipContent>
       </Tooltip>
 
       {/* Chat Widget for Search Mode */}
@@ -87,15 +100,18 @@ export function IframeActionButtons({
       {/* Prompt Builder for Chat Mode — FAB + Modal */}
       {path === 'chat' && (
         <>
-          <Tooltip title={t('glossary.promptBuilder.title')} placement="left">
-            <button
-              onClick={() => setShowPromptBuilder(true)}
-              className="absolute right-6 p-3 bg-primary text-white rounded-full shadow-lg hover:bg-primary-hover transition-all duration-200 z-[100] cursor-pointer"
-              style={{ bottom: '5.5rem' }}
-            >
-              <Sparkles className="w-6 h-6" />
-              <span className="sr-only">{t('glossary.promptBuilder.title')}</span>
-            </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setShowPromptBuilder(true)}
+                className="absolute right-6 p-3 bg-primary text-white rounded-full shadow-lg hover:bg-primary-hover transition-all duration-200 z-[100] cursor-pointer"
+                style={{ bottom: '5.5rem' }}
+              >
+                <Sparkles className="w-6 h-6" />
+                <span className="sr-only">{t('glossary.promptBuilder.title')}</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="left">{t('glossary.promptBuilder.title')}</TooltipContent>
           </Tooltip>
           <PromptBuilderModal
             open={showPromptBuilder}
@@ -112,7 +128,7 @@ export function IframeActionButtons({
           />
         </>
       )}
-    </>
+    </TooltipProvider>
   )
 }
 

@@ -2,24 +2,42 @@
 /**
  * Lazy-loaded singletons for all data models to keep connection sharing consistent.
  */
-import { UserModel } from '@/modules/users/user.model.js';
-import { TeamModel } from '@/modules/teams/team.model.js';
-import { UserTeamModel } from '@/modules/teams/user-team.model.js';
-import { ChatSessionModel } from '@/modules/chat/chat-session.model.js';
-import { ChatMessageModel } from '@/modules/chat/chat-message.model.js';
+import { UserModel } from '@/modules/users/models/user.model.js';
+import { TeamModel } from '@/modules/teams/models/team.model.js';
+import { UserTeamModel } from '@/modules/teams/models/user-team.model.js';
+import { ChatSessionModel } from '@/modules/chat/models/chat-session.model.js';
+import { ChatMessageModel } from '@/modules/chat/models/chat-message.model.js';
 import { SystemConfigModel } from '@/shared/models/system-config.model.js';
-import { KnowledgeBaseSourceModel } from '@/modules/knowledge-base/knowledge-base-source.model.js';
-import { AuditLogModel } from '@/modules/audit/audit-log.model.js';
-import { UserIpHistoryModel } from '@/modules/users/user-ip-history.model.js';
-import { BroadcastMessageModel } from '@/modules/broadcast/broadcast-message.model.js';
-import { UserDismissedBroadcastModel } from '@/modules/broadcast/user-dismissed-broadcast.model.js';
-import { ExternalChatSessionModel } from '@/modules/external/models/chat-session.model.js';
-import { ExternalChatMessageModel } from '@/modules/external/models/chat-message.model.js';
-import { ExternalSearchSessionModel } from '@/modules/external/models/search-session.model.js';
-import { ExternalSearchRecordModel } from '@/modules/external/models/search-record.model.js';
+import { KnowledgeBaseSourceModel } from '@/modules/knowledge-base/models/knowledge-base-source.model.js';
+import { AuditLogModel } from '@/modules/audit/models/audit-log.model.js';
+import { UserIpHistoryModel } from '@/modules/users/models/user-ip-history.model.js';
+import { BroadcastMessageModel } from '@/modules/broadcast/models/broadcast-message.model.js';
+import { UserDismissedBroadcastModel } from '@/modules/broadcast/models/user-dismissed-broadcast.model.js';
+import { ExternalChatSessionModel } from '@/shared/models/external-chat-session.model.js';
+import { ExternalChatMessageModel } from '@/shared/models/external-chat-message.model.js';
+import { ExternalSearchSessionModel } from '@/shared/models/external-search-session.model.js';
+import { ExternalSearchRecordModel } from '@/shared/models/external-search-record.model.js';
 
-import { GlossaryTaskModel } from '@/modules/glossary/glossary-task.model.js';
-import { GlossaryKeywordModel } from '@/modules/glossary/glossary-keyword.model.js';
+import { GlossaryTaskModel } from '@/modules/glossary/models/glossary-task.model.js';
+import { GlossaryKeywordModel } from '@/modules/glossary/models/glossary-keyword.model.js';
+
+import { DatasetModel } from '@/modules/rag/models/dataset.model.js';
+import { DocumentModel } from '@/modules/rag/models/document.model.js';
+import { ModelProviderModel } from '@/modules/rag/models/model-provider.model.js';
+import { TenantLlmModel } from '@/modules/llm-provider/models/tenant-llm.model.js';
+import { KnowledgebaseModel } from '@/modules/rag/models/knowledgebase.model.js';
+import { RagDocumentModel } from '@/modules/rag/models/rag-document.model.js';
+import { RagFileModel } from '@/modules/rag/models/rag-file.model.js';
+import { RagTaskModel } from '@/modules/rag/models/rag-task.model.js';
+import { ConnectorModel } from '@/modules/sync/models/connector.model.js';
+import { SyncLogModel } from '@/modules/sync/models/sync-log.model.js';
+import { ChatDialogModel } from '@/modules/chat/models/chat-dialog.model.js';
+import { ChatDialogAccessModel } from '@/modules/chat/models/chat-dialog-access.model.js';
+import { SearchAppModel } from '@/modules/search/models/search-app.model.js'
+import { SearchAppAccessModel } from '@/modules/search/models/search-app-access.model.js';
+import { DocumentVersionModel } from '@/modules/rag/models/document-version.model.js';
+import { DocumentVersionFileModel } from '@/modules/rag/models/document-version-file.model.js';
+import { ConverterJobModel } from '@/modules/rag/models/converter-job.model.js';
 
 /**
  * ModelFactory class implementing the Factory Pattern.
@@ -62,10 +80,41 @@ export class ModelFactory {
 
 
   // Glossary Models
-  /** Glossary task model singleton instance */
   private static glossaryTaskModel: GlossaryTaskModel;
-  /** Glossary keyword model singleton instance */
   private static glossaryKeywordModel: GlossaryKeywordModel;
+
+  // RAG Models
+  private static datasetModel: DatasetModel;
+  private static documentModel: DocumentModel;
+  private static modelProviderModel: ModelProviderModel;
+  /** TenantLlm model singleton instance */
+  private static tenantLlmModel: TenantLlmModel;
+  /** Knowledgebase (Peewee) model singleton instance */
+  private static knowledgebaseModel: KnowledgebaseModel;
+  /** RagDocument (Peewee) model singleton instance */
+  private static ragDocumentModel: RagDocumentModel;
+  /** RagFile (Peewee) model singleton instance */
+  private static ragFileModel: RagFileModel;
+  /** RagTask (Peewee) model singleton instance */
+  private static ragTaskModel: RagTaskModel;
+  /** Connector model singleton instance */
+  private static connectorModel: ConnectorModel;
+  /** SyncLog model singleton instance */
+  private static syncLogModel: SyncLogModel;
+  /** ChatDialog model singleton instance */
+  private static chatDialogModel: ChatDialogModel;
+  /** ChatDialogAccess model singleton instance */
+  private static chatDialogAccessModel: ChatDialogAccessModel;
+  /** SearchApp model singleton instance */
+  private static searchAppModel: SearchAppModel;
+  /** SearchAppAccess model singleton instance */
+  private static searchAppAccessModel: SearchAppAccessModel;
+  /** DocumentVersion model singleton instance */
+  private static documentVersionModel: DocumentVersionModel;
+  /** DocumentVersionFile model singleton instance */
+  private static documentVersionFileModel: DocumentVersionFileModel;
+  /** ConverterJob model singleton instance */
+  private static converterJobModel: ConverterJobModel;
 
   /**
    * Get the User model singleton.
@@ -241,5 +290,139 @@ export class ModelFactory {
   static get glossaryKeyword() {
     if (!this.glossaryKeywordModel) this.glossaryKeywordModel = new GlossaryKeywordModel();
     return this.glossaryKeywordModel;
+  }
+
+  static get dataset() {
+    if (!this.datasetModel) this.datasetModel = new DatasetModel();
+    return this.datasetModel;
+  }
+
+  static get document() {
+    if (!this.documentModel) this.documentModel = new DocumentModel();
+    return this.documentModel;
+  }
+
+  static get modelProvider() {
+    if (!this.modelProviderModel) this.modelProviderModel = new ModelProviderModel();
+    return this.modelProviderModel;
+  }
+
+  /**
+   * Get the TenantLlm model singleton.
+   * Manages the shared tenant_llm table read by Python task executors.
+   * @returns TenantLlmModel instance for tenant LLM config operations
+   */
+  static get tenantLlm() {
+    // Create instance on first access (lazy initialization)
+    if (!this.tenantLlmModel) this.tenantLlmModel = new TenantLlmModel();
+    return this.tenantLlmModel;
+  }
+
+  static get knowledgebase() {
+    if (!this.knowledgebaseModel) this.knowledgebaseModel = new KnowledgebaseModel();
+    return this.knowledgebaseModel;
+  }
+
+  static get ragDocument() {
+    if (!this.ragDocumentModel) this.ragDocumentModel = new RagDocumentModel();
+    return this.ragDocumentModel;
+  }
+
+  static get ragFile() {
+    if (!this.ragFileModel) this.ragFileModel = new RagFileModel();
+    return this.ragFileModel;
+  }
+
+  static get ragTask() {
+    if (!this.ragTaskModel) this.ragTaskModel = new RagTaskModel();
+    return this.ragTaskModel;
+  }
+
+  /**
+   * Get the Connector model singleton.
+   * @returns ConnectorModel instance for connector CRUD operations
+   */
+  static get connector() {
+    if (!this.connectorModel) this.connectorModel = new ConnectorModel();
+    return this.connectorModel;
+  }
+
+  /**
+   * Get the SyncLog model singleton.
+   * @returns SyncLogModel instance for sync log operations
+   */
+  static get syncLog() {
+    if (!this.syncLogModel) this.syncLogModel = new SyncLogModel();
+    return this.syncLogModel;
+  }
+
+  /**
+   * Get the ChatDialog model singleton.
+   * @returns ChatDialogModel instance for dialog configuration operations
+   */
+  static get chatDialog() {
+    if (!this.chatDialogModel) this.chatDialogModel = new ChatDialogModel();
+    return this.chatDialogModel;
+  }
+
+  /**
+   * Get the ChatDialogAccess model singleton.
+   * Manages RBAC access entries for chat dialogs.
+   * @returns ChatDialogAccessModel instance for access control operations
+   */
+  static get chatDialogAccess() {
+    // Create instance on first access (lazy initialization)
+    if (!this.chatDialogAccessModel) this.chatDialogAccessModel = new ChatDialogAccessModel();
+    return this.chatDialogAccessModel;
+  }
+
+  /**
+   * Get the SearchApp model singleton.
+   * @returns SearchAppModel instance for search app operations
+   */
+  static get searchApp() {
+    if (!this.searchAppModel) this.searchAppModel = new SearchAppModel();
+    return this.searchAppModel;
+  }
+
+  /**
+   * Get the SearchAppAccess model singleton.
+   * Manages RBAC access entries for search apps.
+   * @returns SearchAppAccessModel instance for access control operations
+   */
+  static get searchAppAccess() {
+    // Create instance on first access (lazy initialization)
+    if (!this.searchAppAccessModel) this.searchAppAccessModel = new SearchAppAccessModel();
+    return this.searchAppAccessModel;
+  }
+
+  /**
+   * Get the DocumentVersion model singleton.
+   * Manages document version records for datasets.
+   * @returns DocumentVersionModel instance for version CRUD operations
+   */
+  static get documentVersion() {
+    if (!this.documentVersionModel) this.documentVersionModel = new DocumentVersionModel();
+    return this.documentVersionModel;
+  }
+
+  /**
+   * Get the DocumentVersionFile model singleton.
+   * Manages files within document versions.
+   * @returns DocumentVersionFileModel instance for version file operations
+   */
+  static get documentVersionFile() {
+    if (!this.documentVersionFileModel) this.documentVersionFileModel = new DocumentVersionFileModel();
+    return this.documentVersionFileModel;
+  }
+
+  /**
+   * Get the ConverterJob model singleton.
+   * Manages converter job tracking records.
+   * @returns ConverterJobModel instance for converter job operations
+   */
+  static get converterJob() {
+    if (!this.converterJobModel) this.converterJobModel = new ConverterJobModel();
+    return this.converterJobModel;
   }
 }

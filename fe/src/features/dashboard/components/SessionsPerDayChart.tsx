@@ -4,8 +4,17 @@
  */
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Card, Empty } from 'antd'
-import { Column } from '@ant-design/charts'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
+import {
+    ResponsiveContainer,
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    Tooltip,
+    CartesianGrid,
+} from 'recharts'
 import type { DailyActivity } from '../types/dashboard.types'
 
 interface SessionsPerDayChartProps {
@@ -14,7 +23,7 @@ interface SessionsPerDayChartProps {
 }
 
 /**
- * @description Column chart showing total daily sessions (chat + search combined).
+ * @description Bar chart showing total daily sessions (chat + search combined).
  * @param props - Activity trend data array.
  * @returns Chart card element.
  */
@@ -30,37 +39,41 @@ export function SessionsPerDayChart({ activityTrend }: SessionsPerDayChartProps)
         [activityTrend]
     )
 
-    const columnConfig = {
-        data: sessionsPerDayData,
-        xField: 'date',
-        yField: 'sessions',
-        height: 300,
-        axis: {
-            x: { title: t('dashboard.charts.date') },
-            y: { title: t('dashboard.charts.sessions') },
-        },
-        style: {
-            radiusTopLeft: 4,
-            radiusTopRight: 4,
-            fill: '#1677ff',
-        },
-        tooltip: {
-            items: [
-                { channel: 'y', name: t('dashboard.charts.totalActivity') },
-            ],
-        },
-    }
-
     return (
-        <Card title={t('dashboard.charts.sessionsPerDay')} bordered={false} className="shadow-sm">
-            {sessionsPerDayData.length > 0 ? (
-                <Column {...columnConfig} />
-            ) : (
-                <Empty
-                    description={t('common.noData')}
-                    style={{ height: 300, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
-                />
-            )}
+        <Card>
+            <CardHeader>
+                <CardTitle>{t('dashboard.charts.sessionsPerDay')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+                {sessionsPerDayData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={sessionsPerDayData}>
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                            <XAxis
+                                dataKey="date"
+                                label={{ value: t('dashboard.charts.date'), position: 'insideBottom', offset: -5 }}
+                            />
+                            <YAxis
+                                label={{ value: t('dashboard.charts.sessions'), angle: -90, position: 'insideLeft' }}
+                            />
+                            <Tooltip
+                                formatter={(value: any) => [value, t('dashboard.charts.totalActivity')]}
+                            />
+                            {/* Session count bars with rounded top */}
+                            <Bar
+                                dataKey="sessions"
+                                fill="#1677ff"
+                                radius={[4, 4, 0, 0]}
+                            />
+                        </BarChart>
+                    </ResponsiveContainer>
+                ) : (
+                    <EmptyState
+                        title={t('common.noData')}
+                        className="h-[300px] flex items-center justify-center"
+                    />
+                )}
+            </CardContent>
         </Card>
     )
 }

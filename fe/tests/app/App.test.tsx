@@ -20,29 +20,6 @@ vi.mock('@/config', () => ({
   config: vi_mockConfig,
 }));
 
-vi.mock('antd', () => ({
-  App: Object.assign(
-    ({ children }: any) => <div data-testid="antd-app">{children}</div>,
-    {
-      useApp: () => ({
-        message: {
-          success: vi.fn(),
-          error: vi.fn(),
-          info: vi.fn(),
-          warning: vi.fn(),
-        },
-        notification: {},
-        modal: {},
-      }),
-    }
-  ),
-  message: {
-    success: vi.fn(),
-    error: vi.fn(),
-    info: vi.fn(),
-    warning: vi.fn(),
-  },
-}));
 
 vi.mock('@/features/auth', () => ({
   useAuth: () => ({ isAuthenticated: false, isLoading: false, user: null }),
@@ -163,7 +140,7 @@ describe('App', () => {
         </BrowserRouter>
       </QueryClientProvider>
     );
-    expect(screen.getByTestId('antd-app')).toBeInTheDocument();
+    expect(screen.getByTestId('auth-provider')).toBeInTheDocument();
   });
 
   it('renders all provider components', () => {

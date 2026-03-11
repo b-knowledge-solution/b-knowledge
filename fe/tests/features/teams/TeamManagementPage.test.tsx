@@ -93,6 +93,8 @@ vi.mock('../../../src/features/teams/components/TeamMembersDialog', () => ({
 vi.mock('lucide-react', () => ({
   Plus: () => <div data-testid="plus" />,
   Search: () => <div />,
+  ChevronDown: () => <div />,
+  ChevronUp: () => <div />,
 }))
 
 import TeamManagementPage from '../../../src/features/teams/pages/TeamManagementPage'

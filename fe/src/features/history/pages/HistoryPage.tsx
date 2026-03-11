@@ -16,10 +16,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Dialog } from '@/components/Dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Checkbox } from '@/components/Checkbox'
-import { DatePicker } from 'antd'
-import dayjs from 'dayjs'
+import { DatePicker } from '@/components/ui/date-picker'
 
 import {
   type SearchParams,
@@ -207,18 +206,18 @@ function HistoryPage() {
             </div>
             <div className="flex gap-2">
               <DatePicker
-                value={startDate ? dayjs(startDate) : null}
-                onChange={(_, dateString) => setStartDate(dateString as string)}
+                value={startDate ? new Date(startDate) : undefined}
+                onChange={(date) => setStartDate(date ? date.toISOString().split('T')[0] ?? '' : '')}
                 className="w-40"
                 placeholder={t('history.startDate')}
-                disabledDate={(current) => endDate ? current > dayjs(endDate) : false}
+                disabledDates={(d) => endDate ? d > new Date(endDate) : false}
               />
               <DatePicker
-                value={endDate ? dayjs(endDate) : null}
-                onChange={(_, dateString) => setEndDate(dateString as string)}
+                value={endDate ? new Date(endDate) : undefined}
+                onChange={(date) => setEndDate(date ? date.toISOString().split('T')[0] ?? '' : '')}
                 className="w-40"
                 placeholder={t('history.endDate')}
-                disabledDate={(current) => startDate ? current < dayjs(startDate) : false}
+                disabledDates={(d) => startDate ? d < new Date(startDate) : false}
               />
             </div>
           </div>
@@ -335,12 +334,13 @@ function HistoryPage() {
       )}
 
       {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={showDeleteConfirm}
-        onClose={() => setShowDeleteConfirm(false)}
-        title={t('history.confirmDelete')}
-        footer={
-          <>
+      <Dialog open={showDeleteConfirm} onOpenChange={(v: boolean) => { if (!v) setShowDeleteConfirm(false) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('history.confirmDelete')}</DialogTitle>
+          </DialogHeader>
+          <p>{t('history.confirmDeleteMessage', { count: selectedSessions.size })}</p>
+          <DialogFooter>
             <button
               onClick={() => setShowDeleteConfirm(false)}
               className="btn btn-secondary"
@@ -354,19 +354,18 @@ function HistoryPage() {
             >
               {bulkDeleteMutation.isPending ? t('history.deleting') : t('common.delete')}
             </button>
-          </>
-        }
-      >
-        <p>{t('history.confirmDeleteMessage', { count: selectedSessions.size })}</p>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
 
       {/* Delete All Confirmation Dialog */}
-      <Dialog
-        open={deleteAllConfirm}
-        onClose={() => setDeleteAllConfirm(false)}
-        title={`⚠️ ${t('history.deleteAllTitle')}`}
-        footer={
-          <>
+      <Dialog open={deleteAllConfirm} onOpenChange={(v: boolean) => { if (!v) setDeleteAllConfirm(false) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{`⚠️ ${t('history.deleteAllTitle')}`}</DialogTitle>
+          </DialogHeader>
+          <p>{t('history.deleteAllMessage')}</p>
+          <DialogFooter>
             <button
               onClick={() => setDeleteAllConfirm(false)}
               className="btn btn-secondary"
@@ -380,10 +379,8 @@ function HistoryPage() {
             >
               {deleteAllMutation.isPending ? t('history.deleting') : t('history.deleteAll')}
             </button>
-          </>
-        }
-      >
-        <p>{t('history.deleteAllMessage')}</p>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </div>
   )

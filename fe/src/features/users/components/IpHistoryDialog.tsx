@@ -3,8 +3,15 @@
  * @module features/users/components/IpHistoryDialog
  */
 import { useTranslation } from 'react-i18next'
-import { Table } from 'antd'
-import { Dialog } from '@/components/Dialog'
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import type { User } from '@/features/auth'
 import type { UserIpHistory } from '../types/user.types'
 
@@ -30,37 +37,12 @@ export function IpHistoryDialog({ open, onClose, user, ipHistory }: IpHistoryDia
     /** Format a date string to locale string */
     const formatDate = (dateString: string) => new Date(dateString).toLocaleString()
 
-    /** Table columns for IP history */
-    const columns = [
-        {
-            title: t('userManagement.ipAddress'),
-            dataIndex: 'ip_address',
-            key: 'ip_address',
-            render: (text: string) => <span className="font-mono">{text}</span>,
-        },
-        {
-            title: t('userManagement.lastAccess'),
-            dataIndex: 'last_accessed_at',
-            key: 'last_accessed_at',
-            render: (text: string) => formatDate(text),
-        },
-    ]
-
     return (
-        <Dialog
-            open={open}
-            onClose={onClose}
-            title={t('userManagement.ipHistoryTitle')}
-            maxWidth="3xl"
-            footer={
-                <button
-                    onClick={onClose}
-                    className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                >
-                    {t('common.close')}
-                </button>
-            }
-        >
+        <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) onClose() }}>
+            <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                    <DialogTitle>{t('userManagement.ipHistoryTitle')}</DialogTitle>
+                </DialogHeader>
             <div className="py-4">
                 {/* User info header */}
                 {user && (
@@ -78,13 +60,24 @@ export function IpHistoryDialog({ open, onClose, user, ipHistory }: IpHistoryDia
                 {/* IP History Table */}
                 {ipHistory.length > 0 ? (
                     <div className="overflow-hidden">
-                        <Table
-                            dataSource={ipHistory}
-                            rowKey="id"
-                            pagination={{ pageSize: 10 }}
-                            size="small"
-                            columns={columns}
-                        />
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>{t('userManagement.ipAddress')}</TableHead>
+                                    <TableHead>{t('userManagement.lastAccess')}</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {ipHistory.map((record) => (
+                                    <TableRow key={record.id}>
+                                        <TableCell>
+                                            <span className="font-mono">{record.ip_address}</span>
+                                        </TableCell>
+                                        <TableCell>{formatDate(record.last_accessed_at)}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
                     </div>
                 ) : (
                     <div className="text-center text-slate-500 dark:text-slate-400 py-8">
@@ -92,6 +85,15 @@ export function IpHistoryDialog({ open, onClose, user, ipHistory }: IpHistoryDia
                     </div>
                 )}
             </div>
+                <DialogFooter>
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                    >
+                        {t('common.close')}
+                    </button>
+                </DialogFooter>
+            </DialogContent>
         </Dialog>
     )
 }

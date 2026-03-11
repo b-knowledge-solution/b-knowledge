@@ -4,10 +4,15 @@
  */
 import { useTranslation } from 'react-i18next';
 import { Check, X, Shield, Users, User, AlertCircle } from 'lucide-react';
-
-import { Table, Card, Typography } from 'antd';
-
-const { Title, Text } = Typography;
+import { Card, CardContent } from '@/components/ui/card';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 
 /**
  * Defines a permission row in the matrix.
@@ -96,88 +101,74 @@ export default function PermissionManagementPage() {
         </div>
     );
 
-    const columns = [
-        {
-            title: t('iam.permissions.feature', 'Feature / Permission'),
-            key: 'permission',
-            render: (_: any, record: PermissionMatrixItem) => (
-                <div>
-                    <div className="font-medium text-slate-800 dark:text-slate-200">{record.permission}</div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{record.description}</div>
-                </div>
-            ),
-        },
-        {
-            title: (
-                <div className="flex flex-col items-center gap-1">
-                    <User className="w-5 h-5 text-slate-500" />
-                    <span>{t('iam.roles.user', 'Member')}</span>
-                </div>
-            ),
-            dataIndex: 'user',
-            key: 'user',
-            align: 'center' as const,
-            render: (val: boolean) => renderCheckOrX(val),
-        },
-        {
-            title: (
-                <div className="flex flex-col items-center gap-1">
-                    <Users className="w-5 h-5 text-blue-500" />
-                    <span>{t('iam.roles.leader', 'Leader')}</span>
-                </div>
-            ),
-            dataIndex: 'leader',
-            key: 'leader',
-            align: 'center' as const,
-            render: (val: boolean) => renderCheckOrX(val),
-        },
-        {
-            title: (
-                <div className="flex flex-col items-center gap-1">
-                    <Shield className="w-5 h-5 text-purple-500" />
-                    <span>{t('iam.roles.admin', 'Admin')}</span>
-                </div>
-            ),
-            dataIndex: 'admin',
-            key: 'admin',
-            align: 'center' as const,
-            render: (val: boolean) => renderCheckOrX(val),
-        },
-    ];
-
     return (
         <div className="p-6 max-w-7xl mx-auto h-full flex flex-col">
             <div className="flex items-center gap-3 mb-6 shrink-0">
                 <Shield className="w-8 h-8 text-primary dark:text-blue-400" />
-                <Title level={2} className="!mb-0 !text-slate-800 dark:!text-white">
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
                     {t('iam.permissions.title', 'Permission Management')}
-                </Title>
+                </h2>
             </div>
 
-            <Card className="flex-1 min-h-0 overflow-hidden dark:bg-slate-800 dark:border-slate-700" styles={{ body: { padding: 0, height: '100%', display: 'flex', flexDirection: 'column' } }}>
-                <div className="p-6 border-b border-slate-200 dark:border-slate-700 shrink-0">
-                    <Text className="text-slate-600 dark:text-slate-400 block mb-4">
-                        {t('iam.permissions.description', 'View and understand the permission levels for different roles in the system. Roles are assigned at the team level.')}
-                    </Text>
+            <Card className="flex-1 min-h-0 overflow-hidden dark:bg-slate-800 dark:border-slate-700">
+                <CardContent className="p-0 h-full flex flex-col">
+                    <div className="p-6 border-b border-slate-200 dark:border-slate-700 shrink-0">
+                        <p className="text-slate-600 dark:text-slate-400 block mb-4">
+                            {t('iam.permissions.description', 'View and understand the permission levels for different roles in the system. Roles are assigned at the team level.')}
+                        </p>
 
-                    <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg">
-                        <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                        <div className="text-sm">
-                            <p className="font-medium">{t('iam.permissions.noteTitle', 'Role Assignment Note')}</p>
-                            <p className="mt-1">{t('iam.permissions.noteBody', 'Permissions are predefined and cannot be customized per user. To change a user\'s access level, assign them a different role (Member or Leader) within their team.')}</p>
+                        <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg">
+                            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                                <p className="font-medium">{t('iam.permissions.noteTitle', 'Role Assignment Note')}</p>
+                                <p className="mt-1">{t('iam.permissions.noteBody', 'Permissions are predefined and cannot be customized per user. To change a user\'s access level, assign them a different role (Member or Leader) within their team.')}</p>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="flex-1 overflow-hidden">
-                    <Table
-                        columns={columns}
-                        dataSource={permissions}
-                        rowKey="permission"
-                        pagination={false}
-                        scroll={{ x: true, y: 'calc(100vh - 400px)' }}
-                    />
-                </div>
+                    <div className="flex-1 overflow-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>{t('iam.permissions.feature', 'Feature / Permission')}</TableHead>
+                                    <TableHead className="text-center">
+                                        <div className="flex flex-col items-center gap-1">
+                                            <User className="w-5 h-5 text-slate-500" />
+                                            <span>{t('iam.roles.user', 'Member')}</span>
+                                        </div>
+                                    </TableHead>
+                                    <TableHead className="text-center">
+                                        <div className="flex flex-col items-center gap-1">
+                                            <Users className="w-5 h-5 text-blue-500" />
+                                            <span>{t('iam.roles.leader', 'Leader')}</span>
+                                        </div>
+                                    </TableHead>
+                                    <TableHead className="text-center">
+                                        <div className="flex flex-col items-center gap-1">
+                                            <Shield className="w-5 h-5 text-purple-500" />
+                                            <span>{t('iam.roles.admin', 'Admin')}</span>
+                                        </div>
+                                    </TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {permissions.map((item) => (
+                                    <TableRow key={item.permission}>
+                                        <TableCell>
+                                            <div>
+                                                <div className="font-medium text-slate-800 dark:text-slate-200">{item.permission}</div>
+                                                <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{item.description}</div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>{renderCheckOrX(item.user)}</TableCell>
+                                        <TableCell>{renderCheckOrX(item.leader)}</TableCell>
+                                        <TableCell>{renderCheckOrX(item.admin)}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </CardContent>
             </Card>
         </div>
     );

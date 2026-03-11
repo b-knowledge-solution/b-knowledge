@@ -69,28 +69,6 @@ vi.mock('@tanstack/react-query', () => ({
   QueryClientProvider: ({ children }: any) => <div>{children}</div>
 }))
 
-// Mock Ant Design components as needed
-vi.mock('antd', async (importOriginal) => {
-  const actual = await importOriginal<any>()
-  return {
-    ...actual,
-    Table: ({ dataSource, columns }: any) => (
-      <table role="table">
-        <tbody>
-          {dataSource.map((item: any) => (
-            <tr key={item.id}>
-              {columns.map((col: any) => (
-                <td key={col.key || col.dataIndex}>
-                  {col.render ? col.render(item[col.dataIndex], item) : (col.dataIndex ? item[col.dataIndex] : null)}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    ),
-  }
-})
 
 describe('UserManagementPage', () => {
   beforeEach(() => {

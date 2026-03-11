@@ -4,8 +4,18 @@
  */
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Card, Empty } from 'antd'
-import { Line } from '@ant-design/charts'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
+import {
+    ResponsiveContainer,
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    Tooltip,
+    Legend,
+    CartesianGrid,
+} from 'recharts'
 import type { DailyActivity } from '../types/dashboard.types'
 
 interface ActivityTrendChartProps {
@@ -21,41 +31,64 @@ interface ActivityTrendChartProps {
 export function ActivityTrendChart({ activityTrend }: ActivityTrendChartProps) {
     const { t } = useTranslation()
 
-    /** Transform raw trend data into chart-ready format */
-    const trendData = useMemo(() =>
-        activityTrend.flatMap(item => [
-            { date: item.date, count: item.chatCount, type: t('dashboard.charts.chatMessages') },
-            { date: item.date, count: item.searchCount, type: t('dashboard.charts.searchRecords') },
-        ]),
+    /** Transform raw trend data into recharts-ready format (one object per date) */
+    const chartData = useMemo(() =>
+        activityTrend.map(item => ({
+            date: item.date,
+            [t('dashboard.charts.chatMessages')]: item.chatCount,
+            [t('dashboard.charts.searchRecords')]: item.searchCount,
+        })),
         [activityTrend, t]
     )
 
-    const lineConfig = {
-        data: trendData,
-        xField: 'date',
-        yField: 'count',
-        colorField: 'type',
-        smooth: true,
-        height: 300,
-        axis: {
-            x: { title: t('dashboard.charts.date') },
-            y: { title: t('dashboard.charts.messageCount') },
-        },
-        style: {
-            lineWidth: 2,
-        },
-    }
+    /** Translated series labels */
+    const chatLabel = t('dashboard.charts.chatMessages')
+    const searchLabel = t('dashboard.charts.searchRecords')
 
     return (
-        <Card title={t('dashboard.charts.activityTrend')} bordered={false} className="shadow-sm">
-            {trendData.length > 0 ? (
-                <Line {...lineConfig} />
-            ) : (
-                <Empty
-                    description={t('common.noData')}
-                    style={{ height: 300, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
-                />
-            )}
+        <Card>
+            <CardHeader>
+                <CardTitle>{t('dashboard.charts.activityTrend')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+                {chartData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                            <XAxis
+                                dataKey="date"
+                                label={{ value: t('dashboard.charts.date'), position: 'insideBottom', offset: -5 }}
+                            />
+                            <YAxis
+                                label={{ value: t('dashboard.charts.messageCount'), angle: -90, position: 'insideLeft' }}
+                            />
+                            <Tooltip />
+                            <Legend />
+                            {/* Chat messages line */}
+                            <Line
+                                type="monotone"
+                                dataKey={chatLabel}
+                                stroke="#1677ff"
+                                strokeWidth={2}
+                                dot={false}
+                            />
+                            {/* Search records line */}
+                            <Line
+                                type="monotone"
+                                dataKey={searchLabel}
+                                stroke="#52c41a"
+                                strokeWidth={2}
+                                dot={false}
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
+                ) : (
+                    <EmptyState
+                        title={t('common.noData')}
+                        className="h-[300px] flex items-center justify-center"
+                    />
+                )}
+            </CardContent>
         </Card>
     )
 }

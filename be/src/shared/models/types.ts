@@ -99,6 +99,8 @@ export interface ChatSession {
     user_id: string;
     /** Title of the chat session, usually generated from first prompt */
     title: string;
+    /** Optional dialog ID linking to a RAGFlow dialog configuration */
+    dialog_id?: string | null;
     /** User ID who created this record */
     created_by?: string | null;
     /** User ID who last updated this record */
@@ -127,6 +129,104 @@ export interface ChatMessage {
     created_by?: string | null;
     /** User ID who last updated this record */
     updated_by?: string | null;
+    /** JSONB citations/references from RAGFlow */
+    citations?: unknown | null;
+    /** RAGFlow external message ID */
+    message_id?: string | null;
+}
+
+/**
+ * ChatDialog interface representing a RAGFlow dialog (chat assistant) configuration.
+ */
+export interface ChatDialog {
+    /** Unique UUID for the dialog */
+    id: string;
+    /** Display name of the dialog */
+    name: string;
+    /** Description of the dialog purpose */
+    description?: string | null;
+    /** Icon identifier or URL */
+    icon?: string | null;
+    /** Array of knowledge base IDs linked to this dialog */
+    kb_ids: string[];
+    /** LLM model identifier to use */
+    llm_id?: string | null;
+    /** Prompt configuration (system prompt, temperature, etc.) */
+    prompt_config: Record<string, unknown>;
+    /** Whether the dialog is publicly accessible to all users */
+    is_public: boolean;
+    /** User ID who created this record */
+    created_by?: string | null;
+    /** User ID who last updated this record */
+    updated_by?: string | null;
+    /** Timestamp of record creation */
+    created_at: Date;
+    /** Timestamp of last update */
+    updated_at: Date;
+}
+
+/**
+ * ChatDialogAccess interface representing an RBAC access entry for a chat dialog.
+ * Links a dialog to a user or team that has been granted access.
+ */
+export interface ChatDialogAccess {
+    /** Unique UUID for the access entry */
+    id: string;
+    /** UUID of the dialog this access entry belongs to */
+    dialog_id: string;
+    /** Type of entity granted access ('user' or 'team') */
+    entity_type: 'user' | 'team';
+    /** UUID of the user or team granted access */
+    entity_id: string;
+    /** User ID who created this access entry */
+    created_by?: string | null;
+    /** Timestamp of record creation */
+    created_at: Date;
+}
+
+/**
+ * SearchApp interface representing a saved search application configuration.
+ */
+export interface SearchApp {
+    /** Unique UUID for the search app */
+    id: string;
+    /** Display name */
+    name: string;
+    /** Description of the search app */
+    description?: string | null;
+    /** Array of dataset IDs to search across */
+    dataset_ids: string[];
+    /** Search configuration (top_k, method, threshold, etc.) */
+    search_config: Record<string, unknown>;
+    /** Whether the search app is publicly accessible to all users */
+    is_public: boolean;
+    /** User ID who created this record */
+    created_by?: string | null;
+    /** User ID who last updated this record */
+    updated_by?: string | null;
+    /** Timestamp of record creation */
+    created_at: Date;
+    /** Timestamp of last update */
+    updated_at: Date;
+}
+
+/**
+ * SearchAppAccess interface representing an RBAC access entry for a search app.
+ * Links a search app to a user or team that has been granted access.
+ */
+export interface SearchAppAccess {
+    /** Unique UUID for the access entry */
+    id: string;
+    /** UUID of the search app this access entry belongs to */
+    app_id: string;
+    /** Type of entity granted access ('user' or 'team') */
+    entity_type: 'user' | 'team';
+    /** UUID of the user or team granted access */
+    entity_id: string;
+    /** User ID who created this access entry */
+    created_by?: string | null;
+    /** Timestamp of record creation */
+    created_at: Date;
 }
 
 /**
@@ -477,6 +577,90 @@ export interface BulkImportGlossaryRow {
 /**
  * Result of glossary bulk import operation.
  */
+/**
+ * Dataset interface representing a RAG dataset (knowledgebase).
+ */
+export interface Dataset {
+    id: string;
+    name: string;
+    description?: string | null;
+    language: string;
+    embedding_model?: string | null;
+    parser_id: string;
+    parser_config: any;
+    access_control: any;
+    status: string;
+    doc_count: number;
+    chunk_count: number;
+    token_count: number;
+    created_by?: string | null;
+    updated_by?: string | null;
+    created_at: Date;
+    updated_at: Date;
+}
+
+/**
+ * Document interface representing a file within a dataset.
+ */
+export interface Document {
+    id: string;
+    dataset_id: string;
+    name: string;
+    size: number;
+    type?: string | null;
+    status: string;
+    progress: number;
+    progress_msg?: string | null;
+    chunk_count: number;
+    token_count: number;
+    storage_path?: string | null;
+    created_by?: string | null;
+    created_at: Date;
+    updated_at: Date;
+}
+
+/**
+ * ModelProvider interface representing a system-wide model provider config.
+ */
+export interface ModelProvider {
+    id: string;
+    factory_name: string;
+    model_type: string;
+    model_name: string;
+    api_key?: string | null;
+    api_base?: string | null;
+    max_tokens?: number | null;
+    status: string;
+    is_default: boolean;
+    created_by?: string | null;
+    updated_by?: string | null;
+    created_at: Date;
+    updated_at: Date;
+}
+
+/**
+ * TenantLlm interface representing a row in the shared 'tenant_llm' table.
+ * This table is read by Python task executors to load LLM provider configs.
+ */
+export interface TenantLlm {
+    /** Primary key (hex UUID without hyphens) */
+    id: string;
+    /** Tenant UUID this config belongs to */
+    tenant_id: string;
+    /** LLM provider factory name (e.g., 'OpenAI', 'Azure') */
+    llm_factory: string;
+    /** Model type (e.g., 'chat', 'embedding') */
+    model_type: string;
+    /** Model identifier (e.g., 'gpt-4o') */
+    llm_name: string;
+    /** API key for the provider */
+    api_key: string;
+    /** Optional custom API base URL */
+    api_base: string;
+    /** Maximum tokens allowed */
+    max_tokens: number;
+}
+
 export interface BulkImportGlossaryResult {
     /** Whether the operation completed successfully */
     success: boolean;
@@ -486,4 +670,228 @@ export interface BulkImportGlossaryResult {
     skipped: number;
     /** Any error messages */
     errors: string[];
+}
+
+// ---------------------------------------------------------------------------
+// RAG Peewee-schema row types (shared with Python task executors)
+// ---------------------------------------------------------------------------
+
+/**
+ * DocumentRow represents a row in the Peewee 'document' table.
+ * Table schema matches advance-rag/db/db_models.py.
+ */
+export interface DocumentRow {
+    id: string;
+    kb_id: string;
+    parser_id: string;
+    parser_config: Record<string, unknown>;
+    source_type: string;
+    type: string;
+    created_by: string;
+    name: string;
+    location: string;
+    size: number;
+    suffix: string;
+    /** "0"=not started, "1"=running, "2"=cancelled, "3"=done, "4"=fail */
+    run: string;
+    /** "0"=deleted, "1"=valid */
+    status: string;
+    progress: number;
+    progress_msg: string;
+    token_num: number;
+    chunk_num: number;
+    [key: string]: unknown;
+}
+
+/**
+ * TaskRow represents a row in the Peewee 'task' table.
+ */
+export interface TaskRow {
+    id: string;
+    doc_id: string;
+    from_page: number;
+    to_page: number;
+    task_type: string;
+    priority: number;
+    progress: number;
+    progress_msg: string;
+    begin_at: string;
+    digest: string;
+    chunk_ids: string;
+    [key: string]: unknown;
+}
+
+/**
+ * KnowledgebaseRow represents a row in the Peewee 'knowledgebase' table.
+ */
+export interface KnowledgebaseRow {
+    id: string;
+    tenant_id: string;
+    name: string;
+    language: string;
+    description: string;
+    embd_id: string;
+    parser_id: string;
+    parser_config: Record<string, unknown>;
+    doc_num: number;
+    token_num: number;
+    chunk_num: number;
+    graphrag_task_id: string | null;
+    raptor_task_id: string | null;
+    mindmap_task_id: string | null;
+    status: string;
+    [key: string]: unknown;
+}
+
+// ---------------------------------------------------------------------------
+// Document Version types
+// ---------------------------------------------------------------------------
+
+/**
+ * DocumentVersion interface representing a versioned snapshot of dataset documents.
+ */
+export interface DocumentVersion {
+    /** Unique UUID for the version */
+    id: string
+    /** UUID of the parent dataset */
+    dataset_id: string
+    /** Human-readable version label (e.g., 'v1.0', '2026-03') */
+    version_label: string
+    /** RAGFlow dataset ID for this version's documents */
+    ragflow_dataset_id?: string | null
+    /** RAGFlow dataset name */
+    ragflow_dataset_name?: string | null
+    /** Version status ('active' or 'archived') */
+    status: 'active' | 'archived'
+    /** Timestamp of last sync with RAGFlow */
+    last_synced_at?: Date | null
+    /** JSONB metadata (pagerank, chunk_method, parser_config, etc.) */
+    metadata: Record<string, unknown>
+    /** User ID who created this version */
+    created_by?: string | null
+    /** Timestamp of record creation */
+    created_at: Date
+    /** Timestamp of last update */
+    updated_at: Date
+}
+
+/**
+ * DocumentVersionFile interface representing a file within a document version.
+ */
+export interface DocumentVersionFile {
+    /** Unique UUID for the file record */
+    id: string
+    /** UUID of the parent version */
+    version_id: string
+    /** Original file name */
+    file_name: string
+    /** RAGFlow document ID (set after upload to RAGFlow) */
+    ragflow_doc_id?: string | null
+    /** Current file status in the pipeline */
+    status: 'pending' | 'converting' | 'converted' | 'imported' | 'parsing' | 'done' | 'failed'
+    /** Error message if failed */
+    error?: string | null
+    /** Timestamp of record creation */
+    created_at: Date
+    /** Timestamp of last update */
+    updated_at: Date
+}
+
+/**
+ * ConverterJob interface representing a conversion job for a document version.
+ */
+export interface ConverterJob {
+    /** Unique UUID for the job */
+    id: string
+    /** UUID of the parent dataset */
+    dataset_id: string
+    /** UUID of the version being converted */
+    version_id: string
+    /** Job status */
+    status: 'pending' | 'converting' | 'finished' | 'failed'
+    /** Total number of files in this job */
+    file_count: number
+    /** Number of successfully finished files */
+    finished_count: number
+    /** Number of failed files */
+    failed_count: number
+    /** Timestamp of record creation */
+    created_at: Date
+    /** Timestamp of last update */
+    updated_at: Date
+}
+
+// ---------------------------------------------------------------------------
+// Shared service interfaces
+// ---------------------------------------------------------------------------
+
+/**
+ * Access control definition for datasets and knowledge base sources.
+ */
+export interface AccessControl {
+    public: boolean;
+    team_ids: string[];
+    user_ids: string[];
+}
+
+/**
+ * Authenticated user context passed to service methods for audit logging.
+ */
+export interface UserContext {
+    id: string;
+    email: string;
+    role?: string;
+    ip?: string;
+}
+
+// ---------------------------------------------------------------------------
+// RAG search types
+// ---------------------------------------------------------------------------
+
+/**
+ * A single chunk result from Elasticsearch search.
+ */
+export interface ChunkResult {
+    chunk_id: string;
+    text: string;
+    doc_id?: string;
+    doc_name?: string;
+    page_num?: number[];
+    positions?: number[][];
+    score?: number;
+    method?: string;
+    /** Image ID for image-type chunks */
+    img_id?: string;
+}
+
+/**
+ * Search request parameters for RAG search.
+ */
+export interface SearchRequest {
+    query: string;
+    method?: 'hybrid' | 'semantic' | 'full_text';
+    top_k?: number;
+    similarity_threshold?: number;
+}
+
+// ---------------------------------------------------------------------------
+// RAG Redis task types
+// ---------------------------------------------------------------------------
+
+/**
+ * Task message sent to Redis Streams for advance-rag task executors.
+ */
+export interface TaskMessage {
+    id: string;
+    doc_id: string;
+    from_page: number;
+    to_page: number;
+    task_type: string;
+    priority?: number;
+    progress?: number;
+    progress_msg?: string;
+    begin_at?: string;
+    digest?: string;
+    doc_ids?: string[];
+    [key: string]: unknown;
 }

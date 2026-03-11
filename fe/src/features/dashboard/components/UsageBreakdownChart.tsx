@@ -4,9 +4,20 @@
  */
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Card, Empty } from 'antd'
-import { Pie } from '@ant-design/charts'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
+import {
+    ResponsiveContainer,
+    PieChart,
+    Pie,
+    Cell,
+    Tooltip,
+    Legend,
+} from 'recharts'
 import type { UsageBreakdown } from '../types/dashboard.types'
+
+/** Colour palette for chart slices */
+const COLORS = ['#1677ff', '#52c41a']
 
 interface UsageBreakdownChartProps {
     /** Session breakdown data */
@@ -25,41 +36,49 @@ export function UsageBreakdownChart({ usageBreakdown }: UsageBreakdownChartProps
     const pieData = useMemo(() => {
         if (!usageBreakdown) return []
         return [
-            { type: t('dashboard.charts.aiChat'), value: usageBreakdown.chatSessions },
-            { type: t('dashboard.charts.aiSearch'), value: usageBreakdown.searchSessions },
+            { name: t('dashboard.charts.aiChat'), value: usageBreakdown.chatSessions },
+            { name: t('dashboard.charts.aiSearch'), value: usageBreakdown.searchSessions },
         ].filter(d => d.value > 0)
     }, [usageBreakdown, t])
 
-    const pieConfig = {
-        data: pieData,
-        angleField: 'value',
-        colorField: 'type',
-        height: 300,
-        innerRadius: 0.5,
-        label: {
-            text: 'type',
-            position: 'outside' as const,
-        },
-        tooltip: {
-            items: [
-                { channel: 'y', name: t('dashboard.charts.sessions') },
-            ],
-        },
-        interaction: {
-            elementHighlight: true,
-        },
-    }
-
     return (
-        <Card title={t('dashboard.charts.usageBreakdown')} bordered={false} className="shadow-sm">
-            {pieData.some(d => d.value > 0) ? (
-                <Pie {...pieConfig} />
-            ) : (
-                <Empty
-                    description={t('common.noData')}
-                    style={{ height: 300, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
-                />
-            )}
+        <Card>
+            <CardHeader>
+                <CardTitle>{t('dashboard.charts.usageBreakdown')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+                {pieData.some(d => d.value > 0) ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                            <Pie
+                                data={pieData}
+                                dataKey="value"
+                                nameKey="name"
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={60}
+                                outerRadius={100}
+                                label
+                            >
+                                {/* Assign colours to each slice */}
+                                {pieData.map((_entry, index) => (
+                                    <Cell
+                                        key={`cell-${index}`}
+                                        fill={COLORS[index % COLORS.length]}
+                                    />
+                                ))}
+                            </Pie>
+                            <Tooltip />
+                            <Legend />
+                        </PieChart>
+                    </ResponsiveContainer>
+                ) : (
+                    <EmptyState
+                        title={t('common.noData')}
+                        className="h-[300px] flex items-center justify-center"
+                    />
+                )}
+            </CardContent>
         </Card>
     )
 }

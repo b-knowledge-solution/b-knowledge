@@ -54,6 +54,8 @@ export type Permission =
     | 'view_analytics'
     | 'view_system_tools'
     | 'manage_storage'
+    | 'manage_datasets'
+    | 'manage_model_providers'
     | 'storage:read'
     | 'storage:write'
     | 'storage:delete';
@@ -106,6 +108,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
         'manage_storage',
         'view_analytics',
         'view_system_tools',
+        'manage_datasets',
+        'manage_model_providers',
         'storage:read',
         'storage:write',
         'storage:delete',
@@ -116,6 +120,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
         'view_search',
         'view_history',
         'manage_users', // Leaders can view/edit users but maybe restricted (logic in service)
+        'manage_datasets',
         'view_analytics',
         'view_system_tools',
     ],

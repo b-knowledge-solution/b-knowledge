@@ -1,3 +1,3 @@
-export { default as auditRoutes } from './audit.routes.js'
-export { auditService, AuditAction, AuditResourceType } from './audit.service.js'
-export type { AuditLogParams, AuditLogQueryParams, AuditLogResponse, AuditActionType, AuditResourceTypeValue } from './audit.service.js'
+export { default as auditRoutes } from './routes/audit.routes.js'
+export { auditService, AuditAction, AuditResourceType } from './services/audit.service.js'
+export type { AuditLogParams, AuditLogQueryParams, AuditLogResponse, AuditActionType, AuditResourceTypeValue } from './services/audit.service.js'

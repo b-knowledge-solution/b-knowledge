@@ -20,7 +20,7 @@
  */
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Dialog } from './Dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 /**
  * Options for configuring the confirmation dialog.
@@ -143,14 +143,15 @@ export const ConfirmProvider: React.FC<ConfirmProviderProps> = ({ children }) =>
 
             {/* Global confirmation modal instance */}
             {isOpen && options && (
-                <Dialog
-                    open={isOpen}
-                    onClose={handleCancel}
-                    title={options.title || t('dialog.confirmTitle')}
-                    maxWidth="sm"
-                    className="z-[100]"
-                    footer={
-                        <>
+                <Dialog open={isOpen} onOpenChange={(v: boolean) => { if (!v) handleCancel() }}>
+                    <DialogContent className="max-w-sm z-[100]">
+                        <DialogHeader>
+                            <DialogTitle>{options.title || t('dialog.confirmTitle')}</DialogTitle>
+                        </DialogHeader>
+                        <div className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap py-4">
+                            {options.message}
+                        </div>
+                        <DialogFooter>
                             {/* Cancel Button */}
                             <button
                                 onClick={handleCancel}
@@ -166,12 +167,8 @@ export const ConfirmProvider: React.FC<ConfirmProviderProps> = ({ children }) =>
                             >
                                 {options.confirmText || t('dialog.confirm')}
                             </button>
-                        </>
-                    }
-                >
-                    <div className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                        {options.message}
-                    </div>
+                        </DialogFooter>
+                    </DialogContent>
                 </Dialog>
             )}
         </ConfirmContext>

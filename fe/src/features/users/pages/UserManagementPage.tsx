@@ -7,7 +7,25 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Mail, Edit2, Globe } from 'lucide-react'
 import { useAuth, User } from '@/features/auth'
-import { Table, Tag, Card, Space, Avatar, Button, Tooltip, Pagination } from 'antd'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Pagination } from '@/components/ui/pagination'
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip'
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table'
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
 import { useUserManagement } from '../hooks/useUserManagement'
 import { UserToolbar } from '../components/UserToolbar'
@@ -56,7 +74,11 @@ export default function UserManagementPage() {
     }
 
     /** Role color helper */
-    const roleColor = (role: string) => role === 'admin' ? 'purple' : role === 'leader' ? 'blue' : 'default'
+    const roleBadgeVariant = (role: string) => {
+        if (role === 'admin') return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+        if (role === 'leader') return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+        return ''
+    }
 
     /** Role labels */
     const roleLabels: Record<string, string> = {
@@ -65,117 +87,116 @@ export default function UserManagementPage() {
         user: t('userManagement.userRole'),
     }
 
-    /** Table columns */
-    const columns = [
-        {
-            title: t('userManagement.user'),
-            key: 'user',
-            sorter: (a: User, b: User) => (a.displayName || a.email || '').localeCompare(b.displayName || b.email || ''),
-            render: (_: any, record: User) => (
-                <Space>
-                    <Avatar className="bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium text-sm">
-                        {(record.displayName || record.email || '?').charAt(0).toUpperCase()}
-                    </Avatar>
-                    <span className="font-medium text-slate-900 dark:text-white">{record.displayName || record.email}</span>
-                </Space>
-            ),
-        },
-        {
-            title: t('userManagement.email'),
-            dataIndex: 'email',
-            key: 'email',
-            sorter: (a: User, b: User) => (a.email || '').localeCompare(b.email || ''),
-            render: (text: string) => (
-                <Space aria-label="email">
-                    <Mail className="w-4 h-4 text-slate-400" />
-                    <span className="text-slate-600 dark:text-slate-300">{text}</span>
-                </Space>
-            ),
-        },
-        {
-            title: t('userManagement.department'),
-            dataIndex: 'department',
-            key: 'department',
-            sorter: (a: User, b: User) => (a.department || '').localeCompare(b.department || ''),
-            render: (text: string) => <span className="text-slate-600 dark:text-slate-300">{text || '-'}</span>,
-        },
-        {
-            title: t('userManagement.role'),
-            dataIndex: 'role',
-            key: 'role',
-            sorter: (a: User, b: User) => (a.role || '').localeCompare(b.role || ''),
-            render: (role: string) => <Tag color={roleColor(role)} className="capitalize">{roleLabels[role] || role}</Tag>,
-        },
-        {
-            title: t('userManagement.actions'),
-            key: 'actions',
-            align: 'right' as const,
-            render: (_: any, record: User) => {
-                const hasIpHistory = (mgmt.ipHistoryMap[record.id] || []).length > 0
-                return (
-                    <Space>
-                        <Tooltip title={t('userManagement.viewIpHistory')}>
-                            <Button
-                                type="text"
-                                icon={<Globe className="w-4 h-4" />}
-                                onClick={() => { setSelectedUser(record); setIsIpHistoryOpen(true) }}
-                                disabled={!hasIpHistory}
-                                className={hasIpHistory ? 'text-slate-400 hover:text-primary-600' : ''}
-                            />
-                        </Tooltip>
-                        <Tooltip title={t('userManagement.editRole')}>
-                            <Button
-                                type="text"
-                                icon={<Edit2 className="w-4 h-4" />}
-                                onClick={() => { setSelectedUser(record); setSaveError(null); setIsEditRoleOpen(true) }}
-                                className="text-slate-400 hover:text-primary-600"
-                            />
-                        </Tooltip>
-                    </Space>
-                )
-            },
-        },
-    ]
-
     return (
         <>
             <div className="w-full h-full flex flex-col p-6">
-                <Card
-                    styles={{ body: { padding: 0, height: '100%', display: 'flex', flexDirection: 'column' } }}
-                    className="dark:bg-slate-800 dark:border-slate-700 flex-1 min-h-0 overflow-hidden"
-                >
-                    <UserToolbar
-                        searchQuery={mgmt.searchQuery}
-                        onSearchChange={mgmt.setSearchQuery}
-                        roleFilter={mgmt.roleFilter}
-                        onRoleFilterChange={mgmt.setRoleFilter}
-                        departmentFilter={mgmt.departmentFilter}
-                        onDepartmentFilterChange={mgmt.setDepartmentFilter}
-                        departments={mgmt.departments}
-                    />
-
-                    <div className="flex-1 overflow-auto p-4">
-                        <Table
-                            columns={columns}
-                            dataSource={mgmt.paginatedUsers}
-                            rowKey="id"
-                            loading={mgmt.isLoading}
-                            pagination={false}
-                            scroll={{ x: true }}
+                <Card className="dark:bg-slate-800 dark:border-slate-700 flex-1 min-h-0 overflow-hidden">
+                    <CardContent className="p-0 h-full flex flex-col">
+                        <UserToolbar
+                            searchQuery={mgmt.searchQuery}
+                            onSearchChange={mgmt.setSearchQuery}
+                            roleFilter={mgmt.roleFilter}
+                            onRoleFilterChange={mgmt.setRoleFilter}
+                            departmentFilter={mgmt.departmentFilter}
+                            onDepartmentFilterChange={mgmt.setDepartmentFilter}
+                            departments={mgmt.departments}
                         />
-                    </div>
 
-                    <div className="flex justify-end p-4 border-t border-slate-200 dark:border-slate-700">
-                        <Pagination
-                            current={mgmt.currentPage}
-                            total={mgmt.filteredCount}
-                            pageSize={mgmt.pageSize}
-                            showSizeChanger={true}
-                            showTotal={(total: number) => t('common.totalItems', { total })}
-                            pageSizeOptions={['10', '20', '50', '100']}
-                            onChange={mgmt.handlePaginationChange}
-                        />
-                    </div>
+                        <div className="flex-1 overflow-auto p-4">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>{t('userManagement.user')}</TableHead>
+                                        <TableHead>{t('userManagement.email')}</TableHead>
+                                        <TableHead>{t('userManagement.department')}</TableHead>
+                                        <TableHead>{t('userManagement.role')}</TableHead>
+                                        <TableHead className="text-right">{t('userManagement.actions')}</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {mgmt.paginatedUsers.map((record) => {
+                                        const hasIpHistory = (mgmt.ipHistoryMap[record.id] || []).length > 0
+                                        return (
+                                            <TableRow key={record.id}>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <Avatar className="h-8 w-8">
+                                                            <AvatarFallback className="bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium text-sm">
+                                                                {(record.displayName || record.email || '?').charAt(0).toUpperCase()}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                        <span className="font-medium text-slate-900 dark:text-white">{record.displayName || record.email}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <Mail className="w-4 h-4 text-slate-400" />
+                                                        <span className="text-slate-600 dark:text-slate-300">{record.email}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <span className="text-slate-600 dark:text-slate-300">{record.department || '-'}</span>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge
+                                                        variant={record.role === 'admin' || record.role === 'leader' ? 'default' : 'secondary'}
+                                                        className={`capitalize ${roleBadgeVariant(record.role || '')}`}
+                                                    >
+                                                        {roleLabels[record.role || ''] || record.role}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={() => { setSelectedUser(record); setIsIpHistoryOpen(true) }}
+                                                                        disabled={!hasIpHistory}
+                                                                        className={hasIpHistory ? 'text-slate-400 hover:text-primary-600' : ''}
+                                                                    >
+                                                                        <Globe className="w-4 h-4" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>{t('userManagement.viewIpHistory')}</TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={() => { setSelectedUser(record); setSaveError(null); setIsEditRoleOpen(true) }}
+                                                                        className="text-slate-400 hover:text-primary-600"
+                                                                    >
+                                                                        <Edit2 className="w-4 h-4" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>{t('userManagement.editRole')}</TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        )
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                        {mgmt.filteredCount > mgmt.pageSize && (
+                            <div className="flex justify-end p-4 border-t border-slate-200 dark:border-slate-700">
+                                <Pagination
+                                    currentPage={mgmt.currentPage}
+                                    totalPages={Math.ceil(mgmt.filteredCount / mgmt.pageSize)}
+                                    onPageChange={(page) => mgmt.handlePaginationChange(page, mgmt.pageSize)}
+                                />
+                            </div>
+                        )}
+                    </CardContent>
                 </Card>
             </div>
 

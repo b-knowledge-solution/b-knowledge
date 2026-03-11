@@ -12,20 +12,29 @@ import { log } from '@/shared/services/logger.service.js';
 
 // Route imports
 import authRoutes from '@/modules/auth/auth.routes.js';
-import knowledgeBaseRoutes from '@/modules/knowledge-base/knowledge-base.routes.js';
-import adminRoutes from '@/modules/admin/admin.routes.js';
-import userRoutes from '@/modules/users/users.routes.js';
-import teamRoutes from '@/modules/teams/teams.routes.js';
+import knowledgeBaseRoutes from '@/modules/knowledge-base/routes/knowledge-base.routes.js';
+import adminRoutes from '@/modules/admin/routes/admin.routes.js';
+import userRoutes from '@/modules/users/routes/users.routes.js';
+import teamRoutes from '@/modules/teams/routes/teams.routes.js';
 import systemToolsRoutes from '@/modules/system-tools/system-tools.routes.js';
-import auditRoutes from '@/modules/audit/audit.routes.js';
-import externalRoutes from '@/modules/external/routes/index.js';
-import broadcastMessageRoutes from '@/modules/broadcast/broadcast-message.routes.js';
-import adminHistoryRoutes from '@/modules/admin/admin-history.routes.js';
-import chatHistoryRoutes from '@/modules/chat/chat-history.routes.js';
+import auditRoutes from '@/modules/audit/routes/audit.routes.js';
+import traceRoutes from '@/modules/trace/routes/trace.routes.js';
+import traceHistoryRoutes from '@/modules/trace/routes/history.routes.js';
+import { checkTraceEnabled } from '@/modules/trace/middleware/trace-enabled.middleware.js';
+import { TraceController } from '@/modules/trace/controllers/trace.controller.js';
+import broadcastMessageRoutes from '@/modules/broadcast/routes/broadcast-message.routes.js';
+import adminHistoryRoutes from '@/modules/admin/routes/admin-history.routes.js';
+import chatHistoryRoutes from '@/modules/chat/routes/chat-history.routes.js';
+import chatConversationRoutes from '@/modules/chat/routes/chat-conversation.routes.js';
+import chatDialogRoutes from '@/modules/chat/routes/chat-dialog.routes.js';
 import userHistoryRoutes from '@/modules/user-history/user-history.routes.js';
+import searchRoutes from '@/modules/search/routes/search.routes.js';
 
 import dashboardRoutes from '@/modules/dashboard/dashboard.routes.js';
-import glossaryRoutes from '@/modules/glossary/glossary.routes.js';
+import glossaryRoutes from '@/modules/glossary/routes/glossary.routes.js';
+import ragRoutes from '@/modules/rag/routes/rag.routes.js';
+import llmProviderRoutes from '@/modules/llm-provider/routes/llm-provider.routes.js';
+import syncRoutes from '@/modules/sync/routes/sync.routes.js';
 
 // ============================================================================
 // Rate Limiters
@@ -118,8 +127,11 @@ function registerRoutes(apiRouter: Router): void {
     // Audit logging
     apiRouter.use('/audit', auditRoutes);
 
-    // External integrations
-    apiRouter.use('/external', externalRoutes);
+    // External integrations (trace module — backward compatible at /api/external/*)
+    const traceController = new TraceController();
+    apiRouter.use('/external/trace', traceRoutes);
+    apiRouter.use('/external/history', traceHistoryRoutes);
+    apiRouter.get('/external/health', checkTraceEnabled, traceController.getHealth.bind(traceController));
 
     // Broadcast messages
     apiRouter.use('/broadcast-messages', broadcastMessageRoutes);
@@ -127,10 +139,28 @@ function registerRoutes(apiRouter: Router): void {
     // Chat history
     apiRouter.use('/chat', chatHistoryRoutes);
 
+    // Chat conversations (local DB + LLM)
+    apiRouter.use('/chat', chatConversationRoutes);
+
+    // Chat dialogs (assistant configuration)
+    apiRouter.use('/chat', chatDialogRoutes);
+
+    // Search apps
+    apiRouter.use('/search', searchRoutes);
+
 
 
     // Glossary management (tasks, keywords, prompt builder)
     apiRouter.use('/glossary', glossaryRoutes);
+
+    // RAG datasets and documents
+    apiRouter.use('/rag', ragRoutes);
+
+    // LLM provider management (admin only)
+    apiRouter.use('/llm-provider', llmProviderRoutes);
+
+    // Data source sync (connectors → MinIO → parse)
+    apiRouter.use('/sync', syncRoutes);
 }
 
 // ============================================================================

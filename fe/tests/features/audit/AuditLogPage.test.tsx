@@ -1,10 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }) }))
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (k: string) => k,
+    i18n: { language: 'en', changeLanguage: vi.fn() }
+  }),
+  initReactI18next: { type: '3rdParty', init: () => {} }
+}))
 const vi_mockAuth = vi.hoisted(() => vi.fn(() => ({ user: { role: 'admin' } })))
 vi.mock('../../../src/features/auth', () => ({ useAuth: vi_mockAuth }))
-vi.mock('lucide-react', () => ({ Search: () => null, Filter: () => null, Clock: () => null, User: () => null, FileText: () => null, Globe: () => null, RefreshCw: () => null, ChevronLeft: () => null, ChevronRight: () => null, X: () => null, Calendar: () => null }))
+vi.mock('lucide-react', () => ({ Search: () => null, Filter: () => null, Clock: () => null, User: () => null, FileText: () => null, Globe: () => null, RefreshCw: () => null, ChevronLeft: () => null, ChevronRight: () => null, X: () => null, Calendar: () => null, Loader2: () => null, Play: () => null }))
 
 import AuditLogPage from '../../../src/features/audit/pages/AuditLogPage'
 

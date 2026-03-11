@@ -4,18 +4,17 @@
  * @module features/dashboard/pages/AdminDashboardPage
  */
 import { useTranslation } from 'react-i18next'
-import { DatePicker, Spin, Button, Space, Typography, Row, Col } from 'antd'
 import { RefreshCw } from 'lucide-react'
-import dayjs from 'dayjs'
+import { subDays, subMonths, subYears, startOfMonth, endOfMonth } from 'date-fns'
+import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
+import { DateRangePicker, type DateRangePreset } from '@/components/ui/date-range-picker'
 import { useDashboardStats } from '../hooks/useDashboardStats'
 import { StatCards } from '../components/StatCards'
 import { ActivityTrendChart } from '../components/ActivityTrendChart'
 import { TopUsersTable } from '../components/TopUsersTable'
 import { UsageBreakdownChart } from '../components/UsageBreakdownChart'
 import { SessionsPerDayChart } from '../components/SessionsPerDayChart'
-
-const { RangePicker } = DatePicker
-const { Title } = Typography
 
 /**
  * @description Admin dashboard page — displays stats, charts, and top users.
@@ -26,74 +25,79 @@ function AdminDashboardPage() {
     const {
         stats,
         loading,
-        dateRange,
+        startDate,
+        endDate,
         handleDateRangeChange,
         topUsersLimit,
         setTopUsersLimit,
         refresh,
     } = useDashboardStats()
 
+    const now = new Date()
+
+    const presets: DateRangePreset[] = [
+        { label: t('dashboard.presets.last1Day'), value: [subDays(now, 1), now] },
+        { label: t('dashboard.presets.last7Days'), value: [subDays(now, 7), now] },
+        { label: t('dashboard.presets.last30Days'), value: [subDays(now, 30), now] },
+        { label: t('dashboard.presets.last90Days'), value: [subDays(now, 90), now] },
+        { label: t('dashboard.presets.thisMonth'), value: [startOfMonth(now), now] },
+        { label: t('dashboard.presets.lastMonth'), value: [startOfMonth(subMonths(now, 1)), endOfMonth(subMonths(now, 1))] },
+        { label: t('dashboard.presets.last1Year'), value: [subYears(now, 1), now] },
+        { label: t('dashboard.presets.last2Years'), value: [subYears(now, 2), now] },
+    ]
+
     return (
         <div className="p-6 overflow-auto h-full">
             {/* Header with date range picker and refresh */}
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                <Title level={4} className="!mb-0">{t('dashboard.subtitle')}</Title>
-                <Space>
-                    <RangePicker
-                        value={dateRange as any}
-                        onChange={handleDateRangeChange as any}
-                        format="YYYY-MM-DD"
-                        allowClear
-                        placeholder={[t('dashboard.startDate'), t('dashboard.endDate')]}
-                        presets={[
-                            { label: t('dashboard.presets.last1Day'), value: [dayjs().subtract(1, 'day'), dayjs()] },
-                            { label: t('dashboard.presets.last7Days'), value: [dayjs().subtract(7, 'day'), dayjs()] },
-                            { label: t('dashboard.presets.last30Days'), value: [dayjs().subtract(30, 'day'), dayjs()] },
-                            { label: t('dashboard.presets.last90Days'), value: [dayjs().subtract(90, 'day'), dayjs()] },
-                            { label: t('dashboard.presets.thisMonth'), value: [dayjs().startOf('month'), dayjs()] },
-                            { label: t('dashboard.presets.lastMonth'), value: [dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')] },
-                            { label: t('dashboard.presets.last1Year'), value: [dayjs().subtract(1, 'year'), dayjs()] },
-                            { label: t('dashboard.presets.last2Years'), value: [dayjs().subtract(2, 'year'), dayjs()] },
-                        ]}
+                <h4 className="text-lg font-semibold">{t('dashboard.subtitle')}</h4>
+                <div className="flex items-center gap-2">
+                    <DateRangePicker
+                        startDate={startDate}
+                        endDate={endDate}
+                        onChange={handleDateRangeChange}
+                        presets={presets}
+                        startPlaceholder={t('dashboard.startDate')}
+                        endPlaceholder={t('dashboard.endDate')}
                     />
                     <Button
-                        icon={<RefreshCw size={16} />}
+                        variant="outline"
+                        size="sm"
                         onClick={refresh}
-                        loading={loading}
+                        disabled={loading}
                     >
+                        <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                         {t('dashboard.refresh')}
                     </Button>
-                </Space>
+                </div>
             </div>
 
-            <Spin spinning={loading}>
+            <div className="relative">
+                {loading && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50">
+                        <Spinner size={32} />
+                    </div>
+                )}
+
                 {/* Summary Stat Cards */}
                 <StatCards stats={stats} />
 
                 {/* Charts Row 1: Activity Trend + Top Users */}
-                <Row gutter={[16, 16]} className="mb-6">
-                    <Col xs={24} lg={14}>
-                        <ActivityTrendChart activityTrend={stats?.activityTrend || []} />
-                    </Col>
-                    <Col xs={24} lg={10}>
-                        <TopUsersTable
-                            topUsers={stats?.topUsers || []}
-                            limit={topUsersLimit}
-                            onLimitChange={setTopUsersLimit}
-                        />
-                    </Col>
-                </Row>
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_0.7fr] gap-4 mb-6">
+                    <ActivityTrendChart activityTrend={stats?.activityTrend || []} />
+                    <TopUsersTable
+                        topUsers={stats?.topUsers || []}
+                        limit={topUsersLimit}
+                        onLimitChange={setTopUsersLimit}
+                    />
+                </div>
 
                 {/* Charts Row 2: Pie Chart + Sessions Per Day */}
-                <Row gutter={[16, 16]} className="mb-6">
-                    <Col xs={24} lg={10}>
-                        <UsageBreakdownChart usageBreakdown={stats?.usageBreakdown} />
-                    </Col>
-                    <Col xs={24} lg={14}>
-                        <SessionsPerDayChart activityTrend={stats?.activityTrend || []} />
-                    </Col>
-                </Row>
-            </Spin>
+                <div className="grid grid-cols-1 lg:grid-cols-[0.7fr_1fr] gap-4 mb-6">
+                    <UsageBreakdownChart usageBreakdown={stats?.usageBreakdown} />
+                    <SessionsPerDayChart activityTrend={stats?.activityTrend || []} />
+                </div>
+            </div>
         </div>
     )
 }

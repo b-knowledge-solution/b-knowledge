@@ -3,9 +3,9 @@
  * @module features/dashboard/hooks/useDashboardStats
  */
 import { useState, useEffect, useCallback } from 'react'
-import type { Dayjs } from 'dayjs'
 import type { DashboardStats } from '../types/dashboard.types'
 import { fetchDashboardStats } from '../api/dashboardApi'
+import { format } from 'date-fns'
 
 // ============================================================================
 // Return Type
@@ -19,10 +19,12 @@ export interface UseDashboardStatsReturn {
     stats: DashboardStats | null
     /** Whether data is being loaded */
     loading: boolean
-    /** Current date range filter */
-    dateRange: [Dayjs | null, Dayjs | null] | null
+    /** Current start date filter */
+    startDate: Date | undefined
+    /** Current end date filter */
+    endDate: Date | undefined
     /** Handle date range change from picker */
-    handleDateRangeChange: (dates: [Dayjs | null, Dayjs | null] | null) => void
+    handleDateRangeChange: (start: Date | undefined, end: Date | undefined) => void
     /** Top users display limit */
     topUsersLimit: number
     /** Update top users limit */
@@ -40,28 +42,29 @@ export interface UseDashboardStatsReturn {
  * @returns {UseDashboardStatsReturn} Dashboard state and handlers.
  */
 export const useDashboardStats = (): UseDashboardStatsReturn => {
-    const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null)
+    const [startDate, setStartDate] = useState<Date | undefined>(undefined)
+    const [endDate, setEndDate] = useState<Date | undefined>(undefined)
     const [stats, setStats] = useState<DashboardStats | null>(null)
     const [loading, setLoading] = useState(true)
     const [topUsersLimit, setTopUsersLimit] = useState(10)
 
     /**
      * Fetch dashboard data from the API.
-     * Converts dayjs dates to ISO strings for the query.
+     * Converts Date objects to YYYY-MM-DD strings for the query.
      */
     const loadData = useCallback(async () => {
         setLoading(true)
         try {
-            const startDate = dateRange?.[0]?.format('YYYY-MM-DD') || undefined
-            const endDate = dateRange?.[1]?.format('YYYY-MM-DD') || undefined
-            const data = await fetchDashboardStats(startDate, endDate)
+            const start = startDate ? format(startDate, 'yyyy-MM-dd') : undefined
+            const end = endDate ? format(endDate, 'yyyy-MM-dd') : undefined
+            const data = await fetchDashboardStats(start, end)
             setStats(data)
         } catch (error) {
             console.error('Failed to fetch dashboard stats:', error)
         } finally {
             setLoading(false)
         }
-    }, [dateRange])
+    }, [startDate, endDate])
 
     // Load data on mount and when date range changes
     useEffect(() => {
@@ -70,16 +73,19 @@ export const useDashboardStats = (): UseDashboardStatsReturn => {
 
     /**
      * Handle date range change from the picker.
-     * @param dates - Tuple of start and end dayjs values.
+     * @param start - Start date.
+     * @param end - End date.
      */
-    const handleDateRangeChange = (dates: [Dayjs | null, Dayjs | null] | null) => {
-        setDateRange(dates)
+    const handleDateRangeChange = (start: Date | undefined, end: Date | undefined) => {
+        setStartDate(start)
+        setEndDate(end)
     }
 
     return {
         stats,
         loading,
-        dateRange,
+        startDate,
+        endDate,
         handleDateRangeChange,
         topUsersLimit,
         setTopUsersLimit,

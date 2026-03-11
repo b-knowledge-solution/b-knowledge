@@ -186,11 +186,22 @@ describe('useGlossaryKeywords', () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false))
 
+    act(() => {
+      result.current.openModal()
+      result.current.setFormField('name', 'New keyword')
+    })
+    
     await act(async () => {
-      await result.current.handleSubmit({ name: 'New keyword' })
+      await result.current.handleSubmit()
     })
 
-    expect(glossaryApi.createKeyword).toHaveBeenCalledWith({ name: 'New keyword' })
+    expect(glossaryApi.createKeyword).toHaveBeenCalledWith({
+      name: 'New keyword',
+      description: '',
+      en_keyword: '',
+      is_active: true,
+      sort_order: 0,
+    })
   })
 
   it('handleSubmit updates keyword when editing', async () => {
@@ -202,11 +213,21 @@ describe('useGlossaryKeywords', () => {
     // Set editing mode
     act(() => result.current.openModal(KEYWORDS[0]))
 
-    await act(async () => {
-      await result.current.handleSubmit({ name: 'Updated keyword' })
+    act(() => {
+      result.current.setFormField('name', 'Updated keyword')
     })
 
-    expect(glossaryApi.updateKeyword).toHaveBeenCalledWith('k1', { name: 'Updated keyword' })
+    await act(async () => {
+      await result.current.handleSubmit()
+    })
+
+    expect(glossaryApi.updateKeyword).toHaveBeenCalledWith('k1', {
+      name: 'Updated keyword',
+      description: 'Legal contract document',
+      en_keyword: 'contract',
+      is_active: true,
+      sort_order: 0,
+    })
   })
 
   it('handleSubmit handles errors gracefully', async () => {
@@ -215,8 +236,13 @@ describe('useGlossaryKeywords', () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false))
 
+    act(() => {
+      result.current.openModal()
+      result.current.setFormField('name', 'Fail')
+    })
+
     await act(async () => {
-      await result.current.handleSubmit({ name: 'Fail' })
+      await result.current.handleSubmit()
     })
 
     // Should not throw, submitting should be reset

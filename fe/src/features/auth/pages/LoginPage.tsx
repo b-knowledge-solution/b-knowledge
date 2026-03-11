@@ -16,7 +16,7 @@ import { useAuth } from '@/features/auth';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettings } from '@/app/contexts/SettingsContext';
-import { Dialog } from '@/components/Dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import logo from '@/assets/logo.png';
 import logoDark from '@/assets/logo-dark.png';
 import BroadcastBanner from '@/features/broadcast/components/BroadcastBanner';
@@ -220,27 +220,11 @@ function LoginPage() {
         </p>
       </div>
 
-      <Dialog
-        open={isRootLoginOpen}
-        onClose={() => setIsRootLoginOpen(false)}
-        title={t('login.rootLoginTitle')}
-        footer={
-          <>
-            <button
-              onClick={() => setIsRootLoginOpen(false)}
-              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-            >
-              {t('common.cancel')}
-            </button>
-            <button
-              onClick={handleRootLogin}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"
-            >
-              {t('common.login')}
-            </button>
-          </>
-        }
-      >
+      <Dialog open={isRootLoginOpen} onOpenChange={(v: boolean) => { if (!v) setIsRootLoginOpen(false) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('login.rootLoginTitle')}</DialogTitle>
+          </DialogHeader>
         <div className="space-y-4 py-4">
           {rootLoginError && (
             <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
@@ -274,6 +258,21 @@ function LoginPage() {
             />
           </div>
         </div>
+          <DialogFooter>
+            <button
+              onClick={() => setIsRootLoginOpen(false)}
+              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              onClick={handleRootLogin}
+              className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"
+            >
+              {t('common.login')}
+            </button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </div>
   );

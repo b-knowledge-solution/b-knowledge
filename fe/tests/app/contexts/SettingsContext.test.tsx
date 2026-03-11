@@ -19,13 +19,6 @@ vi.mock('react-i18next', async (importOriginal) => {
   };
 });
 
-vi.mock('antd', () => ({
-  ConfigProvider: ({ children }: any) => <div data-testid="config-provider">{children}</div>,
-  theme: {
-    darkAlgorithm: 'dark',
-    defaultAlgorithm: 'default',
-  },
-}));
 
 const TestComponent = () => {
   const settings = useSettings();

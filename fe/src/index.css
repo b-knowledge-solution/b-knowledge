@@ -1,35 +1,86 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+ * shadcn/ui CSS Custom Properties (Light theme)
+ * ============================================================================ */
 :root {
-  --primary-color: #0D26CF;
-  --primary-hover: #0A1FA3;
+  /* Existing brand tokens */
+  --primary-color: #0d26cf;
+  --primary-hover: #0a1fa3;
   --bg-color: #ffffff;
-  --sidebar-bg: #08107B;
+  --sidebar-bg: #08107b;
   --sidebar-text: #ffffff;
   --text-color: #1e293b;
   --border-color: #e2e8f0;
   --card-bg: #ffffff;
+
+  /* shadcn/ui tokens (HSL without hsl() wrapper) */
+  --background: 0 0% 100%;
+  --foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 47.4% 11.2%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 47.4% 11.2%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 100% 50%;
+  --destructive-foreground: 210 40% 98%;
+  --ring: 228 79% 43%;
+  --radius: 0.5rem;
 }
 
+/* ============================================================================
+ * shadcn/ui CSS Custom Properties (Dark theme)
+ * ============================================================================ */
 .dark {
-  --primary-color: #3D54E6;
-  --primary-hover: #0D26CF;
+  /* Existing brand tokens */
+  --primary-color: #3d54e6;
+  --primary-hover: #0d26cf;
   --bg-color: #020617;
   --sidebar-bg: #050a44;
   --sidebar-text: #e2e8f0;
   --text-color: #f1f5f9;
   --border-color: #1e293b;
   --card-bg: #0f172a;
+
+  /* shadcn/ui tokens */
+  --background: 224 71% 4%;
+  --foreground: 213 31% 91%;
+  --muted: 223 47% 11%;
+  --muted-foreground: 215.4 16.3% 56.9%;
+  --popover: 224 71% 4%;
+  --popover-foreground: 215 20.2% 65.1%;
+  --card: 224 71% 4%;
+  --card-foreground: 213 31% 91%;
+  --border: 216 34% 17%;
+  --input: 216 34% 17%;
+  --secondary: 222.2 47.4% 11.2%;
+  --secondary-foreground: 210 40% 98%;
+  --accent: 216 34% 17%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 210 40% 98%;
+  --ring: 228 79% 53%;
 }
 
 @layer base {
+  * {
+    @apply border-border;
+  }
+
   body {
-    @apply bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 font-sans;
-    font-family: 'Inter', sans-serif;
+    @apply bg-background text-foreground font-sans;
+    font-family: "Inter", sans-serif;
   }
 
   /* Global Custom Scrollbar */
@@ -83,23 +134,17 @@
   .input {
     @apply w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent;
   }
-
-
 }
 
 @layer utilities {
-
   /* Hide scrollbar while maintaining scroll functionality */
   .scrollbar-hide {
     -ms-overflow-style: none !important;
-    /* IE and Edge */
     scrollbar-width: none !important;
-    /* Firefox */
   }
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none !important;
-    /* Chrome, Safari and Opera */
     width: 0 !important;
     height: 0 !important;
   }
@@ -119,45 +164,4 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
-}
-
-.document-table-container .ant-table-wrapper {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.document-table-container .ant-spin-nested-loading {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.document-table-container .ant-spin-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.document-table-container .ant-table {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.document-table-container .ant-table-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.document-table-container .ant-table-body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto !important;
 }

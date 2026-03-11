@@ -82,7 +82,7 @@ export class PreviewService {
         if (!useCache) {
             try {
                 // Dynamic import of MinIO client to download file directly to local path
-                const { minioClient } = await import('@/modules/external/models/minio.js');
+                const { minioClient } = await import('@/shared/services/minio.service.js');
 
                 // Download object from MinIO and save to local file system
                 await minioClient.fGetObject(targetBucketName, fileName, localFilePath);
