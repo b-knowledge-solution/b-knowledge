@@ -60,7 +60,7 @@ The backend implements a Model-View-Controller-Service (MVC-S) pattern to separa
 
 *   **PostgreSQL** is the primary data store.
 *   **Knex.js** handles schema migrations and seeding.
-*   **Migrations**: Located in `be/src/db/migrations`. Immutable once applied.
+*   **Migrations**: Located in `be/src/shared/db/migrations/`. Files must follow the naming convention `yyyymmddhhmmss_<name>.ts` (e.g. `20260311130900_create_items.ts`). Immutable once applied.
 *   **Seeds**: Located in `be/src/db/seeds` for initial data population.
 
 ## Authentication & Authorization (RBAC)

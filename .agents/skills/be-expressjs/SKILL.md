@@ -318,7 +318,7 @@ apiRouter.use('/domain', domainRoutes)
 If a new table is needed, create in `be/src/shared/db/migrations/`:
 
 ```ts
-// YYYYMMDD_create_domain_items.ts
+// yyyymmddhhmmss_create_domain_items.ts  (e.g. 20260311130900_create_domain_items.ts)
 import { Knex } from 'knex'
 
 /**

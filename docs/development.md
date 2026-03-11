@@ -126,4 +126,5 @@ Artifacts will be generated in:
 ## Coding Rules
 
 ### Database Migrations
+*   **Naming Convention**: Migration files MUST follow `yyyymmddhhmmss_<name>.ts` (e.g. `20260311130900_create_items.ts`). Use `npm run db:migrate:make <name>` to auto-generate the timestamp prefix.
 *   **Knex Imports**: When importing `Knex` for typing in migration files, ALWAYS use `import type { Knex } from 'knex';`. The `knex` package is a CommonJS module and named imports will fail at runtime in the ESM environment. Use type-only imports to avoid this issue.

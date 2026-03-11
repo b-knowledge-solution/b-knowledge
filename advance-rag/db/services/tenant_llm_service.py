@@ -20,6 +20,7 @@ from peewee import IntegrityError
 from langfuse import Langfuse
 from common import settings
 from common.constants import MINERU_DEFAULT_CONFIG, MINERU_ENV_KEYS, PADDLEOCR_DEFAULT_CONFIG, PADDLEOCR_ENV_KEYS, LLMType
+from common.crypto_utils import decrypt as decrypt_api_key
 from db.db_models import DB, LLMFactories, TenantLLM
 from db.services.common_service import CommonService
 from db.services.langfuse_service import TenantLangfuseService
@@ -123,6 +124,10 @@ class TenantLLMService(CommonService):
             model_config = {"llm_factory": "Builtin", "api_key": embedding_cfg["api_key"], "llm_name": mdlnm, "api_base": embedding_cfg["base_url"]}
         else:
             raise LookupError(f"Model({mdlnm}@{fid}) not authorized")
+
+        # Decrypt the encrypted API key (no-op for plain-text values)
+        if model_config.get("api_key"):
+            model_config["api_key"] = decrypt_api_key(model_config["api_key"])
 
         llm = LLMService.query(llm_name=mdlnm) if not fid else LLMService.query(llm_name=mdlnm, fid=fid)
         if not llm and fid:  # for some cases seems fid mismatch

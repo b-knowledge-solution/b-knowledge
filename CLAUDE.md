@@ -233,5 +233,5 @@ npm run test
 - All mutation routes (`POST`/`PUT`/`DELETE`) must use **Zod validation** via `validate()` middleware from `shared/middleware/validate.middleware.ts`
 - **Cross-module imports** must go through barrel files (`@/modules/<domain>/index.js`), never deep imports
 - **Same-module imports** may use direct paths within sub-directories (`./services/`, `./models/`, etc.)
-- If changes impact the database, create a migration file in `be/src/shared/db/migrations/`
+- If changes impact the database, create a migration file in `be/src/shared/db/migrations/` named `yyyymmddhhmmss_<name>.ts` (e.g. `20260311130900_create_items.ts`). Use `npm run db:migrate:make <name>` to auto-generate the timestamp prefix.
 - Always use Knex ORM for model files in `be/src/shared/models/`; raw SQL only when Knex ORM cannot support the query
