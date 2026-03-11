@@ -1,37 +1,41 @@
-# RAGFlow Simple UI
+# B-Knowledge
 
-A high-performance, enterprise-ready Management UI for RAGFlow, designed to bridge the gap between raw AI engines and business workflows. It provides a secure, localized, and feature-rich portal with Azure Entra ID authentication, advanced RBAC, and integrated observability.
+An open-source platform to centralize and manage AI Search, AI Chat, and Knowledge Base for the enterprise. B-Knowledge provides a complete RAG (Retrieval-Augmented Generation) pipeline — from document ingestion and parsing to intelligent search and conversational AI — with built-in team management, RBAC, and observability.
 
-## 🚀 Key Features
+## Key Features
 
 | Feature | Description |
 | :--- | :--- |
-| 🤖 **AI Chat & Search** | Refined interfaces for RAGFlow, with session history and full-text search. |
-| 📁 **Unified Storage Manager** | Enterprise document management with Multi-Cloud support (MinIO, S3, Azure). |
-| 🔐 **Azure Entra AD SSO** | Seamless Microsoft enterprise authentication with avatar synchronization. |
-| 👥 **Enterprise RBAC** | Granular multi-tier permissions: Admin, Manager, and User roles. |
-| 🏢 **Team Management** | Multi-tenant team structures for isolated document and flow access. |
-| 📢 **Broadcast System** | Real-time system-wide announcements for all active users. |
-| 🕵️ **Comprehensive Auditing** | Localized audit logs tracking every user action for compliance. |
-| 🖥️ **System Monitoring** | Real-time health metrics, resource usage, and diagnostics. |
-| 🌍 **Global Localization** | Full support for English, Vietnamese, and Japanese (i18n). |
-| 🎨 **Dynamic Theming** | Elegant Light, Dark, and System theme synchronization. |
-| 🔢 **AI Tokenizer** | Built-in tool for estimating token counts for various LLM models. |
-| 📊 **Observability** | Native Langfuse integration for tracing AI interactions. |
+| **AI Chat** | Multi-turn conversational AI with configurable assistants, session history, and citation-aware responses. |
+| **AI Search** | Semantic search across knowledge bases with re-ranking, graph-based retrieval, and hybrid search. |
+| **Knowledge Base** | End-to-end document management — upload, parse, chunk, embed, and index documents automatically. |
+| **Advanced RAG Engine** | Python-based pipeline with 15+ document parsers (PDF, DOCX, Excel, HTML, Markdown, OCR), hierarchical chunking, RAPTOR, and GraphRAG. |
+| **Document Converter** | Background worker for Office-to-PDF conversion via LibreOffice. |
+| **Dataset Management** | Version-controlled datasets with granular chunk-level editing and preview. |
+| **LLM Provider Config** | Connect multiple LLM providers (OpenAI, Azure OpenAI, Ollama, LiteLLM) with per-assistant model selection. |
+| **Team Management** | Multi-tenant team structures with isolated knowledge base and assistant access. |
+| **Enterprise RBAC** | Three-tier role system (Admin, Leader, User) with feature-level gating. |
+| **Glossary** | Domain terminology management to improve RAG accuracy and consistency. |
+| **Audit Logging** | Comprehensive audit trail tracking every user action for compliance. |
+| **Broadcast System** | Real-time system-wide announcements for all active users. |
+| **System Monitoring** | Health metrics, resource usage, and diagnostics dashboard. |
+| **Observability** | Native Langfuse integration for tracing AI interactions and evaluating response quality. |
+| **Localization** | Full i18n support for English, Vietnamese, and Japanese. |
+| **Theming** | Light, Dark, and System-synced themes. |
 
-## 🏗️ Architecture
+## Architecture
 
 ```mermaid
 graph TD
     Client[Frontend: React + Vite]
     BE[Backend: Express + TS]
-    Worker[advance-rag: Python Worker]
-    Converter[converter: Python Worker]
+    Worker[advance-rag: RAG Pipeline]
+    Converter[converter: Doc Conversion]
     DB[(PostgreSQL)]
-    Valkey[(Valkey / Redis)]
-    RustFS[(RustFS Object Storage)]
+    Valkey[(Valkey)]
+    RustFS[(RustFS)]
     OpenSearch[(OpenSearch)]
-    Langfuse[[Langfuse Observability]]
+    Langfuse[[Langfuse]]
 
     Client <--> BE
     BE <--> DB
@@ -48,32 +52,41 @@ graph TD
 ```
 
 **Tech Stack:**
-- **Frontend**: React 19, Vite, shadcn/ui, Tailwind CSS, TanStack Query, i18next
-- **Backend**: Express.js, TypeScript, Winston (Daily Rotate), Node-cron
-- **Workers**: Python 3.10+ (advance-rag for RAG pipeline, converter for document conversion)
-- **Database**: PostgreSQL 17 (Knex.js migrations & query builder)
-- **Cache**: Valkey 8 (Redis-compatible, session persistence & task queues)
-- **Search**: OpenSearch 3.x (vector + text search for RAG chunks)
-- **Storage**: RustFS (S3-compatible object storage)
-- **Auth**: Azure Entra ID (OAuth2/OpenID Connect)
-- **Monitoring**: Langfuse API integration
 
-## 📂 Project Structure
+| Layer | Technology |
+| :--- | :--- |
+| **Frontend** | React 19, Vite, shadcn/ui, Tailwind CSS, TanStack Query, i18next |
+| **Backend** | Express.js, TypeScript, Zod, Winston, Node-cron |
+| **RAG Worker** | Python 3.10+, Transformers, ONNX Runtime, scikit-learn, OpenAI SDK |
+| **Converter** | Python 3.10+, LibreOffice (headless), pypdf, pdfminer |
+| **Database** | PostgreSQL 17 (Knex.js ORM) |
+| **Cache & Queue** | Valkey 8 (Redis-compatible) |
+| **Search & Vectors** | OpenSearch 3.x (BM25 + kNN vector search) |
+| **Object Storage** | RustFS (S3-compatible) |
+| **Auth** | Azure Entra ID (OAuth2 / OpenID Connect) |
+| **Observability** | Langfuse (LLM tracing & evaluation) |
+
+## Project Structure
 
 ```
-root/
-├── package.json              # Root workspace config (npm workspaces)
-├── be/                       # Backend workspace (Express API)
-├── fe/                       # Frontend workspace (React + Vite)
-├── advance-rag/              # Python worker — RAG pipeline (parsing, chunking, embedding)
-├── converter/                # Python worker — document conversion (Office → PDF)
-├── docker/                   # Docker Compose configs (base infra + app services)
+b-knowledge/
+├── be/                       # Backend — Express API (Node.js)
+├── fe/                       # Frontend — React + Vite
+├── advance-rag/              # RAG pipeline worker (Python)
+│   ├── deepdoc/              #   Document parsers (PDF, DOCX, OCR, etc.)
+│   ├── rag/                  #   Chunking, embedding, retrieval, GraphRAG
+│   ├── graphrag/             #   Graph-based RAG (entity resolution, graph search)
+│   └── common/               #   Shared config & utilities
+├── converter/                # Document converter worker (Python)
+├── docker/                   # Docker Compose (base infra + app services)
+│   ├── docker-compose-base.yml   # PostgreSQL, Valkey, OpenSearch, RustFS
+│   └── docker-compose.yml        # App services (backend, worker, converter)
 ├── scripts/                  # Setup & dev scripts
 ├── docs/                     # Project documentation
 └── patches/                  # npm patch files
 ```
 
-## 🛠️ Developer Guide
+## Developer Guide
 
 ### Prerequisites
 
@@ -178,15 +191,18 @@ source .venv/Scripts/activate
 | `npm run lint` | Run project-wide ESLint checks |
 | `npm run test` | Run tests with Vitest |
 
-## 📖 Documentation
+## Documentation
 
-Explore our detailed guides in the `docs/` folder:
+Explore the detailed guides in the `docs/` folder:
+- [Architecture & RBAC](docs/architecture.md)
 - [Configuration Guide](docs/configuration.md)
 - [Deployment Strategy](docs/deployment.md)
 - [API Reference](docs/api-reference.md)
-- [Architecture & RBAC](docs/architecture.md)
 - [External Integration](docs/external-trace-integration.md)
+- [Development Guide](docs/development.md)
+- [Security Review](docs/security-review.md)
+- [Testing](docs/testing.md)
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
