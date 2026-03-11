@@ -12,7 +12,7 @@ export async function up(knex: Knex): Promise<void> {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
     table.string('name', 255).notNullable()
     table.string('source_type', 64).notNullable()
-    table.uuid('kb_id').notNullable().references('id').inTable('knowledgebase').onDelete('CASCADE')
+    table.string('kb_id', 255).notNullable().references('id').inTable('knowledgebase').onDelete('CASCADE')
     table.jsonb('config').defaultTo('{}')
     table.text('description')
     table.string('schedule', 128)
@@ -32,7 +32,7 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('sync_logs', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
     table.uuid('connector_id').notNullable().references('id').inTable('connectors').onDelete('CASCADE')
-    table.uuid('kb_id').notNullable()
+    table.string('kb_id', 255).notNullable()
     table.string('status', 16).defaultTo('pending')
     table.integer('docs_synced').defaultTo(0)
     table.integer('docs_failed').defaultTo(0)

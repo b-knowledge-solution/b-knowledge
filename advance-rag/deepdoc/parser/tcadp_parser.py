@@ -31,11 +31,6 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 import requests
-from tencentcloud.common import credential
-from tencentcloud.common.profile.client_profile import ClientProfile
-from tencentcloud.common.profile.http_profile import HttpProfile
-from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException
-from tencentcloud.lkeap.v20240522 import lkeap_client, models
 
 from common.config_utils import get_base_config
 from deepdoc.parser.pdf_parser import RAGFlowPdfParser
@@ -45,6 +40,12 @@ class TencentCloudAPIClient:
     """Tencent Cloud API client using official SDK"""
 
     def __init__(self, secret_id, secret_key, region):
+        # Lazy import: tencentcloud-sdk-python is only needed when TCADP parser is used
+        from tencentcloud.common import credential
+        from tencentcloud.common.profile.client_profile import ClientProfile
+        from tencentcloud.common.profile.http_profile import HttpProfile
+        from tencentcloud.lkeap.v20240522 import lkeap_client
+
         self.secret_id = secret_id
         self.secret_key = secret_key
         self.region = region
@@ -66,6 +67,9 @@ class TencentCloudAPIClient:
 
     def reconstruct_document_sse(self, file_type, file_url=None, file_base64=None, file_start_page=1, file_end_page=1000, config=None):
         """Call document parsing API using official SDK"""
+        from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException
+        from tencentcloud.lkeap.v20240522 import models
+
         try:
             # Instantiate a request object, each interface corresponds to a request object
             req = models.ReconstructDocumentSSERequest()

@@ -25,7 +25,10 @@ from datetime import datetime, timezone
 from enum import Enum
 from functools import wraps
 
-from quart_auth import AuthUser
+# Stub for AuthUser (originally from quart_auth, unused by worker)
+class AuthUser:
+    """Minimal stub replacing quart_auth.AuthUser for the worker context."""
+    pass
 from itsdangerous.url_safe import URLSafeTimedSerializer as Serializer
 from peewee import (
     fn,

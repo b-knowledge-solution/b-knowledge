@@ -1,22 +1,17 @@
 /**
- * Runs the document converter worker.
+ * Runs the document converter worker using the project virtual environment.
  *
- * @description Launches the converter worker using WSL on Windows
- *              or directly via bash on Linux/macOS.
+ * @description Launches the converter worker via the .venv Python interpreter.
  */
 
 import { execSync } from 'child_process'
-import { resolve } from 'path'
+import { join, resolve } from 'path'
 
 const converterDir = resolve(import.meta.dirname, '..', 'converter')
 const isWin = process.platform === 'win32'
+const python = isWin
+  ? join(converterDir, '.venv', 'Scripts', 'python')
+  : join(converterDir, '.venv', 'bin', 'python')
 
 console.log('[run-converter] Starting converter worker...')
-
-if (isWin) {
-  // On Windows, run via WSL
-  execSync('wsl bash ./start.sh', { cwd: converterDir, stdio: 'inherit' })
-} else {
-  // On Linux/macOS, run directly
-  execSync('bash ./start.sh', { cwd: converterDir, stdio: 'inherit' })
-}
+execSync(`"${python}" -m src.worker`, { cwd: converterDir, stdio: 'inherit' })

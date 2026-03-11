@@ -459,7 +459,9 @@ class RedisDB:
                 except Exception as e:
                     if str(e) == 'no such key':
                         logging.warning(f"RedisDB.get_unacked_iterator queue {queue_name} doesn't exist")
-                        continue
+                    else:
+                        logging.warning(f"RedisDB.get_unacked_iterator queue {queue_name} error: {e}")
+                    continue
                 if not any(gi["name"] == group_name for gi in group_info):
                     logging.warning(f"RedisDB.get_unacked_iterator queue {queue_name} group {group_name} doesn't exist")
                     continue

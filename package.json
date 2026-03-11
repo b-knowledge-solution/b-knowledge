@@ -15,6 +15,7 @@
     "dev:worker": "node scripts/wait-for-backend.js && node scripts/run-worker.js",
     "dev:converter": "node scripts/wait-for-backend.js && node scripts/run-converter.js",
     "setup:worker": "node scripts/setup-worker.js",
+    "setup:converter": "node scripts/setup-converter.js",
     "dev:https": "concurrently \"npm run dev:be\" \"npm run dev:fe\"",
     "generate:cert": "node scripts/generate-cert.js",
     "build": "npm run build --workspaces",
