@@ -61,7 +61,7 @@ API_KEY = None
 PARSERS = None
 HOST_IP = None
 HOST_PORT = None
-SECRET_KEY = None
+
 FACTORY_LLM_INFOS = None
 ALLOWED_LLM_FACTORIES = None
 
@@ -135,27 +135,7 @@ def get_svr_queue_name(priority: int) -> str:
 def get_svr_queue_names():
     return [get_svr_queue_name(priority) for priority in [1, 0]]
 
-def _get_or_create_secret_key():
-    # secret_key = os.environ.get("RAGFLOW_SECRET_KEY")
-    # if secret_key and len(secret_key) >= 32:
-    #     return secret_key
-    #
-    # # Check if there's a configured secret key
-    # configured_key = get_base_config(RAG_FLOW_SERVICE_NAME, {}).get("secret_key")
-    # if configured_key and configured_key != str(date.today()) and len(configured_key) >= 32:
-    #     return configured_key
 
-    # Generate a new secure key and warn about it
-    import logging
-
-    generated_key = secrets.token_hex(32)
-    try:
-        secret_key = REDIS_CONN.get_or_create_secret_key("ragflow:system:secret_key", generated_key)
-    except Exception as e:
-        logging.warning(f"Redis unavailable for SECRET_KEY storage: {e}. Using generated key.")
-        secret_key = generated_key
-    logging.warning("SECURITY WARNING: Using auto-generated SECRET_KEY.")
-    return secret_key
 
 class StorageFactory:
     storage_mapping = {
@@ -244,8 +224,7 @@ def init_settings():
     HOST_IP = get_base_config(RAG_FLOW_SERVICE_NAME, {}).get("host", "127.0.0.1")
     HOST_PORT = get_base_config(RAG_FLOW_SERVICE_NAME, {}).get("http_port")
 
-    global SECRET_KEY
-    SECRET_KEY = _get_or_create_secret_key()
+
 
 
     # authentication

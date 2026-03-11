@@ -29,7 +29,7 @@ from functools import wraps
 class AuthUser:
     """Minimal stub replacing quart_auth.AuthUser for the worker context."""
     pass
-from itsdangerous.url_safe import URLSafeTimedSerializer as Serializer
+
 from peewee import (
     fn,
     InterfaceError,
@@ -727,9 +727,7 @@ class User(DataBaseModel, AuthUser):
     def __str__(self):
         return self.email
 
-    def get_id(self):
-        jwt = Serializer(secret_key=settings.SECRET_KEY)
-        return jwt.dumps(str(self.access_token))
+
 
     class Meta:
         db_table = "user"
