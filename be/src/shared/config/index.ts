@@ -82,6 +82,26 @@ const getEnv = (key: string, defaultValue?: string): string => {
   return value;
 };
 
+/**
+ * Retrieves a sensitive environment variable with dev-mode warning.
+ * In production, throws if the variable is not set.
+ * In development, logs a warning and returns the fallback.
+ * 
+ * @param key - The environment variable name to retrieve
+ * @param fallback - Fallback value for development (never used in production)
+ * @returns The environment variable value or fallback in development
+ * @throws Error in production if variable is missing
+ */
+const warnDev = (key: string, fallback: string): string => {
+  const value = process.env[key];
+  if (value) return value;
+  if (isProduction) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+  console.warn(`⚠️  ${key} not set, using insecure default (dev only)`);
+  return fallback;
+};
+
 // ============================================================================
 // MAIN CONFIGURATION OBJECT
 // ============================================================================
@@ -115,7 +135,7 @@ export const config = {
 
   /** Root user configuration */
   rootUser: process.env['KB_ROOT_USER'] || 'admin@localhost',
-  rootPassword: process.env['KB_ROOT_PASSWORD'] || 'admin',
+  rootPassword: warnDev('KB_ROOT_PASSWORD', 'admin'),
 
   /** Test password for sample users (development/testing only) */
   testPassword: process.env['TEST_PASSWORD'] || '',
@@ -200,7 +220,7 @@ export const config = {
     /** PostgreSQL username */
     user: process.env['DB_USER'] ?? 'postgres',
     /** PostgreSQL password */
-    password: process.env['DB_PASSWORD'] ?? '',
+    password: getEnv('DB_PASSWORD', isProduction ? undefined : ''),
   },
 
   // --------------------------------------------------------------------------
@@ -231,6 +251,8 @@ export const config = {
     publicKey: process.env['LANGFUSE_PUBLIC_KEY'] ?? '',
     /** Langfuse API base URL (self-hosted or cloud) */
     baseUrl: process.env['LANGFUSE_BASE_URL'] ?? 'https://cloud.langfuse.com',
+    /** Whether to trace embedding calls (default: false to reduce noise) */
+    traceEmbeddings: process.env['LANGFUSE_TRACE_EMBEDDINGS'] === 'true',
   },
 
   // --------------------------------------------------------------------------
@@ -419,9 +441,27 @@ export const config = {
 
 } as const;
 
+// ============================================================================
+// PRODUCTION STARTUP VALIDATION
+// ============================================================================
+
+/**
+ * Validates that all critical environment variables are set in production.
+ * Provides a single, clear error message listing all missing variables.
+ */
+if (isProduction) {
+  const required = ['DB_PASSWORD', 'KB_ROOT_PASSWORD', 'SESSION_SECRET'];
+  const missing = required.filter(key => !process.env[key]);
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required environment variables for production:\n` +
+      missing.map(k => `  - ${k}`).join('\n')
+    );
+  }
+}
+
 /**
  * Type definition for the configuration object.
  * Useful for function parameters that need config type hints.
  */
 export type Config = typeof config;
-

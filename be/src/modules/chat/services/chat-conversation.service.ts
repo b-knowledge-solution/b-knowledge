@@ -36,6 +36,8 @@ import {
   askSummaryPrompt,
 } from '@/shared/prompts/index.js'
 import { log } from '@/shared/services/logger.service.js'
+import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
+import type { LangfuseTraceClient } from 'langfuse'
 import { ChunkResult, ChatDialog } from '@/shared/models/types.js'
 import { Response as ExpressResponse } from 'express'
 import { v4 as uuidv4 } from 'uuid'
@@ -108,12 +110,14 @@ interface PipelineMetrics {
  * @param history - Previous conversation messages
  * @param currentQuestion - The latest user question
  * @param providerId - LLM provider ID to use
+ * @param parent - Optional Langfuse parent for tracing
  * @returns Refined question incorporating conversation context
  */
 async function refineMultiturnQuestion(
   history: Array<{ role: string; content: string }>,
   currentQuestion: string,
-  providerId?: string
+  providerId?: string,
+  parent?: import('@/shared/services/langfuse.service.js').LangfuseParent
 ): Promise<string> {
   // Only refine if there's conversation history
   if (history.length === 0) return currentQuestion
@@ -144,7 +148,7 @@ async function refineMultiturnQuestion(
       providerId,
       temperature: 0.1,
       max_tokens: 256,
-    })
+    }, parent)
     return refined.trim() || currentQuestion
   } catch (err) {
     log.warn('Multi-turn refinement failed, using original question', { error: String(err) })
@@ -157,12 +161,14 @@ async function refineMultiturnQuestion(
  * @param query - Original query text
  * @param targetLanguages - Comma-separated language list (e.g. "English,Japanese,Vietnamese")
  * @param providerId - LLM provider ID
+ * @param parent - Optional Langfuse parent for tracing
  * @returns Expanded query with translations appended
  */
 async function expandCrossLanguage(
   query: string,
   targetLanguages: string,
-  providerId?: string
+  providerId?: string,
+  parent?: import('@/shared/services/langfuse.service.js').LangfuseParent
 ): Promise<string> {
   // Use RAGFlow's cross-language prompt with proper formatting rules
   const languages = targetLanguages.split(',').map(l => l.trim())
@@ -182,7 +188,7 @@ async function expandCrossLanguage(
       providerId,
       temperature: 0.1,
       max_tokens: 512,
-    })
+    }, parent)
     // Append translations to original query for broader retrieval
     return `${query}\n${translations.trim()}`
   } catch (err) {
@@ -195,11 +201,13 @@ async function expandCrossLanguage(
  * Extract keywords from query for enhanced keyword-based retrieval.
  * @param query - User query text
  * @param providerId - LLM provider ID
+ * @param parent - Optional Langfuse parent for tracing
  * @returns Array of extracted keywords
  */
 async function extractKeywords(
   query: string,
-  providerId?: string
+  providerId?: string,
+  parent?: import('@/shared/services/langfuse.service.js').LangfuseParent
 ): Promise<string[]> {
   // Use RAGFlow's keyword extraction prompt with structured template
   const prompt: LlmMessage[] = [
@@ -214,7 +222,7 @@ async function extractKeywords(
       providerId,
       temperature: 0.1,
       max_tokens: 128,
-    })
+    }, parent)
     return result.split(',').map(k => k.trim()).filter(Boolean)
   } catch (err) {
     log.warn('Keyword extraction failed', { error: String(err) })
@@ -581,6 +589,20 @@ export class ChatConversationService {
 
     const metrics: PipelineMetrics = { startTime: Date.now() }
 
+    // Create Langfuse trace for the full pipeline (fire-and-forget)
+    let trace: LangfuseTraceClient | undefined
+    try {
+      trace = langfuseTraceService.createTrace({
+        name: 'chat-rag-pipeline',
+        userId: userId,
+        sessionId: conversationId,
+        input: content,
+        tags: ['chat', 'rag-pipeline'],
+      })
+    } catch (err) {
+      log.error('Langfuse trace creation failed', { error: String(err) })
+    }
+
     try {
       // ── Step 1: Store user message ──────────────────────────────────────
       const userMsgId = uuidv4()
@@ -623,26 +645,54 @@ Requirements and restriction:
       if (cfg.refine_multiturn && history.length > 0) {
         // Send status event to frontend
         res.write(`data: ${JSON.stringify({ status: 'refining_question' })}\n\n`)
+        // Create span for multi-turn refinement tracing
+        let refinementSpan: import('@/shared/services/langfuse.service.js').LangfuseParent | undefined
+        if (trace) {
+          try { refinementSpan = langfuseTraceService.createSpan(trace, { name: 'multi-turn-refinement', input: content }) } catch (err) { log.error('Langfuse span failed', { error: String(err) }) }
+        }
         searchQuery = await refineMultiturnQuestion(
           (history as Array<{ role: string; content: string }>).map(m => ({ role: m.role, content: m.content })),
           content,
-          providerId
+          providerId,
+          refinementSpan
         )
+        // Update span output with refined query
+        if (refinementSpan && 'end' in refinementSpan) {
+          try { (refinementSpan as any).end({ output: searchQuery }) } catch (err) { log.error('Langfuse span end failed', { error: String(err) }) }
+        }
         log.info('Refined multi-turn question', { original: content, refined: searchQuery })
       }
 
       // ── Step 5: Cross-language expansion ────────────────────────────────
       if (cfg.cross_languages) {
-        searchQuery = await expandCrossLanguage(searchQuery, cfg.cross_languages, providerId)
+        // Create span for cross-language expansion tracing
+        let crossLangSpan: import('@/shared/services/langfuse.service.js').LangfuseParent | undefined
+        if (trace) {
+          try { crossLangSpan = langfuseTraceService.createSpan(trace, { name: 'cross-language-expansion', input: searchQuery }) } catch (err) { log.error('Langfuse span failed', { error: String(err) }) }
+        }
+        searchQuery = await expandCrossLanguage(searchQuery, cfg.cross_languages, providerId, crossLangSpan)
+        // End span with expanded query output
+        if (crossLangSpan && 'end' in crossLangSpan) {
+          try { (crossLangSpan as any).end({ output: searchQuery }) } catch (err) { log.error('Langfuse span end failed', { error: String(err) }) }
+        }
       }
 
       // ── Step 6: Keyword extraction ──────────────────────────────────────
       let keywords: string[] = []
       if (cfg.keyword) {
-        keywords = await extractKeywords(searchQuery, providerId)
+        // Create span for keyword extraction tracing
+        let keywordSpan: import('@/shared/services/langfuse.service.js').LangfuseParent | undefined
+        if (trace) {
+          try { keywordSpan = langfuseTraceService.createSpan(trace, { name: 'keyword-extraction', input: searchQuery }) } catch (err) { log.error('Langfuse span failed', { error: String(err) }) }
+        }
+        keywords = await extractKeywords(searchQuery, providerId, keywordSpan)
         if (keywords.length > 0) {
           // Append keywords to query for broader retrieval
           searchQuery = `${searchQuery} ${keywords.join(' ')}`
+        }
+        // End span with extracted keywords
+        if (keywordSpan && 'end' in keywordSpan) {
+          try { (keywordSpan as any).end({ output: keywords }) } catch (err) { log.error('Langfuse span end failed', { error: String(err) }) }
         }
       }
 
@@ -675,6 +725,12 @@ Requirements and restriction:
       // ── Step 7: Hybrid retrieval from knowledge bases ───────────────────
       const retrievalStart = Date.now()
       let allChunks: ChunkResult[] = []
+
+      // Create retrieval span for tracing (critical for RAGAS evaluation)
+      let retrievalSpan: ReturnType<typeof langfuseTraceService.createSpan> | undefined
+      if (trace) {
+        try { retrievalSpan = langfuseTraceService.createSpan(trace, { name: 'retrieval', input: searchQuery }) } catch (err) { log.error('Langfuse span failed', { error: String(err) }) }
+      }
 
       if (kbIds.length > 0) {
         res.write(`data: ${JSON.stringify({ status: 'retrieving' })}\n\n`)
@@ -748,7 +804,18 @@ Requirements and restriction:
         }
       }
 
+      // End retrieval span with chunk texts for RAGAS evaluation
+      if (retrievalSpan) {
+        try { retrievalSpan.end({ output: allChunks.map(c => c.text) }) } catch (err) { log.error('Langfuse span end failed', { error: String(err) }) }
+      }
+
       // ── Step 9: Reranking ───────────────────────────────────────────────
+      // Create reranking span for tracing
+      let rerankSpan: ReturnType<typeof langfuseTraceService.createSpan> | undefined
+      if (trace) {
+        try { rerankSpan = langfuseTraceService.createSpan(trace, { name: 'reranking', input: allChunks.map(c => c.text) }) } catch (err) { log.error('Langfuse span failed', { error: String(err) }) }
+      }
+
       if (allChunks.length > topN) {
         res.write(`data: ${JSON.stringify({ status: 'reranking' })}\n\n`)
 
@@ -760,6 +827,11 @@ Requirements and restriction:
         }
       } else {
         allChunks = allChunks.slice(0, topN)
+      }
+
+      // End reranking span with reranked chunk texts
+      if (rerankSpan) {
+        try { rerankSpan.end({ output: allChunks.map(c => c.text) }) } catch (err) { log.error('Langfuse span end failed', { error: String(err) }) }
       }
 
       metrics.retrievalMs = Date.now() - retrievalStart
@@ -819,13 +891,19 @@ Requirements and restriction:
         res.write(`data: ${JSON.stringify({ reference })}\n\n`)
       }
 
+      // Create main-completion span for tracing the LLM streaming call
+      let mainSpan: ReturnType<typeof langfuseTraceService.createSpan> | undefined
+      if (trace) {
+        try { mainSpan = langfuseTraceService.createSpan(trace, { name: 'main-completion' }) } catch (err) { log.error('Langfuse span failed', { error: String(err) }) }
+      }
+
       // Stream LLM tokens as deltas (NOT accumulated)
       const stream = llmClientService.chatCompletionStream(llmMessages, {
         providerId,
         temperature: cfg.temperature ?? 0.7,
         ...(cfg.top_p != null ? { top_p: cfg.top_p } : {}),
         ...(cfg.max_tokens != null ? { max_tokens: cfg.max_tokens } : {}),
-      })
+      }, mainSpan)
 
       for await (const chunk of stream) {
         if (chunk.content) {
@@ -905,6 +983,18 @@ Requirements and restriction:
       if (Number(msgCount?.count) <= 2) {
         const title = content.length > 100 ? content.slice(0, 100) + '...' : content
         await ModelFactory.chatSession.update(conversationId, { title } as any)
+      }
+
+      // Update Langfuse trace with final output and flush (fire-and-forget)
+      if (trace) {
+        try {
+          langfuseTraceService.updateTrace(trace, { output: processedAnswer })
+          // End main-completion span if still open
+          if (mainSpan) { mainSpan.end({ output: processedAnswer }) }
+          await langfuseTraceService.flush()
+        } catch (err) {
+          log.error('Langfuse trace finalization failed', { error: String(err) })
+        }
       }
 
       log.info('Chat completed', {

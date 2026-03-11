@@ -18,7 +18,10 @@ import userRoutes from '@/modules/users/routes/users.routes.js';
 import teamRoutes from '@/modules/teams/routes/teams.routes.js';
 import systemToolsRoutes from '@/modules/system-tools/system-tools.routes.js';
 import auditRoutes from '@/modules/audit/routes/audit.routes.js';
-import externalRoutes from '@/modules/external/routes/index.js';
+import traceRoutes from '@/modules/trace/routes/trace.routes.js';
+import traceHistoryRoutes from '@/modules/trace/routes/history.routes.js';
+import { checkTraceEnabled } from '@/modules/trace/middleware/trace-enabled.middleware.js';
+import { TraceController } from '@/modules/trace/controllers/trace.controller.js';
 import broadcastMessageRoutes from '@/modules/broadcast/routes/broadcast-message.routes.js';
 import adminHistoryRoutes from '@/modules/admin/routes/admin-history.routes.js';
 import chatHistoryRoutes from '@/modules/chat/routes/chat-history.routes.js';
@@ -124,8 +127,11 @@ function registerRoutes(apiRouter: Router): void {
     // Audit logging
     apiRouter.use('/audit', auditRoutes);
 
-    // External integrations
-    apiRouter.use('/external', externalRoutes);
+    // External integrations (trace module — backward compatible at /api/external/*)
+    const traceController = new TraceController();
+    apiRouter.use('/external/trace', traceRoutes);
+    apiRouter.use('/external/history', traceHistoryRoutes);
+    apiRouter.get('/external/health', checkTraceEnabled, traceController.getHealth.bind(traceController));
 
     // Broadcast messages
     apiRouter.use('/broadcast-messages', broadcastMessageRoutes);

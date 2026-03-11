@@ -17,6 +17,8 @@ import { ragCitationService } from '@/modules/rag/services/rag-citation.service.
 import { llmClientService } from '@/shared/services/llm-client.service.js'
 import { askSummaryPrompt, citationPrompt, relatedQuestionPrompt } from '@/shared/prompts/index.js'
 import { log } from '@/shared/services/logger.service.js'
+import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
+import type { LangfuseTraceClient } from 'langfuse'
 
 /**
  * Service class for search app CRUD and search execution.
@@ -403,14 +405,38 @@ export class SearchService {
       throw new Error('Search app not found')
     }
 
-    const config = app.search_config as Record<string, unknown>
+    const searchConfig = app.search_config as Record<string, unknown>
     const { query, top_k = 10, method = 'full_text', similarity_threshold = 0 } = params
+
+    // Create Langfuse trace for the search pipeline (fire-and-forget)
+    let trace: LangfuseTraceClient | undefined
+    try {
+      trace = langfuseTraceService.createTrace({
+        name: 'search-pipeline',
+        input: query,
+        tags: ['search', 'ask-search'],
+        metadata: { searchId },
+      })
+    } catch (err) {
+      log.error('Langfuse search trace creation failed', { error: String(err) })
+    }
 
     // Send retrieving status
     res.write(`data: ${JSON.stringify({ status: 'retrieving' })}\n\n`)
 
+    // Create retrieval span for tracing
+    let retrievalSpan: ReturnType<typeof langfuseTraceService.createSpan> | undefined
+    if (trace) {
+      try { retrievalSpan = langfuseTraceService.createSpan(trace, { name: 'retrieval', input: query }) } catch (err) { log.error('Langfuse span failed', { error: String(err) }) }
+    }
+
     // Retrieve and optionally rerank chunks
     const chunks = await this.retrieveChunks(app, query, top_k, method, similarity_threshold)
+
+    // End retrieval span with chunk texts
+    if (retrievalSpan) {
+      try { retrievalSpan.end({ output: chunks.map(c => c.text) }) } catch (err) { log.error('Langfuse span end failed', { error: String(err) }) }
+    }
 
     // Build knowledge context from chunks
     const knowledge = this.buildKnowledgeContext(chunks)
@@ -428,6 +454,12 @@ export class SearchService {
     // Build system prompt with knowledge context and citation instructions
     const systemPrompt = `${askSummaryPrompt.build(knowledge)}\n\n${citationPrompt.system}`
 
+    // Create main-completion span for the LLM streaming call
+    let mainSpan: ReturnType<typeof langfuseTraceService.createSpan> | undefined
+    if (trace) {
+      try { mainSpan = langfuseTraceService.createSpan(trace, { name: 'main-completion' }) } catch (err) { log.error('Langfuse span failed', { error: String(err) }) }
+    }
+
     // Stream LLM answer
     let fullAnswer = ''
     const stream = llmClientService.chatCompletionStream(
@@ -436,9 +468,10 @@ export class SearchService {
         { role: 'user', content: query },
       ],
       {
-        providerId: config?.llm_id as string | undefined,
-        temperature: (config?.temperature as number) ?? 0.7,
-      }
+        providerId: searchConfig?.llm_id as string | undefined,
+        temperature: (searchConfig?.temperature as number) ?? 0.7,
+      },
+      mainSpan
     )
 
     // Write each delta token as an SSE event
@@ -449,14 +482,19 @@ export class SearchService {
       }
     }
 
+    // End main-completion span
+    if (mainSpan) {
+      try { mainSpan.end({ output: fullAnswer }) } catch (err) { log.error('Langfuse span end failed', { error: String(err) }) }
+    }
+
     // Post-process citations
     const citedAnswer = await ragCitationService.insertCitations(fullAnswer, chunks)
 
     // Generate related questions if configured
     let relatedQuestions: string[] = []
-    if (config?.related_search) {
+    if (searchConfig?.related_search) {
       try {
-        relatedQuestions = await this.generateRelatedQuestions(query, config?.llm_id as string | undefined)
+        relatedQuestions = await this.generateRelatedQuestions(query, searchConfig?.llm_id as string | undefined)
       } catch (err) {
         log.warn('Failed to generate related questions', { error: (err as Error).message })
       }
@@ -475,6 +513,16 @@ export class SearchService {
       related_questions: relatedQuestions,
       metrics,
     })}\n\n`)
+
+    // Update trace with final output and flush (fire-and-forget)
+    if (trace) {
+      try {
+        langfuseTraceService.updateTrace(trace, { output: citedAnswer })
+        await langfuseTraceService.flush()
+      } catch (err) {
+        log.error('Langfuse trace finalization failed', { error: String(err) })
+      }
+    }
 
     // Signal stream completion
     res.write('data: [DONE]\n\n')

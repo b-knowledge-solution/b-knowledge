@@ -24,7 +24,7 @@ import { knowledgeBaseService } from '@/modules/knowledge-base/index.js';
 import { systemToolsService } from '@/modules/system-tools/system-tools.service.js';
 import { userService } from '@/modules/users/index.js';
 import { shutdownLangfuse } from '@/shared/services/langfuse.service.js';
-import { externalTraceService } from '@/modules/external/trace.service.js';
+import { traceAuthService } from '@/modules/trace/services/trace-auth.service.js';
 import { socketService } from '@/shared/services/socket.service.js';
 
 import { setupApiRoutes } from '@/app/routes.js';
@@ -188,7 +188,7 @@ if (!isTest) {
       await shutdownRedis();
       await closePool();
       await shutdownLangfuse();
-      await externalTraceService.shutdown();
+      await traceAuthService.shutdown();
       await socketService.shutdown();
       process.exit(0);
     };

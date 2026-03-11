@@ -1,9 +1,13 @@
 
 /**
- * Singleton MinIO client configured from environment for reuse across services.
+ * @fileoverview Singleton MinIO client configured from environment for reuse across services.
+ *
+ * Provides S3-compatible object storage access via the MinIO SDK.
+ * Uses a singleton pattern to ensure a single client instance is shared.
+ *
+ * @module shared/services/minio
  */
-import * as Minio from 'minio';
-import { config } from '@/shared/config/index.js';
+import * as Minio from 'minio'
 
 /**
  * MinioSingleton
@@ -11,7 +15,7 @@ import { config } from '@/shared/config/index.js';
  */
 class MinioSingleton {
   /** Static instance holder */
-  private static instance: Minio.Client;
+  private static instance: Minio.Client
 
   /** Private constructor to prevent direct instantiation */
   private constructor() { }
@@ -31,12 +35,12 @@ class MinioSingleton {
         useSSL: process.env.S3_USE_SSL === 'true',
         accessKey: process.env.S3_ACCESS_KEY || '',
         secretKey: process.env.S3_SECRET_KEY || '',
-      });
+      })
     }
     // Return the singleton instance
-    return MinioSingleton.instance;
+    return MinioSingleton.instance
   }
 }
 
 /** Export the singleton instance directly */
-export const minioClient = MinioSingleton.getInstance();
+export const minioClient = MinioSingleton.getInstance()

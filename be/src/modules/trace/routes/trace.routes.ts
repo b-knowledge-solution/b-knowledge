@@ -1,13 +1,16 @@
-
 /**
- * External Trace Routes
- * Endpoint for receiving LLM execution traces and feedback.
+ * @fileoverview Trace routes for LLM execution traces and feedback.
+ *
+ * Provides endpoints for external systems to submit Langfuse-compatible
+ * trace data and user feedback.
+ *
+ * @module modules/trace/routes/trace
  */
 import { Router } from 'express'
-import { ExternalTraceController } from '@/modules/external/trace.controller.js'
+import { TraceController } from '@/modules/trace/controllers/trace.controller.js'
 
 const router = Router()
-const controller = new ExternalTraceController()
+const controller = new TraceController()
 
 /**
  * @route POST /api/external/trace/submit

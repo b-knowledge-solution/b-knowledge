@@ -13,6 +13,9 @@ import OpenAI from 'openai'
 import { ModelFactory } from '@/shared/models/factory.js'
 import { ModelProvider } from '@/shared/models/types.js'
 import { log } from '@/shared/services/logger.service.js'
+import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
+import type { LangfuseParent } from '@/shared/services/langfuse.service.js'
+import { config } from '@/shared/config/index.js'
 
 /**
  * Message in the OpenAI chat completion format.
@@ -104,11 +107,13 @@ export class LlmClientService {
    * Send a non-streaming chat completion request.
    * @param messages - Conversation messages
    * @param options - Completion options
+   * @param parent - Optional Langfuse parent (trace or span) for observability
    * @returns The assistant's response text
    */
   async chatCompletion(
     messages: LlmMessage[],
-    options: LlmCompletionOptions = {}
+    options: LlmCompletionOptions = {},
+    parent?: LangfuseParent
   ): Promise<string> {
     const provider = await this.resolveProvider(options.providerId)
     const client = this.getClient(provider)
@@ -123,7 +128,31 @@ export class LlmClientService {
       stream: false as const,
     })
 
-    return response.choices[0]?.message?.content || ''
+    const content = response.choices[0]?.message?.content || ''
+
+    // Fire-and-forget: create Langfuse generation if parent is provided
+    if (parent) {
+      try {
+        const usage = response.usage
+        langfuseTraceService.createGeneration(parent, {
+          name: model,
+          input: messages,
+          output: content,
+          model,
+          ...(usage ? {
+            usage: {
+              promptTokens: usage.prompt_tokens,
+              completionTokens: usage.completion_tokens,
+              totalTokens: usage.total_tokens,
+            },
+          } : {}),
+        })
+      } catch (err) {
+        log.error('Langfuse generation trace failed', { error: String(err) })
+      }
+    }
+
+    return content
   }
 
   /**
@@ -131,17 +160,33 @@ export class LlmClientService {
    * Yields text chunks as they arrive from the LLM.
    * @param messages - Conversation messages
    * @param options - Completion options
+   * @param parent - Optional Langfuse parent (trace or span) for observability
    * @returns Async iterable of LlmStreamChunk
    */
   async *chatCompletionStream(
     messages: LlmMessage[],
-    options: LlmCompletionOptions = {}
+    options: LlmCompletionOptions = {},
+    parent?: LangfuseParent
   ): AsyncGenerator<LlmStreamChunk> {
     const provider = await this.resolveProvider(options.providerId)
     const client = this.getClient(provider)
     const model = options.model || provider.model_name
 
     log.info('Starting LLM stream', { model, provider: provider.factory_name })
+
+    // Create Langfuse generation at stream start if parent provided
+    let generation: ReturnType<typeof langfuseTraceService.createGeneration> | undefined
+    if (parent) {
+      try {
+        generation = langfuseTraceService.createGeneration(parent, {
+          name: model,
+          input: messages,
+          model,
+        })
+      } catch (err) {
+        log.error('Langfuse stream generation init failed', { error: String(err) })
+      }
+    }
 
     const stream = await client.chat.completions.create({
       model,
@@ -152,13 +197,39 @@ export class LlmClientService {
       stream: true as const,
     })
 
+    // Accumulate full output for generation update
+    let fullOutput = ''
+
     // Yield each delta chunk from the stream
     for await (const chunk of stream) {
       const delta = chunk.choices[0]?.delta?.content || ''
       const done = chunk.choices[0]?.finish_reason !== null && chunk.choices[0]?.finish_reason !== undefined
 
+      if (delta) {
+        fullOutput += delta
+      }
+
       if (delta || done) {
         yield { content: delta, done }
+      }
+
+      // Update generation with final output when stream ends
+      if (done && generation) {
+        try {
+          const endOpts: Record<string, unknown> = { output: fullOutput }
+          // Add usage data if available from the final chunk
+          if (chunk.usage) {
+            endOpts.usage = {
+              input: chunk.usage.prompt_tokens,
+              output: chunk.usage.completion_tokens,
+              total: chunk.usage.total_tokens,
+              unit: 'TOKENS',
+            }
+          }
+          generation.end(endOpts as any)
+        } catch (err) {
+          log.error('Langfuse stream generation end failed', { error: String(err) })
+        }
       }
     }
   }
@@ -169,9 +240,10 @@ export class LlmClientService {
    *
    * @param texts - Array of texts to embed
    * @param providerId - Optional specific embedding provider ID
+   * @param parent - Optional Langfuse parent (trace or span) for observability
    * @returns Array of embedding vectors
    */
-  async embedTexts(texts: string[], providerId?: string): Promise<number[][]> {
+  async embedTexts(texts: string[], providerId?: string, parent?: LangfuseParent): Promise<number[][]> {
     // Resolve embedding provider: use given ID or find default embedding provider
     let provider: ModelProvider
 
@@ -196,6 +268,26 @@ export class LlmClientService {
       model,
       input: texts,
     })
+
+    // Fire-and-forget: trace embedding call if enabled and parent provided
+    if (parent && config.langfuse.traceEmbeddings) {
+      try {
+        langfuseTraceService.createGeneration(parent, {
+          name: `embedding:${model}`,
+          input: texts,
+          output: `${response.data.length} vectors`,
+          model,
+          ...(response.usage ? {
+            usage: {
+              promptTokens: response.usage.prompt_tokens,
+              totalTokens: response.usage.total_tokens,
+            },
+          } : {}),
+        })
+      } catch (err) {
+        log.error('Langfuse embedding trace failed', { error: String(err) })
+      }
+    }
 
     // Return embedding vectors in the same order as input texts
     return response.data

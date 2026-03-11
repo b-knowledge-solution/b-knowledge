@@ -13,10 +13,10 @@ import { AuditLogModel } from '@/modules/audit/models/audit-log.model.js';
 import { UserIpHistoryModel } from '@/modules/users/models/user-ip-history.model.js';
 import { BroadcastMessageModel } from '@/modules/broadcast/models/broadcast-message.model.js';
 import { UserDismissedBroadcastModel } from '@/modules/broadcast/models/user-dismissed-broadcast.model.js';
-import { ExternalChatSessionModel } from '@/modules/external/models/chat-session.model.js';
-import { ExternalChatMessageModel } from '@/modules/external/models/chat-message.model.js';
-import { ExternalSearchSessionModel } from '@/modules/external/models/search-session.model.js';
-import { ExternalSearchRecordModel } from '@/modules/external/models/search-record.model.js';
+import { ExternalChatSessionModel } from '@/shared/models/external-chat-session.model.js';
+import { ExternalChatMessageModel } from '@/shared/models/external-chat-message.model.js';
+import { ExternalSearchSessionModel } from '@/shared/models/external-search-session.model.js';
+import { ExternalSearchRecordModel } from '@/shared/models/external-search-record.model.js';
 
 import { GlossaryTaskModel } from '@/modules/glossary/models/glossary-task.model.js';
 import { GlossaryKeywordModel } from '@/modules/glossary/models/glossary-keyword.model.js';

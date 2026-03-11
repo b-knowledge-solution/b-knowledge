@@ -28,25 +28,25 @@ export class AdminHistoryService {
         // Base query on sessions
         let query = ModelFactory.externalChatSession.getKnex()
             .select(
-                'external_chat_sessions.session_id',
-                'external_chat_sessions.updated_at as created_at',
-                'external_chat_sessions.user_email',
+                'history_chat_sessions.session_id',
+                'history_chat_sessions.updated_at as created_at',
+                'history_chat_sessions.user_email',
                 'knowledge_base_sources.name as source_name',
                 // Subquery for first prompt
                 db.raw(`(
-                    SELECT user_prompt FROM external_chat_messages 
-                    WHERE session_id = external_chat_sessions.session_id 
+                    SELECT user_prompt FROM history_chat_messages 
+                    WHERE session_id = history_chat_sessions.session_id 
                     ORDER BY created_at ASC LIMIT 1
                 ) as user_prompt`),
                 // Subquery for message count
                 db.raw(`(
-                    SELECT COUNT(*) FROM external_chat_messages 
-                    WHERE session_id = external_chat_sessions.session_id
+                    SELECT COUNT(*) FROM history_chat_messages 
+                    WHERE session_id = history_chat_sessions.session_id
                 ) as message_count`)
             )
-            .from('external_chat_sessions')
-            .leftJoin('knowledge_base_sources', 'external_chat_sessions.share_id', 'knowledge_base_sources.share_id')
-            .orderBy('external_chat_sessions.updated_at', 'desc')
+            .from('history_chat_sessions')
+            .leftJoin('knowledge_base_sources', 'history_chat_sessions.share_id', 'knowledge_base_sources.share_id')
+            .orderBy('history_chat_sessions.updated_at', 'desc')
             .limit(limit)
             .offset(offset);
 
@@ -57,11 +57,11 @@ export class AdminHistoryService {
 
             query = query.where(builder => {
                 // Search in session email
-                builder.where('external_chat_sessions.user_email', 'ilike', `%${search}%`)
+                builder.where('history_chat_sessions.user_email', 'ilike', `%${search}%`)
                     // Or search in messages
                     .orWhereExists(function () {
-                        const sub = this.select('id').from('external_chat_messages')
-                            .whereRaw('external_chat_messages.session_id = external_chat_sessions.session_id');
+                        const sub = this.select('id').from('history_chat_messages')
+                            .whereRaw('history_chat_messages.session_id = history_chat_sessions.session_id');
 
                         if (terms.length > 0) {
                             const prefixQuery = terms.join(' & ') + ':*';
@@ -79,15 +79,15 @@ export class AdminHistoryService {
         }
 
         if (email) {
-            query = query.where('external_chat_sessions.user_email', 'ilike', `%${email}%`);
+            query = query.where('history_chat_sessions.user_email', 'ilike', `%${email}%`);
         }
 
         if (startDate) {
-            query = query.where('external_chat_sessions.updated_at', '>=', startDate);
+            query = query.where('history_chat_sessions.updated_at', '>=', startDate);
         }
 
         if (endDate) {
-            query = query.where('external_chat_sessions.updated_at', '<=', `${endDate} 23:59:59`);
+            query = query.where('history_chat_sessions.updated_at', '<=', `${endDate} 23:59:59`);
         }
 
         if (sourceName) {
@@ -106,7 +106,7 @@ export class AdminHistoryService {
     async getChatSessionDetails(sessionId: string) {
         // Query to get all history entries for the session
         return await ModelFactory.externalChatMessage.getKnex()
-            .from('external_chat_messages')
+            .from('history_chat_messages')
             .select('*')
             .where('session_id', sessionId)
             .orderBy('created_at', 'asc');
@@ -138,25 +138,25 @@ export class AdminHistoryService {
         // Base query on sessions
         let query = ModelFactory.externalSearchSession.getKnex()
             .select(
-                'external_search_sessions.session_id',
-                'external_search_sessions.updated_at as created_at',
-                'external_search_sessions.user_email',
+                'history_search_sessions.session_id',
+                'history_search_sessions.updated_at as created_at',
+                'history_search_sessions.user_email',
                 'knowledge_base_sources.name as source_name',
                 // Subquery for first search input
                 db.raw(`(
-                    SELECT search_input FROM external_search_records 
-                    WHERE session_id = external_search_sessions.session_id 
+                    SELECT search_input FROM history_search_records 
+                    WHERE session_id = history_search_sessions.session_id 
                     ORDER BY created_at ASC LIMIT 1
                 ) as search_input`),
                 // Subquery for count
                 db.raw(`(
-                    SELECT COUNT(*) FROM external_search_records 
-                    WHERE session_id = external_search_sessions.session_id
+                    SELECT COUNT(*) FROM history_search_records 
+                    WHERE session_id = history_search_sessions.session_id
                 ) as message_count`)
             )
-            .from('external_search_sessions')
-            .leftJoin('knowledge_base_sources', 'external_search_sessions.share_id', 'knowledge_base_sources.share_id')
-            .orderBy('external_search_sessions.updated_at', 'desc')
+            .from('history_search_sessions')
+            .leftJoin('knowledge_base_sources', 'history_search_sessions.share_id', 'knowledge_base_sources.share_id')
+            .orderBy('history_search_sessions.updated_at', 'desc')
             .limit(limit)
             .offset(offset);
 
@@ -166,10 +166,10 @@ export class AdminHistoryService {
             const terms = cleanSearch.split(/\s+/).filter(t => t.length > 0);
 
             query = query.where(builder => {
-                builder.where('external_search_sessions.user_email', 'ilike', `%${search}%`)
+                builder.where('history_search_sessions.user_email', 'ilike', `%${search}%`)
                     .orWhereExists(function () {
-                        const sub = this.select('id').from('external_search_records')
-                            .whereRaw('external_search_records.session_id = external_search_sessions.session_id');
+                        const sub = this.select('id').from('history_search_records')
+                            .whereRaw('history_search_records.session_id = history_search_sessions.session_id');
 
                         if (terms.length > 0) {
                             const prefixQuery = terms.join(' & ') + ':*';
@@ -187,15 +187,15 @@ export class AdminHistoryService {
         }
 
         if (email) {
-            query = query.where('external_search_sessions.user_email', 'ilike', `%${email}%`);
+            query = query.where('history_search_sessions.user_email', 'ilike', `%${email}%`);
         }
 
         if (startDate) {
-            query = query.where('external_search_sessions.updated_at', '>=', startDate);
+            query = query.where('history_search_sessions.updated_at', '>=', startDate);
         }
 
         if (endDate) {
-            query = query.where('external_search_sessions.updated_at', '<=', `${endDate} 23:59:59`);
+            query = query.where('history_search_sessions.updated_at', '<=', `${endDate} 23:59:59`);
         }
 
         if (sourceName) {
@@ -214,7 +214,7 @@ export class AdminHistoryService {
     async getSearchSessionDetails(sessionId: string) {
         // Query to get all search entries for the session
         return await ModelFactory.externalSearchRecord.getKnex()
-            .from('external_search_records')
+            .from('history_search_records')
             .select('*')
             .where('session_id', sessionId)
             .orderBy('created_at', 'asc');

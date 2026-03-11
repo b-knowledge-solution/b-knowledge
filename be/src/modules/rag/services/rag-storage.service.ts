@@ -7,7 +7,7 @@
  * Storage path convention: {SYSTEM_TENANT_ID}/{dataset_id}/{file_id}/{filename}
  */
 
-import { minioClient } from '@/modules/external/models/minio.js';
+import { minioClient } from '@/shared/services/minio.service.js';
 import { log } from '@/shared/services/logger.service.js';
 import { Readable } from 'stream';
 
