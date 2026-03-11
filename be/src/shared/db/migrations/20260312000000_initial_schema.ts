@@ -1,0 +1,594 @@
+/**
+ * @fileoverview Initial database schema migration.
+ * @description Creates all application tables in correct dependency order.
+ *   Tables are organized into logical groups: core, chat, knowledge base,
+ *   broadcast, history tracking, glossary, RAG pipeline, sync, and access control.
+ */
+import type { Knex } from 'knex'
+
+/**
+ * Create all application tables in dependency order.
+ * @param knex - Knex instance
+ * @returns Promise<void>
+ */
+export async function up(knex: Knex): Promise<void> {
+  // ──────────────────────────────────────────────
+  // 1. Core tables (no foreign key dependencies)
+  // ──────────────────────────────────────────────
+
+  // Users - central identity table referenced by most other tables
+  await knex.schema.createTable('users', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('email').unique().notNullable()
+    table.text('display_name').notNullable()
+    table.text('role').notNullable().defaultTo('user')
+    table.text('permissions').notNullable().defaultTo('[]')
+    table.text('department')
+    table.text('job_title')
+    table.text('mobile_phone')
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+  })
+
+  // Teams - organizational grouping for users
+  await knex.schema.createTable('teams', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('name').notNullable()
+    table.text('project_name')
+    table.text('description')
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+  })
+
+  // System configs - key-value application settings
+  await knex.schema.createTable('system_configs', (table) => {
+    table.text('key').primary()
+    table.text('value').notNullable()
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+  })
+
+  // Knowledge base sources - external knowledge base connection metadata
+  await knex.schema.createTable('knowledge_base_sources', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('type').notNullable()
+    table.text('name').notNullable()
+    table.text('url').notNullable()
+    table.text('description')
+    table.text('share_id')
+    table.text('chat_widget_url')
+    table.jsonb('access_control').defaultTo('{"public": true}')
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+  })
+
+  // ──────────────────────────────────────────────
+  // 2. User-Teams junction (depends on users, teams)
+  // ──────────────────────────────────────────────
+
+  await knex.schema.createTable('user_teams', (table) => {
+    table.text('user_id').notNullable()
+    table.text('team_id').notNullable()
+    table.text('role').notNullable().defaultTo('member')
+    table.timestamp('joined_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.primary(['user_id', 'team_id'])
+    table.foreign('user_id').references('users.id').onDelete('CASCADE')
+    table.foreign('team_id').references('teams.id').onDelete('CASCADE')
+    table.index('user_id')
+    table.index('team_id')
+  })
+
+  // ──────────────────────────────────────────────
+  // 3. Chat tables (depends on users)
+  // ──────────────────────────────────────────────
+
+  // Chat dialogs - RAGFlow dialog (chat assistant) configurations
+  await knex.schema.createTable('chat_dialogs', (table) => {
+    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.string('name', 128).notNullable()
+    table.text('description')
+    table.string('icon', 256)
+    table.jsonb('kb_ids').defaultTo('[]')
+    table.string('llm_id', 128)
+    table.jsonb('prompt_config').defaultTo('{}')
+    table.boolean('is_public').defaultTo(false)
+    table.text('created_by').references('id').inTable('users').onDelete('SET NULL')
+    table.text('updated_by').references('id').inTable('users').onDelete('SET NULL')
+    table.timestamps(true, true)
+  })
+
+  // Chat dialog access - RBAC junction table for dialog sharing
+  await knex.schema.createTable('chat_dialog_access', (table) => {
+    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    // Reference to the dialog being shared
+    table.uuid('dialog_id').notNullable().references('id').inTable('chat_dialogs').onDelete('CASCADE')
+    // Entity type: 'user' or 'team'
+    table.string('entity_type', 16).notNullable()
+    // UUID of the user or team granted access
+    table.uuid('entity_id').notNullable()
+    // User who created this access entry
+    table.text('created_by').references('id').inTable('users').onDelete('SET NULL')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+
+    // Enforce valid entity types
+    table.check('?? IN (?, ?)', ['entity_type', 'user', 'team'])
+    // Prevent duplicate access entries
+    table.unique(['dialog_id', 'entity_type', 'entity_id'])
+    // Index for fast lookups by dialog
+    table.index('dialog_id', 'idx_chat_dialog_access_dialog_id')
+    // Composite index for querying accessible dialogs by entity
+    table.index(['entity_type', 'entity_id'], 'idx_chat_dialog_access_entity')
+  })
+
+  // Chat sessions - user conversation sessions
+  await knex.schema.createTable('chat_sessions', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('user_id').notNullable()
+    table.text('title').notNullable()
+    table.uuid('dialog_id').nullable()
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.foreign('user_id').references('users.id').onDelete('CASCADE')
+  })
+
+  // Chat messages - individual messages within sessions
+  await knex.schema.createTable('chat_messages', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('session_id').notNullable()
+    table.text('role').notNullable()
+    table.text('content').notNullable()
+    table.jsonb('citations').nullable()
+    table.string('message_id', 64).nullable()
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('timestamp', { useTz: true }).defaultTo(knex.fn.now())
+    table.foreign('session_id').references('chat_sessions.id').onDelete('CASCADE')
+  })
+
+  // ──────────────────────────────────────────────
+  // 4. Search apps (depends on users)
+  // ──────────────────────────────────────────────
+
+  // Search apps - saved search configurations
+  await knex.schema.createTable('search_apps', (table) => {
+    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.string('name', 128).notNullable()
+    table.text('description')
+    table.jsonb('dataset_ids').defaultTo('[]')
+    table.jsonb('search_config').defaultTo('{}')
+    table.boolean('is_public').defaultTo(false)
+    table.text('created_by').references('id').inTable('users').onDelete('SET NULL')
+    table.text('updated_by').references('id').inTable('users').onDelete('SET NULL')
+    table.timestamps(true, true)
+  })
+
+  // Search app access - RBAC junction table for search app sharing
+  await knex.schema.createTable('search_app_access', (table) => {
+    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    // Reference to the search app being shared
+    table.uuid('app_id').notNullable().references('id').inTable('search_apps').onDelete('CASCADE')
+    // Entity type: 'user' or 'team'
+    table.string('entity_type', 16).notNullable()
+    // UUID of the user or team granted access
+    table.uuid('entity_id').notNullable()
+    // User who created this access entry
+    table.text('created_by').references('id').inTable('users').onDelete('SET NULL')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+
+    // Enforce valid entity types
+    table.check('?? IN (?, ?)', ['entity_type', 'user', 'team'])
+    // Prevent duplicate access entries
+    table.unique(['app_id', 'entity_type', 'entity_id'])
+    // Index for fast lookups by search app
+    table.index('app_id', 'idx_search_app_access_app_id')
+    // Composite index for querying accessible apps by entity
+    table.index(['entity_type', 'entity_id'], 'idx_search_app_access_entity')
+  })
+
+  // ──────────────────────────────────────────────
+  // 5. Audit and IP tracking (depends on users)
+  // ──────────────────────────────────────────────
+
+  // Audit logs - security and compliance trail
+  await knex.schema.createTable('audit_logs', (table) => {
+    table.increments('id').primary()
+    table.text('user_id')
+    table.text('user_email').notNullable()
+    table.text('action').notNullable()
+    table.text('resource_type').notNullable()
+    table.text('resource_id')
+    table.jsonb('details').defaultTo('{}')
+    table.text('ip_address')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+
+    table.index('user_id')
+    table.index('action')
+    table.index('resource_type')
+    table.index('created_at')
+  })
+  // Descending index for recent-first queries
+  await knex.raw('CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC)')
+  // Composite index for user-scoped recent queries
+  await knex.raw('CREATE INDEX IF NOT EXISTS idx_audit_logs_created_user ON audit_logs(created_at DESC, user_id)')
+
+  // User IP history - tracks user login IP addresses
+  await knex.schema.createTable('user_ip_history', (table) => {
+    table.increments('id').primary()
+    table.text('user_id').notNullable()
+    table.text('ip_address').notNullable()
+    table.timestamp('last_accessed_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.unique(['user_id', 'ip_address'])
+    table.foreign('user_id').references('users.id').onDelete('CASCADE')
+    table.index('user_id')
+  })
+
+  // ──────────────────────────────────────────────
+  // 6. Broadcast messages (depends on users)
+  // ──────────────────────────────────────────────
+
+  // Broadcast messages - system-wide notifications
+  await knex.schema.createTable('broadcast_messages', (table) => {
+    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.text('message').notNullable()
+    table.timestamp('starts_at', { useTz: true }).notNullable()
+    table.timestamp('ends_at', { useTz: true }).notNullable()
+    table.string('color', 50).defaultTo('#E75E40')
+    table.string('font_color', 50).defaultTo('#FFFFFF')
+    table.boolean('is_active').defaultTo(true)
+    table.boolean('is_dismissible').defaultTo(true)
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.index(['is_active', 'starts_at', 'ends_at'])
+  })
+
+  // User dismissed broadcasts - tracks which users dismissed which broadcasts
+  await knex.schema.createTable('user_dismissed_broadcasts', (table) => {
+    table.text('user_id').notNullable()
+    table.uuid('broadcast_id').notNullable()
+    table.timestamp('dismissed_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.primary(['user_id', 'broadcast_id'])
+    table.foreign('user_id').references('users.id').onDelete('CASCADE')
+    table.foreign('broadcast_id').references('broadcast_messages.id').onDelete('CASCADE')
+    table.index('user_id')
+  })
+
+  // ──────────────────────────────────────────────
+  // 7. History tracking tables (renamed from external_*)
+  // ──────────────────────────────────────────────
+
+  // History chat sessions - chat sessions from external clients
+  await knex.schema.createTable('history_chat_sessions', (table) => {
+    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.text('session_id').unique().notNullable()
+    table.text('share_id')
+    table.text('user_email')
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+
+    table.index('share_id')
+    table.index('user_email')
+  })
+
+  // History chat messages - messages within history chat sessions
+  await knex.schema.createTable('history_chat_messages', (table) => {
+    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.text('session_id').notNullable()
+    table.text('user_prompt').notNullable()
+    table.text('llm_response').notNullable()
+    table.jsonb('citations').defaultTo('[]')
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    // Full-text search vector for prompt and response content
+    table.specificType('search_vector', "tsvector GENERATED ALWAYS AS (to_tsvector('english', coalesce(user_prompt, '') || ' ' || coalesce(llm_response, ''))) STORED")
+
+    table.index('session_id')
+    table.foreign('session_id').references('history_chat_sessions.session_id').onDelete('CASCADE')
+  })
+  // Descending index for recent-first message queries
+  await knex.raw('CREATE INDEX IF NOT EXISTS idx_hist_chat_msg_created_at ON history_chat_messages(created_at DESC)')
+  // GIN index for full-text search
+  await knex.raw('CREATE INDEX IF NOT EXISTS idx_hist_chat_msg_search_vector ON history_chat_messages USING GIN(search_vector)')
+
+  // History search sessions - search sessions from external clients
+  await knex.schema.createTable('history_search_sessions', (table) => {
+    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.text('session_id').unique().notNullable()
+    table.text('share_id')
+    table.text('user_email')
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+
+    table.index('share_id')
+    table.index('user_email')
+  })
+
+  // History search records - individual search results within sessions
+  await knex.schema.createTable('history_search_records', (table) => {
+    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.text('session_id').notNullable()
+    table.text('search_input').notNullable()
+    table.text('ai_summary')
+    table.jsonb('file_results').defaultTo('[]')
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    // Full-text search vector for search input and AI summary
+    table.specificType('search_vector', "tsvector GENERATED ALWAYS AS (to_tsvector('english', coalesce(search_input, '') || ' ' || coalesce(ai_summary, ''))) STORED")
+
+    table.index('session_id')
+    table.foreign('session_id').references('history_search_sessions.session_id').onDelete('CASCADE')
+  })
+  // Descending index for recent-first search record queries
+  await knex.raw('CREATE INDEX IF NOT EXISTS idx_hist_search_rec_created_at ON history_search_records(created_at DESC)')
+  // GIN index for full-text search
+  await knex.raw('CREATE INDEX IF NOT EXISTS idx_hist_search_rec_search_vector ON history_search_records USING GIN(search_vector)')
+
+  // ──────────────────────────────────────────────
+  // 8. Glossary tables
+  // ──────────────────────────────────────────────
+
+  // Glossary tasks - prompt template instructions
+  await knex.schema.createTable('glossary_tasks', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('name').unique().notNullable()
+    table.text('description')
+    table.text('task_instruction_en').notNullable()
+    table.text('task_instruction_ja')
+    table.text('task_instruction_vi')
+    table.text('context_template').notNullable()
+    table.integer('sort_order').defaultTo(0)
+    table.boolean('is_active').defaultTo(true)
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+
+    table.index('name')
+    table.index('is_active')
+    table.index('sort_order')
+  })
+
+  // Glossary keywords - standalone keyword entities
+  await knex.schema.createTable('glossary_keywords', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('name').unique().notNullable()
+    table.text('en_keyword')
+    table.text('description')
+    table.integer('sort_order').defaultTo(0)
+    table.boolean('is_active').defaultTo(true)
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+
+    table.index('is_active')
+    table.index('sort_order')
+  })
+
+  // ──────────────────────────────────────────────
+  // 9. RAG pipeline tables (depends on users)
+  // ──────────────────────────────────────────────
+
+  // Datasets - system-level resource with IAM access control
+  await knex.schema.createTable('datasets', (table) => {
+    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.string('name', 128).notNullable().unique()
+    table.text('description')
+    table.string('language', 32).defaultTo('English')
+    table.string('embedding_model', 128)
+    table.string('parser_id', 32).defaultTo('naive')
+    table.jsonb('parser_config').defaultTo('{}')
+    table.jsonb('access_control').defaultTo('{"public": true}')
+    table.string('status', 16).defaultTo('active')
+    table.integer('doc_count').defaultTo(0)
+    table.integer('chunk_count').defaultTo(0)
+    table.integer('token_count').defaultTo(0)
+    table.text('created_by').references('id').inTable('users').onDelete('SET NULL')
+    table.text('updated_by').references('id').inTable('users').onDelete('SET NULL')
+    table.timestamps(true, true)
+  })
+
+  // Documents - files within a dataset
+  await knex.schema.createTable('documents', (table) => {
+    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.uuid('dataset_id').notNullable().references('id').inTable('datasets').onDelete('CASCADE')
+    table.string('name', 255).notNullable()
+    table.bigInteger('size').defaultTo(0)
+    table.string('type', 32)
+    table.string('status', 16).defaultTo('pending')
+    table.float('progress').defaultTo(0)
+    table.text('progress_msg')
+    table.integer('chunk_count').defaultTo(0)
+    table.integer('token_count').defaultTo(0)
+    table.string('storage_path', 512)
+    table.text('created_by').references('id').inTable('users').onDelete('SET NULL')
+    table.timestamps(true, true)
+
+    table.index('dataset_id')
+  })
+
+  // Model providers - system-wide LLM model provider configuration
+  await knex.schema.createTable('model_providers', (table) => {
+    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.string('factory_name', 128).notNullable()
+    table.string('model_type', 32).notNullable()
+    table.string('model_name', 128).notNullable()
+    table.text('api_key')
+    table.string('api_base', 512)
+    table.integer('max_tokens')
+    table.string('status', 16).defaultTo('active')
+    table.boolean('is_default').defaultTo(false)
+    table.text('created_by').references('id').inTable('users').onDelete('SET NULL')
+    table.text('updated_by').references('id').inTable('users').onDelete('SET NULL')
+    table.timestamps(true, true)
+
+    table.unique(['factory_name', 'model_name'])
+  })
+
+  // ──────────────────────────────────────────────
+  // 10. Document versioning (depends on datasets, users)
+  // ──────────────────────────────────────────────
+
+  // Document versions - versioned snapshots of a dataset's documents
+  await knex.schema.createTable('document_versions', (table) => {
+    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.uuid('dataset_id').notNullable().references('id').inTable('datasets').onDelete('CASCADE')
+    table.string('version_label', 128).notNullable()
+    table.string('ragflow_dataset_id', 255)
+    table.string('ragflow_dataset_name', 255)
+    table.string('status', 16).defaultTo('active').notNullable()
+    table.timestamp('last_synced_at')
+    table.jsonb('metadata').defaultTo('{}')
+    table.text('created_by').references('id').inTable('users').onDelete('SET NULL')
+    table.timestamps(true, true)
+
+    table.index('dataset_id')
+    table.unique(['dataset_id', 'version_label'])
+  })
+
+  // Document version files - individual files within a version
+  await knex.schema.createTable('document_version_files', (table) => {
+    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.uuid('version_id').notNullable().references('id').inTable('document_versions').onDelete('CASCADE')
+    table.string('file_name', 512).notNullable()
+    table.string('ragflow_doc_id', 255)
+    table.string('status', 32).defaultTo('pending').notNullable()
+    table.text('error')
+    table.timestamps(true, true)
+
+    table.unique(['version_id', 'file_name'])
+    table.index('version_id')
+  })
+
+  // Converter jobs - tracks conversion job state
+  await knex.schema.createTable('converter_jobs', (table) => {
+    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.uuid('dataset_id').notNullable().references('id').inTable('datasets').onDelete('CASCADE')
+    table.uuid('version_id').notNullable().references('id').inTable('document_versions').onDelete('CASCADE')
+    table.string('status', 32).defaultTo('pending').notNullable()
+    table.integer('file_count').defaultTo(0)
+    table.integer('finished_count').defaultTo(0)
+    table.integer('failed_count').defaultTo(0)
+    table.timestamps(true, true)
+
+    table.index('dataset_id')
+    table.index('version_id')
+  })
+
+  // ──────────────────────────────────────────────
+  // 11. Sync tables (depends on knowledgebase*, users)
+  //     *knowledgebase is a RAGFlow Peewee table
+  // ──────────────────────────────────────────────
+
+  // Connectors - external data source connection configurations
+  await knex.schema.createTable('connectors', (table) => {
+    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.string('name', 255).notNullable()
+    table.string('source_type', 64).notNullable()
+    // References the RAGFlow Peewee knowledgebase table
+    table.string('kb_id', 255).notNullable().references('id').inTable('knowledgebase').onDelete('CASCADE')
+    table.jsonb('config').defaultTo('{}')
+    table.text('description')
+    table.string('schedule', 128)
+    table.string('status', 16).defaultTo('active')
+    table.timestamp('last_synced_at')
+    table.text('created_by').references('id').inTable('users').onDelete('SET NULL')
+    table.text('updated_by').references('id').inTable('users').onDelete('SET NULL')
+    table.timestamps(true, true)
+
+    table.index('kb_id')
+    table.index('status')
+  })
+
+  // Sync logs - tracks individual sync task executions
+  await knex.schema.createTable('sync_logs', (table) => {
+    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.uuid('connector_id').notNullable().references('id').inTable('connectors').onDelete('CASCADE')
+    table.string('kb_id', 255).notNullable()
+    table.string('status', 16).defaultTo('pending')
+    table.integer('docs_synced').defaultTo(0)
+    table.integer('docs_failed').defaultTo(0)
+    table.integer('progress').defaultTo(0)
+    table.text('message')
+    table.timestamp('started_at')
+    table.timestamp('finished_at')
+    table.timestamps(true, true)
+
+    table.index('connector_id')
+    table.index('status')
+  })
+}
+
+/**
+ * Drop all application tables in reverse dependency order.
+ * @param knex - Knex instance
+ * @returns Promise<void>
+ */
+export async function down(knex: Knex): Promise<void> {
+  // Sync tables
+  await knex.schema.dropTableIfExists('sync_logs')
+  await knex.schema.dropTableIfExists('connectors')
+
+  // Document versioning
+  await knex.schema.dropTableIfExists('converter_jobs')
+  await knex.schema.dropTableIfExists('document_version_files')
+  await knex.schema.dropTableIfExists('document_versions')
+
+  // RAG pipeline
+  await knex.schema.dropTableIfExists('model_providers')
+  await knex.schema.dropTableIfExists('documents')
+  await knex.schema.dropTableIfExists('datasets')
+
+  // Glossary
+  await knex.schema.dropTableIfExists('glossary_keywords')
+  await knex.schema.dropTableIfExists('glossary_tasks')
+
+  // History tracking
+  await knex.schema.dropTableIfExists('history_search_records')
+  await knex.schema.dropTableIfExists('history_search_sessions')
+  await knex.schema.dropTableIfExists('history_chat_messages')
+  await knex.schema.dropTableIfExists('history_chat_sessions')
+
+  // Broadcast
+  await knex.schema.dropTableIfExists('user_dismissed_broadcasts')
+  await knex.schema.dropTableIfExists('broadcast_messages')
+
+  // Audit and IP tracking
+  await knex.schema.dropTableIfExists('user_ip_history')
+  await knex.schema.dropTableIfExists('audit_logs')
+
+  // Search apps
+  await knex.schema.dropTableIfExists('search_app_access')
+  await knex.schema.dropTableIfExists('search_apps')
+
+  // Chat tables
+  await knex.schema.dropTableIfExists('chat_messages')
+  await knex.schema.dropTableIfExists('chat_sessions')
+  await knex.schema.dropTableIfExists('chat_dialog_access')
+  await knex.schema.dropTableIfExists('chat_dialogs')
+
+  // User-Teams junction
+  await knex.schema.dropTableIfExists('user_teams')
+
+  // Core tables
+  await knex.schema.dropTableIfExists('knowledge_base_sources')
+  await knex.schema.dropTableIfExists('system_configs')
+  await knex.schema.dropTableIfExists('teams')
+  await knex.schema.dropTableIfExists('users')
+}
