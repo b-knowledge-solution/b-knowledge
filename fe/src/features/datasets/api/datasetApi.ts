@@ -1,7 +1,8 @@
 import { api, apiFetch } from '@/lib/api';
 import type {
-  Dataset, CreateDatasetDto, UpdateDatasetDto, Document, ChunksResponse,
+  Dataset, CreateDatasetDto, UpdateDatasetDto, Document, ChunksResponse, Chunk,
   DocumentVersion, CreateVersionDto, UpdateVersionDto, VersionFile, ConverterJob,
+  DatasetSettings, RetrievalTestResult,
 } from '../types';
 
 /** @description Response shape from GET /api/rag/datasets/:id/access */
@@ -82,14 +83,56 @@ export const datasetApi = {
   // Chunk operations
   listChunks: async (
     datasetId: string,
-    params?: { doc_id?: string; page?: number; limit?: number },
+    params?: { doc_id?: string; page?: number; limit?: number; search?: string },
   ): Promise<ChunksResponse> => {
     const query = new URLSearchParams();
     if (params?.doc_id) query.set('doc_id', params.doc_id);
     if (params?.page) query.set('page', String(params.page));
     if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.search) query.set('search', params.search);
     const qs = query.toString();
     return api.get<ChunksResponse>(`${BASE_URL}/datasets/${datasetId}/chunks${qs ? `?${qs}` : ''}`);
+  },
+
+  /** @description Add a manual chunk to a dataset */
+  addChunk: async (datasetId: string, data: { text: string; doc_id?: string }): Promise<Chunk> => {
+    return api.post<Chunk>(`${BASE_URL}/datasets/${datasetId}/chunks`, data);
+  },
+
+  /** @description Update a chunk */
+  updateChunk: async (datasetId: string, chunkId: string, data: { text: string }): Promise<Chunk> => {
+    return api.put<Chunk>(`${BASE_URL}/datasets/${datasetId}/chunks/${chunkId}`, data);
+  },
+
+  /** @description Delete a chunk */
+  deleteChunk: async (datasetId: string, chunkId: string): Promise<void> => {
+    return api.delete<void>(`${BASE_URL}/datasets/${datasetId}/chunks/${chunkId}`);
+  },
+
+  // ============================================================================
+  // Dataset Settings
+  // ============================================================================
+
+  /** @description Get dataset settings */
+  getDatasetSettings: async (datasetId: string): Promise<DatasetSettings> => {
+    return api.get<DatasetSettings>(`${BASE_URL}/datasets/${datasetId}/settings`);
+  },
+
+  /** @description Update dataset settings */
+  updateDatasetSettings: async (datasetId: string, data: Partial<DatasetSettings>): Promise<DatasetSettings> => {
+    return api.put<DatasetSettings>(`${BASE_URL}/datasets/${datasetId}/settings`, data);
+  },
+
+  // ============================================================================
+  // Retrieval Test
+  // ============================================================================
+
+  /** @description Run a retrieval test against a dataset */
+  runRetrievalTest: async (
+    datasetId: string,
+    params: { query: string; method?: string; top_k?: number; similarity_threshold?: number },
+  ): Promise<RetrievalTestResult> => {
+    return api.post<RetrievalTestResult>(`${BASE_URL}/datasets/${datasetId}/retrieval-test`, params);
   },
 
   // ============================================================================

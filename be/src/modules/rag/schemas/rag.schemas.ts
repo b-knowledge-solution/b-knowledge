@@ -83,3 +83,55 @@ export const searchChunksSchema = z.object({
   top_k: z.number().int().min(1).max(100).optional(),
   similarity_threshold: z.number().min(0).max(1).optional(),
 });
+
+// ---------------------------------------------------------------------------
+// Dataset Settings schemas
+// ---------------------------------------------------------------------------
+
+/** PUT /api/rag/datasets/:id/settings – body */
+export const updateDatasetSettingsSchema = z.object({
+  name: z.string().min(1).max(255).optional(),
+  description: z.string().max(2000).nullable().optional(),
+  language: z.string().max(50).optional(),
+  embedding_model: z.string().max(255).nullable().optional(),
+  permission: z.enum(['me', 'team']).optional(),
+  parser_id: z.string().max(50).optional(),
+  parser_config: z.record(z.unknown()).optional(),
+})
+
+// ---------------------------------------------------------------------------
+// Chunk Management schemas
+// ---------------------------------------------------------------------------
+
+/** POST /api/rag/datasets/:id/chunks – body (add manual chunk) */
+export const createChunkSchema = z.object({
+  content: z.string().min(1, 'Chunk content is required'),
+  doc_id: z.string().optional(),
+  important_keywords: z.array(z.string()).optional(),
+})
+
+/** PUT /api/rag/datasets/:id/chunks/:chunkId – body */
+export const updateChunkSchema = z.object({
+  content: z.string().min(1, 'Chunk content is required').optional(),
+  important_keywords: z.array(z.string()).optional(),
+  available: z.boolean().optional(),
+})
+
+/** Chunk ID param schema */
+export const chunkParamSchema = z.object({
+  id: z.string().uuid('Invalid dataset UUID'),
+  chunkId: z.string().min(1, 'Chunk ID is required'),
+})
+
+// ---------------------------------------------------------------------------
+// Retrieval Test schema
+// ---------------------------------------------------------------------------
+
+/** POST /api/rag/datasets/:id/retrieval-test – body */
+export const retrievalTestSchema = z.object({
+  query: z.string().min(1, 'Query is required'),
+  method: z.enum(['hybrid', 'semantic', 'full_text']).optional().default('hybrid'),
+  top_k: z.number().int().min(1).max(100).optional().default(5),
+  similarity_threshold: z.number().min(0).max(1).optional().default(0.2),
+  doc_ids: z.array(z.string()).optional(),
+})

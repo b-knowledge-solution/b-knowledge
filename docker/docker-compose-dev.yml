@@ -1,0 +1,107 @@
+# ==========================================================================
+# Development Dashboard Tools
+# ==========================================================================
+# Free, open-source dashboard UIs for monitoring infrastructure services.
+# All images use OSI-approved licenses, safe for enterprise environments.
+#
+# Usage:
+#   docker compose -f docker-compose-dev.yml --env-file .env up -d
+#
+# Dashboards:
+#   - OpenSearch Dashboards : http://localhost:5601
+#   - pgweb (PostgreSQL)   : http://localhost:8081
+#   - Redis Insight (Valkey): http://localhost:5540
+
+include:
+  - path: docker-compose-base.yml
+    env_file: .env
+
+services:
+  # ==========================================================================
+  # OpenSearch Dashboards — Kibana-compatible UI for OpenSearch (Apache-2.0)
+  # https://opensearch.org/docs/latest/dashboards/
+  # ==========================================================================
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:3.5.0
+    restart: unless-stopped
+    ports:
+      - "${OPENSEARCH_DASHBOARDS_PORT:-5601}:5601"
+    environment:
+      # Connect to the OpenSearch node on custom port 9201
+      - OPENSEARCH_HOSTS=["http://opensearch:9201"]
+      # Disable security plugin to match OpenSearch config
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+      # Disable telemetry for enterprise/airgap environments
+      - OPENSEARCH_DASHBOARDS_TELEMETRY_ENABLED=false
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5601/api/status | grep -q 'available'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - kb-network
+
+  # ==========================================================================
+  # pgweb — Zero-dependency PostgreSQL web UI (MIT License)
+  # https://github.com/sosedoff/pgweb
+  # ==========================================================================
+  pgweb:
+    image: sosedoff/pgweb:latest
+    restart: unless-stopped
+    ports:
+      - "${PGWEB_PORT:-8081}:8081"
+    environment:
+      # Connection string to the PostgreSQL service
+      - PGWEB_DATABASE_URL=postgres://${DB_USER:-postgres}:${DB_PASSWORD:-change_me_in_production}@postgres:5432/${DB_NAME:-knowledge_base}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8081/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - kb-network
+
+  # ==========================================================================
+  # Redis Insight — Official Redis/Valkey GUI (SSPL → free to use, not modify)
+  # https://redis.io/insight/
+  # Note: Redis Insight is free to use in any environment (dev/prod/enterprise).
+  #       It is NOT SSPL-licensed since v2.58+ — it uses the Redis Source
+  #       Available License v2 (RSALv2) which allows free use but restricts
+  #       offering it as a managed service. Safe for internal enterprise use.
+  # ==========================================================================
+  redis-insight:
+    image: redis/redisinsight:latest   
+    restart: unless-stopped
+    ports:
+      - "${REDIS_INSIGHT_PORT:-5540}:5540"
+    environment:
+      # Disable telemetry and auto-update checks for offline/enterprise environments
+      - RI_APP_ANALYTICS=false
+    volumes:
+      - redisinsight_data:/data
+    depends_on:
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5540/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - kb-network
+
+# ==========================================================================
+# Volumes
+# ==========================================================================
+volumes:
+  redisinsight_data:
+    driver: local

@@ -6,6 +6,7 @@ import { validate } from '@/shared/middleware/validate.middleware.js';
 import {
   createDatasetSchema, updateDatasetSchema, searchChunksSchema, uuidParamSchema, datasetAccessSchema,
   createVersionSchema, updateVersionSchema, versionParamSchema, bulkDeleteFilesSchema,
+  updateDatasetSettingsSchema, createChunkSchema, updateChunkSchema, chunkParamSchema, retrievalTestSchema,
 } from '../schemas/rag.schemas.js';
 
 const router = Router();
@@ -37,6 +38,18 @@ router.post('/datasets/:id/versions/:versionId/documents/convert', requirePermis
 router.post('/datasets/:id/versions/:versionId/documents/parse', requirePermission('manage_datasets'), controller.parseVersionDocuments.bind(controller));
 router.get('/datasets/:id/versions/:versionId/documents/status', requireAuth, controller.syncVersionDocumentStatus.bind(controller));
 router.post('/datasets/:id/versions/:versionId/documents/requeue', requirePermission('manage_datasets'), controller.requeueVersionDocuments.bind(controller));
+
+// Dataset settings endpoints
+router.get('/datasets/:id/settings', requireAuth, controller.getDatasetSettings.bind(controller));
+router.put('/datasets/:id/settings', requirePermission('manage_datasets'), validate({ params: uuidParamSchema, body: updateDatasetSettingsSchema }), controller.updateDatasetSettings.bind(controller));
+
+// Chunk management endpoints (manual add/edit/delete)
+router.post('/datasets/:id/chunks', requirePermission('manage_datasets'), validate({ params: uuidParamSchema, body: createChunkSchema }), controller.createChunk.bind(controller));
+router.put('/datasets/:id/chunks/:chunkId', requirePermission('manage_datasets'), validate({ params: chunkParamSchema, body: updateChunkSchema }), controller.updateChunk.bind(controller));
+router.delete('/datasets/:id/chunks/:chunkId', requirePermission('manage_datasets'), controller.deleteChunk.bind(controller));
+
+// Retrieval test endpoint
+router.post('/datasets/:id/retrieval-test', requireAuth, validate({ params: uuidParamSchema, body: retrievalTestSchema }), controller.retrievalTest.bind(controller));
 
 // Document endpoints
 router.get('/datasets/:id/documents', requireAuth, controller.listDocuments.bind(controller));

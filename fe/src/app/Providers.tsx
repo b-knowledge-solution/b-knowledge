@@ -17,7 +17,6 @@ import { GuidelineProvider } from '@/features/guideline';
 import { ConfirmProvider } from '@/components/ConfirmDialog';
 import { HeaderActionsProvider } from '@/components/HeaderActions';
 import { NavigationProvider } from '@/components/NavigationLoader';
-import SettingsDialog from '@/components/SettingsDialog';
 
 // ============================================================================
 // Global Notification Bridge
@@ -70,7 +69,6 @@ export function Providers({ children }: ProvidersProps) {
               <HeaderActionsProvider>
                 <NavigationProvider>
                   {children}
-                  <SettingsDialog />
                   <Toaster />
                 </NavigationProvider>
               </HeaderActionsProvider>

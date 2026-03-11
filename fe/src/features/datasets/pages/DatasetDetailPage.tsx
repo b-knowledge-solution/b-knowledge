@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Upload, RefreshCw, Shield } from 'lucide-react';
+import { ArrowLeft, Upload, RefreshCw, Shield, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,8 @@ import DocumentTable from '../components/DocumentTable';
 import FileUploadModal from '../components/FileUploadModal';
 import DatasetAccessDialog from '../components/DatasetAccessDialog';
 import VersionPanel from '../components/VersionPanel';
+import DatasetSettingsDrawer from '../components/DatasetSettingsDrawer';
+import ChunkManagementPanel from '../components/ChunkManagementPanel';
 import { DocumentPreviewer } from '@/components/DocumentPreviewer';
 import type { Dataset, Document } from '../types';
 
@@ -32,6 +34,8 @@ const DatasetDetailPage: React.FC = () => {
   const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
   // State for access control dialog
   const [accessDialogOpen, setAccessDialogOpen] = useState(false);
+  // State for settings drawer
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const handleViewDocument = useCallback((doc: Document) => {
     setPreviewDoc(doc);
@@ -92,6 +96,9 @@ const DatasetDetailPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => setSettingsOpen(true)}>
+            <Settings size={16} />
+          </Button>
           <Button variant="outline" onClick={refresh}>
             <RefreshCw size={16} className="mr-1" />
             {t('datasets.refresh')}
@@ -171,6 +178,27 @@ const DatasetDetailPage: React.FC = () => {
           />
         </CardContent>
       </Card>
+
+      {/* Chunk Management */}
+      {id && (
+        <Card className="dark:bg-slate-800 dark:border-slate-700 mt-6">
+          <CardHeader className="pb-0">
+            <CardTitle className="text-base">{t('datasetSettings.chunks.title')}</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            <ChunkManagementPanel datasetId={id} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Settings Drawer */}
+      {id && (
+        <DatasetSettingsDrawer
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          datasetId={id}
+        />
+      )}
 
       {/* Access Control Dialog */}
       <DatasetAccessDialog

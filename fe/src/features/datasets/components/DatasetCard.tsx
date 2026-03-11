@@ -10,7 +10,7 @@ interface DatasetCardProps {
   dataset: Dataset;
   onEdit: (dataset: Dataset) => void;
   onDelete: (dataset: Dataset) => void;
-  onManageAccess?: (dataset: Dataset) => void;
+  onManageAccess?: ((dataset: Dataset) => void) | undefined;
   isAdmin: boolean;
 }
 

@@ -39,11 +39,11 @@ interface SettingsContextType {
   isDarkMode: boolean;
   /** Resolved theme (light or dark, after system preference applied) */
   resolvedTheme: 'light' | 'dark';
-  /** Whether settings dialog is open */
+  /** Whether the settings dialog is open */
   isSettingsOpen: boolean;
-  /** Open settings dialog */
+  /** Open the settings dialog */
   openSettings: () => void;
-  /** Close settings dialog */
+  /** Close the settings dialog */
   closeSettings: () => void;
 }
 
@@ -122,6 +122,11 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+  /** Open settings dialog */
+  const openSettings = useCallback(() => setIsSettingsOpen(true), []);
+  /** Close settings dialog */
+  const closeSettings = useCallback(() => setIsSettingsOpen(false), []);
+
   /**
    * Effect: Apply dark mode based on theme setting.
    * Listens for system preference changes when theme is 'system'.
@@ -177,10 +182,6 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
     localStorage.setItem(STORAGE_KEY_LANGUAGE, newLang);
     i18n.changeLanguage(newLang);
   }, [i18n]);
-
-  /** Context methods for managing settings dialog visibility */
-  const openSettings = useCallback(() => setIsSettingsOpen(true), []);
-  const closeSettings = useCallback(() => setIsSettingsOpen(false), []);
 
   return (
     <SettingsContext.Provider

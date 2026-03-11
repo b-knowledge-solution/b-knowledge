@@ -95,6 +95,7 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY:-rustfsadmin}
       RAG_PROJECT_BASE: /app
       PYTHONPATH: /app
+      LOG_PREFIX: task-executor
       LOG_ROTATION: ${LOG_ROTATION:-50 MB}
       LOG_RETENTION: ${LOG_RETENTION:-30 days}
       LOG_COMPRESSION: ${LOG_COMPRESSION:-zip}
@@ -125,6 +126,7 @@ services:
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       POLL_INTERVAL: ${CONVERTER_POLL_INTERVAL:-30}
+      LOG_PREFIX: converter
       S3_HOST: rustfs:9000
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-rustfsadmin}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-rustfsadmin}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Search, LayoutGrid, List, Shield } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
@@ -95,7 +95,7 @@ const DatasetsPage: React.FC = () => {
               dataset={dataset}
               onEdit={openModal}
               onDelete={handleDelete}
-              onManageAccess={isAdmin ? setAccessDataset : undefined}
+              onManageAccess={isAdmin ? (d: Dataset) => setAccessDataset(d) : undefined}
               isAdmin={isAdmin}
             />
           ))}
@@ -108,7 +108,7 @@ const DatasetsPage: React.FC = () => {
               dataset={dataset}
               onEdit={openModal}
               onDelete={handleDelete}
-              onManageAccess={isAdmin ? setAccessDataset : undefined}
+              onManageAccess={isAdmin ? (d: Dataset) => setAccessDataset(d) : undefined}
               isAdmin={isAdmin}
             />
           ))}

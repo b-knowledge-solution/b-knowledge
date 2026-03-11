@@ -621,10 +621,20 @@ export interface Document {
 
 /**
  * ModelProvider interface representing a system-wide model provider config.
+ *
+ * Supported `model_type` values (RAGFlow canonical types):
+ * - `chat`        – Conversational LLM (e.g. GPT-4o, Claude)
+ * - `embedding`   – Text embedding model (e.g. text-embedding-3-large)
+ * - `speech2text` – Speech-to-text / ASR (e.g. Whisper)
+ * - `image2text`  – Vision / image understanding model
+ * - `rerank`      – Re-ranking model for search results
+ * - `tts`         – Text-to-speech model
+ * - `ocr`         – Optical character recognition model
  */
 export interface ModelProvider {
     id: string;
     factory_name: string;
+    /** One of: chat, embedding, speech2text, image2text, rerank, tts, ocr */
     model_type: string;
     model_name: string;
     api_key?: string | null;
@@ -670,6 +680,292 @@ export interface BulkImportGlossaryResult {
     skipped: number;
     /** Any error messages */
     errors: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Project types
+// ---------------------------------------------------------------------------
+
+/**
+ * Project interface representing a record in the 'projects' table.
+ */
+export interface Project {
+  /** Unique UUID for the project */
+  id: string
+  /** Project name */
+  name: string
+  /** Project description */
+  description?: string | null
+  /** Avatar image URL or base64 */
+  avatar?: string | null
+  /** RAGFlow server ID used by this project */
+  ragflow_server_id?: string | null
+  /** Default embedding model for datasets */
+  default_embedding_model?: string | null
+  /** Default chunk method for parsing */
+  default_chunk_method?: string | null
+  /** Default parser configuration (JSONB) */
+  default_parser_config: any
+  /** Project status: active, archived */
+  status: string
+  /** Whether the project is private */
+  is_private: boolean
+  /** User ID who created this record */
+  created_by?: string | null
+  /** User ID who last updated this record */
+  updated_by?: string | null
+  /** Timestamp of record creation */
+  created_at: Date
+  /** Timestamp of last update */
+  updated_at: Date
+}
+
+/**
+ * ProjectPermission interface representing tab-level access control.
+ */
+export interface ProjectPermission {
+  /** Unique UUID */
+  id: string
+  /** Reference to the project */
+  project_id: string
+  /** Grantee type: 'user' or 'team' */
+  grantee_type: string
+  /** UUID of the grantee */
+  grantee_id: string
+  /** Tab-level permission for documents */
+  tab_documents: string
+  /** Tab-level permission for chat */
+  tab_chat: string
+  /** Tab-level permission for settings */
+  tab_settings: string
+  /** User ID who created this record */
+  created_by?: string | null
+  /** User ID who last updated this record */
+  updated_by?: string | null
+  /** Timestamp of record creation */
+  created_at: Date
+  /** Timestamp of last update */
+  updated_at: Date
+}
+
+/**
+ * ProjectDataset interface representing the project-dataset junction.
+ */
+export interface ProjectDataset {
+  /** Unique UUID */
+  id: string
+  /** Reference to the project */
+  project_id: string
+  /** Reference to the dataset */
+  dataset_id: string
+  /** Whether auto-created with the project */
+  auto_created: boolean
+  /** Timestamp of record creation */
+  created_at: Date
+}
+
+/**
+ * ProjectSyncConfig interface for external data source sync configuration.
+ */
+export interface ProjectSyncConfig {
+  /** Unique UUID */
+  id: string
+  /** Reference to the project */
+  project_id: string
+  /** Source type: sharepoint, jira, confluence, gitlab, github */
+  source_type: string
+  /** Encrypted connection configuration */
+  connection_config?: string | null
+  /** Cron expression or preset schedule */
+  sync_schedule?: string | null
+  /** Filter rules (JSONB) */
+  filter_rules: any
+  /** Last successful sync timestamp */
+  last_synced_at?: Date | null
+  /** Status: active, paused, error */
+  status: string
+  /** User ID who created this record */
+  created_by?: string | null
+  /** User ID who last updated this record */
+  updated_by?: string | null
+  /** Timestamp of record creation */
+  created_at: Date
+  /** Timestamp of last update */
+  updated_at: Date
+}
+
+/**
+ * DocumentCategory interface representing a grouping within a project.
+ */
+export interface DocumentCategory {
+  /** Unique UUID */
+  id: string
+  /** Reference to the parent project */
+  project_id: string
+  /** Category name */
+  name: string
+  /** Category description */
+  description?: string | null
+  /** Display sort order */
+  sort_order: number
+  /** Dataset configuration overrides (JSONB) */
+  dataset_config: any
+  /** User ID who created this record */
+  created_by?: string | null
+  /** User ID who last updated this record */
+  updated_by?: string | null
+  /** Timestamp of record creation */
+  created_at: Date
+  /** Timestamp of last update */
+  updated_at: Date
+}
+
+/**
+ * DocumentCategoryVersion interface representing a version within a category.
+ */
+export interface DocumentCategoryVersion {
+  /** Unique UUID */
+  id: string
+  /** Reference to the parent category */
+  category_id: string
+  /** Human-readable version label */
+  version_label: string
+  /** RAGFlow dataset ID */
+  ragflow_dataset_id?: string | null
+  /** RAGFlow dataset name */
+  ragflow_dataset_name?: string | null
+  /** Version status */
+  status: string
+  /** Last sync timestamp */
+  last_synced_at?: Date | null
+  /** Additional metadata (JSONB) */
+  metadata: any
+  /** User ID who created this record */
+  created_by?: string | null
+  /** User ID who last updated this record */
+  updated_by?: string | null
+  /** Timestamp of record creation */
+  created_at: Date
+  /** Timestamp of last update */
+  updated_at: Date
+}
+
+/**
+ * DocumentCategoryVersionFile interface for files within a category version.
+ */
+export interface DocumentCategoryVersionFile {
+  /** Unique UUID */
+  id: string
+  /** Reference to the parent version */
+  version_id: string
+  /** Original file name */
+  file_name: string
+  /** RAGFlow document ID */
+  ragflow_doc_id?: string | null
+  /** File processing status */
+  status: string
+  /** Error message if failed */
+  error?: string | null
+  /** Timestamp of record creation */
+  created_at: Date
+  /** Timestamp of last update */
+  updated_at: Date
+}
+
+/**
+ * ProjectChat interface for chat assistants linked to projects.
+ */
+export interface ProjectChat {
+  /** Unique UUID */
+  id: string
+  /** Reference to the parent project */
+  project_id: string
+  /** Chat name */
+  name: string
+  /** RAGFlow chat assistant ID */
+  ragflow_chat_id?: string | null
+  /** Local dataset IDs (JSON array) */
+  dataset_ids: any
+  /** RAGFlow dataset IDs (JSON array) */
+  ragflow_dataset_ids: any
+  /** LLM configuration */
+  llm_config: any
+  /** Prompt configuration */
+  prompt_config: any
+  /** Chat status */
+  status: string
+  /** Last sync timestamp */
+  last_synced_at?: Date | null
+  /** User ID who created this record */
+  created_by?: string | null
+  /** User ID who last updated this record */
+  updated_by?: string | null
+  /** Timestamp of record creation */
+  created_at: Date
+  /** Timestamp of last update */
+  updated_at: Date
+}
+
+/**
+ * ProjectSearch interface for search apps linked to projects.
+ */
+export interface ProjectSearch {
+  /** Unique UUID */
+  id: string
+  /** Reference to the parent project */
+  project_id: string
+  /** Search app name */
+  name: string
+  /** Description */
+  description?: string | null
+  /** RAGFlow search app ID */
+  ragflow_search_id?: string | null
+  /** Local dataset IDs (JSON array) */
+  dataset_ids: any
+  /** RAGFlow dataset IDs (JSON array) */
+  ragflow_dataset_ids: any
+  /** Search configuration (JSONB) */
+  search_config: any
+  /** Status */
+  status: string
+  /** Last sync timestamp */
+  last_synced_at?: Date | null
+  /** User ID who created this record */
+  created_by?: string | null
+  /** User ID who last updated this record */
+  updated_by?: string | null
+  /** Timestamp of record creation */
+  created_at: Date
+  /** Timestamp of last update */
+  updated_at: Date
+}
+
+/**
+ * ProjectEntityPermission interface for granular entity-level access.
+ */
+export interface ProjectEntityPermission {
+  /** Unique UUID */
+  id: string
+  /** Reference to the parent project */
+  project_id: string
+  /** Entity type: category, chat, search */
+  entity_type: string
+  /** UUID of the entity */
+  entity_id: string
+  /** Grantee type: user or team */
+  grantee_type: string
+  /** UUID of the grantee */
+  grantee_id: string
+  /** Permission level: none, view, create, edit, delete */
+  permission_level: string
+  /** User ID who created this record */
+  created_by?: string | null
+  /** User ID who last updated this record */
+  updated_by?: string | null
+  /** Timestamp of record creation */
+  created_at: Date
+  /** Timestamp of last update */
+  updated_at: Date
 }
 
 // ---------------------------------------------------------------------------

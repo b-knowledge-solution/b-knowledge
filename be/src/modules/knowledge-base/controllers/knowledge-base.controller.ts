@@ -129,24 +129,4 @@ export class KnowledgeBaseController {
             res.status(500).json({ error: 'Failed to fetch knowledge base config' });
         }
     }
-
-    /**
-     * Update knowledge base configuration.
-     * @param req - Express request object.
-     * @param res - Express response object.
-     * @returns Promise<void>
-     */
-    async updateConfig(req: Request, res: Response): Promise<void> {
-        try {
-            // Capture user context for audit
-            const user = req.user ? { id: req.user.id, email: req.user.email, role: req.user.role, ip: getClientIp(req) } : undefined;
-            // Update config via service
-            await knowledgeBaseService.updateConfig(req.body, user);
-            res.status(204).send();
-        } catch (error) {
-            // Log error and return 500 status
-            log.error('Failed to update knowledge base config', { error: String(error) });
-            res.status(500).json({ error: 'Failed to update knowledge base config' });
-        }
-    }
 }

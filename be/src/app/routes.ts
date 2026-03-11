@@ -24,7 +24,6 @@ import { checkTraceEnabled } from '@/modules/trace/middleware/trace-enabled.midd
 import { TraceController } from '@/modules/trace/controllers/trace.controller.js';
 import broadcastMessageRoutes from '@/modules/broadcast/routes/broadcast-message.routes.js';
 import adminHistoryRoutes from '@/modules/admin/routes/admin-history.routes.js';
-import chatHistoryRoutes from '@/modules/chat/routes/chat-history.routes.js';
 import chatConversationRoutes from '@/modules/chat/routes/chat-conversation.routes.js';
 import chatDialogRoutes from '@/modules/chat/routes/chat-dialog.routes.js';
 import userHistoryRoutes from '@/modules/user-history/user-history.routes.js';
@@ -35,6 +34,7 @@ import glossaryRoutes from '@/modules/glossary/routes/glossary.routes.js';
 import ragRoutes from '@/modules/rag/routes/rag.routes.js';
 import llmProviderRoutes from '@/modules/llm-provider/routes/llm-provider.routes.js';
 import syncRoutes from '@/modules/sync/routes/sync.routes.js';
+import projectRoutes from '@/modules/projects/routes/projects.routes.js';
 
 // ============================================================================
 // Rate Limiters
@@ -136,9 +136,6 @@ function registerRoutes(apiRouter: Router): void {
     // Broadcast messages
     apiRouter.use('/broadcast-messages', broadcastMessageRoutes);
 
-    // Chat history
-    apiRouter.use('/chat', chatHistoryRoutes);
-
     // Chat conversations (local DB + LLM)
     apiRouter.use('/chat', chatConversationRoutes);
 
@@ -161,6 +158,9 @@ function registerRoutes(apiRouter: Router): void {
 
     // Data source sync (connectors → MinIO → parse)
     apiRouter.use('/sync', syncRoutes);
+
+    // Projects (multi-category document management)
+    apiRouter.use('/projects', projectRoutes);
 }
 
 // ============================================================================

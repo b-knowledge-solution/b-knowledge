@@ -77,6 +77,8 @@ def init_root_logger(
     log_rotation = os.environ.get("LOG_ROTATION", "50 MB")
     log_retention = os.environ.get("LOG_RETENTION", "30 days")
     log_compression = os.environ.get("LOG_COMPRESSION", "zip")
+    # Module prefix for distinguishing logs across services (e.g. [task-executor], [converter])
+    log_prefix = os.environ.get("LOG_PREFIX", logfile_basename)
 
     log_dir = os.path.abspath(os.path.join(get_project_base_directory(), "logs"))
     os.makedirs(log_dir, exist_ok=True)
@@ -85,19 +87,19 @@ def init_root_logger(
     # Remove default stderr sink, re-add with our level
     logger.remove()
 
-    # Console sink — colorized
+    # Console sink — colorized with module prefix
     logger.add(
         sys.stderr,
         level=log_level,
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level:<8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+        format=f"<yellow>[{log_prefix}]</yellow> <green>{{time:YYYY-MM-DD HH:mm:ss}}</green> | <level>{{level:<8}}</level> | <cyan>{{name}}</cyan>:<cyan>{{function}}</cyan>:<cyan>{{line}}</cyan> - <level>{{message}}</level>",
         colorize=True,
     )
 
-    # File sink — rotation + retention + compression
+    # File sink — rotation + retention + compression with module prefix
     logger.add(
         log_path,
         level=log_level,
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level:<8} | {name}:{function}:{line} - {message}",
+        format=f"[{log_prefix}] {{time:YYYY-MM-DD HH:mm:ss}} | {{level:<8}} | {{name}}:{{function}}:{{line}} - {{message}}",
         rotation=log_rotation,
         retention=log_retention,
         compression=log_compression,

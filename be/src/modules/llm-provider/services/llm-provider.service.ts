@@ -32,18 +32,43 @@ export class LlmProviderService {
             ? cryptoService.encrypt(data.api_key)
             : null;
 
-        const provider = await ModelFactory.modelProvider.create({
+        // Check for a soft-deleted row matching the full composite key
+        // (factory_name + model_type + model_name) so we reactivate the correct row type
+        const [existing] = await ModelFactory.modelProvider.findAll({
             factory_name: data.factory_name,
             model_type: data.model_type,
             model_name: data.model_name,
-            api_key: encryptedKey,
-            api_base: data.api_base || null,
-            max_tokens: data.max_tokens || null,
-            status: 'active',
-            is_default: data.is_default || false,
-            created_by: user?.id || null,
-            updated_by: user?.id || null,
+            status: 'deleted',
         });
+
+        let provider: ModelProvider;
+
+        if (existing) {
+            // Reactivate the soft-deleted row with the new data
+            provider = (await ModelFactory.modelProvider.update(existing.id, {
+                model_type: data.model_type,
+                api_key: encryptedKey,
+                api_base: data.api_base || null,
+                max_tokens: data.max_tokens || null,
+                status: 'active',
+                is_default: data.is_default || false,
+                updated_by: user?.id || null,
+            }))!;
+        } else {
+            // No soft-deleted duplicate — insert as normal
+            provider = await ModelFactory.modelProvider.create({
+                factory_name: data.factory_name,
+                model_type: data.model_type,
+                model_name: data.model_name,
+                api_key: encryptedKey,
+                api_base: data.api_base || null,
+                max_tokens: data.max_tokens || null,
+                status: 'active',
+                is_default: data.is_default || false,
+                created_by: user?.id || null,
+                updated_by: user?.id || null,
+            });
+        }
 
         // Sync to shared tenant_llm table (used by task executors)
         try {
@@ -108,7 +133,20 @@ export class LlmProviderService {
     }
 
     async delete(id: string, user?: UserContext): Promise<void> {
+        // Fetch the provider before soft-deleting so we have the composite key
+        const provider = await ModelFactory.modelProvider.findById(id);
+
+        // Soft-delete the model_providers row
         await ModelFactory.modelProvider.update(id, { status: 'deleted' });
+
+        // Remove the corresponding tenant_llm row so Python workers stop using it
+        if (provider) {
+            try {
+                await ModelFactory.tenantLlm.deleteByProvider(provider);
+            } catch (err) {
+                log.warn('Failed to remove tenant_llm row on provider delete', { error: String(err) });
+            }
+        }
 
         if (user) {
             await auditService.log({

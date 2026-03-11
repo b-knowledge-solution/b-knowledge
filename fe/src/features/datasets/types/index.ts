@@ -156,3 +156,56 @@ export interface UpdateVersionDto {
   status?: 'active' | 'archived';
   metadata?: Record<string, unknown>;
 }
+
+// ============================================================================
+// Dataset Settings Types
+// ============================================================================
+
+/** @description Full dataset settings including chunking and advanced config */
+export interface DatasetSettings {
+  id: string;
+  name: string;
+  description?: string | null;
+  language: string;
+  embedding_model?: string | null;
+  permission: string;
+  parser_id: string;
+  parser_config: Record<string, unknown>;
+  graphrag?: GraphRAGConfig;
+  raptor?: RAPTORConfig;
+  auto_keywords?: number;
+  auto_questions?: number;
+}
+
+/** @description GraphRAG configuration */
+export interface GraphRAGConfig {
+  enabled: boolean;
+  entity_types?: string[];
+  method?: string;
+}
+
+/** @description RAPTOR configuration */
+export interface RAPTORConfig {
+  enabled: boolean;
+  max_token?: number;
+  threshold?: number;
+  max_cluster?: number;
+  random_seed?: number;
+}
+
+/** @description Result from a retrieval test */
+export interface RetrievalTestResult {
+  chunks: RetrievalChunk[];
+  total: number;
+}
+
+/** @description A single chunk result from retrieval test */
+export interface RetrievalChunk {
+  chunk_id: string;
+  text: string;
+  doc_name?: string;
+  score: number;
+  vector_similarity?: number;
+  term_similarity?: number;
+  token_count?: number;
+}

@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { MessageSquare, PanelLeft } from 'lucide-react'
 
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
-import { EmptyState } from '@/features/history/components/EmptyState'
+import { EmptyState } from '@/features/histories/components/EmptyState'
 import type { ChatSessionSummary, ExternalChatHistory, ExternalSearchHistory } from '../types/histories.types'
 import { useHistoriesFilters } from '../hooks/useHistoriesFilters'
 import { useHistoriesData } from '../hooks/useHistoriesData'

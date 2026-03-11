@@ -2,9 +2,11 @@
  * @fileoverview Initial database schema migration.
  * @description Creates all application tables in correct dependency order.
  *   Tables are organized into logical groups: core, chat, knowledge base,
- *   broadcast, history tracking, glossary, RAG pipeline, sync, and access control.
+ *   broadcast, history tracking, glossary, RAG pipeline, sync, access control,
+ *   and projects. Also encrypts any existing plaintext API keys at rest.
  */
 import type { Knex } from 'knex'
+import { cryptoService } from '../../services/crypto.service.js'
 
 /**
  * Create all application tables in dependency order.
@@ -501,8 +503,9 @@ export async function up(knex: Knex): Promise<void> {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
     table.string('name', 255).notNullable()
     table.string('source_type', 64).notNullable()
-    // References the RAGFlow Peewee knowledgebase table
-    table.string('kb_id', 255).notNullable().references('id').inTable('knowledgebase').onDelete('CASCADE')
+    // References the RAGFlow Peewee knowledgebase table (no FK constraint
+    // because that table is managed by Python ORM, not Knex migrations)
+    table.string('kb_id', 255).notNullable()
     table.jsonb('config').defaultTo('{}')
     table.text('description')
     table.string('schedule', 128)
@@ -533,6 +536,254 @@ export async function up(knex: Knex): Promise<void> {
     table.index('connector_id')
     table.index('status')
   })
+
+  // ──────────────────────────────────────────────
+  // Section 12 – Project tables
+  // ──────────────────────────────────────────────
+
+  // 12.1 Projects - core project entity
+  await knex.schema.createTable('projects', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('name').notNullable()
+    table.text('description')
+    table.text('avatar')
+    // Reference to the RAGFlow server used by this project
+    table.text('ragflow_server_id')
+    // Default embedding model for datasets created within this project
+    table.text('default_embedding_model')
+    // Default chunk method for document parsing
+    table.text('default_chunk_method')
+    // Default parser configuration (JSON)
+    table.jsonb('default_parser_config').defaultTo('{}')
+    // Project status: active, archived, etc.
+    table.text('status').notNullable().defaultTo('active')
+    // Whether the project is private (restricted access)
+    table.boolean('is_private').defaultTo(false)
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+
+    table.index('status')
+    table.index('created_by')
+  })
+
+  // 12.2 Project permissions - tab-level access control
+  await knex.schema.createTable('project_permissions', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    // Reference to the project
+    table.text('project_id').notNullable()
+    // Grantee type: 'user' or 'team'
+    table.text('grantee_type').notNullable()
+    // UUID of the user or team granted access
+    table.text('grantee_id').notNullable()
+    // Tab-level permissions: 'none' | 'view' | 'manage'
+    table.text('tab_documents').notNullable().defaultTo('none')
+    table.text('tab_chat').notNullable().defaultTo('none')
+    table.text('tab_settings').notNullable().defaultTo('none')
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+
+    table.foreign('project_id').references('projects.id').onDelete('CASCADE')
+    // Composite unique: one permission row per grantee per project
+    table.unique(['project_id', 'grantee_type', 'grantee_id'])
+    table.index('project_id')
+    table.index(['grantee_type', 'grantee_id'])
+  })
+
+  // 12.3 Document categories - groupings within a project
+  await knex.schema.createTable('document_categories', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    // Reference to the parent project
+    table.text('project_id').notNullable()
+    table.text('name').notNullable()
+    table.text('description')
+    // Display ordering within the project
+    table.integer('sort_order').defaultTo(0)
+    // Optional dataset configuration overrides (JSON)
+    table.jsonb('dataset_config').defaultTo('{}')
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+
+    table.foreign('project_id').references('projects.id').onDelete('CASCADE')
+    table.index('project_id')
+    table.index('sort_order')
+  })
+
+  // 12.4 Document category versions - each maps to 1 RAGFlow dataset
+  await knex.schema.createTable('document_category_versions', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    // Reference to the parent category
+    table.text('category_id').notNullable()
+    table.text('version_label').notNullable()
+    // RAGFlow dataset mapping
+    table.text('ragflow_dataset_id')
+    table.text('ragflow_dataset_name')
+    // Version status: active, archived, syncing, etc.
+    table.text('status').notNullable().defaultTo('active')
+    // Last time this version was synced with RAGFlow
+    table.timestamp('last_synced_at', { useTz: true })
+    // Additional metadata (JSON)
+    table.jsonb('metadata').defaultTo('{}')
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+
+    table.foreign('category_id').references('document_categories.id').onDelete('CASCADE')
+    table.index('category_id')
+    table.unique(['category_id', 'version_label'])
+  })
+
+  // 12.5 Document category version files - per-file records
+  await knex.schema.createTable('document_category_version_files', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    // Reference to the parent version
+    table.text('version_id').notNullable()
+    table.text('file_name').notNullable()
+    // RAGFlow document ID after upload
+    table.text('ragflow_doc_id')
+    // File processing status: pending, uploaded, parsing, completed, failed
+    table.text('status').notNullable().defaultTo('pending')
+    // Error message if processing failed
+    table.text('error')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+
+    table.foreign('version_id').references('document_category_versions.id').onDelete('CASCADE')
+    table.unique(['version_id', 'file_name'])
+    table.index('version_id')
+  })
+
+  // 12.6 Project chats - chat assistants linked to projects
+  await knex.schema.createTable('project_chats', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    // Reference to the parent project
+    table.text('project_id').notNullable()
+    table.text('name').notNullable()
+    // RAGFlow chat assistant mapping
+    table.text('ragflow_chat_id')
+    // Local dataset IDs (JSON array)
+    table.jsonb('dataset_ids').defaultTo('[]')
+    // RAGFlow dataset IDs (JSON array)
+    table.jsonb('ragflow_dataset_ids').defaultTo('[]')
+    // LLM configuration (model, temperature, etc.)
+    table.jsonb('llm_config').defaultTo('{}')
+    // Prompt configuration (system prompt, etc.)
+    table.jsonb('prompt_config').defaultTo('{}')
+    // Chat status: active, inactive, syncing
+    table.text('status').notNullable().defaultTo('active')
+    // Last time this chat was synced with RAGFlow
+    table.timestamp('last_synced_at', { useTz: true })
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+
+    table.foreign('project_id').references('projects.id').onDelete('CASCADE')
+    table.index('project_id')
+  })
+
+  // 12.7 Project searches - search apps linked to projects
+  await knex.schema.createTable('project_searches', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    // Reference to the parent project
+    table.text('project_id').notNullable()
+    table.text('name').notNullable()
+    table.text('description')
+    // RAGFlow search app mapping
+    table.text('ragflow_search_id')
+    // Local dataset IDs (JSON array)
+    table.jsonb('dataset_ids').defaultTo('[]')
+    // RAGFlow dataset IDs (JSON array)
+    table.jsonb('ragflow_dataset_ids').defaultTo('[]')
+    // Search configuration (JSON)
+    table.jsonb('search_config').defaultTo('{}')
+    // Search status: active, inactive, syncing
+    table.text('status').notNullable().defaultTo('active')
+    // Last time this search was synced with RAGFlow
+    table.timestamp('last_synced_at', { useTz: true })
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+
+    table.foreign('project_id').references('projects.id').onDelete('CASCADE')
+    table.index('project_id')
+  })
+
+  // 12.8 Project entity permissions - granular entity-level access
+  await knex.schema.createTable('project_entity_permissions', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    // Reference to the parent project
+    table.text('project_id').notNullable()
+    // Entity type: 'category', 'chat', 'search'
+    table.text('entity_type').notNullable()
+    // UUID of the specific entity
+    table.text('entity_id').notNullable()
+    // Grantee type: 'user' or 'team'
+    table.text('grantee_type').notNullable()
+    // UUID of the user or team granted access
+    table.text('grantee_id').notNullable()
+    // Permission level: 'none' | 'view' | 'create' | 'edit' | 'delete'
+    table.text('permission_level').notNullable().defaultTo('none')
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+
+    table.foreign('project_id').references('projects.id').onDelete('CASCADE')
+    // Composite unique: one permission per entity per grantee
+    table.unique(['project_id', 'entity_type', 'entity_id', 'grantee_type', 'grantee_id'])
+    table.index('project_id')
+    table.index(['entity_type', 'entity_id'])
+    table.index(['grantee_type', 'grantee_id'])
+  })
+
+  // ──────────────────────────────────────────────
+  // Section 13 – Encrypt existing plaintext API keys
+  // ──────────────────────────────────────────────
+  // On a fresh database this is a no-op (no rows to encrypt).
+
+  // Encrypt model_providers rows
+  const providers = await knex('model_providers')
+    .select('id', 'api_key')
+    .whereNotNull('api_key')
+    .andWhereNot('api_key', '')
+
+  for (const row of providers) {
+    // Skip if already encrypted
+    if (row.api_key.startsWith('enc:')) continue
+
+    const encrypted = cryptoService.encrypt(row.api_key)
+    await knex('model_providers')
+      .where('id', row.id)
+      .update({ api_key: encrypted })
+  }
+
+  // Encrypt tenant_llm rows (shared table read by Python workers)
+  // Table is managed by Python RAGFlow ORM — may not exist on fresh installs
+  const hasTenantLlm = await knex.schema.hasTable('tenant_llm')
+  if (hasTenantLlm) {
+    const tenantLlms = await knex('tenant_llm')
+      .select('id', 'api_key')
+      .whereNotNull('api_key')
+      .andWhereNot('api_key', '')
+
+    for (const row of tenantLlms) {
+      // Skip if already encrypted
+      if (row.api_key.startsWith('enc:')) continue
+
+      const encrypted = cryptoService.encrypt(row.api_key)
+      await knex('tenant_llm')
+        .where('id', row.id)
+        .update({ api_key: encrypted })
+    }
+  }
 }
 
 /**
@@ -541,6 +792,47 @@ export async function up(knex: Knex): Promise<void> {
  * @returns Promise<void>
  */
 export async function down(knex: Knex): Promise<void> {
+  // Decrypt api_key values back to plaintext (rollback)
+  const hasProviders = await knex.schema.hasTable('model_providers')
+  if (hasProviders) {
+    const providers = await knex('model_providers')
+      .select('id', 'api_key')
+      .whereNotNull('api_key')
+      .andWhere('api_key', 'like', 'enc:%')
+
+    for (const row of providers) {
+      const decrypted = cryptoService.decrypt(row.api_key)
+      await knex('model_providers')
+        .where('id', row.id)
+        .update({ api_key: decrypted })
+    }
+  }
+
+  const hasTenantLlm = await knex.schema.hasTable('tenant_llm')
+  if (hasTenantLlm) {
+    const tenantLlms = await knex('tenant_llm')
+      .select('id', 'api_key')
+      .whereNotNull('api_key')
+      .andWhere('api_key', 'like', 'enc:%')
+
+    for (const row of tenantLlms) {
+      const decrypted = cryptoService.decrypt(row.api_key)
+      await knex('tenant_llm')
+        .where('id', row.id)
+        .update({ api_key: decrypted })
+    }
+  }
+
+  // Project tables (reverse dependency order)
+  await knex.schema.dropTableIfExists('project_entity_permissions')
+  await knex.schema.dropTableIfExists('project_searches')
+  await knex.schema.dropTableIfExists('project_chats')
+  await knex.schema.dropTableIfExists('document_category_version_files')
+  await knex.schema.dropTableIfExists('document_category_versions')
+  await knex.schema.dropTableIfExists('document_categories')
+  await knex.schema.dropTableIfExists('project_permissions')
+  await knex.schema.dropTableIfExists('projects')
+
   // Sync tables
   await knex.schema.dropTableIfExists('sync_logs')
   await knex.schema.dropTableIfExists('connectors')

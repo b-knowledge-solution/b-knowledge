@@ -105,7 +105,95 @@
     "glossary": "用語集",
     "datasets": "データセット",
     "chatAssistants": "チャットアシスタント",
-    "searchApps": "検索アプリ"
+    "searchApps": "検索アプリ",
+    "projects": "プロジェクト",
+    "dataStudio": "データスタジオ",
+    "llmProviders": "LLMプロバイダー"
+  },
+  "projectManagement": {
+    "title": "プロジェクト",
+    "description": "プロジェクト、ドキュメント、チャットアシスタント、検索アプリを管理",
+    "addProject": "プロジェクト作成",
+    "editProject": "プロジェクト編集",
+    "deleteConfirm": "このプロジェクトを削除しますか？",
+    "deleteWarning": "このプロジェクト内のすべてのカテゴリ、バージョン、チャット、検索が完全に削除されます。",
+    "name": "名前",
+    "namePlaceholder": "プロジェクト名を入力",
+    "descriptionLabel": "説明",
+    "descriptionPlaceholder": "プロジェクトの説明を入力",
+    "ragflowServer": "RAGFlowサーバー",
+    "selectServer": "RAGFlowサーバーを選択",
+    "noProjects": "プロジェクトがありません",
+    "noProjectsHint": "最初のプロジェクトを作成して開始しましょう",
+    "noDescription": "—",
+    "createSuccess": "プロジェクトを作成しました",
+    "updateSuccess": "プロジェクトを更新しました",
+    "deleteSuccess": "プロジェクトを削除しました",
+    "editPermissions": "権限を編集",
+    "privateAccessDesc": "選択したチームのみがこのプロジェクトにアクセスできます",
+    "tabs": {
+      "documents": "ドキュメント",
+      "chat": "チャット",
+      "search": "検索",
+      "settings": "設定",
+      "sync": "同期"
+    },
+    "createProject": "プロジェクトを作成",
+    "datasetCount": "データセット",
+    "autoDataset": "自動作成データセット",
+    "categories": {
+      "office": "オフィス",
+      "datasync": "データ同期",
+      "source_code": "ソースコード"
+    },
+    "categoryDesc": {
+      "office": "バージョン管理付きオフィスドキュメント",
+      "datasync": "外部データソースとの同期",
+      "source_code": "ソースコードリポジトリ（近日公開）"
+    },
+    "categoryFilter": {
+      "all": "すべて"
+    },
+    "steps": {
+      "category": "カテゴリ",
+      "details": "詳細",
+      "syncConfig": "同期設定"
+    },
+    "sync": {
+      "sourceType": "ソースタイプ",
+      "connection": "接続",
+      "schedule": {
+        "title": "スケジュール",
+        "every6h": "6時間ごと",
+        "daily": "毎日",
+        "weekly": "毎週",
+        "custom": "カスタム（Cron）",
+        "cronExpression": "Cron式"
+      },
+      "status": "ステータス",
+      "lastSynced": "最終同期",
+      "neverSynced": "未同期",
+      "noConfig": "同期設定がまだありません。まず接続を設定してください。",
+      "triggerNow": "今すぐ同期",
+      "triggerSuccess": "同期が正常に開始されました",
+      "saveSuccess": "同期設定を保存しました",
+      "scheduleUpdated": "スケジュールを更新しました",
+      "fields": {
+        "siteUrl": "サイトURL",
+        "tenantId": "テナントID",
+        "clientId": "クライアントID",
+        "clientSecret": "クライアントシークレット",
+        "baseUrl": "ベースURL",
+        "email": "メール",
+        "apiToken": "APIトークン",
+        "projectKey": "プロジェクトキー",
+        "spaceKey": "スペースキー",
+        "accessToken": "アクセストークン",
+        "projectId": "プロジェクトID",
+        "owner": "オーナー",
+        "repo": "リポジトリ"
+      }
+    }
   },
   "iam": {
     "title": "ID管理とアクセス制御",
@@ -1125,5 +1213,115 @@
     "similarityThreshold": "類似度しきい値",
     "topK": "Top K 結果数",
     "vectorWeight": "ベクトル類似度の重み"
+  },
+  "llmProviders": {
+    "title": "LLMプロバイダー",
+    "addProvider": "プロバイダーを追加",
+    "editProvider": "プロバイダーを編集",
+    "factoryName": "ファクトリー",
+    "modelType": "モデルタイプ",
+    "modelName": "モデル名",
+    "apiKey": "APIキー",
+    "apiBase": "APIベースURL",
+    "maxTokens": "最大トークン数",
+    "default": "デフォルト",
+    "setAsDefault": "このモデルタイプのデフォルトに設定",
+    "deleteTitle": "プロバイダーを削除",
+    "deleteMessage": "プロバイダー「{{name}}」を削除してもよろしいですか？",
+    "fetchError": "プロバイダーの読み込みに失敗しました",
+    "deleteError": "プロバイダーの削除に失敗しました",
+    "chat": "チャット",
+    "embedding": "埋め込み",
+    "speech2text": "音声テキスト変換",
+    "image2text": "画像テキスト変換 / ビジョン",
+    "rerank": "リランク",
+    "tts": "テキスト音声変換",
+    "ocr": "OCR",
+    "allTypes": "すべてのタイプ",
+    "selectFactory": "プロバイダーを選択",
+    "selectModel": "モデルを選択",
+    "customModel": "カスタムモデル名",
+    "customFactory": "カスタム",
+    "apiBasePlaceholder": "https://api.example.com/v1",
+    "apiKeyPlaceholder": "APIキーを入力（不要な場合は空欄）",
+    "presetModels": "利用可能なモデル",
+    "noPresetModels": "このプロバイダーのモデル名を手動で入力してください",
+    "providerSaved": "プロバイダーを保存しました",
+    "providerDeleted": "プロバイダーを削除しました",
+    "systemDefaults": "システムデフォルトモデル",
+    "defaultNotSet": "未設定",
+    "selectDefault": "デフォルトを選択...",
+    "defaultUpdated": "デフォルトモデルを更新しました",
+    "supportsVision": "このモデルはビジョン（画像入力）をサポートします",
+    "vision": "ビジョン",
+    "chatModel": "チャットモデル",
+    "embeddingModel": "エンベディングモデル",
+    "visionModel": "ビジョンモデル",
+    "sttModel": "音声認識モデル",
+    "ttsModel": "音声合成モデル",
+    "rerankModel": "リランクモデル",
+    "ocrModel": "OCRモデル"
+  },
+  "datasetSettings": {
+    "title": "データセット設定",
+    "saveSuccess": "設定を保存しました",
+    "tabs": {
+      "general": "一般",
+      "chunking": "チャンク分割",
+      "advanced": "詳細設定",
+      "retrievalTest": "検索テスト"
+    },
+    "general": {
+      "name": "名前",
+      "description": "説明",
+      "language": "言語",
+      "embeddingModel": "エンベディングモデル",
+      "permission": "権限",
+      "permissionMe": "自分のみ",
+      "permissionTeam": "チームメンバー"
+    },
+    "chunking": {
+      "method": "チャンク分割方法",
+      "chunkSize": "チャンクサイズ（トークン）",
+      "delimiter": "区切り文字",
+      "layoutRecognition": "レイアウト認識",
+      "qaHint": "Q&Aパーサーは自動的にコンテンツを質問と回答のペアに分割します。",
+      "tableHint": "テーブルパーサーはテーブルから構造化データを抽出します。"
+    },
+    "advanced": {
+      "graphrag": "GraphRAG",
+      "graphragDesc": "マルチホップ推論のためのナレッジグラフベースの検索を有効にします。",
+      "entityTypes": "エンティティタイプ（カンマ区切り）",
+      "raptor": "RAPTOR",
+      "raptorDesc": "ツリー構造の検索のための再帰的抽象処理を有効にします。",
+      "maxToken": "最大トークン",
+      "threshold": "しきい値",
+      "autoKeywords": "自動キーワード",
+      "autoQuestions": "自動質問"
+    },
+    "retrieval": {
+      "query": "クエリ",
+      "queryPlaceholder": "テストクエリを入力...",
+      "run": "テスト",
+      "method": "方法",
+      "topK": "Top K",
+      "score": "スコア",
+      "noResults": "このクエリの結果が見つかりません。",
+      "hint": "上にクエリを入力して、このデータセットに対する検索をテストしてください。"
+    },
+    "chunks": {
+      "title": "チャンク",
+      "add": "チャンクを追加",
+      "addTitle": "手動チャンクを追加",
+      "content": "内容",
+      "contentPlaceholder": "チャンクのテキスト内容を入力...",
+      "searchPlaceholder": "チャンクを検索...",
+      "total": "チャンク合計",
+      "empty": "チャンクが見つかりません。",
+      "addSuccess": "チャンクを追加しました",
+      "updateSuccess": "チャンクを更新しました",
+      "deleteSuccess": "チャンクを削除しました",
+      "confirmDelete": "このチャンクを削除してもよろしいですか？"
+    }
   }
 }

@@ -2,8 +2,10 @@ import { BaseModel } from "@/shared/models/base.model.js";
 import { db } from "@/shared/db/knex.js";
 import { TenantLlm, ModelProvider } from "@/shared/models/types.js";
 
-const SYSTEM_TENANT_ID =
-  process.env["SYSTEM_TENANT_ID"] || "00000000-0000-0000-0000-000000000001";
+// RAGFlow stores tenant_id as a 32-char hex string (UUID without hyphens)
+const SYSTEM_TENANT_ID = (
+  process.env["SYSTEM_TENANT_ID"] || "00000000000000000000000000000001"
+).replace(/-/g, "");
 
 /**
  * TenantLlmModel provides CRUD access to the shared 'tenant_llm' table.
@@ -16,7 +18,7 @@ export class TenantLlmModel extends BaseModel<TenantLlm> {
 
   /**
    * Find an existing tenant_llm row by the composite business key.
-   * @param tenantId - Tenant UUID
+   * @param tenantId - Tenant ID (32-char hex string)
    * @param llmFactory - Provider factory name (e.g., 'OpenAI')
    * @param llmName - Model identifier (e.g., 'gpt-4o')
    * @returns The matching row if found, undefined otherwise
@@ -50,6 +52,7 @@ export class TenantLlmModel extends BaseModel<TenantLlm> {
     );
 
     // Build the shared row payload from provider fields
+    // Note: do NOT set `id` — it is an auto-increment integer managed by Postgres
     const row = {
       tenant_id: SYSTEM_TENANT_ID,
       llm_factory: provider.factory_name,
@@ -64,11 +67,22 @@ export class TenantLlmModel extends BaseModel<TenantLlm> {
       // Update in-place when the row already exists
       await this.update({ id: existing.id }, row);
     } else {
-      // Insert a new row with a generated hex UUID (no hyphens, matching ragflow convention)
-      await this.create({
-        ...row,
-        id: crypto.randomUUID().replace(/-/g, ""),
-      });
+      // Insert a new row — Postgres auto-increments the id column
+      await this.create(row);
     }
+  }
+
+  /**
+   * Remove the tenant_llm row(s) associated with a model provider.
+   * Called when a provider is soft-deleted so Python workers stop using it.
+   * @param provider - The model provider being deleted
+   */
+  async deleteByProvider(provider: ModelProvider): Promise<void> {
+    // Delete by composite business key rather than by id
+    await this.delete({
+      tenant_id: SYSTEM_TENANT_ID,
+      llm_factory: provider.factory_name,
+      llm_name: provider.model_name,
+    } as Partial<TenantLlm>);
   }
 }

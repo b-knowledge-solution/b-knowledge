@@ -1,0 +1,817 @@
+/**
+ * @fileoverview API service for project management.
+ * Typed functions for project CRUD, permissions, categories, versions, chats.
+ */
+import { api, apiFetch } from "@/lib/api";
+
+// ============================================================================
+// Types
+// ============================================================================
+
+/** Project category type. */
+export type ProjectCategory = 'office' | 'datasync' | 'source_code';
+
+/**
+ * Represents a project.
+ */
+export interface Project {
+  id: string;
+  name: string;
+  description: string | null;
+  avatar: string | null;
+  category: ProjectCategory;
+  ragflow_server_id: string | null;
+  default_embedding_model: string | null;
+  default_chunk_method: string;
+  default_parser_config: Record<string, unknown> | null;
+  status: string;
+  is_private: boolean;
+  dataset_count?: number;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Represents a dataset linked to a project.
+ */
+export interface ProjectDataset {
+  id: string;
+  project_id: string;
+  dataset_id: string;
+  auto_created: boolean;
+  created_at: string;
+  dataset_name?: string;
+  dataset_chunk_count?: number;
+  dataset_doc_count?: number;
+}
+
+/** Sync source type for datasync projects. */
+export type SyncSourceType = 'sharepoint' | 'jira' | 'confluence' | 'gitlab' | 'github';
+
+/**
+ * Represents a sync configuration for a datasync project.
+ */
+export interface ProjectSyncConfig {
+  id: string;
+  project_id: string;
+  source_type: SyncSourceType;
+  connection_config: Record<string, unknown>;
+  sync_schedule: string | null;
+  filter_rules: Record<string, unknown>;
+  last_synced_at: string | null;
+  status: string;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Represents a project permission.
+ */
+export interface ProjectPermission {
+  id: string;
+  project_id: string;
+  grantee_type: "user" | "team";
+  grantee_id: string;
+  tab_documents: "none" | "view" | "manage";
+  tab_chat: "none" | "view" | "manage";
+  tab_settings: "none" | "view" | "manage";
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Represents a document category.
+ */
+export interface DocumentCategory {
+  id: string;
+  project_id: string;
+  name: string;
+  description: string | null;
+  sort_order: number;
+  dataset_config: Record<string, any> | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Represents a version of a document category.
+ */
+export interface DocumentCategoryVersion {
+  id: string;
+  category_id: string;
+  version_label: string;
+  ragflow_dataset_id: string | null;
+  ragflow_dataset_name: string | null;
+  status: string;
+  last_synced_at: string | null;
+  metadata: Record<string, unknown>;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Represents a project chat assistant.
+ */
+export interface ProjectChat {
+  id: string;
+  project_id: string;
+  name: string;
+  ragflow_chat_id: string | null;
+  dataset_ids: string[];
+  ragflow_dataset_ids: string[];
+  llm_config: Record<string, unknown>;
+  prompt_config: Record<string, unknown>;
+  status: string;
+  last_synced_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================================================
+// Project API
+// ============================================================================
+
+/**
+ * List projects accessible to the current user.
+ */
+export const getProjects = (): Promise<Project[]> => api.get("/api/projects");
+
+/**
+ * Get a project by ID.
+ */
+export const getProjectById = (id: string): Promise<Project> =>
+  api.get(`/api/projects/${id}`);
+
+/**
+ * Create a new project.
+ */
+export const createProject = (data: {
+  name: string;
+  description?: string;
+  avatar?: string;
+  category?: ProjectCategory;
+  ragflow_server_id?: string;
+  default_embedding_model?: string;
+  default_chunk_method?: string;
+  default_parser_config?: Record<string, unknown>;
+  is_private?: boolean;
+}): Promise<Project> => api.post("/api/projects", data);
+
+/**
+ * Update a project.
+ */
+export const updateProject = (
+  id: string,
+  data: Partial<Project>,
+): Promise<Project> => api.put(`/api/projects/${id}`, data);
+
+/**
+ * Delete a project.
+ */
+export const deleteProject = (id: string): Promise<void> =>
+  api.delete(`/api/projects/${id}`);
+
+// ============================================================================
+// Permissions API
+// ============================================================================
+
+/**
+ * Get permissions for a project.
+ */
+export const getProjectPermissions = (
+  projectId: string,
+): Promise<ProjectPermission[]> =>
+  api.get(`/api/projects/${projectId}/permissions`);
+
+/**
+ * Set a permission for a grantee on a project.
+ */
+export const setProjectPermission = (
+  projectId: string,
+  data: {
+    grantee_type: string;
+    grantee_id: string;
+    tab_documents: string;
+    tab_chat: string;
+    tab_settings: string;
+  },
+): Promise<ProjectPermission> =>
+  api.post(`/api/projects/${projectId}/permissions`, data);
+
+/**
+ * Remove a permission.
+ */
+export const removeProjectPermission = (
+  projectId: string,
+  permissionId: string,
+): Promise<void> =>
+  api.delete(`/api/projects/${projectId}/permissions/${permissionId}`);
+
+// ============================================================================
+// Document Categories API
+// ============================================================================
+
+/**
+ * List categories for a project.
+ */
+export const getDocumentCategories = (
+  projectId: string,
+): Promise<DocumentCategory[]> =>
+  api.get(`/api/projects/${projectId}/categories`);
+
+/**
+ * Create a document category.
+ */
+export const createDocumentCategory = (
+  projectId: string,
+  data: {
+    name: string;
+    description?: string;
+    sort_order?: number;
+    dataset_config?: Record<string, any>;
+  },
+): Promise<DocumentCategory> =>
+  api.post(`/api/projects/${projectId}/categories`, data);
+
+/**
+ * Update a document category.
+ */
+export const updateDocumentCategory = (
+  projectId: string,
+  categoryId: string,
+  data: Partial<DocumentCategory>,
+): Promise<DocumentCategory> =>
+  api.put(`/api/projects/${projectId}/categories/${categoryId}`, data);
+
+/**
+ * Delete a document category.
+ */
+export const deleteDocumentCategory = (
+  projectId: string,
+  categoryId: string,
+): Promise<void> =>
+  api.delete(`/api/projects/${projectId}/categories/${categoryId}`);
+
+// ============================================================================
+// Document Category Versions API
+// ============================================================================
+
+/**
+ * List versions for a category.
+ */
+export const getCategoryVersions = (
+  projectId: string,
+  categoryId: string,
+): Promise<DocumentCategoryVersion[]> =>
+  api.get(`/api/projects/${projectId}/categories/${categoryId}/versions`);
+
+/**
+ * Create a new version.
+ */
+export const createCategoryVersion = (
+  projectId: string,
+  categoryId: string,
+  data: {
+    version_label: string;
+    pagerank?: number;
+    pipeline_id?: string;
+    parse_type?: number;
+    chunk_method?: string;
+    parser_config?: Record<string, any>;
+  },
+): Promise<DocumentCategoryVersion> =>
+  api.post(
+    `/api/projects/${projectId}/categories/${categoryId}/versions`,
+    data,
+  );
+
+/**
+ * Sync a version from RAGFlow.
+ */
+export const syncCategoryVersion = (
+  projectId: string,
+  categoryId: string,
+  versionId: string,
+): Promise<DocumentCategoryVersion> =>
+  api.post(
+    `/api/projects/${projectId}/categories/${categoryId}/versions/${versionId}/sync`,
+  );
+
+/**
+ * Archive a version.
+ */
+export const archiveCategoryVersion = (
+  projectId: string,
+  categoryId: string,
+  versionId: string,
+): Promise<DocumentCategoryVersion> =>
+  api.put(
+    `/api/projects/${projectId}/categories/${categoryId}/versions/${versionId}/archive`,
+  );
+
+/**
+ * Update a version's metadata (e.g. label).
+ */
+export const updateCategoryVersion = (
+  projectId: string,
+  categoryId: string,
+  versionId: string,
+  data: {
+    version_label?: string;
+    pagerank?: number;
+    pipeline_id?: string;
+    parse_type?: number;
+    chunk_method?: string;
+    parser_config?: Record<string, any>;
+  },
+): Promise<DocumentCategoryVersion> =>
+  api.put(
+    `/api/projects/${projectId}/categories/${categoryId}/versions/${versionId}`,
+    data,
+  );
+
+/**
+ * Delete a version.
+ */
+export const deleteCategoryVersion = (
+  projectId: string,
+  categoryId: string,
+  versionId: string,
+): Promise<void> =>
+  api.delete(
+    `/api/projects/${projectId}/categories/${categoryId}/versions/${versionId}`,
+  );
+
+// ============================================================================
+// Version Documents API
+// ============================================================================
+
+/**
+ * Represents a document stored in a RAGFlow dataset.
+ */
+export interface VersionDocument {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  run: string;
+  status: string;
+  created_by: string;
+  create_time: number;
+  update_time: number;
+  chunk_count: number;
+  token_count: number;
+  progress: number;
+  progress_msg: string;
+}
+
+/**
+ * List documents in a version's dataset.
+ */
+export const getVersionDocuments = (
+  projectId: string,
+  categoryId: string,
+  versionId: string,
+  query?: {
+    page?: number;
+    page_size?: number;
+    keywords?: string;
+  },
+): Promise<VersionDocument[]> => {
+  const params = new URLSearchParams();
+  if (query?.page) params.set("page", String(query.page));
+  if (query?.page_size) params.set("page_size", String(query.page_size));
+  if (query?.keywords) params.set("keywords", query.keywords);
+  const qs = params.toString();
+  return api.get(
+    `/api/projects/${projectId}/categories/${categoryId}/versions/${versionId}/documents${qs ? "?" + qs : ""}`,
+  );
+};
+
+/**
+ * Upload a document to a version's dataset.
+ * Uses FormData for multipart upload.
+ */
+export const uploadVersionDocument = (
+  projectId: string,
+  categoryId: string,
+  versionId: string,
+  file: File,
+): Promise<unknown> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiFetch(
+    `/api/projects/${projectId}/categories/${categoryId}/versions/${versionId}/documents`,
+    {
+      method: "POST",
+      body: formData,
+      headers: {}, // Let browser set multipart content-type
+    },
+  );
+};
+
+/**
+ * Delete multiple documents from a version's local storage.
+ * @param projectId - Project UUID
+ * @param categoryId - Category UUID
+ * @param versionId - Version UUID
+ * @param fileNames - Array of file names to delete
+ * @returns Object with deleted and failed file name arrays
+ */
+export const deleteVersionDocuments = (
+  projectId: string,
+  categoryId: string,
+  versionId: string,
+  fileNames: string[],
+): Promise<{ deleted: string[]; failed: string[] }> =>
+  apiFetch(
+    `/api/projects/${projectId}/categories/${categoryId}/versions/${versionId}/documents`,
+    {
+      method: "DELETE",
+      body: JSON.stringify({ fileNames }),
+    },
+  );
+
+/**
+ * Re-queue local files for conversion.
+ * @param projectId - Project UUID
+ * @param categoryId - Category UUID
+ * @param versionId - Version UUID
+ * @param fileNames - Array of file names to re-queue
+ * @returns Object with queued and failed file name arrays
+ */
+export const requeueVersionDocuments = (
+  projectId: string,
+  categoryId: string,
+  versionId: string,
+  fileNames: string[],
+): Promise<{ queued: string[]; failed: string[] }> =>
+  apiFetch(
+    `/api/projects/${projectId}/categories/${categoryId}/versions/${versionId}/documents/requeue`,
+    {
+      method: "POST",
+      body: JSON.stringify({ fileNames }),
+    },
+  );
+
+/**
+ * Start parsing selected documents in RAGFlow.
+ * @param projectId - Project UUID
+ * @param categoryId - Category UUID
+ * @param versionId - Version UUID
+ * @param fileNames - Array of file names to parse
+ * @returns Object with parsed and failed file name arrays
+ */
+export const parseVersionDocuments = (
+  projectId: string,
+  categoryId: string,
+  versionId: string,
+  fileNames: string[],
+): Promise<{ parsed: string[]; failed: string[] }> =>
+  apiFetch(
+    `/api/projects/${projectId}/categories/${categoryId}/versions/${versionId}/documents/parse`,
+    {
+      method: "POST",
+      body: JSON.stringify({ fileNames }),
+    },
+  );
+
+// ============================================================================
+// Project Chats API
+// ============================================================================
+
+/**
+ * List chat assistants for a project.
+ */
+export const getProjectChats = (projectId: string): Promise<ProjectChat[]> =>
+  api.get(`/api/projects/${projectId}/chats`);
+
+/**
+ * Get a chat assistant by ID.
+ */
+export const getProjectChatById = (
+  projectId: string,
+  chatId: string,
+): Promise<ProjectChat> =>
+  api.get(`/api/projects/${projectId}/chats/${chatId}`);
+
+/**
+ * Create a chat assistant.
+ */
+export const createProjectChat = (
+  projectId: string,
+  data: {
+    name: string;
+    dataset_ids?: string[];
+    ragflow_dataset_ids?: string[];
+    llm_config?: Record<string, unknown>;
+    prompt_config?: Record<string, unknown>;
+  },
+): Promise<ProjectChat> => api.post(`/api/projects/${projectId}/chats`, data);
+
+/**
+ * Update a chat assistant.
+ */
+export const updateProjectChat = (
+  projectId: string,
+  chatId: string,
+  data: Partial<ProjectChat>,
+): Promise<ProjectChat> =>
+  api.put(`/api/projects/${projectId}/chats/${chatId}`, data);
+
+/**
+ * Delete a chat assistant.
+ */
+export const deleteProjectChat = (
+  projectId: string,
+  chatId: string,
+): Promise<void> => api.delete(`/api/projects/${projectId}/chats/${chatId}`);
+
+/**
+ * Sync a chat assistant from RAGFlow.
+ */
+export const syncProjectChat = (
+  projectId: string,
+  chatId: string,
+): Promise<ProjectChat> =>
+  api.post(`/api/projects/${projectId}/chats/${chatId}/sync`);
+
+// ============================================================================
+// Project Searches API
+// ============================================================================
+
+/**
+ * Represents a project search app.
+ */
+export interface ProjectSearch {
+  id: string;
+  project_id: string;
+  name: string;
+  description: string | null;
+  ragflow_search_id: string | null;
+  dataset_ids: string[];
+  ragflow_dataset_ids: string[];
+  search_config: Record<string, any>;
+  status: string;
+  last_synced_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * List search apps for a project.
+ */
+export const getProjectSearches = (
+  projectId: string,
+): Promise<ProjectSearch[]> => api.get(`/api/projects/${projectId}/searches`);
+
+/**
+ * Get a search app by ID.
+ */
+export const getProjectSearchById = (
+  projectId: string,
+  searchId: string,
+): Promise<ProjectSearch> =>
+  api.get(`/api/projects/${projectId}/searches/${searchId}`);
+
+/**
+ * Create a search app.
+ */
+export const createProjectSearch = (
+  projectId: string,
+  data: {
+    name: string;
+    description?: string;
+    dataset_ids?: string[];
+    ragflow_dataset_ids?: string[];
+    search_config?: Record<string, any>;
+  },
+): Promise<ProjectSearch> =>
+  api.post(`/api/projects/${projectId}/searches`, data);
+
+/**
+ * Update a search app.
+ */
+export const updateProjectSearch = (
+  projectId: string,
+  searchId: string,
+  data: Partial<ProjectSearch>,
+): Promise<ProjectSearch> =>
+  api.put(`/api/projects/${projectId}/searches/${searchId}`, data);
+
+/**
+ * Delete a search app.
+ */
+export const deleteProjectSearch = (
+  projectId: string,
+  searchId: string,
+): Promise<void> =>
+  api.delete(`/api/projects/${projectId}/searches/${searchId}`);
+
+/**
+ * Sync a search app from RAGFlow.
+ */
+export const syncProjectSearch = (
+  projectId: string,
+  searchId: string,
+): Promise<ProjectSearch> =>
+  api.post(`/api/projects/${projectId}/searches/${searchId}/sync`);
+
+// ============================================================================
+// Entity Permissions API
+// ============================================================================
+
+/**
+ * Represents a per-entity permission (category, chat, or search).
+ * Hierarchical levels: delete > edit > create > view > none.
+ */
+export interface ProjectEntityPermission {
+  id: string;
+  project_id: string;
+  entity_type: "category" | "chat" | "search";
+  entity_id: string;
+  grantee_type: "user" | "team";
+  grantee_id: string;
+  permission_level: "none" | "view" | "create" | "edit" | "delete";
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * List all entity permissions for a project.
+ */
+export const getEntityPermissions = (
+  projectId: string,
+): Promise<ProjectEntityPermission[]> =>
+  api.get(`/api/projects/${projectId}/entity-permissions`);
+
+/**
+ * List permissions for a specific entity.
+ */
+export const getEntityPermissionsByEntity = (
+  projectId: string,
+  entityType: string,
+  entityId: string,
+): Promise<ProjectEntityPermission[]> =>
+  api.get(
+    `/api/projects/${projectId}/entity-permissions/${entityType}/${entityId}`,
+  );
+
+/**
+ * Set (upsert) a permission for a grantee on an entity.
+ */
+export const setEntityPermission = (
+  projectId: string,
+  data: {
+    entity_type: string;
+    entity_id: string;
+    grantee_type: string;
+    grantee_id: string;
+    permission_level: string;
+  },
+): Promise<ProjectEntityPermission> =>
+  api.post(`/api/projects/${projectId}/entity-permissions`, data);
+
+/**
+ * Remove an entity permission.
+ */
+export const removeEntityPermission = (
+  projectId: string,
+  permissionId: string,
+): Promise<void> =>
+  api.delete(`/api/projects/${projectId}/entity-permissions/${permissionId}`);
+
+/**
+ * Fetch live RAGFlow parser status for all documents in a version.
+ * Triggers an on-demand sync from RAGFlow parser and returns updated statuses.
+ * @param projectId - Project UUID
+ * @param categoryId - Category UUID
+ * @param versionId - Version UUID
+ * @returns Array of document parser status snapshots from RAGFlow
+ */
+export const syncVersionParserStatus = (
+  projectId: string,
+  categoryId: string,
+  versionId: string,
+): Promise<
+  {
+    fileName: string;
+    ragflowDocId: string | null;
+    ragflowRun: string | null;
+    ragflowProgress: number | null;
+    ragflowProgressMsg: string | null;
+    ragflowChunkCount: number | null;
+    name: string;
+  }[]
+> =>
+  api.get(
+    `/api/projects/${projectId}/categories/${categoryId}/versions/${versionId}/documents/parser-status`,
+  );
+
+// ============================================================================
+// Project Datasets API
+// ============================================================================
+
+/**
+ * List datasets linked to a project.
+ */
+export const getProjectDatasets = (
+  projectId: string,
+): Promise<ProjectDataset[]> =>
+  api.get(`/api/projects/${projectId}/datasets`);
+
+/**
+ * Link or create a dataset for a project.
+ */
+export const linkProjectDataset = (
+  projectId: string,
+  data: { dataset_id?: string; name?: string },
+): Promise<ProjectDataset> =>
+  api.post(`/api/projects/${projectId}/datasets`, data);
+
+/**
+ * Unlink a dataset from a project.
+ */
+export const unlinkProjectDataset = (
+  projectId: string,
+  datasetId: string,
+): Promise<void> =>
+  api.delete(`/api/projects/${projectId}/datasets/${datasetId}`);
+
+// ============================================================================
+// Sync Configs API (datasync projects)
+// ============================================================================
+
+/**
+ * List sync configs for a project.
+ */
+export const getSyncConfigs = (
+  projectId: string,
+): Promise<ProjectSyncConfig[]> =>
+  api.get(`/api/projects/${projectId}/sync-configs`);
+
+/**
+ * Create a sync config.
+ */
+export const createSyncConfig = (
+  projectId: string,
+  data: {
+    source_type: SyncSourceType;
+    connection_config: Record<string, unknown>;
+    sync_schedule?: string;
+    filter_rules?: Record<string, unknown>;
+  },
+): Promise<ProjectSyncConfig> =>
+  api.post(`/api/projects/${projectId}/sync-configs`, data);
+
+/**
+ * Update a sync config.
+ */
+export const updateSyncConfig = (
+  projectId: string,
+  configId: string,
+  data: Partial<ProjectSyncConfig>,
+): Promise<ProjectSyncConfig> =>
+  api.put(`/api/projects/${projectId}/sync-configs/${configId}`, data);
+
+/**
+ * Delete a sync config.
+ */
+export const deleteSyncConfig = (
+  projectId: string,
+  configId: string,
+): Promise<void> =>
+  api.delete(`/api/projects/${projectId}/sync-configs/${configId}`);
+
+/**
+ * Test a sync connection.
+ */
+export const testSyncConnection = (
+  projectId: string,
+  data: {
+    source_type: SyncSourceType;
+    connection_config: Record<string, unknown>;
+  },
+): Promise<{ success: boolean; message: string }> =>
+  api.post(`/api/projects/${projectId}/sync-configs/test`, data);
+
+/**
+ * Manually trigger a sync.
+ */
+export const triggerSync = (
+  projectId: string,
+  configId: string,
+): Promise<{ message: string }> =>
+  api.post(`/api/projects/${projectId}/sync-configs/${configId}/trigger`);

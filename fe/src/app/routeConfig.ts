@@ -43,27 +43,9 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     guidelineFeatureId: 'ai-chat',
     fullBleed: true,
   },
-  '/chat/history': {
-    titleKey: 'pages.chatHistory.title',
-    hideHeader: true,
-    fullBleed: true,
-  },
   '/search': {
     titleKey: 'pages.aiSearch.title',
     guidelineFeatureId: 'ai-search',
-    fullBleed: true,
-  },
-  '/search/history': {
-    titleKey: 'pages.searchHistory.title',
-    hideHeader: true,
-    fullBleed: true,
-  },
-  '/history': {
-    titleKey: 'pages.history.title',
-  },
-  '/knowledge-base/config': {
-    titleKey: 'knowledgeBaseConfig.title',
-    guidelineFeatureId: 'kb-config',
     fullBleed: true,
   },
   '/knowledge-base/glossary': {
@@ -71,6 +53,11 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
   },
   '/datasets': {
     titleKey: 'datasets.title',
+    fullBleed: true,
+  },
+  '/knowledge-base/projects': {
+    titleKey: 'projectManagement.title',
+    guidelineFeatureId: 'projects',
     fullBleed: true,
   },
   '/iam/users': {
@@ -121,6 +108,18 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     guidelineFeatureId: 'global-histories',
     fullBleed: true,
   },
+  '/admin/llm-providers': {
+    titleKey: 'llmProviders.title',
+    fullBleed: true,
+  },
+  '/datasets/:id/settings': {
+    titleKey: 'datasetSettings.title',
+    fullBleed: true,
+  },
+  '/datasets/:id/chunks': {
+    titleKey: 'datasetSettings.chunks.title',
+    fullBleed: true,
+  },
 };
 
 // ============================================================================
@@ -142,6 +141,9 @@ export function getRouteMetadata(pathname: string): RouteMetadata {
   // Dynamic route prefix match
   if (pathname.startsWith('/datasets/')) {
     return ROUTE_CONFIG['/datasets']!;
+  }
+  if (pathname.startsWith('/knowledge-base/projects/')) {
+    return ROUTE_CONFIG['/knowledge-base/projects']!;
   }
 
   // Default fallback

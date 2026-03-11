@@ -111,44 +111,6 @@ export class KnowledgeBaseService {
         return { data: sources, total: 100, page, limit };
     }
 
-    /**
-     * Save or update a system configuration key-value pair.
-     * @param key - Configuration key identifier.
-     * @param value - Configuration value to store.
-     * @param user - Optional user for audit logging.
-     * @returns Promise<void>
-     * @description Creates or updates a system config setting and logs the action.
-     */
-    async saveSystemConfig(key: string, value: string, user?: any): Promise<void> {
-        // Check for existing config
-        const existing = await ModelFactory.systemConfig.findById(key);
-
-        if (existing) {
-            // Update existing record
-            await ModelFactory.systemConfig.update(key, { value, updated_by: user?.id || null });
-        } else {
-            // Create new record
-            await ModelFactory.systemConfig.create({
-                key,
-                value,
-                created_by: user?.id || null,
-                updated_by: user?.id || null
-            });
-        }
-
-        // Log audit event
-        if (user) {
-            await auditService.log({
-                userId: user.id,
-                userEmail: user.email,
-                action: AuditAction.UPDATE_CONFIG,
-                resourceType: AuditResourceType.CONFIG,
-                resourceId: key,
-                details: { value },
-                ipAddress: user.ip,
-            });
-        }
-    }
 
     /**
      * Create a new knowledge base source record.
@@ -356,24 +318,7 @@ export class KnowledgeBaseService {
             kbBaseUrl: config.kbBaseUrl
         };
     }
-
-    /**
-     * Update default source configuration.
-     * @param data - Object with optional defaultChatSourceId and defaultSearchSourceId.
-     * @param user - Optional user for audit logging.
-     * @returns Promise<void>
-     * @description Persists default chat and/or search source IDs via system config.
-     */
-    async updateConfig(data: { defaultChatSourceId?: string; defaultSearchSourceId?: string }, user?: any): Promise<void> {
-        // Update default chat source if provided
-        if (data.defaultChatSourceId !== undefined) {
-            await this.saveSystemConfig('defaultChatSourceId', data.defaultChatSourceId, user);
-        }
-        // Update default search source if provided
-        if (data.defaultSearchSourceId !== undefined) {
-            await this.saveSystemConfig('defaultSearchSourceId', data.defaultSearchSourceId, user);
-        }
-    }
 }
+
 
 export const knowledgeBaseService = new KnowledgeBaseService();

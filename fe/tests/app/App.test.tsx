@@ -32,8 +32,6 @@ vi.mock('@/features/auth', () => ({
 
 // Mock the actual lazy-loaded page modules so Suspense resolves to deterministic components
 vi.mock('@/features/auth/pages/LoginPage', () => ({ default: () => <div>LoginPage</div> }))
-vi.mock('@/features/history/pages/HistoryPage', () => ({ default: () => <div>HistoryPage</div> }))
-
 vi.mock('@/app/contexts/SettingsContext', () => ({
   SettingsProvider: ({ children }: any) => <div data-testid="settings-provider">{children}</div>,
   useSettings: () => ({
@@ -74,10 +72,6 @@ vi.mock('@/features/ai', () => ({
   AiChatPage: () => <div>AiChatPage</div>,
   AiSearchPage: () => <div>AiSearchPage</div>,
   TokenizerPage: () => <div>TokenizerPage</div>,
-}));
-
-vi.mock('@/features/history', () => ({
-  HistoryPage: () => <div>HistoryPage</div>,
 }));
 
 vi.mock('@/features/users', () => ({
@@ -295,18 +289,5 @@ describe('App', () => {
       );
     });
 
-    it('redirects to history when only enableHistory is true', () => {
-      vi_mockConfig.features.enableAiChat = false;
-      vi_mockConfig.features.enableAiSearch = false;
-      vi_mockConfig.features.enableHistory = true;
-      
-      render(
-        <QueryClientProvider client={queryClient}>
-          <MemoryRouter initialEntries={['/']}>
-            <App />
-          </MemoryRouter>
-        </QueryClientProvider>
-      );
-    });
   });
 });

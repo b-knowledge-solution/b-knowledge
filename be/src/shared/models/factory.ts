@@ -39,6 +39,18 @@ import { DocumentVersionModel } from '@/modules/rag/models/document-version.mode
 import { DocumentVersionFileModel } from '@/modules/rag/models/document-version-file.model.js';
 import { ConverterJobModel } from '@/modules/rag/models/converter-job.model.js';
 
+// Project Models
+import { ProjectModel } from '@/modules/projects/models/project.model.js';
+import { ProjectPermissionModel } from '@/modules/projects/models/project-permission.model.js';
+import { ProjectDatasetModel } from '@/modules/projects/models/project-dataset.model.js';
+import { ProjectSyncConfigModel } from '@/modules/projects/models/project-sync-config.model.js';
+import { DocumentCategoryModel } from '@/modules/projects/models/document-category.model.js';
+import { DocumentCategoryVersionModel } from '@/modules/projects/models/document-category-version.model.js';
+import { DocumentCategoryVersionFileModel } from '@/modules/projects/models/document-category-version-file.model.js';
+import { ProjectChatModel } from '@/modules/projects/models/project-chat.model.js';
+import { ProjectSearchModel } from '@/modules/projects/models/project-search.model.js';
+import { ProjectEntityPermissionModel } from '@/modules/projects/models/project-entity-permission.model.js';
+
 /**
  * ModelFactory class implementing the Factory Pattern.
  * Provides lazy-loaded singletons for all data models.
@@ -115,6 +127,28 @@ export class ModelFactory {
   private static documentVersionFileModel: DocumentVersionFileModel;
   /** ConverterJob model singleton instance */
   private static converterJobModel: ConverterJobModel;
+
+  // Project Models
+  /** Project model singleton instance */
+  private static projectModel: ProjectModel;
+  /** ProjectPermission model singleton instance */
+  private static projectPermissionModel: ProjectPermissionModel;
+  /** ProjectDataset model singleton instance */
+  private static projectDatasetModel: ProjectDatasetModel;
+  /** ProjectSyncConfig model singleton instance */
+  private static projectSyncConfigModel: ProjectSyncConfigModel;
+  /** DocumentCategory model singleton instance */
+  private static documentCategoryModel: DocumentCategoryModel;
+  /** DocumentCategoryVersion model singleton instance */
+  private static documentCategoryVersionModel: DocumentCategoryVersionModel;
+  /** DocumentCategoryVersionFile model singleton instance */
+  private static documentCategoryVersionFileModel: DocumentCategoryVersionFileModel;
+  /** ProjectChat model singleton instance */
+  private static projectChatModel: ProjectChatModel;
+  /** ProjectSearch model singleton instance */
+  private static projectSearchModel: ProjectSearchModel;
+  /** ProjectEntityPermission model singleton instance */
+  private static projectEntityPermissionModel: ProjectEntityPermissionModel;
 
   /**
    * Get the User model singleton.
@@ -424,5 +458,99 @@ export class ModelFactory {
   static get converterJob() {
     if (!this.converterJobModel) this.converterJobModel = new ConverterJobModel();
     return this.converterJobModel;
+  }
+
+  // -------------------------------------------------------------------------
+  // Project Models
+  // -------------------------------------------------------------------------
+
+  /**
+   * Get the Project model singleton.
+   * @returns ProjectModel instance for project CRUD operations
+   */
+  static get project() {
+    if (!this.projectModel) this.projectModel = new ProjectModel();
+    return this.projectModel;
+  }
+
+  /**
+   * Get the ProjectPermission model singleton.
+   * @returns ProjectPermissionModel instance for permission operations
+   */
+  static get projectPermission() {
+    if (!this.projectPermissionModel) this.projectPermissionModel = new ProjectPermissionModel();
+    return this.projectPermissionModel;
+  }
+
+  /**
+   * Get the ProjectDataset model singleton.
+   * @returns ProjectDatasetModel instance for project-dataset junction operations
+   */
+  static get projectDataset() {
+    if (!this.projectDatasetModel) this.projectDatasetModel = new ProjectDatasetModel();
+    return this.projectDatasetModel;
+  }
+
+  /**
+   * Get the ProjectSyncConfig model singleton.
+   * @returns ProjectSyncConfigModel instance for sync config operations
+   */
+  static get projectSyncConfig() {
+    if (!this.projectSyncConfigModel) this.projectSyncConfigModel = new ProjectSyncConfigModel();
+    return this.projectSyncConfigModel;
+  }
+
+  /**
+   * Get the DocumentCategory model singleton.
+   * @returns DocumentCategoryModel instance for category CRUD operations
+   */
+  static get documentCategory() {
+    if (!this.documentCategoryModel) this.documentCategoryModel = new DocumentCategoryModel();
+    return this.documentCategoryModel;
+  }
+
+  /**
+   * Get the DocumentCategoryVersion model singleton.
+   * @returns DocumentCategoryVersionModel instance for version CRUD operations
+   */
+  static get documentCategoryVersion() {
+    if (!this.documentCategoryVersionModel) this.documentCategoryVersionModel = new DocumentCategoryVersionModel();
+    return this.documentCategoryVersionModel;
+  }
+
+  /**
+   * Get the DocumentCategoryVersionFile model singleton.
+   * @returns DocumentCategoryVersionFileModel instance for version file operations
+   */
+  static get documentCategoryVersionFile() {
+    if (!this.documentCategoryVersionFileModel) this.documentCategoryVersionFileModel = new DocumentCategoryVersionFileModel();
+    return this.documentCategoryVersionFileModel;
+  }
+
+  /**
+   * Get the ProjectChat model singleton.
+   * @returns ProjectChatModel instance for project chat CRUD operations
+   */
+  static get projectChat() {
+    if (!this.projectChatModel) this.projectChatModel = new ProjectChatModel();
+    return this.projectChatModel;
+  }
+
+  /**
+   * Get the ProjectSearch model singleton.
+   * @returns ProjectSearchModel instance for project search CRUD operations
+   */
+  static get projectSearch() {
+    if (!this.projectSearchModel) this.projectSearchModel = new ProjectSearchModel();
+    return this.projectSearchModel;
+  }
+
+  /**
+   * Get the ProjectEntityPermission model singleton.
+   * @returns ProjectEntityPermissionModel instance for entity permission operations
+   */
+  static get projectEntityPermission() {
+    if (!this.projectEntityPermissionModel) this.projectEntityPermissionModel = new ProjectEntityPermissionModel();
+    return this.projectEntityPermissionModel;
   }
 }

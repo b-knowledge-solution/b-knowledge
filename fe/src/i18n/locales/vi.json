@@ -105,7 +105,95 @@
     "glossary": "Từ điển",
     "datasets": "Bộ dữ liệu",
     "chatAssistants": "Trợ lý Chat",
-    "searchApps": "Ứng dụng Tìm kiếm"
+    "searchApps": "Ứng dụng Tìm kiếm",
+    "projects": "Dự án",
+    "dataStudio": "Xưởng Dữ liệu",
+    "llmProviders": "Nhà cung cấp LLM"
+  },
+  "projectManagement": {
+    "title": "Dự án",
+    "description": "Quản lý dự án, tài liệu, trợ lý chat và ứng dụng tìm kiếm",
+    "addProject": "Tạo dự án",
+    "editProject": "Sửa dự án",
+    "deleteConfirm": "Xóa dự án này?",
+    "deleteWarning": "Tất cả danh mục, phiên bản, chat và tìm kiếm trong dự án sẽ bị xóa vĩnh viễn.",
+    "name": "Tên",
+    "namePlaceholder": "Nhập tên dự án",
+    "descriptionLabel": "Mô tả",
+    "descriptionPlaceholder": "Nhập mô tả dự án",
+    "ragflowServer": "Máy chủ RAGFlow",
+    "selectServer": "Chọn máy chủ RAGFlow",
+    "noProjects": "Chưa có dự án",
+    "noProjectsHint": "Tạo dự án đầu tiên để bắt đầu",
+    "noDescription": "—",
+    "createSuccess": "Tạo dự án thành công",
+    "updateSuccess": "Cập nhật dự án thành công",
+    "deleteSuccess": "Xóa dự án thành công",
+    "editPermissions": "Sửa quyền truy cập",
+    "privateAccessDesc": "Chỉ các đội được chọn mới có thể truy cập dự án này",
+    "tabs": {
+      "documents": "Tài liệu",
+      "chat": "Chat",
+      "search": "Tìm kiếm",
+      "settings": "Cài đặt",
+      "sync": "Đồng bộ"
+    },
+    "createProject": "Tạo Dự án",
+    "datasetCount": "bộ dữ liệu",
+    "autoDataset": "Bộ dữ liệu tự tạo",
+    "categories": {
+      "office": "Văn phòng",
+      "datasync": "Đồng bộ dữ liệu",
+      "source_code": "Mã nguồn"
+    },
+    "categoryDesc": {
+      "office": "Tài liệu văn phòng có quản lý phiên bản",
+      "datasync": "Đồng bộ từ nguồn dữ liệu bên ngoài",
+      "source_code": "Kho mã nguồn (sắp có)"
+    },
+    "categoryFilter": {
+      "all": "Tất cả"
+    },
+    "steps": {
+      "category": "Danh mục",
+      "details": "Chi tiết",
+      "syncConfig": "Cấu hình đồng bộ"
+    },
+    "sync": {
+      "sourceType": "Loại nguồn",
+      "connection": "Kết nối",
+      "schedule": {
+        "title": "Lịch trình",
+        "every6h": "Mỗi 6 giờ",
+        "daily": "Hàng ngày",
+        "weekly": "Hàng tuần",
+        "custom": "Tùy chỉnh (Cron)",
+        "cronExpression": "Biểu thức Cron"
+      },
+      "status": "Trạng thái",
+      "lastSynced": "Đồng bộ lần cuối",
+      "neverSynced": "Chưa đồng bộ",
+      "noConfig": "Chưa có cấu hình đồng bộ. Thiết lập kết nối trước.",
+      "triggerNow": "Đồng bộ ngay",
+      "triggerSuccess": "Đã kích hoạt đồng bộ thành công",
+      "saveSuccess": "Đã lưu cấu hình đồng bộ",
+      "scheduleUpdated": "Đã cập nhật lịch trình",
+      "fields": {
+        "siteUrl": "URL trang web",
+        "tenantId": "Tenant ID",
+        "clientId": "Client ID",
+        "clientSecret": "Client Secret",
+        "baseUrl": "URL gốc",
+        "email": "Email",
+        "apiToken": "API Token",
+        "projectKey": "Mã dự án",
+        "spaceKey": "Mã không gian",
+        "accessToken": "Mã truy cập",
+        "projectId": "ID dự án",
+        "owner": "Chủ sở hữu",
+        "repo": "Kho lưu trữ"
+      }
+    }
   },
   "iam": {
     "title": "Quản lý Định danh & Truy cập",
@@ -1140,5 +1228,115 @@
     "similarityThreshold": "Ngưỡng tương đồng",
     "topK": "Số kết quả Top K",
     "vectorWeight": "Trọng số tương đồng vector"
+  },
+  "llmProviders": {
+    "title": "Nhà cung cấp LLM",
+    "addProvider": "Thêm nhà cung cấp",
+    "editProvider": "Sửa nhà cung cấp",
+    "factoryName": "Nhà máy",
+    "modelType": "Loại mô hình",
+    "modelName": "Tên mô hình",
+    "apiKey": "Khóa API",
+    "apiBase": "URL cơ sở API",
+    "maxTokens": "Token tối đa",
+    "default": "Mặc định",
+    "setAsDefault": "Đặt làm mặc định cho loại mô hình này",
+    "deleteTitle": "Xóa nhà cung cấp",
+    "deleteMessage": "Bạn có chắc chắn muốn xóa nhà cung cấp \"{{name}}\"?",
+    "fetchError": "Không thể tải danh sách nhà cung cấp",
+    "deleteError": "Không thể xóa nhà cung cấp",
+    "chat": "Trò chuyện",
+    "embedding": "Nhúng văn bản",
+    "speech2text": "Giọng nói sang văn bản",
+    "image2text": "Hình ảnh sang văn bản / Thị giác",
+    "rerank": "Xếp hạng lại",
+    "tts": "Văn bản sang giọng nói",
+    "ocr": "OCR",
+    "allTypes": "Tất cả loại",
+    "selectFactory": "Chọn nhà cung cấp",
+    "selectModel": "Chọn mô hình",
+    "customModel": "Tên mô hình tùy chỉnh",
+    "customFactory": "Tùy chỉnh",
+    "apiBasePlaceholder": "https://api.example.com/v1",
+    "apiKeyPlaceholder": "Nhập khóa API (để trống nếu không cần)",
+    "presetModels": "Mô hình có sẵn",
+    "noPresetModels": "Nhập tên mô hình thủ công cho nhà cung cấp này",
+    "providerSaved": "Lưu nhà cung cấp thành công",
+    "providerDeleted": "Xóa nhà cung cấp thành công",
+    "systemDefaults": "Mô hình Mặc định Hệ thống",
+    "defaultNotSet": "Chưa thiết lập",
+    "selectDefault": "Chọn mặc định...",
+    "defaultUpdated": "Đã cập nhật mô hình mặc định",
+    "supportsVision": "Mô hình này hỗ trợ nhận dạng hình ảnh",
+    "vision": "Hình ảnh",
+    "chatModel": "Mô hình Chat",
+    "embeddingModel": "Mô hình Embedding",
+    "visionModel": "Mô hình Vision",
+    "sttModel": "Mô hình Chuyển giọng nói",
+    "ttsModel": "Mô hình Chuyển văn bản",
+    "rerankModel": "Mô hình Rerank",
+    "ocrModel": "Mô hình OCR"
+  },
+  "datasetSettings": {
+    "title": "Cài đặt Bộ dữ liệu",
+    "saveSuccess": "Đã lưu cài đặt thành công",
+    "tabs": {
+      "general": "Chung",
+      "chunking": "Phân đoạn",
+      "advanced": "Nâng cao",
+      "retrievalTest": "Kiểm tra truy xuất"
+    },
+    "general": {
+      "name": "Tên",
+      "description": "Mô tả",
+      "language": "Ngôn ngữ",
+      "embeddingModel": "Mô hình Embedding",
+      "permission": "Quyền truy cập",
+      "permissionMe": "Chỉ tôi",
+      "permissionTeam": "Thành viên nhóm"
+    },
+    "chunking": {
+      "method": "Phương pháp phân đoạn",
+      "chunkSize": "Kích thước đoạn (token)",
+      "delimiter": "Ký tự phân tách",
+      "layoutRecognition": "Nhận dạng bố cục",
+      "qaHint": "Trình phân tích Q&A tự động chia nội dung thành cặp câu hỏi-trả lời.",
+      "tableHint": "Trình phân tích bảng trích xuất dữ liệu có cấu trúc từ bảng."
+    },
+    "advanced": {
+      "graphrag": "GraphRAG",
+      "graphragDesc": "Bật truy xuất dựa trên đồ thị tri thức để suy luận đa bước tốt hơn.",
+      "entityTypes": "Loại thực thể (phân tách bằng dấu phẩy)",
+      "raptor": "RAPTOR",
+      "raptorDesc": "Bật xử lý trừu tượng đệ quy cho truy xuất theo cấu trúc cây.",
+      "maxToken": "Token tối đa",
+      "threshold": "Ngưỡng",
+      "autoKeywords": "Tự động từ khóa",
+      "autoQuestions": "Tự động câu hỏi"
+    },
+    "retrieval": {
+      "query": "Truy vấn",
+      "queryPlaceholder": "Nhập truy vấn thử nghiệm...",
+      "run": "Kiểm tra",
+      "method": "Phương pháp",
+      "topK": "Top K",
+      "score": "Điểm",
+      "noResults": "Không tìm thấy kết quả cho truy vấn này.",
+      "hint": "Nhập truy vấn ở trên để kiểm tra truy xuất với bộ dữ liệu này."
+    },
+    "chunks": {
+      "title": "Đoạn văn",
+      "add": "Thêm đoạn",
+      "addTitle": "Thêm đoạn thủ công",
+      "content": "Nội dung",
+      "contentPlaceholder": "Nhập nội dung đoạn văn...",
+      "searchPlaceholder": "Tìm kiếm đoạn văn...",
+      "total": "tổng số đoạn",
+      "empty": "Không tìm thấy đoạn văn.",
+      "addSuccess": "Đã thêm đoạn văn thành công",
+      "updateSuccess": "Đã cập nhật đoạn văn thành công",
+      "deleteSuccess": "Đã xóa đoạn văn thành công",
+      "confirmDelete": "Bạn có chắc muốn xóa đoạn văn này?"
+    }
   }
 }

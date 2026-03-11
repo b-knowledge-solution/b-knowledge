@@ -1,9 +1,28 @@
 import { Request, Response } from 'express';
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { llmProviderService } from '../services/llm-provider.service.js';
 import { log } from '@/shared/services/logger.service.js';
 import { getClientIp } from '@/shared/utils/ip.js';
 
+/** Pre-load factory presets JSON at module init for fast responses */
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const factoryPresets = JSON.parse(
+    readFileSync(join(__dirname, '..', 'data', 'factory-presets.json'), 'utf-8'),
+);
+
 export class LlmProviderController {
+    /**
+     * Return static factory preset configurations for all supported LLM providers.
+     * @description GET /api/llm-provider/presets
+     * @param _req - Express request
+     * @param res - Express response with factory presets array
+     */
+    async getPresets(_req: Request, res: Response): Promise<void> {
+        res.json(factoryPresets);
+    }
+
     async list(_req: Request, res: Response): Promise<void> {
         try {
             const providers = await llmProviderService.list();

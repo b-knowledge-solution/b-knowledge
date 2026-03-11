@@ -9,12 +9,6 @@ export const uuidParamSchema = z.object({
   id: z.string().uuid('Invalid UUID format'),
 });
 
-/** POST /api/knowledge-base/config – body */
-export const updateConfigSchema = z.object({
-  defaultChatSourceId: z.string().uuid().nullable().optional(),
-  defaultSearchSourceId: z.string().uuid().nullable().optional(),
-});
-
 /** POST /api/knowledge-base/sources – body */
 export const createSourceSchema = z.object({
   type: z.string().min(1, 'Type is required').max(50),

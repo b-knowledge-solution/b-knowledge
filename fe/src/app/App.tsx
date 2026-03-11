@@ -28,11 +28,8 @@ export { globalMessage } from '@/app/Providers';
 // Lazy-loaded Pages (Code Splitting)
 // ============================================================================
 
-const AiChatPage = lazy(() => import('@/features/ai/pages/DatasetChatPage'));
-const AiSearchPage = lazy(() => import('@/features/ai/pages/DatasetSearchPage'));
-const HistoryPage = lazy(() => import('@/features/history/pages/HistoryPage'));
-const ChatHistoryPage = lazy(() => import('@/features/history/pages/ChatHistoryPage'));
-const SearchHistoryPage = lazy(() => import('@/features/history/pages/SearchHistoryPage'));
+const AiChatPage = lazy(() => import('@/features/chat/pages/ChatPage'));
+const AiSearchPage = lazy(() => import('@/features/search/pages/SearchPage'));
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'));
 const LogoutPage = lazy(() => import('@/features/auth/pages/LogoutPage'));
 const UserManagementPage = lazy(() => import('@/features/users/pages/UserManagementPage'));
@@ -42,15 +39,17 @@ const SystemMonitorPage = lazy(() => import('@/features/system/pages/SystemMonit
 const ErrorPage = lazy(() => import('@/components/ErrorPage'));
 const AuditLogPage = lazy(() => import('@/features/audit/pages/AuditLogPage'));
 const TokenizerPage = lazy(() => import('@/features/ai/pages/TokenizerPage'));
-const KnowledgeBaseConfigPage = lazy(() => import('@/features/knowledge-base/pages/KnowledgeBaseConfigPage'));
 const BroadcastMessagePage = lazy(() => import('@/features/broadcast/pages/BroadcastMessagePage'));
 const HistoriesPage = lazy(() => import('@/features/histories/pages/HistoriesPage'));
 const GlossaryPage = lazy(() => import('@/features/glossary/pages/GlossaryPage'));
 const AdminDashboardPage = lazy(() => import('@/features/dashboard/pages/AdminDashboardPage'));
 const DatasetsPage = lazy(() => import('@/features/datasets/pages/DatasetsPage'));
 const DatasetDetailPage = lazy(() => import('@/features/datasets/pages/DatasetDetailPage'));
-const ChatDialogManagementPage = lazy(() => import('@/features/ai/pages/ChatDialogManagementPage'));
-const SearchAppManagementPage = lazy(() => import('@/features/ai/pages/SearchAppManagementPage'));
+const ChatDialogManagementPage = lazy(() => import('@/features/chat/pages/ChatDialogManagementPage'));
+const SearchAppManagementPage = lazy(() => import('@/features/search/pages/SearchAppManagementPage'));
+const ProjectListPage = lazy(() => import('@/features/projects/pages/ProjectListPage'));
+const ProjectDetailPage = lazy(() => import('@/features/projects/pages/ProjectDetailPage'));
+const LLMProviderPage = lazy(() => import('@/features/llm-provider/pages/LLMProviderPage'));
 
 // ============================================================================
 // Loading Component
@@ -85,7 +84,6 @@ function App() {
   const getDefaultPath = () => {
     if (config.features.enableAiChat) return '/chat';
     if (config.features.enableAiSearch) return '/search';
-    if (config.features.enableHistory) return '/history';
     return '/chat';
   };
 
@@ -106,28 +104,11 @@ function App() {
               {config.features.enableAiChat && (
                 <Route path="chat" element={<AiChatPage />} />
               )}
-              {config.features.enableAiChat && config.features.enableHistory && (
-                <Route path="chat/history" element={<ChatHistoryPage />} />
-              )}
-
               {/* Search routes */}
               {config.features.enableAiSearch && (
                 <Route path="search" element={<AiSearchPage />} />
               )}
-              {config.features.enableAiSearch && config.features.enableHistory && (
-                <Route path="search/history" element={<SearchHistoryPage />} />
-              )}
-
-              {config.features.enableHistory && (
-                <Route path="history" element={<HistoryPage />} />
-              )}
-
               {/* Knowledge Base routes */}
-              <Route path="knowledge-base/config" element={
-                <AdminRoute>
-                  <KnowledgeBaseConfigPage />
-                </AdminRoute>
-              } />
 
               <Route path="knowledge-base/glossary" element={
                 <RoleRoute allowedRoles={['admin', 'leader']}>
@@ -144,6 +125,18 @@ function App() {
               <Route path="datasets/:id" element={
                 <RoleRoute allowedRoles={['admin', 'leader']}>
                   <DatasetDetailPage />
+                </RoleRoute>
+              } />
+
+              {/* Project routes */}
+              <Route path="knowledge-base/projects" element={
+                <RoleRoute allowedRoles={['admin', 'leader']}>
+                  <ProjectListPage />
+                </RoleRoute>
+              } />
+              <Route path="knowledge-base/projects/:projectId" element={
+                <RoleRoute allowedRoles={['admin', 'leader']}>
+                  <ProjectDetailPage />
                 </RoleRoute>
               } />
 
@@ -170,6 +163,7 @@ function App() {
               <Route path="admin/chat-dialogs" element={<AdminRoute><ChatDialogManagementPage /></AdminRoute>} />
               <Route path="admin/search-apps" element={<AdminRoute><SearchAppManagementPage /></AdminRoute>} />
               <Route path="admin/dashboard" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
+              <Route path="admin/llm-providers" element={<AdminRoute><LLMProviderPage /></AdminRoute>} />
             </Route>
           </Route>
 

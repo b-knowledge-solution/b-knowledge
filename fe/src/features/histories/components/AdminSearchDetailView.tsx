@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { Search, FileText, Clock, Sparkles, PanelLeft } from 'lucide-react'
 
 import { MarkdownRenderer } from '@/components/MarkdownRenderer'
-import { HighlightMatch } from '@/features/history/components/HighlightMatch'
+import { HighlightMatch } from '@/features/histories/components/HighlightMatch'
 import { useKnowledgeBase } from '@/features/knowledge-base/context/KnowledgeBaseContext'
 import type { SearchSessionSummary, ExternalSearchHistory } from '../types/histories.types'
 

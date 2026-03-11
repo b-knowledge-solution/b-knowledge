@@ -397,6 +397,167 @@ export class RagController {
     }
 
     // -------------------------------------------------------------------------
+    // Dataset Settings
+    // -------------------------------------------------------------------------
+
+    /**
+     * GET /datasets/:id/settings - Get dataset settings (general + parser config).
+     * @param req - Express request with dataset ID
+     * @param res - Express response with dataset settings
+     */
+    async getDatasetSettings(req: Request, res: Response): Promise<void> {
+        const { id } = req.params;
+        if (!id) { res.status(400).json({ error: 'ID is required' }); return; }
+
+        try {
+            const dataset = await ragService.getDatasetById(id);
+            if (!dataset || dataset.status === 'deleted') {
+                res.status(404).json({ error: 'Dataset not found' });
+                return;
+            }
+            // Return relevant settings fields
+            res.json({
+                id: dataset.id,
+                name: dataset.name,
+                description: dataset.description,
+                language: dataset.language,
+                embedding_model: dataset.embedding_model,
+                parser_id: dataset.parser_id,
+                parser_config: typeof dataset.parser_config === 'string'
+                    ? JSON.parse(dataset.parser_config) : dataset.parser_config,
+                access_control: typeof dataset.access_control === 'string'
+                    ? JSON.parse(dataset.access_control) : dataset.access_control,
+            });
+        } catch (error) {
+            log.error('Failed to get dataset settings', { error: String(error) });
+            res.status(500).json({ error: 'Failed to get dataset settings' });
+        }
+    }
+
+    /**
+     * PUT /datasets/:id/settings - Update dataset settings.
+     * @param req - Express request with dataset ID and settings body
+     * @param res - Express response with updated dataset
+     */
+    async updateDatasetSettings(req: Request, res: Response): Promise<void> {
+        const { id } = req.params;
+        if (!id) { res.status(400).json({ error: 'ID is required' }); return; }
+
+        try {
+            const user = req.user
+                ? { id: req.user.id, email: req.user.email, ip: getClientIp(req) }
+                : undefined;
+
+            const dataset = await ragService.updateDataset(id, req.body, user);
+            if (!dataset) { res.status(404).json({ error: 'Dataset not found' }); return; }
+
+            // Sync to knowledgebase table
+            try {
+                await ragDocumentService.updateKnowledgebase(id, req.body);
+            } catch (syncErr) {
+                log.warn('Failed to sync dataset settings to knowledgebase', { error: String(syncErr) });
+            }
+
+            res.json(dataset);
+        } catch (error: any) {
+            log.error('Failed to update dataset settings', { error: String(error) });
+            res.status(500).json({ error: error.message || 'Failed to update dataset settings' });
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Chunk Management (manual add/edit/delete)
+    // -------------------------------------------------------------------------
+
+    /**
+     * POST /datasets/:id/chunks - Add a manual chunk to a dataset.
+     * @param req - Express request with chunk content body
+     * @param res - Express response with created chunk info
+     */
+    async createChunk(req: Request, res: Response): Promise<void> {
+        const datasetId = req.params['id'];
+        if (!datasetId) { res.status(400).json({ error: 'Dataset ID is required' }); return; }
+
+        try {
+            // Delegate to search service which handles ES indexing
+            const result = await ragSearchService.addChunk(datasetId, req.body);
+            res.status(201).json(result);
+        } catch (error) {
+            log.error('Failed to create chunk', { error: String(error) });
+            res.status(500).json({ error: 'Failed to create chunk' });
+        }
+    }
+
+    /**
+     * PUT /datasets/:id/chunks/:chunkId - Update an existing chunk.
+     * @param req - Express request with chunk ID and update body
+     * @param res - Express response with updated chunk
+     */
+    async updateChunk(req: Request, res: Response): Promise<void> {
+        const { id: datasetId, chunkId } = req.params;
+        if (!datasetId || !chunkId) {
+            res.status(400).json({ error: 'Dataset ID and chunk ID are required' });
+            return;
+        }
+
+        try {
+            const result = await ragSearchService.updateChunk(datasetId, chunkId, req.body);
+            res.json(result);
+        } catch (error) {
+            log.error('Failed to update chunk', { error: String(error) });
+            res.status(500).json({ error: 'Failed to update chunk' });
+        }
+    }
+
+    /**
+     * DELETE /datasets/:id/chunks/:chunkId - Delete a chunk.
+     * @param req - Express request with chunk ID
+     * @param res - Express response (204 on success)
+     */
+    async deleteChunk(req: Request, res: Response): Promise<void> {
+        const { id: datasetId, chunkId } = req.params;
+        if (!datasetId || !chunkId) {
+            res.status(400).json({ error: 'Dataset ID and chunk ID are required' });
+            return;
+        }
+
+        try {
+            await ragSearchService.deleteChunk(datasetId, chunkId);
+            res.status(204).send();
+        } catch (error) {
+            log.error('Failed to delete chunk', { error: String(error) });
+            res.status(500).json({ error: 'Failed to delete chunk' });
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Retrieval Test
+    // -------------------------------------------------------------------------
+
+    /**
+     * POST /datasets/:id/retrieval-test - Test retrieval against a dataset.
+     * @param req - Express request with query and retrieval params
+     * @param res - Express response with retrieval results
+     */
+    async retrievalTest(req: Request, res: Response): Promise<void> {
+        const datasetId = req.params['id'];
+        if (!datasetId) { res.status(400).json({ error: 'Dataset ID is required' }); return; }
+
+        try {
+            const result = await ragSearchService.search(datasetId, {
+                query: req.body.query,
+                method: req.body.method || 'hybrid',
+                top_k: req.body.top_k || 5,
+                similarity_threshold: req.body.similarity_threshold || 0.2,
+            });
+            res.json(result);
+        } catch (error) {
+            log.error('Failed to run retrieval test', { error: String(error) });
+            res.status(500).json({ error: 'Failed to run retrieval test' });
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Search + Chunks
     // -------------------------------------------------------------------------
 

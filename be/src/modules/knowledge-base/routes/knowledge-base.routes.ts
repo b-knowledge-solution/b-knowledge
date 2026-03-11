@@ -7,7 +7,7 @@ import { Router } from 'express'
 import { KnowledgeBaseController } from '../controllers/knowledge-base.controller.js'
 import { requirePermission, requireAuth } from '@/shared/middleware/auth.middleware.js'
 import { validate } from '@/shared/middleware/validate.middleware.js'
-import { updateConfigSchema, createSourceSchema, updateSourceSchema, uuidParamSchema } from '../schemas/knowledge-base.schemas.js'
+import { createSourceSchema, updateSourceSchema, uuidParamSchema } from '../schemas/knowledge-base.schemas.js'
 
 const router = Router()
 const controller = new KnowledgeBaseController()
@@ -20,13 +20,6 @@ const controller = new KnowledgeBaseController()
 // General config access for authenticated users (e.g., rendering the interface)
 router.get('/config', requireAuth, controller.getConfig.bind(controller))
 
-/**
- * @route POST /api/knowledge-base/config
- * @description Updates KB iframe configuration; restricted to maintainers.
- * @access Private (Manage Knowledge Base)
- */
-// Configuration updates require specialized permission
-router.post('/config', requirePermission('manage_knowledge_base'), validate(updateConfigSchema), controller.updateConfig.bind(controller))
 
 /**
  * @route GET /api/knowledge-base/sources

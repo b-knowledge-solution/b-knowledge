@@ -4,6 +4,22 @@
  */
 import { z } from 'zod';
 
+/**
+ * All RAGFlow-supported model types.
+ * @see https://ragflow.io/docs/references/model-providers
+ */
+export const MODEL_TYPES = [
+  'chat',
+  'embedding',
+  'speech2text',
+  'image2text',
+  'rerank',
+  'tts',
+] as const;
+
+/** TypeScript type for the canonical model types */
+export type ModelType = (typeof MODEL_TYPES)[number];
+
 /** UUID v4 param schema */
 export const uuidParamSchema = z.object({
   id: z.string().uuid('Invalid UUID format'),
@@ -12,7 +28,11 @@ export const uuidParamSchema = z.object({
 /** POST /api/llm-providers – body */
 export const createProviderSchema = z.object({
   factory_name: z.string().min(1, 'Factory name is required').max(100),
-  model_type: z.string().min(1, 'Model type is required').max(50),
+  model_type: z.enum(MODEL_TYPES, {
+    errorMap: () => ({
+      message: `Model type must be one of: ${MODEL_TYPES.join(', ')}`,
+    }),
+  }),
   model_name: z.string().min(1, 'Model name is required').max(255),
   api_key: z.string().max(500).nullable().optional(),
   api_base: z.string().url().nullable().optional(),

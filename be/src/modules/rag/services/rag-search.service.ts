@@ -232,6 +232,89 @@ export class RagSearchService {
         return { chunks, total, page, limit }
     }
 
+    // -------------------------------------------------------------------------
+    // Chunk Management (manual add/edit/delete)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Add a manual chunk to a dataset's OpenSearch index.
+     * @param datasetId - UUID of the dataset
+     * @param data - Chunk data with content and optional metadata
+     * @returns Created chunk info with ID
+     */
+    async addChunk(datasetId: string, data: { content: string; doc_id?: string; important_keywords?: string[] }): Promise<{ chunk_id: string }> {
+        const client = getClient()
+        const body: Record<string, unknown> = {
+            kb_id: datasetId,
+            content_with_weight: data.content,
+            content_ltks: data.content,
+            doc_id: data.doc_id || '',
+            docnm_kwd: '',
+            create_time: new Date().toISOString(),
+            create_timestamp_flt: Date.now() / 1000,
+        }
+        if (data.important_keywords?.length) {
+            body.important_kwd = data.important_keywords
+        }
+
+        const res = await client.index({
+            index: getIndexName(),
+            body,
+            refresh: 'true',
+        })
+
+        return { chunk_id: res.body._id }
+    }
+
+    /**
+     * Update an existing chunk in OpenSearch.
+     * @param datasetId - UUID of the dataset (for validation)
+     * @param chunkId - OpenSearch document ID of the chunk
+     * @param data - Partial update data
+     * @returns Updated chunk info
+     */
+    async updateChunk(
+        datasetId: string,
+        chunkId: string,
+        data: { content?: string; important_keywords?: string[]; available?: boolean },
+    ): Promise<{ chunk_id: string; updated: boolean }> {
+        const client = getClient()
+        const doc: Record<string, unknown> = {}
+        if (data.content !== undefined) {
+            doc.content_with_weight = data.content
+            doc.content_ltks = data.content
+        }
+        if (data.important_keywords !== undefined) {
+            doc.important_kwd = data.important_keywords
+        }
+        if (data.available !== undefined) {
+            doc.available_int = data.available ? 1 : 0
+        }
+
+        await client.update({
+            index: getIndexName(),
+            id: chunkId,
+            body: { doc },
+            refresh: 'true',
+        })
+
+        return { chunk_id: chunkId, updated: true }
+    }
+
+    /**
+     * Delete a chunk from OpenSearch.
+     * @param datasetId - UUID of the dataset (for validation)
+     * @param chunkId - OpenSearch document ID of the chunk
+     */
+    async deleteChunk(datasetId: string, chunkId: string): Promise<void> {
+        const client = getClient()
+        await client.delete({
+            index: getIndexName(),
+            id: chunkId,
+            refresh: 'true',
+        })
+    }
+
     /**
      * Check OpenSearch connection health.
      * @returns True if the cluster is reachable

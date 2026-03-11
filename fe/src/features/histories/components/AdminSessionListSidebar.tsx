@@ -16,7 +16,7 @@ import {
     User,
 } from 'lucide-react'
 
-import { HighlightMatch } from '@/features/history/components/HighlightMatch'
+import { HighlightMatch } from '@/features/histories/components/HighlightMatch'
 import type {
     ChatSessionSummary,
     SearchSessionSummary,

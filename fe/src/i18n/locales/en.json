@@ -105,7 +105,10 @@
     "glossary": "Glossary",
     "datasets": "Datasets",
     "chatAssistants": "Chat Assistants",
-    "searchApps": "Search Apps"
+    "searchApps": "Search Apps",
+    "projects": "Projects",
+    "dataStudio": "Data Studio",
+    "llmProviders": "LLM Providers"
   },
   "iam": {
     "title": "Identity & Access Management",
@@ -130,6 +133,91 @@
     "permissions": {
       "title": "Permission Management",
       "description": "Manage system permissions"
+    }
+  },
+  "projectManagement": {
+    "title": "Projects",
+    "description": "Manage projects, documents, chat assistants, and search apps",
+    "addProject": "Create Project",
+    "editProject": "Edit Project",
+    "deleteConfirm": "Delete this project?",
+    "deleteWarning": "All categories, versions, chats, and searches in this project will be permanently deleted.",
+    "name": "Name",
+    "namePlaceholder": "Enter project name",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Enter project description",
+    "ragflowServer": "RAGFlow Server",
+    "selectServer": "Select a RAGFlow server",
+    "noProjects": "No projects yet",
+    "noProjectsHint": "Create your first project to get started",
+    "noDescription": "—",
+    "createSuccess": "Project created successfully",
+    "updateSuccess": "Project updated successfully",
+    "deleteSuccess": "Project deleted successfully",
+    "editPermissions": "Edit Permissions",
+    "privateAccessDesc": "Only selected teams can access this project",
+    "tabs": {
+      "documents": "Documents",
+      "chat": "Chat",
+      "search": "Search",
+      "settings": "Settings",
+      "sync": "Sync"
+    },
+    "createProject": "Create Project",
+    "datasetCount": "datasets",
+    "autoDataset": "Auto-created dataset",
+    "categories": {
+      "office": "Office",
+      "datasync": "DataSync",
+      "source_code": "Source Code"
+    },
+    "categoryDesc": {
+      "office": "Office documents with versioning",
+      "datasync": "External data source synchronization",
+      "source_code": "Source code repositories (coming soon)"
+    },
+    "categoryFilter": {
+      "all": "All"
+    },
+    "steps": {
+      "category": "Category",
+      "details": "Details",
+      "syncConfig": "Sync Config"
+    },
+    "sync": {
+      "sourceType": "Source Type",
+      "connection": "Connection",
+      "schedule": {
+        "title": "Schedule",
+        "every6h": "Every 6 hours",
+        "daily": "Daily",
+        "weekly": "Weekly",
+        "custom": "Custom (Cron)",
+        "cronExpression": "Cron Expression"
+      },
+      "status": "Status",
+      "lastSynced": "Last Synced",
+      "neverSynced": "Never synced",
+      "noConfig": "No sync configuration yet. Set up a connection first.",
+      "triggerNow": "Sync Now",
+      "triggerSuccess": "Sync triggered successfully",
+      "saveSuccess": "Sync config saved successfully",
+      "scheduleUpdated": "Schedule updated successfully",
+      "fields": {
+        "siteUrl": "Site URL",
+        "tenantId": "Tenant ID",
+        "clientId": "Client ID",
+        "clientSecret": "Client Secret",
+        "baseUrl": "Base URL",
+        "email": "Email",
+        "apiToken": "API Token",
+        "projectKey": "Project Key",
+        "spaceKey": "Space Key",
+        "accessToken": "Access Token",
+        "projectId": "Project ID",
+        "owner": "Owner",
+        "repo": "Repository"
+      }
     }
   },
   "login": {
@@ -1166,5 +1254,115 @@
     "similarityThreshold": "Similarity Threshold",
     "topK": "Top K Results",
     "vectorWeight": "Vector Similarity Weight"
+  },
+  "llmProviders": {
+    "title": "LLM Providers",
+    "addProvider": "Add Provider",
+    "editProvider": "Edit Provider",
+    "factoryName": "Factory",
+    "modelType": "Model Type",
+    "modelName": "Model Name",
+    "apiKey": "API Key",
+    "apiBase": "API Base URL",
+    "maxTokens": "Max Tokens",
+    "default": "Default",
+    "setAsDefault": "Set as default for this model type",
+    "deleteTitle": "Delete Provider",
+    "deleteMessage": "Are you sure you want to delete the provider \"{{name}}\"?",
+    "fetchError": "Failed to load providers",
+    "deleteError": "Failed to delete provider",
+    "chat": "Chat",
+    "embedding": "Embedding",
+    "speech2text": "Speech to Text",
+    "image2text": "Image to Text / Vision",
+    "rerank": "Rerank",
+    "tts": "Text to Speech",
+    "ocr": "OCR",
+    "allTypes": "All Types",
+    "selectFactory": "Select a provider",
+    "selectModel": "Select a model",
+    "customModel": "Custom model name",
+    "customFactory": "Custom",
+    "apiBasePlaceholder": "https://api.example.com/v1",
+    "apiKeyPlaceholder": "Enter API key (leave empty if not required)",
+    "presetModels": "Available Models",
+    "noPresetModels": "Enter model name manually for this provider",
+    "providerSaved": "Provider saved successfully",
+    "providerDeleted": "Provider deleted successfully",
+    "systemDefaults": "System Default Models",
+    "defaultNotSet": "Not set",
+    "selectDefault": "Select default...",
+    "defaultUpdated": "Default model updated",
+    "supportsVision": "This model supports vision (image input)",
+    "vision": "Vision",
+    "chatModel": "Chat Model",
+    "embeddingModel": "Embedding Model",
+    "visionModel": "Vision Model",
+    "sttModel": "Speech to Text Model",
+    "ttsModel": "Text to Speech Model",
+    "rerankModel": "Rerank Model",
+    "ocrModel": "OCR Model"
+  },
+  "datasetSettings": {
+    "title": "Dataset Settings",
+    "saveSuccess": "Settings saved successfully",
+    "tabs": {
+      "general": "General",
+      "chunking": "Chunking",
+      "advanced": "Advanced",
+      "retrievalTest": "Retrieval Test"
+    },
+    "general": {
+      "name": "Name",
+      "description": "Description",
+      "language": "Language",
+      "embeddingModel": "Embedding Model",
+      "permission": "Permission",
+      "permissionMe": "Only me",
+      "permissionTeam": "Team members"
+    },
+    "chunking": {
+      "method": "Chunk Method",
+      "chunkSize": "Chunk Size (tokens)",
+      "delimiter": "Delimiter",
+      "layoutRecognition": "Layout Recognition",
+      "qaHint": "Q&A parser automatically splits content into question-answer pairs.",
+      "tableHint": "Table parser extracts structured data from tables."
+    },
+    "advanced": {
+      "graphrag": "GraphRAG",
+      "graphragDesc": "Enable knowledge graph-based retrieval for better multi-hop reasoning.",
+      "entityTypes": "Entity Types (comma-separated)",
+      "raptor": "RAPTOR",
+      "raptorDesc": "Enable recursive abstractive processing for tree-organized retrieval.",
+      "maxToken": "Max Token",
+      "threshold": "Threshold",
+      "autoKeywords": "Auto Keywords",
+      "autoQuestions": "Auto Questions"
+    },
+    "retrieval": {
+      "query": "Query",
+      "queryPlaceholder": "Enter a test query...",
+      "run": "Test",
+      "method": "Method",
+      "topK": "Top K",
+      "score": "Score",
+      "noResults": "No results found for this query.",
+      "hint": "Enter a query above to test retrieval against this dataset."
+    },
+    "chunks": {
+      "title": "Chunks",
+      "add": "Add Chunk",
+      "addTitle": "Add Manual Chunk",
+      "content": "Content",
+      "contentPlaceholder": "Enter chunk text content...",
+      "searchPlaceholder": "Search chunks...",
+      "total": "total chunks",
+      "empty": "No chunks found.",
+      "addSuccess": "Chunk added successfully",
+      "updateSuccess": "Chunk updated successfully",
+      "deleteSuccess": "Chunk deleted successfully",
+      "confirmDelete": "Are you sure you want to delete this chunk?"
+    }
   }
 }

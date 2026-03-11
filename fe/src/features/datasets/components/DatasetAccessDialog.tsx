@@ -42,13 +42,6 @@ interface AccessTeam {
   name: string
 }
 
-/** @description Response shape from GET /api/rag/datasets/:id/access */
-interface DatasetAccessResponse {
-  public: boolean
-  teams: AccessTeam[]
-  users: AccessUser[]
-}
-
 // ============================================================================
 // Props
 // ============================================================================
