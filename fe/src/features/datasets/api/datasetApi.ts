@@ -1,5 +1,8 @@
 import { api, apiFetch } from '@/lib/api';
-import type { Dataset, CreateDatasetDto, UpdateDatasetDto, Document, ChunksResponse, AccessControl } from '../types';
+import type {
+  Dataset, CreateDatasetDto, UpdateDatasetDto, Document, ChunksResponse,
+  DocumentVersion, CreateVersionDto, UpdateVersionDto, VersionFile, ConverterJob,
+} from '../types';
 
 /** @description Response shape from GET /api/rag/datasets/:id/access */
 export interface DatasetAccessResponse {
@@ -87,5 +90,85 @@ export const datasetApi = {
     if (params?.limit) query.set('limit', String(params.limit));
     const qs = query.toString();
     return api.get<ChunksResponse>(`${BASE_URL}/datasets/${datasetId}/chunks${qs ? `?${qs}` : ''}`);
+  },
+
+  // ============================================================================
+  // Version CRUD
+  // ============================================================================
+
+  /** @description List all versions for a dataset */
+  getVersions: async (datasetId: string): Promise<DocumentVersion[]> => {
+    return api.get<DocumentVersion[]>(`${BASE_URL}/datasets/${datasetId}/versions`);
+  },
+
+  /** @description Create a new version for a dataset */
+  createVersion: async (datasetId: string, data: CreateVersionDto): Promise<DocumentVersion> => {
+    return api.post<DocumentVersion>(`${BASE_URL}/datasets/${datasetId}/versions`, data);
+  },
+
+  /** @description Update a version */
+  updateVersion: async (datasetId: string, versionId: string, data: UpdateVersionDto): Promise<DocumentVersion> => {
+    return api.put<DocumentVersion>(`${BASE_URL}/datasets/${datasetId}/versions/${versionId}`, data);
+  },
+
+  /** @description Delete a version */
+  deleteVersion: async (datasetId: string, versionId: string): Promise<void> => {
+    return api.delete<void>(`${BASE_URL}/datasets/${datasetId}/versions/${versionId}`);
+  },
+
+  // ============================================================================
+  // Version Files
+  // ============================================================================
+
+  /** @description List files for a version */
+  getVersionFiles: async (datasetId: string, versionId: string): Promise<VersionFile[]> => {
+    return api.get<VersionFile[]>(`${BASE_URL}/datasets/${datasetId}/versions/${versionId}/files`);
+  },
+
+  /** @description Upload files to a version */
+  uploadVersionFiles: async (datasetId: string, versionId: string, files: File[]): Promise<VersionFile[]> => {
+    const formData = new FormData();
+    files.forEach((file) => {
+      formData.append('files', file);
+    });
+    return apiFetch<VersionFile[]>(`${BASE_URL}/datasets/${datasetId}/versions/${versionId}/files`, {
+      method: 'POST',
+      body: formData,
+      headers: {},
+    });
+  },
+
+  /** @description Delete files from a version */
+  deleteVersionFiles: async (datasetId: string, versionId: string, fileIds: string[]): Promise<void> => {
+    return api.post<void>(`${BASE_URL}/datasets/${datasetId}/versions/${versionId}/files/delete`, { file_ids: fileIds });
+  },
+
+  // ============================================================================
+  // Converter & Parse Operations
+  // ============================================================================
+
+  /** @description Start converting files in a version */
+  convertFiles: async (datasetId: string, versionId: string): Promise<ConverterJob> => {
+    return api.post<ConverterJob>(`${BASE_URL}/datasets/${datasetId}/versions/${versionId}/convert`);
+  },
+
+  /** @description Start parsing imported files in RAGFlow */
+  parseFiles: async (datasetId: string, versionId: string): Promise<void> => {
+    return api.post<void>(`${BASE_URL}/datasets/${datasetId}/versions/${versionId}/parse`);
+  },
+
+  /** @description Sync file statuses from RAGFlow */
+  syncFileStatus: async (datasetId: string, versionId: string): Promise<VersionFile[]> => {
+    return api.post<VersionFile[]>(`${BASE_URL}/datasets/${datasetId}/versions/${versionId}/sync-status`);
+  },
+
+  /** @description Re-queue failed files for conversion */
+  requeueFiles: async (datasetId: string, versionId: string): Promise<void> => {
+    return api.post<void>(`${BASE_URL}/datasets/${datasetId}/versions/${versionId}/requeue`);
+  },
+
+  /** @description Get converter jobs for a version */
+  getConverterJobs: async (datasetId: string, versionId: string): Promise<ConverterJob[]> => {
+    return api.get<ConverterJob[]>(`${BASE_URL}/datasets/${datasetId}/versions/${versionId}/jobs`);
   },
 };

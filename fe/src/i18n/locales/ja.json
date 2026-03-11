@@ -68,7 +68,9 @@
     "copy": "コピー",
     "email": "メール",
     "prompt": "Prompt",
-    "noDescription": "説明なし"
+    "noDescription": "説明なし",
+    "create": "作成",
+    "saving": "保存中..."
   },
   "dialog": {
     "confirm": "確認",
@@ -931,6 +933,66 @@
     "chunksTotal": "合計",
     "noChunks": "チャンクが見つかりません",
     "previewNotSupported": "このファイル形式のプレビューはサポートされていません"
+  },
+  "versions": {
+    "title": "ドキュメントバージョン",
+    "add": "新しいバージョン",
+    "createTitle": "バージョン作成",
+    "editTitle": "バージョン編集",
+    "label": "バージョンラベル",
+    "labelPlaceholder": "例: v1.0",
+    "empty": "バージョンがありません。作成して始めましょう。",
+    "createSuccess": "バージョンを作成しました",
+    "updateSuccess": "バージョンを更新しました",
+    "deleteSuccess": "バージョンを削除しました",
+    "archiveSuccess": "バージョンをアーカイブしました",
+    "confirmDeleteMessage": "このバージョンを削除しますか？すべてのファイルが完全に削除されます。",
+    "archive": "アーカイブ",
+    "status": {
+      "active": "アクティブ",
+      "archived": "アーカイブ済み"
+    },
+    "fileName": "ファイル名",
+    "fileSize": "サイズ",
+    "fileStatus": "ステータス",
+    "fileUpdated": "更新日",
+    "noFiles": "このバージョンにはファイルがありません。ドキュメントをアップロードして始めましょう。",
+    "uploadHint": "ここにファイルをドラッグ＆ドロップ、またはクリックして選択",
+    "acceptedTypes": "PDF, DOCX, XLSX, PPTX, TXT, MD, CSV",
+    "uploading": "アップロード中...",
+    "uploadSuccess": "{{count}}件のファイルをアップロードしました",
+    "deleteFilesSuccess": "{{count}}件のファイルを削除しました",
+    "deleteSelected": "削除 ({{count}})",
+    "convert": "変換",
+    "convertTooltip": "保留中のファイルの変換を開始",
+    "convertStarted": "ファイル変換を開始しました",
+    "parse": "解析",
+    "parseTooltip": "RAGFlowでインポート済みファイルの解析を開始",
+    "parseStarted": "解析を開始しました",
+    "syncStatus": "ステータス同期",
+    "syncSuccess": "ファイルステータスを同期しました",
+    "requeue": "失敗を再実行",
+    "requeueSuccess": "失敗したファイルを変換キューに再登録しました",
+    "converterJobs": "変換ジョブ",
+    "viewJobs": "変換ジョブを表示",
+    "noJobs": "変換ジョブが見つかりません",
+    "jobId": "ジョブ",
+    "jobStatus": {
+      "pending": "保留中",
+      "converting": "変換中",
+      "finished": "完了",
+      "failed": "失敗"
+    },
+    "failedCount": "{{count}}件失敗",
+    "fileStatus": {
+      "pending": "保留中",
+      "converting": "変換中",
+      "converted": "変換済み",
+      "imported": "インポート済み",
+      "parsing": "解析中",
+      "done": "完了",
+      "failed": "失敗"
+    }
   },
   "datasetAccess": {
     "title": "データセットアクセス管理",

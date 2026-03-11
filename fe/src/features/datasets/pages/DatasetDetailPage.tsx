@@ -15,6 +15,7 @@ import { useDocuments } from '../hooks/useDatasets';
 import DocumentTable from '../components/DocumentTable';
 import FileUploadModal from '../components/FileUploadModal';
 import DatasetAccessDialog from '../components/DatasetAccessDialog';
+import VersionPanel from '../components/VersionPanel';
 import { DocumentPreviewer } from '@/components/DocumentPreviewer';
 import type { Dataset, Document } from '../types';
 
@@ -148,6 +149,11 @@ const DatasetDetailPage: React.FC = () => {
           </dl>
         </CardContent>
       </Card>
+
+      {/* Version Management Panel */}
+      {id && (
+        <VersionPanel datasetId={id} isAdmin={isAdmin} />
+      )}
 
       {/* Documents Table */}
       <Card className="dark:bg-slate-800 dark:border-slate-700 flex-1">

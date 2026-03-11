@@ -153,9 +153,9 @@ be/src/config/*.json
 be/temp
 tasks
 
-#Reference source code
+# Reference source code
 ragflow
-
+simple-ui
 # Python
 __pycache__/
 *.py[cod]
@@ -170,5 +170,6 @@ advance-rag/**/*.bin
 advance-rag/**/*.pt
 advance-rag/**/*.pth
 
+# agent related files
 .claude
 .agents

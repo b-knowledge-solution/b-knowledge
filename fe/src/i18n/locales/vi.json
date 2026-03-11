@@ -68,7 +68,9 @@
     "copy": "Sao chép",
     "email": "Email",
     "prompt": "Prompt",
-    "noDescription": "Không có mô tả"
+    "noDescription": "Không có mô tả",
+    "create": "Tạo",
+    "saving": "Đang lưu..."
   },
   "dialog": {
     "confirm": "Xác nhận",
@@ -946,6 +948,66 @@
     "chunksTotal": "tổng",
     "noChunks": "Không tìm thấy phân đoạn",
     "previewNotSupported": "Không hỗ trợ xem trước loại tệp này"
+  },
+  "versions": {
+    "title": "Phiên bản tài liệu",
+    "add": "Phiên bản mới",
+    "createTitle": "Tạo phiên bản",
+    "editTitle": "Chỉnh sửa phiên bản",
+    "label": "Nhãn phiên bản",
+    "labelPlaceholder": "VD: v1.0",
+    "empty": "Chưa có phiên bản. Tạo phiên bản để bắt đầu.",
+    "createSuccess": "Tạo phiên bản thành công",
+    "updateSuccess": "Cập nhật phiên bản thành công",
+    "deleteSuccess": "Xóa phiên bản thành công",
+    "archiveSuccess": "Lưu trữ phiên bản thành công",
+    "confirmDeleteMessage": "Bạn có chắc muốn xóa phiên bản này? Tất cả tệp sẽ bị xóa vĩnh viễn.",
+    "archive": "Lưu trữ",
+    "status": {
+      "active": "Hoạt động",
+      "archived": "Đã lưu trữ"
+    },
+    "fileName": "Tên tệp",
+    "fileSize": "Kích thước",
+    "fileStatus": "Trạng thái",
+    "fileUpdated": "Cập nhật",
+    "noFiles": "Chưa có tệp trong phiên bản này. Tải lên tài liệu để bắt đầu.",
+    "uploadHint": "Kéo thả tệp vào đây hoặc nhấp để chọn",
+    "acceptedTypes": "PDF, DOCX, XLSX, PPTX, TXT, MD, CSV",
+    "uploading": "Đang tải lên...",
+    "uploadSuccess": "Tải lên {{count}} tệp thành công",
+    "deleteFilesSuccess": "Xóa {{count}} tệp thành công",
+    "deleteSelected": "Xóa ({{count}})",
+    "convert": "Chuyển đổi",
+    "convertTooltip": "Bắt đầu chuyển đổi các tệp đang chờ",
+    "convertStarted": "Đã bắt đầu chuyển đổi tệp",
+    "parse": "Phân tích",
+    "parseTooltip": "Bắt đầu phân tích các tệp đã nhập trong RAGFlow",
+    "parseStarted": "Đã bắt đầu phân tích",
+    "syncStatus": "Đồng bộ trạng thái",
+    "syncSuccess": "Đồng bộ trạng thái tệp thành công",
+    "requeue": "Xử lý lại lỗi",
+    "requeueSuccess": "Các tệp lỗi đã được đưa vào hàng đợi chuyển đổi lại",
+    "converterJobs": "Công việc chuyển đổi",
+    "viewJobs": "Xem công việc chuyển đổi",
+    "noJobs": "Không tìm thấy công việc chuyển đổi",
+    "jobId": "Công việc",
+    "jobStatus": {
+      "pending": "Đang chờ",
+      "converting": "Đang chuyển đổi",
+      "finished": "Hoàn thành",
+      "failed": "Thất bại"
+    },
+    "failedCount": "{{count}} thất bại",
+    "fileStatus": {
+      "pending": "Đang chờ",
+      "converting": "Đang chuyển đổi",
+      "converted": "Đã chuyển đổi",
+      "imported": "Đã nhập",
+      "parsing": "Đang phân tích",
+      "done": "Hoàn thành",
+      "failed": "Thất bại"
+    }
   },
   "datasetAccess": {
     "title": "Quản lý quyền truy cập bộ dữ liệu",

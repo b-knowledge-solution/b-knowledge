@@ -744,6 +744,84 @@ export interface KnowledgebaseRow {
 }
 
 // ---------------------------------------------------------------------------
+// Document Version types
+// ---------------------------------------------------------------------------
+
+/**
+ * DocumentVersion interface representing a versioned snapshot of dataset documents.
+ */
+export interface DocumentVersion {
+    /** Unique UUID for the version */
+    id: string
+    /** UUID of the parent dataset */
+    dataset_id: string
+    /** Human-readable version label (e.g., 'v1.0', '2026-03') */
+    version_label: string
+    /** RAGFlow dataset ID for this version's documents */
+    ragflow_dataset_id?: string | null
+    /** RAGFlow dataset name */
+    ragflow_dataset_name?: string | null
+    /** Version status ('active' or 'archived') */
+    status: 'active' | 'archived'
+    /** Timestamp of last sync with RAGFlow */
+    last_synced_at?: Date | null
+    /** JSONB metadata (pagerank, chunk_method, parser_config, etc.) */
+    metadata: Record<string, unknown>
+    /** User ID who created this version */
+    created_by?: string | null
+    /** Timestamp of record creation */
+    created_at: Date
+    /** Timestamp of last update */
+    updated_at: Date
+}
+
+/**
+ * DocumentVersionFile interface representing a file within a document version.
+ */
+export interface DocumentVersionFile {
+    /** Unique UUID for the file record */
+    id: string
+    /** UUID of the parent version */
+    version_id: string
+    /** Original file name */
+    file_name: string
+    /** RAGFlow document ID (set after upload to RAGFlow) */
+    ragflow_doc_id?: string | null
+    /** Current file status in the pipeline */
+    status: 'pending' | 'converting' | 'converted' | 'imported' | 'parsing' | 'done' | 'failed'
+    /** Error message if failed */
+    error?: string | null
+    /** Timestamp of record creation */
+    created_at: Date
+    /** Timestamp of last update */
+    updated_at: Date
+}
+
+/**
+ * ConverterJob interface representing a conversion job for a document version.
+ */
+export interface ConverterJob {
+    /** Unique UUID for the job */
+    id: string
+    /** UUID of the parent dataset */
+    dataset_id: string
+    /** UUID of the version being converted */
+    version_id: string
+    /** Job status */
+    status: 'pending' | 'converting' | 'finished' | 'failed'
+    /** Total number of files in this job */
+    file_count: number
+    /** Number of successfully finished files */
+    finished_count: number
+    /** Number of failed files */
+    failed_count: number
+    /** Timestamp of record creation */
+    created_at: Date
+    /** Timestamp of last update */
+    updated_at: Date
+}
+
+// ---------------------------------------------------------------------------
 // Shared service interfaces
 // ---------------------------------------------------------------------------
 

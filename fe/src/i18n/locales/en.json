@@ -68,7 +68,9 @@
     "all": "All",
     "copy": "Copy",
     "email": "Email",
-    "noDescription": "No description"
+    "noDescription": "No description",
+    "create": "Create",
+    "saving": "Saving..."
   },
   "dialog": {
     "confirm": "Confirm",
@@ -972,6 +974,66 @@
     "chunksTotal": "total",
     "noChunks": "No chunks found",
     "previewNotSupported": "Preview not supported for this file type"
+  },
+  "versions": {
+    "title": "Document Versions",
+    "add": "New Version",
+    "createTitle": "Create Version",
+    "editTitle": "Edit Version",
+    "label": "Version Label",
+    "labelPlaceholder": "e.g. v1.0",
+    "empty": "No versions yet. Create one to get started.",
+    "createSuccess": "Version created successfully",
+    "updateSuccess": "Version updated successfully",
+    "deleteSuccess": "Version deleted successfully",
+    "archiveSuccess": "Version archived successfully",
+    "confirmDeleteMessage": "Are you sure you want to delete this version? All files will be permanently removed.",
+    "archive": "Archive",
+    "status": {
+      "active": "Active",
+      "archived": "Archived"
+    },
+    "fileName": "File Name",
+    "fileSize": "Size",
+    "fileStatus": "Status",
+    "fileUpdated": "Updated",
+    "noFiles": "No files in this version. Upload documents to get started.",
+    "uploadHint": "Drag & drop files here, or click to select",
+    "acceptedTypes": "PDF, DOCX, XLSX, PPTX, TXT, MD, CSV",
+    "uploading": "Uploading...",
+    "uploadSuccess": "{{count}} file(s) uploaded successfully",
+    "deleteFilesSuccess": "{{count}} file(s) deleted successfully",
+    "deleteSelected": "Delete ({{count}})",
+    "convert": "Convert",
+    "convertTooltip": "Start converting pending files",
+    "convertStarted": "File conversion started",
+    "parse": "Parse",
+    "parseTooltip": "Start parsing imported files in RAGFlow",
+    "parseStarted": "Parsing started",
+    "syncStatus": "Sync Status",
+    "syncSuccess": "File statuses synced successfully",
+    "requeue": "Re-queue Failed",
+    "requeueSuccess": "Failed files re-queued for conversion",
+    "converterJobs": "Converter Jobs",
+    "viewJobs": "View converter jobs",
+    "noJobs": "No converter jobs found",
+    "jobId": "Job",
+    "jobStatus": {
+      "pending": "Pending",
+      "converting": "Converting",
+      "finished": "Finished",
+      "failed": "Failed"
+    },
+    "failedCount": "{{count}} failed",
+    "fileStatus": {
+      "pending": "Pending",
+      "converting": "Converting",
+      "converted": "Converted",
+      "imported": "Imported",
+      "parsing": "Parsing",
+      "done": "Done",
+      "failed": "Failed"
+    }
   },
   "datasetAccess": {
     "title": "Dataset Access Control",

@@ -103,6 +103,37 @@ services:
     networks:
       - kb-network
 
+  # ==========================================================================
+  # Document Converter Worker (Office → PDF conversion via LibreOffice)
+  # ==========================================================================
+  converter:
+    build:
+      context: ../converter
+      dockerfile: Dockerfile
+    image: ${CONVERTER_IMAGE:-b-knowledge-converter}:${CONVERTER_VERSION:-latest}
+    container_name: kb-converter
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      REDIS_HOST: valkey
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      POLL_INTERVAL: ${CONVERTER_POLL_INTERVAL:-30}
+      S3_HOST: rustfs:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-rustfsadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-rustfsadmin}
+    volumes:
+      - converter_data:/app/.data
+      - converter_logs:/app/logs
+    networks:
+      - kb-network
+
 # ==========================================================================
 # Volumes (app-only — infrastructure volumes are in docker-compose-base.yml)
 # ==========================================================================
@@ -112,4 +143,8 @@ volumes:
   backend_data:
     driver: local
   worker_logs:
+    driver: local
+  converter_data:
+    driver: local
+  converter_logs:
     driver: local

@@ -9,10 +9,11 @@
     "fe"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:be\" \"npm run dev:fe\" \"npm run dev:worker\"",
+    "dev": "concurrently \"npm run dev:be\" \"npm run dev:fe\" \"npm run dev:worker\" \"npm run dev:converter\"",
     "dev:be": "npm run dev --workspace=be",
     "dev:fe": "npm run dev --workspace=fe",
     "dev:worker": "node scripts/wait-for-backend.js && node scripts/run-worker.js",
+    "dev:converter": "node scripts/wait-for-backend.js && node scripts/run-converter.js",
     "setup:worker": "node scripts/setup-worker.js",
     "dev:https": "concurrently \"npm run dev:be\" \"npm run dev:fe\"",
     "generate:cert": "node scripts/generate-cert.js",

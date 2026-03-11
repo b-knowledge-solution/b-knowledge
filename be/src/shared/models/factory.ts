@@ -35,6 +35,9 @@ import { ChatDialogModel } from '@/modules/chat/models/chat-dialog.model.js';
 import { ChatDialogAccessModel } from '@/modules/chat/models/chat-dialog-access.model.js';
 import { SearchAppModel } from '@/modules/search/models/search-app.model.js'
 import { SearchAppAccessModel } from '@/modules/search/models/search-app-access.model.js';
+import { DocumentVersionModel } from '@/modules/rag/models/document-version.model.js';
+import { DocumentVersionFileModel } from '@/modules/rag/models/document-version-file.model.js';
+import { ConverterJobModel } from '@/modules/rag/models/converter-job.model.js';
 
 /**
  * ModelFactory class implementing the Factory Pattern.
@@ -106,6 +109,12 @@ export class ModelFactory {
   private static searchAppModel: SearchAppModel;
   /** SearchAppAccess model singleton instance */
   private static searchAppAccessModel: SearchAppAccessModel;
+  /** DocumentVersion model singleton instance */
+  private static documentVersionModel: DocumentVersionModel;
+  /** DocumentVersionFile model singleton instance */
+  private static documentVersionFileModel: DocumentVersionFileModel;
+  /** ConverterJob model singleton instance */
+  private static converterJobModel: ConverterJobModel;
 
   /**
    * Get the User model singleton.
@@ -385,5 +394,35 @@ export class ModelFactory {
     // Create instance on first access (lazy initialization)
     if (!this.searchAppAccessModel) this.searchAppAccessModel = new SearchAppAccessModel();
     return this.searchAppAccessModel;
+  }
+
+  /**
+   * Get the DocumentVersion model singleton.
+   * Manages document version records for datasets.
+   * @returns DocumentVersionModel instance for version CRUD operations
+   */
+  static get documentVersion() {
+    if (!this.documentVersionModel) this.documentVersionModel = new DocumentVersionModel();
+    return this.documentVersionModel;
+  }
+
+  /**
+   * Get the DocumentVersionFile model singleton.
+   * Manages files within document versions.
+   * @returns DocumentVersionFileModel instance for version file operations
+   */
+  static get documentVersionFile() {
+    if (!this.documentVersionFileModel) this.documentVersionFileModel = new DocumentVersionFileModel();
+    return this.documentVersionFileModel;
+  }
+
+  /**
+   * Get the ConverterJob model singleton.
+   * Manages converter job tracking records.
+   * @returns ConverterJobModel instance for converter job operations
+   */
+  static get converterJob() {
+    if (!this.converterJobModel) this.converterJobModel = new ConverterJobModel();
+    return this.converterJobModel;
   }
 }

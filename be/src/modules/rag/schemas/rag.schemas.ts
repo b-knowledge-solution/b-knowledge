@@ -46,6 +46,36 @@ export const datasetAccessSchema = z.object({
   user_ids: z.array(z.string().uuid()).optional().default([]),
 })
 
+// ---------------------------------------------------------------------------
+// Version schemas
+// ---------------------------------------------------------------------------
+
+/** UUID version param schema */
+export const versionParamSchema = z.object({
+  id: z.string().uuid('Invalid dataset UUID'),
+  versionId: z.string().uuid('Invalid version UUID'),
+})
+
+/** POST /api/rag/datasets/:id/versions – body */
+export const createVersionSchema = z.object({
+  version_label: z.string().min(1, 'Version label is required').max(128),
+  metadata: z.record(z.unknown()).optional(),
+})
+
+/** PUT /api/rag/datasets/:id/versions/:versionId – body */
+export const updateVersionSchema = z.object({
+  version_label: z.string().min(1).max(128).optional(),
+  status: z.enum(['active', 'archived']).optional(),
+  metadata: z.record(z.unknown()).optional(),
+  ragflow_dataset_id: z.string().max(255).optional(),
+  ragflow_dataset_name: z.string().max(255).optional(),
+})
+
+/** DELETE /api/rag/datasets/:id/versions/:versionId/documents – body */
+export const bulkDeleteFilesSchema = z.object({
+  file_ids: z.array(z.string().uuid()).min(1, 'At least one file ID is required'),
+})
+
 /** POST /api/rag/datasets/:id/search – body */
 export const searchChunksSchema = z.object({
   query: z.string().min(1, 'Search query is required'),
