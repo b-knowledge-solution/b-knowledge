@@ -12,7 +12,7 @@
  * @module features/ragflow-servers/pages/RagflowServersPage
  */
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Table,
@@ -85,29 +85,27 @@ const RagflowServersPage = () => {
    * @param searchValue - Current search input
    * @returns Array of Select options
    */
-  const buildModelOptions = useMemo(() => {
-    return (searchValue: string) => {
-      // If search contains '@', extract the part after '@' and filter providers
-      const atIndex = searchValue.lastIndexOf('@')
-      if (atIndex >= 0) {
-        const prefix = searchValue.substring(0, atIndex)
-        const providerFilter = searchValue.substring(atIndex + 1).toLowerCase()
-        return MODEL_FACTORY_OPTIONS
-          .filter((p) => p.toLowerCase().includes(providerFilter))
-          .map((provider) => ({
-            label: `${prefix || '<model_name>'}@${provider}`,
-            value: `${prefix}@${provider}`,
-          }))
-      }
-      return []
+  const buildModelOptions = (searchValue: string) => {
+    // If search contains '@', extract the part after '@' and filter providers
+    const atIndex = searchValue.lastIndexOf('@')
+    if (atIndex >= 0) {
+      const prefix = searchValue.substring(0, atIndex)
+      const providerFilter = searchValue.substring(atIndex + 1).toLowerCase()
+      return MODEL_FACTORY_OPTIONS
+        .filter((p) => p.toLowerCase().includes(providerFilter))
+        .map((provider) => ({
+          label: `${prefix || '<model_name>'}@${provider}`,
+          value: `${prefix}@${provider}`,
+        }))
     }
-  }, [])
+    return []
+  }
 
   /**
    * Fetch all RAGFlow servers from the API.
    * Updates loading state during the request.
    */
-  const fetchServers = useCallback(async () => {
+  const fetchServers = async () => {
     try {
       setLoading(true)
       const data = await getRagflowServers()
@@ -118,12 +116,12 @@ const RagflowServersPage = () => {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }
 
   /** Effect: Load servers on mount */
   useEffect(() => {
     fetchServers()
-  }, [fetchServers])
+  }, [])
 
   /**
    * Open modal for creating a new server.

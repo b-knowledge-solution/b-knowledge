@@ -11,7 +11,7 @@
  * @module features/projects/pages/ProjectDetailPage
  */
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Tabs, Button, Tag, Spin, Empty, message } from 'antd'
@@ -69,7 +69,7 @@ const ProjectDetailPage = () => {
    * Fetch the project and its sub-resources.
    * Also pre-fetches all category versions for the Chat tab.
    */
-  const fetchProject = useCallback(async () => {
+  const fetchProject = async () => {
     if (!projectId) return
     try {
       setLoading(true)
@@ -123,12 +123,12 @@ const ProjectDetailPage = () => {
     } finally {
       setLoading(false)
     }
-  }, [projectId])
+  }
 
   /** Effect: Load project on mount */
   useEffect(() => {
     fetchProject()
-  }, [fetchProject])
+  }, [projectId])
 
   // ── Render ────────────────────────────────────────────────────────────
 

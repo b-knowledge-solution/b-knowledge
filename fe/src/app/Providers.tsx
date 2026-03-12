@@ -16,7 +16,8 @@ import { KnowledgeBaseProvider } from '@/features/knowledge-base';
 import { GuidelineProvider } from '@/features/guideline';
 import { ConfirmProvider } from '@/components/ConfirmDialog';
 import { HeaderActionsProvider } from '@/components/HeaderActions';
-import { NavigationProvider } from '@/components/NavigationLoader';
+import { NavigationProvider } from '@/components/NavigationLoader'
+import { useSocketQueryInvalidation } from '@/hooks/useSocket';
 
 // ============================================================================
 // Global Notification Bridge
@@ -34,6 +35,21 @@ export const globalMessage = {
   info: (content: string) => toast.info(content),
   warning: (content: string) => toast.warning(content),
 };
+
+// ============================================================================
+// Socket → Query Bridge
+// ============================================================================
+
+/**
+ * Bridges socket events to TanStack Query cache invalidation.
+ *
+ * @description Renders nothing; exists solely to call the
+ * `useSocketQueryInvalidation` hook inside the React provider tree.
+ */
+function SocketQueryBridge() {
+  useSocketQueryInvalidation()
+  return null
+}
 
 // ============================================================================
 // Providers Component
@@ -68,6 +84,7 @@ export function Providers({ children }: ProvidersProps) {
             <ConfirmProvider>
               <HeaderActionsProvider>
                 <NavigationProvider>
+                  <SocketQueryBridge />
                   {children}
                   <Toaster />
                 </NavigationProvider>

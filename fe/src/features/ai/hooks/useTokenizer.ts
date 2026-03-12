@@ -2,7 +2,7 @@
  * @fileoverview Hook for managing tokenizer state, encoding, and actions.
  * @module features/ai/hooks/useTokenizer
  */
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { encodingForModel, getEncoding, Tiktoken } from 'js-tiktoken'
 
 // ============================================================================
@@ -34,7 +34,7 @@ export interface UseTokenizerReturn {
   isLoading: boolean
   /** Whether tokens were recently copied */
   copied: boolean
-  /** Memoized tokenized text chunks for rendering */
+  /** Tokenized text chunks for rendering */
   tokenizedText: TokenChunk[]
   /** Clear input and reset tokens */
   handleClear: () => void
@@ -127,16 +127,14 @@ export const useTokenizer = (): UseTokenizerReturn => {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  /** Memoized tokenized chunks for visualization */
-  const tokenizedText = useMemo<TokenChunk[]>(() => {
-    if (!encoding) return []
-
-    return tokens.map((token, idx) => ({
-      token,
-      text: encoding.decode([token]),
-      colorClass: TOKEN_COLORS[idx % TOKEN_COLORS.length] ?? TOKEN_COLORS[0] ?? '',
-    }))
-  }, [tokens, encoding])
+  /** Tokenized chunks for visualization — React Compiler handles memoization */
+  const tokenizedText: TokenChunk[] = encoding
+    ? tokens.map((token, idx) => ({
+        token,
+        text: encoding.decode([token]),
+        colorClass: TOKEN_COLORS[idx % TOKEN_COLORS.length] ?? TOKEN_COLORS[0] ?? '',
+      }))
+    : []
 
   return {
     text,

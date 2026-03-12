@@ -1,14 +1,15 @@
 /**
  * @fileoverview Hook for dataset settings CRUD operations.
+ * Uses TanStack Query for fetching and mutating dataset settings.
  *
  * @module features/datasets/hooks/useDatasetSettings
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
-import { datasetApi } from '../api/datasetApi';
-import { globalMessage } from '@/app/App';
-import type { DatasetSettings } from '../types';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
+import { datasetApi } from '../api/datasetApi'
+import type { DatasetSettings } from '../types'
+import { queryKeys } from '@/lib/queryKeys'
 
 // ============================================================================
 // Types
@@ -16,15 +17,15 @@ import type { DatasetSettings } from '../types';
 
 export interface UseDatasetSettingsReturn {
   /** Current settings */
-  settings: DatasetSettings | null;
+  settings: DatasetSettings | null
   /** Whether settings are loading */
-  loading: boolean;
+  loading: boolean
   /** Whether settings are saving */
-  saving: boolean;
+  saving: boolean
   /** Fetch settings */
-  refresh: () => Promise<void>;
+  refresh: () => Promise<void>
   /** Update settings */
-  updateSettings: (data: Partial<DatasetSettings>) => Promise<void>;
+  updateSettings: (data: Partial<DatasetSettings>) => Promise<void>
 }
 
 // ============================================================================
@@ -34,57 +35,49 @@ export interface UseDatasetSettingsReturn {
 /**
  * Hook for managing dataset settings.
  *
- * @param datasetId - Dataset ID
- * @returns Settings state and operations
+ * @param {string | undefined} datasetId - Dataset ID
+ * @returns {UseDatasetSettingsReturn} Settings state and operations
  */
 export function useDatasetSettings(datasetId: string | undefined): UseDatasetSettingsReturn {
-  const { t } = useTranslation();
-  const [settings, setSettings] = useState<DatasetSettings | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
 
-  /** Fetch settings from API. */
-  const fetchSettings = useCallback(async () => {
-    if (!datasetId) return;
-    setLoading(true);
-    try {
-      const data = await datasetApi.getDatasetSettings(datasetId);
-      setSettings(data);
-    } catch (err) {
-      console.error('Failed to load dataset settings:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [datasetId]);
+  // Fetch settings via TanStack Query
+  const { data: settings = null, isLoading } = useQuery({
+    queryKey: queryKeys.datasets.settings(datasetId ?? ''),
+    queryFn: () => datasetApi.getDatasetSettings(datasetId!),
+    enabled: !!datasetId,
+  })
 
-  useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings]);
-
-  /** Update settings. */
-  const updateSettings = useCallback(
-    async (data: Partial<DatasetSettings>) => {
-      if (!datasetId) return;
-      setSaving(true);
-      try {
-        const updated = await datasetApi.updateDatasetSettings(datasetId, data);
-        setSettings(updated);
-        globalMessage.success(t('datasetSettings.saveSuccess'));
-      } catch (err: any) {
-        globalMessage.error(err?.message || t('common.error'));
-        throw err;
-      } finally {
-        setSaving(false);
-      }
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationKey: ['datasets', 'settings', 'save'],
+    mutationFn: (data: Partial<DatasetSettings>) =>
+      datasetApi.updateDatasetSettings(datasetId!, data),
+    meta: { successMessage: t('datasetSettings.saveSuccess') },
+    onSuccess: (updated) => {
+      // Update the cache directly with the returned data
+      queryClient.setQueryData(queryKeys.datasets.settings(datasetId!), updated)
     },
-    [datasetId, t],
-  );
+  })
+
+  /** Update settings */
+  const updateSettings = async (data: Partial<DatasetSettings>) => {
+    if (!datasetId) return
+    await updateMutation.mutateAsync(data)
+  }
+
+  /** Refresh settings by invalidating the query */
+  const refresh = async () => {
+    if (!datasetId) return
+    await queryClient.invalidateQueries({ queryKey: queryKeys.datasets.settings(datasetId) })
+  }
 
   return {
     settings,
-    loading,
-    saving,
-    refresh: fetchSettings,
+    loading: isLoading,
+    saving: updateMutation.isPending,
+    refresh,
     updateSettings,
-  };
+  }
 }

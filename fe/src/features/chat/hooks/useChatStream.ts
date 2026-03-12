@@ -12,7 +12,7 @@
  * @module features/ai/hooks/useChatStream
  */
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef } from 'react'
 import { chatApi } from '../api/chatApi'
 import type { ChatMessage, ChatReference } from '../types/chat.types'
 
@@ -72,6 +72,7 @@ export interface UseChatStreamReturn {
 
 /**
  * @description Hook to manage SSE chat streaming with delta token support.
+ * SSE streaming is imperative and does not use TanStack Query.
  * @param conversationId - The active conversation ID
  * @param dialogId - The dialog configuration ID
  * @returns Streaming state and control functions
@@ -98,167 +99,164 @@ export function useChatStream(
    * Uses delta streaming for efficient token-by-token display.
    * @param content - The user message text
    */
-  const sendMessage = useCallback(
-    async (content: string) => {
-      // Guard: require active conversation and dialog
-      if (!conversationId || !dialogId) return
+  const sendMessage = async (content: string) => {
+    // Guard: require active conversation and dialog
+    if (!conversationId || !dialogId) return
 
-      // Reset state
-      setError(null)
-      setPipelineStatus(null)
-      setMetrics(null)
+    // Reset state
+    setError(null)
+    setPipelineStatus(null)
+    setMetrics(null)
 
-      // Add user message to the list
-      const userMessage: ChatMessage = {
-        id: `user-${Date.now()}`,
-        role: 'user',
-        content,
-        timestamp: new Date().toISOString(),
+    // Add user message to the list
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content,
+      timestamp: new Date().toISOString(),
+    }
+    setMessages((prev) => [...prev, userMessage])
+
+    // Begin streaming
+    setIsStreaming(true)
+    setCurrentAnswer('')
+    setReferences(null)
+    answerRef.current = ''
+
+    try {
+      // Create a new abort controller for this request
+      abortRef.current = new AbortController()
+
+      // Call the streaming endpoint
+      const response = await chatApi.sendMessage(conversationId, content, dialogId)
+
+      // Check for HTTP errors
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}))
+        throw new Error(errData.error || `Chat error: ${response.status}`)
       }
-      setMessages((prev) => [...prev, userMessage])
 
-      // Begin streaming
-      setIsStreaming(true)
-      setCurrentAnswer('')
-      setReferences(null)
-      answerRef.current = ''
+      // Read the SSE stream
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error('No response body')
 
-      try {
-        // Create a new abort controller for this request
-        abortRef.current = new AbortController()
+      const decoder = new TextDecoder()
+      let accumulated = ''
+      let finalAnswer = ''
 
-        // Call the streaming endpoint
-        const response = await chatApi.sendMessage(conversationId, content, dialogId)
+      // Process the stream chunk by chunk
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
 
-        // Check for HTTP errors
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}))
-          throw new Error(errData.error || `Chat error: ${response.status}`)
-        }
+        // Decode the received bytes
+        accumulated += decoder.decode(value, { stream: true })
 
-        // Read the SSE stream
-        const reader = response.body?.getReader()
-        if (!reader) throw new Error('No response body')
+        // Parse SSE data lines
+        const lines = accumulated.split('\n')
+        // Keep the last incomplete line for the next iteration
+        accumulated = lines.pop() || ''
 
-        const decoder = new TextDecoder()
-        let accumulated = ''
-        let finalAnswer = ''
+        for (const line of lines) {
+          // Skip empty lines and comments
+          if (!line.startsWith('data:')) continue
 
-        // Process the stream chunk by chunk
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
+          const dataStr = line.slice(5).trim()
 
-          // Decode the received bytes
-          accumulated += decoder.decode(value, { stream: true })
+          // Handle completion signal
+          if (dataStr === '[DONE]') continue
 
-          // Parse SSE data lines
-          const lines = accumulated.split('\n')
-          // Keep the last incomplete line for the next iteration
-          accumulated = lines.pop() || ''
+          try {
+            const data = JSON.parse(dataStr)
 
-          for (const line of lines) {
-            // Skip empty lines and comments
-            if (!line.startsWith('data:')) continue
+            // Handle delta tokens (incremental, append to current answer)
+            if (data.delta !== undefined) {
+              answerRef.current += data.delta
+              setCurrentAnswer(answerRef.current)
+              setPipelineStatus('generating')
+            }
 
-            const dataStr = line.slice(5).trim()
+            // Handle pipeline status updates
+            if (data.status !== undefined) {
+              setPipelineStatus(data.status as PipelineStatus)
+            }
 
-            // Handle completion signal
-            if (dataStr === '[DONE]') continue
+            // Handle reference data (sent early for sidebar display)
+            if (data.reference && !data.answer) {
+              setReferences(data.reference)
+            }
 
-            try {
-              const data = JSON.parse(dataStr)
-
-              // Handle delta tokens (incremental, append to current answer)
-              if (data.delta !== undefined) {
-                answerRef.current += data.delta
-                setCurrentAnswer(answerRef.current)
-                setPipelineStatus('generating')
-              }
-
-              // Handle pipeline status updates
-              if (data.status !== undefined) {
-                setPipelineStatus(data.status as PipelineStatus)
-              }
-
-              // Handle reference data (sent early for sidebar display)
-              if (data.reference && !data.answer) {
+            // Handle final processed answer with citations
+            if (data.answer !== undefined) {
+              finalAnswer = data.answer
+              // Update references with citation tracking
+              if (data.reference) {
                 setReferences(data.reference)
               }
-
-              // Handle final processed answer with citations
-              if (data.answer !== undefined) {
-                finalAnswer = data.answer
-                // Update references with citation tracking
-                if (data.reference) {
-                  setReferences(data.reference)
-                }
-                // Store metrics
-                if (data.metrics) {
-                  setMetrics(data.metrics)
-                }
+              // Store metrics
+              if (data.metrics) {
+                setMetrics(data.metrics)
               }
-
-              // Handle errors from the pipeline
-              if (data.error) {
-                throw new Error(data.error)
-              }
-            } catch (parseErr: any) {
-              // Re-throw actual errors (not JSON parse errors)
-              if (parseErr.message && !parseErr.message.includes('JSON')) {
-                throw parseErr
-              }
-              // Skip malformed JSON lines
             }
+
+            // Handle errors from the pipeline
+            if (data.error) {
+              throw new Error(data.error)
+            }
+          } catch (parseErr: any) {
+            // Re-throw actual errors (not JSON parse errors)
+            if (parseErr.message && !parseErr.message.includes('JSON')) {
+              throw parseErr
+            }
+            // Skip malformed JSON lines
           }
         }
-
-        // Use final processed answer (with citations) if available,
-        // otherwise fall back to accumulated deltas
-        const completedAnswer = finalAnswer || answerRef.current
-
-        // Finalize: add assistant message with the complete answer
-        if (completedAnswer) {
-          const assistantMessage: ChatMessage = {
-            id: `assistant-${Date.now()}`,
-            role: 'assistant',
-            content: completedAnswer,
-            timestamp: new Date().toISOString(),
-            reference: references ?? undefined,
-          }
-          setMessages((prev) => [...prev, assistantMessage])
-        }
-        setCurrentAnswer('')
-        answerRef.current = ''
-      } catch (err: any) {
-        // Handle abort (user cancelled)
-        if (err.name === 'AbortError') return
-
-        // Set error state
-        const errorMsg = err.message || 'An error occurred while streaming'
-        setError(errorMsg)
-
-        // Add error as assistant message
-        const errorMessage: ChatMessage = {
-          id: `error-${Date.now()}`,
-          role: 'assistant',
-          content: `Error: ${errorMsg}`,
-          timestamp: new Date().toISOString(),
-        }
-        setMessages((prev) => [...prev, errorMessage])
-      } finally {
-        setIsStreaming(false)
-        setPipelineStatus(null)
-        abortRef.current = null
       }
-    },
-    [conversationId, dialogId, references],
-  )
+
+      // Use final processed answer (with citations) if available,
+      // otherwise fall back to accumulated deltas
+      const completedAnswer = finalAnswer || answerRef.current
+
+      // Finalize: add assistant message with the complete answer
+      if (completedAnswer) {
+        const assistantMessage: ChatMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: completedAnswer,
+          timestamp: new Date().toISOString(),
+          reference: references ?? undefined,
+        }
+        setMessages((prev) => [...prev, assistantMessage])
+      }
+      setCurrentAnswer('')
+      answerRef.current = ''
+    } catch (err: any) {
+      // Handle abort (user cancelled)
+      if (err.name === 'AbortError') return
+
+      // Set error state
+      const errorMsg = err.message || 'An error occurred while streaming'
+      setError(errorMsg)
+
+      // Add error as assistant message
+      const errorMessage: ChatMessage = {
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: `Error: ${errorMsg}`,
+        timestamp: new Date().toISOString(),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+    } finally {
+      setIsStreaming(false)
+      setPipelineStatus(null)
+      abortRef.current = null
+    }
+  }
 
   /**
    * Abort the current streaming response.
    */
-  const stopStream = useCallback(() => {
+  const stopStream = () => {
     if (abortRef.current) {
       abortRef.current.abort()
       abortRef.current = null
@@ -278,12 +276,12 @@ export function useChatStream(
       setCurrentAnswer('')
       answerRef.current = ''
     }
-  }, [])
+  }
 
   /**
    * Clear all messages.
    */
-  const clearMessages = useCallback(() => {
+  const clearMessages = () => {
     setMessages([])
     setCurrentAnswer('')
     setReferences(null)
@@ -291,7 +289,7 @@ export function useChatStream(
     setMetrics(null)
     setError(null)
     answerRef.current = ''
-  }, [])
+  }
 
   return {
     messages,

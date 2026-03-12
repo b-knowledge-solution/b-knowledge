@@ -2,7 +2,6 @@
  * @fileoverview Sessions per day column chart for the admin dashboard.
  * @module features/dashboard/components/SessionsPerDayChart
  */
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -31,13 +30,10 @@ export function SessionsPerDayChart({ activityTrend }: SessionsPerDayChartProps)
     const { t } = useTranslation()
 
     /** Combined daily session totals */
-    const sessionsPerDayData = useMemo(() =>
-        activityTrend.map(item => ({
-            date: item.date,
-            sessions: item.chatCount + item.searchCount,
-        })),
-        [activityTrend]
-    )
+    const sessionsPerDayData = activityTrend.map(item => ({
+        date: item.date,
+        sessions: item.chatCount + item.searchCount,
+    }))
 
     return (
         <Card>

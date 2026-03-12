@@ -8,7 +8,7 @@
  * - Table of granted teams with delete buttons
  * - Cancel/Save footer with batch save
  */
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Modal, Select, Table, Switch, Button, message } from 'antd'
 import { Lock, Globe, Users, Trash2 } from 'lucide-react'
@@ -70,7 +70,7 @@ export const ProjectPermissionModal: React.FC<ProjectPermissionModalProps> = ({
   /**
    * Fetch permissions and teams when modal opens.
    */
-  const loadData = useCallback(async () => {
+  const loadData = async () => {
     if (!open || !project.id) return
     setLoading(true)
     try {
@@ -92,19 +92,17 @@ export const ProjectPermissionModal: React.FC<ProjectPermissionModalProps> = ({
     } finally {
       setLoading(false)
     }
-  }, [open, project.id, project.is_private])
+  }
 
   // Load data when modal opens
   useEffect(() => {
     loadData()
-  }, [loadData])
+  }, [open, project.id, project.is_private])
 
   /**
    * Build table data from selected team IDs.
    */
-  const selectedTeams = useMemo(() => {
-    return teams.filter((team) => selectedTeamIds.includes(team.id))
-  }, [selectedTeamIds, teams])
+  const selectedTeams = teams.filter((team) => selectedTeamIds.includes(team.id))
 
   /**
    * Save all permission changes to server.

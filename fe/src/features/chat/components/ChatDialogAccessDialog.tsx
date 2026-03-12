@@ -4,7 +4,7 @@
  * @module features/ai/components/ChatDialogAccessDialog
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -92,7 +92,7 @@ export default function ChatDialogAccessDialog({
   /**
    * Fetch access entries, users, and teams when dialog opens.
    */
-  const loadData = useCallback(async () => {
+  const loadData = async () => {
     if (!dialog) return
     try {
       // Fetch current access entries
@@ -115,7 +115,7 @@ export default function ChatDialogAccessDialog({
     } catch (error) {
       console.error('Failed to load access data:', error)
     }
-  }, [dialog])
+  }
 
   // Load data when opened
   useEffect(() => {
@@ -127,7 +127,7 @@ export default function ChatDialogAccessDialog({
       setUserSearch('')
       setTeamSearch('')
     }
-  }, [open, dialog, loadData])
+  }, [open, dialog])
 
   /**
    * Toggle a user in the selected set.

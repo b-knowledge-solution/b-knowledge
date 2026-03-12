@@ -2,25 +2,36 @@
  * @fileoverview Modal for editing a version's label, page rank, and pipeline config.
  * Shows built-in parser fields (pre-filled from version metadata or category defaults)
  * with a radio toggle matching RAGFlow's UI pattern.
+ * Uses native useState instead of Ant Design Form.
  * @module features/projects/components/EditVersionModal
  */
 
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Modal, Form, Input, InputNumber, Slider, Divider, Typography, Tooltip, Row, Col, Radio, message } from 'antd'
+import { Modal, Input, InputNumber, Slider, Divider, Typography, Tooltip, Row, Col, Radio, message } from 'antd'
 import type { RadioChangeEvent } from 'antd'
 import { InfoCircleOutlined } from '@ant-design/icons'
 import {
   updateCategoryVersion,
   type DocumentCategoryVersion,
 } from '../api/projectService'
-import BuiltInParserFields from './BuiltInParserFields'
+import BuiltInParserFields, { type ParserConfig } from './BuiltInParserFields'
 
 const { Text } = Typography
 
 // ============================================================================
 // Types
 // ============================================================================
+
+/** Form data shape for version editing */
+interface EditVersionFormData {
+  version_label: string
+  pagerank: number
+  pipeline_id: string
+  parse_type?: number
+  chunk_method: string
+  parser_config: ParserConfig
+}
 
 interface EditVersionModalProps {
   /** Whether the modal is visible */
@@ -65,8 +76,15 @@ const EditVersionModal = ({
   onCancel,
 }: EditVersionModalProps) => {
   const { t } = useTranslation()
-  const [form] = Form.useForm()
+  const [formData, setFormData] = useState<EditVersionFormData>({
+    version_label: '',
+    pagerank: 0,
+    pipeline_id: '',
+    chunk_method: 'naive',
+    parser_config: {} as ParserConfig,
+  })
   const [parseMode, setParseMode] = useState<'builtin' | 'pipeline'>('builtin')
+  const [labelError, setLabelError] = useState('')
 
   // Pre-fill form when version changes
   useEffect(() => {
@@ -85,7 +103,7 @@ const EditVersionModal = ({
         ? Math.round(rawOverlap * 100)
         : rawOverlap
 
-      form.setFieldsValue({
+      setFormData({
         version_label: version.version_label,
         pagerank: meta.pagerank ?? 0,
         pipeline_id: meta.pipeline_id ?? '',
@@ -106,32 +124,67 @@ const EditVersionModal = ({
           html4excel: verPc.html4excel ?? catPc.html4excel ?? false,
         },
       })
+      setLabelError('')
     }
-  }, [version, open, form, categoryConfig])
+  }, [version, open, categoryConfig])
 
   /**
-   * Handle form submission — validates and calls API.
+   * Update a top-level form field.
+   * @param field - Field name
+   * @param value - New value
+   */
+  const updateField = <K extends keyof EditVersionFormData>(field: K, value: EditVersionFormData[K]) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  /**
+   * Update a parser_config field.
+   * @param field - Parser config field name
+   * @param value - New value
+   */
+  const updateParserConfig = (field: string, value: unknown) => {
+    setFormData((prev) => ({
+      ...prev,
+      parser_config: { ...prev.parser_config, [field]: value },
+    }))
+  }
+
+  /**
+   * Handle form submission -- validates and calls API.
    */
   const handleSubmit = async () => {
     if (!version) return
+
+    // Inline validation
+    if (!formData.version_label.trim()) {
+      setLabelError(t('projectManagement.versions.labelPlaceholder'))
+      return
+    }
+
+    if (parseMode === 'pipeline' && !formData.pipeline_id?.trim()) {
+      message.error(t('projectManagement.versions.pipelineId') + ' is required')
+      return
+    }
+
+    setLabelError('')
+
     try {
-      const values = await form.validateFields()
       onSavingChange(true)
-      await updateCategoryVersion(projectId, categoryId, version.id, {
-        version_label: values.version_label.trim(),
-        pagerank: values.pagerank ?? 0,
-        ...(parseMode === 'pipeline' ? {
-          pipeline_id: values.pipeline_id?.trim() || undefined,
-          parse_type: values.parse_type ?? undefined,
-        } : {
-          chunk_method: values.chunk_method,
-          parser_config: values.parser_config,
-        }),
-      })
+      const payload: Record<string, any> = {
+        version_label: formData.version_label.trim(),
+        pagerank: formData.pagerank ?? 0,
+      }
+      if (parseMode === 'pipeline') {
+        if (formData.pipeline_id?.trim()) payload.pipeline_id = formData.pipeline_id.trim()
+        if (formData.parse_type != null) payload.parse_type = formData.parse_type
+      } else {
+        payload.chunk_method = formData.chunk_method
+        payload.parser_config = formData.parser_config
+      }
+      await updateCategoryVersion(projectId, categoryId, version.id, payload)
       message.success(t('projectManagement.versions.updateSuccess'))
       onSaved()
     } catch (err) {
-      if (err && typeof err === 'object' && 'errorFields' in err) return
       message.error(String(err))
     } finally {
       onSavingChange(false)
@@ -149,40 +202,54 @@ const EditVersionModal = ({
       width={600}
       styles={{ body: { maxHeight: '70vh', overflowY: 'auto', overflowX: 'hidden' } }}
     >
-      <Form form={form} layout="vertical">
+      <div className="mt-4 space-y-4">
         {/* Version label */}
-        <Form.Item
-          name="version_label"
-          label={t('projectManagement.versions.label')}
-          rules={[{ required: true, message: t('projectManagement.versions.labelPlaceholder') }]}
-        >
-          <Input placeholder={t('projectManagement.versions.labelPlaceholder')} />
-        </Form.Item>
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            {t('projectManagement.versions.label')} <span className="text-red-500">*</span>
+          </label>
+          <Input
+            placeholder={t('projectManagement.versions.labelPlaceholder')}
+            value={formData.version_label}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              updateField('version_label', e.target.value)
+              if (labelError) setLabelError('')
+            }}
+            status={labelError ? 'error' : undefined}
+          />
+          {labelError && <p className="text-red-500 text-xs mt-1">{labelError}</p>}
+        </div>
 
         {/* Page Rank slider */}
-        <Form.Item
-          label={
+        <div>
+          <label className="block text-sm font-medium mb-1">
             <span>
               {t('projectManagement.versions.pageRank')}
               <Tooltip title={t('projectManagement.versions.pageRankTip')}>
                 <InfoCircleOutlined style={{ marginLeft: 4, color: '#999' }} />
               </Tooltip>
             </span>
-          }
-        >
+          </label>
           <Row gutter={12} align="middle">
             <Col flex="auto">
-              <Form.Item name="pagerank" noStyle>
-                <Slider min={0} max={100} />
-              </Form.Item>
+              <Slider
+                min={0}
+                max={100}
+                value={formData.pagerank}
+                onChange={(v: number) => updateField('pagerank', v)}
+              />
             </Col>
             <Col>
-              <Form.Item name="pagerank" noStyle>
-                <InputNumber min={0} max={100} style={{ width: 70 }} />
-              </Form.Item>
+              <InputNumber
+                min={0}
+                max={100}
+                style={{ width: 70 }}
+                value={formData.pagerank}
+                onChange={(v: number | null) => updateField('pagerank', v ?? 0)}
+              />
             </Col>
           </Row>
-        </Form.Item>
+        </div>
 
         {/* Ingestion pipeline section */}
         <Divider orientation="left" plain>
@@ -192,29 +259,37 @@ const EditVersionModal = ({
         </Divider>
 
         {/* Parse type radio toggle */}
-        <Form.Item label={t('projectManagement.versions.parseType')}>
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            {t('projectManagement.versions.parseType')}
+          </label>
           <Radio.Group
             value={parseMode}
             onChange={(e: RadioChangeEvent) => {
               setParseMode(e.target.value)
               if (e.target.value === 'builtin') {
-                form.setFieldValue('pipeline_id', undefined)
-                form.setFieldValue('parse_type', undefined)
+                updateField('pipeline_id', '')
+                updateField('parse_type', undefined)
               }
             }}
           >
             <Radio value="builtin">{t('projectManagement.versions.parseTypeBuiltIn')}</Radio>
             <Radio value="pipeline">{t('projectManagement.versions.parseTypeChoosePipeline')}</Radio>
           </Radio.Group>
-        </Form.Item>
+        </div>
 
-        {/* Built-in fields — pre-filled, user can override */}
+        {/* Built-in fields -- pre-filled, user can override */}
         {parseMode === 'builtin' && (
           <>
             <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 16 }}>
               {t('projectManagement.versions.builtInHint')}
             </Text>
-            <BuiltInParserFields form={form} />
+            <BuiltInParserFields
+              chunkMethod={formData.chunk_method}
+              onChunkMethodChange={(v: string) => updateField('chunk_method', v)}
+              parserConfig={formData.parser_config}
+              onParserConfigChange={updateParserConfig}
+            />
           </>
         )}
 
@@ -224,26 +299,31 @@ const EditVersionModal = ({
             <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 16 }}>
               {t('projectManagement.versions.pipelineSectionTip')}
             </Text>
-            <Form.Item
-              name="pipeline_id"
-              label={t('projectManagement.versions.pipelineId')}
-              rules={[{ required: true, message: t('projectManagement.versions.pipelineId') + ' is required' }]}
-            >
-              <Input placeholder={t('projectManagement.versions.pipelineIdPlaceholder')} />
-            </Form.Item>
-            <Form.Item
-              name="parse_type"
-              label={t('projectManagement.versions.parseTypeNum')}
-            >
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">
+                {t('projectManagement.versions.pipelineId')} <span className="text-red-500">*</span>
+              </label>
+              <Input
+                placeholder={t('projectManagement.versions.pipelineIdPlaceholder')}
+                value={formData.pipeline_id}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('pipeline_id', e.target.value)}
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">
+                {t('projectManagement.versions.parseTypeNum')}
+              </label>
               <InputNumber
                 min={1}
                 style={{ width: '100%' }}
                 placeholder={t('projectManagement.versions.parseTypePlaceholder') || ''}
+                value={formData.parse_type}
+                onChange={(v: number | null) => updateField('parse_type', v ?? undefined)}
               />
-            </Form.Item>
+            </div>
           </>
         )}
-      </Form>
+      </div>
     </Modal>
   )
 }

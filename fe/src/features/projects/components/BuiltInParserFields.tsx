@@ -8,9 +8,8 @@
  */
 
 import { useTranslation } from 'react-i18next'
-import { Form, Select, Input, InputNumber, Switch, Slider, Tooltip, Row, Col } from 'antd'
+import { Select, Input, InputNumber, Switch, Slider, Tooltip, Row, Col } from 'antd'
 import { InfoCircleOutlined } from '@ant-design/icons'
-import type { FormInstance } from 'antd'
 
 // ============================================================================
 // Constants
@@ -42,14 +41,31 @@ const PDF_PARSER_OPTIONS = [
 // Types
 // ============================================================================
 
+/** Parser config shape used by BuiltInParserFields */
+export interface ParserConfig {
+  layout_recognize?: string
+  chunk_token_num?: number
+  delimiter?: string
+  child_chunk?: boolean
+  child_chunk_delimiter?: string
+  page_index?: boolean
+  image_context_size?: number
+  auto_metadata?: boolean
+  overlapped_percent?: number
+  auto_keywords?: number
+  auto_questions?: number
+  html4excel?: boolean
+}
+
 interface BuiltInParserFieldsProps {
-  /** Form instance from parent */
-  form: FormInstance
-  /**
-   * Field name prefix. In CategoryModal this is ['dataset_config'],
-   * in version modals it is ['parser_config'] (flat).
-   */
-  prefix?: (string | number)[]
+  /** Current chunk method value */
+  chunkMethod?: string
+  /** Handler for chunk method change */
+  onChunkMethodChange: (value: string) => void
+  /** Current parser config */
+  parserConfig: ParserConfig
+  /** Handler for parser config field changes */
+  onParserConfigChange: (field: string, value: unknown) => void
 }
 
 // ============================================================================
@@ -63,209 +79,273 @@ interface BuiltInParserFieldsProps {
  * @param {BuiltInParserFieldsProps} props - Component props
  * @returns {JSX.Element} The rendered form fields
  */
-const BuiltInParserFields = ({ form, prefix = [] }: BuiltInParserFieldsProps) => {
+const BuiltInParserFields = ({
+  chunkMethod,
+  onChunkMethodChange,
+  parserConfig,
+  onParserConfigChange,
+}: BuiltInParserFieldsProps) => {
   const { t } = useTranslation()
 
-  /** Helper to build nested field name */
-  const n = (field: string) => [...prefix, field]
-  const p = (field: string) => [...prefix, 'parser_config', field]
-
-  /** Watch child_chunk toggle to conditionally show delimiter input */
-  const childChunkEnabled = Form.useWatch(p('child_chunk'), form)
+  /**
+   * Shortcut to update a parser config field.
+   * @param field - Field name within parser_config
+   * @param value - New value
+   */
+  const updateField = (field: string, value: unknown) => {
+    onParserConfigChange(field, value)
+  }
 
   return (
     <>
       {/* Chunk method */}
-      <Form.Item
-        name={n('chunk_method')}
-        label={t('projectManagement.categories.datasetConfig.chunkMethod')}
-      >
-        <Select options={CHUNK_METHOD_OPTIONS} allowClear placeholder="Inherit from category" />
-      </Form.Item>
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-1">
+          {t('projectManagement.categories.datasetConfig.chunkMethod')}
+        </label>
+        <Select
+          value={chunkMethod}
+          onChange={onChunkMethodChange}
+          options={CHUNK_METHOD_OPTIONS}
+          allowClear
+          placeholder="Inherit from category"
+          className="w-full"
+        />
+      </div>
 
       {/* Layout Recognize (PDF Parser) */}
-      <Form.Item
-        name={p('layout_recognize')}
-        label={t('projectManagement.categories.datasetConfig.pdfParser')}
-      >
-        <Select options={PDF_PARSER_OPTIONS} allowClear placeholder="Inherit from category" />
-      </Form.Item>
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-1">
+          {t('projectManagement.categories.datasetConfig.pdfParser')}
+        </label>
+        <Select
+          value={parserConfig.layout_recognize}
+          onChange={(v: string) => updateField('layout_recognize', v)}
+          options={PDF_PARSER_OPTIONS}
+          allowClear
+          placeholder="Inherit from category"
+          className="w-full"
+        />
+      </div>
 
       {/* Chunk token number */}
-      <Form.Item
-        name={p('chunk_token_num')}
-        label={t('projectManagement.categories.datasetConfig.chunkTokenNum')}
-      >
-        <InputNumber min={1} max={2048} style={{ width: '100%' }} placeholder="Inherit from category" />
-      </Form.Item>
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-1">
+          {t('projectManagement.categories.datasetConfig.chunkTokenNum')}
+        </label>
+        <InputNumber
+          min={1}
+          max={2048}
+          style={{ width: '100%' }}
+          placeholder="Inherit from category"
+          value={parserConfig.chunk_token_num}
+          onChange={(v: number | null) => updateField('chunk_token_num', v ?? undefined)}
+        />
+      </div>
 
       {/* Delimiter */}
-      <Form.Item
-        name={p('delimiter')}
-        label={t('projectManagement.categories.datasetConfig.delimiter')}
-      >
-        <Input placeholder="Inherit from category" />
-      </Form.Item>
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-1">
+          {t('projectManagement.categories.datasetConfig.delimiter')}
+        </label>
+        <Input
+          placeholder="\n"
+          value={parserConfig.delimiter}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('delimiter', e.target.value)}
+        />
+      </div>
 
       {/* Child chunk for retrieval */}
-      <Form.Item
-        name={p('child_chunk')}
-        label={t('projectManagement.categories.datasetConfig.childChunk')}
-        valuePropName="checked"
-      >
-        <Switch />
-      </Form.Item>
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-1">
+          {t('projectManagement.categories.datasetConfig.childChunk')}
+        </label>
+        <Switch
+          checked={parserConfig.child_chunk ?? false}
+          onChange={(v: boolean) => updateField('child_chunk', v)}
+        />
+      </div>
 
-      {/* Child chunk delimiter — shown only when child_chunk is enabled */}
-      {childChunkEnabled && (
-        <Form.Item
-          name={p('child_chunk_delimiter')}
-          label={t('projectManagement.categories.datasetConfig.childChunkDelimiter')}
-        >
-          <Input placeholder="\n" />
-        </Form.Item>
+      {/* Child chunk delimiter -- shown only when child_chunk is enabled */}
+      {parserConfig.child_chunk && (
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1">
+            {t('projectManagement.categories.datasetConfig.childChunkDelimiter')}
+          </label>
+          <Input
+            placeholder="\n"
+            value={parserConfig.child_chunk_delimiter}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('child_chunk_delimiter', e.target.value)}
+          />
+        </div>
       )}
 
       {/* PageIndex */}
-      <Form.Item
-        name={p('page_index')}
-        label={
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-1">
           <span>
             {t('projectManagement.categories.datasetConfig.pageIndex')}
             <Tooltip title={t('projectManagement.categories.datasetConfig.pageIndexTip')}>
               <InfoCircleOutlined style={{ marginLeft: 4, color: '#999' }} />
             </Tooltip>
           </span>
-        }
-        valuePropName="checked"
-      >
-        <Switch />
-      </Form.Item>
+        </label>
+        <Switch
+          checked={parserConfig.page_index ?? false}
+          onChange={(v: boolean) => updateField('page_index', v)}
+        />
+      </div>
 
       {/* Image & table context window */}
-      <Form.Item
-        label={
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-1">
           <span>
             {t('projectManagement.categories.datasetConfig.imageContextSize')}
             <Tooltip title={t('projectManagement.categories.datasetConfig.imageContextSizeTip')}>
               <InfoCircleOutlined style={{ marginLeft: 4, color: '#999' }} />
             </Tooltip>
           </span>
-        }
-      >
+        </label>
         <Row gutter={12} align="middle">
           <Col flex="auto">
-            <Form.Item name={p('image_context_size')} noStyle>
-              <Slider min={0} max={256} />
-            </Form.Item>
+            <Slider
+              min={0}
+              max={256}
+              value={parserConfig.image_context_size ?? 128}
+              onChange={(v: number) => updateField('image_context_size', v)}
+            />
           </Col>
           <Col>
-            <Form.Item name={p('image_context_size')} noStyle>
-              <InputNumber min={0} max={256} style={{ width: 70 }} />
-            </Form.Item>
+            <InputNumber
+              min={0}
+              max={256}
+              style={{ width: 70 }}
+              value={parserConfig.image_context_size ?? 128}
+              onChange={(v: number | null) => updateField('image_context_size', v ?? 0)}
+            />
           </Col>
         </Row>
-      </Form.Item>
+      </div>
 
       {/* Auto metadata */}
-      <Form.Item
-        name={p('auto_metadata')}
-        label={
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-1">
           <span>
             {t('projectManagement.categories.datasetConfig.autoMetadata')}
             <Tooltip title={t('projectManagement.categories.datasetConfig.autoMetadataTip')}>
               <InfoCircleOutlined style={{ marginLeft: 4, color: '#999' }} />
             </Tooltip>
           </span>
-        }
-        valuePropName="checked"
-      >
-        <Switch />
-      </Form.Item>
+        </label>
+        <Switch
+          checked={parserConfig.auto_metadata ?? true}
+          onChange={(v: boolean) => updateField('auto_metadata', v)}
+        />
+      </div>
 
       {/* Overlapped percent */}
-      <Form.Item
-        label={t('projectManagement.categories.datasetConfig.overlappedPercent')}
-      >
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-1">
+          {t('projectManagement.categories.datasetConfig.overlappedPercent')}
+        </label>
         <Row gutter={12} align="middle">
           <Col flex="auto">
-            <Form.Item name={p('overlapped_percent')} noStyle>
-              <Slider min={0} max={100} />
-            </Form.Item>
+            <Slider
+              min={0}
+              max={100}
+              value={parserConfig.overlapped_percent ?? 4}
+              onChange={(v: number) => updateField('overlapped_percent', v)}
+            />
           </Col>
           <Col>
-            <Form.Item name={p('overlapped_percent')} noStyle>
-              <InputNumber min={0} max={100} style={{ width: 70 }} />
-            </Form.Item>
+            <InputNumber
+              min={0}
+              max={100}
+              style={{ width: 70 }}
+              value={parserConfig.overlapped_percent ?? 4}
+              onChange={(v: number | null) => updateField('overlapped_percent', v ?? 0)}
+            />
           </Col>
         </Row>
-      </Form.Item>
+      </div>
 
       {/* Auto-keywords */}
-      <Form.Item
-        label={
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-1">
           <span>
             {t('projectManagement.categories.datasetConfig.autoKeyword')}
             <Tooltip title={t('projectManagement.categories.datasetConfig.autoKeywordTip')}>
               <InfoCircleOutlined style={{ marginLeft: 4, color: '#999' }} />
             </Tooltip>
           </span>
-        }
-      >
+        </label>
         <Row gutter={12} align="middle">
           <Col flex="auto">
-            <Form.Item name={p('auto_keywords')} noStyle>
-              <Slider min={0} max={32} />
-            </Form.Item>
+            <Slider
+              min={0}
+              max={32}
+              value={parserConfig.auto_keywords ?? 0}
+              onChange={(v: number) => updateField('auto_keywords', v)}
+            />
           </Col>
           <Col>
-            <Form.Item name={p('auto_keywords')} noStyle>
-              <InputNumber min={0} max={32} style={{ width: 70 }} />
-            </Form.Item>
+            <InputNumber
+              min={0}
+              max={32}
+              style={{ width: 70 }}
+              value={parserConfig.auto_keywords ?? 0}
+              onChange={(v: number | null) => updateField('auto_keywords', v ?? 0)}
+            />
           </Col>
         </Row>
-      </Form.Item>
+      </div>
 
       {/* Auto-questions */}
-      <Form.Item
-        label={
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-1">
           <span>
             {t('projectManagement.categories.datasetConfig.autoQuestion')}
             <Tooltip title={t('projectManagement.categories.datasetConfig.autoQuestionTip')}>
               <InfoCircleOutlined style={{ marginLeft: 4, color: '#999' }} />
             </Tooltip>
           </span>
-        }
-      >
+        </label>
         <Row gutter={12} align="middle">
           <Col flex="auto">
-            <Form.Item name={p('auto_questions')} noStyle>
-              <Slider min={0} max={10} />
-            </Form.Item>
+            <Slider
+              min={0}
+              max={10}
+              value={parserConfig.auto_questions ?? 0}
+              onChange={(v: number) => updateField('auto_questions', v)}
+            />
           </Col>
           <Col>
-            <Form.Item name={p('auto_questions')} noStyle>
-              <InputNumber min={0} max={10} style={{ width: 70 }} />
-            </Form.Item>
+            <InputNumber
+              min={0}
+              max={10}
+              style={{ width: 70 }}
+              value={parserConfig.auto_questions ?? 0}
+              onChange={(v: number | null) => updateField('auto_questions', v ?? 0)}
+            />
           </Col>
         </Row>
-      </Form.Item>
+      </div>
 
       {/* HTML for Excel */}
-      <Form.Item
-        name={p('html4excel')}
-        label={
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-1">
           <span>
             {t('projectManagement.categories.datasetConfig.html4excel')}
             <Tooltip title={t('projectManagement.categories.datasetConfig.html4excelTip')}>
               <InfoCircleOutlined style={{ marginLeft: 4, color: '#999' }} />
             </Tooltip>
           </span>
-        }
-        valuePropName="checked"
-      >
-        <Switch />
-      </Form.Item>
+        </label>
+        <Switch
+          checked={parserConfig.html4excel ?? false}
+          onChange={(v: boolean) => updateField('html4excel', v)}
+        />
+      </div>
     </>
   )
 }

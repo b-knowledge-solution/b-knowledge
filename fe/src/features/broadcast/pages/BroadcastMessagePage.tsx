@@ -10,6 +10,7 @@ import { BroadcastMessage } from '../types';
 import { Plus, CheckCircle, Trash2, Edit2, XCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryKeys';
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -48,7 +49,7 @@ const BroadcastMessagePage: React.FC = () => {
 
     // Fetch Messages Query
     const { data: messages = [], isLoading } = useQuery({
-        queryKey: ['broadcastMessages'],
+        queryKey: queryKeys.broadcast.list(),
         queryFn: broadcastMessageService.getAllMessages
     });
 
@@ -64,7 +65,7 @@ const BroadcastMessagePage: React.FC = () => {
         },
         onSuccess: () => {
             setIsDialogOpen(false);
-            queryClient.invalidateQueries({ queryKey: ['broadcastMessages'] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.broadcast.list() });
         },
         meta: { successMessage: t('admin.broadcast.saveSuccess') }
     });
@@ -74,7 +75,7 @@ const BroadcastMessagePage: React.FC = () => {
         mutationKey: ['delete', 'broadcastMessage'],
         mutationFn: broadcastMessageService.deleteMessage,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['broadcastMessages'] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.broadcast.list() });
         },
         meta: { successMessage: t('admin.broadcast.deleteSuccess') }
     });

@@ -4,7 +4,7 @@
  * @module features/datasets/components/DatasetAccessDialog
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Globe, Lock, Search, X, Users, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -96,7 +96,7 @@ export default function DatasetAccessDialog({
   /**
    * @description Fetch current access settings and available users/teams.
    */
-  const loadData = useCallback(async () => {
+  const loadData = async () => {
     if (!dataset) return
     setLoading(true)
     try {
@@ -120,7 +120,7 @@ export default function DatasetAccessDialog({
     } finally {
       setLoading(false)
     }
-  }, [dataset])
+  }
 
   // Load data when dialog opens; reset search when it closes
   useEffect(() => {
@@ -131,7 +131,7 @@ export default function DatasetAccessDialog({
       setUserSearch('')
       setTeamSearch('')
     }
-  }, [open, dataset, loadData])
+  }, [open, dataset])
 
   /**
    * @description Toggle a user in the selected set.

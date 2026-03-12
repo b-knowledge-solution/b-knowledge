@@ -8,7 +8,7 @@
  * @module features/projects/components/DocumentListPanel
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Table, Tag, Empty, Input, Button, Tooltip, Popconfirm, message, Badge } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
@@ -105,7 +105,7 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, versionLabel, ref
   const [syncing, setSyncing] = useState(false)
 
   /** Fetch documents for the selected version */
-  const fetchDocuments = useCallback(async () => {
+  const fetchDocuments = async () => {
     setLoading(true)
     try {
       const docs = await getVersionDocuments(projectId, categoryId, versionId, {
@@ -120,12 +120,12 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, versionLabel, ref
     } finally {
       setLoading(false)
     }
-  }, [projectId, categoryId, versionId, searchKeyword])
+  }
 
   // Fetch on mount, version change, or refresh trigger
   useEffect(() => {
     fetchDocuments()
-  }, [fetchDocuments, refreshKey, localRefreshKey])
+  }, [projectId, categoryId, versionId, searchKeyword, refreshKey, localRefreshKey])
 
   // Real-time updates via WebSocket — refresh documents to pick up status changes
   useConverterSocket({
@@ -146,7 +146,7 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, versionLabel, ref
     }, 5000)
 
     return () => clearInterval(interval)
-  }, [documents, fetchDocuments])
+  }, [documents, projectId, categoryId, versionId, searchKeyword])
 
   /** Callback after upload completes */
   const handleUploadComplete = () => {

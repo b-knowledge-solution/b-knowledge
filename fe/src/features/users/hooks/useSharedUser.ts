@@ -1,45 +1,83 @@
 /**
  * @fileoverview Shared user hook for user info management.
- * 
- * This hook manages user information with localStorage caching.
- * 
+ *
+ * Uses TanStack Query for fetching with localStorage as initial data.
+ *
  * @module hooks/useSharedUser
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/queryKeys'
 
 /** Backend API base URL */
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-const STORAGE_KEY = 'kb-user';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+const STORAGE_KEY = 'kb-user'
 
 // ============================================================================
 // Types
 // ============================================================================
 
 /**
- * Shared user information structure.
+ * @description Shared user information structure.
  */
 export interface SharedUserInfo {
-  id: string;
-  email: string;
-  name?: string;
-  role?: string;
+  id: string
+  email: string
+  name?: string
+  role?: string
 }
 
 /**
- * Return type for useSharedUser hook.
+ * @description Return type for useSharedUser hook.
  */
 interface UseSharedUserResult {
   /** Current shared user info or null */
-  user: SharedUserInfo | null;
+  user: SharedUserInfo | null
   /** Whether user data is being fetched */
-  isLoading: boolean;
+  isLoading: boolean
   /** Error message if fetch failed */
-  error: string | null;
+  error: string | null
   /** Function to refresh user data from backend */
-  refresh: () => Promise<void>;
+  refresh: () => Promise<void>
   /** Function to clear shared user data */
-  clear: () => void;
+  clear: () => void
+}
+
+// ============================================================================
+// Fetcher
+// ============================================================================
+
+/**
+ * @description Fetches user info from the backend and caches in localStorage.
+ * @returns The shared user info or null if unauthenticated.
+ */
+const fetchSharedUser = async (): Promise<SharedUserInfo | null> => {
+  const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+    credentials: 'include',
+  })
+
+  // Not authenticated — clear storage and return null
+  if (response.status === 401) {
+    localStorage.removeItem(STORAGE_KEY)
+    return null
+  }
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch user info')
+  }
+
+  const userData = await response.json()
+
+  const sharedUser: SharedUserInfo = {
+    id: userData.id,
+    email: userData.email,
+    name: userData.name,
+    role: userData.role,
+  }
+
+  // Persist to localStorage for synchronous access
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(sharedUser))
+  return sharedUser
 }
 
 // ============================================================================
@@ -47,100 +85,46 @@ interface UseSharedUserResult {
 // ============================================================================
 
 /**
- * Hook to access user info with localStorage caching.
- * 
- * @returns User state and control functions
+ * @description Hook to access user info with localStorage caching and TanStack Query.
+ * @returns User state and control functions.
  */
 export function useSharedUser(): UseSharedUserResult {
-  const [user, setUser] = useState<SharedUserInfo | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient()
+
+  // Read cached user from localStorage as initial data
+  const cachedUser = getSharedUserSync()
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: queryKeys.sharedUser.me(),
+    queryFn: fetchSharedUser,
+    // Use localStorage cache as initial data to avoid flash
+    initialData: cachedUser,
+    // Still refetch in background even with initial data
+    initialDataUpdatedAt: 0,
+  })
 
   /**
-   * Fetches user from backend and stores in localStorage.
+   * @description Refresh user data by invalidating the query.
    */
-  const fetchAndStoreUser = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          // Not authenticated, clear storage
-          localStorage.removeItem(STORAGE_KEY);
-          setUser(null);
-          return;
-        }
-        throw new Error('Failed to fetch user info');
-      }
-
-      const userData = await response.json();
-      
-      const sharedUser: SharedUserInfo = {
-        id: userData.id,
-        email: userData.email,
-        name: userData.name,
-        role: userData.role,
-      };
-
-      // Store in localStorage
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sharedUser));
-      setUser(sharedUser);
-    } catch (err) {
-      console.error('[useSharedUser] Error fetching user:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const refresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.sharedUser.me() })
+  }
 
   /**
-   * Effect: Initialize user on mount.
+   * @description Clear user data from cache and localStorage.
    */
-  useEffect(() => {
-    const initUser = async () => {
-      // Check localStorage cache first
-      try {
-        const cached = localStorage.getItem(STORAGE_KEY);
-        if (cached) {
-          const cachedUser = JSON.parse(cached) as SharedUserInfo;
-          setUser(cachedUser);
-          setIsLoading(false);
-          
-          // Refresh from backend in background
-          fetchAndStoreUser();
-          return;
-        }
-      } catch (err) {
-        console.error('[useSharedUser] Error reading cache:', err);
-      }
-
-      // No cache, fetch from backend
-      await fetchAndStoreUser();
-    };
-
-    initUser();
-  }, [fetchAndStoreUser]);
-
-  /**
-   * Clears user data from localStorage.
-   */
-  const clear = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
-    setUser(null);
-  }, []);
+  const clear = () => {
+    localStorage.removeItem(STORAGE_KEY)
+    queryClient.setQueryData(queryKeys.sharedUser.me(), null)
+  }
 
   return {
-    user,
+    user: data ?? null,
     isLoading,
-    error,
-    refresh: fetchAndStoreUser,
+    error: error ? (error instanceof Error ? error.message : 'Unknown error') : null,
+    refresh,
     clear,
-  };
+  }
 }
 
 // ============================================================================
@@ -148,29 +132,31 @@ export function useSharedUser(): UseSharedUserResult {
 // ============================================================================
 
 /**
- * Get user info synchronously from cache.
+ * @description Get user info synchronously from cache.
+ * @returns Shared user info or null.
  */
 export function getSharedUserSync(): SharedUserInfo | null {
   try {
-    const cached = localStorage.getItem(STORAGE_KEY);
-    return cached ? JSON.parse(cached) : null;
+    const cached = localStorage.getItem(STORAGE_KEY)
+    return cached ? JSON.parse(cached) : null
   } catch {
-    return null;
+    return null
   }
 }
 
 /**
- * Store user info in localStorage.
+ * @description Store user info in localStorage.
+ * @param user - The user info to store.
  */
 export function setSharedUser(user: SharedUserInfo): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
 }
 
 /**
- * Clear user info from localStorage.
+ * @description Clear user info from localStorage.
  */
 export function clearSharedUser(): void {
-  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(STORAGE_KEY)
 }
 
-export default useSharedUser;
+export default useSharedUser

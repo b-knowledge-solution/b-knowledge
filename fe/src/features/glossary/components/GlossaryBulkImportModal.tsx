@@ -6,7 +6,7 @@
  * Previews data in a table, then sends to the bulk-import API.
  */
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Upload, FileSpreadsheet, AlertCircle, Download, X } from 'lucide-react'
 import * as XLSX from 'xlsx'
@@ -49,7 +49,7 @@ export const GlossaryBulkImportModal = ({ open, onClose, onSuccess }: GlossaryBu
     // ========================================================================
 
     /** Parse an Excel file and extract bulk import rows. */
-    const processFile = useCallback((file: File) => {
+    const processFile = (file: File) => {
         setParseError(null)
         setImportResult(null)
         setParsedRows([])
@@ -101,15 +101,15 @@ export const GlossaryBulkImportModal = ({ open, onClose, onSuccess }: GlossaryBu
             }
         }
         reader.readAsArrayBuffer(file)
-    }, [t])
+    }
 
     /** Handle file input change. */
-    const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
         processFile(file)
         e.target.value = ''
-    }, [processFile])
+    }
 
     // ========================================================================
     // Drag & Drop
@@ -119,29 +119,29 @@ export const GlossaryBulkImportModal = ({ open, onClose, onSuccess }: GlossaryBu
     const dragCounter = useRef(0)
 
     /** Prevent default to allow drop. */
-    const handleDragOver = useCallback((e: React.DragEvent) => {
+    const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault()
         e.stopPropagation()
-    }, [])
+    }
 
     /** Increment counter and show highlight. */
-    const handleDragEnter = useCallback((e: React.DragEvent) => {
+    const handleDragEnter = (e: React.DragEvent) => {
         e.preventDefault()
         e.stopPropagation()
         dragCounter.current++
         if (dragCounter.current === 1) setIsDragging(true)
-    }, [])
+    }
 
     /** Decrement counter and hide highlight when fully left. */
-    const handleDragLeave = useCallback((e: React.DragEvent) => {
+    const handleDragLeave = (e: React.DragEvent) => {
         e.preventDefault()
         e.stopPropagation()
         dragCounter.current--
         if (dragCounter.current === 0) setIsDragging(false)
-    }, [])
+    }
 
     /** Process dropped file and reset counter. */
-    const handleDrop = useCallback((e: React.DragEvent) => {
+    const handleDrop = (e: React.DragEvent) => {
         e.preventDefault()
         e.stopPropagation()
         dragCounter.current = 0
@@ -152,14 +152,14 @@ export const GlossaryBulkImportModal = ({ open, onClose, onSuccess }: GlossaryBu
         } else {
             setParseError(t('glossary.bulkImport.parseError'))
         }
-    }, [processFile, t])
+    }
 
     // ========================================================================
     // Download Template
     // ========================================================================
 
     /** Generate and download a sample Excel template with example rows. */
-    const downloadTemplate = useCallback(() => {
+    const downloadTemplate = () => {
         const sampleRows = [
             { task_name: 'Document Search', task_instruction_en: 'Use these terms to improve document search accuracy', task_instruction_ja: 'これらのキーワードを使って文書検索の精度を向上させてください', task_instruction_vi: 'Sử dụng các từ khóa này để cải thiện độ chính xác tìm kiếm tài liệu' },
             { task_name: 'FAQ Generation', task_instruction_en: 'Generate FAQ pairs for common questions', task_instruction_ja: 'よくある質問に対するFAQペアを生成してください', task_instruction_vi: 'Tạo các cặp FAQ cho những câu hỏi phổ biến' },
@@ -169,7 +169,7 @@ export const GlossaryBulkImportModal = ({ open, onClose, onSuccess }: GlossaryBu
         const wb = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(wb, ws, 'Glossary Import')
         XLSX.writeFile(wb, 'glossary_task_import_template.xlsx')
-    }, [])
+    }
 
     // ========================================================================
     // Import

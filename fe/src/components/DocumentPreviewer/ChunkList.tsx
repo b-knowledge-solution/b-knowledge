@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Spinner } from '@/components/ui/spinner';
 import { Pagination } from '@/components/ui/pagination';
@@ -30,7 +30,7 @@ const ChunkList: React.FC<ChunkListProps> = ({
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
-  const fetchChunks = useCallback(async () => {
+  const fetchChunks = async () => {
     setLoading(true);
     try {
       const res = await datasetApi.listChunks(datasetId, {
@@ -45,11 +45,11 @@ const ChunkList: React.FC<ChunkListProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [datasetId, docId, page]);
+  }
 
   useEffect(() => {
     fetchChunks();
-  }, [fetchChunks]);
+  }, [datasetId, docId, page]);
 
   return (
     <div className="flex flex-col h-full">

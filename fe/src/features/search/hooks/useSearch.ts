@@ -1,9 +1,10 @@
 /**
- * @fileoverview Hook for dataset search functionality.
+ * @fileoverview Hook for dataset search functionality using TanStack Query.
  * @module features/ai/hooks/useSearch
  */
 
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { searchApi } from '../api/searchApi'
 import type { SearchResult, SearchFilters } from '../types/search.types'
 
@@ -39,71 +40,57 @@ export interface UseSearchReturn {
 
 /**
  * @description Hook to perform searches across datasets.
+ * Uses useMutation since search is user-triggered, not auto-fetched.
  * @returns Search state and control functions
  */
 export function useSearch(): UseSearchReturn {
-  const [results, setResults] = useState<SearchResult[]>([])
-  const [isSearching, setIsSearching] = useState(false)
-  const [summary, setSummary] = useState<string | null>(null)
-  const [totalResults, setTotalResults] = useState(0)
-  const [error, setError] = useState<string | null>(null)
+  // Track the last query for display purposes
   const [lastQuery, setLastQuery] = useState('')
+
+  // Mutation for executing search requests
+  const mutation = useMutation({
+    mutationFn: async ({ query, filters }: { query: string; filters?: SearchFilters }) => {
+      // If specific dataset IDs are provided, search within the first one
+      // Otherwise use the global search endpoint
+      if (filters?.dataset_ids && filters.dataset_ids.length === 1) {
+        return searchApi.search(query, filters.dataset_ids[0]!, filters)
+      }
+      return searchApi.searchAll(query, filters)
+    },
+  })
 
   /**
    * Execute a search query with optional filters.
    * @param query - Search query text
    * @param filters - Optional search filters
    */
-  const search = useCallback(async (query: string, filters?: SearchFilters) => {
+  const search = (query: string, filters?: SearchFilters) => {
     // Guard: require non-empty query
     if (!query.trim()) return
 
-    setIsSearching(true)
-    setError(null)
+    // Track the query text locally
     setLastQuery(query)
 
-    try {
-      // If specific dataset IDs are provided, search within the first one
-      // Otherwise use the global search endpoint
-      let response
-      if (filters?.dataset_ids && filters.dataset_ids.length === 1) {
-        response = await searchApi.search(query, filters.dataset_ids[0]!, filters)
-      } else {
-        response = await searchApi.searchAll(query, filters)
-      }
-
-      setResults(response.results)
-      setSummary(response.summary || null)
-      setTotalResults(response.total)
-    } catch (err: any) {
-      setError(err.message || 'Search failed')
-      setResults([])
-      setSummary(null)
-      setTotalResults(0)
-    } finally {
-      setIsSearching(false)
-    }
-  }, [])
+    // Trigger the mutation
+    mutation.mutate({ query, ...(filters ? { filters } : {}) })
+  }
 
   /**
    * Clear all search results and reset state.
    */
-  const clearResults = useCallback(() => {
-    setResults([])
-    setSummary(null)
-    setTotalResults(0)
-    setError(null)
+  const clearResults = () => {
+    mutation.reset()
     setLastQuery('')
-  }, [])
+  }
 
   return {
-    results,
-    isSearching,
-    summary,
-    totalResults,
+    results: mutation.data?.results ?? [],
+    isSearching: mutation.isPending,
+    summary: mutation.data?.summary ?? null,
+    totalResults: mutation.data?.total ?? 0,
     search,
     clearResults,
-    error,
+    error: mutation.error?.message ?? null,
     lastQuery,
   }
 }

@@ -1,0 +1,197 @@
+/**
+ * @fileoverview React hooks for Socket.IO integration.
+ *
+ * Provides three hooks:
+ * - `useSocketStatus` — reactive connection status
+ * - `useSocketEvent` — subscribe to a socket event with automatic cleanup
+ * - `useSocketQueryInvalidation` — map socket events to TanStack Query invalidations
+ *
+ * @module hooks/useSocket
+ */
+
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import {
+  getSocket,
+  getSocketStatus,
+  type SocketStatus,
+} from '@/lib/socket'
+import { queryKeys } from '@/lib/queryKeys'
+
+// ============================================================================
+// useSocketStatus
+// ============================================================================
+
+/**
+ * Reactive hook that tracks the current Socket.IO connection status.
+ *
+ * @description Listens to connect, disconnect, and connect_error events
+ * on the singleton socket and exposes the status as React state.
+ *
+ * @returns The current socket connection status
+ */
+export function useSocketStatus(): SocketStatus {
+  const [status, setStatus] = useState<SocketStatus>(getSocketStatus)
+
+  useEffect(() => {
+    const socket = getSocket()
+    if (!socket) return
+
+    // Handler for when the socket connects
+    const onConnect = () => setStatus('connected')
+    // Handler for when the socket disconnects
+    const onDisconnect = () => setStatus('disconnected')
+    // Handler for connection errors
+    const onError = () => setStatus('error')
+    // Handler for reconnection attempts
+    const onReconnecting = () => setStatus('connecting')
+
+    socket.on('connect', onConnect)
+    socket.on('disconnect', onDisconnect)
+    socket.on('connect_error', onError)
+    socket.on('reconnect_attempt', onReconnecting)
+
+    // Sync initial status
+    setStatus(socket.connected ? 'connected' : getSocketStatus())
+
+    return () => {
+      socket.off('connect', onConnect)
+      socket.off('disconnect', onDisconnect)
+      socket.off('connect_error', onError)
+      socket.off('reconnect_attempt', onReconnecting)
+    }
+  }, [])
+
+  return status
+}
+
+// ============================================================================
+// useSocketEvent
+// ============================================================================
+
+/**
+ * Subscribe to a specific Socket.IO event with automatic cleanup on unmount.
+ *
+ * @description Attaches the callback to the given event on the singleton
+ * socket instance. The subscription is cleaned up when the component
+ * unmounts or when the event name changes.
+ *
+ * @param event - The socket event name to listen for
+ * @param callback - Handler invoked with the event payload
+ *
+ * @example
+ * ```ts
+ * useSocketEvent<NotificationPayload>('notification', (data) => {
+ *   toast.info(data.message)
+ * })
+ * ```
+ */
+export function useSocketEvent<T = unknown>(
+  event: string,
+  callback: (data: T) => void,
+): void {
+  // Use a ref to keep the latest callback without re-subscribing
+  const callbackRef = useRef(callback)
+  callbackRef.current = callback
+
+  useEffect(() => {
+    const socket = getSocket()
+    if (!socket) return
+
+    // Stable handler that delegates to the latest callback ref
+    const handler = (data: T) => {
+      callbackRef.current(data)
+    }
+
+    socket.on(event, handler)
+
+    return () => {
+      socket.off(event, handler)
+    }
+  }, [event])
+}
+
+// ============================================================================
+// useSocketQueryInvalidation
+// ============================================================================
+
+/**
+ * Default mapping from socket event names to TanStack Query key prefixes.
+ * When a matching socket event fires, the corresponding query keys are
+ * invalidated so the UI fetches fresh data.
+ */
+const DEFAULT_EVENT_KEY_MAP: Record<string, readonly (readonly string[])[]> = {
+  'dataset:updated': [queryKeys.datasets.all],
+  'document:updated': [queryKeys.datasets.all],
+  'chunk:updated': [queryKeys.datasets.all],
+  'converter:updated': [queryKeys.converter.all],
+  'broadcast:updated': [queryKeys.broadcast.all],
+  'chat:updated': [queryKeys.chat.all],
+  'user:updated': [queryKeys.users.all],
+  'team:updated': [queryKeys.teams.all],
+  'glossary:updated': [queryKeys.glossary.all],
+  'search:updated': [queryKeys.search.all],
+  'llm-provider:updated': [queryKeys.llmProvider.all],
+  'system:updated': [queryKeys.systemTools.all],
+  'dashboard:updated': [queryKeys.dashboard.all],
+  'histories:updated': [queryKeys.histories.all],
+}
+
+/**
+ * Automatically invalidate TanStack Query caches when socket events arrive.
+ *
+ * @description Subscribes to a predefined set of socket events and, when
+ * any fires, invalidates the corresponding query key prefixes. This keeps
+ * list/detail views in sync with real-time server-side changes without
+ * manual refetching.
+ *
+ * @param eventKeyMap - Optional custom mapping of event names to query key
+ *   arrays. Defaults to `DEFAULT_EVENT_KEY_MAP`.
+ */
+export function useSocketQueryInvalidation(
+  eventKeyMap: Record<string, readonly (readonly string[])[]> = DEFAULT_EVENT_KEY_MAP,
+): void {
+  const queryClient = useQueryClient()
+
+  // Keep map in a ref to avoid re-subscribing on every render
+  const mapRef = useRef(eventKeyMap)
+  mapRef.current = eventKeyMap
+
+  /**
+   * Invalidate all query keys associated with a given socket event.
+   */
+  const handleEvent = useCallback(
+    (eventName: string) => {
+      const keys = mapRef.current[eventName]
+      if (!keys) return
+
+      // Invalidate each query key prefix
+      keys.forEach((queryKey) => {
+        queryClient.invalidateQueries({ queryKey: [...queryKey] })
+      })
+    },
+    [queryClient],
+  )
+
+  useEffect(() => {
+    const socket = getSocket()
+    if (!socket) return
+
+    // Map of event name to its bound handler for cleanup
+    const handlers: Record<string, () => void> = {}
+
+    // Subscribe to each event in the map
+    for (const eventName of Object.keys(mapRef.current)) {
+      const handler = () => handleEvent(eventName)
+      handlers[eventName] = handler
+      socket.on(eventName, handler)
+    }
+
+    return () => {
+      // Unsubscribe all handlers
+      for (const [eventName, handler] of Object.entries(handlers)) {
+        socket.off(eventName, handler)
+      }
+    }
+  }, [handleEvent])
+}

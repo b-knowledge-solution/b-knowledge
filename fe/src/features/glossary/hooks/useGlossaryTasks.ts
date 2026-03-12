@@ -1,19 +1,21 @@
 /**
  * @fileoverview Hook for glossary task state management and CRUD operations.
- * Encapsulates task list, search, modal state, and API interactions.
+ * Uses TanStack Query for data fetching and mutations.
  * @module features/glossary/hooks/useGlossaryTasks
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
     glossaryApi,
     type GlossaryTask,
     type CreateTaskDto,
 } from '../api/glossaryApi'
 import { globalMessage } from '@/app/App'
+import { queryKeys } from '@/lib/queryKeys'
 
-/** Form data shape for the task create/edit form. */
+/** @description Form data shape for the task create/edit form. */
 export interface TaskFormData {
     name: string
     description: string
@@ -36,9 +38,13 @@ const EMPTY_FORM: TaskFormData = {
     is_active: true,
 }
 
+// ============================================================================
+// Return Type
+// ============================================================================
+
 /**
- * Return type for the useGlossaryTasks hook.
- * @description Exposes state values and handler functions for task management.
+ * @description Return type for the useGlossaryTasks hook.
+ * Exposes state values and handler functions for task management.
  */
 export interface UseGlossaryTasksReturn {
     /** All fetched tasks (unfiltered). Shared with keyword tab for dropdown. */
@@ -73,64 +79,103 @@ export interface UseGlossaryTasksReturn {
     refresh: () => void
 }
 
+// ============================================================================
+// Hook
+// ============================================================================
+
 /**
- * Custom hook for managing glossary tasks.
- * @description Handles fetching, searching, CRUD operations, and modal state.
+ * @description Custom hook for managing glossary tasks with TanStack Query.
+ * Handles fetching, searching, CRUD operations, and modal state.
  * @returns Task state and handler functions.
  */
 export const useGlossaryTasks = (): UseGlossaryTasksReturn => {
     const { t } = useTranslation()
+    const queryClient = useQueryClient()
 
-    // List state
-    const [tasks, setTasks] = useState<GlossaryTask[]>([])
-    const [loading, setLoading] = useState(false)
+    // Local UI state
     const [search, setSearch] = useState('')
-
-    // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingTask, setEditingTask] = useState<GlossaryTask | null>(null)
-    const [submitting, setSubmitting] = useState(false)
     const [formData, setFormData] = useState<TaskFormData>(EMPTY_FORM)
 
-    /** Update a single form field. */
-    const setFormField = useCallback(<K extends keyof TaskFormData>(key: K, value: TaskFormData[K]) => {
-        setFormData(prev => ({ ...prev, [key]: value }))
-    }, [])
-
     /**
-     * Fetch all tasks from the API.
-     * @description Called on mount and after any CRUD operation.
+     * @description Update a single form field.
+     * @param key - The field name.
+     * @param value - The new value.
      */
-    const fetchTasks = useCallback(async () => {
-        setLoading(true)
-        try {
-            const data = await glossaryApi.listTasks()
-            setTasks(data)
-        } catch (error) {
-            console.error('Error fetching tasks:', error)
-            globalMessage.error(t('common.error'))
-        } finally {
-            setLoading(false)
-        }
-    }, [t])
+    const setFormField = <K extends keyof TaskFormData>(key: K, value: TaskFormData[K]) => {
+        setFormData(prev => ({ ...prev, [key]: value }))
+    }
 
-    // Load tasks on mount
-    useEffect(() => {
-        fetchTasks()
-    }, [fetchTasks])
+    // ========================================================================
+    // Data Fetching
+    // ========================================================================
 
-    /** Filter tasks by search term (client-side). */
+    // Fetch all tasks via TanStack Query
+    const tasksQuery = useQuery({
+        queryKey: queryKeys.glossary.tasks(),
+        queryFn: () => glossaryApi.listTasks(),
+    })
+
+    // Resolved tasks list
+    const tasks = tasksQuery.data ?? []
+
+    /** @description Filter tasks by search term (client-side). */
     const filteredTasks = tasks.filter((task) =>
         task.name.toLowerCase().includes(search.toLowerCase())
     )
 
+    // ========================================================================
+    // Mutations
+    // ========================================================================
+
+    // Create task mutation
+    const createMutation = useMutation({
+        mutationKey: ['create', 'glossary', 'task'],
+        mutationFn: (payload: CreateTaskDto & { sort_order?: number; is_active?: boolean }) =>
+            glossaryApi.createTask(payload),
+        onSuccess: () => {
+            globalMessage.success(t('glossary.task.createSuccess'))
+            // Refetch tasks after creation
+            queryClient.invalidateQueries({ queryKey: queryKeys.glossary.tasks() })
+        },
+    })
+
+    // Update task mutation
+    const updateMutation = useMutation({
+        mutationKey: ['update', 'glossary', 'task'],
+        mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateTaskDto> & { sort_order?: number; is_active?: boolean } }) =>
+            glossaryApi.updateTask(id, payload),
+        onSuccess: () => {
+            globalMessage.success(t('glossary.task.updateSuccess'))
+            // Refetch tasks after update
+            queryClient.invalidateQueries({ queryKey: queryKeys.glossary.tasks() })
+        },
+    })
+
+    // Delete task mutation
+    const deleteMutation = useMutation({
+        mutationKey: ['delete', 'glossary', 'task'],
+        mutationFn: (id: string) => glossaryApi.deleteTask(id),
+        onSuccess: () => {
+            globalMessage.success(t('glossary.task.deleteSuccess'))
+            // Refetch tasks after deletion
+            queryClient.invalidateQueries({ queryKey: queryKeys.glossary.tasks() })
+        },
+    })
+
+    // ========================================================================
+    // Modal Handlers
+    // ========================================================================
+
     /**
-     * Open task create/edit modal.
+     * @description Open task create/edit modal.
      * @param task - Task to edit, or undefined for create mode.
      */
     const openModal = (task?: GlossaryTask) => {
         setEditingTask(task || null)
         if (task) {
+            // Populate form with existing task data
             setFormData({
                 name: task.name,
                 description: task.description || '',
@@ -142,18 +187,24 @@ export const useGlossaryTasks = (): UseGlossaryTasksReturn => {
                 is_active: task.is_active ?? true,
             })
         } else {
+            // Reset form for create mode
             setFormData(EMPTY_FORM)
         }
         setIsModalOpen(true)
     }
 
-    /** Close the modal. */
+    /** @description Close the modal. */
     const closeModal = () => setIsModalOpen(false)
 
+    // ========================================================================
+    // CRUD Handlers
+    // ========================================================================
+
     /**
-     * Handle task form submit (create or update).
+     * @description Handle task form submit (create or update).
      */
     const handleSubmit = async () => {
+        // Validate required fields
         if (!formData.name.trim()) {
             globalMessage.error(t('glossary.task.nameRequired'))
             return
@@ -162,7 +213,6 @@ export const useGlossaryTasks = (): UseGlossaryTasksReturn => {
             globalMessage.error(t('glossary.task.taskInstructionRequired'))
             return
         }
-        setSubmitting(true)
         try {
             const payload: CreateTaskDto & { sort_order?: number; is_active?: boolean } = {
                 name: formData.name,
@@ -175,53 +225,54 @@ export const useGlossaryTasks = (): UseGlossaryTasksReturn => {
                 is_active: formData.is_active,
             }
             if (editingTask) {
-                await glossaryApi.updateTask(editingTask.id, payload)
-                globalMessage.success(t('glossary.task.updateSuccess'))
+                // Update existing task
+                await updateMutation.mutateAsync({ id: editingTask.id, payload })
             } else {
-                await glossaryApi.createTask(payload)
-                globalMessage.success(t('glossary.task.createSuccess'))
+                // Create new task
+                await createMutation.mutateAsync(payload)
             }
             setIsModalOpen(false)
-            fetchTasks()
         } catch (error: any) {
             const msg = error?.response?.data?.error || error?.message || t('common.error')
             globalMessage.error(msg)
-        } finally {
-            setSubmitting(false)
         }
     }
 
     /**
-     * Confirm and delete a task.
+     * @description Confirm and delete a task.
      * @param task - The task to delete.
      */
     const handleDelete = (task: GlossaryTask) => {
+        // Show native confirmation dialog
         if (!window.confirm(t('glossary.task.confirmDeleteMessage', { name: task.name }))) return
-        glossaryApi.deleteTask(task.id)
-            .then(() => {
-                globalMessage.success(t('glossary.task.deleteSuccess'))
-                fetchTasks()
-            })
-            .catch((error: any) => {
+
+        deleteMutation.mutate(task.id, {
+            onError: (error: any) => {
                 globalMessage.error(error?.message || t('common.error'))
-            })
+            },
+        })
+    }
+
+    /** @description Manually refresh the task list. */
+    const refresh = () => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.glossary.tasks() })
     }
 
     return {
         tasks,
         filteredTasks,
-        loading,
+        loading: tasksQuery.isLoading,
         search,
         setSearch,
         isModalOpen,
         editingTask,
-        submitting,
+        submitting: createMutation.isPending || updateMutation.isPending,
         formData,
         setFormField,
         openModal,
         closeModal,
         handleSubmit,
         handleDelete,
-        refresh: fetchTasks,
+        refresh,
     }
 }

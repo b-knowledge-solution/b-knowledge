@@ -4,7 +4,7 @@
  * @module features/ai/pages/SearchAppManagementPage
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Search, Pencil, Trash2, Shield, Globe, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -57,7 +57,7 @@ export default function SearchAppManagementPage() {
   /**
    * Fetch all search apps from the API.
    */
-  const fetchApps = useCallback(async () => {
+  const fetchApps = async () => {
     setLoading(true)
     try {
       const data = await searchApi.listSearchApps()
@@ -67,12 +67,12 @@ export default function SearchAppManagementPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }
 
   // Fetch apps on mount
   useEffect(() => {
     fetchApps()
-  }, [fetchApps])
+  }, [])
 
   // Filter apps by search term
   const filteredApps = apps.filter((a) =>

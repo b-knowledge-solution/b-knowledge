@@ -18,6 +18,7 @@ import { ProtectedRoute, AdminRoute, RoleRoute } from '@/features/auth';
 import { Providers } from '@/app/Providers';
 import Layout from '@/layouts/MainLayout';
 import { config } from '@/config';
+import { FeatureErrorBoundary } from '@/components/ErrorBoundary'
 import '@/i18n';
 import icon from '@/assets/icon.png';
 
@@ -102,68 +103,82 @@ function App() {
 
               {/* Chat routes */}
               {config.features.enableAiChat && (
-                <Route path="chat" element={<AiChatPage />} />
+                <Route path="chat" element={<FeatureErrorBoundary><AiChatPage /></FeatureErrorBoundary>} />
               )}
               {/* Search routes */}
               {config.features.enableAiSearch && (
-                <Route path="search" element={<AiSearchPage />} />
+                <Route path="search" element={<FeatureErrorBoundary><AiSearchPage /></FeatureErrorBoundary>} />
               )}
               {/* Knowledge Base routes */}
 
               <Route path="knowledge-base/glossary" element={
-                <RoleRoute allowedRoles={['admin', 'leader']}>
-                  <GlossaryPage />
-                </RoleRoute>
+                <FeatureErrorBoundary>
+                  <RoleRoute allowedRoles={['admin', 'leader']}>
+                    <GlossaryPage />
+                  </RoleRoute>
+                </FeatureErrorBoundary>
               } />
 
               {/* Dataset routes */}
               <Route path="datasets" element={
-                <RoleRoute allowedRoles={['admin', 'leader']}>
-                  <DatasetsPage />
-                </RoleRoute>
+                <FeatureErrorBoundary>
+                  <RoleRoute allowedRoles={['admin', 'leader']}>
+                    <DatasetsPage />
+                  </RoleRoute>
+                </FeatureErrorBoundary>
               } />
               <Route path="datasets/:id" element={
-                <RoleRoute allowedRoles={['admin', 'leader']}>
-                  <DatasetDetailPage />
-                </RoleRoute>
+                <FeatureErrorBoundary>
+                  <RoleRoute allowedRoles={['admin', 'leader']}>
+                    <DatasetDetailPage />
+                  </RoleRoute>
+                </FeatureErrorBoundary>
               } />
 
               {/* Project routes */}
               <Route path="knowledge-base/projects" element={
-                <RoleRoute allowedRoles={['admin', 'leader']}>
-                  <ProjectListPage />
-                </RoleRoute>
+                <FeatureErrorBoundary>
+                  <RoleRoute allowedRoles={['admin', 'leader']}>
+                    <ProjectListPage />
+                  </RoleRoute>
+                </FeatureErrorBoundary>
               } />
               <Route path="knowledge-base/projects/:projectId" element={
-                <RoleRoute allowedRoles={['admin', 'leader']}>
-                  <ProjectDetailPage />
-                </RoleRoute>
+                <FeatureErrorBoundary>
+                  <RoleRoute allowedRoles={['admin', 'leader']}>
+                    <ProjectDetailPage />
+                  </RoleRoute>
+                </FeatureErrorBoundary>
               } />
 
               {/* IAM routes */}
               <Route path="iam/users" element={
-                <AdminRoute>
-                  <UserManagementPage />
-                </AdminRoute>
+                <FeatureErrorBoundary>
+                  <AdminRoute>
+                    <UserManagementPage />
+                  </AdminRoute>
+                </FeatureErrorBoundary>
               } />
 
               <Route path="iam/teams" element={
-                <AdminRoute>
-                  <TeamManagementPage />
-                </AdminRoute>
+                <FeatureErrorBoundary>
+                  <AdminRoute>
+                    <TeamManagementPage />
+                  </AdminRoute>
+                </FeatureErrorBoundary>
               } />
 
               {/* Admin routes */}
-              <Route path="admin/audit-log" element={<AdminRoute><AuditLogPage /></AdminRoute>} />
-              <Route path="admin/system-tools" element={<AdminRoute><SystemToolsPage /></AdminRoute>} />
-              <Route path="admin/system-monitor" element={<AdminRoute><SystemMonitorPage /></AdminRoute>} />
-              <Route path="admin/tokenizer" element={<AdminRoute><TokenizerPage /></AdminRoute>} />
-              <Route path="admin/broadcast-messages" element={<AdminRoute><BroadcastMessagePage /></AdminRoute>} />
-              <Route path="admin/histories" element={<AdminRoute><HistoriesPage /></AdminRoute>} />
-              <Route path="admin/chat-dialogs" element={<AdminRoute><ChatDialogManagementPage /></AdminRoute>} />
-              <Route path="admin/search-apps" element={<AdminRoute><SearchAppManagementPage /></AdminRoute>} />
-              <Route path="admin/dashboard" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
-              <Route path="admin/llm-providers" element={<AdminRoute><LLMProviderPage /></AdminRoute>} />
+              <Route path="admin/audit-log" element={<FeatureErrorBoundary><AdminRoute><AuditLogPage /></AdminRoute></FeatureErrorBoundary>} />
+              <Route path="admin/system-tools" element={<FeatureErrorBoundary><AdminRoute><SystemToolsPage /></AdminRoute></FeatureErrorBoundary>} />
+              <Route path="admin/system-monitor" element={<FeatureErrorBoundary><AdminRoute><SystemMonitorPage /></AdminRoute></FeatureErrorBoundary>} />
+              <Route path="admin/tokenizer" element={<FeatureErrorBoundary><AdminRoute><TokenizerPage /></AdminRoute></FeatureErrorBoundary>} />
+              <Route path="admin/broadcast-messages" element={<FeatureErrorBoundary><AdminRoute><BroadcastMessagePage /></AdminRoute></FeatureErrorBoundary>} />
+              <Route path="admin/histories" element={<FeatureErrorBoundary><AdminRoute><HistoriesPage /></AdminRoute></FeatureErrorBoundary>} />
+              <Route path="admin/chat-dialogs" element={<FeatureErrorBoundary><AdminRoute><ChatDialogManagementPage /></AdminRoute></FeatureErrorBoundary>} />
+              <Route path="admin/search-apps" element={<FeatureErrorBoundary><AdminRoute><SearchAppManagementPage /></AdminRoute></FeatureErrorBoundary>} />
+              <Route path="admin/dashboard" element={<FeatureErrorBoundary><AdminRoute><AdminDashboardPage /></AdminRoute></FeatureErrorBoundary>} />
+              <Route path="admin/llm-providers" element={<FeatureErrorBoundary><AdminRoute><LLMProviderPage /></AdminRoute></FeatureErrorBoundary>} />
             </Route>
           </Route>
 

@@ -2,7 +2,6 @@
  * @fileoverview Usage breakdown pie/donut chart for the admin dashboard.
  * @module features/dashboard/components/UsageBreakdownChart
  */
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -33,13 +32,10 @@ export function UsageBreakdownChart({ usageBreakdown }: UsageBreakdownChartProps
     const { t } = useTranslation()
 
     /** Pie data filtered to non-zero values */
-    const pieData = useMemo(() => {
-        if (!usageBreakdown) return []
-        return [
-            { name: t('dashboard.charts.aiChat'), value: usageBreakdown.chatSessions },
-            { name: t('dashboard.charts.aiSearch'), value: usageBreakdown.searchSessions },
-        ].filter(d => d.value > 0)
-    }, [usageBreakdown, t])
+    const pieData = !usageBreakdown ? [] : [
+        { name: t('dashboard.charts.aiChat'), value: usageBreakdown.chatSessions },
+        { name: t('dashboard.charts.aiSearch'), value: usageBreakdown.searchSessions },
+    ].filter(d => d.value > 0)
 
     return (
         <Card>

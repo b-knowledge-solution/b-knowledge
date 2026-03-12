@@ -7,7 +7,7 @@
  * @module features/projects/components/ConversionStatusModal
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   X,
@@ -123,7 +123,7 @@ const ConversionStatusModal = ({ open, onClose, projectId }: ConversionStatusMod
   const [error, setError] = useState<string | null>(null);
   const isFetchingRef = useRef(false);
 
-  const fetchData = useCallback(async (silent = false) => {
+  const fetchData = async (silent = false) => {
     if (isFetchingRef.current || !projectId) return;
     try {
       isFetchingRef.current = true;
@@ -143,19 +143,19 @@ const ConversionStatusModal = ({ open, onClose, projectId }: ConversionStatusMod
       if (!silent) setLoading(false);
       isFetchingRef.current = false;
     }
-  }, [projectId]);
+  };
 
   // Fetch on open
   useEffect(() => {
     if (open) fetchData();
-  }, [open, fetchData]);
+  }, [open, projectId]);
 
   // Auto-refresh every 15s while open (fallback)
   useEffect(() => {
     if (!open) return;
     const id = setInterval(() => fetchData(true), 15000);
     return () => clearInterval(id);
-  }, [open, fetchData]);
+  }, [open, projectId]);
 
   // Real-time updates via WebSocket — active only when modal is open
   useConverterSocket({

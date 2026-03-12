@@ -11,7 +11,7 @@
  * - Concurrency control for health checks
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     Activity,
@@ -226,7 +226,7 @@ const SystemMonitorPage = () => {
      * 
      * @param isAutoRefresh - If true, suppresses the full page loading spinner.
      */
-    const fetchData = useCallback(async (isAutoRefresh = false) => {
+    const fetchData = async (isAutoRefresh = false) => {
         // Concurrency Lock: Check if a request is already in progress
         if (isFetchingRef.current) {
             console.log('Skipping health check: request already in progress');
@@ -248,12 +248,12 @@ const SystemMonitorPage = () => {
             if (!isAutoRefresh) setLoading(false);
             isFetchingRef.current = false;
         }
-    }, []);
+    };
 
     // Initial fetch
     useEffect(() => {
         fetchData(false);
-    }, [fetchData]);
+    }, []);
 
     // Polling interval
     useEffect(() => {
@@ -268,7 +268,7 @@ const SystemMonitorPage = () => {
         return () => {
             if (timerId) clearInterval(timerId);
         };
-    }, [autoRefresh, intervalMs, fetchData]);
+    }, [autoRefresh, intervalMs]);
 
     /** 
      * Format seconds to human readable string (days, hours, minutes).

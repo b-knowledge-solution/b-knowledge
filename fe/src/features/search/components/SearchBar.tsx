@@ -3,7 +3,7 @@
  * @module features/ai/components/SearchBar
  */
 
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Search, X, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -45,23 +45,20 @@ function SearchBar({ onSearch, isSearching, defaultValue = '', className, onStop
   /**
    * Handle form submission.
    */
-  const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault()
-      if (value.trim() && !isSearching) {
-        onSearch(value.trim())
-      }
-    },
-    [value, isSearching, onSearch],
-  )
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (value.trim() && !isSearching) {
+      onSearch(value.trim())
+    }
+  }
 
   /**
    * Clear the search input.
    */
-  const handleClear = useCallback(() => {
+  const handleClear = () => {
     setValue('')
     inputRef.current?.focus()
-  }, [])
+  }
 
   return (
     <form onSubmit={handleSubmit} className={cn('w-full max-w-2xl mx-auto', className)}>

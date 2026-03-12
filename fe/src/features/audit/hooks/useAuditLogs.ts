@@ -4,8 +4,7 @@
  * and pagination handling.
  * @module features/audit/hooks/useAuditLogs
  */
-import { useState, useEffect, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useState, useEffect } from 'react'
 import type { AuditLogEntry, AuditPagination } from '../types/audit.types'
 import { auditApi } from '../api/auditApi'
 import { useAuditFilters } from '../contexts/AuditFilterContext'
@@ -45,7 +44,6 @@ export interface UseAuditLogsReturn {
  * @returns {UseAuditLogsReturn} Audit log state and handlers.
  */
 export const useAuditLogs = (): UseAuditLogsReturn => {
-    const { t } = useTranslation()
     const { filters } = useAuditFilters()
 
     // Data state
@@ -67,7 +65,7 @@ export const useAuditLogs = (): UseAuditLogsReturn => {
      * @param page - Page number.
      * @param limit - Items per page (optional, defaults to current).
      */
-    const fetchLogs = useCallback(async (page: number = 1, limit?: number) => {
+    const fetchLogs = async (page: number = 1, limit?: number) => {
         setIsLoading(true)
         try {
             const fetchLimit = limit || pagination.limit
@@ -79,12 +77,12 @@ export const useAuditLogs = (): UseAuditLogsReturn => {
         } finally {
             setIsLoading(false)
         }
-    }, [filters, pagination.limit, t])
+    }
 
     /**
      * Fetch filter dropdown options (action types + resource types).
      */
-    const fetchFilterOptions = useCallback(async () => {
+    const fetchFilterOptions = async () => {
         try {
             const [actions, types] = await Promise.all([
                 auditApi.fetchActions(),
@@ -95,7 +93,7 @@ export const useAuditLogs = (): UseAuditLogsReturn => {
         } catch (err) {
             console.error('Failed to fetch filter options:', err)
         }
-    }, [])
+    }
 
     // Initial data fetch on mount
     useEffect(() => {

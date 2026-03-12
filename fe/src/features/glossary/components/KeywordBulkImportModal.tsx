@@ -6,7 +6,7 @@
  * @module features/glossary/components/KeywordBulkImportModal
  */
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Upload, FileSpreadsheet, AlertCircle, Download, X } from 'lucide-react'
 import * as XLSX from 'xlsx'
@@ -65,7 +65,7 @@ export const KeywordBulkImportModal = ({ open, onClose, onSuccess }: KeywordBulk
     // ========================================================================
 
     /** Parse an Excel file and extract keyword rows. */
-    const processFile = useCallback((file: File) => {
+    const processFile = (file: File) => {
         setParseError(null)
         setImportResult(null)
         setParsedRows([])
@@ -115,15 +115,15 @@ export const KeywordBulkImportModal = ({ open, onClose, onSuccess }: KeywordBulk
             }
         }
         reader.readAsArrayBuffer(file)
-    }, [t])
+    }
 
     /** Handle file input change. */
-    const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
         processFile(file)
         e.target.value = ''
-    }, [processFile])
+    }
 
     // ========================================================================
     // Drag & Drop
@@ -133,29 +133,29 @@ export const KeywordBulkImportModal = ({ open, onClose, onSuccess }: KeywordBulk
     const dragCounter = useRef(0)
 
     /** Prevent default to allow drop. */
-    const handleDragOver = useCallback((e: React.DragEvent) => {
+    const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault()
         e.stopPropagation()
-    }, [])
+    }
 
     /** Increment counter and show highlight. */
-    const handleDragEnter = useCallback((e: React.DragEvent) => {
+    const handleDragEnter = (e: React.DragEvent) => {
         e.preventDefault()
         e.stopPropagation()
         dragCounter.current++
         if (dragCounter.current === 1) setIsDragging(true)
-    }, [])
+    }
 
     /** Decrement counter and hide highlight when fully left. */
-    const handleDragLeave = useCallback((e: React.DragEvent) => {
+    const handleDragLeave = (e: React.DragEvent) => {
         e.preventDefault()
         e.stopPropagation()
         dragCounter.current--
         if (dragCounter.current === 0) setIsDragging(false)
-    }, [])
+    }
 
     /** Process dropped file and reset counter. */
-    const handleDrop = useCallback((e: React.DragEvent) => {
+    const handleDrop = (e: React.DragEvent) => {
         e.preventDefault()
         e.stopPropagation()
         dragCounter.current = 0
@@ -166,14 +166,14 @@ export const KeywordBulkImportModal = ({ open, onClose, onSuccess }: KeywordBulk
         } else {
             setParseError(t('glossary.keywordImport.parseError'))
         }
-    }, [processFile, t])
+    }
 
     // ========================================================================
     // Download Template
     // ========================================================================
 
     /** Generate and download a sample Excel template with example keyword rows. */
-    const downloadTemplate = useCallback(() => {
+    const downloadTemplate = () => {
         const sampleRows = [
             { name: '契約書', en_keyword: 'Contract', description: 'Legal binding agreement document' },
             { name: '仕様書', en_keyword: 'Specification', description: 'Technical specification document' },
@@ -185,7 +185,7 @@ export const KeywordBulkImportModal = ({ open, onClose, onSuccess }: KeywordBulk
         const wb = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(wb, ws, 'Keyword Import')
         XLSX.writeFile(wb, 'glossary_keyword_import_template.xlsx')
-    }, [])
+    }
 
     // ========================================================================
     // Import

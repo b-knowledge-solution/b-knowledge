@@ -13,14 +13,13 @@
  * @module features/projects/pages/ProjectListPage
  */
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import {
   Button,
   Card,
   Modal,
-  Form,
   Input,
   Select as AntSelect,
   Space,
@@ -72,7 +71,9 @@ import CreateProjectModal from '../components/CreateProjectModal'
 const ProjectListPage = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [form] = Form.useForm()
+  // Edit form state
+  const [editForm, setEditForm] = useState({ name: '', description: '', ragflow_server_id: '' })
+  const [nameError, setNameError] = useState('')
 
   // Data state
   const [projects, setProjects] = useState<Project[]>([])
@@ -105,7 +106,7 @@ const ProjectListPage = () => {
   /**
    * Fetch all projects and servers from the API.
    */
-  const fetchData = useCallback(async () => {
+  const fetchData = async () => {
     try {
       setLoading(true)
       const [projectData, serverData] = await Promise.all([
@@ -120,17 +121,17 @@ const ProjectListPage = () => {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }
 
   /** Effect: Load data on mount */
   useEffect(() => {
     fetchData()
-  }, [fetchData])
+  }, [])
 
   /**
    * Fetch teams list when needed.
    */
-  const loadTeams = useCallback(async () => {
+  const loadTeams = async () => {
     if (allTeams.length > 0) return
     setTeamsLoading(true)
     try {
@@ -141,7 +142,7 @@ const ProjectListPage = () => {
     } finally {
       setTeamsLoading(false)
     }
-  }, [allTeams.length])
+  }
 
   /** Filter projects by selected category */
   const filteredProjects = categoryFilter
@@ -176,11 +177,12 @@ const ProjectListPage = () => {
   const handleEdit = async (project: Project, e: React.MouseEvent) => {
     e.stopPropagation()
     setEditingProject(project)
-    form.setFieldsValue({
-      name: project.name,
-      description: project.description,
-      ragflow_server_id: project.ragflow_server_id,
+    setEditForm({
+      name: project.name || '',
+      description: project.description || '',
+      ragflow_server_id: project.ragflow_server_id || '',
     })
+    setNameError('')
     setIsPublic(!project.is_private)
     setModalOpen(true)
     loadTeams()
@@ -204,15 +206,33 @@ const ProjectListPage = () => {
    * Handles both project data and permission assignment.
    */
   const handleSubmit = async () => {
+    // Inline validation
+    if (!editForm.name.trim()) {
+      setNameError(`${t('projectManagement.name')} is required`)
+      return
+    }
+    setNameError('')
+
     try {
-      const values = await form.validateFields()
       setSaving(true)
+      const values: Record<string, any> = {
+        name: editForm.name,
+        description: editForm.description,
+      }
+      if (editForm.ragflow_server_id) {
+        values.ragflow_server_id = editForm.ragflow_server_id
+      }
 
       const isPrivate = !isPublic
 
       if (editingProject) {
         // Update project with is_private
-        await updateProject(editingProject.id, { ...values, is_private: isPrivate })
+        await updateProject(editingProject.id, {
+          name: editForm.name,
+          description: editForm.description,
+          ...(editForm.ragflow_server_id ? { ragflow_server_id: editForm.ragflow_server_id } : {}),
+          is_private: isPrivate,
+        })
 
         // Diff team permissions
         const existingTeamIds = new Set(
@@ -246,7 +266,12 @@ const ProjectListPage = () => {
         message.success(t('projectManagement.updateSuccess'))
       } else {
         // Create project with is_private flag
-        const createdProject = await createProject({ ...values, is_private: isPrivate })
+        const createdProject = await createProject({
+          name: editForm.name,
+          description: editForm.description || undefined,
+          ...(editForm.ragflow_server_id ? { ragflow_server_id: editForm.ragflow_server_id } : {}),
+          is_private: isPrivate,
+        } as Parameters<typeof createProject>[0])
 
         // Add team permissions to newly created project
         if (isPrivate && selectedTeamIds.length > 0) {
@@ -265,10 +290,9 @@ const ProjectListPage = () => {
       }
 
       setModalOpen(false)
-      form.resetFields()
+      setEditForm({ name: '', description: '', ragflow_server_id: '' })
       fetchData()
     } catch (err) {
-      if (err && typeof err === 'object' && 'errorFields' in err) return
       console.error('Failed to save project:', err)
       message.error(String(err))
     } finally {
@@ -463,29 +487,53 @@ const ProjectListPage = () => {
         destroyOnHidden
         width={560}
       >
-        <Form form={form} layout="vertical" className="mt-4">
-          <Form.Item
-            name="name"
-            label={t('projectManagement.name')}
-            rules={[{ required: true, message: `${t('projectManagement.name')} is required` }]}
-          >
-            <Input placeholder={t('projectManagement.namePlaceholder')} />
-          </Form.Item>
+        <div className="mt-4 space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              {t('projectManagement.name')} <span className="text-red-500">*</span>
+            </label>
+            <Input
+              placeholder={t('projectManagement.namePlaceholder')}
+              value={editForm.name}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                setEditForm((prev) => ({ ...prev, name: e.target.value }))
+                if (nameError) setNameError('')
+              }}
+              status={nameError ? 'error' : undefined}
+            />
+            {nameError && <p className="text-red-500 text-xs mt-1">{nameError}</p>}
+          </div>
 
-          <Form.Item name="description" label={t('projectManagement.descriptionLabel')}>
-            <Input.TextArea rows={2} placeholder={t('projectManagement.descriptionPlaceholder')} />
-          </Form.Item>
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              {t('projectManagement.descriptionLabel')}
+            </label>
+            <Input.TextArea
+              rows={2}
+              placeholder={t('projectManagement.descriptionPlaceholder')}
+              value={editForm.description}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                setEditForm((prev) => ({ ...prev, description: e.target.value }))
+              }
+            />
+          </div>
 
-          <Form.Item name="ragflow_server_id" label={t('projectManagement.ragflowServer')}>
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              {t('projectManagement.ragflowServer')}
+            </label>
             <AntSelect
               placeholder={t('projectManagement.selectServer')}
               allowClear
+              value={editForm.ragflow_server_id || undefined}
+              onChange={(v: string) => setEditForm((prev) => ({ ...prev, ragflow_server_id: v || '' }))}
               options={servers
                 .filter((s) => s.is_active)
                 .map((s) => ({ value: s.id, label: s.name }))}
+              className="w-full"
             />
-          </Form.Item>
-        </Form>
+          </div>
+        </div>
 
         <Divider className="my-2" />
 

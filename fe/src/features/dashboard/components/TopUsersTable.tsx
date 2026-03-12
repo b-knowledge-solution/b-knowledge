@@ -2,7 +2,6 @@
  * @fileoverview Top users table for the admin dashboard.
  * @module features/dashboard/components/TopUsersTable
  */
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import {
@@ -41,14 +40,11 @@ export function TopUsersTable({ topUsers, limit, onLimitChange }: TopUsersTableP
     const { t } = useTranslation()
 
     /** Sliced and ranked table data */
-    const tableData = useMemo(() =>
-        topUsers.slice(0, limit).map((user, index) => ({
-            rank: index + 1,
-            email: user.email,
-            sessionCount: user.sessionCount,
-        })),
-        [topUsers, limit]
-    )
+    const tableData = topUsers.slice(0, limit).map((user, index) => ({
+        rank: index + 1,
+        email: user.email,
+        sessionCount: user.sessionCount,
+    }))
 
     return (
         <Card>

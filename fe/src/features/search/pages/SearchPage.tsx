@@ -4,7 +4,7 @@
  * @module features/ai/pages/DatasetSearchPage
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Search, Database, Brain } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -73,81 +73,69 @@ function DatasetSearchPage() {
    * Handle search submission.
    * @param query - Search query text
    */
-  const handleSearch = useCallback(
-    (query: string) => {
-      // Reset pagination and document filter on new search
-      setPage(1)
-      setSelectedDocIds([])
-      searchStream.askSearch(searchAppId, query, {
-        ...filters,
-        page: 1,
-        page_size: pageSize,
-      })
-    },
-    [searchStream, searchAppId, filters, pageSize],
-  )
+  const handleSearch = (query: string) => {
+    // Reset pagination and document filter on new search
+    setPage(1)
+    setSelectedDocIds([])
+    searchStream.askSearch(searchAppId, query, {
+      ...filters,
+      page: 1,
+      page_size: pageSize,
+    })
+  }
 
   /**
    * Handle filter changes - re-run search with new filters.
    * @param newFilters - Updated filters
    */
-  const handleFiltersChange = useCallback(
-    (newFilters: SearchFiltersType) => {
-      setFilters(newFilters)
-      // Re-run search with updated filters if a query exists
-      if (searchStream.lastQuery) {
-        setPage(1)
-        searchStream.askSearch(searchAppId, searchStream.lastQuery, {
-          ...newFilters,
-          page: 1,
-          page_size: pageSize,
-        })
-      }
-    },
-    [searchStream, searchAppId, pageSize],
-  )
+  const handleFiltersChange = (newFilters: SearchFiltersType) => {
+    setFilters(newFilters)
+    // Re-run search with updated filters if a query exists
+    if (searchStream.lastQuery) {
+      setPage(1)
+      searchStream.askSearch(searchAppId, searchStream.lastQuery, {
+        ...newFilters,
+        page: 1,
+        page_size: pageSize,
+      })
+    }
+  }
 
   /**
    * Handle result card click - open document preview drawer.
    * @param result - The clicked search result
    */
-  const handleResultClick = useCallback((result: SearchResult) => {
+  const handleResultClick = (result: SearchResult) => {
     setPreviewDoc({ open: true, result })
-  }, [])
+  }
 
   /**
    * Handle related question click - re-run search with question.
    * @param question - The related question text
    */
-  const handleRelatedQuestionClick = useCallback(
-    (question: string) => {
-      setPage(1)
-      searchStream.askSearch(searchAppId, question, {
-        ...filters,
-        page: 1,
-        page_size: pageSize,
-      })
-    },
-    [searchStream, searchAppId, filters, pageSize],
-  )
+  const handleRelatedQuestionClick = (question: string) => {
+    setPage(1)
+    searchStream.askSearch(searchAppId, question, {
+      ...filters,
+      page: 1,
+      page_size: pageSize,
+    })
+  }
 
   /**
    * Handle page change for pagination.
    * @param newPage - New page number
    */
-  const handlePageChange = useCallback(
-    (newPage: number) => {
-      setPage(newPage)
-      if (searchStream.lastQuery) {
-        searchStream.askSearch(searchAppId, searchStream.lastQuery, {
-          ...filters,
-          page: newPage,
-          page_size: pageSize,
-        })
-      }
-    },
-    [searchStream, searchAppId, filters, pageSize],
-  )
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage)
+    if (searchStream.lastQuery) {
+      searchStream.askSearch(searchAppId, searchStream.lastQuery, {
+        ...filters,
+        page: newPage,
+        page_size: pageSize,
+      })
+    }
+  }
 
   return (
     <>

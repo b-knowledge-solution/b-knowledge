@@ -6,7 +6,7 @@
  * @module features/projects/components/SyncTab
  */
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Tabs, Spin, message } from 'antd'
 import { Settings, Clock, Activity } from 'lucide-react'
@@ -54,7 +54,7 @@ const SyncTab = ({ projectId }: SyncTabProps) => {
   /**
    * Fetch sync configs for the project.
    */
-  const fetchConfigs = useCallback(async () => {
+  const fetchConfigs = async () => {
     try {
       setLoading(true)
       const data = await getSyncConfigs(projectId)
@@ -64,11 +64,11 @@ const SyncTab = ({ projectId }: SyncTabProps) => {
     } finally {
       setLoading(false)
     }
-  }, [projectId])
+  }
 
   useEffect(() => {
     fetchConfigs()
-  }, [fetchConfigs])
+  }, [projectId])
 
   /**
    * Save connection config (create or update).

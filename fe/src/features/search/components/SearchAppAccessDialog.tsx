@@ -4,7 +4,7 @@
  * @module features/ai/components/SearchAppAccessDialog
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -92,7 +92,7 @@ export default function SearchAppAccessDialog({
   /**
    * Fetch access entries, users, and teams when dialog opens.
    */
-  const loadData = useCallback(async () => {
+  const loadData = async () => {
     if (!app) return
     try {
       // Fetch current access entries
@@ -115,7 +115,7 @@ export default function SearchAppAccessDialog({
     } catch (error) {
       console.error('Failed to load access data:', error)
     }
-  }, [app])
+  }
 
   // Load data when opened
   useEffect(() => {
@@ -127,7 +127,7 @@ export default function SearchAppAccessDialog({
       setUserSearch('')
       setTeamSearch('')
     }
-  }, [open, app, loadData])
+  }, [open, app])
 
   /**
    * Toggle a user in the selected set.

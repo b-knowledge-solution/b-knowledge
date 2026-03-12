@@ -12,7 +12,7 @@
  * @module features/ai/hooks/useSearchStream
  */
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef } from 'react'
 import { searchApi } from '../api/searchApi'
 import type { SearchResult, SearchFilters } from '../types/search.types'
 
@@ -54,6 +54,7 @@ export interface UseSearchStreamReturn {
 
 /**
  * @description Hook to manage SSE streaming for search AI summary generation.
+ * SSE streaming is imperative and does not use TanStack Query.
  * @returns Streaming state and control functions
  */
 export function useSearchStream(): UseSearchStreamReturn {
@@ -77,157 +78,154 @@ export function useSearchStream(): UseSearchStreamReturn {
    * @param query - Search query text
    * @param filters - Optional search filters
    */
-  const askSearch = useCallback(
-    async (searchAppId: string, query: string, filters?: SearchFilters) => {
-      // Guard: require non-empty query
-      if (!query.trim()) return
+  const askSearch = async (searchAppId: string, query: string, filters?: SearchFilters) => {
+    // Guard: require non-empty query
+    if (!query.trim()) return
 
-      // Reset state for new search
-      setError(null)
-      setPipelineStatus('')
-      setAnswer('')
-      setChunks([])
-      setRelatedQuestions([])
-      setDocAggs([])
-      setLastQuery(query)
-      setIsStreaming(true)
-      answerRef.current = ''
+    // Reset state for new search
+    setError(null)
+    setPipelineStatus('')
+    setAnswer('')
+    setChunks([])
+    setRelatedQuestions([])
+    setDocAggs([])
+    setLastQuery(query)
+    setIsStreaming(true)
+    answerRef.current = ''
 
-      try {
-        // Create a new abort controller for this request
-        abortRef.current = new AbortController()
+    try {
+      // Create a new abort controller for this request
+      abortRef.current = new AbortController()
 
-        // Call the streaming endpoint
-        const response = await searchApi.askSearch(searchAppId, query, filters)
+      // Call the streaming endpoint
+      const response = await searchApi.askSearch(searchAppId, query, filters)
 
-        // Check for HTTP errors
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}))
-          throw new Error(errData.error || `Search error: ${response.status}`)
-        }
+      // Check for HTTP errors
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}))
+        throw new Error(errData.error || `Search error: ${response.status}`)
+      }
 
-        // Read the SSE stream
-        const reader = response.body?.getReader()
-        if (!reader) throw new Error('No response body')
+      // Read the SSE stream
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error('No response body')
 
-        const decoder = new TextDecoder()
-        let accumulated = ''
-        let finalAnswer = ''
+      const decoder = new TextDecoder()
+      let accumulated = ''
+      let finalAnswer = ''
 
-        // Process the stream chunk by chunk
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
+      // Process the stream chunk by chunk
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
 
-          // Decode the received bytes
-          accumulated += decoder.decode(value, { stream: true })
+        // Decode the received bytes
+        accumulated += decoder.decode(value, { stream: true })
 
-          // Parse SSE data lines
-          const lines = accumulated.split('\n')
-          // Keep the last incomplete line for the next iteration
-          accumulated = lines.pop() || ''
+        // Parse SSE data lines
+        const lines = accumulated.split('\n')
+        // Keep the last incomplete line for the next iteration
+        accumulated = lines.pop() || ''
 
-          for (const line of lines) {
-            // Skip empty lines and comments
-            if (!line.startsWith('data:')) continue
+        for (const line of lines) {
+          // Skip empty lines and comments
+          if (!line.startsWith('data:')) continue
 
-            const dataStr = line.slice(5).trim()
+          const dataStr = line.slice(5).trim()
 
-            // Handle completion signal
-            if (dataStr === '[DONE]') continue
+          // Handle completion signal
+          if (dataStr === '[DONE]') continue
 
-            try {
-              const data = JSON.parse(dataStr)
+          try {
+            const data = JSON.parse(dataStr)
 
-              // Handle delta tokens (incremental, append to answer)
-              if (data.delta !== undefined) {
-                answerRef.current += data.delta
-                setAnswer(answerRef.current)
-                setPipelineStatus('generating')
-              }
-
-              // Handle pipeline status updates
-              if (data.status !== undefined) {
-                setPipelineStatus(data.status)
-              }
-
-              // Handle reference data (search result chunks)
-              if (data.reference && !data.answer) {
-                if (data.reference.chunks) {
-                  setChunks(data.reference.chunks)
-                }
-                if (data.reference.doc_aggs) {
-                  setDocAggs(data.reference.doc_aggs)
-                }
-              }
-
-              // Handle final processed answer
-              if (data.answer !== undefined) {
-                finalAnswer = data.answer
-                if (data.reference?.chunks) {
-                  setChunks(data.reference.chunks)
-                }
-                if (data.reference?.doc_aggs) {
-                  setDocAggs(data.reference.doc_aggs)
-                }
-              }
-
-              // Handle related questions
-              if (data.related_questions) {
-                setRelatedQuestions(data.related_questions)
-              }
-
-              // Handle errors from the pipeline
-              if (data.error) {
-                throw new Error(data.error)
-              }
-            } catch (parseErr: any) {
-              // Re-throw actual errors (not JSON parse errors)
-              if (parseErr.message && !parseErr.message.includes('JSON')) {
-                throw parseErr
-              }
-              // Skip malformed JSON lines
+            // Handle delta tokens (incremental, append to answer)
+            if (data.delta !== undefined) {
+              answerRef.current += data.delta
+              setAnswer(answerRef.current)
+              setPipelineStatus('generating')
             }
+
+            // Handle pipeline status updates
+            if (data.status !== undefined) {
+              setPipelineStatus(data.status)
+            }
+
+            // Handle reference data (search result chunks)
+            if (data.reference && !data.answer) {
+              if (data.reference.chunks) {
+                setChunks(data.reference.chunks)
+              }
+              if (data.reference.doc_aggs) {
+                setDocAggs(data.reference.doc_aggs)
+              }
+            }
+
+            // Handle final processed answer
+            if (data.answer !== undefined) {
+              finalAnswer = data.answer
+              if (data.reference?.chunks) {
+                setChunks(data.reference.chunks)
+              }
+              if (data.reference?.doc_aggs) {
+                setDocAggs(data.reference.doc_aggs)
+              }
+            }
+
+            // Handle related questions
+            if (data.related_questions) {
+              setRelatedQuestions(data.related_questions)
+            }
+
+            // Handle errors from the pipeline
+            if (data.error) {
+              throw new Error(data.error)
+            }
+          } catch (parseErr: any) {
+            // Re-throw actual errors (not JSON parse errors)
+            if (parseErr.message && !parseErr.message.includes('JSON')) {
+              throw parseErr
+            }
+            // Skip malformed JSON lines
           }
         }
-
-        // Use final answer if available, otherwise accumulated deltas
-        const completedAnswer = finalAnswer || answerRef.current
-        if (completedAnswer) {
-          setAnswer(completedAnswer)
-        }
-        answerRef.current = ''
-      } catch (err: any) {
-        // Handle abort (user cancelled)
-        if (err.name === 'AbortError') return
-
-        // Set error state
-        setError(err.message || 'An error occurred while searching')
-      } finally {
-        setIsStreaming(false)
-        setPipelineStatus('')
-        abortRef.current = null
       }
-    },
-    [],
-  )
+
+      // Use final answer if available, otherwise accumulated deltas
+      const completedAnswer = finalAnswer || answerRef.current
+      if (completedAnswer) {
+        setAnswer(completedAnswer)
+      }
+      answerRef.current = ''
+    } catch (err: any) {
+      // Handle abort (user cancelled)
+      if (err.name === 'AbortError') return
+
+      // Set error state
+      setError(err.message || 'An error occurred while searching')
+    } finally {
+      setIsStreaming(false)
+      setPipelineStatus('')
+      abortRef.current = null
+    }
+  }
 
   /**
    * Abort the current streaming response.
    */
-  const stopStream = useCallback(() => {
+  const stopStream = () => {
     if (abortRef.current) {
       abortRef.current.abort()
       abortRef.current = null
     }
     setIsStreaming(false)
     setPipelineStatus('')
-  }, [])
+  }
 
   /**
    * Clear all search results and reset state.
    */
-  const clearResults = useCallback(() => {
+  const clearResults = () => {
     setAnswer('')
     setChunks([])
     setRelatedQuestions([])
@@ -236,7 +234,7 @@ export function useSearchStream(): UseSearchStreamReturn {
     setPipelineStatus('')
     setLastQuery('')
     answerRef.current = ''
-  }, [])
+  }
 
   return {
     answer,

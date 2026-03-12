@@ -2,7 +2,6 @@
  * @fileoverview Activity trend line chart for the admin dashboard.
  * @module features/dashboard/components/ActivityTrendChart
  */
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -32,14 +31,11 @@ export function ActivityTrendChart({ activityTrend }: ActivityTrendChartProps) {
     const { t } = useTranslation()
 
     /** Transform raw trend data into recharts-ready format (one object per date) */
-    const chartData = useMemo(() =>
-        activityTrend.map(item => ({
-            date: item.date,
-            [t('dashboard.charts.chatMessages')]: item.chatCount,
-            [t('dashboard.charts.searchRecords')]: item.searchCount,
-        })),
-        [activityTrend, t]
-    )
+    const chartData = activityTrend.map(item => ({
+        date: item.date,
+        [t('dashboard.charts.chatMessages')]: item.chatCount,
+        [t('dashboard.charts.searchRecords')]: item.searchCount,
+    }))
 
     /** Translated series labels */
     const chatLabel = t('dashboard.charts.chatMessages')

@@ -3,7 +3,7 @@
  * @module features/ai/components/ChatInput
  */
 
-import { useRef, useCallback } from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Send, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -44,7 +44,7 @@ function ChatInput({ onSend, onStop, isStreaming, disabled, className }: ChatInp
   /**
    * Auto-resize the textarea based on content.
    */
-  const autoResize = useCallback(() => {
+  const autoResize = () => {
     const textarea = textareaRef.current
     if (!textarea) return
     // Reset height to auto to correctly calculate scrollHeight
@@ -52,12 +52,12 @@ function ChatInput({ onSend, onStop, isStreaming, disabled, className }: ChatInp
     // Clamp between min and max height
     const newHeight = Math.min(textarea.scrollHeight, 200)
     textarea.style.height = `${newHeight}px`
-  }, [])
+  }
 
   /**
    * Handle form submission.
    */
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = () => {
     const textarea = textareaRef.current
     if (!textarea) return
 
@@ -69,20 +69,17 @@ function ChatInput({ onSend, onStop, isStreaming, disabled, className }: ChatInp
     textarea.value = ''
     textarea.style.height = 'auto'
     textarea.focus()
-  }, [onSend, isStreaming, disabled])
+  }
 
   /**
    * Handle keyboard events: Enter to send, Shift+Enter for newline.
    */
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault()
-        handleSubmit()
-      }
-    },
-    [handleSubmit],
-  )
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSubmit()
+    }
+  }
 
   return (
     <div className={cn('border-t bg-background px-4 py-3', className)}>

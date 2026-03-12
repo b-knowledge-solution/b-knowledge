@@ -1,33 +1,36 @@
 /**
  * @fileoverview Hook for running retrieval tests against a dataset.
+ * Uses TanStack Query useMutation for the test execution.
  *
  * @module features/datasets/hooks/useRetrievalTest
  */
 
-import { useState, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
-import { datasetApi } from '../api/datasetApi';
-import { globalMessage } from '@/app/App';
-import type { RetrievalChunk } from '../types';
+import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { datasetApi } from '../api/datasetApi'
+import type { RetrievalChunk } from '../types'
 
 // ============================================================================
 // Types
 // ============================================================================
 
+/** @description Parameters for a retrieval test */
+interface RetrievalTestParams {
+  query: string
+  method?: string
+  top_k?: number
+  similarity_threshold?: number
+}
+
 export interface UseRetrievalTestReturn {
   /** Test results */
-  results: RetrievalChunk[];
+  results: RetrievalChunk[]
   /** Whether test is running */
-  testing: boolean;
+  testing: boolean
   /** Run a retrieval test */
-  runTest: (params: {
-    query: string;
-    method?: string;
-    top_k?: number;
-    similarity_threshold?: number;
-  }) => Promise<void>;
+  runTest: (params: RetrievalTestParams) => Promise<void>
   /** Clear results */
-  clearResults: () => void;
+  clearResults: () => void
 }
 
 // ============================================================================
@@ -35,47 +38,40 @@ export interface UseRetrievalTestReturn {
 // ============================================================================
 
 /**
- * Hook for running retrieval tests.
+ * Hook for running retrieval tests against a dataset.
  *
- * @param datasetId - Dataset ID
- * @returns Test state and operations
+ * @param {string | undefined} datasetId - Dataset ID
+ * @returns {UseRetrievalTestReturn} Test state and operations
  */
 export function useRetrievalTest(datasetId: string | undefined): UseRetrievalTestReturn {
-  const { t } = useTranslation();
-  const [results, setResults] = useState<RetrievalChunk[]>([]);
-  const [testing, setTesting] = useState(false);
+  // Local state for results since they are ephemeral and not cached
+  const [results, setResults] = useState<RetrievalChunk[]>([])
 
-  /** Run a retrieval test. */
-  const runTest = useCallback(
-    async (params: {
-      query: string;
-      method?: string;
-      top_k?: number;
-      similarity_threshold?: number;
-    }) => {
-      if (!datasetId) return;
-      setTesting(true);
-      try {
-        const data = await datasetApi.runRetrievalTest(datasetId, params);
-        setResults(data.chunks);
-      } catch (err: any) {
-        globalMessage.error(err?.message || t('common.error'));
-      } finally {
-        setTesting(false);
-      }
+  // Mutation for running the retrieval test
+  const testMutation = useMutation({
+    mutationFn: (params: RetrievalTestParams) =>
+      datasetApi.runRetrievalTest(datasetId!, params),
+    onSuccess: (data) => {
+      // Store the returned chunks in local state
+      setResults(data.chunks)
     },
-    [datasetId, t],
-  );
+  })
 
-  /** Clear results. */
-  const clearResults = useCallback(() => {
-    setResults([]);
-  }, []);
+  /** Run a retrieval test */
+  const runTest = async (params: RetrievalTestParams) => {
+    if (!datasetId) return
+    await testMutation.mutateAsync(params)
+  }
+
+  /** Clear results */
+  const clearResults = () => {
+    setResults([])
+  }
 
   return {
     results,
-    testing,
+    testing: testMutation.isPending,
     runTest,
     clearResults,
-  };
+  }
 }

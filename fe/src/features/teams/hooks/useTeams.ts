@@ -1,13 +1,16 @@
 /**
  * @fileoverview Hook for team list management, CRUD, filtering, and pagination.
+ * Uses TanStack Query for data fetching and mutations.
  * @module features/teams/hooks/useTeams
  */
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { globalMessage } from '@/app/App'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { teamApi } from '../api/teamApi'
 import type { Team, CreateTeamDTO, UpdateTeamDTO } from '../types/team.types'
+import { queryKeys } from '@/lib/queryKeys'
 
 // ============================================================================
 // Return Type
@@ -59,124 +62,146 @@ export interface UseTeamsReturn {
 export const useTeams = (): UseTeamsReturn => {
     const { t } = useTranslation()
     const confirm = useConfirm()
+    const queryClient = useQueryClient()
 
-    const [teams, setTeams] = useState<Team[]>([])
-    const [loading, setLoading] = useState(true)
+    // Local UI state for filters and pagination
     const [searchTerm, setSearchTerm] = useState('')
     const [projectFilter, setProjectFilter] = useState('ALL')
     const [currentPage, setCurrentPage] = useState(1)
     const [pageSize, setPageSize] = useState(10)
 
-    const dataFetchedRef = useRef(false)
+    // Fetch all teams via TanStack Query
+    const teamsQuery = useQuery({
+        queryKey: queryKeys.teams.list(),
+        queryFn: () => teamApi.getTeams(),
+    })
 
-    /** Fetch all teams from the API */
-    const loadTeams = useCallback(async () => {
-        try {
-            setLoading(true)
-            const data = await teamApi.getTeams()
-            setTeams(data || [])
-        } catch (error) {
-            console.error('Failed to load teams:', error)
-            setTeams([])
-        } finally {
-            setLoading(false)
-        }
-    }, [])
+    // Resolved teams list
+    const teams = teamsQuery.data ?? []
 
-    // Initial load (once)
-    useEffect(() => {
-        if (dataFetchedRef.current) return
-        dataFetchedRef.current = true
-        loadTeams()
-    }, [loadTeams])
-
-    /** Handle search, reset to page 1 */
-    const handleSearch = useCallback((value: string) => {
+    /** @description Handle search input, reset to page 1. */
+    const handleSearch = (value: string) => {
         setSearchTerm(value)
         setCurrentPage(1)
-    }, [])
+    }
 
-    /** Handle project filter change, reset to page 1 */
-    const handleProjectFilter = useCallback((value: string) => {
+    /** @description Handle project filter change, reset to page 1. */
+    const handleProjectFilter = (value: string) => {
         setProjectFilter(value)
         setCurrentPage(1)
-    }, [])
+    }
 
-    /** Handle pagination controls */
-    const handlePaginationChange = useCallback((page: number, size: number) => {
+    /** @description Handle pagination controls. */
+    const handlePaginationChange = (page: number, size: number) => {
         setCurrentPage(page)
         setPageSize(size)
-    }, [])
+    }
 
-    /** Unique project names for filter dropdown */
-    const uniqueProjects = useMemo(
-        () => Array.from(new Set(teams.map(t => t.project_name).filter(Boolean))) as string[],
-        [teams]
-    )
+    /** @description Unique project names for filter dropdown. */
+    const uniqueProjects = Array.from(new Set(teams.map(t => t.project_name).filter(Boolean))) as string[]
 
-    /** Filtered teams by search + project */
-    const filteredTeams = useMemo(() =>
-        teams.filter(team => {
-            const matchesSearch = team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                team.project_name?.toLowerCase().includes(searchTerm.toLowerCase())
-            const matchesProject = projectFilter === 'ALL' || team.project_name === projectFilter
-            return matchesSearch && matchesProject
-        }),
-        [teams, searchTerm, projectFilter]
-    )
+    /** @description Filtered teams by search + project. */
+    const filteredTeams = teams.filter(team => {
+        // Match name or project name against search term
+        const matchesSearch = team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            team.project_name?.toLowerCase().includes(searchTerm.toLowerCase())
+        // Match project filter
+        const matchesProject = projectFilter === 'ALL' || team.project_name === projectFilter
+        return matchesSearch && matchesProject
+    })
 
-    /** Paginated slice of filtered teams */
-    const paginatedTeams = useMemo(
-        () => filteredTeams.slice((currentPage - 1) * pageSize, currentPage * pageSize),
-        [filteredTeams, currentPage, pageSize]
-    )
+    /** @description Paginated slice of filtered teams. */
+    const paginatedTeams = filteredTeams.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
-    /** Create a team, returns true on success */
-    const createTeam = useCallback(async (data: CreateTeamDTO): Promise<boolean> => {
-        try {
-            await teamApi.createTeam(data)
+    // Create team mutation
+    const createMutation = useMutation({
+        mutationKey: ['create', 'team'],
+        mutationFn: (data: CreateTeamDTO) => teamApi.createTeam(data),
+        onSuccess: () => {
             globalMessage.success(t('common.createSuccess'))
-            loadTeams()
-            return true
-        } catch (error: any) {
-            const message = error?.response?.data?.error || error?.message || t('common.error')
-            globalMessage.error(message)
-            console.error('Failed to create team:', error)
-            return false
-        }
-    }, [loadTeams, t])
+            // Refetch teams list after creation
+            queryClient.invalidateQueries({ queryKey: queryKeys.teams.list() })
+        },
+    })
 
-    /** Update a team, returns true on success */
-    const updateTeam = useCallback(async (id: string, data: UpdateTeamDTO): Promise<boolean> => {
-        try {
-            await teamApi.updateTeam(id, data)
+    // Update team mutation
+    const updateMutation = useMutation({
+        mutationKey: ['update', 'team'],
+        mutationFn: ({ id, data }: { id: string; data: UpdateTeamDTO }) => teamApi.updateTeam(id, data),
+        onSuccess: () => {
             globalMessage.success(t('common.updateSuccess'))
-            loadTeams()
+            // Refetch teams list after update
+            queryClient.invalidateQueries({ queryKey: queryKeys.teams.list() })
+        },
+    })
+
+    // Delete team mutation
+    const deleteMutation = useMutation({
+        mutationKey: ['delete', 'team'],
+        mutationFn: (id: string) => teamApi.deleteTeam(id),
+        onSuccess: () => {
+            globalMessage.success(t('common.deleteSuccess'))
+            // Refetch teams list after deletion
+            queryClient.invalidateQueries({ queryKey: queryKeys.teams.list() })
+        },
+    })
+
+    /**
+     * @description Create a team, returns true on success.
+     * @param data - Team creation payload.
+     * @returns Whether the creation succeeded.
+     */
+    const createTeam = async (data: CreateTeamDTO): Promise<boolean> => {
+        try {
+            await createMutation.mutateAsync(data)
             return true
         } catch (error: any) {
             const message = error?.response?.data?.error || error?.message || t('common.error')
             globalMessage.error(message)
-            console.error('Failed to update team:', error)
             return false
         }
-    }, [loadTeams, t])
+    }
 
-    /** Delete a team with confirm dialog */
-    const deleteTeam = useCallback(async (id: string) => {
+    /**
+     * @description Update a team, returns true on success.
+     * @param id - Team ID.
+     * @param data - Update payload.
+     * @returns Whether the update succeeded.
+     */
+    const updateTeam = async (id: string, data: UpdateTeamDTO): Promise<boolean> => {
+        try {
+            await updateMutation.mutateAsync({ id, data })
+            return true
+        } catch (error: any) {
+            const message = error?.response?.data?.error || error?.message || t('common.error')
+            globalMessage.error(message)
+            return false
+        }
+    }
+
+    /**
+     * @description Delete a team with confirm dialog.
+     * @param id - Team ID to delete.
+     */
+    const deleteTeam = async (id: string) => {
+        // Show confirmation dialog before deleting
         const confirmed = await confirm({ message: t('common.confirmDelete'), variant: 'danger' })
         if (!confirmed) return
         try {
-            await teamApi.deleteTeam(id)
-            globalMessage.success(t('common.deleteSuccess'))
-            loadTeams()
+            await deleteMutation.mutateAsync(id)
         } catch (error) {
             console.error('Failed to delete team:', error)
         }
-    }, [confirm, loadTeams, t])
+    }
+
+    /** @description Manually refresh the teams list. */
+    const refresh = () => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.teams.list() })
+    }
 
     return {
         teams,
-        loading,
+        loading: teamsQuery.isLoading,
         searchTerm,
         handleSearch,
         projectFilter,
@@ -190,6 +215,6 @@ export const useTeams = (): UseTeamsReturn => {
         createTeam,
         updateTeam,
         deleteTeam,
-        refresh: loadTeams,
+        refresh,
     }
 }

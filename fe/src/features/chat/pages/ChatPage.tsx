@@ -4,7 +4,7 @@
  * @module features/ai/pages/DatasetChatPage
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Settings2, PanelRightOpen, PanelRightClose } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -75,30 +75,27 @@ function DatasetChatPage() {
   /**
    * Handle sending a message: auto-create conversation if none active.
    */
-  const handleSendMessage = useCallback(
-    async (content: string) => {
-      // Create conversation if none exists
-      if (!conversations.activeConversation) {
-        const conv = await conversations.createConversation(content.slice(0, 50))
-        if (!conv) return
-      }
-      stream.sendMessage(content)
-    },
-    [conversations, stream],
-  )
+  const handleSendMessage = async (content: string) => {
+    // Create conversation if none exists
+    if (!conversations.activeConversation) {
+      const conv = await conversations.createConversation(content.slice(0, 50))
+      if (!conv) return
+    }
+    stream.sendMessage(content)
+  }
 
   /**
    * Handle citation click: open reference panel.
    */
-  const handleCitationClick = useCallback((reference: ChatReference) => {
+  const handleCitationClick = (reference: ChatReference) => {
     setActiveReference(reference)
     setShowReferences(true)
-  }, [])
+  }
 
   /**
    * Handle inline chunk citation click: open reference panel and highlight the chunk's document.
    */
-  const handleChunkCitationClick = useCallback((chunk: ChatChunk) => {
+  const handleChunkCitationClick = (chunk: ChatChunk) => {
     // Build a reference with just this chunk for focused preview
     const reference: ChatReference = {
       chunks: [chunk],
@@ -106,12 +103,12 @@ function DatasetChatPage() {
     }
     setActiveReference(reference)
     setShowReferences(true)
-  }, [])
+  }
 
   /**
    * Handle dialog config open: fetch datasets list.
    */
-  const handleOpenConfig = useCallback(async () => {
+  const handleOpenConfig = async () => {
     try {
       const ds = await chatApi.listDatasets()
       setAvailableDatasets(ds)
@@ -119,21 +116,18 @@ function DatasetChatPage() {
       // Proceed with empty list
     }
     setShowDialogConfig(true)
-  }, [])
+  }
 
   /**
    * Handle dialog config save.
    */
-  const handleSaveDialog = useCallback(
-    (data: CreateDialogPayload) => {
-      if (dialogs.activeDialog) {
-        chatApi.updateDialog(dialogs.activeDialog.id, data).then(() => dialogs.refresh())
-      } else {
-        dialogs.createDialog(data)
-      }
-    },
-    [dialogs],
-  )
+  const handleSaveDialog = (data: CreateDialogPayload) => {
+    if (dialogs.activeDialog) {
+      chatApi.updateDialog(dialogs.activeDialog.id, data).then(() => dialogs.refresh())
+    } else {
+      dialogs.createDialog(data)
+    }
+  }
 
   // Loading state while dialogs are fetched
   if (dialogs.loading) {

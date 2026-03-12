@@ -1,5 +1,5 @@
 import jsPreviewExcel from '@js-preview/excel';
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface ExcelPreviewerProps {
   className?: string;
@@ -9,7 +9,7 @@ interface ExcelPreviewerProps {
 export const ExcelPreviewer: React.FC<ExcelPreviewerProps> = ({ className, url }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const fetchAndPreview = useCallback(async () => {
+  const fetchAndPreview = async () => {
     if (!containerRef.current || !url) return;
     const myExcelPreviewer = jsPreviewExcel.init(containerRef.current);
     try {
@@ -21,11 +21,11 @@ export const ExcelPreviewer: React.FC<ExcelPreviewerProps> = ({ className, url }
       console.warn('Excel preview failed', e);
       myExcelPreviewer.destroy();
     }
-  }, [url]);
+  }
 
   useEffect(() => {
     fetchAndPreview();
-  }, [fetchAndPreview]);
+  }, [url]);
 
   return (
     <div

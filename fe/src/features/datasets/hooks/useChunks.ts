@@ -1,14 +1,16 @@
 /**
  * @fileoverview Hook for chunk management operations.
+ * Uses TanStack Query for server state with pagination and search support.
  *
  * @module features/datasets/hooks/useChunks
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
-import { datasetApi } from '../api/datasetApi';
-import { globalMessage } from '@/app/App';
-import type { Chunk } from '../types';
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
+import { datasetApi } from '../api/datasetApi'
+import type { Chunk } from '../types'
+import { queryKeys } from '@/lib/queryKeys'
 
 // ============================================================================
 // Types
@@ -16,128 +18,119 @@ import type { Chunk } from '../types';
 
 export interface UseChunksReturn {
   /** List of chunks */
-  chunks: Chunk[];
+  chunks: Chunk[]
   /** Total chunk count */
-  total: number;
+  total: number
   /** Current page */
-  page: number;
+  page: number
   /** Whether chunks are loading */
-  loading: boolean;
+  loading: boolean
   /** Search query */
-  search: string;
+  search: string
   /** Set search query */
-  setSearch: (value: string) => void;
+  setSearch: (value: string) => void
   /** Set current page */
-  setPage: (page: number) => void;
+  setPage: (page: number) => void
   /** Refresh chunks */
-  refresh: () => void;
+  refresh: () => void
   /** Add a manual chunk */
-  addChunk: (text: string) => Promise<void>;
+  addChunk: (text: string) => Promise<void>
   /** Update a chunk */
-  updateChunk: (chunkId: string, text: string) => Promise<void>;
+  updateChunk: (chunkId: string, text: string) => Promise<void>
   /** Delete a chunk */
-  deleteChunk: (chunkId: string) => Promise<void>;
+  deleteChunk: (chunkId: string) => Promise<void>
 }
 
 // ============================================================================
 // Hook
 // ============================================================================
 
+const LIMIT = 20
+
 /**
- * Hook for managing dataset chunks.
+ * Hook for managing dataset chunks with pagination and search.
  *
- * @param datasetId - Dataset ID
- * @returns Chunk state and operations
+ * @param {string | undefined} datasetId - Dataset ID
+ * @returns {UseChunksReturn} Chunk state and operations
  */
 export function useChunks(datasetId: string | undefined): UseChunksReturn {
-  const { t } = useTranslation();
-  const [chunks, setChunks] = useState<Chunk[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState('');
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
 
-  const LIMIT = 20;
+  // UI-only state for pagination and search
+  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
 
-  /** Fetch chunks from API. */
-  const fetchChunks = useCallback(async () => {
-    if (!datasetId) return;
-    setLoading(true);
-    try {
-      const data = await datasetApi.listChunks(datasetId, {
-        page,
-        limit: LIMIT,
-        ...(search ? { search } : {}),
-      });
-      setChunks(data.chunks);
-      setTotal(data.total);
-    } catch (err) {
-      console.error('Failed to load chunks:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [datasetId, page, search]);
+  // Fetch chunks via TanStack Query with pagination params
+  const { data, isLoading } = useQuery({
+    queryKey: queryKeys.datasets.chunks(datasetId ?? '', { page, search }),
+    queryFn: () => datasetApi.listChunks(datasetId!, {
+      page,
+      limit: LIMIT,
+      ...(search ? { search } : {}),
+    }),
+    enabled: !!datasetId,
+  })
 
-  useEffect(() => {
-    fetchChunks();
-  }, [fetchChunks]);
+  /** Helper to invalidate all chunk queries for this dataset */
+  const invalidateChunks = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.datasets.chunks(datasetId!) })
+  }
 
-  /** Add a manual chunk. */
-  const addChunk = useCallback(
-    async (text: string) => {
-      if (!datasetId) return;
-      try {
-        await datasetApi.addChunk(datasetId, { text });
-        globalMessage.success(t('datasetSettings.chunks.addSuccess'));
-        await fetchChunks();
-      } catch (err: any) {
-        globalMessage.error(err?.message || t('common.error'));
-      }
-    },
-    [datasetId, fetchChunks, t],
-  );
+  // Add chunk mutation
+  const addMutation = useMutation({
+    mutationKey: ['datasets', 'chunks', 'create'],
+    mutationFn: (text: string) => datasetApi.addChunk(datasetId!, { text }),
+    meta: { successMessage: t('datasetSettings.chunks.addSuccess') },
+    onSuccess: invalidateChunks,
+  })
 
-  /** Update a chunk. */
-  const updateChunk = useCallback(
-    async (chunkId: string, text: string) => {
-      if (!datasetId) return;
-      try {
-        await datasetApi.updateChunk(datasetId, chunkId, { text });
-        globalMessage.success(t('datasetSettings.chunks.updateSuccess'));
-        await fetchChunks();
-      } catch (err: any) {
-        globalMessage.error(err?.message || t('common.error'));
-      }
-    },
-    [datasetId, fetchChunks, t],
-  );
+  // Update chunk mutation
+  const updateMutation = useMutation({
+    mutationKey: ['datasets', 'chunks', 'update'],
+    mutationFn: ({ chunkId, text }: { chunkId: string; text: string }) =>
+      datasetApi.updateChunk(datasetId!, chunkId, { text }),
+    meta: { successMessage: t('datasetSettings.chunks.updateSuccess') },
+    onSuccess: invalidateChunks,
+  })
 
-  /** Delete a chunk. */
-  const deleteChunk = useCallback(
-    async (chunkId: string) => {
-      if (!datasetId) return;
-      try {
-        await datasetApi.deleteChunk(datasetId, chunkId);
-        globalMessage.success(t('datasetSettings.chunks.deleteSuccess'));
-        await fetchChunks();
-      } catch (err: any) {
-        globalMessage.error(err?.message || t('common.error'));
-      }
-    },
-    [datasetId, fetchChunks, t],
-  );
+  // Delete chunk mutation
+  const deleteMutation = useMutation({
+    mutationKey: ['datasets', 'chunks', 'delete'],
+    mutationFn: (chunkId: string) => datasetApi.deleteChunk(datasetId!, chunkId),
+    meta: { successMessage: t('datasetSettings.chunks.deleteSuccess') },
+    onSuccess: invalidateChunks,
+  })
+
+  /** Add a manual chunk */
+  const addChunk = async (text: string) => {
+    if (!datasetId) return
+    await addMutation.mutateAsync(text)
+  }
+
+  /** Update a chunk */
+  const updateChunk = async (chunkId: string, text: string) => {
+    if (!datasetId) return
+    await updateMutation.mutateAsync({ chunkId, text })
+  }
+
+  /** Delete a chunk */
+  const deleteChunk = async (chunkId: string) => {
+    if (!datasetId) return
+    await deleteMutation.mutateAsync(chunkId)
+  }
 
   return {
-    chunks,
-    total,
+    chunks: data?.chunks ?? [],
+    total: data?.total ?? 0,
     page,
-    loading,
+    loading: isLoading,
     search,
     setSearch,
     setPage,
-    refresh: fetchChunks,
+    refresh: invalidateChunks,
     addChunk,
     updateChunk,
     deleteChunk,
-  };
+  }
 }

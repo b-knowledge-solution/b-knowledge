@@ -7,9 +7,9 @@
  * @module features/projects/components/ChatTab
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Table, Popconfirm, Form, message, Tag } from 'antd'
+import { Button, Table, Popconfirm, message, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { Plus, Trash2, RefreshCw, Pencil, Lock } from 'lucide-react'
 import {
@@ -22,7 +22,7 @@ import {
   type DocumentCategory,
   type DocumentCategoryVersion,
 } from '../api/projectService'
-import ChatModal from './ChatModal'
+import ChatModal, { type ChatFormData } from './ChatModal'
 import { EntityPermissionModal } from './EntityPermissionModal'
 
 // ============================================================================
@@ -36,7 +36,7 @@ interface ChatTabProps {
   initialChats: ProjectChat[]
   /** Project document categories */
   categories: DocumentCategory[]
-  /** Map of category ID → its versions (pre-fetched by parent) */
+  /** Map of category ID -> its versions (pre-fetched by parent) */
   categoryVersions: Record<string, DocumentCategoryVersion[]>
   /** Available chat models from the RAGFlow server config */
   chatModels: string[]
@@ -47,8 +47,8 @@ interface ChatTabProps {
 // ============================================================================
 
 /**
- * Chat tab — chat assistant list with CRUD.
- * Resolves selected categories → ragflow_dataset_ids on creation/update.
+ * Chat tab -- chat assistant list with CRUD.
+ * Resolves selected categories -> ragflow_dataset_ids on creation/update.
  *
  * @param {ChatTabProps} props - Component props
  * @returns {JSX.Element} The rendered chat tab content
@@ -62,11 +62,10 @@ const ChatTab = ({
 }: ChatTabProps) => {
   const { t } = useTranslation()
 
-  // ── State ──────────────────────────────────────────────────────────────
+  // -- State --
   const [chats, setChats] = useState<ProjectChat[]>(initialChats)
   const [chatModalOpen, setChatModalOpen] = useState(false)
   const [editingChat, setEditingChat] = useState<ProjectChat | null>(null)
-  const [chatForm] = Form.useForm()
   const [saving, setSaving] = useState(false)
   const [syncingId, setSyncingId] = useState<string | null>(null)
   const [permChatId, setPermChatId] = useState<string | null>(null)
@@ -77,7 +76,7 @@ const ChatTab = ({
     setChats(initialChats)
   }, [initialChats])
 
-  // ── Helpers ────────────────────────────────────────────────────────────
+  // -- Helpers --
 
   /**
    * Resolve selected category IDs into local version IDs and ragflow_dataset_ids.
@@ -86,32 +85,26 @@ const ChatTab = ({
    * @param categoryIds - Array of selected category IDs
    * @returns Object with dataset_ids (local) and ragflow_dataset_ids
    */
-  const resolveDatasetIds = useCallback(
-    (categoryIds: string[]) => {
-      const datasetIds: string[] = []
-      const ragflowDatasetIds: string[] = []
+  const resolveDatasetIds = (categoryIds: string[]) => {
+    const datasetIds: string[] = []
+    const ragflowDatasetIds: string[] = []
 
-      for (const catId of categoryIds) {
-        const versions = categoryVersions[catId] || []
-        for (const version of versions) {
-          if (version.ragflow_dataset_id && version.status === 'active') {
-            datasetIds.push(version.id)
-            ragflowDatasetIds.push(version.ragflow_dataset_id)
-          }
+    for (const catId of categoryIds) {
+      const versions = categoryVersions[catId] || []
+      for (const version of versions) {
+        if (version.ragflow_dataset_id && version.status === 'active') {
+          datasetIds.push(version.id)
+          ragflowDatasetIds.push(version.ragflow_dataset_id)
         }
       }
-      return { datasetIds, ragflowDatasetIds }
-    },
-    [categoryVersions],
-  )
+    }
+    return { datasetIds, ragflowDatasetIds }
+  }
 
   /**
-   * Build a display map: category ID → category name for table column rendering.
+   * Build a display map: category ID -> category name for table column rendering.
    */
-  const categoryNameMap = useMemo(
-    () => new Map(categories.map((c) => [c.id, c.name])),
-    [categories],
-  )
+  const categoryNameMap = new Map(categories.map((c) => [c.id, c.name]))
 
   /**
    * Resolve a chat's dataset_ids back to category names for display.
@@ -119,33 +112,29 @@ const ChatTab = ({
    * @param chat - The chat record
    * @returns Array of category names that match
    */
-  const getChatCategoryNames = useCallback(
-    (chat: ProjectChat): string[] => {
-      const names: string[] = []
-      const matchedCatIds = new Set<string>()
+  const getChatCategoryNames = (chat: ProjectChat): string[] => {
+    const names: string[] = []
+    const matchedCatIds = new Set<string>()
 
-      for (const versionId of chat.dataset_ids || []) {
-        for (const [catId, versions] of Object.entries(categoryVersions)) {
-          if (versions.some((v) => v.id === versionId) && !matchedCatIds.has(catId)) {
-            matchedCatIds.add(catId)
-            const name = categoryNameMap.get(catId)
-            if (name) names.push(name)
-          }
+    for (const versionId of chat.dataset_ids || []) {
+      for (const [catId, versions] of Object.entries(categoryVersions)) {
+        if (versions.some((v) => v.id === versionId) && !matchedCatIds.has(catId)) {
+          matchedCatIds.add(catId)
+          const name = categoryNameMap.get(catId)
+          if (name) names.push(name)
         }
       }
-      return names
-    },
-    [categoryVersions, categoryNameMap],
-  )
+    }
+    return names
+  }
 
-  // ── Handlers ───────────────────────────────────────────────────────────
+  // -- Handlers --
 
   /**
    * Open modal in create mode.
    */
   const handleOpenCreate = () => {
     setEditingChat(null)
-    chatForm.resetFields()
     setChatModalOpen(true)
   }
 
@@ -162,24 +151,25 @@ const ChatTab = ({
   /**
    * Create or update a chat assistant with full config.
    * Resolves category selections to ragflow_dataset_ids before submitting.
+   *
+   * @param data - Form data from ChatModal
    */
-  const handleSaveChat = async () => {
+  const handleSaveChat = async (data: ChatFormData) => {
     try {
-      const values = await chatForm.validateFields()
       setSaving(true)
 
-      // Resolve selected categories → dataset IDs
+      // Resolve selected categories -> dataset IDs
       const { datasetIds, ragflowDatasetIds } = resolveDatasetIds(
-        values.category_ids || [],
+        data.category_ids || [],
       )
 
       // Build the payload
       const payload = {
-        name: values.name,
+        name: data.name,
         dataset_ids: datasetIds,
         ragflow_dataset_ids: ragflowDatasetIds,
-        llm_config: values.llm_config || {},
-        prompt_config: values.prompt_config || {},
+        llm_config: (data.llm_config || {}) as unknown as Record<string, unknown>,
+        prompt_config: (data.prompt_config || {}) as unknown as Record<string, unknown>,
       }
 
       if (editingChat) {
@@ -194,12 +184,9 @@ const ChatTab = ({
 
       setChatModalOpen(false)
       setEditingChat(null)
-      chatForm.resetFields()
       const chatData = await getProjectChats(projectId)
       setChats(chatData)
     } catch (err) {
-      // Skip validation errors (antd form)
-      if (err && typeof err === 'object' && 'errorFields' in err) return
       message.error(String(err))
     } finally {
       setSaving(false)
@@ -240,7 +227,7 @@ const ChatTab = ({
     }
   }
 
-  // ── Table columns ──────────────────────────────────────────────────────
+  // -- Table columns --
 
   /** Chat assistant table columns */
   const chatColumns: ColumnsType<ProjectChat> = [
@@ -310,7 +297,7 @@ const ChatTab = ({
     },
   ]
 
-  // ── Render ─────────────────────────────────────────────────────────────
+  // -- Render --
 
   return (
     <>
@@ -335,13 +322,11 @@ const ChatTab = ({
       {/* Chat create/edit modal */}
       <ChatModal
         open={chatModalOpen}
-        form={chatForm}
         saving={saving}
         onOk={handleSaveChat}
         onCancel={() => {
           setChatModalOpen(false)
           setEditingChat(null)
-          chatForm.resetFields()
         }}
         categories={categories}
         categoryVersions={categoryVersions}

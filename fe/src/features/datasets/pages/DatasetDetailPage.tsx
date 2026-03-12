@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Upload, RefreshCw, Shield, Settings } from 'lucide-react';
@@ -37,9 +37,9 @@ const DatasetDetailPage: React.FC = () => {
   // State for settings drawer
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const handleViewDocument = useCallback((doc: Document) => {
-    setPreviewDoc(doc);
-  }, []);
+  const handleViewDocument = (doc: Document) => {
+    setPreviewDoc(doc)
+  }
 
   const { documents, loading: loadingDocs, uploading, refresh, uploadFiles, deleteDocument, parseDocument } = useDocuments(id);
 

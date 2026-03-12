@@ -5,6 +5,8 @@
  * Step 2: Project details + auto-dataset name preview
  * Step 3 (datasync only): Sync source configuration
  *
+ * Uses native useState instead of Ant Design Form.
+ *
  * @module features/projects/components/CreateProjectModal
  */
 
@@ -13,7 +15,6 @@ import { useTranslation } from 'react-i18next'
 import {
   Modal,
   Steps,
-  Form,
   Input,
   Select as AntSelect,
   Card,
@@ -56,6 +57,19 @@ interface CreateProjectModalProps {
   onCancel: () => void
 }
 
+/** Form data shape for step 2 */
+interface ProjectFormData {
+  name: string
+  description: string
+  ragflow_server_id: string | undefined
+}
+
+const INITIAL_FORM: ProjectFormData = {
+  name: '',
+  description: '',
+  ragflow_server_id: undefined,
+}
+
 // ============================================================================
 // Category card config
 // ============================================================================
@@ -88,9 +102,10 @@ const CreateProjectModal = ({
   onCancel,
 }: CreateProjectModalProps) => {
   const { t } = useTranslation()
-  const [form] = Form.useForm()
   const [step, setStep] = useState(0)
   const [category, setCategory] = useState<ProjectCategory>('office')
+  const [formData, setFormData] = useState<ProjectFormData>(INITIAL_FORM)
+  const [nameError, setNameError] = useState('')
   const [syncSourceType, setSyncSourceType] = useState<SyncSourceType>('sharepoint')
   const [connectionConfig, setConnectionConfig] = useState<Record<string, unknown>>({})
 
@@ -98,15 +113,23 @@ const CreateProjectModal = ({
   const totalSteps = category === 'datasync' ? 3 : 2
 
   /** Auto-generated dataset name preview */
-  const projectName = Form.useWatch('name', form) || ''
-  const datasetPreview = projectName
-    ? `${projectName}_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`
+  const datasetPreview = formData.name
+    ? `${formData.name}_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`
     : ''
+
+  /**
+   * Update a form field.
+   * @param field - Field name
+   * @param value - New value
+   */
+  const updateField = <K extends keyof ProjectFormData>(field: K, value: ProjectFormData[K]) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+  }
 
   /**
    * Handle the next step or final submit.
    */
-  const handleNext = async () => {
+  const handleNext = () => {
     if (step === 0) {
       // Category selected, move to details
       setStep(1)
@@ -114,12 +137,12 @@ const CreateProjectModal = ({
     }
 
     if (step === 1) {
-      // Validate form
-      try {
-        await form.validateFields()
-      } catch {
+      // Validate name
+      if (!formData.name.trim()) {
+        setNameError(`${t('projectManagement.name')} is required`)
         return
       }
+      setNameError('')
 
       if (category === 'datasync') {
         // Move to sync config step
@@ -128,23 +151,21 @@ const CreateProjectModal = ({
       }
 
       // Final submit for office/source_code
-      const values = form.getFieldsValue()
       onSubmit({
-        name: values.name,
-        description: values.description,
+        name: formData.name,
+        ...(formData.description ? { description: formData.description } : {}),
         category,
-        ragflow_server_id: values.ragflow_server_id,
+        ...(formData.ragflow_server_id ? { ragflow_server_id: formData.ragflow_server_id } : {}),
       })
       return
     }
 
     // Step 2 (datasync): submit with sync config
-    const values = form.getFieldsValue()
     onSubmit({
-      name: values.name,
-      description: values.description,
+      name: formData.name,
+      ...(formData.description ? { description: formData.description } : {}),
       category,
-      ragflow_server_id: values.ragflow_server_id,
+      ...(formData.ragflow_server_id ? { ragflow_server_id: formData.ragflow_server_id } : {}),
       sync_config: {
         source_type: syncSourceType,
         connection_config: connectionConfig,
@@ -167,7 +188,8 @@ const CreateProjectModal = ({
     setCategory('office')
     setSyncSourceType('sharepoint')
     setConnectionConfig({})
-    form.resetFields()
+    setFormData(INITIAL_FORM)
+    setNameError('')
     onCancel()
   }
 
@@ -258,28 +280,50 @@ const CreateProjectModal = ({
 
       {/* Step 2: Project details */}
       {step === 1 && (
-        <Form form={form} layout="vertical" className="mt-2">
-          <Form.Item
-            name="name"
-            label={t('projectManagement.name')}
-            rules={[{ required: true, message: `${t('projectManagement.name')} is required` }]}
-          >
-            <Input placeholder={t('projectManagement.namePlaceholder')} />
-          </Form.Item>
+        <div className="mt-2 space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              {t('projectManagement.name')} <span className="text-red-500">*</span>
+            </label>
+            <Input
+              placeholder={t('projectManagement.namePlaceholder')}
+              value={formData.name}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                updateField('name', e.target.value)
+                if (nameError) setNameError('')
+              }}
+              status={nameError ? 'error' : undefined}
+            />
+            {nameError && <p className="text-red-500 text-xs mt-1">{nameError}</p>}
+          </div>
 
-          <Form.Item name="description" label={t('projectManagement.descriptionLabel')}>
-            <Input.TextArea rows={2} placeholder={t('projectManagement.descriptionPlaceholder')} />
-          </Form.Item>
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              {t('projectManagement.descriptionLabel')}
+            </label>
+            <Input.TextArea
+              rows={2}
+              placeholder={t('projectManagement.descriptionPlaceholder')}
+              value={formData.description}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updateField('description', e.target.value)}
+            />
+          </div>
 
-          <Form.Item name="ragflow_server_id" label={t('projectManagement.ragflowServer')}>
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              {t('projectManagement.ragflowServer')}
+            </label>
             <AntSelect
               placeholder={t('projectManagement.selectServer')}
               allowClear
+              value={formData.ragflow_server_id}
+              onChange={(v: string) => updateField('ragflow_server_id', v || undefined)}
               options={servers
                 .filter((s) => s.is_active)
                 .map((s) => ({ value: s.id, label: s.name }))}
+              className="w-full"
             />
-          </Form.Item>
+          </div>
 
           {/* Auto-dataset name preview */}
           <Divider className="my-2" />
@@ -289,7 +333,7 @@ const CreateProjectModal = ({
               {datasetPreview || '—'}
             </code>
           </div>
-        </Form>
+        </div>
       )}
 
       {/* Step 3: Sync config (datasync only) */}

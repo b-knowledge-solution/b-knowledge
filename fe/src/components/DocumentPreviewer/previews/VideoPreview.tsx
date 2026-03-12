@@ -1,5 +1,5 @@
 import { Spinner } from '@/components/ui/spinner';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface VideoPreviewerProps {
   className?: string;
@@ -10,7 +10,7 @@ export const VideoPreviewer: React.FC<VideoPreviewerProps> = ({ className, url }
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchVideo = useCallback(async () => {
+  const fetchVideo = async () => {
     setIsLoading(true);
     try {
       const res = await fetch(url, { credentials: 'include' });
@@ -22,11 +22,11 @@ export const VideoPreviewer: React.FC<VideoPreviewerProps> = ({ className, url }
     } finally {
       setIsLoading(false);
     }
-  }, [url]);
+  }
 
   useEffect(() => {
     if (url) fetchVideo();
-  }, [url, fetchVideo]);
+  }, [url]);
 
   useEffect(() => {
     return () => {

@@ -1,15 +1,17 @@
 /**
  * @fileoverview Hook for managing files within a document version.
- * Handles file listing, upload with progress, delete, and conversion operations.
+ * Handles file listing, upload, delete, and conversion operations via TanStack Query.
  *
  * @module features/datasets/hooks/useVersionFiles
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { datasetApi } from '../api/datasetApi'
 import type { VersionFile, ConverterJob } from '../types'
 import { globalMessage } from '@/app/App'
+import { queryKeys } from '@/lib/queryKeys'
 
 // ============================================================================
 // Types
@@ -63,144 +65,148 @@ export function useVersionFiles(
   versionId: string | undefined,
 ): UseVersionFilesReturn {
   const { t } = useTranslation()
-  const [files, setFiles] = useState<VersionFile[]>([])
-  const [loading, setLoading] = useState(false)
-  const [uploading, setUploading] = useState(false)
+  const queryClient = useQueryClient()
+
+  // Upload progress is ephemeral UI state
   const [uploadProgress, setUploadProgress] = useState(0)
-  const [jobs, setJobs] = useState<ConverterJob[]>([])
-  const [loadingJobs, setLoadingJobs] = useState(false)
 
-  /** Fetch files from the API */
-  const fetchFiles = useCallback(async () => {
-    if (!datasetId || !versionId) return
-    setLoading(true)
-    try {
-      const data = await datasetApi.getVersionFiles(datasetId, versionId)
-      setFiles(data)
-    } catch (error) {
-      console.error('Error fetching version files:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [datasetId, versionId])
+  const enabled = !!datasetId && !!versionId
 
-  /** Fetch converter jobs */
-  const fetchJobs = useCallback(async () => {
-    if (!datasetId || !versionId) return
-    setLoadingJobs(true)
-    try {
-      const data = await datasetApi.getConverterJobs(datasetId, versionId)
-      setJobs(data)
-    } catch (error) {
-      console.error('Error fetching converter jobs:', error)
-    } finally {
-      setLoadingJobs(false)
-    }
-  }, [datasetId, versionId])
+  // Fetch files via TanStack Query
+  const { data: files = [], isLoading: loading } = useQuery({
+    queryKey: queryKeys.datasets.versionFiles(datasetId ?? '', versionId ?? ''),
+    queryFn: () => datasetApi.getVersionFiles(datasetId!, versionId!),
+    enabled,
+    // Auto-refresh every 5s when files are in progress
+    refetchInterval: (query) => {
+      const data = query.state.data as VersionFile[] | undefined
+      const hasInProgress = data?.some(
+        (f) => f.status === 'pending' || f.status === 'converting' || f.status === 'parsing',
+      )
+      return hasInProgress ? 5000 : false
+    },
+  })
 
-  // Fetch on mount and when IDs change
-  useEffect(() => {
-    fetchFiles()
-    fetchJobs()
-  }, [fetchFiles, fetchJobs])
+  // Fetch converter jobs
+  const { data: jobs = [], isLoading: loadingJobs } = useQuery({
+    queryKey: queryKeys.datasets.converterJobs(datasetId ?? '', versionId ?? ''),
+    queryFn: () => datasetApi.getConverterJobs(datasetId!, versionId!),
+    enabled,
+  })
 
-  // Auto-refresh when files are in-progress
-  useEffect(() => {
-    const hasInProgress = files.some(
-      (f) => f.status === 'pending' || f.status === 'converting' || f.status === 'parsing',
-    )
-    if (!hasInProgress || files.length === 0) return
+  /** Helper to invalidate file queries */
+  const invalidateFiles = () => {
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.datasets.versionFiles(datasetId!, versionId!),
+    })
+  }
 
-    const interval = setInterval(() => {
-      fetchFiles()
-    }, 5000)
+  /** Helper to invalidate job queries */
+  const invalidateJobs = () => {
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.datasets.converterJobs(datasetId!, versionId!),
+    })
+  }
 
-    return () => clearInterval(interval)
-  }, [files, fetchFiles])
-
-  /** Upload files to the version */
-  const uploadFiles = useCallback(async (fileList: File[]) => {
-    if (!datasetId || !versionId) return
-    setUploading(true)
-    setUploadProgress(0)
-    try {
-      await datasetApi.uploadVersionFiles(datasetId, versionId, fileList)
+  // Upload mutation
+  const uploadMutation = useMutation({
+    mutationFn: (fileList: File[]) =>
+      datasetApi.uploadVersionFiles(datasetId!, versionId!, fileList),
+    onMutate: () => {
+      setUploadProgress(0)
+    },
+    onSuccess: (_data, fileList) => {
       setUploadProgress(100)
       globalMessage.success(t('versions.uploadSuccess', { count: fileList.length }))
-      await fetchFiles()
-    } catch (error: any) {
-      globalMessage.error(error?.message || t('common.error'))
-    } finally {
-      setUploading(false)
+      invalidateFiles()
+    },
+    onSettled: () => {
       setUploadProgress(0)
-    }
-  }, [datasetId, versionId, fetchFiles, t])
+    },
+  })
+
+  // Delete files mutation
+  const deleteMutation = useMutation({
+    mutationKey: ['datasets', 'versions', 'files', 'delete'],
+    mutationFn: (fileIds: string[]) =>
+      datasetApi.deleteVersionFiles(datasetId!, versionId!, fileIds),
+    onSuccess: (_data, fileIds) => {
+      globalMessage.success(t('versions.deleteFilesSuccess', { count: fileIds.length }))
+      invalidateFiles()
+    },
+  })
+
+  // Convert files mutation
+  const convertMutation = useMutation({
+    mutationFn: () => datasetApi.convertFiles(datasetId!, versionId!),
+    meta: { successMessage: t('versions.convertStarted') },
+    onSuccess: () => {
+      invalidateFiles()
+      invalidateJobs()
+    },
+  })
+
+  // Parse files mutation
+  const parseMutation = useMutation({
+    mutationFn: () => datasetApi.parseFiles(datasetId!, versionId!),
+    meta: { successMessage: t('versions.parseStarted') },
+    onSuccess: invalidateFiles,
+  })
+
+  // Sync status mutation
+  const syncMutation = useMutation({
+    mutationFn: () => datasetApi.syncFileStatus(datasetId!, versionId!),
+    meta: { successMessage: t('versions.syncSuccess') },
+    onSuccess: invalidateFiles,
+  })
+
+  // Requeue mutation
+  const requeueMutation = useMutation({
+    mutationFn: () => datasetApi.requeueFiles(datasetId!, versionId!),
+    meta: { successMessage: t('versions.requeueSuccess') },
+    onSuccess: invalidateFiles,
+  })
+
+  /** Upload files to the version */
+  const uploadFiles = async (fileList: File[]) => {
+    if (!datasetId || !versionId) return
+    await uploadMutation.mutateAsync(fileList)
+  }
 
   /** Delete files by ID */
-  const deleteFiles = useCallback(async (fileIds: string[]) => {
+  const deleteFiles = async (fileIds: string[]) => {
     if (!datasetId || !versionId) return
-    try {
-      await datasetApi.deleteVersionFiles(datasetId, versionId, fileIds)
-      globalMessage.success(t('versions.deleteFilesSuccess', { count: fileIds.length }))
-      await fetchFiles()
-    } catch (error: any) {
-      globalMessage.error(error?.message || t('common.error'))
-    }
-  }, [datasetId, versionId, fetchFiles, t])
+    await deleteMutation.mutateAsync(fileIds)
+  }
 
   /** Start file conversion */
-  const convertFiles = useCallback(async () => {
+  const convertFiles = async () => {
     if (!datasetId || !versionId) return
-    try {
-      await datasetApi.convertFiles(datasetId, versionId)
-      globalMessage.success(t('versions.convertStarted'))
-      await fetchFiles()
-      await fetchJobs()
-    } catch (error: any) {
-      globalMessage.error(error?.message || t('common.error'))
-    }
-  }, [datasetId, versionId, fetchFiles, fetchJobs, t])
+    await convertMutation.mutateAsync()
+  }
 
   /** Start file parsing in RAGFlow */
-  const parseFiles = useCallback(async () => {
+  const parseFiles = async () => {
     if (!datasetId || !versionId) return
-    try {
-      await datasetApi.parseFiles(datasetId, versionId)
-      globalMessage.success(t('versions.parseStarted'))
-      await fetchFiles()
-    } catch (error: any) {
-      globalMessage.error(error?.message || t('common.error'))
-    }
-  }, [datasetId, versionId, fetchFiles, t])
+    await parseMutation.mutateAsync()
+  }
 
   /** Sync file statuses from RAGFlow */
-  const syncStatus = useCallback(async () => {
+  const syncStatus = async () => {
     if (!datasetId || !versionId) return
-    try {
-      await datasetApi.syncFileStatus(datasetId, versionId)
-      globalMessage.success(t('versions.syncSuccess'))
-      await fetchFiles()
-    } catch (error: any) {
-      globalMessage.error(error?.message || t('common.error'))
-    }
-  }, [datasetId, versionId, fetchFiles, t])
+    await syncMutation.mutateAsync()
+  }
 
   /** Re-queue failed files for conversion */
-  const requeueFiles = useCallback(async () => {
+  const requeueFiles = async () => {
     if (!datasetId || !versionId) return
-    try {
-      await datasetApi.requeueFiles(datasetId, versionId)
-      globalMessage.success(t('versions.requeueSuccess'))
-      await fetchFiles()
-    } catch (error: any) {
-      globalMessage.error(error?.message || t('common.error'))
-    }
-  }, [datasetId, versionId, fetchFiles, t])
+    await requeueMutation.mutateAsync()
+  }
 
   return {
     files,
     loading,
-    uploading,
+    uploading: uploadMutation.isPending,
     uploadProgress,
     uploadFiles,
     deleteFiles,
@@ -208,9 +214,9 @@ export function useVersionFiles(
     parseFiles,
     syncStatus,
     requeueFiles,
-    refresh: fetchFiles,
+    refresh: invalidateFiles,
     jobs,
     loadingJobs,
-    refreshJobs: fetchJobs,
+    refreshJobs: invalidateJobs,
   }
 }

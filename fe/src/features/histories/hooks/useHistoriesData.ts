@@ -4,7 +4,7 @@
  *
  * @module features/histories/hooks/useHistoriesData
  */
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import type {
     FilterState,
@@ -20,6 +20,7 @@ import {
     fetchChatSessionDetails,
     fetchSearchSessionDetails,
 } from '../api/historiesService'
+import { queryKeys } from '@/lib/queryKeys'
 
 /**
  * Return type for useHistoriesData hook.
@@ -66,7 +67,7 @@ export const useHistoriesData = (
         refetch: refetchChat,
         isRefetching: isRefetchingChat,
     } = useInfiniteQuery({
-        queryKey: ['externalChatHistory', executedSearchQuery, filters],
+        queryKey: queryKeys.histories.chatInfinite(executedSearchQuery, filters),
         queryFn: ({ pageParam = 1 }) => fetchExternalChatHistory(executedSearchQuery, filters, pageParam),
         initialPageParam: 1,
         getNextPageParam: (lastPage, allPages) => (lastPage.length === 20 ? allPages.length + 1 : undefined),
@@ -83,7 +84,7 @@ export const useHistoriesData = (
         refetch: refetchSearch,
         isRefetching: isRefetchingSearch,
     } = useInfiniteQuery({
-        queryKey: ['externalSearchHistory', executedSearchQuery, filters],
+        queryKey: queryKeys.histories.searchInfinite(executedSearchQuery, filters),
         queryFn: ({ pageParam = 1 }) => fetchExternalSearchHistory(executedSearchQuery, filters, pageParam),
         initialPageParam: 1,
         getNextPageParam: (lastPage, allPages) => (lastPage.length === 20 ? allPages.length + 1 : undefined),
@@ -97,7 +98,7 @@ export const useHistoriesData = (
         refetch: refetchDetails,
         isRefetching: isRefetchingDetails,
     } = useQuery<(ExternalChatHistory | ExternalSearchHistory)[]>({
-        queryKey: ['sessionDetails', activeTab, selectedSession?.session_id],
+        queryKey: queryKeys.histories.sessionDetails(activeTab, selectedSession?.session_id ?? ''),
         queryFn: async () => {
             if (!selectedSession?.session_id) return []
             return activeTab === 'chat'
@@ -115,11 +116,10 @@ export const useHistoriesData = (
     const isRefreshing = (activeTab === 'chat' ? isRefetchingChat : isRefetchingSearch) || isRefetchingDetails
 
     // Flatten paginated data
-    const flattenedData = useMemo(() => {
+    const flattenedData = (() => {
         const pages = activeTab === 'chat' ? chatData?.pages : searchData?.pages
         return (pages?.flat() || []) as (ChatSessionSummary | SearchSessionSummary)[]
-    }, [activeTab, chatData, searchData])
-
+    })()
     // Infinite scroll observer
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -143,17 +143,17 @@ export const useHistoriesData = (
     }, [flattenedData, selectedSession])
 
     /** Switch tab and reset state. */
-    const switchTab = useCallback((tab: HistoriesTab) => {
+    const switchTab = (tab: HistoriesTab) => {
         setActiveTab(tab)
         setSelectedSession(null)
-    }, [])
+    }
 
     /** Refresh current data and details. */
-    const handleRefresh = useCallback(() => {
+    const handleRefresh = () => {
         if (activeTab === 'chat') refetchChat()
         else refetchSearch()
         if (selectedSession) refetchDetails()
-    }, [activeTab, selectedSession, refetchChat, refetchSearch, refetchDetails])
+    }
 
     return {
         activeTab,

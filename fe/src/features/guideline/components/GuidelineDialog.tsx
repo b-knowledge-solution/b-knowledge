@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useGuideline } from '../hooks/useGuideline';
@@ -47,7 +47,7 @@ export function GuidelineDialog({ open, onClose, featureId }: GuidelineDialogPro
      * Filters tabs based on search query.
      * A tab matches if its title or any step's title/description/details contain the query.
      */
-    const filteredTabs = useMemo((): IGuidelineTab[] => {
+    const filteredTabs: IGuidelineTab[] = (() => {
         if (!guideline || !searchQuery.trim()) return guideline?.tabs || [];
         const query = searchQuery.toLowerCase().trim();
 
@@ -67,7 +67,7 @@ export function GuidelineDialog({ open, onClose, featureId }: GuidelineDialogPro
                 return details.some(d => d.toLowerCase().includes(query));
             });
         });
-    }, [guideline, searchQuery, currentLang]);
+    })();
 
     const handleClose = () => {
         onClose();

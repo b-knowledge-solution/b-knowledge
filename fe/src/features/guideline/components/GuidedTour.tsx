@@ -1,6 +1,5 @@
 import Joyride, { CallBackProps, Step, STATUS, EVENTS } from 'react-joyride';
 import { useTranslation } from 'react-i18next';
-import { useMemo } from 'react';
 import { IJoyrideStep } from '../data/types';
 import { LanguageCode } from '@/i18n';
 
@@ -22,16 +21,14 @@ export function GuidedTour({ steps, run, onTourFinish }: GuidedTourProps) {
         }
     };
 
-    const joyrideSteps: Step[] = useMemo(() => {
-        return steps.map(step => ({
-            target: step.target,
-            content: step.content[currentLang] || step.content['en'],
-            placement: step.placement || 'bottom',
-            disableBeacon: true,
-            disableOverlayClose: true,
-            spotlightPadding: 5,
-        }));
-    }, [steps, currentLang]);
+    const joyrideSteps: Step[] = steps.map(step => ({
+        target: step.target,
+        content: step.content[currentLang] || step.content['en'],
+        placement: step.placement || 'bottom',
+        disableBeacon: true,
+        disableOverlayClose: true,
+        spotlightPadding: 5,
+    }));
 
     const JoyrideWrapper = Joyride as any;
 

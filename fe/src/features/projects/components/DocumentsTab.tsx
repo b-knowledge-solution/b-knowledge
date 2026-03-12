@@ -10,7 +10,7 @@
 
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Tag, Popconfirm, Form, Tooltip, message } from 'antd'
+import { Button, Tag, Popconfirm, Tooltip, message } from 'antd'
 import { Plus, Trash2, Pencil, Archive, FolderOpen, Lock } from 'lucide-react'
 import {
   getDocumentCategories,
@@ -27,7 +27,7 @@ import {
 import { getConverterJobs } from '../../system/api/converterService'
 
 import CategoryModal from './CategoryModal'
-import VersionModal from './VersionModal'
+import VersionModal, { type VersionFormData } from './VersionModal'
 import EditVersionModal from './EditVersionModal'
 import DocumentListPanel from './DocumentListPanel'
 import JobManagementModal from './JobManagementModal'
@@ -51,7 +51,7 @@ interface DocumentsTabProps {
 // ============================================================================
 
 /**
- * Documents tab — category sidebar + version panel with document list.
+ * Documents tab -- category sidebar + version panel with document list.
  *
  * @param {DocumentsTabProps} props - Component props
  * @returns {JSX.Element} The rendered documents tab content
@@ -59,16 +59,14 @@ interface DocumentsTabProps {
 const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: DocumentsTabProps) => {
   const { t } = useTranslation()
 
-  // ── State ──────────────────────────────────────────────────────────────
+  // -- State --
   const [categories, setCategories] = useState<DocumentCategory[]>(initialCategories)
   const [selectedCategory, setSelectedCategory] = useState<DocumentCategory | null>(null)
   const [versions, setVersions] = useState<DocumentCategoryVersion[]>([])
   const [categoryModalOpen, setCategoryModalOpen] = useState(false)
   const [permCategoryId, setPermCategoryId] = useState<string | null>(null)
   const [permCategoryName, setPermCategoryName] = useState('')
-  const [categoryForm] = Form.useForm()
   const [versionModalOpen, setVersionModalOpen] = useState(false)
-  const [versionForm] = Form.useForm()
   const [saving, setSaving] = useState(false)
   const [loadingVersions, setLoadingVersions] = useState(false)
   const [editingCategory, setEditingCategory] = useState<DocumentCategory | null>(null)
@@ -109,6 +107,7 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
     const timer = setInterval(fetchActiveCount, 30000)
     return () => clearInterval(timer)
   }, [selectedCategory, selectedVersion, projectId])
+
   // Sync with parent if initialCategories changes
   useEffect(() => {
     setCategories(initialCategories)
@@ -136,7 +135,7 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
       .finally(() => setLoadingVersions(false))
   }, [projectId, selectedCategory])
 
-  // ── Handlers ───────────────────────────────────────────────────────────
+  // -- Handlers --
 
   /** Refresh versions for the currently selected category */
   const refreshVersions = async () => {
@@ -150,50 +149,40 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
     }
   }
 
-
-
   /**
    * Create a new category.
-   * Saves category with dataset_config to DB. The actual RAGFlow dataset
-   * is created later when a version is created via the backend.
+   * Saves category with dataset_config to DB.
+   * @param data - Category form data from CategoryModal
    */
-  const handleCreateCategory = async () => {
+  const handleCreateCategory = async (data: { name: string; dataset_config: Record<string, any> }) => {
     try {
-      const values = await categoryForm.validateFields()
       setSaving(true)
-      await createDocumentCategory(projectId, values)
+      await createDocumentCategory(projectId, data)
       setCategoryModalOpen(false)
-      categoryForm.resetFields()
+      setEditingCategory(null)
       const catData = await getDocumentCategories(projectId)
       setCategories(catData)
     } catch (err) {
-      if (err && typeof err === 'object' && 'errorFields' in err) return
       message.error(String(err))
     } finally {
       setSaving(false)
     }
   }
 
-  /** Open edit modal for a category, pre-filling form with its data */
+  /** Open edit modal for a category, pre-filling with its data */
   const handleOpenEditCategory = (cat: DocumentCategory) => {
     setEditingCategory(cat)
-    categoryForm.setFieldsValue({
-      name: cat.name,
-      dataset_config: cat.dataset_config || {},
-    })
     setCategoryModalOpen(true)
   }
 
   /** Update an existing category */
-  const handleUpdateCategory = async () => {
+  const handleUpdateCategory = async (data: { name: string; dataset_config: Record<string, any> }) => {
     if (!editingCategory) return
     try {
-      const values = await categoryForm.validateFields()
       setSaving(true)
-      await updateDocumentCategory(projectId, editingCategory.id, values)
+      await updateDocumentCategory(projectId, editingCategory.id, data)
       setCategoryModalOpen(false)
       setEditingCategory(null)
-      categoryForm.resetFields()
       const catData = await getDocumentCategories(projectId)
       setCategories(catData)
       // Refresh selected category if it was the one edited
@@ -202,7 +191,6 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
         if (updated) setSelectedCategory(updated)
       }
     } catch (err) {
-      if (err && typeof err === 'object' && 'errorFields' in err) return
       message.error(String(err))
     } finally {
       setSaving(false)
@@ -256,16 +244,17 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
 
   /** Open version creation modal */
   const handleCreateVersion = () => {
-    versionForm.resetFields()
     setVersionModalOpen(true)
   }
 
-  /** Submit version creation with duplicate check */
-  const handleSubmitVersion = async () => {
+  /**
+   * Submit version creation with duplicate check.
+   * @param data - Version form data from VersionModal
+   */
+  const handleSubmitVersion = async (data: VersionFormData) => {
     if (!selectedCategory) return
     try {
-      const values = await versionForm.validateFields()
-      const version_label = values.version_label.trim()
+      const version_label = data.version_label.trim()
 
       const duplicate = versions.find(
         (v) => v.version_label.toLowerCase() === version_label.toLowerCase()
@@ -278,25 +267,23 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
       setSaving(true)
       await createCategoryVersion(projectId, selectedCategory.id, {
         version_label,
-        pagerank: values.pagerank ?? 0,
-        pipeline_id: values.pipeline_id?.trim() || undefined,
-        parse_type: values.parse_type ?? undefined,
-        chunk_method: values.chunk_method,
-        parser_config: values.parser_config,
+        pagerank: data.pagerank ?? 0,
+        ...(data.pipeline_id?.trim() ? { pipeline_id: data.pipeline_id.trim() } : {}),
+        ...(data.parse_type != null ? { parse_type: data.parse_type } : {}),
+        ...(data.chunk_method ? { chunk_method: data.chunk_method } : {}),
+        parser_config: data.parser_config as Record<string, any>,
       })
       setVersionModalOpen(false)
-      versionForm.resetFields()
       await refreshVersions()
       message.success(t('projectManagement.versions.syncSuccess'))
     } catch (err) {
-      if (err && typeof err === 'object' && 'errorFields' in err) return
       message.error(String(err))
     } finally {
       setSaving(false)
     }
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────
+  // -- Render --
 
   /** Color for version status */
   const statusColor = (status: string) => {
@@ -307,13 +294,13 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
   return (
     <>
       <div className="flex gap-6" style={{ minHeight: 400 }}>
-        {/* ── Category sidebar ──────────────────────────────────────── */}
+        {/* -- Category sidebar -- */}
         <div className="w-56 shrink-0 border-r border-gray-200 dark:border-gray-700 pr-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
               {t('projectManagement.categories.title')}
             </h3>
-            <Button size="small" type="text" icon={<Plus size={14} />} onClick={() => setCategoryModalOpen(true)} />
+            <Button size="small" type="text" icon={<Plus size={14} />} onClick={() => { setEditingCategory(null); setCategoryModalOpen(true) }} />
           </div>
           {categories.length === 0 ? (
             <div className="text-center py-8">
@@ -372,7 +359,7 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
           )}
         </div>
 
-        {/* ── Right panel: Versions + Documents ─────────────────────── */}
+        {/* -- Right panel: Versions + Documents -- */}
         <div className="flex-1 min-w-0">
           {selectedCategory ? (
             <div className="flex flex-col gap-4">
@@ -386,7 +373,7 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
                 </Button>
               </div>
 
-              {/* Version chips/cards — horizontal scrollable */}
+              {/* Version chips/cards -- horizontal scrollable */}
               {loadingVersions ? (
                 <div className="flex gap-2">
                   {[1, 2, 3].map((k) => (
@@ -419,7 +406,7 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
                         </Tag>
                       </div>
 
-                      {/* Action buttons — visible on hover */}
+                      {/* Action buttons -- visible on hover */}
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Tooltip title={t('projectManagement.versions.editLabel')}>
                           <Button
@@ -488,16 +475,15 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
       {/* Modals */}
       <CategoryModal
         open={categoryModalOpen}
-        form={categoryForm}
         saving={saving}
         editMode={!!editingCategory}
         embeddingModels={embeddingModels}
+        initialData={editingCategory ? { name: editingCategory.name, dataset_config: editingCategory.dataset_config as Record<string, any> } : null}
         onOk={editingCategory ? handleUpdateCategory : handleCreateCategory}
-        onCancel={() => { setCategoryModalOpen(false); setEditingCategory(null); categoryForm.resetFields() }}
+        onCancel={() => { setCategoryModalOpen(false); setEditingCategory(null) }}
       />
       <VersionModal
         open={versionModalOpen}
-        form={versionForm}
         saving={saving}
         categoryConfig={selectedCategory?.dataset_config as Record<string, any> | undefined}
         onOk={handleSubmitVersion}

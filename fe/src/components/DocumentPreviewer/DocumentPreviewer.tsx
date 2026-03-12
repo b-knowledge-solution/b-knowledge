@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertCircle, Download } from 'lucide-react';
 import type { Chunk } from '@/features/datasets/types';
@@ -43,7 +43,7 @@ const FilePreviewPanel: React.FC<{
   onPdfSize?: ((width: number, height: number) => void) | undefined;
 }> = ({ fileName, url, highlights, onPdfSize }) => {
   const { t } = useTranslation();
-  const ext = useMemo(() => getExtension(fileName), [fileName]);
+  const ext = getExtension(fileName);
 
   if (isPdf(fileName)) {
     return (
@@ -120,22 +120,16 @@ const DocumentPreviewer: React.FC<DocumentPreviewerProps> = ({
 
   const activeChunk = selectedChunk ?? selectedChunkState;
 
-  const handleSelectChunk = useCallback(
-    (chunk: Chunk) => {
-      setSelectedChunkState(chunk);
-      onSelectChunk?.(chunk);
-    },
-    [onSelectChunk],
-  );
+  const handleSelectChunk = (chunk: Chunk) => {
+    setSelectedChunkState(chunk);
+    onSelectChunk?.(chunk);
+  }
 
-  const handlePdfSize = useCallback((width: number, height: number) => {
+  const handlePdfSize = (width: number, height: number) => {
     setPdfSize({ width, height });
-  }, []);
+  }
 
-  const highlights = useMemo(
-    () => buildChunkHighlights(activeChunk, pdfSize),
-    [activeChunk, pdfSize],
-  );
+  const highlights = buildChunkHighlights(activeChunk, pdfSize);
 
   return (
     <div className="flex h-full">

@@ -1,11 +1,14 @@
 /**
  * @fileoverview Hook for dashboard data fetching and date range state.
+ * Uses TanStack Query for data fetching.
  * @module features/dashboard/hooks/useDashboardStats
  */
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { DashboardStats } from '../types/dashboard.types'
 import { fetchDashboardStats } from '../api/dashboardApi'
 import { format } from 'date-fns'
+import { queryKeys } from '@/lib/queryKeys'
 
 // ============================================================================
 // Return Type
@@ -39,40 +42,29 @@ export interface UseDashboardStatsReturn {
 
 /**
  * @description Hook for managing dashboard statistics data and filters.
+ * Date range changes automatically trigger a refetch via query key.
  * @returns {UseDashboardStatsReturn} Dashboard state and handlers.
  */
 export const useDashboardStats = (): UseDashboardStatsReturn => {
+    const queryClient = useQueryClient()
+
+    // Local UI state for date range and display limit
     const [startDate, setStartDate] = useState<Date | undefined>(undefined)
     const [endDate, setEndDate] = useState<Date | undefined>(undefined)
-    const [stats, setStats] = useState<DashboardStats | null>(null)
-    const [loading, setLoading] = useState(true)
     const [topUsersLimit, setTopUsersLimit] = useState(10)
 
-    /**
-     * Fetch dashboard data from the API.
-     * Converts Date objects to YYYY-MM-DD strings for the query.
-     */
-    const loadData = useCallback(async () => {
-        setLoading(true)
-        try {
-            const start = startDate ? format(startDate, 'yyyy-MM-dd') : undefined
-            const end = endDate ? format(endDate, 'yyyy-MM-dd') : undefined
-            const data = await fetchDashboardStats(start, end)
-            setStats(data)
-        } catch (error) {
-            console.error('Failed to fetch dashboard stats:', error)
-        } finally {
-            setLoading(false)
-        }
-    }, [startDate, endDate])
+    // Convert dates to query-friendly strings
+    const startStr = startDate ? format(startDate, 'yyyy-MM-dd') : undefined
+    const endStr = endDate ? format(endDate, 'yyyy-MM-dd') : undefined
 
-    // Load data on mount and when date range changes
-    useEffect(() => {
-        loadData()
-    }, [loadData])
+    // Fetch dashboard stats — re-fetches automatically when date range changes
+    const statsQuery = useQuery({
+        queryKey: queryKeys.dashboard.stats(startStr, endStr),
+        queryFn: () => fetchDashboardStats(startStr, endStr),
+    })
 
     /**
-     * Handle date range change from the picker.
+     * @description Handle date range change from the picker.
      * @param start - Start date.
      * @param end - End date.
      */
@@ -81,14 +73,19 @@ export const useDashboardStats = (): UseDashboardStatsReturn => {
         setEndDate(end)
     }
 
+    /** @description Manually refresh dashboard data by invalidating the query. */
+    const refresh = () => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.stats(startStr, endStr) })
+    }
+
     return {
-        stats,
-        loading,
+        stats: statsQuery.data ?? null,
+        loading: statsQuery.isLoading,
         startDate,
         endDate,
         handleDateRangeChange,
         topUsersLimit,
         setTopUsersLimit,
-        refresh: loadData,
+        refresh,
     }
 }

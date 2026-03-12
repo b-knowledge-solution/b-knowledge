@@ -1,15 +1,16 @@
 /**
  * @fileoverview Hook for managing document versions within a dataset.
- * Provides CRUD operations for versions with optimistic state updates.
+ * Uses TanStack Query for server state with local UI state for selection.
  *
  * @module features/datasets/hooks/useVersions
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { datasetApi } from '../api/datasetApi'
 import type { DocumentVersion, CreateVersionDto, UpdateVersionDto } from '../types'
-import { globalMessage } from '@/app/App'
+import { queryKeys } from '@/lib/queryKeys'
 
 // ============================================================================
 // Types
@@ -49,108 +50,120 @@ export interface UseVersionsReturn {
  */
 export function useVersions(datasetId: string | undefined): UseVersionsReturn {
   const { t } = useTranslation()
-  const [versions, setVersions] = useState<DocumentVersion[]>([])
-  const [loading, setLoading] = useState(false)
+  const queryClient = useQueryClient()
+
+  // UI-only state for version selection
   const [selectedVersion, setSelectedVersion] = useState<DocumentVersion | null>(null)
 
-  /** Fetch versions from the API */
-  const fetchVersions = useCallback(async () => {
-    if (!datasetId) return
-    setLoading(true)
-    try {
-      const data = await datasetApi.getVersions(datasetId)
-      setVersions(data)
-      // Auto-select first active version if none selected
-      if (!selectedVersion) {
-        const active = data.find((v) => v.status === 'active') || data[0]
-        setSelectedVersion(active || null)
-      }
-    } catch (error) {
-      console.error('Error fetching versions:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [datasetId])
+  // Fetch versions via TanStack Query
+  const { data: versions = [], isLoading } = useQuery({
+    queryKey: queryKeys.datasets.versions(datasetId ?? ''),
+    queryFn: () => datasetApi.getVersions(datasetId!),
+    enabled: !!datasetId,
+  })
 
-  // Fetch on mount and when datasetId changes
+  // Auto-select first active version when data loads
+  useEffect(() => {
+    if (versions.length > 0 && !selectedVersion) {
+      const active = versions.find((v) => v.status === 'active') || versions[0]
+      setSelectedVersion(active || null)
+    }
+  }, [versions, selectedVersion])
+
+  // Reset selection when datasetId changes
   useEffect(() => {
     setSelectedVersion(null)
-    fetchVersions()
-  }, [fetchVersions])
+  }, [datasetId])
 
-  /** Select a version */
-  const selectVersion = useCallback((version: DocumentVersion | null) => {
-    setSelectedVersion(version)
-  }, [])
+  /** Helper to invalidate version queries */
+  const invalidateVersions = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.datasets.versions(datasetId!) })
+  }
 
-  /** Create a new version */
-  const createVersion = useCallback(async (data: CreateVersionDto) => {
-    if (!datasetId) return
-    try {
-      await datasetApi.createVersion(datasetId, data)
-      globalMessage.success(t('versions.createSuccess'))
-      await fetchVersions()
-    } catch (error: any) {
-      globalMessage.error(error?.message || t('common.error'))
-      throw error
-    }
-  }, [datasetId, fetchVersions, t])
+  // Create version mutation
+  const createMutation = useMutation({
+    mutationKey: ['datasets', 'versions', 'create'],
+    mutationFn: (data: CreateVersionDto) => datasetApi.createVersion(datasetId!, data),
+    meta: { successMessage: t('versions.createSuccess') },
+    onSuccess: invalidateVersions,
+  })
 
-  /** Update a version */
-  const updateVersion = useCallback(async (versionId: string, data: UpdateVersionDto) => {
-    if (!datasetId) return
-    try {
-      await datasetApi.updateVersion(datasetId, versionId, data)
-      globalMessage.success(t('versions.updateSuccess'))
-      await fetchVersions()
-    } catch (error: any) {
-      globalMessage.error(error?.message || t('common.error'))
-      throw error
-    }
-  }, [datasetId, fetchVersions, t])
+  // Update version mutation
+  const updateMutation = useMutation({
+    mutationKey: ['datasets', 'versions', 'update'],
+    mutationFn: ({ versionId, data }: { versionId: string; data: UpdateVersionDto }) =>
+      datasetApi.updateVersion(datasetId!, versionId, data),
+    meta: { successMessage: t('versions.updateSuccess') },
+    onSuccess: invalidateVersions,
+  })
 
-  /** Archive a version */
-  const archiveVersion = useCallback(async (versionId: string) => {
-    if (!datasetId) return
-    try {
-      await datasetApi.updateVersion(datasetId, versionId, { status: 'archived' })
-      globalMessage.success(t('versions.archiveSuccess'))
+  // Archive version mutation
+  const archiveMutation = useMutation({
+    mutationFn: (versionId: string) =>
+      datasetApi.updateVersion(datasetId!, versionId, { status: 'archived' }),
+    meta: { successMessage: t('versions.archiveSuccess') },
+    onSuccess: (_data, versionId) => {
       // Deselect if the archived version was selected
       if (selectedVersion?.id === versionId) {
         setSelectedVersion(null)
       }
-      await fetchVersions()
-    } catch (error: any) {
-      globalMessage.error(error?.message || t('common.error'))
-    }
-  }, [datasetId, fetchVersions, selectedVersion, t])
+      invalidateVersions()
+    },
+  })
 
-  /** Delete a version */
-  const deleteVersion = useCallback(async (versionId: string) => {
-    if (!datasetId) return
-    if (!window.confirm(t('versions.confirmDeleteMessage'))) return
-    try {
-      await datasetApi.deleteVersion(datasetId, versionId)
-      globalMessage.success(t('versions.deleteSuccess'))
+  // Delete version mutation
+  const deleteMutation = useMutation({
+    mutationKey: ['datasets', 'versions', 'delete'],
+    mutationFn: (versionId: string) => datasetApi.deleteVersion(datasetId!, versionId),
+    meta: { successMessage: t('versions.deleteSuccess') },
+    onSuccess: (_data, versionId) => {
       // Deselect if the deleted version was selected
       if (selectedVersion?.id === versionId) {
         setSelectedVersion(null)
       }
-      await fetchVersions()
-    } catch (error: any) {
-      globalMessage.error(error?.message || t('common.error'))
-    }
-  }, [datasetId, fetchVersions, selectedVersion, t])
+      invalidateVersions()
+    },
+  })
+
+  /** Select a version */
+  const selectVersion = (version: DocumentVersion | null) => {
+    setSelectedVersion(version)
+  }
+
+  /** Create a new version */
+  const createVersion = async (data: CreateVersionDto) => {
+    if (!datasetId) return
+    await createMutation.mutateAsync(data)
+  }
+
+  /** Update a version */
+  const updateVersion = async (versionId: string, data: UpdateVersionDto) => {
+    if (!datasetId) return
+    await updateMutation.mutateAsync({ versionId, data })
+  }
+
+  /** Archive a version */
+  const archiveVersion = async (versionId: string) => {
+    if (!datasetId) return
+    await archiveMutation.mutateAsync(versionId)
+  }
+
+  /** Delete a version after user confirmation */
+  const deleteVersion = async (versionId: string) => {
+    if (!datasetId) return
+    if (!window.confirm(t('versions.confirmDeleteMessage'))) return
+    await deleteMutation.mutateAsync(versionId)
+  }
 
   return {
     versions,
-    loading,
+    loading: isLoading,
     selectedVersion,
     selectVersion,
     createVersion,
     updateVersion,
     archiveVersion,
     deleteVersion,
-    refresh: fetchVersions,
+    refresh: invalidateVersions,
   }
 }

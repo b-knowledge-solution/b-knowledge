@@ -9,7 +9,7 @@
  * - Name/Email table of granted users with delete buttons
  * - Cancel/Save footer with batch save
  */
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Modal, Select, Table, Switch, Button, message, Divider } from 'antd'
 import { Lock, Users, User, Trash2 } from 'lucide-react'
@@ -79,7 +79,7 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
   /**
    * Fetch permissions and reference data (teams, users) when modal opens.
    */
-  const loadData = useCallback(async () => {
+  const loadData = async () => {
     if (!open || !entityId) return
     setLoading(true)
     try {
@@ -109,12 +109,12 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
     } finally {
       setLoading(false)
     }
-  }, [open, projectId, entityType, entityId])
+  }
 
   // Load data when modal opens
   useEffect(() => {
     loadData()
-  }, [loadData])
+  }, [open, projectId, entityType, entityId])
 
   /**
    * Resolve user ID to display info.
@@ -142,7 +142,7 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
   /**
    * Build all grantees (teams + users) for the table display.
    */
-  const granteeTableData = useMemo(() => {
+  const granteeTableData = (() => {
     const teamRows = selectedTeamIds.map((id) => ({
       key: `team-${id}`,
       type: 'team' as const,
@@ -161,7 +161,7 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
       }
     })
     return [...teamRows, ...userRows]
-  }, [selectedTeamIds, selectedUserIds, teams, users])
+  })()
 
   /**
    * Remove a grantee from the local selection (not yet saved to server).

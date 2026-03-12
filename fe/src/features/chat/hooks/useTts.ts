@@ -5,7 +5,7 @@
  * @module features/ai/hooks/useTts
  */
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef } from 'react'
 import { chatApi } from '../api/chatApi'
 
 /**
@@ -24,7 +24,7 @@ export function useTts() {
    * Synthesize and play speech for the given text.
    * @param text - Text to speak
    */
-  const speak = useCallback(async (text: string) => {
+  const speak = async (text: string) => {
     try {
       // Stop any currently playing audio first
       if (audioRef.current) {
@@ -71,12 +71,12 @@ export function useTts() {
       setIsLoading(false)
       setIsPlaying(false)
     }
-  }, [])
+  }
 
   /**
    * Stop the currently playing audio.
    */
-  const stop = useCallback(() => {
+  const stop = () => {
     if (audioRef.current) {
       audioRef.current.pause()
       audioRef.current.currentTime = 0
@@ -88,7 +88,7 @@ export function useTts() {
       urlRef.current = null
     }
     setIsPlaying(false)
-  }, [])
+  }
 
   return { speak, stop, isPlaying, isLoading }
 }

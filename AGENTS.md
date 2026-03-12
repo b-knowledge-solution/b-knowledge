@@ -223,7 +223,57 @@ npm run test
 - Feature Layer: Implements `useActionState` and `useFormStatus`
 - Service Layer: Optimized for the `use` hook and Server Actions
 
-### 6.4 Backend Rules
+### 6.4 Frontend State Management Rules
+
+> Full conventions documented in `fe/STATE_MANAGEMENT.md`
+
+#### State Type Decision Tree
+
+| State Type | Solution | Example |
+|---|---|---|
+| Server data (API) | TanStack Query `useQuery` | User list, datasets, audit logs |
+| Server mutations | TanStack Query `useMutation` | Create dataset, update role |
+| User-triggered async | TanStack Query `useMutation` | Search submit, file upload |
+| App-wide client state | React Context | Auth, theme, KB config |
+| Feature-local UI state | `useState` | Modal open, form data, selected tab |
+| URL-shareable state | `useSearchParams` / `useUrlState` | Filters, pagination |
+| Real-time updates | Socket.IO + Query invalidation | File status, notifications |
+| Streaming (SSE) | Imperative hooks (`useState` + `useRef`) | Chat stream, search stream |
+
+#### Query Keys
+
+- All query keys MUST be defined in `fe/src/lib/queryKeys.ts` (centralized factory)
+- Never define local query key constants in hook files
+- Use `queryClient.invalidateQueries({ queryKey: queryKeys.<feature>.all })` for cache invalidation after mutations
+
+#### No Manual Memoization
+
+- **DO NOT** use `useCallback`, `useMemo`, or `React.memo` — the project uses `babel-plugin-react-compiler` which handles memoization automatically
+- **EXCEPTION**: Context provider `value` props may use `useMemo`/`useCallback` to prevent unnecessary subtree re-renders
+
+#### Forms
+
+- Use native `useState` for form data — **DO NOT** use Ant Design `Form.useForm()` or other form libraries
+- Create typed form state objects with a `setField` helper pattern
+
+#### Error Boundaries
+
+- All feature routes in `App.tsx` MUST be wrapped with `<FeatureErrorBoundary>` from `@/components/ErrorBoundary`
+- Auth/login routes are excluded
+
+#### Socket Integration
+
+- `useSocketQueryInvalidation()` in `Providers.tsx` auto-invalidates query caches on socket events
+- New socket event → query key mappings go in `fe/src/hooks/useSocket.ts`
+- Feature hooks should use `useSocketEvent()` for custom socket subscriptions
+
+#### URL State for Filterable Views
+
+- Pages with filters/pagination MUST store filter state in URL search params (not Context or useState)
+- Use `useSearchParams` from react-router-dom or `useUrlState` from `@/hooks/useUrlState`
+- This makes views bookmarkable and shareable
+
+### 6.5 Backend Rules
 
 - Node.js 22+ (ExpressJS)
 - Implement **Factory Pattern** for all data schemas and interfaces in `shared/models/`

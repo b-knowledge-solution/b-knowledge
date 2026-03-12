@@ -1,25 +1,15 @@
 /**
  * @fileoverview Modal form for creating/updating a chat assistant with full RAGFlow config.
  *
- * Matches RAGFlow's native chat settings UI:
- * - Name, Description, Empty Response, Opener, Show Quote
- * - Keyword Analysis, TTS, Refine Multi-turn
- * - Datasets (category-level selection)
- * - System Prompt, Similarity Threshold, Keywords Similarity Weight, Top N
- * - Model, Temperature, Top P, Presence Penalty, Frequency Penalty, Max Tokens
- *
- * Field mapping to RAGFlow SDK:
- *   Frontend `prompt_config` → Backend sends as `prompt` → RAGFlow maps internally
- *   Frontend `llm_config` → Backend sends as `llm` → RAGFlow maps internally
+ * Uses native useState instead of Ant Design Form.
  *
  * @module features/projects/components/ChatModal
  */
 
-import { useMemo, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Modal,
-  Form,
   Input,
   Checkbox,
   Collapse,
@@ -32,7 +22,6 @@ import {
   Divider,
   Button,
 } from 'antd'
-import type { FormInstance, FormListFieldData, FormListOperation } from 'antd'
 import type {
   DocumentCategory,
   DocumentCategoryVersion,
@@ -75,11 +64,7 @@ const CREATIVITY_PRESETS: Record<string, {
 // ============================================================================
 
 /**
- * Custom control for Vector Similarity Weight that shows dual labels
- * (vector X.XX / full-text X.XX) above the slider, matching RAGFlow's UI.
- *
- * @param props - value + onChange from antd Form binding
- * @returns {JSX.Element} The weight control
+ * Custom control for Vector Similarity Weight that shows dual labels.
  */
 const VectorWeightControl = ({
   value = 0.3,
@@ -99,18 +84,10 @@ const VectorWeightControl = ({
       </div>
       <div className="flex items-center gap-3">
         <div className="flex-1">
-          <Slider
-            min={0}
-            max={1}
-            step={0.01}
-            value={value}
-            onChange={onChange}
-          />
+          <Slider min={0} max={1} step={0.01} value={value} onChange={onChange} />
         </div>
         <InputNumber
-          min={0}
-          max={1}
-          step={0.01}
+          min={0} max={1} step={0.01}
           value={value}
           onChange={(v: number | null) => onChange?.(v ?? 0)}
           style={{ width: 70 }}
@@ -122,10 +99,6 @@ const VectorWeightControl = ({
 
 /**
  * Reusable Slider + InputNumber combo as a single controlled component.
- * Avoids the infinite re-render loop caused by two Form.Items sharing the same name.
- *
- * @param props - min, max, step, inputWidth, value, onChange from antd Form binding
- * @returns {JSX.Element} Slider with paired InputNumber
  */
 const SliderInput = ({
   value,
@@ -144,33 +117,17 @@ const SliderInput = ({
 }) => (
   <div className="flex items-center gap-3">
     <div className="flex-1">
-      <Slider
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={onChange}
-        tooltip={{ formatter: (v?: number) => `${v}` }}
-      />
+      <Slider min={min} max={max} step={step} value={value} onChange={onChange}
+        tooltip={{ formatter: (v?: number) => `${v}` }} />
     </div>
-    <InputNumber
-      min={min}
-      max={max}
-      step={step}
-      value={value}
+    <InputNumber min={min} max={max} step={step} value={value}
       onChange={(v: number | null) => onChange?.(v ?? min)}
-      style={{ width: inputWidth }}
-    />
+      style={{ width: inputWidth }} />
   </div>
 )
 
 /**
  * Specialized control for Max Tokens.
- * The Slider is capped at 8192 for a smooth drag experience,
- * while the InputNumber allows values up to 128000.
- *
- * @param props - value + onChange from antd Form binding
- * @returns {JSX.Element} Slider + InputNumber combo
  */
 const MaxTokensControl = ({
   value = 512,
@@ -179,29 +136,18 @@ const MaxTokensControl = ({
   value?: number
   onChange?: (val: number) => void
 }) => {
-  /** Slider max is capped for usability; InputNumber allows the full range */
   const SLIDER_MAX = 8192
   const INPUT_MAX = 128000
 
   return (
     <div className="flex items-center gap-3">
       <div className="flex-1">
-        <Slider
-          min={1}
-          max={SLIDER_MAX}
-          step={1}
-          value={Math.min(value, SLIDER_MAX)}
-          onChange={onChange}
-        />
+        <Slider min={1} max={SLIDER_MAX} step={1}
+          value={Math.min(value, SLIDER_MAX)} onChange={onChange} />
       </div>
-      <InputNumber
-        min={1}
-        max={INPUT_MAX}
-        step={1}
-        value={value}
+      <InputNumber min={1} max={INPUT_MAX} step={1} value={value}
         onChange={(v: number | null) => onChange?.(v ?? 512)}
-        style={{ width: 80 }}
-      />
+        style={{ width: 80 }} />
     </div>
   )
 }
@@ -210,23 +156,86 @@ const MaxTokensControl = ({
 // Types
 // ============================================================================
 
+/** Prompt config shape */
+interface PromptConfig {
+  empty_response: string
+  opener: string
+  show_quote: boolean
+  keyword: boolean
+  tts: boolean
+  refine_multiturn: boolean
+  prompt: string
+  similarity_threshold: number
+  keywords_similarity_weight: number
+  top_n: number
+  rerank_model: string
+  cross_languages: string[]
+  variables: { key: string; optional: boolean }[]
+}
+
+/** LLM config shape */
+interface LlmConfig {
+  model_name: string
+  temperature: number
+  top_p: number
+  presence_penalty: number
+  frequency_penalty: number
+  max_tokens: number
+}
+
+/** Full chat form data shape */
+export interface ChatFormData {
+  name: string
+  description: string
+  category_ids: string[]
+  prompt_config: PromptConfig
+  llm_config: LlmConfig
+}
+
+const INITIAL_FORM: ChatFormData = {
+  name: '',
+  description: '',
+  category_ids: [],
+  prompt_config: {
+    empty_response: DEFAULT_EMPTY_RESPONSE,
+    opener: DEFAULT_OPENER,
+    show_quote: true,
+    keyword: false,
+    tts: false,
+    refine_multiturn: false,
+    prompt: DEFAULT_SYSTEM_PROMPT,
+    similarity_threshold: 0.2,
+    keywords_similarity_weight: 0.7,
+    top_n: 6,
+    rerank_model: '',
+    cross_languages: [],
+    variables: [],
+  },
+  llm_config: {
+    model_name: '',
+    temperature: 0.1,
+    top_p: 0.3,
+    presence_penalty: 0.4,
+    frequency_penalty: 0.7,
+    max_tokens: 512,
+  },
+}
+
 /**
  * Props for the ChatModal component.
  */
 interface ChatModalProps {
   /** Whether the modal is visible */
   open: boolean
-  /** Form instance managed by parent */
-  form: FormInstance
   /** Whether the submit action is in progress */
   saving: boolean
-  /** Callback when the user confirms */
-  onOk: () => void
+  /** Callback when the user confirms with form data */
+  onOk: (data: ChatFormData) => void
   /** Callback when the user cancels or closes */
   onCancel: () => void
   /** Project document categories */
   categories: DocumentCategory[]
-  /** Map of category ID → its versions (pre-fetched) */
+  /** Map of category ID -> its versions (pre-fetched) */
   categoryVersions: Record<string, DocumentCategoryVersion[]>
   /** Available chat models from the RAGFlow server config */
   chatModels: string[]
@@ -240,14 +249,12 @@ interface ChatModalProps {
 
 /**
  * Modal dialog with a full form for creating/editing a chat assistant.
- * Matches RAGFlow's native chat settings UI layout.
  *
  * @param {ChatModalProps} props - Component props
  * @returns {JSX.Element} The rendered modal
  */
 const ChatModal = ({
   open,
-  form,
   saving,
   onOk,
   onCancel,
@@ -257,16 +264,16 @@ const ChatModal = ({
   editingChat,
 }: ChatModalProps) => {
   const { t } = useTranslation()
+  const [formData, setFormData] = useState<ChatFormData>(INITIAL_FORM)
+  const [nameError, setNameError] = useState('')
 
   /** Determine if we are in edit mode */
   const isEditing = !!editingChat
 
-  /**
-   * Populate form with existing chat data when editing.
-   */
+  // Populate form with existing chat data when editing
   useEffect(() => {
     if (editingChat && open) {
-      // Resolve which categories are linked (reverse: version IDs → category IDs)
+      // Resolve which categories are linked (reverse: version IDs -> category IDs)
       const linkedCategoryIds: string[] = []
       for (const [catId, versions] of Object.entries(categoryVersions)) {
         const hasLinked = versions.some(
@@ -275,196 +282,235 @@ const ChatModal = ({
         if (hasLinked) linkedCategoryIds.push(catId)
       }
 
-      form.setFieldsValue({
+      // Cast from Record<string, unknown> to access known fields
+      const pc = editingChat.prompt_config as Record<string, any> || {}
+      const lc = editingChat.llm_config as Record<string, any> || {}
+
+      setFormData({
         name: editingChat.name,
-        description: editingChat.prompt_config?.description || '',
+        description: pc.description || '',
         category_ids: linkedCategoryIds,
         prompt_config: {
-          empty_response: editingChat.prompt_config?.empty_response || DEFAULT_EMPTY_RESPONSE,
-          opener: editingChat.prompt_config?.opener || DEFAULT_OPENER,
-          show_quote: editingChat.prompt_config?.show_quote ?? true,
-          keyword: editingChat.prompt_config?.keyword ?? false,
-          tts: editingChat.prompt_config?.tts ?? false,
-          refine_multiturn: editingChat.prompt_config?.refine_multiturn ?? false,
-          prompt: editingChat.prompt_config?.prompt || DEFAULT_SYSTEM_PROMPT,
-          similarity_threshold: editingChat.prompt_config?.similarity_threshold ?? 0.2,
-          keywords_similarity_weight: editingChat.prompt_config?.keywords_similarity_weight ?? 0.7,
-          top_n: editingChat.prompt_config?.top_n ?? 6,
+          empty_response: pc.empty_response || DEFAULT_EMPTY_RESPONSE,
+          opener: pc.opener || DEFAULT_OPENER,
+          show_quote: pc.show_quote ?? true,
+          keyword: pc.keyword ?? false,
+          tts: pc.tts ?? false,
+          refine_multiturn: pc.refine_multiturn ?? false,
+          prompt: pc.prompt || DEFAULT_SYSTEM_PROMPT,
+          similarity_threshold: pc.similarity_threshold ?? 0.2,
+          keywords_similarity_weight: pc.keywords_similarity_weight ?? 0.7,
+          top_n: pc.top_n ?? 6,
+          rerank_model: pc.rerank_model || '',
+          cross_languages: pc.cross_languages || [],
+          variables: pc.variables || [],
         },
         llm_config: {
-          model_name: editingChat.llm_config?.model_name || undefined,
-          temperature: editingChat.llm_config?.temperature ?? 0.1,
-          top_p: editingChat.llm_config?.top_p ?? 0.3,
-          presence_penalty: editingChat.llm_config?.presence_penalty ?? 0.4,
-          frequency_penalty: editingChat.llm_config?.frequency_penalty ?? 0.7,
-          max_tokens: editingChat.llm_config?.max_tokens ?? 512,
+          model_name: lc.model_name || '',
+          temperature: lc.temperature ?? 0.1,
+          top_p: lc.top_p ?? 0.3,
+          presence_penalty: lc.presence_penalty ?? 0.4,
+          frequency_penalty: lc.frequency_penalty ?? 0.7,
+          max_tokens: lc.max_tokens ?? 512,
         },
       })
+    } else if (open && !editingChat) {
+      setFormData(INITIAL_FORM)
     }
-  }, [editingChat, open, form, categoryVersions])
+    setNameError('')
+  }, [editingChat, open, categoryVersions])
 
   /**
    * Build checkbox options from categories.
-   * Each option shows the category name + count of active datasets.
    */
-  const categoryOptions = useMemo(() => {
-    return categories.map((cat) => {
-      const versions = categoryVersions[cat.id] || []
-      const activeCount = versions.filter(
-        (v) => v.ragflow_dataset_id && v.status === 'active'
-      ).length
-      return {
-        label: `${cat.name} (${activeCount} dataset${activeCount !== 1 ? 's' : ''})`,
-        value: cat.id,
-        disabled: activeCount === 0,
-      }
-    })
-  }, [categories, categoryVersions])
+  const categoryOptions = categories.map((cat) => {
+    const versions = categoryVersions[cat.id] || []
+    const activeCount = versions.filter(
+      (v) => v.ragflow_dataset_id && v.status === 'active'
+    ).length
+    return {
+      label: `${cat.name} (${activeCount} dataset${activeCount !== 1 ? 's' : ''})`,
+      value: cat.id,
+      disabled: activeCount === 0,
+    }
+  })
 
   /** Check if any category has active datasets */
   const hasAnyDatasets = categoryOptions.some((opt) => !opt.disabled)
 
-  // ── Render ─────────────────────────────────────────────────────────────
+  /**
+   * Update a top-level field.
+   */
+  const updateField = <K extends keyof ChatFormData>(field: K, value: ChatFormData[K]) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  /**
+   * Update a prompt_config field.
+   */
+  const updatePrompt = <K extends keyof PromptConfig>(field: K, value: PromptConfig[K]) => {
+    setFormData((prev) => ({
+      ...prev,
+      prompt_config: { ...prev.prompt_config, [field]: value },
+    }))
+  }
+
+  /**
+   * Update an llm_config field.
+   */
+  const updateLlm = <K extends keyof LlmConfig>(field: K, value: LlmConfig[K]) => {
+    setFormData((prev) => ({
+      ...prev,
+      llm_config: { ...prev.llm_config, [field]: value },
+    }))
+  }
+
+  /**
+   * Add a new variable entry.
+   */
+  const addVariable = () => {
+    updatePrompt('variables', [...formData.prompt_config.variables, { key: '', optional: false }])
+  }
+
+  /**
+   * Remove a variable by index.
+   */
+  const removeVariable = (index: number) => {
+    updatePrompt('variables', formData.prompt_config.variables.filter((_, i) => i !== index))
+  }
+
+  /**
+   * Update a variable field by index.
+   */
+  const updateVariable = (index: number, field: 'key' | 'optional', value: string | boolean) => {
+    const updated = formData.prompt_config.variables.map((v, i) =>
+      i === index ? { ...v, [field]: value } : v
+    )
+    updatePrompt('variables', updated)
+  }
+
+  /**
+   * Validate and submit.
+   */
+  const handleOk = () => {
+    if (!formData.name.trim()) {
+      setNameError(`${t('projectManagement.chats.name')} is required`)
+      return
+    }
+    if (formData.category_ids.length === 0) {
+      return
+    }
+    setNameError('')
+    onOk(formData)
+  }
 
   return (
     <Modal
-      title={isEditing
-        ? t('projectManagement.chats.edit')
-        : t('projectManagement.chats.add')
-      }
+      title={isEditing ? t('projectManagement.chats.edit') : t('projectManagement.chats.add')}
       open={open}
-      onOk={onOk}
+      onOk={handleOk}
       onCancel={onCancel}
       confirmLoading={saving}
       destroyOnHidden
       width={640}
       styles={{ body: { maxHeight: '70vh', overflowY: 'auto' } }}
     >
-      <Form
-        form={form}
-        layout="vertical"
-        className="mt-4"
-        initialValues={{
-          prompt_config: {
-            empty_response: DEFAULT_EMPTY_RESPONSE,
-            opener: DEFAULT_OPENER,
-            show_quote: true,
-            keyword: false,
-            tts: false,
-            refine_multiturn: false,
-            prompt: DEFAULT_SYSTEM_PROMPT,
-            similarity_threshold: 0.2,
-            keywords_similarity_weight: 0.7,
-            top_n: 6,
-          },
-          llm_config: {
-            temperature: 0.1,
-            top_p: 0.3,
-            presence_penalty: 0.4,
-            frequency_penalty: 0.7,
-            max_tokens: 512,
-          },
-        }}
-      >
-        {/* ══════════════════════════════════════════════════════════
-            SECTION 1: Chat Setting (basic)
-        ══════════════════════════════════════════════════════════ */}
+      <div className="mt-4 space-y-4">
+        {/* SECTION 1: Chat Setting (basic) */}
 
         {/* Name */}
-        <Form.Item
-          name="name"
-          label={t('projectManagement.chats.name')}
-          rules={[{ required: true }]}
-        >
-          <Input placeholder={t('projectManagement.chats.namePlaceholder')} />
-        </Form.Item>
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            {t('projectManagement.chats.name')} <span className="text-red-500">*</span>
+          </label>
+          <Input
+            placeholder={t('projectManagement.chats.namePlaceholder')}
+            value={formData.name}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              updateField('name', e.target.value)
+              if (nameError) setNameError('')
+            }}
+            status={nameError ? 'error' : undefined}
+          />
+          {nameError && <p className="text-red-500 text-xs mt-1">{nameError}</p>}
+        </div>
 
         {/* Description */}
-        <Form.Item
-          name="description"
-          label={t('projectManagement.chats.description')}
-        >
-          <Input placeholder={t('projectManagement.chats.descriptionPlaceholder')} />
-        </Form.Item>
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            {t('projectManagement.chats.description')}
+          </label>
+          <Input
+            placeholder={t('projectManagement.chats.descriptionPlaceholder')}
+            value={formData.description}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('description', e.target.value)}
+          />
+        </div>
 
         {/* Empty Response */}
-        <Form.Item
-          name={['prompt_config', 'empty_response']}
-          label={t('projectManagement.chats.emptyResponse')}
-        >
-          <TextArea rows={2} />
-        </Form.Item>
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            {t('projectManagement.chats.emptyResponse')}
+          </label>
+          <TextArea rows={2} value={formData.prompt_config.empty_response}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updatePrompt('empty_response', e.target.value)} />
+        </div>
 
-        {/* Opener (prologue / Opening greeting) */}
-        <Form.Item
-          name={['prompt_config', 'opener']}
-          label={t('projectManagement.chats.opener')}
-        >
-          <TextArea rows={3} />
-        </Form.Item>
+        {/* Opener */}
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            {t('projectManagement.chats.opener')}
+          </label>
+          <TextArea rows={3} value={formData.prompt_config.opener}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updatePrompt('opener', e.target.value)} />
+        </div>
 
         {/* Toggle flags row */}
         <div className="flex flex-wrap gap-6 mb-4">
-          <Form.Item
-            name={['prompt_config', 'show_quote']}
-            label={t('projectManagement.chats.showQuote')}
-            valuePropName="checked"
-            className="mb-0"
-          >
-            <Switch />
-          </Form.Item>
-          <Form.Item
-            name={['prompt_config', 'keyword']}
-            label={t('projectManagement.chats.keywordAnalysis')}
-            valuePropName="checked"
-            className="mb-0"
-          >
-            <Switch />
-          </Form.Item>
-          <Form.Item
-            name={['prompt_config', 'tts']}
-            label={t('projectManagement.chats.tts')}
-            valuePropName="checked"
-            className="mb-0"
-          >
-            <Switch />
-          </Form.Item>
-          <Form.Item
-            name={['prompt_config', 'refine_multiturn']}
-            label={t('projectManagement.chats.refineMultiturn')}
-            valuePropName="checked"
-            className="mb-0"
-          >
-            <Switch />
-          </Form.Item>
+          <div>
+            <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.showQuote')}</label>
+            <Switch checked={formData.prompt_config.show_quote}
+              onChange={(v: boolean) => updatePrompt('show_quote', v)} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.keywordAnalysis')}</label>
+            <Switch checked={formData.prompt_config.keyword}
+              onChange={(v: boolean) => updatePrompt('keyword', v)} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.tts')}</label>
+            <Switch checked={formData.prompt_config.tts}
+              onChange={(v: boolean) => updatePrompt('tts', v)} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.refineMultiturn')}</label>
+            <Switch checked={formData.prompt_config.refine_multiturn}
+              onChange={(v: boolean) => updatePrompt('refine_multiturn', v)} />
+          </div>
         </div>
 
         <Divider />
 
-        {/* ══════════════════════════════════════════════════════════
-            SECTION 2: Datasets (category selection)
-        ══════════════════════════════════════════════════════════ */}
-        <Form.Item
-          name="category_ids"
-          label={t('projectManagement.chats.selectCategories')}
-          rules={[{ required: true, message: t('projectManagement.chats.selectCategories') }]}
-        >
+        {/* SECTION 2: Datasets (category selection) */}
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            {t('projectManagement.chats.selectCategories')} <span className="text-red-500">*</span>
+          </label>
           {hasAnyDatasets ? (
-            <Checkbox.Group options={categoryOptions} className="flex flex-col gap-2" />
-          ) : (
-            <Alert
-              message={t('projectManagement.chats.noActiveDatasets')}
-              type="warning"
-              showIcon
+            <Checkbox.Group
+              options={categoryOptions}
+              className="flex flex-col gap-2"
+              value={formData.category_ids}
+              onChange={(vals: string[]) => updateField('category_ids', vals)}
             />
+          ) : (
+            <Alert message={t('projectManagement.chats.noActiveDatasets')} type="warning" showIcon />
           )}
-        </Form.Item>
+        </div>
 
         <Divider />
 
-        {/* ══════════════════════════════════════════════════════════
-            SECTION 3: Prompt / Retrieval Configuration
-        ══════════════════════════════════════════════════════════ */}
+        {/* SECTION 3: Prompt / Retrieval Configuration */}
         <Collapse
           ghost
           defaultActiveKey={[]}
@@ -473,59 +519,56 @@ const ChatModal = ({
               key: 'prompt',
               label: <Text strong>{t('projectManagement.chats.promptSection')}</Text>,
               children: (
-                <>
+                <div className="space-y-4">
                   {/* System Prompt */}
-                  <Form.Item
-                    name={['prompt_config', 'prompt']}
-                    label={t('projectManagement.chats.systemPrompt')}
-                  >
-                    <TextArea rows={6} />
-                  </Form.Item>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.systemPrompt')}</label>
+                    <TextArea rows={6} value={formData.prompt_config.prompt}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updatePrompt('prompt', e.target.value)} />
+                  </div>
 
-                  {/* Similarity Threshold — slider + input */}
-                  <Form.Item
-                    name={['prompt_config', 'similarity_threshold']}
-                    label={t('projectManagement.chats.similarityThreshold')}
-                  >
-                    <SliderInput min={0} max={1} step={0.01} />
-                  </Form.Item>
+                  {/* Similarity Threshold */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.similarityThreshold')}</label>
+                    <SliderInput min={0} max={1} step={0.01}
+                      value={formData.prompt_config.similarity_threshold}
+                      onChange={(v) => updatePrompt('similarity_threshold', v)} />
+                  </div>
 
-                  {/* Vector Similarity Weight — dual labels + slider + input */}
-                  <Form.Item label={t('projectManagement.chats.vectorSimilarityWeight')}>
-                    <Form.Item name={['prompt_config', 'keywords_similarity_weight']} noStyle>
-                      {/* Use a custom render to show vector/full-text labels */}
-                      <VectorWeightControl />
-                    </Form.Item>
-                  </Form.Item>
+                  {/* Vector Similarity Weight */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.vectorSimilarityWeight')}</label>
+                    <VectorWeightControl
+                      value={formData.prompt_config.keywords_similarity_weight}
+                      onChange={(v) => updatePrompt('keywords_similarity_weight', v)} />
+                  </div>
 
-                  {/* Top N — slider + input */}
-                  <Form.Item
-                    name={['prompt_config', 'top_n']}
-                    label={t('projectManagement.chats.topN')}
-                  >
-                    <SliderInput min={1} max={100} step={1} />
-                  </Form.Item>
+                  {/* Top N */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.topN')}</label>
+                    <SliderInput min={1} max={100} step={1}
+                      value={formData.prompt_config.top_n}
+                      onChange={(v) => updatePrompt('top_n', v)} />
+                  </div>
 
                   {/* Rerank Model */}
-                  <Form.Item
-                    name={['prompt_config', 'rerank_model']}
-                    label={t('projectManagement.chats.rerankModel')}
-                  >
-                    <Input
-                      allowClear
-                      placeholder={t('projectManagement.chats.rerankModelPlaceholder')}
-                    />
-                  </Form.Item>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.rerankModel')}</label>
+                    <Input allowClear placeholder={t('projectManagement.chats.rerankModelPlaceholder')}
+                      value={formData.prompt_config.rerank_model}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => updatePrompt('rerank_model', e.target.value)} />
+                  </div>
 
                   {/* Cross-language Search */}
-                  <Form.Item
-                    name={['prompt_config', 'cross_languages']}
-                    label={t('projectManagement.chats.crossLanguages')}
-                  >
+                  <div>
+                    <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.crossLanguages')}</label>
                     <Select
                       mode="tags"
                       allowClear
                       placeholder={t('projectManagement.chats.crossLanguagesPlaceholder')}
+                      value={formData.prompt_config.cross_languages}
+                      onChange={(v: string[]) => updatePrompt('cross_languages', v)}
+                      className="w-full"
                       options={[
                         { label: 'English', value: 'English' },
                         { label: 'Chinese', value: 'Chinese' },
@@ -537,52 +580,37 @@ const ChatModal = ({
                         { label: 'Spanish', value: 'Spanish' },
                       ]}
                     />
-                  </Form.Item>
+                  </div>
 
-                  {/* Variables (maps to prompt_config.parameters in RAGFlow) */}
-                  <Form.Item label={t('projectManagement.chats.variables')}>
-                    <Form.List name={['prompt_config', 'variables']}>
-                      {(fields: FormListFieldData[], { add, remove }: FormListOperation) => (
-                        <>
-                          {fields.map((field) => (
-                            <div key={field.key} className="flex items-center gap-2 mb-2">
-                              <Form.Item
-                                {...field}
-                                name={[field.name, 'key']}
-                                noStyle
-                                rules={[{ required: true, message: 'Key required' }]}
-                              >
-                                <Input placeholder="Key" style={{ width: 160 }} />
-                              </Form.Item>
-                              <span className="text-xs text-gray-400">
-                                {t('projectManagement.chats.variableOptional')}
-                              </span>
-                              <Form.Item
-                                {...field}
-                                name={[field.name, 'optional']}
-                                noStyle
-                                valuePropName="checked"
-                              >
-                                <Switch size="small" />
-                              </Form.Item>
-                              <Button
-                                type="text"
-                                size="small"
-                                danger
-                                onClick={() => remove(field.name)}
-                              >
-                                ×
-                              </Button>
-                            </div>
-                          ))}
-                          <Button type="dashed" size="small" onClick={() => add({ key: '', optional: false })}>
-                            + {t('projectManagement.chats.addVariable')}
-                          </Button>
-                        </>
-                      )}
-                    </Form.List>
-                  </Form.Item>
-                </>
+                  {/* Variables */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.variables')}</label>
+                    {formData.prompt_config.variables.map((variable, index) => (
+                      <div key={index} className="flex items-center gap-2 mb-2">
+                        <Input
+                          placeholder="Key"
+                          style={{ width: 160 }}
+                          value={variable.key}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateVariable(index, 'key', e.target.value)}
+                        />
+                        <span className="text-xs text-gray-400">
+                          {t('projectManagement.chats.variableOptional')}
+                        </span>
+                        <Switch
+                          size="small"
+                          checked={variable.optional}
+                          onChange={(v: boolean) => updateVariable(index, 'optional', v)}
+                        />
+                        <Button type="text" size="small" danger onClick={() => removeVariable(index)}>
+                          x
+                        </Button>
+                      </div>
+                    ))}
+                    <Button type="dashed" size="small" onClick={addVariable}>
+                      + {t('projectManagement.chats.addVariable')}
+                    </Button>
+                  </div>
+                </div>
               ),
             },
           ]}
@@ -590,9 +618,7 @@ const ChatModal = ({
 
         <Divider />
 
-        {/* ══════════════════════════════════════════════════════════
-            SECTION 4: LLM Configuration
-        ══════════════════════════════════════════════════════════ */}
+        {/* SECTION 4: LLM Configuration */}
         <Collapse
           ghost
           defaultActiveKey={[]}
@@ -601,25 +627,24 @@ const ChatModal = ({
               key: 'llm',
               label: <Text strong>{t('projectManagement.chats.llmSection')}</Text>,
               children: (
-                <>
+                <div className="space-y-4">
                   {/* Model */}
-                  <Form.Item
-                    name={['llm_config', 'model_name']}
-                    label={t('projectManagement.chats.modelName')}
-                  >
+                  <div>
+                    <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.modelName')}</label>
                     <Select
-                      showSearch
-                      allowClear
+                      showSearch allowClear
                       placeholder={t('projectManagement.chats.selectModel')}
                       options={chatModels.map((m) => ({ label: m, value: m }))}
                       notFoundContent={t('projectManagement.chats.noModels')}
+                      value={formData.llm_config.model_name || undefined}
+                      onChange={(v: string) => updateLlm('model_name', v || '')}
+                      className="w-full"
                     />
-                  </Form.Item>
+                  </div>
 
-                  {/* Creativity — preset dropdown */}
-                  <Form.Item
-                    label={t('projectManagement.chats.creativity')}
-                  >
+                  {/* Creativity */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.creativity')}</label>
                     <Select
                       allowClear
                       placeholder={t('projectManagement.chats.selectCreativity')}
@@ -629,59 +654,64 @@ const ChatModal = ({
                         { label: t('projectManagement.chats.creativityBalance'), value: 'balance' },
                         { label: t('projectManagement.chats.creativityCustom'), value: 'custom' },
                       ]}
+                      className="w-full"
                       onChange={(val: string) => {
                         if (val && val !== 'custom' && CREATIVITY_PRESETS[val]) {
-                          form.setFieldsValue({ llm_config: CREATIVITY_PRESETS[val] })
+                          const preset = CREATIVITY_PRESETS[val]
+                          setFormData((prev) => ({
+                            ...prev,
+                            llm_config: { ...prev.llm_config, ...preset },
+                          }))
                         }
                       }}
                     />
-                  </Form.Item>
+                  </div>
 
-                  {/* Temperature — slider + input */}
-                  <Form.Item
-                    name={['llm_config', 'temperature']}
-                    label={t('projectManagement.chats.temperature')}
-                  >
-                    <SliderInput min={0} max={1} step={0.01} />
-                  </Form.Item>
+                  {/* Temperature */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.temperature')}</label>
+                    <SliderInput min={0} max={1} step={0.01}
+                      value={formData.llm_config.temperature}
+                      onChange={(v) => updateLlm('temperature', v)} />
+                  </div>
 
-                  {/* Top P — slider + input */}
-                  <Form.Item
-                    name={['llm_config', 'top_p']}
-                    label={t('projectManagement.chats.topP')}
-                  >
-                    <SliderInput min={0} max={1} step={0.01} />
-                  </Form.Item>
+                  {/* Top P */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.topP')}</label>
+                    <SliderInput min={0} max={1} step={0.01}
+                      value={formData.llm_config.top_p}
+                      onChange={(v) => updateLlm('top_p', v)} />
+                  </div>
 
-                  {/* Presence Penalty — slider + input */}
-                  <Form.Item
-                    name={['llm_config', 'presence_penalty']}
-                    label={t('projectManagement.chats.presencePenalty')}
-                  >
-                    <SliderInput min={0} max={1} step={0.01} />
-                  </Form.Item>
+                  {/* Presence Penalty */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.presencePenalty')}</label>
+                    <SliderInput min={0} max={1} step={0.01}
+                      value={formData.llm_config.presence_penalty}
+                      onChange={(v) => updateLlm('presence_penalty', v)} />
+                  </div>
 
-                  {/* Frequency Penalty — slider + input */}
-                  <Form.Item
-                    name={['llm_config', 'frequency_penalty']}
-                    label={t('projectManagement.chats.frequencyPenalty')}
-                  >
-                    <SliderInput min={0} max={1} step={0.01} />
-                  </Form.Item>, 
+                  {/* Frequency Penalty */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.frequencyPenalty')}</label>
+                    <SliderInput min={0} max={1} step={0.01}
+                      value={formData.llm_config.frequency_penalty}
+                      onChange={(v) => updateLlm('frequency_penalty', v)} />
+                  </div>
 
-                  {/* Max Tokens — slider capped at 8192 for UX, input accepts up to 128000 */}
-                  <Form.Item
-                    name={['llm_config', 'max_tokens']}
-                    label={t('projectManagement.chats.maxTokens')}
-                  >
-                    <MaxTokensControl />
-                  </Form.Item>
-                </>
+                  {/* Max Tokens */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.maxTokens')}</label>
+                    <MaxTokensControl
+                      value={formData.llm_config.max_tokens}
+                      onChange={(v) => updateLlm('max_tokens', v)} />
+                  </div>
+                </div>
               ),
             },
           ]}
         />
-      </Form>
+      </div>
     </Modal>
   )
 }

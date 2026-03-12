@@ -6,7 +6,7 @@
  * @module features/projects/components/JobManagementModal
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Modal,
@@ -241,7 +241,7 @@ const JobManagementModal = ({
 
   // ── Data Fetching ──────────────────────────────────────────────────────
 
-  const fetchJobs = useCallback(async (silent = false) => {
+  const fetchJobs = async (silent = false) => {
     if (!silent) setLoading(true)
     try {
       const result = await getConverterJobs({
@@ -259,7 +259,7 @@ const JobManagementModal = ({
     } finally {
       setLoading(false)
     }
-  }, [projectId, categoryId, versionId])
+  }
 
   // Fetch on open + auto-refresh while modal is open
   useEffect(() => {
@@ -282,7 +282,7 @@ const JobManagementModal = ({
       }
     }, 10000)
     return () => clearInterval(timer)
-  }, [open, fetchJobs])
+  }, [open, projectId, categoryId, versionId])
 
   // ── Parse All Finished Files ───────────────────────────────────────────
 
@@ -290,7 +290,7 @@ const JobManagementModal = ({
    * Collects file names from all finished jobs and triggers RAGFlow parsing.
    * @param latestJobs - Current jobs (fetched right before calling)
    */
-  const triggerParseAll = useCallback(async (latestJobs: VersionJob[]) => {
+  const triggerParseAll = async (latestJobs: VersionJob[]) => {
     setParsing(true)
     try {
       // Gather all file names from finished jobs
@@ -319,12 +319,12 @@ const JobManagementModal = ({
     } finally {
       setParsing(false)
     }
-  }, [projectId, categoryId, versionId, t])
+  }
 
   // Keep the ref in sync so the interval callback always uses latest version
   useEffect(() => {
     triggerParseAllRef.current = triggerParseAll
-  }, [triggerParseAll])
+  })
 
   // ── Force Start Handler ────────────────────────────────────────────────
 

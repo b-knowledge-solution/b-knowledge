@@ -1,21 +1,15 @@
 /**
  * @fileoverview Modal form for creating/updating an AI Search app with full RAGFlow config.
  *
- * Matches RAGFlow's search settings UI:
- * - Name, Description
- * - Datasets (category-level selection)
- * - Similarity Threshold, Vector Similarity Weight
- * - Rerank Model, AI Summary toggle
- * - LLM config (Model, Temperature, Top P, Presence Penalty, Frequency Penalty)
+ * Uses native useState instead of Ant Design Form.
  *
  * @module features/projects/components/SearchModal
  */
 
-import { useMemo, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Modal,
-  Form,
   Input,
   Checkbox,
   Collapse,
@@ -26,7 +20,6 @@ import {
   Select,
   Divider,
 } from 'antd'
-import type { FormInstance } from 'antd'
 import type {
   DocumentCategory,
   DocumentCategoryVersion,
@@ -135,6 +128,49 @@ const VectorWeightControl = ({
 // Types
 // ============================================================================
 
+/** Search config shape */
+interface SearchConfig {
+  similarity_threshold: number
+  vector_similarity_weight: number
+  rerank_enabled: boolean
+  rerank_model: string
+  ai_summary: boolean
+  model: string
+  temperature: number
+  top_p: number
+  presence_penalty: number
+  frequency_penalty: number
+}
+
+/** Full form data shape */
+export interface SearchFormData {
+  name: string
+  description: string
+  dataset_ids: string[]
+  search_config: SearchConfig
+}
+
+/** Default search config */
+const DEFAULT_SEARCH_CONFIG: SearchConfig = {
+  similarity_threshold: 0.2,
+  vector_similarity_weight: 0.7,
+  rerank_enabled: false,
+  rerank_model: '',
+  ai_summary: false,
+  model: '',
+  temperature: 0.5,
+  top_p: 0.85,
+  presence_penalty: 0.2,
+  frequency_penalty: 0.3,
+}
+
+const INITIAL_FORM: SearchFormData = {
+  name: '',
+  description: '',
+  dataset_ids: [],
+  search_config: { ...DEFAULT_SEARCH_CONFIG },
+}
+
 interface SearchModalProps {
   /** Whether the modal is visible */
   open: boolean
@@ -142,20 +178,18 @@ interface SearchModalProps {
   onClose: () => void
   /** Success callback after save */
   onSuccess: () => void
-  /** Ant Design form instance (controlled externally) */
-  form: FormInstance
   /** Whether in edit mode */
   isEditing: boolean
   /** Search being edited (null for create) */
   editingSearch: ProjectSearch | null
   /** Project document categories */
   categories: DocumentCategory[]
-  /** Map of category ID → its versions */
+  /** Map of category ID -> its versions */
   categoryVersions: Record<string, DocumentCategoryVersion[]>
   /** Available chat models from the RAGFlow server */
   chatModels: string[]
-  /** Save handler — called with form values */
-  onSave: (values: any) => Promise<void>
+  /** Save handler -- called with form values */
+  onSave: (values: SearchFormData) => Promise<void>
   /** Loading state for save */
   saving: boolean
 }
@@ -170,7 +204,6 @@ interface SearchModalProps {
 const SearchModal = ({
   open,
   onClose,
-  form,
   isEditing,
   editingSearch,
   categories,
@@ -180,30 +213,13 @@ const SearchModal = ({
   saving,
 }: SearchModalProps) => {
   const { t } = useTranslation()
+  const [formData, setFormData] = useState<SearchFormData>(INITIAL_FORM)
+  const [nameError, setNameError] = useState('')
 
-  // Watch AI summary switch to show/hide LLM config
-  const aiSummary = Form.useWatch(['search_config', 'ai_summary'], form)
-
-  /**
-   * Category checkbox options: one per category with a label showing version count.
-   */
-  const categoryOptions = useMemo(() => {
-    return categories.map((cat) => {
-      const versions = categoryVersions[cat.id] || []
-      const activeVersions = versions.filter((v) => v.ragflow_dataset_id)
-      return {
-        label: `${cat.name} (${activeVersions.length} dataset${activeVersions.length !== 1 ? 's' : ''})`,
-        value: cat.id,
-      }
-    })
-  }, [categories, categoryVersions])
-
-  /**
-   * Populate form when editing an existing search.
-   */
+  // Populate form when modal opens
   useEffect(() => {
     if (open && isEditing && editingSearch) {
-      form.setFieldsValue({
+      setFormData({
         name: editingSearch.name,
         description: editingSearch.description || '',
         dataset_ids: editingSearch.dataset_ids || [],
@@ -221,37 +237,69 @@ const SearchModal = ({
         },
       })
     } else if (open && !isEditing) {
-      form.resetFields()
-      // Set defaults
-      form.setFieldsValue({
-        search_config: {
-          similarity_threshold: 0.2,
-          vector_similarity_weight: 0.7,
-          rerank_enabled: false,
-          ai_summary: false,
-          temperature: 0.5,
-          top_p: 0.85,
-          presence_penalty: 0.2,
-          frequency_penalty: 0.3,
-        },
-      })
+      setFormData(INITIAL_FORM)
     }
-  }, [open, isEditing, editingSearch, form])
+    setNameError('')
+  }, [open, isEditing, editingSearch])
+
+  /**
+   * Category checkbox options: one per category with a label showing version count.
+   */
+  const categoryOptions = categories.map((cat) => {
+    const versions = categoryVersions[cat.id] || []
+    const activeVersions = versions.filter((v) => v.ragflow_dataset_id)
+    return {
+      label: `${cat.name} (${activeVersions.length} dataset${activeVersions.length !== 1 ? 's' : ''})`,
+      value: cat.id,
+    }
+  })
+
+  /**
+   * Update a top-level field.
+   * @param field - Field name
+   * @param value - New value
+   */
+  const updateField = <K extends keyof SearchFormData>(field: K, value: SearchFormData[K]) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  /**
+   * Update a search_config field.
+   * @param field - Config field name
+   * @param value - New value
+   */
+  const updateConfig = <K extends keyof SearchConfig>(field: K, value: SearchConfig[K]) => {
+    setFormData((prev) => ({
+      ...prev,
+      search_config: { ...prev.search_config, [field]: value },
+    }))
+  }
 
   /**
    * Handle creativity preset change.
+   * @param preset - Preset name
    */
   const handleCreativityChange = (preset: string) => {
     if (preset === 'custom') return
     const values = CREATIVITY_PRESETS[preset]
     if (values) {
-      form.setFieldsValue({
-        search_config: {
-          ...form.getFieldValue('search_config'),
-          ...values,
-        },
-      })
+      setFormData((prev) => ({
+        ...prev,
+        search_config: { ...prev.search_config, ...values },
+      }))
     }
+  }
+
+  /**
+   * Validate and submit.
+   */
+  const handleOk = () => {
+    if (!formData.name.trim()) {
+      setNameError(t('projectManagement.searches.nameRequired', 'Name is required'))
+      return
+    }
+    setNameError('')
+    onSave(formData)
   }
 
   return (
@@ -262,46 +310,58 @@ const SearchModal = ({
       }
       open={open}
       onCancel={onClose}
-      onOk={() => form.submit()}
+      onOk={handleOk}
       confirmLoading={saving}
       width={720}
       destroyOnClose
     >
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={onSave}
-        preserve={false}
-      >
-        {/* ── Section 1: Basic Info ── */}
-        <Form.Item
-          name="name"
-          label={t('projectManagement.searches.name', 'Name')}
-          rules={[{ required: true, message: t('projectManagement.searches.nameRequired', 'Name is required') }]}
-        >
-          <Input placeholder={t('projectManagement.searches.namePlaceholder', 'Enter search app name')} />
-        </Form.Item>
+      <div className="space-y-4">
+        {/* Section 1: Basic Info */}
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            {t('projectManagement.searches.name', 'Name')} <span className="text-red-500">*</span>
+          </label>
+          <Input
+            placeholder={t('projectManagement.searches.namePlaceholder', 'Enter search app name')}
+            value={formData.name}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              updateField('name', e.target.value)
+              if (nameError) setNameError('')
+            }}
+            status={nameError ? 'error' : undefined}
+          />
+          {nameError && <p className="text-red-500 text-xs mt-1">{nameError}</p>}
+        </div>
 
-        <Form.Item
-          name="description"
-          label={t('projectManagement.searches.description', 'Description')}
-        >
-          <TextArea rows={2} placeholder={t('projectManagement.searches.descriptionPlaceholder', 'Enter description')} />
-        </Form.Item>
-
-        <Divider />
-
-        {/* ── Section 2: Datasets ── */}
-        <Form.Item
-          name="dataset_ids"
-          label={t('projectManagement.searches.datasets', 'Datasets')}
-        >
-          <Checkbox.Group options={categoryOptions} />
-        </Form.Item>
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            {t('projectManagement.searches.description', 'Description')}
+          </label>
+          <TextArea
+            rows={2}
+            placeholder={t('projectManagement.searches.descriptionPlaceholder', 'Enter description')}
+            value={formData.description}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updateField('description', e.target.value)}
+          />
+        </div>
 
         <Divider />
 
-        {/* ── Section 3: Retrieval Config ── */}
+        {/* Section 2: Datasets */}
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            {t('projectManagement.searches.datasets', 'Datasets')}
+          </label>
+          <Checkbox.Group
+            options={categoryOptions}
+            value={formData.dataset_ids}
+            onChange={(vals: string[]) => updateField('dataset_ids', vals)}
+          />
+        </div>
+
+        <Divider />
+
+        {/* Section 3: Retrieval Config */}
         <Collapse
           ghost
           defaultActiveKey={['retrieval']}
@@ -310,44 +370,57 @@ const SearchModal = ({
               key: 'retrieval',
               label: t('projectManagement.searches.retrievalConfig', 'Retrieval Configuration'),
               children: (
-                <>
-                  <Form.Item
-                    name={['search_config', 'similarity_threshold']}
-                    label={t('projectManagement.searches.similarityThreshold', 'Similarity Threshold')}
-                  >
-                    <SliderInput min={0} max={1} step={0.01} />
-                  </Form.Item>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      {t('projectManagement.searches.similarityThreshold', 'Similarity Threshold')}
+                    </label>
+                    <SliderInput
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={formData.search_config.similarity_threshold}
+                      onChange={(v) => updateConfig('similarity_threshold', v)}
+                    />
+                  </div>
 
-                  <Form.Item
-                    name={['search_config', 'vector_similarity_weight']}
-                    label={t('projectManagement.searches.vectorWeight', 'Vector Similarity Weight')}
-                  >
-                    <VectorWeightControl />
-                  </Form.Item>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      {t('projectManagement.searches.vectorWeight', 'Vector Similarity Weight')}
+                    </label>
+                    <VectorWeightControl
+                      value={formData.search_config.vector_similarity_weight}
+                      onChange={(v) => updateConfig('vector_similarity_weight', v)}
+                    />
+                  </div>
 
-                  <Form.Item
-                    name={['search_config', 'rerank_enabled']}
-                    label={t('projectManagement.searches.rerankModel', 'Rerank Model')}
-                    valuePropName="checked"
-                  >
-                    <Switch />
-                  </Form.Item>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      {t('projectManagement.searches.rerankModel', 'Rerank Model')}
+                    </label>
+                    <Switch
+                      checked={formData.search_config.rerank_enabled}
+                      onChange={(v: boolean) => updateConfig('rerank_enabled', v)}
+                    />
+                  </div>
 
-                  <Form.Item
-                    name={['search_config', 'ai_summary']}
-                    label={t('projectManagement.searches.aiSummary', 'AI Summary')}
-                    valuePropName="checked"
-                  >
-                    <Switch />
-                  </Form.Item>
-                </>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      {t('projectManagement.searches.aiSummary', 'AI Summary')}
+                    </label>
+                    <Switch
+                      checked={formData.search_config.ai_summary}
+                      onChange={(v: boolean) => updateConfig('ai_summary', v)}
+                    />
+                  </div>
+                </div>
               ),
             },
           ]}
         />
 
-        {/* ── Section 4: LLM Config (shown when AI Summary is on) ── */}
-        {aiSummary && (
+        {/* Section 4: LLM Config (shown when AI Summary is on) */}
+        {formData.search_config.ai_summary && (
           <Collapse
             ghost
             defaultActiveKey={['llm']}
@@ -356,23 +429,33 @@ const SearchModal = ({
                 key: 'llm',
                 label: t('projectManagement.searches.llmConfig', 'LLM Configuration'),
                 children: (
-                  <>
-                    <Form.Item
-                      name={['search_config', 'model']}
-                      label={t('projectManagement.searches.model', 'Model')}
-                    >
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        {t('projectManagement.searches.model', 'Model')}
+                      </label>
                       {chatModels.length > 0 ? (
                         <Select
                           placeholder={t('projectManagement.searches.selectModel', 'Select model')}
                           options={chatModels.map((m) => ({ label: m, value: m }))}
                           allowClear
+                          value={formData.search_config.model || undefined}
+                          onChange={(v: string) => updateConfig('model', v || '')}
+                          className="w-full"
                         />
                       ) : (
-                        <Input placeholder={t('projectManagement.searches.modelPlaceholder', 'Enter model name')} />
+                        <Input
+                          placeholder={t('projectManagement.searches.modelPlaceholder', 'Enter model name')}
+                          value={formData.search_config.model}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateConfig('model', e.target.value)}
+                        />
                       )}
-                    </Form.Item>
+                    </div>
 
-                    <Form.Item label={t('projectManagement.searches.creativity', 'Creativity')}>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        {t('projectManagement.searches.creativity', 'Creativity')}
+                      </label>
                       <Select
                         defaultValue="custom"
                         onChange={handleCreativityChange}
@@ -382,43 +465,60 @@ const SearchModal = ({
                           { label: t('projectManagement.searches.balance', 'Balance'), value: 'balance' },
                           { label: t('projectManagement.searches.custom', 'Custom'), value: 'custom' },
                         ]}
+                        className="w-full"
                       />
-                    </Form.Item>
+                    </div>
 
-                    <Form.Item
-                      name={['search_config', 'temperature']}
-                      label={t('projectManagement.searches.temperature', 'Temperature')}
-                    >
-                      <SliderInput min={0} max={1} step={0.01} />
-                    </Form.Item>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        {t('projectManagement.searches.temperature', 'Temperature')}
+                      </label>
+                      <SliderInput
+                        min={0} max={1} step={0.01}
+                        value={formData.search_config.temperature}
+                        onChange={(v) => updateConfig('temperature', v)}
+                      />
+                    </div>
 
-                    <Form.Item
-                      name={['search_config', 'top_p']}
-                      label={t('projectManagement.searches.topP', 'Top P')}
-                    >
-                      <SliderInput min={0} max={1} step={0.01} />
-                    </Form.Item>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        {t('projectManagement.searches.topP', 'Top P')}
+                      </label>
+                      <SliderInput
+                        min={0} max={1} step={0.01}
+                        value={formData.search_config.top_p}
+                        onChange={(v) => updateConfig('top_p', v)}
+                      />
+                    </div>
 
-                    <Form.Item
-                      name={['search_config', 'presence_penalty']}
-                      label={t('projectManagement.searches.presencePenalty', 'Presence Penalty')}
-                    >
-                      <SliderInput min={0} max={1} step={0.01} />
-                    </Form.Item>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        {t('projectManagement.searches.presencePenalty', 'Presence Penalty')}
+                      </label>
+                      <SliderInput
+                        min={0} max={1} step={0.01}
+                        value={formData.search_config.presence_penalty}
+                        onChange={(v) => updateConfig('presence_penalty', v)}
+                      />
+                    </div>
 
-                    <Form.Item
-                      name={['search_config', 'frequency_penalty']}
-                      label={t('projectManagement.searches.frequencyPenalty', 'Frequency Penalty')}
-                    >
-                      <SliderInput min={0} max={1} step={0.01} />
-                    </Form.Item>
-                  </>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        {t('projectManagement.searches.frequencyPenalty', 'Frequency Penalty')}
+                      </label>
+                      <SliderInput
+                        min={0} max={1} step={0.01}
+                        value={formData.search_config.frequency_penalty}
+                        onChange={(v) => updateConfig('frequency_penalty', v)}
+                      />
+                    </div>
+                  </div>
                 ),
               },
             ]}
           />
         )}
-      </Form>
+      </div>
     </Modal>
   )
 }

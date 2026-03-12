@@ -1,14 +1,16 @@
 /**
  * @fileoverview Hook for user management page logic.
- * Encapsulates user fetching, filtering, pagination, and role/permission mutations.
+ * Uses TanStack Query for data fetching and URL search params for filter state.
  * @module features/users/hooks/useUserManagement
  */
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { userApi } from '../api/userApi'
 import type { User } from '@/features/auth'
 import type { IpHistoryMap } from '../types/user.types'
+import { queryKeys } from '@/lib/queryKeys'
 
 // ============================================================================
 // Types
@@ -67,117 +69,130 @@ export interface UseUserManagementReturn {
 
 /**
  * @description Hook for user management with CRUD, filtering, pagination, and mutations.
+ * Filters are persisted in URL search params for bookmarkability.
  * @returns {UseUserManagementReturn} User management state and handlers.
  */
 export const useUserManagement = (): UseUserManagementReturn => {
     const { t } = useTranslation()
+    const queryClient = useQueryClient()
+    const [searchParams, setSearchParams] = useSearchParams()
 
-    // Core state
-    const [users, setUsers] = useState<User[]>([])
-    const [isLoading, setIsLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
-    const [ipHistoryMap, setIpHistoryMap] = useState<IpHistoryMap>({})
+    // Read filter state from URL search params with defaults
+    const searchQuery = searchParams.get('q') || ''
+    const roleFilter = (searchParams.get('role') || 'all') as RoleFilter
+    const departmentFilter = searchParams.get('dept') || 'all'
+    const currentPage = Number(searchParams.get('page') || '1')
+    const pageSize = Number(searchParams.get('size') || '20')
 
-    // Filter state
-    const [searchQuery, setSearchQuery] = useState('')
-    const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
-    const [departmentFilter, setDepartmentFilter] = useState('all')
+    // Local state for optimistic user updates
+    const [localUsers, setLocalUsers] = useState<User[] | null>(null)
 
-    // Pagination state
-    const [currentPage, setCurrentPage] = useState(1)
-    const [pageSize, setPageSize] = useState(20)
+    /**
+     * @description Helper to update a single URL search param while preserving others.
+     * @param key - The param key to set.
+     * @param value - The param value.
+     * @param resetPage - Whether to reset page to 1 on change.
+     */
+    const updateParam = (key: string, value: string, resetPage = false) => {
+        setSearchParams(prev => {
+            const next = new URLSearchParams(prev)
+            next.set(key, value)
+            if (resetPage) next.set('page', '1')
+            return next
+        })
+    }
 
-    /** Fetch all users from the API */
-    const fetchUsers = useCallback(async () => {
-        try {
-            const data = await userApi.getUsers()
-            setUsers(data)
-        } catch (err) {
-            setError(err instanceof Error ? err.message : t('userManagement.error'))
-        } finally {
-            setIsLoading(false)
-        }
-    }, [t])
+    /** @description Set the search query param. */
+    const setSearchQuery = (q: string) => updateParam('q', q, true)
 
-    /** Fetch IP history for all users */
-    const fetchIpHistory = useCallback(async () => {
-        try {
-            const data = await userApi.getIpHistory()
-            setIpHistoryMap(data)
-        } catch (err) {
-            console.error('Failed to fetch IP history:', err)
-        }
-    }, [])
+    /** @description Set the role filter param. */
+    const setRoleFilter = (f: RoleFilter) => updateParam('role', f, true)
 
-    // Initial load
-    useEffect(() => {
-        fetchUsers()
-        fetchIpHistory()
-    }, [fetchUsers, fetchIpHistory])
+    /** @description Set the department filter param. */
+    const setDepartmentFilter = (d: string) => updateParam('dept', d, true)
 
-    /** Handle pagination change */
-    const handlePaginationChange = useCallback((page: number, size: number) => {
-        setCurrentPage(page)
-        setPageSize(size)
-    }, [])
+    /** @description Handle pagination changes via URL params. */
+    const handlePaginationChange = (page: number, size: number) => {
+        setSearchParams(prev => {
+            const next = new URLSearchParams(prev)
+            next.set('page', String(page))
+            next.set('size', String(size))
+            return next
+        })
+    }
 
-    /** Unique departments for filter dropdown */
-    const departments = useMemo(
-        () => Array.from(new Set(users.map(u => u.department).filter(Boolean))) as string[],
-        [users]
-    )
+    // Fetch all users via TanStack Query
+    const usersQuery = useQuery({
+        queryKey: queryKeys.users.list(),
+        queryFn: () => userApi.getUsers(),
+    })
 
-    /** Filtered users by search + role + department */
-    const filteredUsers = useMemo(() =>
-        users.filter(user => {
-            const searchLower = searchQuery.toLowerCase()
-            const matchesSearch =
-                (user.displayName?.toLowerCase() || '').includes(searchLower) ||
-                (user.email?.toLowerCase() || '').includes(searchLower) ||
-                (user.department?.toLowerCase() || '').includes(searchLower)
-            const matchesRole = roleFilter === 'all' || user.role === roleFilter
-            const matchesDepartment = departmentFilter === 'all' || user.department === departmentFilter
-            return matchesSearch && matchesRole && matchesDepartment
-        }),
-        [users, searchQuery, roleFilter, departmentFilter]
-    )
+    // Fetch IP history via TanStack Query
+    const ipHistoryQuery = useQuery({
+        queryKey: queryKeys.users.ipHistory(),
+        queryFn: () => userApi.getIpHistory(),
+    })
 
-    /** Paginated slice of filtered users */
-    const paginatedUsers = useMemo(
-        () => filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize),
-        [filteredUsers, currentPage, pageSize]
-    )
+    // Use local optimistic state if set, otherwise query data
+    const users = localUsers ?? usersQuery.data ?? []
 
-    // Role mutation
+    /** @description Unique departments extracted from the user list. */
+    const departments = Array.from(new Set(users.map(u => u.department).filter(Boolean))) as string[]
+
+    /** @description Users filtered by search, role, and department. */
+    const filteredUsers = users.filter(user => {
+        const searchLower = searchQuery.toLowerCase()
+        // Match against display name, email, or department
+        const matchesSearch =
+            (user.displayName?.toLowerCase() || '').includes(searchLower) ||
+            (user.email?.toLowerCase() || '').includes(searchLower) ||
+            (user.department?.toLowerCase() || '').includes(searchLower)
+        // Match role filter
+        const matchesRole = roleFilter === 'all' || user.role === roleFilter
+        // Match department filter
+        const matchesDepartment = departmentFilter === 'all' || user.department === departmentFilter
+        return matchesSearch && matchesRole && matchesDepartment
+    })
+
+    /** @description Paginated slice of filtered users. */
+    const paginatedUsers = filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+    // Role mutation with cache invalidation
     const updateRoleMutation = useMutation({
         mutationKey: ['update', 'user', 'role'],
         mutationFn: ({ userId, role }: { userId: string; role: string }) =>
             userApi.updateUserRole(userId, role),
         onSuccess: (_data, variables) => {
-            setUsers(prev => prev.map(u =>
+            // Optimistically update the local user list
+            setLocalUsers(prev => (prev ?? users).map(u =>
                 u.id === variables.userId ? { ...u, role: variables.role as any } : u
             ))
+            // Invalidate to refetch in background
+            queryClient.invalidateQueries({ queryKey: queryKeys.users.list() })
         },
         meta: { successMessage: t('userManagement.roleUpdateSuccess') },
     })
 
-    // Permission mutation
+    // Permission mutation with cache invalidation
     const updatePermissionsMutation = useMutation({
         mutationKey: ['update', 'user', 'permissions'],
         mutationFn: ({ userId, permissions }: { userId: string; permissions: string[] }) =>
             userApi.updateUserPermissions(userId, permissions),
         onSuccess: (_data, variables) => {
-            setUsers(prev => prev.map(u =>
+            // Optimistically update the local user list
+            setLocalUsers(prev => (prev ?? users).map(u =>
                 u.id === variables.userId ? { ...u, permissions: variables.permissions } : u
             ))
+            // Invalidate to refetch in background
+            queryClient.invalidateQueries({ queryKey: queryKeys.users.list() })
         },
         meta: { successMessage: t('userManagement.permissionsUpdateSuccess') },
     })
 
     return {
         users,
-        isLoading,
-        error,
+        isLoading: usersQuery.isLoading,
+        error: usersQuery.error ? (usersQuery.error instanceof Error ? usersQuery.error.message : t('userManagement.error')) : null,
         searchQuery,
         setSearchQuery,
         roleFilter,
@@ -190,11 +205,11 @@ export const useUserManagement = (): UseUserManagementReturn => {
         currentPage,
         pageSize,
         handlePaginationChange,
-        ipHistoryMap,
+        ipHistoryMap: ipHistoryQuery.data ?? {},
         updateRole: (userId, role) => updateRoleMutation.mutate({ userId, role }),
         isUpdatingRole: updateRoleMutation.isPending,
         updatePermissions: (userId, permissions) => updatePermissionsMutation.mutate({ userId, permissions }),
         isUpdatingPermissions: updatePermissionsMutation.isPending,
-        setUsers,
+        setUsers: setLocalUsers as React.Dispatch<React.SetStateAction<User[]>>,
     }
 }

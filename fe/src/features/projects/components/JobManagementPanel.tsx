@@ -8,7 +8,7 @@
  * @module features/projects/components/JobManagementPanel
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Collapse,
@@ -213,7 +213,7 @@ const JobManagementPanel = ({
 
   // ── Data Fetching ──────────────────────────────────────────────────────
 
-  const fetchJobs = useCallback(async (silent = false) => {
+  const fetchJobs = async (silent = false) => {
     if (!silent) setLoading(true)
     try {
       const result = await getConverterJobs({
@@ -229,14 +229,14 @@ const JobManagementPanel = ({
     } finally {
       setLoading(false)
     }
-  }, [projectId, categoryId, versionId])
+  }
 
   // Initial fetch + auto-refresh every 30s (fallback)
   useEffect(() => {
     fetchJobs()
     const timer = setInterval(() => fetchJobs(true), 30000)
     return () => clearInterval(timer)
-  }, [fetchJobs])
+  }, [projectId, categoryId, versionId])
 
   // Real-time updates via WebSocket — triggers silent refetch
   useConverterSocket({

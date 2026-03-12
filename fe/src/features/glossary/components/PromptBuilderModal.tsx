@@ -15,7 +15,7 @@
  *   - Debounced search input (300ms) to reduce API calls
  */
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Copy, Check, Sparkles, Send, Search, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -182,7 +182,7 @@ export const PromptBuilderModal = ({ open, onClose, onApply }: PromptBuilderModa
      * @param page - Page number (1-indexed)
      * @param append - If true, append results to existing. If false, replace.
      */
-    const fetchKeywords = useCallback(async (search: string, page: number, append: boolean) => {
+    const fetchKeywords = async (search: string, page: number, append: boolean) => {
         setKeywordLoading(true)
         try {
             const result = await glossaryApi.searchKeywords({
@@ -208,12 +208,12 @@ export const PromptBuilderModal = ({ open, onClose, onApply }: PromptBuilderModa
         } finally {
             setKeywordLoading(false)
         }
-    }, [])
+    }
 
     // ── Data Fetching ──────────────────────────────────────────────────────
 
     /** Fetch tasks on open (keywords are lazy-loaded separately) */
-    const fetchData = useCallback(async () => {
+    const fetchData = async () => {
         setLoading(true)
         try {
             const tasksData = await glossaryApi.listTasks()
@@ -223,7 +223,7 @@ export const PromptBuilderModal = ({ open, onClose, onApply }: PromptBuilderModa
         } finally {
             setLoading(false)
         }
-    }, [])
+    }
 
     /** Reset state and fetch data when modal opens */
     useEffect(() => {
@@ -255,7 +255,7 @@ export const PromptBuilderModal = ({ open, onClose, onApply }: PromptBuilderModa
                 debounceTimerRef.current = null
             }
         }
-    }, [open, fetchData, fetchKeywords, i18n.language])
+    }, [open, i18n.language])
 
     // ── Derived Data ───────────────────────────────────────────────────────
 
@@ -270,7 +270,7 @@ export const PromptBuilderModal = ({ open, onClose, onApply }: PromptBuilderModa
 
     // ── Task filtering (client-side, search across all columns) ─────────
 
-    const filteredTasks = useMemo(() => {
+    const filteredTasks = (() => {
         if (!taskSearchText.trim()) return tasks
         const s = taskSearchText.toLowerCase()
         return tasks.filter((task) =>
@@ -280,7 +280,7 @@ export const PromptBuilderModal = ({ open, onClose, onApply }: PromptBuilderModa
             (task.task_instruction_ja || '').toLowerCase().includes(s) ||
             (task.task_instruction_vi || '').toLowerCase().includes(s)
         )
-    }, [tasks, taskSearchText])
+    })()
 
     // ── Handlers ───────────────────────────────────────────────────────────
 
