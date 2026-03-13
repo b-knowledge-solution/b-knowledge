@@ -1,69 +1,121 @@
 /**
  * @fileoverview Summary statistic cards for the admin dashboard.
+ * Each card has a gradient background, icon, and staggered entrance animation.
  * @module features/dashboard/components/StatCards
  */
 import { useTranslation } from 'react-i18next'
-import { MessageSquare, Search, Users, BarChart3 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { MessageSquare, Search, Users, BarChart3 } from 'lucide-react'
 import type { DashboardStats } from '../types/dashboard.types'
 
+// ============================================================================
+// Types
+// ============================================================================
+
 interface StatCardsProps {
-    /** Dashboard statistics (null while loading) */
+    /** Dashboard stats data (null while loading) */
     stats: DashboardStats | null
 }
 
-interface StatItemProps {
-    icon: React.ReactNode
-    label: string
-    value: number | string
-}
-
-function StatItem({ icon, label, value }: StatItemProps) {
-    return (
-        <Card>
-            <CardContent className="p-5">
-                <div className="flex items-center gap-3">
-                    {icon}
-                    <div>
-                        <p className="text-sm text-muted-foreground">{label}</p>
-                        <p className="text-2xl font-semibold">{value}</p>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-    )
-}
+// ============================================================================
+// Stat Card Configuration
+// ============================================================================
 
 /**
- * @description Row of 4 summary stat cards displaying key dashboard metrics.
- * @param props - Dashboard stats data.
- * @returns Stat cards row element.
+ * @description Configuration for each stat card — maps index to gradient CSS vars,
+ * icon component, and i18n label key.
+ */
+const STAT_CARDS = [
+    {
+        key: 'totalSessions' as const,
+        labelKey: 'dashboard.stats.totalSessions',
+        Icon: MessageSquare,
+        gradientVar: 1,
+    },
+    {
+        key: 'totalMessages' as const,
+        labelKey: 'dashboard.stats.totalMessages',
+        Icon: BarChart3,
+        gradientVar: 2,
+    },
+    {
+        key: 'uniqueUsers' as const,
+        labelKey: 'dashboard.stats.uniqueUsers',
+        Icon: Users,
+        gradientVar: 3,
+    },
+    {
+        key: 'avgMessagesPerSession' as const,
+        labelKey: 'dashboard.stats.avgMessagesPerSession',
+        Icon: Search,
+        gradientVar: 4,
+    },
+] as const
+
+// ============================================================================
+// Component
+// ============================================================================
+
+/**
+ * @description Hero stat cards rendered in a responsive grid.
+ * Each card uses a unique gradient from CSS custom properties and
+ * enters with a staggered slideUp animation.
+ * @param {StatCardsProps} props - Component props.
+ * @returns {JSX.Element} Stats overview grid.
  */
 export function StatCards({ stats }: StatCardsProps) {
     const { t } = useTranslation()
 
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <StatItem
-                icon={<MessageSquare size={18} className="text-blue-500" />}
-                label={t('dashboard.stats.totalSessions')}
-                value={stats?.totalSessions || 0}
-            />
-            <StatItem
-                icon={<BarChart3 size={18} className="text-green-500" />}
-                label={t('dashboard.stats.totalMessages')}
-                value={stats?.totalMessages || 0}
-            />
-            <StatItem
-                icon={<Users size={18} className="text-purple-500" />}
-                label={t('dashboard.stats.uniqueUsers')}
-                value={stats?.uniqueUsers || 0}
-            />
-            <StatItem
-                icon={<Search size={18} className="text-orange-500" />}
-                label={t('dashboard.stats.avgMessagesPerSession')}
-                value={stats?.avgMessagesPerSession?.toFixed(1) || '0'}
-            />
+            {STAT_CARDS.map((card, index) => {
+                // Read the value from stats, falling back to 0 while loading
+                const rawValue = stats?.[card.key] ?? 0
+                // Format avg with one decimal, integers for the rest
+                const displayValue =
+                    card.key === 'avgMessagesPerSession'
+                        ? rawValue.toFixed(1)
+                        : rawValue.toLocaleString()
+
+                return (
+                    <Card
+                        key={card.key}
+                        className="relative overflow-hidden border-0 text-white
+                                   transition-all duration-300 ease-out
+                                   hover:scale-[1.02] hover:shadow-lg
+                                   opacity-0 animate-slideUp"
+                        style={{
+                            // Gradient from the CSS custom properties
+                            background: `linear-gradient(135deg, var(--dashboard-gradient-${card.gradientVar}-from), var(--dashboard-gradient-${card.gradientVar}-to))`,
+                            // Stagger animation per card
+                            animationDelay: `${index * 80}ms`,
+                        }}
+                    >
+                        <CardContent className="p-5">
+                            {/* Icon container — semi-transparent circle */}
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-sm font-medium text-white/85">
+                                    {t(card.labelKey)}
+                                </span>
+                                <div className="flex items-center justify-center w-9 h-9 rounded-full bg-white/15">
+                                    <card.Icon className="w-5 h-5 text-white/90" />
+                                </div>
+                            </div>
+
+                            {/* Metric value */}
+                            <p className="text-3xl font-bold tracking-tight">
+                                {displayValue}
+                            </p>
+                        </CardContent>
+
+                        {/* Decorative background circle */}
+                        <div
+                            className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full bg-white/5 pointer-events-none"
+                            aria-hidden="true"
+                        />
+                    </Card>
+                )
+            })}
         </div>
     )
 }

@@ -62,15 +62,7 @@
       "Bash(xargs grep -l \"^import huggingface_hub\\\\|^from huggingface_hub\")",
       "Bash(xargs grep -l \"^import sqlalchemy\\\\|^from sqlalchemy\")",
       "Bash(xargs grep -l \"^import pydantic\\\\|^from pydantic\")",
-      "Bash(pip install shapely pyclipper editdistance)",
-      "Bash(pip install langfuse)",
-      "Bash(pip install litellm)",
-      "Bash(pip install dashscope demjson3 xpinyin retry websocket-client tiktoken mammoth tika trafilatura markdownify extract-msg olefile)",
-      "Bash(pip install zhipuai qianfan anthropic cohere voyageai mistralai replicate jina)",
-      "Bash(pip install zhipuai qianfan anthropic cohere voyageai mistralai replicate)",
-      "Bash(pip install graspologic)",
-      "Bash(pip install exceptiongroup)",
-      "Bash(pip install tencentcloud-sdk-python PyMuPDF markdown-to-json)"
+      "Bash(pip install shapely pyclipper editdistance)"
     ]
   }
 }

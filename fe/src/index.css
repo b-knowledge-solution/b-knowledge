@@ -37,6 +37,23 @@
   --destructive-foreground: 210 40% 98%;
   --ring: 228 79% 43%;
   --radius: 0.5rem;
+
+  /* Dashboard stat-card gradients (light) */
+  --dashboard-gradient-1-from: #3b82f6;
+  --dashboard-gradient-1-to: #1d4ed8;
+  --dashboard-gradient-2-from: #10b981;
+  --dashboard-gradient-2-to: #059669;
+  --dashboard-gradient-3-from: #f59e0b;
+  --dashboard-gradient-3-to: #d97706;
+  --dashboard-gradient-4-from: #8b5cf6;
+  --dashboard-gradient-4-to: #7c3aed;
+
+  /* Dashboard chart tokens (light) */
+  --chart-primary: #3b82f6;
+  --chart-secondary: #10b981;
+  --chart-grid: #e2e8f0;
+  --chart-tooltip-bg: #1e293b;
+  --chart-tooltip-text: #f8fafc;
 }
 
 /* ============================================================================
@@ -71,6 +88,23 @@
   --destructive: 0 63% 31%;
   --destructive-foreground: 210 40% 98%;
   --ring: 228 79% 53%;
+
+  /* Dashboard stat-card gradients (dark — slightly muted) */
+  --dashboard-gradient-1-from: #2563eb;
+  --dashboard-gradient-1-to: #1e40af;
+  --dashboard-gradient-2-from: #059669;
+  --dashboard-gradient-2-to: #047857;
+  --dashboard-gradient-3-from: #d97706;
+  --dashboard-gradient-3-to: #b45309;
+  --dashboard-gradient-4-from: #7c3aed;
+  --dashboard-gradient-4-to: #6d28d9;
+
+  /* Dashboard chart tokens (dark) */
+  --chart-primary: #60a5fa;
+  --chart-secondary: #34d399;
+  --chart-grid: #1e293b;
+  --chart-tooltip-bg: #0f172a;
+  --chart-tooltip-text: #f1f5f9;
 }
 
 @layer base {

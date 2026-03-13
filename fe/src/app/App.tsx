@@ -29,6 +29,7 @@ export { globalMessage } from '@/app/Providers';
 // Lazy-loaded Pages (Code Splitting)
 // ============================================================================
 
+const LandingPage = lazy(() => import('@/features/landing/pages/LandingPage'));
 const AiChatPage = lazy(() => import('@/features/chat/pages/ChatPage'));
 const AiSearchPage = lazy(() => import('@/features/search/pages/SearchPage'));
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'));
@@ -93,6 +94,7 @@ function App() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public routes */}
+          <Route path="/landing" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/logout" element={<LogoutPage />} />
 

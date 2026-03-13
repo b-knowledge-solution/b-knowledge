@@ -1338,5 +1338,133 @@
       "deleteSuccess": "Đã xóa đoạn văn thành công",
       "confirmDelete": "Bạn có chắc muốn xóa đoạn văn này?"
     }
+  },
+  "landing": {
+    "nav": {
+      "features": "Tính năng",
+      "useCases": "Ứng dụng",
+      "sdlc": "Quy trình",
+      "login": "Đăng nhập",
+      "getStarted": "Bắt đầu",
+      "deployment": "Triển khai"
+    },
+    "hero": {
+      "badge": "Tuân thủ HIPAA & Bảo mật",
+      "title": "Kho Kiến Thức AI cho ",
+      "titleHighlight": "Y Tế Xuất Sắc",
+      "subtitle": "Chuyển đổi quy trình lâm sàng với chatbot thông minh cung cấp câu trả lời dựa trên bằng chứng từ kho kiến thức y khoa, cơ sở dữ liệu thuốc và hướng dẫn lâm sàng.",
+      "cta": "Dùng thử miễn phí",
+      "learnMore": "Tìm hiểu thêm",
+      "uptime": "SLA Uptime",
+      "compliant": "Tuân thủ",
+      "support": "Hỗ trợ AI",
+      "chatBot": "Trợ lý AI Y tế",
+      "online": "Trực tuyến",
+      "mockQuestion": "Hướng dẫn mới nhất về quản lý Đái tháo đường Type 2 với thuốc GLP-1 là gì?",
+      "mockAnswer": "Theo Tiêu chuẩn Chăm sóc ADA 2026, thuốc chủ vận thụ thể GLP-1 được khuyến nghị là liệu pháp tiêm đầu tay cho bệnh nhân T2DM có nguy cơ tim mạch cao.",
+      "mockCitation": "Nguồn: Tiêu chuẩn Chăm sóc ADA 2026, Phần 9 — Phương pháp Dược lý Điều trị Đường huyết",
+      "inputPlaceholder": "Hỏi về hướng dẫn lâm sàng, tương tác thuốc...",
+      "evidenceBased": "Dựa trên Bằng chứng"
+    },
+    "features": {
+      "label": "Tính năng",
+      "title": "Xây dựng cho Đội ngũ Y tế",
+      "subtitle": "Mỗi tính năng được thiết kế để đáp ứng yêu cầu nghiêm ngặt của môi trường lâm sàng.",
+      "ragChat": { "title": "Chat Lâm sàng RAG", "desc": "Tạo sinh tăng cường truy xuất cung cấp câu trả lời chính xác, có trích dẫn từ tài liệu y khoa." },
+      "docSearch": { "title": "Tìm kiếm Tài liệu Thông minh", "desc": "Tìm kiếm ngữ nghĩa trên hàng nghìn tài liệu lâm sàng, bài nghiên cứu và SOP." },
+      "hipaa": { "title": "Sẵn sàng HIPAA & Tuân thủ", "desc": "Mã hóa đầu cuối, ghi log kiểm toán, kiểm soát truy cập theo vai trò." },
+      "multiTurn": { "title": "Hội thoại Đa lượt", "desc": "Đối thoại nhận biết ngữ cảnh, ghi nhớ câu hỏi trước để hỏi tiếp tự nhiên." },
+      "knowledgeBase": { "title": "Kho Kiến Thức Tập trung", "desc": "Tải lên và quản lý hướng dẫn lâm sàng, cơ sở dữ liệu thuốc trong một kho lưu trữ an toàn." },
+      "realtime": { "title": "Phản hồi Thời gian thực", "desc": "Phản hồi streaming tức thì với SSE cho trải nghiệm hội thoại mượt mà." },
+      "audit": { "title": "Nhật ký Kiểm toán Đầy đủ", "desc": "Mọi truy vấn, phản hồi và truy cập tài liệu đều được ghi log." },
+      "roleAccess": { "title": "Kiểm soát Truy cập theo Vai trò", "desc": "Quyền hạn chi tiết cho bác sĩ, y tá, dược sĩ và quản trị viên." },
+      "multilang": { "title": "Hỗ trợ Đa ngôn ngữ", "desc": "Phục vụ bệnh nhân đa dạng với hỗ trợ tiếng Anh, Việt, Nhật và nhiều hơn." }
+    },
+    "useCases": {
+      "label": "Ứng dụng",
+      "title": "Giải pháp cho Y tế",
+      "subtitle": "Từ quyết định lâm sàng tại giường bệnh đến tuân thủ quy định.",
+      "clinical": { "title": "Hỗ trợ Quyết định Lâm sàng", "desc": "Bác sĩ và y tá truy cập ngay phác đồ điều trị, hướng dẫn liều thuốc." },
+      "pharmacy": { "title": "Thông tin Dược phẩm", "desc": "Dược sĩ tra cứu tương tác thuốc, chống chỉ định trong thời gian thực." },
+      "patient": { "title": "Giáo dục Bệnh nhân", "desc": "Tạo giải thích thân thiện về chẩn đoán, thủ thuật bằng nhiều ngôn ngữ." },
+      "training": { "title": "Đào tạo Nhân viên Y tế", "desc": "Hướng dẫn nhân viên mới với AI tutor từ chính sách bệnh viện." },
+      "compliance": { "title": "Tuân thủ Quy định", "desc": "Truy xuất ngay yêu cầu quy định, tiêu chuẩn kiểm định." },
+      "operations": { "title": "Vận hành Bệnh viện", "desc": "Hợp lý hóa các truy vấn về lịch trình, chuỗi cung ứng." }
+    },
+    "sdlc": {
+      "label": "Quy trình Phát triển",
+      "title": "Phương pháp SDLC Y tế",
+      "subtitle": "Quy trình phát triển phần mềm nghiêm ngặt, ưu tiên tuân thủ cho sản phẩm y tế.",
+      "phase": "Giai đoạn",
+      "phases": {
+        "discovery": { "title": "Khám phá & Yêu cầu", "desc": "Phỏng vấn bác sĩ, nhân viên tuân thủ và đội IT. Xác định user stories và yêu cầu quy định." },
+        "design": { "title": "Kiến trúc & Thiết kế", "desc": "Thiết kế kiến trúc dữ liệu tuân thủ HIPAA, pipeline RAG và UI/UX." },
+        "develop": { "title": "Phát triển Agile", "desc": "Sprint hai tuần với CI liên tục. Kiến trúc monorepo module (Express + React)." },
+        "test": { "title": "Kiểm thử & Xác nhận Lâm sàng", "desc": "Kiểm thử đa tầng: unit, tích hợp, E2E, penetration và xác nhận độ chính xác lâm sàng." },
+        "deploy": { "title": "Triển khai An toàn", "desc": "Triển khai không downtime trên hạ tầng tuân thủ HIPAA với blue-green deployment." },
+        "iterate": { "title": "Giám sát & Cải tiến", "desc": "Giám sát liên tục chất lượng AI, vòng phản hồi từ nhân viên lâm sàng." }
+      },
+      "compliance": {
+        "title": "Phát triển Ưu tiên Tuân thủ",
+        "desc": "Mọi dòng code, mọi triển khai đều được thiết kế đáp ứng tiêu chuẩn tuân thủ y tế nghiêm ngặt nhất.",
+        "certified": "Tuân thủ",
+        "hipaaDesc": "Bảo mật Dữ liệu",
+        "fhirDesc": "Tương tác Hệ thống",
+        "gdprDesc": "Bảo vệ Dữ liệu EU",
+        "soc2Desc": "Kiểm soát An ninh",
+        "iso13485Desc": "QMS Thiết bị Y tế",
+        "iso14971Desc": "Quản lý Rủi ro",
+        "iec62304Desc": "Vòng đời Phần mềm",
+        "iec62443Desc": "An ninh Mạng"
+      }
+    },
+    "deployment": {
+      "label": "Phương thức Triển khai",
+      "title": "Triển khai Theo Cách Của Bạn — Cloud, Hybrid hoặc On-Premise",
+      "subtitle": "Chọn mô hình triển khai phù hợp với yêu cầu bảo mật, chính sách lưu trữ dữ liệu và chiến lược hạ tầng của tổ chức.",
+      "cloud": {
+        "title": "Cloud Quản lý",
+        "desc": "Triển khai SaaS được quản lý hoàn toàn trên hạ tầng cloud tuân thủ HIPAA. Không cần bảo trì — chúng tôi lo mở rộng, cập nhật và vá bảo mật.",
+        "badge": "Thiết lập Nhanh nhất",
+        "features": ["Tự động mở rộng & cân bằng tải", "SLA uptime 99.9%", "Sao lưu tự động & khắc phục thảm họa", "Đa vùng (US, EU, APAC)", "SOC 2 & HIPAA BAA bao gồm", "Cập nhật không downtime"]
+      },
+      "hybrid": {
+        "title": "Hybrid Cloud",
+        "desc": "Giữ dữ liệu bệnh nhân nhạy cảm tại chỗ trong khi tận dụng AI compute trên cloud. Tốt nhất cho tổ chức có yêu cầu lưu trữ dữ liệu nghiêm ngặt.",
+        "badge": "Linh hoạt nhất",
+        "features": ["PHI lưu tại trung tâm dữ liệu của bạn", "AI inference trên cloud", "Đường hầm mã hóa (mTLS)", "Kiểm soát lưu trữ dữ liệu linh hoạt", "Bảng quản lý thống nhất", "Lộ trình di chuyển cloud"]
+      },
+      "onPremise": {
+        "title": "On-Premise",
+        "desc": "Triển khai hoàn toàn cách ly trong hạ tầng riêng. Kiểm soát toàn bộ dữ liệu, mạng và tính toán — lý tưởng cho y tế quân sự và chính phủ.",
+        "badge": "Kiểm soát Tối đa",
+        "features": ["Hỗ trợ cách ly hoàn toàn (air-gapped)", "Chạy trên cluster GPU/CPU riêng", "Kiểm tra mã nguồn đầy đủ", "Tích hợp SSO & LDAP tùy chỉnh", "Suy luận mô hình offline", "Kỹ sư hỗ trợ chuyên trách"]
+      },
+      "architecture": {
+        "title": "Kiến trúc Không phụ thuộc Hạ tầng",
+        "desc": "Xây dựng trên microservices container hóa với Docker và Kubernetes, nền tảng triển khai đồng nhất trên mọi môi trường. Sử dụng Helm charts, Terraform modules hoặc CLI installer."
+      },
+      "diagram": {
+        "cloud": "Tầng Cloud",
+        "cloudDesc": "AWS / Azure / GCP — K8s quản lý, Object Storage, LLM APIs",
+        "hybrid": "Cầu nối Hybrid",
+        "hybridDesc": "Đường hầm mã hóa, đồng bộ dữ liệu, pipeline suy luận chia tách",
+        "onPremise": "Tầng On-Premise",
+        "onPremiseDesc": "K8s riêng, GPU cluster nội bộ, lưu trữ cách ly"
+      }
+    },
+    "cta": {
+      "title": "Sẵn sàng Chuyển đổi Quản lý Kiến thức Y tế?",
+      "subtitle": "Tham gia các tổ chức y tế hàng đầu sử dụng kho kiến thức AI để cải thiện kết quả lâm sàng.",
+      "getStarted": "Bắt đầu Miễn phí",
+      "requestDemo": "Yêu cầu Demo"
+    },
+    "footer": {
+      "description": "Nền tảng kho kiến thức và chatbot AI được xây dựng riêng cho tổ chức y tế.",
+      "product": "Sản phẩm",
+      "compliance": "Tuân thủ",
+      "contact": "Liên hệ",
+      "rights": "Đã đăng ký bản quyền."
+    }
   }
 }

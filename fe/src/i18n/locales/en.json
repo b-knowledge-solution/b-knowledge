@@ -1364,5 +1364,196 @@
       "deleteSuccess": "Chunk deleted successfully",
       "confirmDelete": "Are you sure you want to delete this chunk?"
     }
+  },
+  "landing": {
+    "nav": {
+      "features": "Features",
+      "useCases": "Use Cases",
+      "sdlc": "Our Process",
+      "login": "Sign In",
+      "getStarted": "Get Started",
+      "deployment": "Deployment"
+    },
+    "hero": {
+      "badge": "HIPAA Compliant & Secure",
+      "title": "AI-Powered Knowledge Base for ",
+      "titleHighlight": "Healthcare Excellence",
+      "subtitle": "Transform clinical workflows with an intelligent chatbot that delivers evidence-based answers from your medical knowledge base, drug databases, and clinical guidelines — instantly and accurately.",
+      "cta": "Start Free Trial",
+      "learnMore": "Learn More",
+      "uptime": "Uptime SLA",
+      "compliant": "Compliant",
+      "support": "AI Support",
+      "chatBot": "Healthcare AI Assistant",
+      "online": "Online",
+      "mockQuestion": "What are the latest guidelines for managing Type 2 Diabetes with GLP-1 agonists?",
+      "mockAnswer": "Based on the ADA 2026 Standards of Care, GLP-1 receptor agonists are recommended as first-line injectable therapy for T2DM patients with established ASCVD or high cardiovascular risk. Key agents include semaglutide and liraglutide.",
+      "mockCitation": "Source: ADA Standards of Care 2026, Section 9 — Pharmacologic Approaches to Glycemic Treatment",
+      "inputPlaceholder": "Ask about clinical guidelines, drug interactions...",
+      "evidenceBased": "Evidence-Based"
+    },
+    "features": {
+      "label": "Capabilities",
+      "title": "Built for Healthcare Teams",
+      "subtitle": "Every feature designed to meet the rigorous demands of clinical environments, from security compliance to real-time medical knowledge retrieval.",
+      "ragChat": {
+        "title": "RAG-Powered Clinical Chat",
+        "desc": "Retrieval-Augmented Generation delivers accurate, citation-backed answers from your uploaded medical documents, formularies, and clinical protocols."
+      },
+      "docSearch": {
+        "title": "Intelligent Document Search",
+        "desc": "Semantic search across thousands of clinical documents, research papers, and SOPs — find the exact information in seconds."
+      },
+      "hipaa": {
+        "title": "HIPAA & Compliance Ready",
+        "desc": "End-to-end encryption, audit logging, role-based access control, and data residency options to meet healthcare regulatory requirements."
+      },
+      "multiTurn": {
+        "title": "Multi-Turn Conversations",
+        "desc": "Context-aware dialogue that remembers previous questions, enabling natural follow-up queries about patient care protocols."
+      },
+      "knowledgeBase": {
+        "title": "Centralized Knowledge Base",
+        "desc": "Upload and manage clinical guidelines, drug databases, hospital SOPs, and training materials in one secure, searchable repository."
+      },
+      "realtime": {
+        "title": "Real-Time Streaming",
+        "desc": "Instant streaming responses with server-sent events for a seamless conversational experience — no waiting for full generation."
+      },
+      "audit": {
+        "title": "Complete Audit Trail",
+        "desc": "Every query, response, and document access is logged for compliance auditing, quality assurance, and usage analytics."
+      },
+      "roleAccess": {
+        "title": "Role-Based Access Control",
+        "desc": "Granular permissions for physicians, nurses, pharmacists, and administrators — each sees only what they need."
+      },
+      "multilang": {
+        "title": "Multilingual Support",
+        "desc": "Serve diverse patient populations and international staff with built-in support for English, Vietnamese, Japanese, and more."
+      }
+    },
+    "useCases": {
+      "label": "Use Cases",
+      "title": "Healthcare Scenarios We Solve",
+      "subtitle": "From bedside clinical decisions to back-office compliance, our AI chatbot empowers every role in the healthcare ecosystem.",
+      "clinical": {
+        "title": "Clinical Decision Support",
+        "desc": "Physicians and nurses get instant access to treatment protocols, drug dosing guidelines, and differential diagnosis support at the point of care."
+      },
+      "pharmacy": {
+        "title": "Pharmacy & Drug Information",
+        "desc": "Pharmacists query drug interactions, contraindications, and formulary alternatives in real-time during medication review."
+      },
+      "patient": {
+        "title": "Patient Education",
+        "desc": "Generate patient-friendly explanations of diagnoses, procedures, and medication instructions in multiple languages."
+      },
+      "training": {
+        "title": "Medical Staff Training",
+        "desc": "New staff onboarding with an AI tutor that answers questions from hospital policies, safety protocols, and best practices."
+      },
+      "compliance": {
+        "title": "Regulatory Compliance",
+        "desc": "Instantly retrieve and cross-reference regulatory requirements, accreditation standards, and internal policy documents."
+      },
+      "operations": {
+        "title": "Hospital Operations",
+        "desc": "Streamline administrative queries about scheduling protocols, supply chain procedures, and operational guidelines."
+      }
+    },
+    "sdlc": {
+      "label": "Development Process",
+      "title": "Healthcare SDLC Methodology",
+      "subtitle": "We follow a rigorous, compliance-first software development lifecycle tailored for healthcare products, ensuring patient safety and data integrity at every stage.",
+      "phase": "Phase",
+      "phases": {
+        "discovery": {
+          "title": "Discovery & Requirements",
+          "desc": "Stakeholder interviews with clinicians, compliance officers, and IT teams. Define user stories, regulatory requirements (HIPAA, HL7 FHIR), and clinical workflow mappings."
+        },
+        "design": {
+          "title": "Architecture & Design",
+          "desc": "Design HIPAA-compliant data architecture, RAG pipeline topology, role-based access models, and UI/UX wireframes validated by clinical end-users."
+        },
+        "develop": {
+          "title": "Agile Development",
+          "desc": "Two-week sprints with continuous integration. Modular monorepo architecture (Express + React), automated code quality gates, and security-first coding standards."
+        },
+        "test": {
+          "title": "Clinical Validation & QA",
+          "desc": "Multi-layered testing: unit, integration, E2E, penetration testing, and clinical accuracy validation against gold-standard medical references."
+        },
+        "deploy": {
+          "title": "Secure Deployment",
+          "desc": "Zero-downtime deployments to HIPAA-compliant infrastructure. Blue-green deployment strategy with automated rollback and health monitoring."
+        },
+        "iterate": {
+          "title": "Monitor & Iterate",
+          "desc": "Continuous monitoring of AI response quality, user feedback loops with clinical staff, and quarterly compliance re-certification cycles."
+        }
+      },
+      "compliance": {
+        "title": "Compliance-First Development",
+        "desc": "Every line of code, every deployment, and every data flow is designed to meet the strictest healthcare compliance standards from day one — not as an afterthought.",
+        "certified": "Compliant",
+        "hipaaDesc": "Data Privacy",
+        "fhirDesc": "Interoperability",
+        "gdprDesc": "EU Data Protection",
+        "soc2Desc": "Security Controls",
+        "iso13485Desc": "Medical Device QMS",
+        "iso14971Desc": "Risk Management",
+        "iec62304Desc": "Software Lifecycle",
+        "iec62443Desc": "Cybersecurity"
+      }
+    },
+    "deployment": {
+      "label": "Deployment Options",
+      "title": "Deploy Your Way — Cloud, Hybrid, or On-Premise",
+      "subtitle": "Choose the deployment model that fits your organization's security requirements, data residency policies, and infrastructure strategy.",
+      "cloud": {
+        "title": "Cloud Managed",
+        "desc": "Fully managed SaaS deployment on HIPAA-compliant cloud infrastructure. Zero maintenance overhead — we handle scaling, updates, and security patches.",
+        "badge": "Fastest Setup",
+        "features": ["Auto-scaling & load balancing", "99.9% uptime SLA", "Automatic backups & disaster recovery", "Multi-region availability (US, EU, APAC)", "SOC 2 & HIPAA BAA included", "Zero-downtime updates"]
+      },
+      "hybrid": {
+        "title": "Hybrid Cloud",
+        "desc": "Keep sensitive patient data on-premise while leveraging cloud AI compute. The best of both worlds for organizations with strict data residency requirements.",
+        "badge": "Most Flexible",
+        "features": ["PHI stays in your data center", "Cloud-based AI inference engine", "Encrypted data tunnels (mTLS)", "Flexible data residency controls", "Unified management dashboard", "Gradual cloud migration path"]
+      },
+      "onPremise": {
+        "title": "On-Premise",
+        "desc": "Full air-gapped deployment within your own infrastructure. Complete control over data, network, and compute — ideal for government and military healthcare.",
+        "badge": "Maximum Control",
+        "features": ["100% air-gapped capable", "Run on your own GPU/CPU clusters", "Full source code audit available", "Custom SSO & LDAP integration", "Offline model inference", "Dedicated support engineer"]
+      },
+      "architecture": {
+        "title": "Infrastructure-Agnostic Architecture",
+        "desc": "Built on containerized microservices with Docker and Kubernetes, our platform deploys identically across any environment. Use Helm charts, Terraform modules, or our CLI installer for repeatable, auditable deployments."
+      },
+      "diagram": {
+        "cloud": "Cloud Layer",
+        "cloudDesc": "AWS / Azure / GCP — Managed K8s, Object Storage, LLM APIs",
+        "hybrid": "Hybrid Bridge",
+        "hybridDesc": "Encrypted tunnels, data sync, split inference pipeline",
+        "onPremise": "On-Premise Layer",
+        "onPremiseDesc": "Private K8s, local GPU cluster, air-gapped storage"
+      }
+    },
+    "cta": {
+      "title": "Ready to Transform Your Healthcare Knowledge Management?",
+      "subtitle": "Join leading healthcare organizations using AI-powered knowledge bases to improve clinical outcomes, reduce errors, and accelerate decision-making.",
+      "getStarted": "Get Started Free",
+      "requestDemo": "Request a Demo"
+    },
+    "footer": {
+      "description": "AI-powered knowledge base and chatbot platform built specifically for healthcare organizations.",
+      "product": "Product",
+      "compliance": "Compliance",
+      "contact": "Contact",
+      "rights": "All rights reserved."
+    }
   }
 }
