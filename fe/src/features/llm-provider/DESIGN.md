@@ -256,7 +256,8 @@ llmProvider.action.unsetDefault      = "Unset Default"
 ```
 fe/src/features/llm-provider/
 ├── api/
-│   └── llmProviderService.ts        # TanStack Query hooks (useProviders, useCreateProvider, etc.)
+│   ├── llmProviderApi.ts            # API functions (getProviders, createProvider, etc.)
+│   └── llmProviderQueries.ts        # TanStack Query hooks (useProviders, usePresets, etc.)
 ├── components/
 │   ├── ProviderTable.tsx             # Table with sorting, row actions
 │   ├── ProviderFormDialog.tsx        # Create/Edit modal form

@@ -16,8 +16,10 @@ export { default as SearchFilters } from './components/SearchFilters'
 export { default as SearchAppAccessDialog } from './components/SearchAppAccessDialog'
 export { default as SearchAppConfig } from './components/SearchAppConfig'
 
-// Hooks
-export { useSearch } from './hooks/useSearch'
+// Query hooks (TanStack Query)
+export { useSearch } from './api/searchQueries'
+
+// Hooks (UI/streaming)
 export { useSearchStream } from './hooks/useSearchStream'
 
 // Types

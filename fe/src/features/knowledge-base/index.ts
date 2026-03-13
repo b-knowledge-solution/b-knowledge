@@ -2,5 +2,5 @@
  * @fileoverview Knowledge Base feature exports.
  * Contains components, contexts, and services for managing RAG knowledge bases.
  */
-export * from './context/KnowledgeBaseContext';
-export * from './api/knowledgeBaseService';
+export * from './hooks/useKnowledgeBaseContext';
+export * from './api/knowledgeBaseApi';

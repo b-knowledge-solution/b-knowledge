@@ -26,7 +26,7 @@ import type {
   DocumentCategory,
   DocumentCategoryVersion,
   ProjectChat,
-} from '../api/projectService'
+} from '../api/projectApi'
 
 const { TextArea } = Input
 const { Text } = Typography

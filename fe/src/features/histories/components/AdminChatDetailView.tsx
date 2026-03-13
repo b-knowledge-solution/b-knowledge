@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { MessageSquare, Clock, Sparkles, PanelLeft } from 'lucide-react'
 
 import { MarkdownRenderer } from '@/components/MarkdownRenderer'
-import { useKnowledgeBase } from '@/features/knowledge-base/context/KnowledgeBaseContext'
+import { useKnowledgeBase } from '@/features/knowledge-base/hooks/useKnowledgeBaseContext'
 import type { ChatSessionSummary, ExternalChatHistory } from '../types/histories.types'
 
 /**

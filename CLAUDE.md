@@ -109,18 +109,22 @@ fe/src/
 │   └── contexts/             # React contexts (theme, auth, etc.)
 │
 ├── features/                 # Domain feature modules (each is self-contained)
-│   ├── ai/                   # AI chat & assistant
+│   ├── ai/                   # AI tokenizer tools
 │   ├── audit/                # Audit log viewer
 │   ├── auth/                 # Login, register, auth flows
 │   ├── broadcast/            # Broadcast management
+│   ├── chat/                 # Chat sessions & conversations
 │   ├── dashboard/            # Dashboard & analytics
 │   ├── datasets/             # Dataset management
 │   ├── glossary/             # Glossary management
 │   ├── guideline/            # Guidelines & documentation
 │   ├── histories/            # Browsing history
-│   ├── history/              # Chat history
-│   ├── knowledge-base/       # Knowledge base UI
-│   ├── system/               # System settings
+│   ├── knowledge-base/       # Knowledge base context
+│   ├── landing/              # Landing page (public)
+│   ├── llm-provider/         # LLM provider configuration
+│   ├── projects/             # Project management
+│   ├── search/               # AI search
+│   ├── system/               # System settings & monitoring
 │   ├── teams/                # Team management
 │   └── users/                # User management
 │
@@ -149,17 +153,120 @@ fe/src/
 
 ### FE Feature Internal Convention
 
-Each feature under `features/` MUST follow this pattern:
+Each feature under `features/` MUST follow this standardized structure:
 
 ```
 features/<domain>/
-├── api/                      # API calls (TanStack Query hooks or raw api calls)
+├── api/                      # Data access layer (separated into two files)
+│   ├── <domain>Api.ts        # Raw HTTP calls — typed fetch wrappers (NO hooks here)
+│   └── <domain>Queries.ts    # TanStack Query hooks (useQuery/useMutation wrappers)
 ├── components/               # Feature-specific UI components
-├── hooks/                    # Feature-specific hooks
+├── hooks/                    # UI-only hooks (streaming, filters, form logic — NOT data-fetching)
 ├── pages/                    # Route-level page components
 ├── types/                    # Feature-specific TypeScript types
+│   └── <domain>.types.ts
 └── index.ts                  # Barrel export (public API)
 ```
+
+#### API Layer Split (Critical Pattern)
+
+The `api/` directory MUST contain two separate files with clear responsibilities:
+
+| File | Responsibility | Contains |
+|------|---------------|----------|
+| `<domain>Api.ts` | Raw HTTP calls | Typed functions calling `api.get()`, `api.post()`, etc. No React hooks. |
+| `<domain>Queries.ts` | TanStack Query hooks | `useQuery`/`useMutation` hooks that wrap the API functions. Cache invalidation logic. |
+
+**`<domain>Api.ts`** template:
+```typescript
+import { api } from '@/lib/api'
+import type { DomainItem } from '../types/domain.types'
+
+/** @description Fetch all domain items */
+export const domainApi = {
+  list: async (): Promise<DomainItem[]> =>
+    api.get<DomainItem[]>('/api/domain'),
+
+  getById: async (id: string): Promise<DomainItem> =>
+    api.get<DomainItem>(`/api/domain/${id}`),
+
+  create: async (data: CreatePayload): Promise<DomainItem> =>
+    api.post<DomainItem>('/api/domain', data),
+
+  update: async (id: string, data: Partial<DomainItem>): Promise<DomainItem> =>
+    api.put<DomainItem>(`/api/domain/${id}`, data),
+
+  delete: async (id: string): Promise<void> =>
+    api.delete(`/api/domain/${id}`),
+}
+```
+
+**`<domain>Queries.ts`** template:
+```typescript
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/queryKeys'
+import { domainApi } from './domainApi'
+
+// ── Queries ──────────────────────────────────
+
+/** @description Hook to fetch all domain items */
+export function useDomainList() {
+  return useQuery({
+    queryKey: queryKeys.domain.list(),
+    queryFn: () => domainApi.list(),
+  })
+}
+
+/** @description Hook to fetch a single domain item by ID */
+export function useDomainDetail(id: string) {
+  return useQuery({
+    queryKey: queryKeys.domain.detail(id),
+    queryFn: () => domainApi.getById(id),
+    enabled: !!id,
+  })
+}
+
+// ── Mutations ────────────────────────────────
+
+/** @description Hook to create a new domain item */
+export function useCreateDomain() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: domainApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.domain.all })
+    },
+  })
+}
+```
+
+#### `hooks/` Directory — UI Hooks Only
+
+The `hooks/` directory is reserved for **non-data-fetching** hooks:
+- Streaming hooks (`useChatStream.ts`, `useSearchStream.ts`)
+- Filter/form state composition (`useAuditFilters.ts`)
+- Browser API hooks (`useTts.ts`, `useTokenizer.ts`)
+- Socket event subscriptions (`useConverterSocket.ts`)
+- Context wrappers moved from `context/` folders
+
+**NEVER** put `useQuery`/`useMutation` hooks in `hooks/`. They MUST go in `api/<domain>Queries.ts`.
+
+#### Naming Conventions
+
+| File Type | Naming Pattern | Example |
+|-----------|---------------|---------|
+| API service | `<domain>Api.ts` | `chatApi.ts`, `teamApi.ts` |
+| Query hooks | `<domain>Queries.ts` | `chatQueries.ts`, `teamQueries.ts` |
+| Types | `<domain>.types.ts` | `chat.types.ts`, `team.types.ts` |
+| Pages | `<DomainAction>Page.tsx` | `ChatPage.tsx`, `TeamManagementPage.tsx` |
+| Components | `<PascalCase>.tsx` | `ChatMessage.tsx`, `TeamCard.tsx` |
+| UI hooks | `use<Purpose>.ts` | `useChatStream.ts`, `useAuditFilters.ts` |
+
+**DO NOT** use `*Service.ts` naming for API files — always use `*Api.ts`.
+
+#### Minimal Features (Exceptions)
+
+Features with very few files (e.g., `ai/`, `landing/`, `auth/`) may omit empty directories. Only create subdirectories that contain files. The `api/` split into `*Api.ts` + `*Queries.ts` is still required if the feature fetches server data.
 
 ### FE Rules for New Features
 
@@ -168,6 +275,9 @@ features/<domain>/
 - **New sidebar nav**: Add it to `layouts/Sidebar.tsx` with proper role checks
 - **Layout/header changes**: Modify `layouts/Header.tsx` or `layouts/Sidebar.tsx` — never modify `MainLayout.tsx` directly unless changing the shell composition
 - **React Compiler**: The project uses `babel-plugin-react-compiler` — avoid manual `React.memo`, `useMemo`, `useCallback` unless profiling shows a specific need
+- **No `context/` directories**: React contexts live in `hooks/` (e.g., `hooks/useMyContext.tsx`), NOT in a separate `context/` or `contexts/` folder
+- **API file naming**: Always `<domain>Api.ts`, never `<domain>Service.ts`
+- **Query hooks location**: All `useQuery`/`useMutation` hooks MUST be in `api/<domain>Queries.ts`, never in `hooks/`
 
 ## 5. Build & Dev Instructions
 

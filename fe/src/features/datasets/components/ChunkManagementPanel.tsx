@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Plus } from 'lucide-react';
-import { useChunks } from '../hooks/useChunks';
+import { useChunks } from '../api/datasetQueries';
 import ChunkTable from './ChunkTable';
 import AddChunkModal from './AddChunkModal';
 

@@ -30,7 +30,7 @@ import {
     XCircle,
     HelpCircle
 } from 'lucide-react';
-import { getSystemHealth } from '../api/systemToolsService';
+import { getSystemHealth } from '../api/systemToolsApi';
 
 // ============================================================================
 // Types & Constants

@@ -20,7 +20,7 @@ import {
   removeProjectPermission,
   updateProject,
   type Project,
-} from '../api/projectService'
+} from '../api/projectApi'
 
 // ============================================================================
 // Types

@@ -10,5 +10,8 @@ export { default as BroadcastMessagePage } from './pages/BroadcastMessagePage';
 // Export the Public Broadcast Banner Component
 export { default as BroadcastBanner } from './components/BroadcastBanner';
 
-// Export all services and types from the broadcast message service
-export * from './api/broadcastMessageService';
+// Export all services and types from the broadcast message API
+export * from './api/broadcastApi';
+
+// Export TanStack Query hooks
+export * from './api/broadcastQueries';

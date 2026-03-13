@@ -29,7 +29,7 @@ import {
     TableRow,
 } from '@/components/ui/table'
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
-import { AuditFilterProvider, useAuditFilters } from '../contexts/AuditFilterContext'
+import { AuditFilterProvider, useAuditFilters } from '../hooks/useAuditFilterContext'
 import { useAuditLogs } from '../hooks/useAuditLogs'
 import { AuditFilterPanel } from '../components/AuditFilterPanel'
 import {

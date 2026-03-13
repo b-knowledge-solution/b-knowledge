@@ -27,7 +27,7 @@ import {
     TableRow,
 } from '@/components/ui/table'
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
-import { useUserManagement } from '../hooks/useUserManagement'
+import { useUserManagement } from '../api/userQueries'
 import { UserToolbar } from '../components/UserToolbar'
 import { EditRoleDialog } from '../components/EditRoleDialog'
 import { IpHistoryDialog } from '../components/IpHistoryDialog'

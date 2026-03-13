@@ -13,7 +13,7 @@ import { AlertCircle, RefreshCw, Server } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
-import { getSystemTools } from '../api/systemToolsService';
+import { getSystemTools } from '../api/systemToolsApi';
 import SystemToolCard from '../components/SystemToolCard';
 import { useAuth } from '@/features/auth';
 

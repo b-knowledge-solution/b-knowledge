@@ -26,7 +26,7 @@ import {
   type VersionJob,
   type QueueStats,
   type ConversionJobStatus,
-} from '@/features/system/api/converterService';
+} from '@/features/system/api/converterApi';
 import { useConverterSocket } from '@/features/system/hooks/useConverterSocket';
 
 // ============================================================================

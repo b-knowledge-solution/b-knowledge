@@ -25,7 +25,7 @@ import {
   createProvider,
   updateProvider,
   deleteProvider,
-} from '../api/llmProviderService'
+} from '../api/llmProviderApi'
 import { MODEL_TYPES } from '../types/llmProvider.types'
 import type {
   ModelProvider,

@@ -5,8 +5,8 @@
 import React, { useState } from 'react';
 import { HeaderActions } from '@/components/HeaderActions';
 import { useTranslation } from 'react-i18next';
-import { broadcastMessageService } from '../api/broadcastMessageService';
-import { BroadcastMessage } from '../types';
+import { broadcastMessageService } from '../api/broadcastApi';
+import { BroadcastMessage } from '../types/broadcast.types';
 import { Plus, CheckCircle, Trash2, Edit2, XCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

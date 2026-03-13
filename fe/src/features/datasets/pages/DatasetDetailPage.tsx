@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/sheet';
 import { useAuth } from '@/features/auth';
 import { datasetApi } from '../api/datasetApi';
-import { useDocuments } from '../hooks/useDatasets';
+import { useDocuments } from '../api/datasetQueries';
 import DocumentTable from '../components/DocumentTable';
 import FileUploadModal from '../components/FileUploadModal';
 import DatasetAccessDialog from '../components/DatasetAccessDialog';

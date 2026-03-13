@@ -49,7 +49,7 @@ import {
   type Project,
   type ProjectPermission,
   type ProjectCategory,
-} from '../api/projectService'
+} from '../api/projectApi'
 
 import { ProjectPermissionModal } from '../components/ProjectPermissionModal'
 import { PermissionsSelector } from '@/features/knowledge-base/components/SourcePermissionsModal'

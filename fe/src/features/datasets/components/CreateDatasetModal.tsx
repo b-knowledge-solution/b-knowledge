@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/select';
 import type { Dataset } from '../types';
 import { PARSER_OPTIONS, LANGUAGE_OPTIONS } from '../types';
-import type { DatasetFormData } from '../hooks/useDatasets';
+import type { DatasetFormData } from '../api/datasetQueries';
 
 interface CreateDatasetModalProps {
   open: boolean;

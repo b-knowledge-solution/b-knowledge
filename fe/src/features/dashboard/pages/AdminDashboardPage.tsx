@@ -9,7 +9,7 @@ import { subDays, subMonths, subYears, startOfMonth, endOfMonth } from 'date-fns
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { DateRangePicker, type DateRangePreset } from '@/components/ui/date-range-picker'
-import { useDashboardStats } from '../hooks/useDashboardStats'
+import { useDashboardStats } from '../api/dashboardQueries'
 import { StatCards } from '../components/StatCards'
 import { ActivityTrendChart } from '../components/ActivityTrendChart'
 import { TopUsersTable } from '../components/TopUsersTable'

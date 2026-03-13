@@ -17,3 +17,7 @@ export type {
 
 // API
 export { teamApi } from './api/teamApi'
+
+// Query Hooks
+export { useTeams, useTeamMembers } from './api/teamQueries'
+export type { UseTeamsReturn, UseTeamMembersReturn } from './api/teamQueries'

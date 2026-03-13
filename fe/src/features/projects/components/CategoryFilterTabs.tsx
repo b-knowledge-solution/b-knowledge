@@ -8,7 +8,7 @@
 
 import { useTranslation } from 'react-i18next'
 import { Segmented } from 'antd'
-import type { ProjectCategory } from '../api/projectService'
+import type { ProjectCategory } from '../api/projectApi'
 
 // ============================================================================
 // Types

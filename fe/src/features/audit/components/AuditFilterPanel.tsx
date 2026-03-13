@@ -6,7 +6,7 @@
 import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
 import { DatePicker } from '@/components/ui/date-picker'
-import { useAuditFilters } from '../contexts/AuditFilterContext'
+import { useAuditFilters } from '../hooks/useAuditFilterContext'
 import { getActionBadge, formatResourceType } from './AuditActionBadge'
 
 // ============================================================================

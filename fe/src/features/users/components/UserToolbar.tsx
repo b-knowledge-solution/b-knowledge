@@ -4,7 +4,7 @@
  */
 import { useTranslation } from 'react-i18next'
 import { Search, Filter, X } from 'lucide-react'
-import type { RoleFilter } from '../hooks/useUserManagement'
+import type { RoleFilter } from '../api/userQueries'
 
 interface UserToolbarProps {
     /** Current search query */

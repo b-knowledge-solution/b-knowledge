@@ -19,8 +19,10 @@ export { default as ChatDialogAccessDialog } from './components/ChatDialogAccess
 
 // Hooks
 export { useChatStream } from './hooks/useChatStream'
-export { useChatConversations } from './hooks/useChatConversations'
-export { useChatDialogs } from './hooks/useChatDialogs'
+
+// Query hooks (TanStack Query)
+export { useChatConversations, useChatDialogs } from './api/chatQueries'
+export type { UseChatConversationsReturn, UseChatDialogsReturn } from './api/chatQueries'
 
 // Types
 export type {

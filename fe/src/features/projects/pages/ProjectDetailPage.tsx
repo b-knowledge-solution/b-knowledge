@@ -29,7 +29,7 @@ import {
   type ProjectChat,
   type ProjectSearch,
   type ProjectPermission,
-} from '../api/projectService'
+} from '../api/projectApi'
 import DocumentsTab from '../components/DocumentsTab'
 import ChatTab from '../components/ChatTab'
 import SearchTab from '../components/SearchTab'

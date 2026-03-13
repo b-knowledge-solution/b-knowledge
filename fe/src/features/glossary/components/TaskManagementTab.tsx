@@ -20,7 +20,7 @@ import { Pagination } from '@/components/ui/pagination'
 import { Spinner } from '@/components/ui/spinner'
 
 import { glossaryApi } from '../api/glossaryApi'
-import type { UseGlossaryTasksReturn } from '../hooks/useGlossaryTasks'
+import type { UseGlossaryTasksReturn } from '../api/glossaryQueries'
 import { globalMessage } from '@/app/App'
 
 /**

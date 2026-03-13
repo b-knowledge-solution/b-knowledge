@@ -17,7 +17,7 @@ import {
   triggerSync,
   type ProjectSyncConfig,
   type SyncSourceType,
-} from '../api/projectService'
+} from '../api/projectApi'
 import SyncConfigPanel from './SyncConfigPanel'
 import SyncSchedulePanel from './SyncSchedulePanel'
 import SyncStatusPanel from './SyncStatusPanel'

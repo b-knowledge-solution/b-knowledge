@@ -27,7 +27,7 @@ import {
   RefreshCw,
   Code,
 } from 'lucide-react'
-import type { ProjectCategory, SyncSourceType } from '../api/projectService'
+import type { ProjectCategory, SyncSourceType } from '../api/projectApi'
 import SyncConnectionFields from './SyncConnectionFields'
 
 // ============================================================================

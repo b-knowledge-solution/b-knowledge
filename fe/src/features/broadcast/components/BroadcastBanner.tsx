@@ -4,8 +4,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { broadcastMessageService } from '../api/broadcastMessageService';
-import { BroadcastMessage } from '../types';
+import { broadcastMessageService } from '../api/broadcastApi';
+import { BroadcastMessage } from '../types/broadcast.types';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/features/auth';

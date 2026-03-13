@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/table'
 import { HeaderActions } from '@/components/HeaderActions'
 import { useConfirm } from '@/components/ConfirmDialog'
-import { useChatDialogs } from '../hooks/useChatDialogs'
+import { useChatDialogs } from '../api/chatQueries'
 import ChatDialogConfig from '../components/ChatDialogConfig'
 import ChatDialogAccessDialog from '../components/ChatDialogAccessDialog'
 import type { ChatDialog, CreateDialogPayload } from '../types/chat.types'

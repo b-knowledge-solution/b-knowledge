@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { updateProvider } from '../api/llmProviderService'
+import { updateProvider } from '../api/llmProviderApi'
 import { MODEL_TYPES } from '../types/llmProvider.types'
 import type { ModelProvider, ModelType } from '../types/llmProvider.types'
 

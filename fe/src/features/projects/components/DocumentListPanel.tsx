@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { Table, Tag, Empty, Input, Button, Tooltip, Popconfirm, message, Badge } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { FileText, FileSpreadsheet, FileImage, File, UploadCloud, FolderUp, Trash2, Layers, RefreshCw, Play } from 'lucide-react'
-import { getVersionDocuments, deleteVersionDocuments, requeueVersionDocuments, parseVersionDocuments, syncVersionParserStatus, type VersionDocument } from '../api/projectService'
+import { getVersionDocuments, deleteVersionDocuments, requeueVersionDocuments, parseVersionDocuments, syncVersionParserStatus, type VersionDocument } from '../api/projectApi'
 
 import { useConverterSocket } from '../../system/hooks/useConverterSocket'
 import UploadFilesModal from './UploadFilesModal'

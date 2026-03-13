@@ -13,7 +13,7 @@ import { Trash2 } from 'lucide-react'
 import {
   removeProjectPermission,
   type ProjectPermission,
-} from '../api/projectService'
+} from '../api/projectApi'
 
 // ============================================================================
 // Types

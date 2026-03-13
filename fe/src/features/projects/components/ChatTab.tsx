@@ -21,7 +21,7 @@ import {
   type ProjectChat,
   type DocumentCategory,
   type DocumentCategoryVersion,
-} from '../api/projectService'
+} from '../api/projectApi'
 import ChatModal, { type ChatFormData } from './ChatModal'
 import { EntityPermissionModal } from './EntityPermissionModal'
 

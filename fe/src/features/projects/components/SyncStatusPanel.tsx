@@ -7,7 +7,7 @@
 import { useTranslation } from 'react-i18next'
 import { Button, Tag, Descriptions } from 'antd'
 import { Play, Clock } from 'lucide-react'
-import type { ProjectSyncConfig } from '../api/projectService'
+import type { ProjectSyncConfig } from '../api/projectApi'
 
 // ============================================================================
 // Types

@@ -14,7 +14,7 @@ import { InfoCircleOutlined } from '@ant-design/icons'
 import {
   updateCategoryVersion,
   type DocumentCategoryVersion,
-} from '../api/projectService'
+} from '../api/projectApi'
 import BuiltInParserFields, { type ParserConfig } from './BuiltInParserFields'
 
 const { Text } = Typography

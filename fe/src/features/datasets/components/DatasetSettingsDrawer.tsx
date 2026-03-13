@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Spinner } from '@/components/ui/spinner';
-import { useDatasetSettings } from '../hooks/useDatasetSettings';
+import { useDatasetSettings } from '../api/datasetQueries';
 import GeneralSettingsForm from './GeneralSettingsForm';
 import ChunkingSettingsForm from './ChunkingSettingsForm';
 import AdvancedSettingsForm from './AdvancedSettingsForm';

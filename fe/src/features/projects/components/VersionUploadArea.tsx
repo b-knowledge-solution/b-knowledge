@@ -12,7 +12,7 @@ import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Upload, Button, message, Progress, List, Tag } from 'antd'
 import { UploadCloud, FolderUp, CheckCircle, XCircle, Loader } from 'lucide-react'
-import { uploadVersionDocument } from '../api/projectService'
+import { uploadVersionDocument } from '../api/projectApi'
 
 // ============================================================================
 // Constants

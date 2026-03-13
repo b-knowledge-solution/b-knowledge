@@ -24,7 +24,7 @@ import type {
   DocumentCategory,
   DocumentCategoryVersion,
   ProjectSearch,
-} from '../api/projectService'
+} from '../api/projectApi'
 
 const { TextArea } = Input
 const { Text } = Typography

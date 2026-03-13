@@ -23,8 +23,8 @@ import {
   archiveCategoryVersion,
   type DocumentCategory,
   type DocumentCategoryVersion,
-} from '../api/projectService'
-import { getConverterJobs } from '../../system/api/converterService'
+} from '../api/projectApi'
+import { getConverterJobs } from '../../system/api/converterApi'
 
 import CategoryModal from './CategoryModal'
 import VersionModal, { type VersionFormData } from './VersionModal'

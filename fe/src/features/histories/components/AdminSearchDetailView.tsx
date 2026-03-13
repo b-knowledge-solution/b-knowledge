@@ -9,7 +9,7 @@ import { Search, FileText, Clock, Sparkles, PanelLeft } from 'lucide-react'
 
 import { MarkdownRenderer } from '@/components/MarkdownRenderer'
 import { HighlightMatch } from '@/features/histories/components/HighlightMatch'
-import { useKnowledgeBase } from '@/features/knowledge-base/context/KnowledgeBaseContext'
+import { useKnowledgeBase } from '@/features/knowledge-base/hooks/useKnowledgeBaseContext'
 import type { SearchSessionSummary, ExternalSearchHistory } from '../types/histories.types'
 
 /**

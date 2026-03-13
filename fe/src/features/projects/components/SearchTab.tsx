@@ -21,7 +21,7 @@ import {
   type ProjectSearch,
   type DocumentCategory,
   type DocumentCategoryVersion,
-} from '../api/projectService'
+} from '../api/projectApi'
 import SearchModal, { type SearchFormData } from './SearchModal'
 import { EntityPermissionModal } from './EntityPermissionModal'
 

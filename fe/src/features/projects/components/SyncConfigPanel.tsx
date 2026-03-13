@@ -10,7 +10,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Select as AntSelect, Button, message } from 'antd'
 import { Save } from 'lucide-react'
-import type { ProjectSyncConfig, SyncSourceType } from '../api/projectService'
+import type { ProjectSyncConfig, SyncSourceType } from '../api/projectApi'
 import SyncConnectionFields from './SyncConnectionFields'
 
 // ============================================================================

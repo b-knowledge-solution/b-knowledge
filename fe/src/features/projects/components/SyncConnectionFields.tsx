@@ -9,7 +9,7 @@
 
 import { useTranslation } from 'react-i18next'
 import { Input } from 'antd'
-import type { SyncSourceType } from '../api/projectService'
+import type { SyncSourceType } from '../api/projectApi'
 
 // ============================================================================
 // Types

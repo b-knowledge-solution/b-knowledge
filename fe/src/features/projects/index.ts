@@ -52,7 +52,7 @@ export {
   type ProjectDataset,
   type ProjectSyncConfig,
   type SyncSourceType,
-} from "./api/projectService";
+} from "./api/projectApi";
 
 export {
   createDataset,
@@ -63,4 +63,4 @@ export {
   type CreateDatasetParams,
   type UpdateDatasetParams,
   type ListDatasetsParams,
-} from "./api/ragflowService";
+} from "./api/ragflowApi";

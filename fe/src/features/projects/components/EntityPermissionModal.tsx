@@ -21,7 +21,7 @@ import {
   getEntityPermissionsByEntity,
   setEntityPermission,
   removeEntityPermission,
-} from '../api/projectService'
+} from '../api/projectApi'
 
 // ============================================================================
 // Types

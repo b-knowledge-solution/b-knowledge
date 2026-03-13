@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useAuth } from '@/features/auth';
-import { useDatasets } from '../hooks/useDatasets';
+import { useDatasets } from '../api/datasetQueries';
 import DatasetCard from '../components/DatasetCard';
 import CreateDatasetModal from '../components/CreateDatasetModal';
 import DatasetAccessDialog from '../components/DatasetAccessDialog';

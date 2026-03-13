@@ -1,15 +1,18 @@
 /**
  * @fileoverview Hook for audit log data fetching and pagination.
  * Encapsulates log listing, filter option loading, debounced search,
- * and pagination handling via TanStack Query.
+ * and pagination handling via TanStack Query hooks from auditQueries.
  * @module features/audit/hooks/useAuditLogs
  */
 import { useState, useEffect } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { queryKeys } from '@/lib/queryKeys'
 import type { AuditLogEntry, AuditPagination } from '../types/audit.types'
-import { auditApi } from '../api/auditApi'
-import { useAuditFilters } from '../contexts/AuditFilterContext'
+import {
+    useAuditLogsQuery,
+    useAuditActionsQuery,
+    useAuditResourceTypesQuery,
+    useAuditInvalidation,
+} from '../api/auditQueries'
+import { useAuditFilters } from './useAuditFilterContext'
 
 // ============================================================================
 // Return Type
@@ -48,7 +51,6 @@ export interface UseAuditLogsReturn {
  */
 export const useAuditLogs = (): UseAuditLogsReturn => {
     const { filters } = useAuditFilters()
-    const queryClient = useQueryClient()
 
     // Pagination state
     const [page, setPage] = useState(1)
@@ -66,32 +68,17 @@ export const useAuditLogs = (): UseAuditLogsReturn => {
         return () => clearTimeout(timer)
     }, [filters])
 
-    /**
-     * Fetch audit logs via TanStack Query (deduplicated, cached).
-     */
-    const {
-        data: logsData,
-        isLoading: isLogsLoading,
-    } = useQuery({
-        queryKey: queryKeys.audit.logs(page, limit, debouncedFilters as unknown as Record<string, unknown>),
-        queryFn: () => auditApi.fetchLogs(page, limit, debouncedFilters),
-    })
+    // Fetch audit logs via extracted query hook
+    const { data: logsData, isLoading: isLogsLoading } = useAuditLogsQuery(page, limit, debouncedFilters)
 
-    /**
-     * Fetch action types for filter dropdown via TanStack Query.
-     */
-    const { data: actionTypes = [] } = useQuery({
-        queryKey: queryKeys.audit.actions(),
-        queryFn: () => auditApi.fetchActions(),
-    })
+    // Fetch action types for filter dropdown
+    const { data: actionTypes = [] } = useAuditActionsQuery()
 
-    /**
-     * Fetch resource types for filter dropdown via TanStack Query.
-     */
-    const { data: resourceTypes = [] } = useQuery({
-        queryKey: queryKeys.audit.resourceTypes(),
-        queryFn: () => auditApi.fetchResourceTypes(),
-    })
+    // Fetch resource types for filter dropdown
+    const { data: resourceTypes = [] } = useAuditResourceTypesQuery()
+
+    // Cache invalidation helper
+    const { invalidateAuditQueries } = useAuditInvalidation()
 
     // Derive logs and pagination from query data
     const logs = logsData?.data ?? []
@@ -118,7 +105,7 @@ export const useAuditLogs = (): UseAuditLogsReturn => {
 
     /** Refresh current page data */
     const refresh = () => {
-        queryClient.invalidateQueries({ queryKey: queryKeys.audit.all })
+        invalidateAuditQueries()
     }
 
     return {
