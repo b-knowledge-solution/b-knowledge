@@ -82,13 +82,13 @@ function ChatInput({ onSend, onStop, isStreaming, disabled, className }: ChatInp
   }
 
   return (
-    <div className={cn('border-t bg-background px-4 py-3', className)}>
-      <div className="flex items-end gap-2 max-w-4xl mx-auto">
-        {/* Textarea */}
+    <div className={cn('px-4 py-3 chat-input-elevated', className)}>
+      <div className="flex items-end gap-2.5 max-w-3xl mx-auto">
+        {/* Textarea — elevated with subtle inner shadow */}
         <div className="flex-1 relative">
           <textarea
             ref={textareaRef}
-            className="w-full resize-none rounded-xl border border-input bg-background px-4 py-3 pr-12 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px] max-h-[200px]"
+            className="w-full resize-none rounded-xl border border-border/50 bg-background/80 backdrop-blur-sm px-4 py-3 pr-12 text-sm shadow-inner shadow-black/[0.03] ring-offset-background placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary/40 disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px] max-h-[200px] transition-all duration-200"
             placeholder={t('chat.inputPlaceholder')}
             rows={1}
             disabled={disabled}
@@ -97,17 +97,17 @@ function ChatInput({ onSend, onStop, isStreaming, disabled, className }: ChatInp
             aria-label={t('chat.inputPlaceholder')}
           />
           {/* Keyboard shortcut hint */}
-          <span className="absolute bottom-1.5 right-3 text-[10px] text-muted-foreground/50 pointer-events-none">
+          <span className="absolute bottom-1.5 right-3 text-[10px] text-muted-foreground/40 pointer-events-none select-none">
             {t('chat.enterToSend')}
           </span>
         </div>
 
-        {/* Send or Stop button */}
+        {/* Send or Stop button — gradient accent */}
         {isStreaming ? (
           <Button
             variant="destructive"
             size="icon"
-            className="h-11 w-11 rounded-xl shrink-0"
+            className="h-11 w-11 rounded-xl shrink-0 shadow-md ring-2 ring-destructive/20 animate-pulse"
             onClick={onStop}
             title={t('chat.stopGenerating')}
           >
@@ -117,7 +117,7 @@ function ChatInput({ onSend, onStop, isStreaming, disabled, className }: ChatInp
           <Button
             variant="default"
             size="icon"
-            className="h-11 w-11 rounded-xl shrink-0"
+            className="h-11 w-11 rounded-xl shrink-0 shadow-md hover:shadow-lg hover:scale-[1.03] active:scale-[0.97] transition-all duration-200"
             onClick={handleSubmit}
             disabled={disabled}
             title={t('chat.sendMessage')}

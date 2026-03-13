@@ -2,8 +2,8 @@
  * @fileoverview Seed script for dev history data.
  *
  * Generates mock users, external chat sessions/messages, and external search sessions/records.
- * Matches the current schema: external_chat_sessions + external_chat_messages,
- * external_search_sessions + external_search_records.
+ * Matches the current schema: history_chat_sessions + history_chat_messages,
+ * history_search_sessions + history_search_records.
  */
 
 import { Knex } from 'knex'
@@ -133,8 +133,8 @@ export async function seed(knex: Knex): Promise<void> {
         }
 
         // Batch insert sessions first (FK dependency)
-        await knex.batchInsert('external_chat_sessions', chatSessionBatch, BATCH_SIZE)
-        await knex.batchInsert('external_chat_messages', chatMessageBatch, BATCH_SIZE)
+        await knex.batchInsert('history_chat_sessions', chatSessionBatch, BATCH_SIZE)
+        await knex.batchInsert('history_chat_messages', chatMessageBatch, BATCH_SIZE)
 
         // ========================================
         // 3. External Search Sessions + Records
@@ -173,8 +173,8 @@ export async function seed(knex: Knex): Promise<void> {
         }
 
         // Batch insert sessions first (FK dependency)
-        await knex.batchInsert('external_search_sessions', searchSessionBatch, BATCH_SIZE)
-        await knex.batchInsert('external_search_records', searchRecordBatch, BATCH_SIZE)
+        await knex.batchInsert('history_search_sessions', searchSessionBatch, BATCH_SIZE)
+        await knex.batchInsert('history_search_records', searchRecordBatch, BATCH_SIZE)
 
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
         console.log(`Dev history seed completed in ${elapsed}s`)

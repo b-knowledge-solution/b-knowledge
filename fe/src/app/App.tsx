@@ -93,15 +93,16 @@ function App() {
     <Providers>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          {/* Public routes */}
-          <Route path="/landing" element={<LandingPage />} />
+          {/* Public routes — landing page is the root */}
+          <Route index element={<LandingPage />} />
+          <Route path="/landing" element={<Navigate to="/" replace />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/logout" element={<LogoutPage />} />
 
           {/* Protected routes */}
           <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
             <Route element={<Layout />}>
-              <Route index element={<Navigate to={getDefaultPath()} replace />} />
+              <Route path="/app" element={<Navigate to={getDefaultPath()} replace />} />
 
               {/* Chat routes */}
               {config.features.enableAiChat && (

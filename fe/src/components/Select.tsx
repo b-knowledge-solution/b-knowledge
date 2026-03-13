@@ -11,6 +11,7 @@
 import { Fragment } from 'react';
 import { Listbox, Transition } from '@headlessui/react';
 import { ChevronDown, Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 // ============================================================================
 // Types
@@ -62,6 +63,8 @@ interface SelectProps {
  * @param className - Additional CSS classes
  */
 export function Select({ value, onChange, options, icon, disabled = false, className = '' }: SelectProps) {
+    const { t } = useTranslation();
+
     // Find the currently selected option for display
     const selectedOption = options.find(opt => opt.id === value);
 
@@ -73,7 +76,7 @@ export function Select({ value, onChange, options, icon, disabled = false, class
                     <Listbox.Button className={`relative flex items-center gap-2 w-full px-4 py-2.5 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-slate-800 dark:to-slate-800 dark:bg-slate-800 rounded-lg border border-primary/20 dark:border-slate-600 shadow-sm hover:shadow-md transition-shadow text-left ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
                         {!!icon && <span className="text-primary dark:text-blue-400 flex-shrink-0">{icon}</span>}
                         <span className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-                            {selectedOption?.name || 'Select...'}
+                            {selectedOption?.name || t('common.selectPlaceholder')}
                         </span>
                         {/* Animated Chevron indicator */}
                         <ChevronDown

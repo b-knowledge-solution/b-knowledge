@@ -20,7 +20,6 @@ export interface Project {
   description: string | null;
   avatar: string | null;
   category: ProjectCategory;
-  ragflow_server_id: string | null;
   default_embedding_model: string | null;
   default_chunk_method: string;
   default_parser_config: Record<string, unknown> | null;
@@ -159,7 +158,6 @@ export const createProject = (data: {
   description?: string;
   avatar?: string;
   category?: ProjectCategory;
-  ragflow_server_id?: string;
   default_embedding_model?: string;
   default_chunk_method?: string;
   default_parser_config?: Record<string, unknown>;

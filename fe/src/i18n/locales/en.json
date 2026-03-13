@@ -70,7 +70,13 @@
     "email": "Email",
     "noDescription": "No description",
     "create": "Create",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "errorOccurred": "Something went wrong",
+    "tryAgain": "Try again",
+    "selectPlaceholder": "Select...",
+    "pickDate": "Pick a date",
+    "previousPage": "Previous page",
+    "nextPage": "Next page"
   },
   "dialog": {
     "confirm": "Confirm",
@@ -511,19 +517,40 @@
   "systemMonitor": {
     "title": "System Monitor",
     "description": "Real-time dashboard for service health and system metrics.",
-    "controls": {
-      "autoRefresh": "Auto Refresh",
-      "refreshNow": "Refresh Now"
-    },
     "sections": {
       "services": "Service Health",
-      "system": "System Resources"
+      "system": "System Resources",
+      "backendSpecs": "Backend Specifications"
+    },
+    "services": {
+      "database": "Database",
+      "redis": "Redis Cache",
+      "minio": "MinIO Storage",
+      "langfuse": "Langfuse Trace"
     },
     "metrics": {
       "uptime": "Uptime",
       "memory": "Memory",
       "cpuLoad": "CPU Load",
-      "serverInfo": "Server Info"
+      "serverInfo": "Server Info",
+      "diskStorage": "Disk Storage",
+      "diskFreeOf": "Free of {{total}}",
+      "heapUsage": "Heap: {{used}} / {{total}}",
+      "loadAvgLabel": "1m / 5m / 15m",
+      "unknown": "Unknown",
+      "checkFailed": "Check Failed"
+    },
+    "specs": {
+      "runtimeEnv": "Runtime Environment",
+      "cpu": "CPU",
+      "cores": "{{count}} Cores",
+      "memoryCapacity": "Memory Capacity",
+      "totalSystemMemory": "Total System Memory"
+    },
+    "controls": {
+      "autoRefresh": "Auto Refresh",
+      "refreshNow": "Refresh Now",
+      "refreshInterval": "Refresh interval"
     },
     "status": {
       "healthy": "Healthy",
@@ -874,7 +901,17 @@
       "aiChat": "AI Chat",
       "aiSearch": "AI Search",
       "systemChat": "System Chat"
-    }
+    },
+    "chatSessions": "Chat Sessions",
+    "searchSessions": "Search Sessions",
+    "totalSessions": "Total Sessions",
+    "activityTrend": "Activity Trend",
+    "topUsers": "Top Active Users",
+    "usageBreakdown": "Usage Breakdown",
+    "sessionsPerDay": "Sessions Per Day",
+    "sessions": "Sessions",
+    "user": "User",
+    "noData": "No data available"
   },
   "glossary": {
     "title": "Glossary Management",

@@ -3,11 +3,13 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { broadcastMessageService } from '../api/broadcastMessageService';
 import { BroadcastMessage } from '../types';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/features/auth';
+import { queryKeys } from '@/lib/queryKeys';
 
 /**
  * @description Props for the BroadcastBanner component.
@@ -21,7 +23,7 @@ interface BroadcastBannerProps {
 
 /**
  * @description Renders active broadcast messages as banner alerts.
- * Handles fetching, displaying, and dismissing messages.
+ * Handles fetching (deduplicated via TanStack Query), displaying, and dismissing messages.
  * Uses localStorage for immediate client-side persistence of dismissed state.
  *
  * @param {BroadcastBannerProps} props - Component properties.
@@ -30,26 +32,22 @@ interface BroadcastBannerProps {
 const BroadcastBanner: React.FC<BroadcastBannerProps> = ({ className = '', inline = false }) => {
     const { t } = useTranslation();
     const { user } = useAuth();
-    const [messages, setMessages] = useState<BroadcastMessage[]>([]);
     const [dismissedMessages, setDismissedMessages] = useState<Record<string, number>>({});
 
     /**
-     * @description Effect to fetch active broadcast messages and load dismissed state.
+     * TanStack Query handles deduplication: even if React.StrictMode
+     * double-mounts the component, only one network request is made.
+     */
+    const { data: messages = [] } = useQuery<BroadcastMessage[]>({
+        queryKey: queryKeys.broadcast.active(),
+        queryFn: () => broadcastMessageService.getActiveMessages(),
+        staleTime: 5 * 60 * 1000,
+    });
+
+    /**
+     * @description Effect to load dismissed state from localStorage.
      */
     useEffect(() => {
-        const fetchMessages = async () => {
-            try {
-                // Fetch active messages from the API
-                const activeMessages = await broadcastMessageService.getActiveMessages();
-                setMessages(activeMessages);
-            } catch (err) {
-                console.error('Failed to fetch broadcast messages:', err);
-            }
-        };
-
-        fetchMessages();
-
-        // Load dismissed messages from localStorage (for guest/immediate feedback)
         const saved = localStorage.getItem('dismissed_broadcasts_v2');
         if (saved) {
             try {
@@ -59,7 +57,7 @@ const BroadcastBanner: React.FC<BroadcastBannerProps> = ({ className = '', inlin
                 console.error('Failed to parse dismissed broadcasts', e);
             }
         }
-    }, [user?.id]); // Re-fetch when user session changes
+    }, [user?.id]); // Re-load when user session changes
 
     /**
      * @description Dismiss a specific message.

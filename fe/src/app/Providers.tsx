@@ -18,6 +18,7 @@ import { ConfirmProvider } from '@/components/ConfirmDialog';
 import { HeaderActionsProvider } from '@/components/HeaderActions';
 import { NavigationProvider } from '@/components/NavigationLoader'
 import { useSocketQueryInvalidation } from '@/hooks/useSocket';
+import SettingsDialog from '@/components/SettingsDialog';
 
 // ============================================================================
 // Global Notification Bridge
@@ -86,6 +87,7 @@ export function Providers({ children }: ProvidersProps) {
                 <NavigationProvider>
                   <SocketQueryBridge />
                   {children}
+                  <SettingsDialog />
                   <Toaster />
                 </NavigationProvider>
               </HeaderActionsProvider>

@@ -11,8 +11,10 @@
  * - Concurrency control for health checks
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryKeys';
 import {
     Activity,
     Server,
@@ -28,7 +30,7 @@ import {
     XCircle,
     HelpCircle
 } from 'lucide-react';
-import { getSystemHealth, SystemHealth } from '../api/systemToolsService';
+import { getSystemHealth } from '../api/systemToolsService';
 
 // ============================================================================
 // Types & Constants
@@ -138,12 +140,12 @@ const ServiceCard = ({
                     <div className="mt-1 flex items-center gap-2">
                         <StatusBadge status={status} />
                         {enabled ? (
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-500 border border-green-100 dark:border-green-800/30" title="Enabled">
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-500 border border-green-100 dark:border-green-800/30" title={t('common.on')}>
                                 <CheckCircle2 className="w-3 h-3" />
                                 <span>{t('common.on')}</span>
                             </div>
                         ) : (
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-200 dark:border-gray-700" title="Disabled">
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-200 dark:border-gray-700" title={t('common.off')}>
                                 <XCircle className="w-3 h-3" />
                                 <span>{t('common.off')}</span>
                             </div>
@@ -208,67 +210,38 @@ const MetricCard = ({
 
 const SystemMonitorPage = () => {
     const { t } = useTranslation();
-    const [health, setHealth] = useState<SystemHealth | null>(null);
-    const [loading, setLoading] = useState(false); // UI loading state
-    const [error, setError] = useState<string | null>(null);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
     // Scheduling controls
     const [autoRefresh, setAutoRefresh] = useState(true);
     const [intervalMs, setIntervalMs] = useState(DEFAULT_INTERVAL);
 
-    // Concurrency control
-    const isFetchingRef = useRef(false);
-
     /**
-     * Fetch health data from backend.
-     * Prevents concurrent requests using a ref lock.
-     * 
-     * @param isAutoRefresh - If true, suppresses the full page loading spinner.
+     * Fetch health data via TanStack Query (deduplicated, cached).
+     * Uses refetchInterval for auto-polling when enabled.
      */
-    const fetchData = async (isAutoRefresh = false) => {
-        // Concurrency Lock: Check if a request is already in progress
-        if (isFetchingRef.current) {
-            console.log('Skipping health check: request already in progress');
-            return;
-        }
+    const {
+        data: health = null,
+        isLoading: loading,
+        error: queryError,
+        refetch: fetchData,
+        isFetching,
+        dataUpdatedAt,
+    } = useQuery({
+        queryKey: queryKeys.systemTools.health(),
+        queryFn: getSystemHealth,
+        refetchInterval: autoRefresh ? intervalMs : false,
+    });
 
-        try {
-            isFetchingRef.current = true;
-            if (!isAutoRefresh) setLoading(true); // Don't show full loader on auto-refresh
-            setError(null);
+    // Derive error message from query error
+    const error = queryError ? (queryError instanceof Error ? queryError.message : 'Unknown error') : null;
 
-            const data = await getSystemHealth();
-            setHealth(data);
-            setLastUpdated(new Date());
-        } catch (err) {
-            console.error('Failed to fetch system health:', err);
-            setError(err instanceof Error ? err.message : 'Unknown error');
-        } finally {
-            if (!isAutoRefresh) setLoading(false);
-            isFetchingRef.current = false;
-        }
-    };
-
-    // Initial fetch
+    // Track last updated time from TanStack Query's dataUpdatedAt
     useEffect(() => {
-        fetchData(false);
-    }, []);
-
-    // Polling interval
-    useEffect(() => {
-        let timerId: NodeJS.Timeout;
-
-        if (autoRefresh) {
-            timerId = setInterval(() => {
-                fetchData(true);
-            }, intervalMs);
+        if (dataUpdatedAt > 0) {
+            setLastUpdated(new Date(dataUpdatedAt));
         }
-
-        return () => {
-            if (timerId) clearInterval(timerId);
-        };
-    }, [autoRefresh, intervalMs]);
+    }, [dataUpdatedAt]);
 
     /** 
      * Format seconds to human readable string (days, hours, minutes).
@@ -328,7 +301,7 @@ const SystemMonitorPage = () => {
                             onChange={(e) => setIntervalMs(Number(e.target.value))}
                             disabled={!autoRefresh}
                             className="bg-gray-50 dark:bg-gray-700 border-0 rounded text-sm py-1.5 px-3 focus:ring-2 focus:ring-primary-500 disabled:opacity-50 text-gray-900 dark:text-white"
-                            aria-label="Refresh interval"
+                            aria-label={t('systemMonitor.controls.refreshInterval')}
                         >
                             {REFRESH_INTERVALS.map(opt => (
                                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -339,8 +312,8 @@ const SystemMonitorPage = () => {
 
                         {/* Manual Refresh */}
                         <button
-                            onClick={() => fetchData(false)}
-                            disabled={loading || isFetchingRef.current}
+                            onClick={() => fetchData()}
+                            disabled={loading || isFetching}
                             className="flex items-center gap-2 px-4 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             title={t('systemMonitor.controls.refreshNow')}
                         >
@@ -383,28 +356,28 @@ const SystemMonitorPage = () => {
                             </h2>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <ServiceCard
-                                    title="Database"
+                                    title={t('systemMonitor.services.database')}
                                     icon={Database}
                                     status={health.services?.database?.status || 'unknown'}
                                     enabled={health.services?.database?.enabled || false}
                                     subtext={health.services?.database?.host}
                                 />
                                 <ServiceCard
-                                    title="Redis Cache"
+                                    title={t('systemMonitor.services.redis')}
                                     icon={Zap}
                                     status={health.services?.redis?.status || 'unknown'}
                                     enabled={health.services?.redis?.enabled || false}
                                     subtext={health.services?.redis?.host}
                                 />
                                 <ServiceCard
-                                    title="MinIO Storage"
+                                    title={t('systemMonitor.services.minio')}
                                     icon={HardDrive}
                                     status={health.services?.minio?.status || 'unknown'}
                                     enabled={health.services?.minio?.enabled || false}
                                     subtext={health.services?.minio?.host}
                                 />
                                 <ServiceCard
-                                    title="Langfuse Trace"
+                                    title={t('systemMonitor.services.langfuse')}
                                     icon={Activity}
                                     status={health.services?.langfuse?.status || 'unknown'}
                                     enabled={health.services?.langfuse?.enabled || false}
@@ -428,23 +401,23 @@ const SystemMonitorPage = () => {
                                     colorClass="text-green-500 dark:text-green-400"
                                 />
                                 <MetricCard
-                                    title="Disk Storage"
-                                    value={health.system.disk ? formatBytes(health.system.disk.available) : 'Unknown'}
-                                    subValue={health.system.disk ? `Free of ${formatBytes(health.system.disk.total)}` : 'Check Failed'}
+                                    title={t('systemMonitor.metrics.diskStorage')}
+                                    value={health.system.disk ? formatBytes(health.system.disk.available) : t('systemMonitor.metrics.unknown')}
+                                    subValue={health.system.disk ? t('systemMonitor.metrics.diskFreeOf', { total: formatBytes(health.system.disk.total) }) : t('systemMonitor.metrics.checkFailed')}
                                     icon={HardDrive}
                                     colorClass="text-orange-500 dark:text-orange-400"
                                 />
                                 <MetricCard
                                     title={t('systemMonitor.metrics.memory')}
                                     value={formatBytes(health.system.memory.rss)} // RSS is mostly what we care about (resident set size)
-                                    subValue={`Heap: ${formatBytes(health.system.memory.heapUsed)} / ${formatBytes(health.system.memory.heapTotal)}`}
+                                    subValue={t('systemMonitor.metrics.heapUsage', { used: formatBytes(health.system.memory.heapUsed), total: formatBytes(health.system.memory.heapTotal) })}
                                     icon={HardDrive}
                                     colorClass="text-purple-500 dark:text-purple-400"
                                 />
                                 <MetricCard
                                     title={t('systemMonitor.metrics.cpuLoad')}
                                     value={health.system.loadAvg?.[0]?.toFixed(2) || '0.00'}
-                                    subValue={`1m / 5m / 15m`} // Simplified label
+                                    subValue={t('systemMonitor.metrics.loadAvgLabel')} // Simplified label
                                     icon={Cpu}
                                     colorClass="text-red-500 dark:text-red-400"
                                 />
@@ -462,12 +435,12 @@ const SystemMonitorPage = () => {
                         <section>
                             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                                 <Cpu className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
-                                Backend Specifications
+                                {t('systemMonitor.sections.backendSpecs')}
                             </h2>
                             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 divide-y md:divide-y-0 md:divide-x border-gray-200 dark:border-gray-700">
                                     <div className="p-4">
-                                        <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Runtime Environment</h3>
+                                        <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">{t('systemMonitor.specs.runtimeEnv')}</h3>
                                         <div className="flex items-center gap-2">
                                             <div className="w-2 h-2 rounded-full bg-green-500"></div>
                                             <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Node.js {health.system.nodeVersion}</span>
@@ -475,24 +448,24 @@ const SystemMonitorPage = () => {
                                         <div className="mt-1 text-xs text-gray-500">{health.system.osType} {health.system.osRelease}</div>
                                     </div>
                                     <div className="p-4">
-                                        <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">CPU</h3>
+                                        <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">{t('systemMonitor.specs.cpu')}</h3>
                                         <div className="flex items-center gap-2">
                                             <Cpu className="w-4 h-4 text-gray-400" />
                                             <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate" title={health.system.cpuModel}>
                                                 {health.system.cpuModel}
                                             </span>
                                         </div>
-                                        <div className="mt-1 text-xs text-gray-500">{health.system.cpus} Cores</div>
+                                        <div className="mt-1 text-xs text-gray-500">{t('systemMonitor.specs.cores', { count: health.system.cpus })}</div>
                                     </div>
                                     <div className="p-4">
-                                        <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Memory Capacity</h3>
+                                        <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">{t('systemMonitor.specs.memoryCapacity')}</h3>
                                         <div className="flex items-center gap-2">
                                             <HardDrive className="w-4 h-4 text-gray-400" />
                                             <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                                {health.system.totalMemory ? formatBytes(health.system.totalMemory) : 'Unknown'}
+                                                {health.system.totalMemory ? formatBytes(health.system.totalMemory) : t('systemMonitor.metrics.unknown')}
                                             </span>
                                         </div>
-                                        <div className="mt-1 text-xs text-gray-500">Total System Memory</div>
+                                        <div className="mt-1 text-xs text-gray-500">{t('systemMonitor.specs.totalSystemMemory')}</div>
                                     </div>
                                 </div>
                             </div>

@@ -70,7 +70,13 @@
     "prompt": "Prompt",
     "noDescription": "説明なし",
     "create": "作成",
-    "saving": "保存中..."
+    "saving": "保存中...",
+    "errorOccurred": "エラーが発生しました",
+    "tryAgain": "もう一度試す",
+    "selectPlaceholder": "選択...",
+    "pickDate": "日付を選択",
+    "previousPage": "前のページ",
+    "nextPage": "次のページ"
   },
   "dialog": {
     "confirm": "確認",
@@ -511,19 +517,40 @@
   "systemMonitor": {
     "title": "システムモニター",
     "description": "サービスの健全性とシステムメトリックのリアルタイムダッシュボード。",
-    "controls": {
-      "autoRefresh": "自動更新",
-      "refreshNow": "今すぐ更新"
-    },
     "sections": {
       "services": "サービスの健全性",
-      "system": "システムリソース"
+      "system": "システムリソース",
+      "backendSpecs": "バックエンド仕様"
+    },
+    "services": {
+      "database": "データベース",
+      "redis": "Redisキャッシュ",
+      "minio": "MinIOストレージ",
+      "langfuse": "Langfuseトレース"
     },
     "metrics": {
       "uptime": "稼働時間",
       "memory": "メモリ",
       "cpuLoad": "CPU負荷",
-      "serverInfo": "サーバー情報"
+      "serverInfo": "サーバー情報",
+      "diskStorage": "ディスクストレージ",
+      "diskFreeOf": "{{total}}中の空き",
+      "heapUsage": "ヒープ: {{used}} / {{total}}",
+      "loadAvgLabel": "1分 / 5分 / 15分",
+      "unknown": "不明",
+      "checkFailed": "チェック失敗"
+    },
+    "specs": {
+      "runtimeEnv": "ランタイム環境",
+      "cpu": "CPU",
+      "cores": "{{count}} コア",
+      "memoryCapacity": "メモリ容量",
+      "totalSystemMemory": "システムメモリ合計"
+    },
+    "controls": {
+      "autoRefresh": "自動更新",
+      "refreshNow": "今すぐ更新",
+      "refreshInterval": "更新間隔"
     },
     "status": {
       "healthy": "正常",
@@ -860,7 +887,17 @@
       "aiChat": "AIチャット",
       "aiSearch": "AI検索",
       "systemChat": "システムチャット"
-    }
+    },
+    "chatSessions": "チャットセッション",
+    "searchSessions": "検索セッション",
+    "totalSessions": "総セッション数",
+    "activityTrend": "アクティビティ推移",
+    "topUsers": "アクティブユーザートップ",
+    "usageBreakdown": "利用内訳",
+    "sessionsPerDay": "日別セッション数",
+    "sessions": "セッション",
+    "user": "ユーザー",
+    "noData": "データがありません"
   },
   "glossary": {
     "title": "用語集管理",

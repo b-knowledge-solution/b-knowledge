@@ -21,13 +21,13 @@ import {
   Tag,
   Divider,
 } from 'antd'
+
 import {
   FileText,
   RefreshCw,
   Code,
 } from 'lucide-react'
 import type { ProjectCategory, SyncSourceType } from '../api/projectService'
-import type { RagflowServer } from '@/features/ragflow-servers'
 import SyncConnectionFields from './SyncConnectionFields'
 
 // ============================================================================
@@ -37,8 +37,6 @@ import SyncConnectionFields from './SyncConnectionFields'
 interface CreateProjectModalProps {
   /** Whether the modal is open */
   open: boolean
-  /** Available RAGFlow servers */
-  servers: RagflowServer[]
   /** Whether the form is saving */
   saving: boolean
   /** Submit handler */
@@ -46,7 +44,6 @@ interface CreateProjectModalProps {
     name: string
     description?: string
     category: ProjectCategory
-    ragflow_server_id?: string
     sync_config?: {
       source_type: SyncSourceType
       connection_config: Record<string, unknown>
@@ -61,13 +58,11 @@ interface CreateProjectModalProps {
 interface ProjectFormData {
   name: string
   description: string
-  ragflow_server_id: string | undefined
 }
 
 const INITIAL_FORM: ProjectFormData = {
   name: '',
   description: '',
-  ragflow_server_id: undefined,
 }
 
 // ============================================================================
@@ -96,7 +91,6 @@ const CATEGORY_OPTIONS: {
  */
 const CreateProjectModal = ({
   open,
-  servers,
   saving,
   onSubmit,
   onCancel,
@@ -155,7 +149,6 @@ const CreateProjectModal = ({
         name: formData.name,
         ...(formData.description ? { description: formData.description } : {}),
         category,
-        ...(formData.ragflow_server_id ? { ragflow_server_id: formData.ragflow_server_id } : {}),
       })
       return
     }
@@ -165,7 +158,6 @@ const CreateProjectModal = ({
       name: formData.name,
       ...(formData.description ? { description: formData.description } : {}),
       category,
-      ...(formData.ragflow_server_id ? { ragflow_server_id: formData.ragflow_server_id } : {}),
       sync_config: {
         source_type: syncSourceType,
         connection_config: connectionConfig,
@@ -306,22 +298,6 @@ const CreateProjectModal = ({
               placeholder={t('projectManagement.descriptionPlaceholder')}
               value={formData.description}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updateField('description', e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              {t('projectManagement.ragflowServer')}
-            </label>
-            <AntSelect
-              placeholder={t('projectManagement.selectServer')}
-              allowClear
-              value={formData.ragflow_server_id}
-              onChange={(v: string) => updateField('ragflow_server_id', v || undefined)}
-              options={servers
-                .filter((s) => s.is_active)
-                .map((s) => ({ value: s.id, label: s.name }))}
-              className="w-full"
             />
           </div>
 

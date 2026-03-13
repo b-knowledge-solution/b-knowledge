@@ -6,9 +6,8 @@
 
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Copy, Check, ThumbsUp, ThumbsDown, Bot, User, Volume2, Square } from 'lucide-react'
+import { Copy, Check, ThumbsUp, ThumbsDown, Bot, User, Volume2, Square, FileText } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { ChatMessage as ChatMessageType, ChatReference, ChatChunk } from '../types/chat.types'
@@ -51,6 +50,16 @@ function ChatMessage({ message, onCitationClick, onChunkCitationClick, isLast }:
   )
 
   const isUser = message.role === 'user'
+  const isAssistant = message.role === 'assistant'
+
+  // Determine bubble and avatar styling based on role — premium treatment
+  const bubbleClass = isUser
+    ? 'bg-gradient-to-br from-primary to-primary/85 text-primary-foreground rounded-2xl rounded-br-md shadow-md'
+    : 'bg-muted/60 dark:bg-muted/40 backdrop-blur-sm rounded-2xl rounded-bl-md chat-bubble-glow border border-border/40'
+
+  const avatarClass = isUser
+    ? 'bg-primary/20 text-primary ring-2 ring-primary/20'
+    : 'bg-muted text-muted-foreground ring-2 ring-muted-foreground/10'
 
   /**
    * Copy message content to clipboard.
@@ -69,24 +78,26 @@ function ChatMessage({ message, onCitationClick, onChunkCitationClick, isLast }:
     setFeedback(feedback === type ? null : type)
   }
 
-  // Count total citation chunks
-  const citationCount = message.reference?.chunks?.length || 0
-
   return (
     <div
       className={cn(
-        'flex gap-3 px-4 py-3 group transition-opacity duration-300',
+        'flex gap-3 px-4 py-3 group chat-fade-in',
         isUser ? 'flex-row-reverse' : 'flex-row',
         isLast && 'animate-in fade-in slide-in-from-bottom-2 duration-300',
       )}
     >
       {/* Avatar */}
-      <Avatar className={cn('h-8 w-8 shrink-0', isUser ? 'bg-primary' : 'bg-muted')}>
+      <Avatar
+        className={cn(
+          'h-8 w-8 rounded-full flex items-center justify-center shrink-0 transition-transform hover:scale-105',
+          avatarClass,
+        )}
+      >
         <AvatarFallback
           className={cn(
             isUser
               ? 'bg-primary text-primary-foreground'
-              : 'bg-muted text-muted-foreground',
+              : 'bg-muted text-muted-foreground ring-2 ring-muted-foreground/10',
           )}
         >
           {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
@@ -96,14 +107,7 @@ function ChatMessage({ message, onCitationClick, onChunkCitationClick, isLast }:
       {/* Message body */}
       <div className={cn('flex flex-col gap-1 max-w-[75%]', isUser ? 'items-end' : 'items-start')}>
         {/* Message bubble */}
-        <div
-          className={cn(
-            'rounded-2xl px-4 py-2.5 text-sm',
-            isUser
-              ? 'bg-primary text-primary-foreground rounded-br-md'
-              : 'bg-muted text-foreground rounded-bl-md',
-          )}
-        >
+        <div className={cn('rounded-2xl px-4 py-2.5 text-sm', bubbleClass)}>
           {isUser ? (
             // User messages render as plain text
             <p className="whitespace-pre-wrap break-words">{message.content}</p>
@@ -117,18 +121,18 @@ function ChatMessage({ message, onCitationClick, onChunkCitationClick, isLast }:
           )}
         </div>
 
-        {/* Citation badges (assistant only) */}
-        {!isUser && citationCount > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
-            {message.reference?.doc_aggs?.map((doc, idx) => (
-              <Badge
+        {/* Citation badges — refined with border accent */}
+        {isAssistant && message.reference && message.reference.doc_aggs.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {message.reference.doc_aggs.map((doc) => (
+              <button
                 key={doc.doc_id}
-                variant="info"
-                className="cursor-pointer text-xs hover:opacity-80 transition-opacity"
-                onClick={() => message.reference && onCitationClick?.(message.reference)}
+                onClick={() => onCitationClick?.(message.reference!)}
+                className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-primary/8 dark:bg-primary/12 text-primary border border-primary/15 hover:bg-primary/15 hover:border-primary/25 transition-all duration-200 shadow-sm"
               >
-                [{idx + 1}] {doc.doc_name} ({doc.count})
-              </Badge>
+                <FileText className="h-3 w-3" />
+                {doc.doc_name} ({doc.count})
+              </button>
             ))}
           </div>
         )}
@@ -136,7 +140,7 @@ function ChatMessage({ message, onCitationClick, onChunkCitationClick, isLast }:
         {/* Action bar */}
         <div
           className={cn(
-            'flex items-center gap-1 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity',
+            'flex items-center gap-1 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100',
             isUser ? 'flex-row-reverse' : 'flex-row',
           )}
         >

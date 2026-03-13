@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth, User } from '@/features/auth'
 import { useSettings } from '@/app/contexts/SettingsContext'
 import { config } from '@/config'
-import { LogOut, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LogOut, ChevronLeft, ChevronRight, Settings } from 'lucide-react'
 import logo from '@/assets/logo.png'
 import logoDark from '@/assets/logo-dark.png'
 
@@ -68,7 +68,7 @@ export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   const { user } = useAuth()
-  const { resolvedTheme } = useSettings()
+  const { resolvedTheme, openSettings } = useSettings()
 
   const logoSrc = resolvedTheme === 'dark' ? logoDark : logo
 
@@ -144,6 +144,14 @@ export function Sidebar() {
             )}
           </div>
         )}
+        <button
+          onClick={() => openSettings()}
+          className={`sidebar-link w-full ${isCollapsed ? 'justify-center px-2' : ''} ${resolvedTheme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}
+          title={t('settings.title')}
+        >
+          <Settings size={20} />
+          {!isCollapsed && <span>{t('settings.title')}</span>}
+        </button>
         <Link to="/logout" className={`sidebar-link w-full ${isCollapsed ? 'justify-center px-2' : ''} ${resolvedTheme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`} title={t('nav.signOut')}>
           <LogOut size={20} />
           {!isCollapsed && <span>{t('nav.signOut')}</span>}

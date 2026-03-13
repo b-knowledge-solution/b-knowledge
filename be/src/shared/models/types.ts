@@ -698,8 +698,6 @@ export interface Project {
   description?: string | null
   /** Avatar image URL or base64 */
   avatar?: string | null
-  /** RAGFlow server ID used by this project */
-  ragflow_server_id?: string | null
   /** Default embedding model for datasets */
   default_embedding_model?: string | null
   /** Default chunk method for parsing */

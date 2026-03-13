@@ -21,7 +21,6 @@ import {
   Card,
   Modal,
   Input,
-  Select as AntSelect,
   Space,
   Tag,
   Tooltip,
@@ -51,7 +50,7 @@ import {
   type ProjectPermission,
   type ProjectCategory,
 } from '../api/projectService'
-import { getRagflowServers, type RagflowServer } from '@/features/ragflow-servers'
+
 import { ProjectPermissionModal } from '../components/ProjectPermissionModal'
 import { PermissionsSelector } from '@/features/knowledge-base/components/SourcePermissionsModal'
 import { teamApi, type Team } from '@/features/teams'
@@ -72,12 +71,11 @@ const ProjectListPage = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   // Edit form state
-  const [editForm, setEditForm] = useState({ name: '', description: '', ragflow_server_id: '' })
+  const [editForm, setEditForm] = useState({ name: '', description: '' })
   const [nameError, setNameError] = useState('')
 
   // Data state
   const [projects, setProjects] = useState<Project[]>([])
-  const [servers, setServers] = useState<RagflowServer[]>([])
   const [loading, setLoading] = useState(true)
 
   // Modal state
@@ -104,17 +102,13 @@ const ProjectListPage = () => {
   const [editPermissions, setEditPermissions] = useState<ProjectPermission[]>([])
 
   /**
-   * Fetch all projects and servers from the API.
+   * Fetch all projects from the API.
    */
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [projectData, serverData] = await Promise.all([
-        getProjects(),
-        getRagflowServers(),
-      ])
+      const projectData = await getProjects()
       setProjects(projectData)
-      setServers(serverData)
     } catch (err) {
       console.error('Failed to fetch data:', err)
       message.error(String(err))
@@ -180,7 +174,6 @@ const ProjectListPage = () => {
     setEditForm({
       name: project.name || '',
       description: project.description || '',
-      ragflow_server_id: project.ragflow_server_id || '',
     })
     setNameError('')
     setIsPublic(!project.is_private)
@@ -215,13 +208,6 @@ const ProjectListPage = () => {
 
     try {
       setSaving(true)
-      const values: Record<string, any> = {
-        name: editForm.name,
-        description: editForm.description,
-      }
-      if (editForm.ragflow_server_id) {
-        values.ragflow_server_id = editForm.ragflow_server_id
-      }
 
       const isPrivate = !isPublic
 
@@ -230,7 +216,6 @@ const ProjectListPage = () => {
         await updateProject(editingProject.id, {
           name: editForm.name,
           description: editForm.description,
-          ...(editForm.ragflow_server_id ? { ragflow_server_id: editForm.ragflow_server_id } : {}),
           is_private: isPrivate,
         })
 
@@ -269,7 +254,6 @@ const ProjectListPage = () => {
         const createdProject = await createProject({
           name: editForm.name,
           description: editForm.description || undefined,
-          ...(editForm.ragflow_server_id ? { ragflow_server_id: editForm.ragflow_server_id } : {}),
           is_private: isPrivate,
         } as Parameters<typeof createProject>[0])
 
@@ -290,7 +274,7 @@ const ProjectListPage = () => {
       }
 
       setModalOpen(false)
-      setEditForm({ name: '', description: '', ragflow_server_id: '' })
+      setEditForm({ name: '', description: '' })
       fetchData()
     } catch (err) {
       console.error('Failed to save project:', err)
@@ -318,17 +302,7 @@ const ProjectListPage = () => {
     }
   }
 
-  /**
-   * Get the server name by ID.
-   *
-   * @param serverId - RAGFlow server ID
-   * @returns Server name or '—'
-   */
-  const getServerName = (serverId: string | null) => {
-    if (!serverId) return '—'
-    const server = servers.find((s) => s.id === serverId)
-    return server?.name || '—'
-  }
+
 
   /**
    * Map project status to display color.
@@ -356,7 +330,7 @@ const ProjectListPage = () => {
   return (
     <div className="w-full h-full flex flex-col overflow-hidden">
       <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-7xl mx-auto">
+        <div>
           {/* Header */}
           <div className="mb-6 flex items-center justify-between">
             <div>
@@ -415,7 +389,6 @@ const ProjectListPage = () => {
                           <Tag color="purple">
                             {t(`projectManagement.categories.${project.category || 'office'}`)}
                           </Tag>
-                          <Tag color="blue">{getServerName(project.ragflow_server_id)}</Tag>
                           <Tag color={getStatusColor(project.status)}>
                             {project.status}
                           </Tag>
@@ -518,21 +491,7 @@ const ProjectListPage = () => {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              {t('projectManagement.ragflowServer')}
-            </label>
-            <AntSelect
-              placeholder={t('projectManagement.selectServer')}
-              allowClear
-              value={editForm.ragflow_server_id || undefined}
-              onChange={(v: string) => setEditForm((prev) => ({ ...prev, ragflow_server_id: v || '' }))}
-              options={servers
-                .filter((s) => s.is_active)
-                .map((s) => ({ value: s.id, label: s.name }))}
-              className="w-full"
-            />
-          </div>
+
         </div>
 
         <Divider className="my-2" />
@@ -551,7 +510,6 @@ const ProjectListPage = () => {
       {/* Create Project Multi-Step Modal */}
       <CreateProjectModal
         open={createModalOpen}
-        servers={servers}
         saving={createSaving}
         onSubmit={handleCreateProject}
         onCancel={() => setCreateModalOpen(false)}

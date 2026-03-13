@@ -81,17 +81,17 @@ class DashboardService {
       topUsers
     ] = await Promise.all([
       // Session counts
-      this.countRows('external_chat_sessions', 'updated_at', startDate, endDate),
-      this.countRows('external_search_sessions', 'updated_at', startDate, endDate),
+      this.countRows('history_chat_sessions', 'updated_at', startDate, endDate),
+      this.countRows('history_search_sessions', 'updated_at', startDate, endDate),
       // Message counts
-      this.countRows('external_chat_messages', 'created_at', startDate, endDate),
-      this.countRows('external_search_records', 'created_at', startDate, endDate),
+      this.countRows('history_chat_messages', 'created_at', startDate, endDate),
+      this.countRows('history_search_records', 'created_at', startDate, endDate),
       // Unique users
-      this.getDistinctEmails('external_chat_sessions', 'user_email', 'updated_at', startDate, endDate),
-      this.getDistinctEmails('external_search_sessions', 'user_email', 'updated_at', startDate, endDate),
+      this.getDistinctEmails('history_chat_sessions', 'user_email', 'updated_at', startDate, endDate),
+      this.getDistinctEmails('history_search_sessions', 'user_email', 'updated_at', startDate, endDate),
       // Daily trends (separate per source)
-      this.getDailyCount('external_chat_messages', 'created_at', startDate, endDate),
-      this.getDailyCount('external_search_records', 'created_at', startDate, endDate),
+      this.getDailyCount('history_chat_messages', 'created_at', startDate, endDate),
+      this.getDailyCount('history_search_records', 'created_at', startDate, endDate),
       // Top users
       this.getTopUsers(startDate, endDate)
     ])
@@ -232,7 +232,7 @@ class DashboardService {
   private async getTopUsers(startDate?: string, endDate?: string): Promise<TopUser[]> {
     // Build separate queries for each source, then combine with raw SQL
     // External chat sessions
-    const chatQ = db('external_chat_sessions')
+    const chatQ = db('history_chat_sessions')
       .select('user_email as email')
       .count('* as cnt')
       .whereNotNull('user_email')
@@ -244,7 +244,7 @@ class DashboardService {
       .groupBy('user_email')
 
     // External search sessions
-    const searchQ = db('external_search_sessions')
+    const searchQ = db('history_search_sessions')
       .select('user_email as email')
       .count('* as cnt')
       .whereNotNull('user_email')

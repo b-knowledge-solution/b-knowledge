@@ -76,7 +76,6 @@ export class ProjectsService {
         name: data.name,
         description: data.description || null,
         avatar: data.avatar || null,
-        ragflow_server_id: data.ragflow_server_id || null,
         default_embedding_model: data.default_embedding_model || null,
         default_chunk_method: data.default_chunk_method || null,
         default_parser_config: JSON.stringify(data.default_parser_config || {}),
@@ -146,7 +145,6 @@ export class ProjectsService {
       if (data.name !== undefined) updateData.name = data.name
       if (data.description !== undefined) updateData.description = data.description
       if (data.avatar !== undefined) updateData.avatar = data.avatar
-      if (data.ragflow_server_id !== undefined) updateData.ragflow_server_id = data.ragflow_server_id
       if (data.default_embedding_model !== undefined) updateData.default_embedding_model = data.default_embedding_model
       if (data.default_chunk_method !== undefined) updateData.default_chunk_method = data.default_chunk_method
       if (data.default_parser_config !== undefined) updateData.default_parser_config = JSON.stringify(data.default_parser_config)

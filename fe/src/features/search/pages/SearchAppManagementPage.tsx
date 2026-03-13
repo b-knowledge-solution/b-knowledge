@@ -4,8 +4,10 @@
  * @module features/ai/pages/SearchAppManagementPage
  */
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/queryKeys'
 import { Plus, Search, Pencil, Trash2, Shield, Globe, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -38,10 +40,19 @@ import type { SearchApp, CreateSearchAppPayload } from '../types/search.types'
 export default function SearchAppManagementPage() {
   const { t } = useTranslation()
   const confirm = useConfirm()
+  const queryClient = useQueryClient()
 
-  // Search apps state
-  const [apps, setApps] = useState<SearchApp[]>([])
-  const [loading, setLoading] = useState(false)
+  // Search apps via TanStack Query (deduplicated, cached)
+  const { data: apps = [], isLoading: loading } = useQuery({
+    queryKey: queryKeys.search.apps(),
+    queryFn: () => searchApi.listSearchApps(),
+  })
+
+  /**
+   * Invalidate search apps cache to trigger refetch.
+   */
+  const fetchApps = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.search.apps() })
 
   // Search filter state
   const [searchTerm, setSearchTerm] = useState('')
@@ -53,26 +64,6 @@ export default function SearchAppManagementPage() {
   // Access dialog state
   const [isAccessOpen, setIsAccessOpen] = useState(false)
   const [accessApp, setAccessApp] = useState<SearchApp | null>(null)
-
-  /**
-   * Fetch all search apps from the API.
-   */
-  const fetchApps = async () => {
-    setLoading(true)
-    try {
-      const data = await searchApi.listSearchApps()
-      setApps(data)
-    } catch (error) {
-      console.error('Error fetching search apps:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Fetch apps on mount
-  useEffect(() => {
-    fetchApps()
-  }, [])
 
   // Filter apps by search term
   const filteredApps = apps.filter((a) =>
@@ -131,7 +122,7 @@ export default function SearchAppManagementPage() {
     if (confirmed) {
       try {
         await searchApi.deleteSearchApp(app.id)
-        setApps((prev) => prev.filter((a) => a.id !== app.id))
+        fetchApps()
         globalMessage.success(t('common.deleteSuccess'))
       } catch (error: any) {
         globalMessage.error(error?.message || t('common.error'))

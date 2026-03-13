@@ -190,6 +190,90 @@
   .scrollbar-hide::-webkit-scrollbar-thumb {
     display: none !important;
   }
+
+  /* ── Chat UI utilities ─────────────────────────────────────── */
+
+  /* Subtle blue glow on assistant message bubbles (dark mode only) */
+  .chat-bubble-glow {
+    box-shadow: none;
+  }
+  .dark .chat-bubble-glow {
+    box-shadow: 0 0 20px -4px hsl(228 79% 53% / 0.15),
+                0 0 8px -2px hsl(228 79% 53% / 0.10);
+  }
+
+  /* Glassmorphism panel background */
+  .chat-glass {
+    @apply bg-background/80 backdrop-blur-md;
+  }
+  .dark .chat-glass {
+    @apply bg-background/60 backdrop-blur-lg;
+  }
+
+  /* Floating elevated input bar */
+  .chat-input-elevated {
+    @apply shadow-lg border rounded-2xl;
+    box-shadow: 0 -4px 24px -6px hsl(0 0% 0% / 0.06),
+                0 -2px 8px -2px hsl(0 0% 0% / 0.04);
+  }
+  .dark .chat-input-elevated {
+    box-shadow: 0 -4px 24px -6px hsl(228 79% 53% / 0.08),
+                0 -2px 8px -2px hsl(0 0% 0% / 0.20);
+  }
+
+  /* Smooth fade + slide-up for new messages */
+  .chat-fade-in {
+    animation: chatFadeIn 0.35s ease-out both;
+  }
+
+  @keyframes chatFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Sidebar conversation item hover micro-interaction */
+  .chat-sidebar-item {
+    transition: transform 0.15s ease, box-shadow 0.2s ease;
+  }
+  .chat-sidebar-item:hover {
+    transform: translateX(2px);
+  }
+  .chat-sidebar-item:active {
+    transform: translateX(1px);
+  }
+
+  /* Skeleton shimmer gradient */
+  .chat-shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--muted-foreground) / 0.06) 50%,
+      hsl(var(--muted)) 75%
+    );
+    background-size: 200% 100%;
+    animation: chatShimmer 1.5s ease-in-out infinite;
+  }
+
+  @keyframes chatShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Streaming pulse ring for stop button */
+  .chat-pulse-ring {
+    animation: chatPulseRing 1.5s ease-in-out infinite;
+  }
+
+  @keyframes chatPulseRing {
+    0%, 100% { box-shadow: 0 0 0 0 hsl(0 100% 50% / 0.3); }
+    50% { box-shadow: 0 0 0 6px hsl(0 100% 50% / 0); }
+  }
 }
 
 /* Document Manager Table - Force fill container height */

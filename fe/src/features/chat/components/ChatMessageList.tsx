@@ -77,34 +77,40 @@ function ChatMessageList({
     }
   }, [messages, currentAnswer])
 
-  // Empty state
+  // Empty state — premium centered layout
   if (messages.length === 0 && !isStreaming) {
     return (
       <div className={cn('flex-1 flex flex-col items-center justify-center p-8', className)}>
-        <div className="flex flex-col items-center gap-4 max-w-md text-center">
-          {/* Icon */}
-          <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <MessageSquare className="h-8 w-8 text-primary" />
+        <div className="flex flex-col items-center gap-5 max-w-md text-center">
+          {/* Icon with gradient background and subtle pulse */}
+          <div className="relative">
+            <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/15 dark:to-primary/5 flex items-center justify-center shadow-lg shadow-primary/5">
+              <MessageSquare className="h-10 w-10 text-primary" />
+            </div>
+            {/* Animated sparkle accent */}
+            <Sparkles className="absolute -top-1 -right-1 h-5 w-5 text-primary/60 animate-pulse" />
           </div>
 
           {/* Title and description */}
-          <h3 className="text-lg font-semibold text-foreground">
-            {t('chat.emptyTitle')}
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            {t('chat.emptyDescription')}
-          </p>
+          <div className="space-y-1.5">
+            <h3 className="text-xl font-semibold text-foreground tracking-tight">
+              {t('chat.emptyTitle')}
+            </h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {t('chat.emptyDescription')}
+            </p>
+          </div>
 
-          {/* Suggested prompts */}
-          <div className="flex flex-col gap-2 w-full mt-4">
+          {/* Suggested prompts — card style with hover lift */}
+          <div className="flex flex-col gap-2.5 w-full mt-2">
             {SUGGESTED_PROMPTS.map((key) => (
               <Button
                 key={key}
                 variant="outline"
-                className="justify-start text-left h-auto py-3 px-4 text-sm whitespace-normal"
+                className="justify-start text-left h-auto py-3.5 px-4 text-sm whitespace-normal rounded-xl border-border/60 hover:border-primary/30 hover:shadow-md hover:shadow-primary/5 transition-all duration-200 group/prompt"
                 onClick={() => onSuggestedPrompt?.(t(key))}
               >
-                <Sparkles className="h-4 w-4 mr-2 shrink-0 text-primary" />
+                <Sparkles className="h-4 w-4 mr-2.5 shrink-0 text-primary/70 group-hover/prompt:text-primary transition-colors" />
                 <span>{t(key)}</span>
               </Button>
             ))}
@@ -115,8 +121,16 @@ function ChatMessageList({
   }
 
   return (
-    <div ref={scrollRef} className={cn('flex-1 overflow-y-auto', className)}>
-      <div className="max-w-4xl mx-auto py-4">
+    <div
+      ref={scrollRef}
+      className={cn(
+        'flex-1 overflow-y-auto',
+        // Subtle fade at top edge to hint scrollable content
+        '[mask-image:linear-gradient(to_bottom,transparent_0px,black_24px,black)]',
+        className,
+      )}
+    >
+      <div className="max-w-3xl mx-auto py-4 px-2">
         {/* Render each message */}
         {messages.map((msg, idx) => (
           <ChatMessage
@@ -128,24 +142,24 @@ function ChatMessageList({
           />
         ))}
 
-        {/* Streaming indicator */}
+        {/* Streaming indicator — glassmorphism bubble */}
         {isStreaming && (
-          <div className="flex gap-3 px-4 py-3">
-            {/* Bot avatar placeholder */}
-            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-              <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+          <div className="flex gap-3 px-4 py-3 chat-fade-in">
+            {/* Bot avatar with pulsing ring */}
+            <div className="h-8 w-8 rounded-full bg-muted/60 dark:bg-muted/40 backdrop-blur-sm flex items-center justify-center shrink-0 ring-2 ring-primary/20 animate-pulse">
+              <Sparkles className="h-4 w-4 text-primary" />
             </div>
 
             <div className="flex flex-col gap-1 max-w-[75%]">
-              <div className="rounded-2xl rounded-bl-md bg-muted px-4 py-2.5 text-sm">
+              <div className="rounded-2xl rounded-bl-md bg-muted/60 dark:bg-muted/40 backdrop-blur-sm chat-bubble-glow border border-border/40 px-4 py-2.5 text-sm">
                 {currentAnswer ? (
                   <MarkdownRenderer>{currentAnswer}</MarkdownRenderer>
                 ) : (
-                  // Typing dots animation
-                  <div className="flex items-center gap-1 py-1">
-                    <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:0ms]" />
-                    <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:150ms]" />
-                    <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:300ms]" />
+                  // Typing dots with staggered animation
+                  <div className="flex items-center gap-1.5 py-1">
+                    <span className="h-2 w-2 rounded-full bg-primary/40 animate-bounce [animation-delay:0ms]" />
+                    <span className="h-2 w-2 rounded-full bg-primary/40 animate-bounce [animation-delay:150ms]" />
+                    <span className="h-2 w-2 rounded-full bg-primary/40 animate-bounce [animation-delay:300ms]" />
                   </div>
                 )}
               </div>

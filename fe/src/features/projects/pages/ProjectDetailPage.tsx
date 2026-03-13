@@ -30,7 +30,6 @@ import {
   type ProjectSearch,
   type ProjectPermission,
 } from '../api/projectService'
-import { getRagflowServerById } from '@/features/ragflow-servers'
 import DocumentsTab from '../components/DocumentsTab'
 import ChatTab from '../components/ChatTab'
 import SearchTab from '../components/SearchTab'
@@ -61,9 +60,9 @@ const ProjectDetailPage = () => {
   const [chats, setChats] = useState<ProjectChat[]>([])
   const [searches, setSearches] = useState<ProjectSearch[]>([])
   const [permissions, setPermissions] = useState<ProjectPermission[]>([])
-  // Server-level model config
-  const [embeddingModels, setEmbeddingModels] = useState<string[]>([])
-  const [chatModels, setChatModels] = useState<string[]>([])
+  // Server-level model config (populated externally if needed)
+  const [embeddingModels, _setEmbeddingModels] = useState<string[]>([])
+  const [chatModels, _setChatModels] = useState<string[]>([])
 
   /**
    * Fetch the project and its sub-resources.
@@ -107,16 +106,6 @@ const ProjectDetailPage = () => {
       )
       setCategoryVersions(versionsMap)
 
-      // Fetch server's model config if linked
-      if (projectData.ragflow_server_id) {
-        try {
-          const server = await getRagflowServerById(projectData.ragflow_server_id)
-          setEmbeddingModels(server.embedding_models || [])
-          setChatModels(server.chat_models || [])
-        } catch {
-          // Non-critical: models will fall back to text input
-        }
-      }
     } catch (err) {
       console.error('Failed to load project:', err)
       message.error(String(err))

@@ -2,7 +2,7 @@
  * @fileoverview Knowledge Base configuration context.
  * 
  * Manages Knowledge Base iframe configuration and source selection:
- * - Fetches iframe URLs from backend /api/knowledge-base/config
+ * - Fetches iframe URLs from backend /api/knowledge-base/config (deduplicated by TanStack Query)
  * - Manages selected chat and search sources
  * - Persists source preferences per user via IndexedDB
  * 
@@ -10,8 +10,10 @@
  */
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth';
 import { userPreferences } from '@/features/users/api/userPreferences';
+import { queryKeys } from '@/lib/queryKeys';
 
 // ============================================================================
 // Types
@@ -79,7 +81,7 @@ interface KnowledgeBaseContextType {
 const KnowledgeBaseContext = createContext<KnowledgeBaseContextType | undefined>(undefined);
 
 // ============================================================================
-// Helper Functions
+// Query Function
 // ============================================================================
 
 /**
@@ -106,61 +108,62 @@ interface KnowledgeBaseProviderProps {
 
 /**
  * Knowledge Base provider component.
- * Fetches configuration and manages source selection.
+ * Fetches configuration (deduplicated via TanStack Query) and manages source selection.
  * 
  * @param children - Child components to wrap
  */
 export function KnowledgeBaseProvider({ children }: KnowledgeBaseProviderProps) {
     const { user } = useAuth();
-    const [config, setConfig] = useState<KnowledgeBaseConfig | null>(null);
     const [selectedChatSourceId, setSelectedChatSourceId] = useState<string>('');
     const [selectedSearchSourceId, setSelectedSearchSourceId] = useState<string>('');
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
 
     /**
-     * Effect: Fetch config and restore saved preferences on mount.
-     * Loads user's preferred sources from IndexedDB if available.
+     * TanStack Query handles deduplication: even if React.StrictMode
+     * double-mounts the component, only one network request is made.
+     * Enabled only when user is authenticated.
+     */
+    const {
+        data: config = null,
+        isLoading,
+        error: queryError,
+    } = useQuery({
+        queryKey: queryKeys.knowledgeBase.config(),
+        queryFn: fetchKnowledgeBaseConfig,
+        enabled: !!user?.id,
+        staleTime: 5 * 60 * 1000,
+    });
+
+    /**
+     * Effect: Restore saved source preferences from IndexedDB once config loads.
+     * Sets default sources from config if no user preference is saved.
      */
     useEffect(() => {
-        const init = async () => {
-            try {
-                const data = await fetchKnowledgeBaseConfig();
-                setConfig(data);
+        if (!config || !user?.id) return;
 
-                // Initialize chat source with saved preference or default or first available
-                if (data.chatSources.length > 0) {
-                    let chatSourceId = data.defaultChatSourceId || data.chatSources[0]?.id || '';
-                    if (user?.id && chatSourceId) {
-                        const saved = await userPreferences.get<string>(user.id, 'knowledge_base_source_chat');
-                        if (saved && data.chatSources.some(s => s.id === saved)) {
-                            chatSourceId = saved;
-                        }
-                    }
-                    setSelectedChatSourceId(chatSourceId);
+        const restorePreferences = async () => {
+            // Initialize chat source with saved preference or default or first available
+            if (config.chatSources.length > 0) {
+                let chatSourceId = config.defaultChatSourceId || config.chatSources[0]?.id || '';
+                const savedChat = await userPreferences.get<string>(user.id, 'knowledge_base_source_chat');
+                if (savedChat && config.chatSources.some(s => s.id === savedChat)) {
+                    chatSourceId = savedChat;
                 }
+                setSelectedChatSourceId(chatSourceId);
+            }
 
-                // Initialize search source with saved preference or default or first available
-                if (data.searchSources.length > 0) {
-                    let searchSourceId = data.defaultSearchSourceId || data.searchSources[0]?.id || '';
-                    if (user?.id && searchSourceId) {
-                        const saved = await userPreferences.get<string>(user.id, 'knowledge_base_source_search');
-                        if (saved && data.searchSources.some(s => s.id === saved)) {
-                            searchSourceId = saved;
-                        }
-                    }
-                    setSelectedSearchSourceId(searchSourceId);
+            // Initialize search source with saved preference or default or first available
+            if (config.searchSources.length > 0) {
+                let searchSourceId = config.defaultSearchSourceId || config.searchSources[0]?.id || '';
+                const savedSearch = await userPreferences.get<string>(user.id, 'knowledge_base_source_search');
+                if (savedSearch && config.searchSources.some(s => s.id === savedSearch)) {
+                    searchSourceId = savedSearch;
                 }
-            } catch (err) {
-                console.error('[KnowledgeBaseContext] Failed to fetch config:', err);
-                setError('Failed to load Knowledge Base configuration');
-            } finally {
-                setIsLoading(false);
+                setSelectedSearchSourceId(searchSourceId);
             }
         };
 
-        init();
-    }, [user?.id]);
+        restorePreferences();
+    }, [config, user?.id]);
 
     /**
      * Update selected chat source and persist preference.
@@ -193,7 +196,7 @@ export function KnowledgeBaseProvider({ children }: KnowledgeBaseProviderProps) 
                 setSelectedChatSource,
                 setSelectedSearchSource,
                 isLoading,
-                error,
+                error: queryError ? 'Failed to load Knowledge Base configuration' : null,
             }}
         >
             {children}

@@ -9,8 +9,10 @@
  * @module features/llm-provider/pages/LLMProviderPage
  */
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/queryKeys'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -41,7 +43,7 @@ import {
   deleteProvider,
 } from '../api/llmProviderService'
 import { MODEL_TYPES } from '../types/llmProvider.types'
-import type { ModelProvider, CreateProviderDTO, UpdateProviderDTO, FactoryPreset } from '../types/llmProvider.types'
+import type { ModelProvider, CreateProviderDTO, UpdateProviderDTO } from '../types/llmProvider.types'
 
 // ============================================================================
 // Constants
@@ -107,11 +109,27 @@ function hasVisionSibling(provider: ModelProvider, allProviders: ModelProvider[]
 export function LLMProviderPage() {
   const { t } = useTranslation()
   const confirm = useConfirm()
+  const queryClient = useQueryClient()
 
-  // -- Data state ------------------------------------------------------------
-  const [providers, setProviders] = useState<ModelProvider[]>([])
-  const [presets, setPresets] = useState<FactoryPreset[]>([])
-  const [loading, setLoading] = useState(true)
+  // -- Data via TanStack Query (deduplicated, cached) -----------------------
+  const {
+    data: providers = [],
+    isLoading: loading,
+  } = useQuery({
+    queryKey: queryKeys.llmProvider.list(),
+    queryFn: getProviders,
+  })
+
+  const { data: presets = [] } = useQuery({
+    queryKey: queryKeys.llmProvider.presets(),
+    queryFn: getPresets,
+  })
+
+  /**
+   * Invalidate providers cache to trigger refetch.
+   */
+  const fetchProviders = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.llmProvider.list() })
 
   // -- Filter and pagination state -------------------------------------------
   const [typeFilter, setTypeFilter] = useState<string>('all')
@@ -120,39 +138,6 @@ export function LLMProviderPage() {
   // -- Dialog state ----------------------------------------------------------
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingProvider, setEditingProvider] = useState<ModelProvider | null>(null)
-
-  // -- Fetch providers and presets on mount ----------------------------------
-  useEffect(() => {
-    fetchProviders()
-    fetchPresets()
-  }, [])
-
-  /**
-   * Load all providers from the API.
-   */
-  const fetchProviders = async () => {
-    setLoading(true)
-    try {
-      const data = await getProviders()
-      setProviders(data)
-    } catch {
-      toast.error(t('llmProviders.fetchError'))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  /**
-   * Load factory presets from the API.
-   */
-  const fetchPresets = async () => {
-    try {
-      const data = await getPresets()
-      setPresets(data)
-    } catch {
-      // Presets are optional; silently fall back to manual entry
-    }
-  }
 
   // -- Derived data ----------------------------------------------------------
 

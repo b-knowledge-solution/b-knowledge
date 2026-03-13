@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button, type ButtonProps } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 
 interface PaginationProps {
   currentPage: number;
@@ -46,6 +47,8 @@ function generatePageRange(current: number, total: number, siblings: number): (n
  * Replaces Ant Design's Pagination.
  */
 export function Pagination({ currentPage, totalPages, onPageChange, className, siblingCount = 1 }: PaginationProps) {
+  const { t } = useTranslation();
+
   if (totalPages <= 1) return null;
 
   const pages = generatePageRange(currentPage, totalPages, siblingCount);
@@ -57,7 +60,7 @@ export function Pagination({ currentPage, totalPages, onPageChange, className, s
         size="icon"
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage <= 1}
-        aria-label="Previous page"
+        aria-label={t('common.previousPage')}
       >
         <ChevronLeft className="h-4 w-4" />
       </PaginationButton>
@@ -84,7 +87,7 @@ export function Pagination({ currentPage, totalPages, onPageChange, className, s
         size="icon"
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage >= totalPages}
-        aria-label="Next page"
+        aria-label={t('common.nextPage')}
       >
         <ChevronRight className="h-4 w-4" />
       </PaginationButton>

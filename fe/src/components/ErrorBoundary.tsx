@@ -12,6 +12,7 @@
 import { Component, type ReactNode, type ErrorInfo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, RotateCcw } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 // ============================================================================
 // Types
@@ -49,6 +50,8 @@ interface ErrorBoundaryState {
  * @param onReset - Callback to reset the error boundary
  */
 function DefaultFallback({ error, onReset }: { error: Error; onReset: () => void }) {
+  const { t } = useTranslation()
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[300px] p-8 text-center">
       {/* Error icon */}
@@ -56,12 +59,12 @@ function DefaultFallback({ error, onReset }: { error: Error; onReset: () => void
 
       {/* Title */}
       <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-        Something went wrong
+        {t('common.errorOccurred')}
       </h2>
 
       {/* Error message */}
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 max-w-md">
-        {error.message || 'An unexpected error occurred.'}
+        {error.message || t('common.errorOccurred')}
       </p>
 
       {/* Retry button */}
@@ -71,7 +74,7 @@ function DefaultFallback({ error, onReset }: { error: Error; onReset: () => void
         className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
       >
         <RotateCcw className="w-4 h-4" />
-        Try again
+        {t('common.tryAgain')}
       </button>
 
       {/* Collapsed error details for debugging */}

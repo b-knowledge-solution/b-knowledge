@@ -2,7 +2,7 @@
  * @fileoverview Authentication hook and provider.
  *
  * Provides authentication state management for the application:
- * - Session checking via /api/auth/me endpoint
+ * - Session checking via /api/auth/me endpoint (deduplicated by TanStack Query)
  * - User state with role-based permissions
  * - Automatic redirect to login for unauthenticated users
  * - Logout functionality
@@ -10,8 +10,10 @@
  * @module hooks/useAuth
  */
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useCallback, ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryKeys';
 
 /** Backend API base URL */
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
@@ -67,6 +69,40 @@ interface AuthContextType {
 }
 
 // ============================================================================
+// Constants
+// ============================================================================
+
+/** Paths that do not require authentication */
+const PUBLIC_PATHS = ['/login', '/logout', '/403', '/404', '/500'];
+
+// ============================================================================
+// Query Function
+// ============================================================================
+
+/**
+ * @description Fetch the current user session from the backend.
+ * Returns user data on success, null on 401, throws on other errors.
+ *
+ * @returns {Promise<User | null>} User data or null if unauthorized.
+ */
+async function fetchCurrentUser(): Promise<User | null> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+    credentials: 'include',
+  });
+
+  // 401 means no active session — return null (not an error)
+  if (response.status === 401) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Unexpected response: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+// ============================================================================
 // Context
 // ============================================================================
 
@@ -90,70 +126,73 @@ interface AuthProviderProps {
 /**
  * @description Authentication provider component.
  * Wraps the application to provide authentication context.
- * Automatically checks session on mount and redirects if needed.
+ * Uses TanStack Query for deduplicated session fetching.
+ * Automatically redirects to login for unauthenticated users on protected paths.
  *
  * @param {AuthProviderProps} props - Component properties.
  * @returns {JSX.Element} The provider wrapping children.
  */
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Determine if current path requires authentication
+  const isPublicPath = location.pathname === '/' || PUBLIC_PATHS.some(path => location.pathname.startsWith(path));
+
+  /**
+   * TanStack Query handles deduplication: even if React.StrictMode
+   * double-mounts the component, only one network request is made.
+   * Disabled on public paths — no need to check auth for login page etc.
+   */
+  const {
+    data: user = null,
+    isLoading: isQueryLoading,
+    error: queryError,
+  } = useQuery({
+    queryKey: queryKeys.auth.me(),
+    queryFn: fetchCurrentUser,
+    enabled: !isPublicPath,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  // On public paths, loading is instantly resolved (no query fires)
+  const isLoading = isPublicPath ? false : isQueryLoading;
+
   /**
    * @description Check if user has a valid session.
-   * Calls /api/auth/me endpoint to verify session and get user data.
+   * Re-fetches via TanStack Query and returns whether session is valid.
+   * Used after login to verify the new session.
    *
    * @returns {Promise<boolean>} true if session is valid, false otherwise.
    */
   const checkSession = useCallback(async (): Promise<boolean> => {
     try {
-      setError(null);
       console.log('[Auth] Checking session...');
-
-      // Call the backend API to retrieve the current user's session
-      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-        credentials: 'include', // Include session cookie in the request
+      // Invalidate + refetch to get fresh data
+      const userData = await queryClient.fetchQuery({
+        queryKey: queryKeys.auth.me(),
+        queryFn: fetchCurrentUser,
+        staleTime: 0,
       });
-
-      if (response.ok) {
-        // If response is successful, parse user data and update state
-        const userData = await response.json();
-        setUser(userData);
-        console.log('[Auth] Session valid:', userData.email);
-        return true;
-      }
-
-      if (response.status === 401) {
-        // 401 Unauthorized means no active session
-        console.log('[Auth] Session not found or expired (401)');
-        setUser(null);
-        return false;
-      }
-
-      throw new Error(`Unexpected response: ${response.status}`);
+      console.log('[Auth] Session valid:', userData?.email);
+      return !!userData;
     } catch (err) {
-      // Handle network errors or other exceptions during session check
       console.error('[Auth] Error checking session:', err);
-      setError(err instanceof Error ? err.message : 'Failed to check session');
-      setUser(null);
       return false;
-    } finally {
-      // Ensure loading state is turned off regardless of outcome
-      setIsLoading(false);
     }
-  }, []);
+  }, [queryClient]);
 
   /**
    * @description Logout the current user.
-   * Clears local state and redirects to backend logout endpoint.
+   * Clears query cache and redirects to backend logout endpoint.
    */
   const logout = useCallback(() => {
     console.log('[Auth] Logging out...');
-    setUser(null);
-    setIsLoading(false);
+
+    // Clear the cached user data immediately
+    queryClient.setQueryData(queryKeys.auth.me(), null);
 
     // Call the logout endpoint using POST method
     fetch(`${API_BASE_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' })
@@ -166,51 +205,37 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.error('[Auth] Logout failed:', err);
         navigate('/login');
       });
-  }, [navigate]);
+  }, [navigate, queryClient]);
 
   /**
-   * @description Effect: Check session on mount or navigation.
-   * Logic handles public paths, already authenticated state, and redirects.
-   * 
-   * IMPORTANT: This effect should NOT trigger re-renders during navigation when
-   * the user is already authenticated. Doing so causes race conditions with
-   * React Suspense lazy loading, resulting in double-click navigation bugs.
+   * @description Effect: Redirect unauthenticated users on protected paths.
+   *
+   * IMPORTANT: Only redirects after the query has settled (not loading)
+   * and user is confirmed null. Skips when already on a public path
+   * or when user is authenticated.
    */
   useEffect(() => {
-    const publicPaths = ['/login', '/logout'];
-    const isPublicPath = publicPaths.some(path => location.pathname.startsWith(path));
-
-    // Skip auth check for defined public paths
-    if (isPublicPath) {
-      setIsLoading(false);
+    // Skip on public paths or while query is still loading
+    if (isPublicPath || isLoading) {
       return;
     }
 
-    // Skip auth check if user is already authenticated
-    // CRITICAL: Do NOT call setIsLoading here - it triggers re-renders that
-    // conflict with Suspense transitions, causing the double-click bug
+    // Skip if user is authenticated
     if (user !== null) {
       return;
     }
 
-    // Only check session if user is null (initial mount or after logout)
-    console.log('[Auth] Protected path, checking session:', location.pathname);
-    checkSession().then(isValid => {
-      if (!isValid) {
-        // If session is invalid, capture current path for post-login redirect
-        const redirectUrl = location.pathname + location.search;
-        console.log('[Auth] Not authenticated, redirecting to login. Intended destination:', redirectUrl);
-        // Redirect to login page with the return URL
-        navigate(`/login?redirect=${encodeURIComponent(redirectUrl)}`, { replace: true });
-      }
-    });
-  }, [location.pathname, location.search, checkSession, navigate, user]);
+    // User is null and query has settled — redirect to login
+    const redirectUrl = location.pathname + location.search;
+    console.log('[Auth] Not authenticated, redirecting to login. Intended destination:', redirectUrl);
+    navigate(`/login?redirect=${encodeURIComponent(redirectUrl)}`, { replace: true });
+  }, [isPublicPath, isLoading, user, location.pathname, location.search, navigate]);
 
   const value: AuthContextType = {
     user,
     isLoading,
     isAuthenticated: !!user,
-    error,
+    error: queryError ? (queryError instanceof Error ? queryError.message : 'Failed to check session') : null,
     checkSession,
     logout,
   };

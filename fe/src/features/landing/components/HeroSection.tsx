@@ -6,6 +6,8 @@
 
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '@/features/auth'
+import { config } from '@/config'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, Bot, ShieldCheck } from 'lucide-react'
 
@@ -16,6 +18,17 @@ import { ArrowRight, Bot, ShieldCheck } from 'lucide-react'
 export function HeroSection() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { isAuthenticated } = useAuth()
+
+  /** @description Navigate to app if authenticated, otherwise to login */
+  const handleSignIn = () => {
+    if (isAuthenticated) {
+      const defaultPath = config.features.enableAiChat ? '/chat' : '/search'
+      navigate(defaultPath)
+    } else {
+      navigate('/login')
+    }
+  }
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-white to-cyan-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 min-h-[90vh] flex items-center">
@@ -54,7 +67,7 @@ export function HeroSection() {
               <Button
                 size="lg"
                 className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg rounded-xl shadow-lg shadow-blue-600/25"
-                onClick={() => navigate('/login')}
+                onClick={handleSignIn}
               >
                 {t('landing.hero.cta')}
                 <ArrowRight className="ml-2 w-5 h-5" />

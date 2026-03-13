@@ -2,6 +2,7 @@ import * as React from 'react';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { DayPicker } from 'react-day-picker';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -76,12 +77,14 @@ interface DatePickerProps {
 export function DatePicker({
   value,
   onChange,
-  placeholder = 'Pick a date',
+  placeholder,
   className,
   disabled,
   dateFormat = 'PPP',
   disabledDates,
 }: DatePickerProps) {
+  const { t } = useTranslation();
+  const displayPlaceholder = placeholder ?? t('common.pickDate');
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -95,7 +98,7 @@ export function DatePicker({
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {value ? format(value, dateFormat) : <span>{placeholder}</span>}
+          {value ? format(value, dateFormat) : <span>{displayPlaceholder}</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">

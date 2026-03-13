@@ -70,7 +70,13 @@
     "prompt": "Prompt",
     "noDescription": "Không có mô tả",
     "create": "Tạo",
-    "saving": "Đang lưu..."
+    "saving": "Đang lưu...",
+    "errorOccurred": "Đã xảy ra lỗi",
+    "tryAgain": "Thử lại",
+    "selectPlaceholder": "Chọn...",
+    "pickDate": "Chọn ngày",
+    "previousPage": "Trang trước",
+    "nextPage": "Trang sau"
   },
   "dialog": {
     "confirm": "Xác nhận",
@@ -512,19 +518,40 @@
   "systemMonitor": {
     "title": "Giám sát Hệ thống",
     "description": "Bảng điều khiển thời gian thực về tình trạng dịch vụ và số liệu hệ thống.",
-    "controls": {
-      "autoRefresh": "Tự động làm mới",
-      "refreshNow": "Làm mới ngay"
-    },
     "sections": {
       "services": "Tình trạng Dịch vụ",
-      "system": "Tài nguyên Hệ thống"
+      "system": "Tài nguyên Hệ thống",
+      "backendSpecs": "Thông số Backend"
+    },
+    "services": {
+      "database": "Cơ sở dữ liệu",
+      "redis": "Bộ nhớ đệm Redis",
+      "minio": "Lưu trữ MinIO",
+      "langfuse": "Theo dõi Langfuse"
     },
     "metrics": {
       "uptime": "Thời gian hoạt động",
       "memory": "Bộ nhớ",
       "cpuLoad": "Tải CPU",
-      "serverInfo": "Thông tin Máy chủ"
+      "serverInfo": "Thông tin Máy chủ",
+      "diskStorage": "Ổ đĩa",
+      "diskFreeOf": "Trống {{total}}",
+      "heapUsage": "Heap: {{used}} / {{total}}",
+      "loadAvgLabel": "1m / 5m / 15m",
+      "unknown": "Không rõ",
+      "checkFailed": "Kiểm tra thất bại"
+    },
+    "specs": {
+      "runtimeEnv": "Môi trường Runtime",
+      "cpu": "CPU",
+      "cores": "{{count}} Nhân",
+      "memoryCapacity": "Dung lượng Bộ nhớ",
+      "totalSystemMemory": "Tổng bộ nhớ Hệ thống"
+    },
+    "controls": {
+      "autoRefresh": "Tự động làm mới",
+      "refreshNow": "Làm mới ngay",
+      "refreshInterval": "Tần suất làm mới"
     },
     "status": {
       "healthy": "Ổn định",
@@ -875,7 +902,17 @@
       "aiChat": "AI Chat",
       "aiSearch": "AI Search",
       "systemChat": "Chat hệ thống"
-    }
+    },
+    "chatSessions": "Phiên Chat",
+    "searchSessions": "Phiên Tìm kiếm",
+    "totalSessions": "Tổng phiên",
+    "activityTrend": "Xu hướng hoạt động",
+    "topUsers": "Người dùng tích cực nhất",
+    "usageBreakdown": "Phân bố sử dụng",
+    "sessionsPerDay": "Phiên theo ngày",
+    "sessions": "Phiên",
+    "user": "Người dùng",
+    "noData": "Không có dữ liệu"
   },
   "glossary": {
     "title": "Quản lý Từ điển",

@@ -129,12 +129,12 @@ function ChatSidebar({
   }
 
   return (
-    <div className={cn('flex flex-col h-full bg-muted/30 border-r', className)}>
+    <div className={cn('flex flex-col h-full bg-muted/20 dark:bg-muted/10 backdrop-blur-sm border-r border-border/60', className)}>
       {/* Header with create button */}
-      <div className="p-3 border-b space-y-2">
+      <div className="p-3 border-b border-border/40 space-y-2.5">
         <Button
           variant="default"
-          className="w-full justify-start gap-2"
+          className="w-full justify-start gap-2 shadow-sm hover:shadow-md transition-shadow duration-200"
           onClick={onCreate}
         >
           <Plus className="h-4 w-4" />
@@ -143,12 +143,12 @@ function ChatSidebar({
 
         {/* Search input */}
         <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground/60" />
           <Input
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={t('common.searchPlaceholder')}
-            className="pl-9 h-9"
+            className="pl-9 h-9 border-border/40 bg-background/60 focus-visible:ring-primary/30 transition-all duration-200"
           />
         </div>
       </div>
@@ -156,17 +156,19 @@ function ChatSidebar({
       {/* Conversation list */}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          // Loading skeleton
+          // Loading skeleton — refined shimmer
           <div className="p-3 space-y-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-12 rounded-lg bg-muted animate-pulse" />
+              <div key={i} className="h-12 rounded-lg bg-muted/60 animate-pulse" />
             ))}
           </div>
         ) : conversations.length === 0 ? (
-          // Empty state
+          // Empty state — refined
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-            <MessageSquare className="h-10 w-10 text-muted-foreground/40 mb-2" />
-            <p className="text-sm text-muted-foreground">{t('chat.noConversations')}</p>
+            <div className="h-12 w-12 rounded-xl bg-muted/60 flex items-center justify-center mb-3">
+              <MessageSquare className="h-6 w-6 text-muted-foreground/40" />
+            </div>
+            <p className="text-sm text-muted-foreground/70">{t('chat.noConversations')}</p>
           </div>
         ) : (
           // Grouped conversation list
@@ -178,7 +180,7 @@ function ChatSidebar({
               return (
                 <div key={label} className="mb-3">
                   {/* Date group label */}
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-2 py-1">
+                  <p className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider px-2 py-1.5">
                     {t(dateLabelKeys[label] || label)}
                   </p>
 
@@ -188,19 +190,22 @@ function ChatSidebar({
                       key={conv.id}
                       onClick={() => onSelect(conv.id)}
                       className={cn(
-                        'w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-left group transition-colors',
+                        'w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-left group/conv transition-all duration-200',
                         activeConversationId === conv.id
-                          ? 'bg-primary/10 text-primary font-medium'
-                          : 'text-foreground hover:bg-muted',
+                          ? 'bg-primary/8 dark:bg-primary/12 text-primary font-medium border-l-2 border-primary shadow-sm shadow-primary/5'
+                          : 'text-foreground/80 hover:bg-muted/60 hover:text-foreground border-l-2 border-transparent',
                       )}
                     >
-                      <MessageSquare className="h-4 w-4 shrink-0 opacity-60" />
+                      <MessageSquare className={cn(
+                        'h-4 w-4 shrink-0 transition-colors',
+                        activeConversationId === conv.id ? 'text-primary' : 'opacity-50',
+                      )} />
                       <span className="flex-1 truncate">{conv.name}</span>
 
                       {/* Delete button (visible on hover) */}
                       <button
                         onClick={(e) => handleDelete(conv.id, e)}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all"
+                        className="opacity-0 group-hover/conv:opacity-100 p-1 rounded-md hover:bg-destructive/10 hover:text-destructive transition-all duration-200"
                         title={t('common.delete')}
                       >
                         <Trash2 className="h-3.5 w-3.5" />

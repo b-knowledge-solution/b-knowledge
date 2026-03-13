@@ -11,6 +11,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode, useRef } from 'react';
 import { useLocation, useNavigate, To, NavigateOptions } from 'react-router-dom';
 import NProgress from 'nprogress';
+import { useTranslation } from 'react-i18next';
 import 'nprogress/nprogress.css';
 
 // Configure NProgress
@@ -170,6 +171,8 @@ export function useNavigation(): NavigationContextType {
  * - Smooth fade-in animation
  */
 function NavigationOverlay() {
+    const { t } = useTranslation();
+
     return (
         <div
             className="fixed inset-0 z-[9999] bg-slate-900/90 dark:bg-black/95 backdrop-blur-sm flex items-center justify-center opacity-0 animate-[fadeIn_0.1s_ease-out_forwards]"
@@ -181,7 +184,7 @@ function NavigationOverlay() {
             onMouseUp={(e) => e.stopPropagation()}
             role="alert"
             aria-busy="true"
-            aria-label="Loading page..."
+            aria-label={t('common.loading')}
         >
             <div className="flex flex-col items-center gap-4 bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-2xl">
                 {/* Spinner */}
@@ -191,7 +194,7 @@ function NavigationOverlay() {
                 </div>
                 {/* Loading Text */}
                 <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                    Loading...
+                    {t('common.loading')}
                 </span>
             </div>
         </div>

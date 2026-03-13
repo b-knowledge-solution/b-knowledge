@@ -116,11 +116,10 @@ export default defineConfig(({ mode }) => {
           secure: false,
         },
       },
+      // HMR works on localhost. When accessed via external proxy (e.g. Cloudflare tunnel),
+      // the proxy must point to Vite (not Express) for HMR to work.
       hmr: {
-        host: devDomain === 'localhost' ? 'localhost' : devDomain,
-        clientPort: devDomain === 'localhost' ? devPort : 443,
-        protocol: devDomain === 'localhost' ? (useHttps ? 'wss' : 'ws') : 'wss',
-        overlay: true
+        overlay: true,
       },
     },
     define: {
