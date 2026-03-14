@@ -112,20 +112,6 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
     featureFlag: 'enableAiSearch',
   },
 
-  // ── Knowledge Base (admin / leader) ────────────────────────────
-  {
-    labelKey: 'nav.knowledgeBase',
-    icon: BookOpen,
-    roles: ['admin', 'leader'],
-    children: [
-      {
-        path: '/knowledge-base/glossary',
-        labelKey: 'nav.glossary',
-        icon: BookOpen,
-      },
-    ],
-  },
-
   // ── Data Studio (admin / leader) ───────────────────────────────
   {
     labelKey: 'nav.dataStudio',
@@ -138,9 +124,14 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
         icon: Database,
       },
       {
-        path: '/knowledge-base/projects',
+        path: '/data-studio/projects',
         labelKey: 'nav.projects',
         icon: FolderOpen,
+      },
+      {
+        path: '/data-studio/glossary',
+        labelKey: 'nav.glossary',
+        icon: BookOpen,
       },
       {
         path: '/admin/chat-dialogs',

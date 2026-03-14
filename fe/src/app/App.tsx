@@ -112,9 +112,8 @@ function App() {
               {config.features.enableAiSearch && (
                 <Route path="search" element={<FeatureErrorBoundary><AiSearchPage /></FeatureErrorBoundary>} />
               )}
-              {/* Knowledge Base routes */}
-
-              <Route path="knowledge-base/glossary" element={
+              {/* Glossary route */}
+              <Route path="data-studio/glossary" element={
                 <FeatureErrorBoundary>
                   <RoleRoute allowedRoles={['admin', 'leader']}>
                     <GlossaryPage />
@@ -139,14 +138,14 @@ function App() {
               } />
 
               {/* Project routes */}
-              <Route path="knowledge-base/projects" element={
+              <Route path="data-studio/projects" element={
                 <FeatureErrorBoundary>
                   <RoleRoute allowedRoles={['admin', 'leader']}>
                     <ProjectListPage />
                   </RoleRoute>
                 </FeatureErrorBoundary>
               } />
-              <Route path="knowledge-base/projects/:projectId" element={
+              <Route path="data-studio/projects/:projectId" element={
                 <FeatureErrorBoundary>
                   <RoleRoute allowedRoles={['admin', 'leader']}>
                     <ProjectDetailPage />

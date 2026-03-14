@@ -33,7 +33,7 @@ function Layout() {
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
 
-      <main className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden">
+      <main className="flex-1 flex flex-col bg-gradient-to-br from-slate-50 via-white to-blue-50/30 dark:from-slate-850 dark:via-slate-800 dark:to-slate-900 overflow-hidden">
         <BroadcastBanner />
         <Header />
         <div className={`flex-1 overflow-hidden ${routeMetadata.fullBleed ? '' : 'p-8 overflow-auto'}`}>

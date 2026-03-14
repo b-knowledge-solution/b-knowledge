@@ -9,7 +9,6 @@ import { Search, FileText, Clock, Sparkles, PanelLeft } from 'lucide-react'
 
 import { MarkdownRenderer } from '@/components/MarkdownRenderer'
 import { HighlightMatch } from '@/features/histories/components/HighlightMatch'
-import { useKnowledgeBase } from '@/features/knowledge-base/hooks/useKnowledgeBaseContext'
 import type { SearchSessionSummary, ExternalSearchHistory } from '../types/histories.types'
 
 /**
@@ -44,7 +43,6 @@ export const AdminSearchDetailView = ({
     onOpenSidebar,
 }: AdminSearchDetailViewProps) => {
     const { t } = useTranslation()
-    const { config } = useKnowledgeBase()
 
     return (
         <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 pb-12 px-0">
@@ -133,13 +131,9 @@ export const AdminSearchDetailView = ({
                                                     <span className="text-xs font-bold uppercase tracking-wider">{t('histories.fileResults', 'Retrieved Files')}</span>
                                                 </div>
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                    {item.file_results.map((file: any, idx: number) => {
+                                                    {item.file_results.map((file: { document_name?: string; document_id?: string } | string, idx: number) => {
                                                         const isObject = typeof file === 'object' && file !== null
                                                         const fileName = isObject ? file.document_name : file
-                                                        const documentId = isObject ? file.document_id : null
-                                                        const link = documentId && config?.kbBaseUrl
-                                                            ? `${config.kbBaseUrl}/document/${documentId}?ext=pdf&prefix=document`
-                                                            : null
 
                                                         return (
                                                             <div key={idx} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700 transition-colors">
@@ -147,21 +141,9 @@ export const AdminSearchDetailView = ({
                                                                     <FileText size={16} className="text-blue-500 dark:text-blue-400" />
                                                                 </div>
                                                                 <div className="min-w-0 flex-1">
-                                                                    {link ? (
-                                                                        <a
-                                                                            href={link}
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                            className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate block hover:text-primary hover:underline"
-                                                                            title={fileName}
-                                                                        >
-                                                                            <HighlightMatch text={fileName} query={searchQuery} />
-                                                                        </a>
-                                                                    ) : (
-                                                                        <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate" title={fileName}>
-                                                                            <HighlightMatch text={fileName || ''} query={searchQuery} />
-                                                                        </p>
-                                                                    )}
+                                                                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate" title={fileName as string}>
+                                                                        <HighlightMatch text={fileName as string || ''} query={searchQuery} />
+                                                                    </p>
                                                                 </div>
                                                             </div>
                                                         )

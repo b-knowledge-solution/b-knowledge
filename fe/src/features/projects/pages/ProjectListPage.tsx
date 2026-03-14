@@ -52,7 +52,7 @@ import {
 } from '../api/projectApi'
 
 import { ProjectPermissionModal } from '../components/ProjectPermissionModal'
-import { PermissionsSelector } from '@/features/knowledge-base/components/SourcePermissionsModal'
+import { PermissionsSelector } from '@/components/PermissionsSelector'
 import { teamApi, type Team } from '@/features/teams'
 import CategoryFilterTabs from '../components/CategoryFilterTabs'
 import CreateProjectModal from '../components/CreateProjectModal'
@@ -377,7 +377,7 @@ const ProjectListPage = () => {
                 <Card
                   key={project.id}
                   hoverable
-                  onClick={() => navigate(`/knowledge-base/projects/${project.id}`)}
+                  onClick={() => navigate(`/data-studio/projects/${project.id}`)}
                   className="dark:bg-slate-800 dark:border-slate-700 shadow-sm cursor-pointer"
                   title={
                     <div className="flex justify-between items-center w-full">

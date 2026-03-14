@@ -20,7 +20,7 @@ import { db, getAdapter, checkConnection, closePool } from '@/shared/db/index.js
 import knex from 'knex';
 import dbConfig from '@/shared/db/knexfile.js';
 import { cronService } from '@/shared/services/cron.service.js';
-import { knowledgeBaseService } from '@/modules/knowledge-base/index.js';
+
 import { systemToolsService } from '@/modules/system-tools/system-tools.service.js';
 import { userService } from '@/modules/users/index.js';
 import { shutdownLangfuse } from '@/shared/services/langfuse.service.js';
@@ -128,7 +128,7 @@ const startServer = async (): Promise<http.Server | https.Server> => {
     // Schedule recurring maintenance (temp file cleanup, etc.)
     cronService.startCleanupJob();
 
-    await knowledgeBaseService.initialize();
+
     await systemToolsService.initialize();
 
     if (await checkConnection()) {

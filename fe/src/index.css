@@ -60,34 +60,34 @@
  * shadcn/ui CSS Custom Properties (Dark theme)
  * ============================================================================ */
 .dark {
-  /* Existing brand tokens */
-  --primary-color: #3d54e6;
-  --primary-hover: #0d26cf;
-  --bg-color: #020617;
-  --sidebar-bg: #050a44;
-  --sidebar-text: #e2e8f0;
-  --text-color: #f1f5f9;
-  --border-color: #1e293b;
-  --card-bg: #0f172a;
+  /* Existing brand tokens — lifted from near-black for better readability */
+  --primary-color: #6380f0;
+  --primary-hover: #4d6ae8;
+  --bg-color: #0f172a;
+  --sidebar-bg: #070e52;
+  --sidebar-text: #f1f5f9;
+  --text-color: #f8fafc;
+  --border-color: #334155;
+  --card-bg: #1e293b;
 
-  /* shadcn/ui tokens */
-  --background: 224 71% 4%;
-  --foreground: 213 31% 91%;
-  --muted: 223 47% 11%;
-  --muted-foreground: 215.4 16.3% 56.9%;
-  --popover: 224 71% 4%;
-  --popover-foreground: 215 20.2% 65.1%;
-  --card: 224 71% 4%;
-  --card-foreground: 213 31% 91%;
-  --border: 216 34% 17%;
-  --input: 216 34% 17%;
-  --secondary: 222.2 47.4% 11.2%;
+  /* shadcn/ui tokens — raised luminance for readable text & visible borders */
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+  --muted: 217 33% 17%;
+  --muted-foreground: 215 20% 65%;
+  --popover: 222 47% 11%;
+  --popover-foreground: 210 40% 98%;
+  --card: 217 33% 17%;
+  --card-foreground: 210 40% 98%;
+  --border: 215 25% 27%;
+  --input: 215 25% 27%;
+  --secondary: 217 33% 17%;
   --secondary-foreground: 210 40% 98%;
-  --accent: 216 34% 17%;
+  --accent: 215 25% 27%;
   --accent-foreground: 210 40% 98%;
-  --destructive: 0 63% 31%;
+  --destructive: 0 63% 45%;
   --destructive-foreground: 210 40% 98%;
-  --ring: 228 79% 53%;
+  --ring: 228 79% 63%;
 
   /* Dashboard stat-card gradients (dark — slightly muted) */
   --dashboard-gradient-1-from: #2563eb;
@@ -99,12 +99,12 @@
   --dashboard-gradient-4-from: #7c3aed;
   --dashboard-gradient-4-to: #6d28d9;
 
-  /* Dashboard chart tokens (dark) */
-  --chart-primary: #60a5fa;
-  --chart-secondary: #34d399;
-  --chart-grid: #1e293b;
-  --chart-tooltip-bg: #0f172a;
-  --chart-tooltip-text: #f1f5f9;
+  /* Dashboard chart tokens (dark) — brighter for readability */
+  --chart-primary: #93bbfd;
+  --chart-secondary: #6ee7b7;
+  --chart-grid: #334155;
+  --chart-tooltip-bg: #1e293b;
+  --chart-tooltip-text: #f8fafc;
 }
 
 @layer base {
@@ -140,15 +140,19 @@
 
 @layer components {
   .sidebar-link {
-    @apply flex items-center gap-3 px-4 py-2.5 text-slate-200 rounded-md transition-colors border border-transparent hover:border-slate-500;
+    @apply flex items-center gap-3 px-3 py-2.5 text-slate-300 rounded-xl transition-all duration-200 border border-transparent hover:bg-white/10 hover:text-white hover:border-white/10;
   }
 
   .sidebar-link.active {
-    @apply bg-yellow-400 text-slate-900 border-yellow-400 font-medium;
+    @apply bg-blue-600 text-white border-blue-600/50 font-medium shadow-md shadow-blue-600/25;
+  }
+
+  .dark .sidebar-link.active {
+    @apply bg-blue-600/30 text-blue-200 border-blue-400/40 shadow-blue-500/15;
   }
 
   .btn {
-    @apply px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer;
+    @apply px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer;
   }
 
   .btn-primary {
@@ -156,17 +160,25 @@
   }
 
   .btn-secondary {
-    @apply bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600;
+    @apply bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600;
   }
 
   /* Card component */
   .card {
-    @apply bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700;
+    @apply bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-600 transition-all duration-300 hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-500/40;
   }
 
   /* Input styles */
   .input {
-    @apply w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent;
+    @apply w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent;
+  }
+
+  /* Layout glassmorphism utility */
+  .layout-glass {
+    @apply bg-white/80 backdrop-blur-xl border-b border-slate-200/50 shadow-sm;
+  }
+  .dark .layout-glass {
+    @apply bg-slate-800/90 backdrop-blur-xl border-b border-slate-600/50;
   }
 }
 

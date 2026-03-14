@@ -65,7 +65,7 @@ export class ExternalSearchSessionModel extends BaseModel<ExternalSearchSession>
                 'history_search_sessions.session_id',
                 'history_search_sessions.updated_at as created_at',
                 'history_search_sessions.user_email',
-                'knowledge_base_sources.name as source_name',
+
                 // Subquery for first search input
                 this.knex.raw(`(
                     SELECT search_input FROM history_search_records
@@ -79,7 +79,7 @@ export class ExternalSearchSessionModel extends BaseModel<ExternalSearchSession>
                 ) as message_count`)
             )
             .from(this.tableName)
-            .leftJoin('knowledge_base_sources', 'history_search_sessions.share_id', 'knowledge_base_sources.share_id')
+
             .where('history_search_sessions.user_email', userEmail)
             .orderBy('history_search_sessions.updated_at', 'desc')
             .limit(limit)

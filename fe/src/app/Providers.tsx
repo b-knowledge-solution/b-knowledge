@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/features/auth';
 import { SettingsProvider } from '@/app/contexts/SettingsContext';
-import { KnowledgeBaseProvider } from '@/features/knowledge-base';
+
 import { GuidelineProvider } from '@/features/guideline';
 import { ConfirmProvider } from '@/components/ConfirmDialog';
 import { HeaderActionsProvider } from '@/components/HeaderActions';
@@ -70,30 +70,27 @@ interface ProvidersProps {
  * Provider order matters – outer providers are available to inner ones:
  * 1. AuthProvider (user session)
  * 2. SettingsProvider (theme, language)
- * 3. KnowledgeBaseProvider (RAG sources)
- * 4. GuidelineProvider (in-app help)
- * 5. ConfirmProvider (confirmation dialogs)
- * 6. HeaderActionsProvider (page-level header actions)
- * 7. NavigationProvider (loading overlay)
+ * 3. GuidelineProvider (in-app help)
+ * 4. ConfirmProvider (confirmation dialogs)
+ * 5. HeaderActionsProvider (page-level header actions)
+ * 6. NavigationProvider (loading overlay)
  */
 export function Providers({ children }: ProvidersProps) {
   return (
     <AuthProvider>
       <SettingsProvider>
-        <KnowledgeBaseProvider>
-          <GuidelineProvider>
-            <ConfirmProvider>
-              <HeaderActionsProvider>
-                <NavigationProvider>
-                  <SocketQueryBridge />
-                  {children}
-                  <SettingsDialog />
-                  <Toaster />
-                </NavigationProvider>
-              </HeaderActionsProvider>
-            </ConfirmProvider>
-          </GuidelineProvider>
-        </KnowledgeBaseProvider>
+        <GuidelineProvider>
+          <ConfirmProvider>
+            <HeaderActionsProvider>
+              <NavigationProvider>
+                <SocketQueryBridge />
+                {children}
+                <SettingsDialog />
+                <Toaster />
+              </NavigationProvider>
+            </HeaderActionsProvider>
+          </ConfirmProvider>
+        </GuidelineProvider>
       </SettingsProvider>
     </AuthProvider>
   );

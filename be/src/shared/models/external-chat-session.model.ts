@@ -65,7 +65,7 @@ export class ExternalChatSessionModel extends BaseModel<ExternalChatSession> {
                 'history_chat_sessions.session_id',
                 'history_chat_sessions.updated_at as created_at',
                 'history_chat_sessions.user_email',
-                'knowledge_base_sources.name as source_name',
+
                 // Subquery for first prompt
                 this.knex.raw(`(
                     SELECT user_prompt FROM history_chat_messages
@@ -79,7 +79,7 @@ export class ExternalChatSessionModel extends BaseModel<ExternalChatSession> {
                 ) as message_count`)
             )
             .from(this.tableName)
-            .leftJoin('knowledge_base_sources', 'history_chat_sessions.share_id', 'knowledge_base_sources.share_id')
+
             .where('history_chat_sessions.user_email', userEmail)
             .orderBy('history_chat_sessions.updated_at', 'desc')
             .limit(limit)

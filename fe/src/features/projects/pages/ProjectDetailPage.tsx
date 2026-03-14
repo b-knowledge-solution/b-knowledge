@@ -146,7 +146,7 @@ const ProjectDetailPage = () => {
             <Button
               type="text"
               icon={<ArrowLeft size={16} />}
-              onClick={() => navigate('/knowledge-base/projects')}
+              onClick={() => navigate('/data-studio/projects')}
               className="mb-2"
             >
               {t('projectManagement.title')}

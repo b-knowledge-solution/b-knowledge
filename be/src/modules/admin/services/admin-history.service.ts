@@ -31,7 +31,7 @@ export class AdminHistoryService {
                 'history_chat_sessions.session_id',
                 'history_chat_sessions.updated_at as created_at',
                 'history_chat_sessions.user_email',
-                'knowledge_base_sources.name as source_name',
+
                 // Subquery for first prompt
                 db.raw(`(
                     SELECT user_prompt FROM history_chat_messages 
@@ -45,7 +45,7 @@ export class AdminHistoryService {
                 ) as message_count`)
             )
             .from('history_chat_sessions')
-            .leftJoin('knowledge_base_sources', 'history_chat_sessions.share_id', 'knowledge_base_sources.share_id')
+
             .orderBy('history_chat_sessions.updated_at', 'desc')
             .limit(limit)
             .offset(offset);
@@ -90,9 +90,7 @@ export class AdminHistoryService {
             query = query.where('history_chat_sessions.updated_at', '<=', `${endDate} 23:59:59`);
         }
 
-        if (sourceName) {
-            query = query.where('knowledge_base_sources.name', 'ilike', `%${sourceName}%`);
-        }
+
 
         return await query;
     }
@@ -141,7 +139,7 @@ export class AdminHistoryService {
                 'history_search_sessions.session_id',
                 'history_search_sessions.updated_at as created_at',
                 'history_search_sessions.user_email',
-                'knowledge_base_sources.name as source_name',
+
                 // Subquery for first search input
                 db.raw(`(
                     SELECT search_input FROM history_search_records 
@@ -155,7 +153,7 @@ export class AdminHistoryService {
                 ) as message_count`)
             )
             .from('history_search_sessions')
-            .leftJoin('knowledge_base_sources', 'history_search_sessions.share_id', 'knowledge_base_sources.share_id')
+
             .orderBy('history_search_sessions.updated_at', 'desc')
             .limit(limit)
             .offset(offset);
@@ -198,9 +196,7 @@ export class AdminHistoryService {
             query = query.where('history_search_sessions.updated_at', '<=', `${endDate} 23:59:59`);
         }
 
-        if (sourceName) {
-            query = query.where('knowledge_base_sources.name', 'ilike', `%${sourceName}%`);
-        }
+
 
         return await query;
     }

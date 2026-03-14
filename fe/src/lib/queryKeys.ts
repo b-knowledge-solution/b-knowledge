@@ -141,15 +141,6 @@ export const queryKeys = {
     health: () => [...queryKeys.systemTools.all, 'health'] as const,
   },
 
-  // --------------------------------------------------------------------------
-  // Knowledge Base
-  // --------------------------------------------------------------------------
-  knowledgeBase: {
-    all: ['knowledge-base'] as const,
-    config: () => [...queryKeys.knowledgeBase.all, 'config'] as const,
-    sources: (type?: 'chat' | 'search') =>
-      [...queryKeys.knowledgeBase.all, 'sources', type] as const,
-  },
 
   // --------------------------------------------------------------------------
   // Histories (Admin)

@@ -17,7 +17,6 @@ import { useAuth, User } from '@/features/auth'
 import { useSettings } from '@/app/contexts/SettingsContext'
 import { config } from '@/config'
 import { LogOut, ChevronLeft, ChevronRight, Settings } from 'lucide-react'
-import logo from '@/assets/logo.png'
 import logoDark from '@/assets/logo-dark.png'
 
 import { SIDEBAR_NAV, isNavGroup } from './sidebarNav'
@@ -68,22 +67,20 @@ export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   const { user } = useAuth()
-  const { resolvedTheme, openSettings } = useSettings()
-
-  const logoSrc = resolvedTheme === 'dark' ? logoDark : logo
+  const { openSettings } = useSettings()
 
   return (
-    <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-sidebar-bg dark:bg-slate-950 text-sidebar-text flex flex-col transition-all duration-300`}>
+    <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-sidebar-bg dark:bg-slate-900 text-white flex flex-col transition-all duration-300 border-r border-white/10 dark:border-slate-700`}>
       {/* Logo / Collapse toggle */}
-      <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} h-16 px-4 border-b border-white/10 ${resolvedTheme === 'dark' ? '' : 'bg-white'}`}>
+      <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} h-16 px-4 border-b border-white/10`}>
         {!isCollapsed && (
           <div className="flex items-center justify-start w-full transition-all duration-300">
-            <img src={logoSrc} alt="Knowledge Base" className="w-48 object-contain object-left" />
+            <img src={logoDark} alt="Knowledge Base" className="w-48 object-contain object-left" />
           </div>
         )}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className={`p-2 rounded-lg transition-colors ml-2 flex-shrink-0 ${resolvedTheme === 'dark' ? 'hover:bg-white/10 text-slate-400 hover:text-white' : 'hover:bg-slate-100 text-slate-600 hover:text-slate-900'}`}
+          className="p-2 rounded-xl transition-all duration-200 ml-2 flex-shrink-0 hover:bg-white/10 text-slate-400 hover:text-white"
           title={isCollapsed ? t('nav.expandMenu') : t('nav.collapseMenu')}
         >
           {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
@@ -132,27 +129,27 @@ export function Sidebar() {
       </nav>
 
       {/* User profile / Logout */}
-      <div className={`mt-auto pt-4 border-t border-white/10 space-y-3 pb-4 ${resolvedTheme === 'dark' ? '' : 'bg-white'}`}>
+      <div className="mt-auto pt-4 border-t border-white/10 space-y-2 pb-4 px-2">
         {user && (
-          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-4'}`} title={isCollapsed ? user.displayName : undefined}>
+          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2`} title={isCollapsed ? user.displayName : undefined}>
             <UserAvatar user={user} size={isCollapsed ? 'sm' : 'md'} />
             {!isCollapsed && (
               <div className="flex-1 min-w-0">
-                <div className={`text-sm font-medium truncate ${resolvedTheme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{user.displayName}</div>
-                <div className={`text-xs truncate ${resolvedTheme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>{user.email}</div>
+                <div className="text-sm font-medium truncate text-white">{user.displayName}</div>
+                <div className="text-xs truncate text-slate-400">{user.email}</div>
               </div>
             )}
           </div>
         )}
         <button
           onClick={() => openSettings()}
-          className={`sidebar-link w-full ${isCollapsed ? 'justify-center px-2' : ''} ${resolvedTheme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}
+          className={`sidebar-link w-full ${isCollapsed ? 'justify-center px-2' : ''} text-slate-400 hover:text-white`}
           title={t('settings.title')}
         >
           <Settings size={20} />
           {!isCollapsed && <span>{t('settings.title')}</span>}
         </button>
-        <Link to="/logout" className={`sidebar-link w-full ${isCollapsed ? 'justify-center px-2' : ''} ${resolvedTheme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`} title={t('nav.signOut')}>
+        <Link to="/logout" className={`sidebar-link w-full ${isCollapsed ? 'justify-center px-2' : ''} text-slate-400 hover:text-white`} title={t('nav.signOut')}>
           <LogOut size={20} />
           {!isCollapsed && <span>{t('nav.signOut')}</span>}
         </Link>

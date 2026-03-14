@@ -1,3 +1,12 @@
+/**
+ * @fileoverview Permissions selector component and modal.
+ *
+ * Reusable permission controls for configuring public/private access,
+ * team-based and user-based access control lists.
+ *
+ * @module components/PermissionsSelector
+ */
+
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Globe, Lock, Users, User, Trash2, Search } from 'lucide-react';
@@ -8,10 +17,40 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { AccessControl, KnowledgeBaseSource } from '../api/knowledgeBaseApi';
+
 import { teamApi, type Team } from '@/features/teams';
 import { userApi } from '@/features/users';
 import { User as UserType } from '@/features/auth';
+
+// ============================================================================
+// Local Types (previously imported from useKnowledgeBase)
+// ============================================================================
+
+/**
+ * Represents a knowledge base source for permission editing.
+ */
+export interface KnowledgeBaseSource {
+    /** Unique source ID */
+    id: string;
+    /** Display name of the source */
+    name: string;
+    /** URL of the source */
+    url?: string;
+    /** Access control settings */
+    access_control?: AccessControl;
+}
+
+/**
+ * Access control settings for a source.
+ */
+export interface AccessControl {
+    /** Whether the source is public to all authenticated users */
+    public: boolean;
+    /** List of team IDs allowed access */
+    team_ids: string[];
+    /** List of user IDs allowed access */
+    user_ids: string[];
+}
 
 export interface PermissionsSelectorProps {
   /** Whether the source is public */

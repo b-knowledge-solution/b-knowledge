@@ -94,7 +94,7 @@ export function SidebarGroup({
 
       {/* Collapsible child links */}
       {!isCollapsed && shouldExpand && (
-        <div className="pl-4 flex flex-col gap-1">
+        <div className="pl-3 ml-3 border-l border-white/20 flex flex-col gap-1">
           {visibleChildren.map((child) => (
             <SidebarNavLink
               key={child.path}

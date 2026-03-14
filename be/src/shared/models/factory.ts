@@ -8,7 +8,7 @@ import { UserTeamModel } from '@/modules/teams/models/user-team.model.js';
 import { ChatSessionModel } from '@/modules/chat/models/chat-session.model.js';
 import { ChatMessageModel } from '@/modules/chat/models/chat-message.model.js';
 import { SystemConfigModel } from '@/shared/models/system-config.model.js';
-import { KnowledgeBaseSourceModel } from '@/modules/knowledge-base/models/knowledge-base-source.model.js';
+
 import { AuditLogModel } from '@/modules/audit/models/audit-log.model.js';
 import { UserIpHistoryModel } from '@/modules/users/models/user-ip-history.model.js';
 import { BroadcastMessageModel } from '@/modules/broadcast/models/broadcast-message.model.js';
@@ -71,8 +71,7 @@ export class ModelFactory {
   private static chatMessageModel: ChatMessageModel;
   /** System config model singleton instance */
   private static systemConfigModel: SystemConfigModel;
-  /** Knowledge base source model singleton instance */
-  private static knowledgeBaseSourceModel: KnowledgeBaseSourceModel;
+
   /** Audit log model singleton instance */
   private static auditLogModel: AuditLogModel;
   /** User IP history model singleton instance */
@@ -216,16 +215,7 @@ export class ModelFactory {
     return this.systemConfigModel;
   }
 
-  /**
-   * Get the KnowledgeBaseSource model singleton.
-   * Manages knowledge base source metadata and ACLs.
-   * @returns KnowledgeBaseSourceModel instance for source CRUD operations
-   */
-  static get knowledgeBaseSource() {
-    // Create instance on first access (lazy initialization)
-    if (!this.knowledgeBaseSourceModel) this.knowledgeBaseSourceModel = new KnowledgeBaseSourceModel();
-    return this.knowledgeBaseSourceModel;
-  }
+
 
   /**
    * Get the AuditLog model singleton.

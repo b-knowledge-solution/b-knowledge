@@ -12,7 +12,7 @@ import { log } from '@/shared/services/logger.service.js';
 
 // Route imports
 import authRoutes from '@/modules/auth/auth.routes.js';
-import knowledgeBaseRoutes from '@/modules/knowledge-base/routes/knowledge-base.routes.js';
+
 import adminRoutes from '@/modules/admin/routes/admin.routes.js';
 import userRoutes from '@/modules/users/routes/users.routes.js';
 import teamRoutes from '@/modules/teams/routes/teams.routes.js';
@@ -105,9 +105,6 @@ function registerRoutes(apiRouter: Router): void {
 
     // Authentication routes
     apiRouter.use('/auth', authRoutes);
-
-    // Knowledge base management
-    apiRouter.use('/knowledge-base', knowledgeBaseRoutes);
 
     // Admin routes
     apiRouter.use('/admin', adminRoutes);
