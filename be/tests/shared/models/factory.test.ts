@@ -96,18 +96,18 @@ describe('ModelFactory', () => {
       expect(model.constructor.name).toBe('UserDismissedBroadcastModel');
     });
 
-    it('should instantiate external models', () => {
-      const ecs = ModelFactory.externalChatSession;
-      const ecm = ModelFactory.externalChatMessage;
-      const ess = ModelFactory.externalSearchSession;
-      const esr = ModelFactory.externalSearchRecord;
+    it('should instantiate history models', () => {
+      const ecs = ModelFactory.historyChatSession;
+      const ecm = ModelFactory.historyChatMessage;
+      const ess = ModelFactory.historySearchSession;
+      const esr = ModelFactory.historySearchRecord;
 
       expect(ecs).toBeDefined();
       expect(ecm).toBeDefined();
       expect(ess).toBeDefined();
       expect(esr).toBeDefined();
 
-      expect(ecs.constructor.name).toBe('ExternalChatSessionModel');
+      expect(ecs.constructor.name).toBe('HistoryChatSessionModel');
     });
 
     it('should instantiate glossary models', () => {
@@ -135,10 +135,10 @@ describe('ModelFactory', () => {
       expect(ModelFactory.userIpHistory).toBeDefined();
       expect(ModelFactory.broadcastMessage).toBeDefined();
       expect(ModelFactory.userDismissedBroadcast).toBeDefined();
-      expect(ModelFactory.externalChatSession).toBeDefined();
-      expect(ModelFactory.externalChatMessage).toBeDefined();
-      expect(ModelFactory.externalSearchSession).toBeDefined();
-      expect(ModelFactory.externalSearchRecord).toBeDefined();
+      expect(ModelFactory.historyChatSession).toBeDefined();
+      expect(ModelFactory.historyChatMessage).toBeDefined();
+      expect(ModelFactory.historySearchSession).toBeDefined();
+      expect(ModelFactory.historySearchRecord).toBeDefined();
       expect(ModelFactory.glossaryTask).toBeDefined();
       expect(ModelFactory.glossaryKeyword).toBeDefined();
     });

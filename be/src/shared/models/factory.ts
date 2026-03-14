@@ -13,10 +13,10 @@ import { AuditLogModel } from '@/modules/audit/models/audit-log.model.js';
 import { UserIpHistoryModel } from '@/modules/users/models/user-ip-history.model.js';
 import { BroadcastMessageModel } from '@/modules/broadcast/models/broadcast-message.model.js';
 import { UserDismissedBroadcastModel } from '@/modules/broadcast/models/user-dismissed-broadcast.model.js';
-import { ExternalChatSessionModel } from '@/shared/models/external-chat-session.model.js';
-import { ExternalChatMessageModel } from '@/shared/models/external-chat-message.model.js';
-import { ExternalSearchSessionModel } from '@/shared/models/external-search-session.model.js';
-import { ExternalSearchRecordModel } from '@/shared/models/external-search-record.model.js';
+import { HistoryChatSessionModel } from '@/shared/models/history-chat-session.model.js';
+import { HistoryChatMessageModel } from '@/shared/models/history-chat-message.model.js';
+import { HistorySearchSessionModel } from '@/shared/models/history-search-session.model.js';
+import { HistorySearchRecordModel } from '@/shared/models/history-search-record.model.js';
 
 import { GlossaryTaskModel } from '@/modules/glossary/models/glossary-task.model.js';
 import { GlossaryKeywordModel } from '@/modules/glossary/models/glossary-keyword.model.js';
@@ -81,11 +81,11 @@ export class ModelFactory {
   /** User dismissed broadcast model singleton instance */
   private static userDismissedBroadcastModel: UserDismissedBroadcastModel;
 
-  // External History Models
-  private static externalChatSessionModel: ExternalChatSessionModel;
-  private static externalChatMessageModel: ExternalChatMessageModel;
-  private static externalSearchSessionModel: ExternalSearchSessionModel;
-  private static externalSearchRecordModel: ExternalSearchRecordModel;
+  // History Models
+  private static historyChatSessionModel: HistoryChatSessionModel;
+  private static historyChatMessageModel: HistoryChatMessageModel;
+  private static historySearchSessionModel: HistorySearchSessionModel;
+  private static historySearchRecordModel: HistorySearchRecordModel;
 
 
 
@@ -262,35 +262,35 @@ export class ModelFactory {
   }
 
   /**
-   * Get the ExternalChatSession model singleton.
+   * Get the HistoryChatSession model singleton.
    */
-  static get externalChatSession() {
-    if (!this.externalChatSessionModel) this.externalChatSessionModel = new ExternalChatSessionModel();
-    return this.externalChatSessionModel;
+  static get historyChatSession() {
+    if (!this.historyChatSessionModel) this.historyChatSessionModel = new HistoryChatSessionModel();
+    return this.historyChatSessionModel;
   }
 
   /**
-   * Get the ExternalChatMessage model singleton.
+   * Get the HistoryChatMessage model singleton.
    */
-  static get externalChatMessage() {
-    if (!this.externalChatMessageModel) this.externalChatMessageModel = new ExternalChatMessageModel();
-    return this.externalChatMessageModel;
+  static get historyChatMessage() {
+    if (!this.historyChatMessageModel) this.historyChatMessageModel = new HistoryChatMessageModel();
+    return this.historyChatMessageModel;
   }
 
   /**
-   * Get the ExternalSearchSession model singleton.
+   * Get the HistorySearchSession model singleton.
    */
-  static get externalSearchSession() {
-    if (!this.externalSearchSessionModel) this.externalSearchSessionModel = new ExternalSearchSessionModel();
-    return this.externalSearchSessionModel;
+  static get historySearchSession() {
+    if (!this.historySearchSessionModel) this.historySearchSessionModel = new HistorySearchSessionModel();
+    return this.historySearchSessionModel;
   }
 
   /**
-   * Get the ExternalSearchRecord model singleton.
+   * Get the HistorySearchRecord model singleton.
    */
-  static get externalSearchRecord() {
-    if (!this.externalSearchRecordModel) this.externalSearchRecordModel = new ExternalSearchRecordModel();
-    return this.externalSearchRecordModel;
+  static get historySearchRecord() {
+    if (!this.historySearchRecordModel) this.historySearchRecordModel = new HistorySearchRecordModel();
+    return this.historySearchRecordModel;
   }
 
 

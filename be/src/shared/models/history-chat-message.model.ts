@@ -1,20 +1,20 @@
 /**
- * @fileoverview External Chat Message Model.
+ * @fileoverview History Chat Message Model.
  *
- * Represents individual chat messages within external chat sessions.
+ * Represents individual chat messages within history chat sessions.
  * Stores user prompts, LLM responses, and citation data.
  *
- * @module shared/models/external-chat-message
+ * @module shared/models/history-chat-message
  */
 import { BaseModel } from '@/shared/models/base.model.js'
 import { db } from '@/shared/db/knex.js'
 import { Knex } from 'knex'
 
 /**
- * External chat message record shape.
+ * History chat message record shape.
  * @description Defines the columns of the history_chat_messages table.
  */
-export interface ExternalChatMessage {
+export interface HistoryChatMessage {
     /** Primary key */
     id: string
     /** Session ID linking to parent session */
@@ -30,11 +30,11 @@ export interface ExternalChatMessage {
 }
 
 /**
- * ExternalChatMessageModel
+ * HistoryChatMessageModel
  * Provides CRUD operations for the history_chat_messages table.
- * @description Manages external chat message records with session-scoped queries.
+ * @description Manages history chat message records with session-scoped queries.
  */
-export class ExternalChatMessageModel extends BaseModel<ExternalChatMessage> {
+export class HistoryChatMessageModel extends BaseModel<HistoryChatMessage> {
     /** Database table name */
     protected tableName = 'history_chat_messages'
     /** Knex connection instance */

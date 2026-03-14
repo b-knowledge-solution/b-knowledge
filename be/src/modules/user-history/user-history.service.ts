@@ -35,7 +35,7 @@ export class UserHistoryService {
         // Calculate offset for pagination
         const offset = (page - 1) * limit;
 
-        return await ModelFactory.externalChatSession.findHistoryByUser(
+        return await ModelFactory.historyChatSession.findHistoryByUser(
             userEmail,
             limit,
             offset,
@@ -54,7 +54,7 @@ export class UserHistoryService {
      * @returns {Promise<any[]>} - Array of chat messages in the session.
      */
     async getChatSessionDetails(sessionId: string, userEmail: string) {
-        return await ModelFactory.externalChatMessage.findBySessionIdAndUserEmail(sessionId, userEmail);
+        return await ModelFactory.historyChatMessage.findBySessionIdAndUserEmail(sessionId, userEmail);
     }
 
     /**
@@ -79,7 +79,7 @@ export class UserHistoryService {
         // Calculate offset for pagination
         const offset = (page - 1) * limit;
 
-        return await ModelFactory.externalSearchSession.findHistoryByUser(
+        return await ModelFactory.historySearchSession.findHistoryByUser(
             userEmail,
             limit,
             offset,
@@ -98,7 +98,7 @@ export class UserHistoryService {
      * @returns {Promise<any[]>} - Array of search records in the session.
      */
     async getSearchSessionDetails(sessionId: string, userEmail: string) {
-        return await ModelFactory.externalSearchRecord.findBySessionIdAndUserEmail(sessionId, userEmail);
+        return await ModelFactory.historySearchRecord.findBySessionIdAndUserEmail(sessionId, userEmail);
     }
 }
 

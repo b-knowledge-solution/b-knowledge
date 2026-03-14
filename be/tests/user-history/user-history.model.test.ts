@@ -1,18 +1,18 @@
 /**
- * @fileoverview Unit tests for External Session and Message Models.
+ * @fileoverview Unit tests for History Session and Message Models.
  * Mocks Knex to verify SQL query structure for complex history searches.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { ExternalChatSessionModel } from '../../src/modules/external/models/chat-session.model.js'
-import { ExternalChatMessageModel } from '../../src/modules/external/models/chat-message.model.ts'
+import { HistoryChatSessionModel } from '../../src/shared/models/history-chat-session.model.js'
+import { HistoryChatMessageModel } from '../../src/shared/models/history-chat-message.model.js'
 import { db } from '../../src/shared/db/knex.js'
 
 vi.mock('../../src/shared/db/knex.js', () => ({
   db: vi.fn(),
 }))
 
-describe('External History Models', () => {
+describe('History Models', () => {
   let mockQuery: any
 
   beforeEach(() => {
@@ -52,38 +52,38 @@ describe('External History Models', () => {
     mk.raw = vi.fn((sql: any) => ({ sql }))
   })
 
-  describe('ExternalChatSessionModel', () => {
+  describe('HistoryChatSessionModel', () => {
     it('findHistoryByUser builds complex history query', async () => {
-      const model = new ExternalChatSessionModel()
+      const model = new HistoryChatSessionModel()
       await model.findHistoryByUser('u@test.com', 10, 0, 'test', '2023-01-01')
 
       expect(mockQuery.select).toHaveBeenCalled()
-      expect(mockQuery.from).toHaveBeenCalledWith('external_chat_sessions')
+      expect(mockQuery.from).toHaveBeenCalledWith('history_chat_sessions')
       expect(mockQuery.leftJoin).toHaveBeenCalledWith(
         'knowledge_base_sources', 
-        'external_chat_sessions.share_id', 
+        'history_chat_sessions.share_id', 
         'knowledge_base_sources.share_id'
       )
-      expect(mockQuery.where).toHaveBeenCalledWith('external_chat_sessions.user_email', 'u@test.com')
-      expect(mockQuery.where).toHaveBeenCalledWith('external_chat_sessions.updated_at', '>=', '2023-01-01')
+      expect(mockQuery.where).toHaveBeenCalledWith('history_chat_sessions.user_email', 'u@test.com')
+      expect(mockQuery.where).toHaveBeenCalledWith('history_chat_sessions.updated_at', '>=', '2023-01-01')
       expect(mockQuery.whereExists).toHaveBeenCalled()
       expect(mockQuery.limit).toHaveBeenCalledWith(10)
     })
   })
 
-  describe('ExternalChatMessageModel', () => {
+  describe('HistoryChatMessageModel', () => {
     it('findBySessionIdAndUserEmail joins with sessions to verify ownership', async () => {
-      const model = new ExternalChatMessageModel()
+      const model = new HistoryChatMessageModel()
       await model.findBySessionIdAndUserEmail('s1', 'u@test.com')
 
       expect(mockQuery.join).toHaveBeenCalledWith(
-        'external_chat_sessions',
-        'external_chat_messages.session_id',
-        'external_chat_sessions.session_id'
+        'history_chat_sessions',
+        'history_chat_messages.session_id',
+        'history_chat_sessions.session_id'
       )
-      expect(mockQuery.where).toHaveBeenCalledWith('external_chat_messages.session_id', 's1')
-      expect(mockQuery.andWhere).toHaveBeenCalledWith('external_chat_sessions.user_email', 'u@test.com')
-      expect(mockQuery.orderBy).toHaveBeenCalledWith('external_chat_messages.created_at', 'asc')
+      expect(mockQuery.where).toHaveBeenCalledWith('history_chat_messages.session_id', 's1')
+      expect(mockQuery.andWhere).toHaveBeenCalledWith('history_chat_sessions.user_email', 'u@test.com')
+      expect(mockQuery.orderBy).toHaveBeenCalledWith('history_chat_messages.created_at', 'asc')
     })
   })
 })

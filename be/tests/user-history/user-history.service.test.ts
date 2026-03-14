@@ -15,10 +15,10 @@ const { mockChatSession, mockChatMessage, mockSearchSession, mockSearchRecord } 
 
 vi.mock('@/shared/models/factory.js', () => ({
   ModelFactory: {
-    externalChatSession: mockChatSession,
-    externalChatMessage: mockChatMessage,
-    externalSearchSession: mockSearchSession,
-    externalSearchRecord: mockSearchRecord,
+    historyChatSession: mockChatSession,
+    historyChatMessage: mockChatMessage,
+    historySearchSession: mockSearchSession,
+    historySearchRecord: mockSearchRecord,
   },
 }))
 

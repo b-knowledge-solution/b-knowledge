@@ -26,7 +26,7 @@ export class AdminHistoryService {
         const offset = (page - 1) * limit;
 
         // Base query on sessions
-        let query = ModelFactory.externalChatSession.getKnex()
+        let query = ModelFactory.historyChatSession.getKnex()
             .select(
                 'history_chat_sessions.session_id',
                 'history_chat_sessions.updated_at as created_at',
@@ -103,7 +103,7 @@ export class AdminHistoryService {
      */
     async getChatSessionDetails(sessionId: string) {
         // Query to get all history entries for the session
-        return await ModelFactory.externalChatMessage.getKnex()
+        return await ModelFactory.historyChatMessage.getKnex()
             .from('history_chat_messages')
             .select('*')
             .where('session_id', sessionId)
@@ -134,7 +134,7 @@ export class AdminHistoryService {
         const offset = (page - 1) * limit;
 
         // Base query on sessions
-        let query = ModelFactory.externalSearchSession.getKnex()
+        let query = ModelFactory.historySearchSession.getKnex()
             .select(
                 'history_search_sessions.session_id',
                 'history_search_sessions.updated_at as created_at',
@@ -209,7 +209,7 @@ export class AdminHistoryService {
      */
     async getSearchSessionDetails(sessionId: string) {
         // Query to get all search entries for the session
-        return await ModelFactory.externalSearchRecord.getKnex()
+        return await ModelFactory.historySearchRecord.getKnex()
             .from('history_search_records')
             .select('*')
             .where('session_id', sessionId)

@@ -1,20 +1,20 @@
 /**
- * @fileoverview External Search Record Model.
+ * @fileoverview History Search Record Model.
  *
- * Represents individual search records within external search sessions.
+ * Represents individual search records within history search sessions.
  * Stores search inputs, AI summaries, and file results.
  *
- * @module shared/models/external-search-record
+ * @module shared/models/history-search-record
  */
 import { BaseModel } from '@/shared/models/base.model.js'
 import { db } from '@/shared/db/knex.js'
 import { Knex } from 'knex'
 
 /**
- * External search record shape.
+ * History search record shape.
  * @description Defines the columns of the history_search_records table.
  */
-export interface ExternalSearchRecord {
+export interface HistorySearchRecord {
     /** Primary key */
     id: string
     /** Session ID linking to parent session */
@@ -30,11 +30,11 @@ export interface ExternalSearchRecord {
 }
 
 /**
- * ExternalSearchRecordModel
+ * HistorySearchRecordModel
  * Provides CRUD operations for the history_search_records table.
- * @description Manages external search record entries with session-scoped queries.
+ * @description Manages history search record entries with session-scoped queries.
  */
-export class ExternalSearchRecordModel extends BaseModel<ExternalSearchRecord> {
+export class HistorySearchRecordModel extends BaseModel<HistorySearchRecord> {
     /** Database table name */
     protected tableName = 'history_search_records'
     /** Knex connection instance */

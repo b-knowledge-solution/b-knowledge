@@ -1,20 +1,20 @@
 /**
- * @fileoverview External Search Session Model.
+ * @fileoverview History Chat Session Model.
  *
- * Represents search sessions received from external clients.
- * Stores session metadata for grouping search records.
+ * Represents chat sessions received from external clients (browser extensions, etc.).
+ * Stores session metadata for grouping chat messages.
  *
- * @module shared/models/external-search-session
+ * @module shared/models/history-chat-session
  */
 import { BaseModel } from '@/shared/models/base.model.js'
 import { db } from '@/shared/db/knex.js'
 import { Knex } from 'knex'
 
 /**
- * External search session record shape.
- * @description Defines the columns of the history_search_sessions table.
+ * History chat session record shape.
+ * @description Defines the columns of the history_chat_sessions table.
  */
-export interface ExternalSearchSession {
+export interface HistoryChatSession {
     /** Primary key */
     id: string
     /** External session identifier */
@@ -30,26 +30,26 @@ export interface ExternalSearchSession {
 }
 
 /**
- * ExternalSearchSessionModel
- * Provides CRUD operations for the history_search_sessions table.
- * @description Manages external search session records with user history queries.
+ * HistoryChatSessionModel
+ * Provides CRUD operations for the history_chat_sessions table.
+ * @description Manages history chat session records with user history queries.
  */
-export class ExternalSearchSessionModel extends BaseModel<ExternalSearchSession> {
+export class HistoryChatSessionModel extends BaseModel<HistoryChatSession> {
     /** Database table name */
-    protected tableName = 'history_search_sessions'
+    protected tableName = 'history_chat_sessions'
     /** Knex connection instance */
     protected knex: Knex = db
 
     /**
-     * Find search history for a specific user with pagination and filters.
+     * Find chat history for a specific user with pagination and filters.
      * @param userEmail - The user's email address.
      * @param limit - Maximum number of results.
      * @param offset - Number of results to skip.
      * @param search - Optional full-text search query.
      * @param startDate - Optional start date filter (ISO format).
      * @param endDate - Optional end date filter (ISO format).
-     * @returns Promise<any[]> - Array of search session records with metadata.
-     * @description Queries sessions joined with knowledge base sources and record subqueries.
+     * @returns Promise<any[]> - Array of chat session records with metadata.
+     * @description Queries sessions joined with knowledge base sources and message subqueries.
      */
     async findHistoryByUser(
         userEmail: string,
@@ -59,29 +59,29 @@ export class ExternalSearchSessionModel extends BaseModel<ExternalSearchSession>
         startDate?: string,
         endDate?: string
     ) {
-        // Base query to select search sessions
+        // Base query to select chat sessions
         let query = this.knex
             .select(
-                'history_search_sessions.session_id',
-                'history_search_sessions.updated_at as created_at',
-                'history_search_sessions.user_email',
+                'history_chat_sessions.session_id',
+                'history_chat_sessions.updated_at as created_at',
+                'history_chat_sessions.user_email',
 
-                // Subquery for first search input
+                // Subquery for first prompt
                 this.knex.raw(`(
-                    SELECT search_input FROM history_search_records
-                    WHERE session_id = history_search_sessions.session_id
+                    SELECT user_prompt FROM history_chat_messages
+                    WHERE session_id = history_chat_sessions.session_id
                     ORDER BY created_at ASC LIMIT 1
-                ) as search_input`),
-                // Subquery for count
+                ) as user_prompt`),
+                // Subquery for message count
                 this.knex.raw(`(
-                    SELECT COUNT(*) FROM history_search_records
-                    WHERE session_id = history_search_sessions.session_id
+                    SELECT COUNT(*) FROM history_chat_messages
+                    WHERE session_id = history_chat_sessions.session_id
                 ) as message_count`)
             )
             .from(this.tableName)
 
-            .where('history_search_sessions.user_email', userEmail)
-            .orderBy('history_search_sessions.updated_at', 'desc')
+            .where('history_chat_sessions.user_email', userEmail)
+            .orderBy('history_chat_sessions.updated_at', 'desc')
             .limit(limit)
             .offset(offset)
 
@@ -92,8 +92,8 @@ export class ExternalSearchSessionModel extends BaseModel<ExternalSearchSession>
 
             query = query.where(builder => {
                 builder.whereExists(function () {
-                    const sub = this.select('id').from('history_search_records')
-                        .whereRaw('history_search_records.session_id = history_search_sessions.session_id')
+                    const sub = this.select('id').from('history_chat_messages')
+                        .whereRaw('history_chat_messages.session_id = history_chat_sessions.session_id')
 
                     if (terms.length > 0) {
                         const prefixQuery = terms.join(' & ') + ':*'
@@ -112,11 +112,11 @@ export class ExternalSearchSessionModel extends BaseModel<ExternalSearchSession>
 
         // Apply date range filters
         if (startDate) {
-            query = query.where('history_search_sessions.updated_at', '>=', startDate)
+            query = query.where('history_chat_sessions.updated_at', '>=', startDate)
         }
 
         if (endDate) {
-            query = query.where('history_search_sessions.updated_at', '<=', `${endDate} 23:59:59`)
+            query = query.where('history_chat_sessions.updated_at', '<=', `${endDate} 23:59:59`)
         }
 
         return await query

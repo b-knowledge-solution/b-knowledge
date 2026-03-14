@@ -65,14 +65,14 @@ export class TraceHistoryService {
           user_email: data.user_email || '',
         }
 
-        await ModelFactory.externalChatSession.getKnex()
+        await ModelFactory.historyChatSession.getKnex()
           .transacting(trx)
           .insert(sessionData)
           .onConflict('session_id')
           .merge(['updated_at', 'user_email'])
 
         // Create chat message record within transaction
-        await ModelFactory.externalChatMessage.create({
+        await ModelFactory.historyChatMessage.create({
           session_id: data.session_id,
           user_prompt: data.user_prompt,
           llm_response: data.llm_response,
@@ -106,14 +106,14 @@ export class TraceHistoryService {
           user_email: data.user_email || '',
         }
 
-        await ModelFactory.externalSearchSession.getKnex()
+        await ModelFactory.historySearchSession.getKnex()
           .transacting(trx)
           .insert(sessionData)
           .onConflict('session_id')
           .merge(['updated_at', 'user_email'])
 
         // Create search record within transaction
-        await ModelFactory.externalSearchRecord.create({
+        await ModelFactory.historySearchRecord.create({
           session_id: sessionData.session_id,
           search_input: data.search_input,
           ai_summary: data.ai_summary,

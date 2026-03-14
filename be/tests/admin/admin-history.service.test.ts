@@ -43,10 +43,10 @@ describe('AdminHistoryService', () => {
         // Base model `getKnex()` returns `this.knex(this.tableName)`.
 
         // We need to mock getKnex() method on the models instance.
-        vi.spyOn(ModelFactory.externalChatSession, 'getKnex').mockReturnValue(mockQuery);
-        vi.spyOn(ModelFactory.externalSearchSession, 'getKnex').mockReturnValue(mockQuery);
-        vi.spyOn(ModelFactory.externalChatMessage, 'getKnex').mockReturnValue(mockQuery); // For details
-        vi.spyOn(ModelFactory.externalSearchRecord, 'getKnex').mockReturnValue(mockQuery); // For details
+        vi.spyOn(ModelFactory.historyChatSession, 'getKnex').mockReturnValue(mockQuery);
+        vi.spyOn(ModelFactory.historySearchSession, 'getKnex').mockReturnValue(mockQuery);
+        vi.spyOn(ModelFactory.historyChatMessage, 'getKnex').mockReturnValue(mockQuery); // For details
+        vi.spyOn(ModelFactory.historySearchRecord, 'getKnex').mockReturnValue(mockQuery); // For details
         vi.spyOn(ModelFactory.chatSession, 'getKnex').mockReturnValue(mockQuery); // For system chat
     });
 
@@ -63,9 +63,9 @@ describe('AdminHistoryService', () => {
             await adminHistoryService.getChatHistory(page, limit, '', email, '', '');
 
             expect(mockQuery.select).toHaveBeenCalled();
-            expect(mockQuery.from).toHaveBeenCalledWith('external_chat_sessions');
-            expect(mockQuery.leftJoin).toHaveBeenCalledWith('knowledge_base_sources', 'external_chat_sessions.share_id', 'knowledge_base_sources.share_id');
-            expect(mockQuery.orderBy).toHaveBeenCalledWith('external_chat_sessions.updated_at', 'desc');
+            expect(mockQuery.from).toHaveBeenCalledWith('history_chat_sessions');
+            expect(mockQuery.leftJoin).toHaveBeenCalledWith('knowledge_base_sources', 'history_chat_sessions.share_id', 'knowledge_base_sources.share_id');
+            expect(mockQuery.orderBy).toHaveBeenCalledWith('history_chat_sessions.updated_at', 'desc');
             expect(mockQuery.limit).toHaveBeenCalledWith(limit);
         });
 
@@ -78,11 +78,11 @@ describe('AdminHistoryService', () => {
 
             // We can check startDate/endDate/sourceName are applied.
             // Note: The service implementation adds these simply to the chain.
-            // `query = query.where('external_chat_sessions.updated_at', '>=', startDate);`
+            // `query = query.where('history_chat_sessions.updated_at', '>=', startDate);`
 
             // Since mockQuery methods return `this`, we can check calls on `mockQuery`.
-            expect(mockQuery.where).toHaveBeenCalledWith('external_chat_sessions.updated_at', '>=', '2023-01-01');
-            expect(mockQuery.where).toHaveBeenCalledWith('external_chat_sessions.updated_at', '<=', '2023-01-31 23:59:59');
+            expect(mockQuery.where).toHaveBeenCalledWith('history_chat_sessions.updated_at', '>=', '2023-01-01');
+            expect(mockQuery.where).toHaveBeenCalledWith('history_chat_sessions.updated_at', '<=', '2023-01-31 23:59:59');
             expect(mockQuery.where).toHaveBeenCalledWith('knowledge_base_sources.name', 'ilike', '%source1%');
         });
     });
@@ -96,9 +96,9 @@ describe('AdminHistoryService', () => {
             await adminHistoryService.getSearchHistory(page, limit, '', email, '', '');
 
             expect(mockQuery.select).toHaveBeenCalled();
-            expect(mockQuery.from).toHaveBeenCalledWith('external_search_sessions');
-            expect(mockQuery.leftJoin).toHaveBeenCalledWith('knowledge_base_sources', 'external_search_sessions.share_id', 'knowledge_base_sources.share_id');
-            expect(mockQuery.orderBy).toHaveBeenCalledWith('external_search_sessions.updated_at', 'desc');
+            expect(mockQuery.from).toHaveBeenCalledWith('history_search_sessions');
+            expect(mockQuery.leftJoin).toHaveBeenCalledWith('knowledge_base_sources', 'history_search_sessions.share_id', 'knowledge_base_sources.share_id');
+            expect(mockQuery.orderBy).toHaveBeenCalledWith('history_search_sessions.updated_at', 'desc');
         });
 
         it('should apply search and orWhereExists when search provided', async () => {

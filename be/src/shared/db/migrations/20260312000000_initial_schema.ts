@@ -55,21 +55,6 @@ export async function up(knex: Knex): Promise<void> {
     table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
   })
 
-  // Knowledge base sources - external knowledge base connection metadata
-  await knex.schema.createTable('knowledge_base_sources', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
-    table.text('type').notNullable()
-    table.text('name').notNullable()
-    table.text('url').notNullable()
-    table.text('description')
-    table.text('share_id')
-    table.text('chat_widget_url')
-    table.jsonb('access_control').defaultTo('{"public": true}')
-    table.text('created_by')
-    table.text('updated_by')
-    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
-    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
-  })
 
   // ──────────────────────────────────────────────
   // 2. User-Teams junction (depends on users, teams)
@@ -440,7 +425,7 @@ export async function up(knex: Knex): Promise<void> {
     table.text('updated_by').references('id').inTable('users').onDelete('SET NULL')
     table.timestamps(true, true)
 
-    table.unique(['factory_name', 'model_name'])
+    table.unique(['factory_name', 'model_type', 'model_name'])
   })
 
   // ──────────────────────────────────────────────
@@ -744,6 +729,49 @@ export async function up(knex: Knex): Promise<void> {
     table.index(['grantee_type', 'grantee_id'])
   })
 
+  // 12.9 Project datasets - datasets linked to projects
+  await knex.schema.createTable('project_datasets', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    // Reference to the parent project
+    table.text('project_id').notNullable()
+    // Reference to the dataset
+    table.uuid('dataset_id').notNullable()
+    // Role within the project: 'primary' | 'secondary'
+    table.text('role').notNullable().defaultTo('primary')
+    table.text('created_by')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+
+    table.foreign('project_id').references('projects.id').onDelete('CASCADE')
+    table.foreign('dataset_id').references('datasets.id').onDelete('CASCADE')
+    // Each dataset can only be linked once per project
+    table.unique(['project_id', 'dataset_id'])
+    table.index('project_id')
+    table.index('dataset_id')
+  })
+
+  // 12.10 Project sync configs - per-project RAGFlow sync settings
+  await knex.schema.createTable('project_sync_configs', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    // Reference to the parent project
+    table.text('project_id').notNullable()
+    // Sync schedule (cron expression or keyword)
+    table.text('schedule')
+    // Whether automatic sync is enabled
+    table.boolean('auto_sync_enabled').defaultTo(false)
+    // Last successful sync timestamp
+    table.timestamp('last_synced_at', { useTz: true })
+    // Additional sync settings (JSON)
+    table.jsonb('settings').defaultTo('{}')
+    table.text('created_by')
+    table.text('updated_by')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+
+    table.foreign('project_id').references('projects.id').onDelete('CASCADE')
+    // One sync config per project
+    table.unique(['project_id'])
+  })
+
   // ──────────────────────────────────────────────
   // Section 13 – Encrypt existing plaintext API keys
   // ──────────────────────────────────────────────
@@ -824,6 +852,8 @@ export async function down(knex: Knex): Promise<void> {
   }
 
   // Project tables (reverse dependency order)
+  await knex.schema.dropTableIfExists('project_sync_configs')
+  await knex.schema.dropTableIfExists('project_datasets')
   await knex.schema.dropTableIfExists('project_entity_permissions')
   await knex.schema.dropTableIfExists('project_searches')
   await knex.schema.dropTableIfExists('project_chats')
@@ -879,7 +909,6 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists('user_teams')
 
   // Core tables
-  await knex.schema.dropTableIfExists('knowledge_base_sources')
   await knex.schema.dropTableIfExists('system_configs')
   await knex.schema.dropTableIfExists('teams')
   await knex.schema.dropTableIfExists('users')
