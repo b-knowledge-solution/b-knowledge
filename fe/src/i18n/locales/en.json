@@ -2086,7 +2086,14 @@
       "running": "Running...",
       "run": "Run Test",
       "resultsCount": "{{count}} results found",
-      "noResults": "No results found"
+      "noResults": "No results found",
+      "similarityThreshold": "Similarity Threshold",
+      "semantic": "Semantic",
+      "keyword": "Keyword",
+      "overallScore": "Overall",
+      "vectorScore": "Vector",
+      "termScore": "Term",
+      "tokens": "tokens"
     },
     "accessUsers": "Access Users",
     "accessTeams": "Access Teams",

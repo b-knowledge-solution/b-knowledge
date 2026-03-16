@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -47,6 +48,8 @@ const RetrievalTestPanel: React.FC<RetrievalTestPanelProps> = ({ datasetId }) =>
   const [query, setQuery] = useState('');
   const [method, setMethod] = useState('hybrid');
   const [topK, setTopK] = useState(5);
+  const [similarityThreshold, setSimilarityThreshold] = useState(0.2);
+  const [vectorWeight, setVectorWeight] = useState(0.3);
 
   const { results, testing, runTest } = useRetrievalTest(datasetId);
 
@@ -56,7 +59,13 @@ const RetrievalTestPanel: React.FC<RetrievalTestPanelProps> = ({ datasetId }) =>
   const handleTest = () => {
     // Guard against empty query submission
     if (!query.trim()) return;
-    runTest({ query, method, top_k: topK });
+    runTest({
+      query,
+      method,
+      top_k: topK,
+      similarity_threshold: similarityThreshold,
+      vector_similarity_weight: vectorWeight,
+    });
   };
 
   return (
@@ -104,6 +113,37 @@ const RetrievalTestPanel: React.FC<RetrievalTestPanelProps> = ({ datasetId }) =>
           />
         </div>
       </div>
+
+      {/* Similarity threshold slider */}
+      <div className="space-y-1">
+        <Label className="text-xs">
+          {t('retrievalTest.similarityThreshold', 'Similarity Threshold')}: {similarityThreshold.toFixed(2)}
+        </Label>
+        <Slider
+          value={[similarityThreshold]}
+          onValueChange={(values: number[]) => setSimilarityThreshold(values[0] ?? 0.2)}
+          min={0}
+          max={1}
+          step={0.01}
+        />
+      </div>
+
+      {/* Vector/keyword weight balance — only shown for hybrid search */}
+      {method === 'hybrid' && (
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs">
+            <span>{t('retrievalTest.semantic', 'Semantic')} {Math.round(vectorWeight * 100)}%</span>
+            <span>{t('retrievalTest.keyword', 'Keyword')} {Math.round((1 - vectorWeight) * 100)}%</span>
+          </div>
+          <Slider
+            value={[vectorWeight]}
+            onValueChange={(values: number[]) => setVectorWeight(values[0] ?? 0.3)}
+            min={0}
+            max={1}
+            step={0.01}
+          />
+        </div>
+      )}
 
       {/* Results */}
       <div className="space-y-3 pt-2">
