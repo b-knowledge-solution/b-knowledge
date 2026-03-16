@@ -107,6 +107,12 @@ export class RagSearchService {
                 },
                 size: topK,
                 _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
+                // Highlight matching terms in content for retrieval test display
+                highlight: {
+                    fields: {
+                        content_with_weight: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
+                    },
+                },
             },
         })
 
@@ -160,6 +166,12 @@ export class RagSearchService {
                 },
                 size: topK,
                 _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
+                // Highlight matching terms in content for retrieval test display
+                highlight: {
+                    fields: {
+                        content_with_weight: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
+                    },
+                },
             },
         })
 
@@ -254,6 +266,11 @@ export class RagSearchService {
         // Build extra OpenSearch filters from metadata_filter conditions
         const extraFilters = this.buildMetadataFilters(req.metadata_filter)
 
+        // Filter by specific document IDs when provided
+        if (req.doc_ids?.length) {
+            extraFilters.push({ terms: { doc_id: req.doc_ids } })
+        }
+
         let result: { chunks: ChunkResult[]; total: number }
 
         // Route to the appropriate search method
@@ -274,6 +291,9 @@ export class RagSearchService {
                 result = await this.hybridSearch(datasetId, req.query, queryVector ?? null, topK, threshold, vectorWeight, extraFilters)
                 break
         }
+
+        // Apply similarity threshold filter to remove low-scoring results
+        result.chunks = result.chunks.filter((chunk) => (chunk.score ?? 0) >= (req.similarity_threshold ?? 0.2))
 
         return result
     }

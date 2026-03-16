@@ -860,7 +860,9 @@ export class RagController {
                 query: req.body.query,
                 method: req.body.method || 'hybrid',
                 top_k: req.body.top_k || 5,
-                similarity_threshold: req.body.similarity_threshold || 0.2,
+                similarity_threshold: req.body.similarity_threshold ?? 0.2,
+                vector_similarity_weight: req.body.vector_similarity_weight ?? 0.3,
+                doc_ids: req.body.doc_ids,
             });
             res.json(result);
         } catch (error) {

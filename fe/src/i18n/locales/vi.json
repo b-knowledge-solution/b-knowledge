@@ -2088,7 +2088,14 @@
       "running": "Running...",
       "run": "Run Test",
       "resultsCount": "{{count}} results found",
-      "noResults": "No results found"
+      "noResults": "No results found",
+      "similarityThreshold": "Ngưỡng tương đồng",
+      "semantic": "Ngữ nghĩa",
+      "keyword": "Từ khóa",
+      "overallScore": "Tổng thể",
+      "vectorScore": "Vector",
+      "termScore": "Từ khóa",
+      "tokens": "token"
     },
     "deleteApp": "Delete Search App",
     "confirmDelete": "Are you sure you want to delete this search app?",

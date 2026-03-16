@@ -1363,6 +1363,8 @@ export interface SearchRequest {
     similarity_threshold?: number;
     /** Optional vector similarity weight for hybrid search (0-1) */
     vector_similarity_weight?: number;
+    /** Optional document ID filter to restrict search to specific documents */
+    doc_ids?: string[];
     /** Optional metadata filter for OpenSearch bool query conditions */
     metadata_filter?: {
         logic: 'and' | 'or';

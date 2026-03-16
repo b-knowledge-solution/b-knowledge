@@ -318,12 +318,12 @@ export const datasetApi = {
   /**
    * @description Run a retrieval test query against a dataset's indexed chunks.
    * @param {string} datasetId - Dataset UUID
-   * @param {{ query: string; method?: string; top_k?: number; similarity_threshold?: number }} params - Test parameters
+   * @param {object} params - Test parameters including query, method, top_k, thresholds, and doc filters
    * @returns {Promise<RetrievalTestResult>} Matching chunks with scores
    */
   runRetrievalTest: async (
     datasetId: string,
-    params: { query: string; method?: string; top_k?: number; similarity_threshold?: number },
+    params: { query: string; method?: string; top_k?: number; similarity_threshold?: number; vector_similarity_weight?: number; doc_ids?: string[] },
   ): Promise<RetrievalTestResult> => {
     return api.post<RetrievalTestResult>(`${BASE_URL}/datasets/${datasetId}/retrieval-test`, params);
   },

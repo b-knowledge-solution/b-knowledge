@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import DOMPurify from 'dompurify';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { RetrievalChunk } from '../types';
@@ -38,7 +39,7 @@ const ChunkResultCard: React.FC<ChunkResultCardProps> = ({ chunk, index }) => {
   return (
     <Card className="dark:bg-slate-800 dark:border-slate-700">
       <CardContent className="p-4">
-        {/* Header with rank and score */}
+        {/* Header with rank and document name */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Badge variant="secondary">#{index}</Badge>
@@ -46,22 +47,44 @@ const ChunkResultCard: React.FC<ChunkResultCardProps> = ({ chunk, index }) => {
               <span className="text-xs text-muted-foreground">{chunk.doc_name}</span>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-              {t('datasetSettings.retrieval.score')}: {(chunk.score * 100).toFixed(1)}%
-            </Badge>
-            {chunk.token_count != null && (
-              <span className="text-xs text-muted-foreground">
-                {chunk.token_count} tokens
-              </span>
-            )}
-          </div>
         </div>
 
-        {/* Chunk text */}
-        <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap line-clamp-6">
-          {chunk.text}
-        </p>
+        {/* Score breakdown with overall, vector, and term scores */}
+        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
+          <div className="flex items-center gap-1">
+            <span>{t('retrievalTest.overallScore', 'Overall')}:</span>
+            <Badge variant="default" className="text-xs">{(chunk.score * 100).toFixed(1)}%</Badge>
+          </div>
+          {chunk.vector_similarity !== undefined && (
+            <div className="flex items-center gap-1">
+              <span>{t('retrievalTest.vectorScore', 'Vector')}:</span>
+              <Badge variant="secondary" className="text-xs">{(chunk.vector_similarity * 100).toFixed(1)}%</Badge>
+            </div>
+          )}
+          {chunk.term_similarity !== undefined && (
+            <div className="flex items-center gap-1">
+              <span>{t('retrievalTest.termScore', 'Term')}:</span>
+              <Badge variant="outline" className="text-xs">{(chunk.term_similarity * 100).toFixed(1)}%</Badge>
+            </div>
+          )}
+          {chunk.token_count !== undefined && (
+            <span>{chunk.token_count} {t('retrievalTest.tokens', 'tokens')}</span>
+          )}
+        </div>
+
+        {/* Highlighted text — sanitized with DOMPurify (only <mark> tags allowed) to prevent XSS */}
+        {chunk.highlight ? (
+          <p
+            className="text-sm text-slate-700 dark:text-slate-300 mt-2 line-clamp-6"
+            dangerouslySetInnerHTML={{
+              __html: DOMPurify.sanitize(chunk.highlight, { ALLOWED_TAGS: ['mark'] }),
+            }}
+          />
+        ) : (
+          <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap mt-2 line-clamp-6">
+            {chunk.text}
+          </p>
+        )}
       </CardContent>
     </Card>
   );
