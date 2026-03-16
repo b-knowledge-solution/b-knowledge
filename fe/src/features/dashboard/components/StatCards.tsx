@@ -72,6 +72,7 @@ export function StatCards({ stats }: StatCardsProps) {
                 // Read the value from stats, falling back to 0 while loading
                 const rawValue = stats?.[card.key] ?? 0
                 // Format avg with one decimal, integers for the rest
+                // Format average with one decimal place; format integers with locale separators
                 const displayValue =
                     card.key === 'avgMessagesPerSession'
                         ? rawValue.toFixed(1)

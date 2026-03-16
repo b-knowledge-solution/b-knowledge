@@ -20,10 +20,10 @@ export class NotionAdapter implements ConnectorAdapter {
   private readonly apiVersion = '2022-06-28'
 
   /**
-   * Fetch pages from a Notion workspace.
-   * @param config - Must contain: { api_key: string, filter?: object }
-   * @param since - Optional timestamp for incremental sync
-   * @yields FetchedDocument for each page found
+   * @description Fetch pages from a Notion workspace via the search API, converting each to markdown
+   * @param {Record<string, unknown>} config - Must contain: { api_key: string, filter?: object }
+   * @param {Date} [since] - Optional timestamp for incremental sync (skips older pages)
+   * @yields {FetchedDocument} For each page found in the workspace
    */
   async *fetch(config: Record<string, unknown>, since?: Date): AsyncGenerator<FetchedDocument> {
     const apiKey = config.api_key as string
@@ -83,10 +83,10 @@ export class NotionAdapter implements ConnectorAdapter {
   }
 
   /**
-   * Convert a Notion page to markdown by fetching all blocks.
-   * @param apiKey - Notion API key
-   * @param pageId - Notion page ID
-   * @returns Markdown string representation of the page
+   * @description Convert a Notion page to markdown by fetching and processing all blocks
+   * @param {string} apiKey - Notion API key
+   * @param {string} pageId - Notion page ID
+   * @returns {Promise<string>} Markdown string representation of the page
    */
   private async pageToMarkdown(apiKey: string, pageId: string): Promise<string> {
     const blocks = await this.fetchAllBlocks(apiKey, pageId)
@@ -94,10 +94,10 @@ export class NotionAdapter implements ConnectorAdapter {
   }
 
   /**
-   * Recursively fetch all blocks for a page.
-   * @param apiKey - Notion API key
-   * @param blockId - Parent block/page ID
-   * @returns Array of block objects
+   * @description Recursively fetch all blocks for a page, including nested children
+   * @param {string} apiKey - Notion API key
+   * @param {string} blockId - Parent block/page ID
+   * @returns {Promise<any[]>} Array of block objects with optional _children
    */
   private async fetchAllBlocks(apiKey: string, blockId: string): Promise<any[]> {
     const blocks: any[] = []
@@ -123,10 +123,10 @@ export class NotionAdapter implements ConnectorAdapter {
   }
 
   /**
-   * Convert Notion blocks to markdown text.
-   * @param blocks - Array of Notion block objects
-   * @param indent - Current indentation level
-   * @returns Markdown string
+   * @description Convert Notion blocks to markdown text with heading, list, code, and table support
+   * @param {any[]} blocks - Array of Notion block objects
+   * @param {number} [indent=0] - Current indentation level for nested blocks
+   * @returns {string} Markdown string
    */
   private blocksToMarkdown(blocks: any[], indent = 0): string {
     const lines: string[] = []
@@ -201,9 +201,9 @@ export class NotionAdapter implements ConnectorAdapter {
   }
 
   /**
-   * Convert Notion rich text array to plain text.
-   * @param richText - Array of rich text objects
-   * @returns Plain text string
+   * @description Convert Notion rich text array to plain text by extracting plain_text fields
+   * @param {any[]} richText - Array of Notion rich text objects
+   * @returns {string} Plain text string
    */
   private richTextToPlain(richText: any[]): string {
     if (!Array.isArray(richText)) return ''
@@ -211,9 +211,9 @@ export class NotionAdapter implements ConnectorAdapter {
   }
 
   /**
-   * Extract page title from Notion page properties.
-   * @param page - Notion page object
-   * @returns Title string or empty string
+   * @description Extract page title from Notion page properties by finding the title-type property
+   * @param {any} page - Notion page object
+   * @returns {string} Title string or empty string if no title found
    */
   private extractPageTitle(page: any): string {
     const props = page.properties || {}
@@ -226,12 +226,13 @@ export class NotionAdapter implements ConnectorAdapter {
   }
 
   /**
-   * Make a request to the Notion API.
-   * @param method - HTTP method
-   * @param path - API path (e.g., '/search')
-   * @param apiKey - Notion integration token
-   * @param body - Optional request body
-   * @returns Parsed JSON response
+   * @description Make an authenticated HTTP request to the Notion API
+   * @param {string} method - HTTP method (GET, POST, etc.)
+   * @param {string} path - API path (e.g., '/search')
+   * @param {string} apiKey - Notion integration token
+   * @param {unknown} [body] - Optional request body for POST/PUT
+   * @returns {Promise<any>} Parsed JSON response
+   * @throws {Error} If the API returns a non-OK status
    */
   private async request(method: string, path: string, apiKey: string, body?: unknown): Promise<any> {
     const res = await fetch(`${this.baseUrl}${path}`, {
@@ -251,9 +252,9 @@ export class NotionAdapter implements ConnectorAdapter {
   }
 
   /**
-   * Sanitize a string for use as a filename.
-   * @param name - Raw string
-   * @returns Safe filename string
+   * @description Sanitize a string for use as a safe filesystem filename
+   * @param {string} name - Raw string to sanitize
+   * @returns {string} Safe filename string (max 200 chars)
    */
   private sanitizeFilename(name: string): string {
     return name.replace(/[/\\?%*:|"<>]/g, '_').slice(0, 200)

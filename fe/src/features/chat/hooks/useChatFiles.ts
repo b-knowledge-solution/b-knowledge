@@ -82,8 +82,7 @@ export function useChatFiles(conversationId: string | null): UseChatFilesReturn 
   const blobUrlsRef = useRef<string[]>([])
 
   /**
-   * Upload files to the backend.
-   * Validates type and size locally before sending.
+   * @description Upload files to the backend after local type and size validation.
    * @param fileList - FileList from file input or drop event
    */
   const uploadFiles = async (fileList: FileList) => {
@@ -148,7 +147,7 @@ export function useChatFiles(conversationId: string | null): UseChatFilesReturn 
   }
 
   /**
-   * Remove a file by ID and revoke its blob URL.
+   * @description Remove a file by ID and revoke its blob URL to prevent memory leaks.
    * @param fileId - The file ID to remove
    */
   const removeFile = (fileId: string) => {
@@ -162,7 +161,7 @@ export function useChatFiles(conversationId: string | null): UseChatFilesReturn 
   }
 
   /**
-   * Clear all files and revoke all blob URLs.
+   * @description Clear all files and revoke all blob URLs to prevent memory leaks.
    */
   const clearFiles = () => {
     // Revoke all blob URLs to prevent memory leaks

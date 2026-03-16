@@ -26,6 +26,9 @@ import type { WidgetAuthMode } from '@/lib/widgetAuth'
 // Types
 // ============================================================================
 
+/**
+ * @description Configuration props for the ChatWidget root component.
+ */
 interface ChatWidgetProps {
   /** Authentication mode */
   mode: WidgetAuthMode
@@ -45,7 +48,9 @@ interface ChatWidgetProps {
 // SSE Stream Parser
 // ============================================================================
 
-/** Pipeline status during retrieval/generation */
+/**
+ * @description Pipeline status during retrieval/generation phases of the RAG pipeline.
+ */
 type PipelineStatus =
   | 'refining_question'
   | 'retrieving'
@@ -53,7 +58,11 @@ type PipelineStatus =
   | 'reranking'
   | 'generating'
 
-/** Map pipeline status to human-readable label */
+/**
+ * @description Map pipeline status enum to a human-readable label for display.
+ * @param status - Current pipeline status or null
+ * @returns Human-readable status string or null if no status
+ */
 function getStatusLabel(status: PipelineStatus | null): string | null {
   switch (status) {
     case 'refining_question': return 'Refining question...'
@@ -70,11 +79,11 @@ function getStatusLabel(status: PipelineStatus | null): string | null {
 // ============================================================================
 
 /**
- * Chat widget root component. Renders the floating button and chat window.
+ * @description Chat widget root component. Renders the floating button and chat window.
  * Manages session lifecycle, message state, and SSE streaming.
  *
- * @param props - Widget configuration props
- * @returns JSX element
+ * @param {ChatWidgetProps} props - Widget configuration props
+ * @returns {JSX.Element} The rendered chat widget with FAB button and overlay window
  */
 export default function ChatWidget({
   mode,
@@ -136,7 +145,8 @@ export default function ChatWidget({
   }, [isOpen])
 
   /**
-   * Send a user message and begin streaming the assistant response.
+   * @description Send a user message and begin streaming the assistant response.
+   * Creates a session on first message, then streams SSE tokens.
    * @param content - The user message text
    */
   const handleSendMessage = async (content: string) => {

@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils';
 import { Inbox } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+/** @description Configuration props for the EmptyState component */
 interface EmptyStateProps {
   className?: string;
   icon?: React.ReactNode;
@@ -11,8 +12,9 @@ interface EmptyStateProps {
 }
 
 /**
- * Empty state placeholder.
- * Replaces Ant Design's Empty component.
+ * @description Centered empty state placeholder with icon, title, description, and optional actions
+ * @param {EmptyStateProps} props - Empty state configuration
+ * @returns {JSX.Element} Rendered empty state placeholder
  */
 export function EmptyState({ className, icon, title, description, children }: EmptyStateProps) {
   const { t } = useTranslation();

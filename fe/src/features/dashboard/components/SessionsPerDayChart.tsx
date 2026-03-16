@@ -52,6 +52,7 @@ const cssVar = (name: string, defaultValue: string): string => {
  * @description Styled tooltip with rounded corners and shadow matching dashboard theme.
  */
 const CustomTooltip = ({ active, payload, label }: any) => {
+    // Only render tooltip when hovering over a data point with valid payload
     if (!active || !payload?.length) return null
 
     return (

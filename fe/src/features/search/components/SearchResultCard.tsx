@@ -17,6 +17,7 @@ import { SearchHighlight } from './SearchHighlight'
 // Props
 // ============================================================================
 
+/** @description Props for the SearchResultCard component */
 interface SearchResultCardProps {
   /** The search result data */
   result: SearchResult
@@ -33,11 +34,12 @@ interface SearchResultCardProps {
 // ============================================================================
 
 /**
- * Get the appropriate file type icon.
- * @param fileType - File extension or type
- * @returns Icon component
+ * @description Returns the appropriate file type icon based on file extension.
+ * @param {string} fileType - File extension or type
+ * @returns {JSX.Element} Icon component matching the file type
  */
 function getFileIcon(fileType?: string) {
+  // Map file extensions to color-coded icons for visual identification
   switch (fileType?.toLowerCase()) {
     case 'pdf':
       return <FileText className="h-5 w-5 text-red-500" />

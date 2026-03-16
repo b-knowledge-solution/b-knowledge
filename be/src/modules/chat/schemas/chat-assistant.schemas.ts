@@ -70,7 +70,8 @@ const promptConfigSchema = z.object({
 }).passthrough()
 
 /**
- * Schema for creating a new assistant.
+ * @description Schema for creating a new assistant.
+ * Validates required fields like name and knowledge base IDs.
  */
 export const createAssistantSchema = z.object({
   /** Display name for the assistant */
@@ -90,7 +91,8 @@ export const createAssistantSchema = z.object({
 })
 
 /**
- * Schema for updating an existing assistant.
+ * @description Schema for updating an existing assistant.
+ * All fields are optional since partial updates are supported.
  */
 export const updateAssistantSchema = z.object({
   /** Display name for the assistant */
@@ -110,7 +112,7 @@ export const updateAssistantSchema = z.object({
 })
 
 /**
- * Schema for setting assistant access control entries.
+ * @description Schema for setting assistant access control entries.
  * Validates the array of user/team access grants.
  */
 export const assistantAccessSchema = z.object({
@@ -126,7 +128,8 @@ export const assistantAccessSchema = z.object({
 })
 
 /**
- * Schema for listing assistants with pagination and search.
+ * @description Schema for listing assistants with pagination and search.
+ * Query parameters are coerced from strings to their target types.
  */
 export const listAssistantsQuerySchema = z.object({
   /** Page number (1-based) */
@@ -142,7 +145,7 @@ export const listAssistantsQuerySchema = z.object({
 })
 
 /**
- * Schema for assistant UUID path param.
+ * @description Schema for assistant UUID path param.
  */
 export const assistantIdParamSchema = z.object({
   id: z.string().uuid('Invalid assistant ID'),

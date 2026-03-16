@@ -38,7 +38,9 @@ import type { config } from '@/config'
 // Types
 // ============================================================================
 
-/** A single sidebar link (leaf item). */
+/**
+ * @description A single sidebar navigation link (leaf item) with route, label, icon, and optional access guards
+ */
 export interface SidebarNavItem {
   /** Route path used for navigation and active-state matching */
   path: string
@@ -54,7 +56,9 @@ export interface SidebarNavItem {
   featureFlag?: keyof typeof config.features
 }
 
-/** An expandable group containing child links. */
+/**
+ * @description An expandable sidebar group containing child navigation links with optional role-based access control
+ */
 export interface SidebarNavGroup {
   /** i18n key for the group header label */
   labelKey: string
@@ -66,7 +70,9 @@ export interface SidebarNavGroup {
   children: SidebarNavItem[]
 }
 
-/** A nav entry is either a standalone link or an expandable group. */
+/**
+ * @description Union type representing either a standalone navigation link or an expandable group with children
+ */
 export type SidebarNavEntry = SidebarNavItem | SidebarNavGroup
 
 // ============================================================================
@@ -74,10 +80,9 @@ export type SidebarNavEntry = SidebarNavItem | SidebarNavGroup
 // ============================================================================
 
 /**
- * Determines whether an entry is an expandable group.
- *
- * @param entry - The navigation entry to check
- * @returns `true` when the entry has `children` (is a group)
+ * @description Type guard that determines whether a navigation entry is an expandable group by checking for the children property
+ * @param {SidebarNavEntry} entry - The navigation entry to check
+ * @returns {boolean} True when the entry has children (is a group)
  */
 export function isNavGroup(entry: SidebarNavEntry): entry is SidebarNavGroup {
   return 'children' in entry

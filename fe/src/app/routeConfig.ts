@@ -12,6 +12,9 @@
 // Types
 // ============================================================================
 
+/**
+ * @description Metadata associated with a route, controlling header display, help buttons, and layout behavior
+ */
 export interface RouteMetadata {
   /** i18n key for the page title shown in the header */
   titleKey: string;
@@ -127,10 +130,9 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
 // ============================================================================
 
 /**
- * Resolve route metadata for the given pathname.
- *
- * Handles exact matches first, then falls back to prefix matching
- * for dynamic routes (e.g. `/datasets/some-id` → `/datasets`).
+ * @description Resolves route metadata for a given pathname, supporting exact and prefix matching for dynamic routes
+ * @param {string} pathname - The current URL pathname to look up
+ * @returns {RouteMetadata} Route metadata for the matched route, or a default fallback
  */
 export function getRouteMetadata(pathname: string): RouteMetadata {
   // Exact match

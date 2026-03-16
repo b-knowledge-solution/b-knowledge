@@ -16,10 +16,10 @@ import { getClientIp } from '@/shared/utils/ip.js'
  */
 export class SyncController {
   /**
-   * List all connectors.
-   * @description Optionally filter by knowledge base ID via query parameter.
-   * @param req - Express request (query: { kb_id? })
-   * @param res - Express response
+   * @description List all connectors, optionally filtered by knowledge base ID via query parameter
+   * @param {Request} req - Express request (query: { kb_id? })
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
    */
   async listConnectors(req: Request, res: Response): Promise<void> {
     try {
@@ -34,13 +34,15 @@ export class SyncController {
   }
 
   /**
-   * Get a single connector by ID.
-   * @param req - Express request (params: { id })
-   * @param res - Express response
+   * @description Get a single connector by its UUID
+   * @param {Request} req - Express request (params: { id })
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
    */
   async getConnector(req: Request, res: Response): Promise<void> {
     try {
       const connector = await syncService.getConnector(req.params.id!)
+      // Guard: return 404 if connector does not exist
       if (!connector) {
         res.status(404).json({ error: 'Connector not found' })
         return
@@ -53,10 +55,10 @@ export class SyncController {
   }
 
   /**
-   * Create a new connector.
-   * @description Body is validated by Zod middleware before reaching this handler.
-   * @param req - Express request (body: CreateConnectorSchema)
-   * @param res - Express response
+   * @description Create a new connector. Body is validated by Zod middleware before reaching this handler.
+   * @param {Request} req - Express request (body: CreateConnectorSchema)
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
    */
   async createConnector(req: Request, res: Response): Promise<void> {
     try {
@@ -75,13 +77,14 @@ export class SyncController {
   }
 
   /**
-   * Update an existing connector.
-   * @description Body is validated by Zod middleware before reaching this handler.
-   * @param req - Express request (params: { id }, body: UpdateConnectorSchema)
-   * @param res - Express response
+   * @description Update an existing connector. Body is validated by Zod middleware.
+   * @param {Request} req - Express request (params: { id }, body: UpdateConnectorSchema)
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
    */
   async updateConnector(req: Request, res: Response): Promise<void> {
     const { id } = req.params
+    // Guard: ensure connector ID is provided
     if (!id) {
       res.status(400).json({ error: 'ID is required' })
       return
@@ -93,6 +96,7 @@ export class SyncController {
         : undefined
 
       const connector = await syncService.updateConnector(id, req.body, user)
+      // Guard: return 404 if connector not found
       if (!connector) {
         res.status(404).json({ error: 'Connector not found' })
         return
@@ -105,12 +109,14 @@ export class SyncController {
   }
 
   /**
-   * Delete a connector.
-   * @param req - Express request (params: { id })
-   * @param res - Express response
+   * @description Delete a connector by its UUID
+   * @param {Request} req - Express request (params: { id })
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
    */
   async deleteConnector(req: Request, res: Response): Promise<void> {
     const { id } = req.params
+    // Guard: ensure connector ID is provided
     if (!id) {
       res.status(400).json({ error: 'ID is required' })
       return
@@ -126,13 +132,14 @@ export class SyncController {
   }
 
   /**
-   * Trigger a manual sync for a connector.
-   * @description Creates a sync task and enqueues it for background processing.
-   * @param req - Express request (params: { id }, body: TriggerSyncSchema)
-   * @param res - Express response
+   * @description Trigger a manual sync for a connector, creating a task and enqueuing it for background processing
+   * @param {Request} req - Express request (params: { id }, body: TriggerSyncSchema)
+   * @param {Response} res - Express response (202 Accepted on success)
+   * @returns {Promise<void>}
    */
   async triggerSync(req: Request, res: Response): Promise<void> {
     const { id } = req.params
+    // Guard: ensure connector ID is provided
     if (!id) {
       res.status(400).json({ error: 'Connector ID is required' })
       return
@@ -149,13 +156,14 @@ export class SyncController {
   }
 
   /**
-   * List sync logs for a connector.
-   * @description Supports pagination and status filtering via query params.
-   * @param req - Express request (params: { id }, query: ListSyncLogsQuery)
-   * @param res - Express response
+   * @description List sync logs for a connector with pagination and optional status filtering
+   * @param {Request} req - Express request (params: { id }, query: ListSyncLogsQuery)
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
    */
   async listSyncLogs(req: Request, res: Response): Promise<void> {
     const { id } = req.params
+    // Guard: ensure connector ID is provided
     if (!id) {
       res.status(400).json({ error: 'Connector ID is required' })
       return

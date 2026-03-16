@@ -7,9 +7,9 @@ import { db } from '@/shared/db/knex.js'
 import { ChatAssistant } from '@/shared/models/types.js'
 
 /**
- * ChatAssistantModel
- * Represents the 'chat_assistants' table.
- * Manages assistant configurations for chat features.
+ * @description ChatAssistantModel — represents the 'chat_assistants' table.
+ * Manages assistant configurations for chat features including knowledge base
+ * associations, LLM settings, and prompt configuration.
  */
 export class ChatAssistantModel extends BaseModel<ChatAssistant> {
   /** Table name in the database */

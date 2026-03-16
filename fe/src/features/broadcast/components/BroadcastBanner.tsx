@@ -82,9 +82,10 @@ const BroadcastBanner: React.FC<BroadcastBannerProps> = ({ className = '', inlin
         }
     };
 
-    // Filter out messages that have been dismissed locally
+    // Filter out messages that have been dismissed locally via localStorage
     const visibleMessages = messages.filter(m => !dismissedMessages[m.id]);
 
+    // Early return when no messages need to be displayed
     if (visibleMessages.length === 0) return null;
 
     return (
@@ -102,6 +103,7 @@ const BroadcastBanner: React.FC<BroadcastBannerProps> = ({ className = '', inlin
                         <span className="text-center break-all whitespace-normal leading-relaxed">
                             {msg.message}
                         </span>
+                        {/* Only show dismiss button when the message allows user dismissal */}
                         {msg.is_dismissible && (
                             <button
                                 onClick={() => handleDismiss(msg.id)}

@@ -4,11 +4,20 @@ import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 
+/** @description Root dialog state container wrapping Radix Dialog */
 const Dialog = DialogPrimitive.Root;
+/** @description Element that triggers the dialog open state */
 const DialogTrigger = DialogPrimitive.Trigger;
+/** @description Portal for rendering dialog outside the DOM tree */
 const DialogPortal = DialogPrimitive.Portal;
+/** @description Button that closes the dialog */
 const DialogClose = DialogPrimitive.Close;
 
+/**
+ * @description Semi-transparent backdrop overlay behind the dialog
+ * @param {React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>} props - Overlay props
+ * @returns {JSX.Element} Rendered overlay with fade animation
+ */
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
@@ -24,6 +33,11 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
+/**
+ * @description Centered dialog panel with close button, overlay, and enter/exit animations
+ * @param {React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>} props - Content props including children
+ * @returns {JSX.Element} Rendered dialog content with close button
+ */
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
@@ -52,16 +66,31 @@ const DialogContent = React.forwardRef<
 });
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
+/**
+ * @description Dialog header layout with centered text on mobile, left-aligned on desktop
+ * @param {React.HTMLAttributes<HTMLDivElement>} props - Standard div attributes
+ * @returns {JSX.Element} Rendered dialog header
+ */
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div className={cn('flex flex-col space-y-1.5 text-center sm:text-left', className)} {...props} />
 );
 DialogHeader.displayName = 'DialogHeader';
 
+/**
+ * @description Dialog footer layout with responsive flex direction for action buttons
+ * @param {React.HTMLAttributes<HTMLDivElement>} props - Standard div attributes
+ * @returns {JSX.Element} Rendered dialog footer
+ */
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div className={cn('flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2', className)} {...props} />
 );
 DialogFooter.displayName = 'DialogFooter';
 
+/**
+ * @description Dialog title text with semibold styling
+ * @param {React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>} props - Title props
+ * @returns {JSX.Element} Rendered dialog title
+ */
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
@@ -70,6 +99,11 @@ const DialogTitle = React.forwardRef<
 ));
 DialogTitle.displayName = DialogPrimitive.Title.displayName;
 
+/**
+ * @description Dialog description text with muted foreground color
+ * @param {React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>} props - Description props
+ * @returns {JSX.Element} Rendered dialog description
+ */
 const DialogDescription = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>

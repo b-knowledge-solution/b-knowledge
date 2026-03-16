@@ -21,8 +21,10 @@ interface UserMultiSelectProps {
 }
 
 /**
- * UserMultiSelect Component
- * Allows selecting multiple users from a list with search filtering.
+ * @description Multi-select combobox for choosing multiple users with search filtering.
+ * Uses Headless UI Combobox for accessible, searchable selection.
+ * @param {UserMultiSelectProps} props - Available users, selection state, and change handler.
+ * @returns {JSX.Element} Rendered multi-select component.
  */
 export default function UserMultiSelect({ users, selectedUserIds, onChange, placeholder }: UserMultiSelectProps) {
     const { t } = useTranslation();

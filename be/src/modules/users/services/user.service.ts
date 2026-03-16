@@ -1,5 +1,8 @@
-
-// Manages user lifecycle, role/permission updates, and IP history tracking.
+/**
+ * @fileoverview Manages user lifecycle, role/permission updates, and IP history tracking.
+ * Handles Azure AD user synchronization, admin operations, and audit logging.
+ * @module services/user
+ */
 import { ModelFactory } from '@/shared/models/factory.js';
 import { config } from '@/shared/config/index.js';
 import { log } from '@/shared/services/logger.service.js';
@@ -8,9 +11,7 @@ import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/se
 import { User, UserIpHistory } from '@/shared/models/types.js';
 
 /**
- * UserService
- * Manages user lifecycle, role/permission updates, and IP history tracking.
- * Handles Azure AD user synchronization, admin operations, and audit logging.
+ * @description Manages user lifecycle including creation, role/permission updates, Azure AD sync, IP tracking, and audit logging
  */
 export class UserService {
     /**
@@ -167,9 +168,9 @@ export class UserService {
     }
 
     /**
-     * Get all users, optionally filtered by role.
-     * @param roles - Optional array of roles to filter by.
-     * @returns Promise<User[]> - Array of User records sorted by creation date (newest first).
+     * @description Retrieve all users, optionally filtered by role, sorted by creation date descending
+     * @param {string[]} [roles] - Optional array of roles to filter by
+     * @returns {Promise<User[]>} Array of User records sorted by creation date (newest first)
      */
     async getAllUsers(roles?: string[]): Promise<User[]> {
         // Initialize empty filter object
@@ -291,9 +292,9 @@ export class UserService {
     }
 
     /**
-     * Get a single user by their ID.
-     * @param userId - User ID to look up.
-     * @returns Promise<User | undefined> - User record.
+     * @description Look up a single user by their unique ID
+     * @param {string} userId - User ID to look up
+     * @returns {Promise<User | undefined>} User record if found, undefined otherwise
      */
     async getUserById(userId: string): Promise<User | undefined> {
         return ModelFactory.user.findById(userId);
@@ -446,9 +447,9 @@ export class UserService {
     }
 
     /**
-     * Get IP address history for a specific user.
-     * @param userId - User ID to get history for.
-     * @returns Promise<UserIpHistory[]> - Array of history records sorted by most recent.
+     * @description Retrieve IP address access history for a specific user, sorted by most recent first
+     * @param {string} userId - User ID to get history for
+     * @returns {Promise<UserIpHistory[]>} Array of IP history records sorted by last_accessed_at descending
      */
     async getUserIpHistory(userId: string): Promise<UserIpHistory[]> {
         // Fetch all IP records for the specified user
@@ -461,8 +462,8 @@ export class UserService {
     }
 
     /**
-     * Get IP address history for all users.
-     * @returns Promise<Map<string, UserIpHistory[]>> - Map keyed by user ID.
+     * @description Retrieve IP address history for all users, grouped by user ID in a Map
+     * @returns {Promise<Map<string, UserIpHistory[]>>} Map keyed by user ID with arrays of IP history records
      */
     async getAllUsersIpHistory(): Promise<Map<string, UserIpHistory[]>> {
         // Fetch all IP history records from database
@@ -496,4 +497,5 @@ export class UserService {
     }
 }
 
+/** Singleton instance of UserService */
 export const userService = new UserService();

@@ -44,6 +44,7 @@ export function useSaveBroadcastMessage() {
   return useMutation({
     mutationKey: ['save', 'broadcastMessage'],
     mutationFn: (msg: Partial<BroadcastMessage>) => {
+      // Determine create vs update based on presence of an existing ID
       if (msg.id) {
         return broadcastMessageService.updateMessage(msg.id, msg)
       }

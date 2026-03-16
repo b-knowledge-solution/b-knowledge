@@ -46,7 +46,7 @@ import { v4 as uuidv4 } from 'uuid'
 // Types
 // ---------------------------------------------------------------------------
 
-/** Assistant prompt configuration from chat_assistants.prompt_config */
+/** @description Assistant prompt configuration from chat_assistants.prompt_config JSON column */
 interface PromptConfig {
   /** System prompt template */
   system?: string
@@ -90,7 +90,7 @@ interface PromptConfig {
   vector_similarity_weight?: number
 }
 
-/** Timing metrics for the RAG pipeline */
+/** @description Timing metrics collected during the RAG pipeline execution */
 interface PipelineMetrics {
   startTime: number
   refinementMs?: number
@@ -105,13 +105,13 @@ interface PipelineMetrics {
 // ---------------------------------------------------------------------------
 
 /**
- * Refine multi-turn conversation into a single coherent question.
+ * @description Refine multi-turn conversation into a single coherent question.
  * Uses the LLM to synthesize conversation history + latest question.
- * @param history - Previous conversation messages
- * @param currentQuestion - The latest user question
- * @param providerId - LLM provider ID to use
- * @param parent - Optional Langfuse parent for tracing
- * @returns Refined question incorporating conversation context
+ * @param {Array<{ role: string; content: string }>} history - Previous conversation messages
+ * @param {string} currentQuestion - The latest user question
+ * @param {string} [providerId] - LLM provider ID to use
+ * @param {import('@/shared/services/langfuse.service.js').LangfuseParent} [parent] - Optional Langfuse parent for tracing
+ * @returns {Promise<string>} Refined question incorporating conversation context
  */
 async function refineMultiturnQuestion(
   history: Array<{ role: string; content: string }>,
@@ -157,12 +157,12 @@ async function refineMultiturnQuestion(
 }
 
 /**
- * Expand query with cross-language translations for multilingual retrieval.
- * @param query - Original query text
- * @param targetLanguages - Comma-separated language list (e.g. "English,Japanese,Vietnamese")
- * @param providerId - LLM provider ID
- * @param parent - Optional Langfuse parent for tracing
- * @returns Expanded query with translations appended
+ * @description Expand query with cross-language translations for multilingual retrieval.
+ * @param {string} query - Original query text
+ * @param {string} targetLanguages - Comma-separated language list (e.g. "English,Japanese,Vietnamese")
+ * @param {string} [providerId] - LLM provider ID
+ * @param {import('@/shared/services/langfuse.service.js').LangfuseParent} [parent] - Optional Langfuse parent for tracing
+ * @returns {Promise<string>} Expanded query with translations appended
  */
 async function expandCrossLanguage(
   query: string,
@@ -198,11 +198,11 @@ async function expandCrossLanguage(
 }
 
 /**
- * Extract keywords from query for enhanced keyword-based retrieval.
- * @param query - User query text
- * @param providerId - LLM provider ID
- * @param parent - Optional Langfuse parent for tracing
- * @returns Array of extracted keywords
+ * @description Extract keywords from query for enhanced keyword-based retrieval.
+ * @param {string} query - User query text
+ * @param {string} [providerId] - LLM provider ID
+ * @param {import('@/shared/services/langfuse.service.js').LangfuseParent} [parent] - Optional Langfuse parent for tracing
+ * @returns {Promise<string[]>} Array of extracted keywords
  */
 async function extractKeywords(
   query: string,
@@ -233,13 +233,13 @@ async function extractKeywords(
 // Web search is now imported from @/shared/services/web-search.service.js
 
 /**
- * Rerank retrieved chunks using the LLM for better relevance ordering.
+ * @description Rerank retrieved chunks using the LLM for better relevance ordering.
  * Uses a cross-encoder style prompt to score each chunk.
- * @param query - Original user query
- * @param chunks - Retrieved chunks to rerank
- * @param topN - Number of top results to keep
- * @param providerId - LLM provider ID
- * @returns Reranked and filtered chunks
+ * @param {string} query - Original user query
+ * @param {ChunkResult[]} chunks - Retrieved chunks to rerank
+ * @param {number} topN - Number of top results to keep
+ * @param {string} [providerId] - LLM provider ID
+ * @returns {Promise<ChunkResult[]>} Reranked and filtered chunks
  */
 async function rerankChunks(
   query: string,
@@ -297,12 +297,12 @@ async function rerankChunks(
 }
 
 /**
- * Build the system prompt with retrieved knowledge and citation instructions.
+ * @description Build the system prompt with retrieved knowledge and citation instructions.
  * Follows RAGFlow's kb_prompt + citation_prompt pattern.
- * @param systemPrompt - Base system prompt from dialog config
- * @param chunks - Retrieved and reranked chunks
- * @param enableCitations - Whether to include citation instructions
- * @returns Assembled system message with context and citation guidance
+ * @param {string} systemPrompt - Base system prompt from dialog config
+ * @param {ChunkResult[]} chunks - Retrieved and reranked chunks
+ * @param {boolean} enableCitations - Whether to include citation instructions
+ * @returns {string} Assembled system message with context and citation guidance
  */
 function buildContextPrompt(
   systemPrompt: string,
@@ -331,11 +331,11 @@ function buildContextPrompt(
 }
 
 /**
- * Insert citation markers into the answer by matching content to chunks.
+ * @description Insert citation markers into the answer by matching content to chunks.
  * Post-processes the LLM answer to add or fix citations.
- * @param answer - Raw LLM answer text
- * @param chunks - Retrieved chunks used for context
- * @returns Answer with citation markers normalized
+ * @param {string} answer - Raw LLM answer text
+ * @param {ChunkResult[]} chunks - Retrieved chunks used for context
+ * @returns {{ answer: string; citedChunkIndices: Set<number> }} Answer with citation markers normalized and set of cited chunk indices
  */
 function processCitations(answer: string, chunks: ChunkResult[]): {
   answer: string
@@ -372,11 +372,11 @@ function processCitations(answer: string, chunks: ChunkResult[]): {
 }
 
 /**
- * Format chunks into the reference structure expected by the frontend.
+ * @description Format chunks into the reference structure expected by the frontend.
  * Only includes chunks that were actually cited in the answer.
- * @param chunks - All retrieved chunks
- * @param citedIndices - Set of chunk indices that were cited
- * @returns Reference object with chunks and doc_aggs
+ * @param {ChunkResult[]} chunks - All retrieved chunks
+ * @param {Set<number>} [citedIndices] - Set of chunk indices that were cited
+ * @returns {{ chunks: object[]; doc_aggs: object[] }} Reference object with chunks and doc_aggs
  */
 function buildReference(chunks: ChunkResult[], citedIndices?: Set<number>) {
   // Use all chunks if no citation tracking, otherwise filter to cited ones
@@ -416,16 +416,19 @@ function buildReference(chunks: ChunkResult[], citedIndices?: Set<number>) {
 // ---------------------------------------------------------------------------
 
 /**
- * Service class for chat conversation operations.
- * Full RAG pipeline: retrieval → refinement → LLM generation → citation.
+ * @description Service class for chat conversation operations.
+ * Implements the full RAG pipeline: retrieval, refinement, LLM generation, and citation.
+ * Manages conversation CRUD, message persistence, and SSE streaming.
  */
 export class ChatConversationService {
   /**
-   * Create a new conversation session.
-   * @param dialogId - The dialog (chat assistant) ID
-   * @param name - Display name for the conversation
-   * @param userId - ID of the user creating the conversation
-   * @returns The created session
+   * @description Create a new conversation session.
+   * Verifies assistant exists and optionally inserts a prologue message.
+   * @param {string} dialogId - The dialog (chat assistant) ID
+   * @param {string} name - Display name for the conversation
+   * @param {string} userId - ID of the user creating the conversation
+   * @returns {Promise<object>} The created session
+   * @throws {Error} If the assistant does not exist
    */
   async createConversation(
     dialogId: string,
@@ -464,14 +467,17 @@ export class ChatConversationService {
   }
 
   /**
-   * Get a conversation with its messages.
-   * @param conversationId - UUID of the conversation
-   * @param userId - ID of the requesting user (for access check)
-   * @returns Session with messages array
+   * @description Get a conversation with its messages.
+   * Returns null if the conversation does not exist or belongs to another user.
+   * @param {string} conversationId - UUID of the conversation
+   * @param {string} userId - ID of the requesting user (for access check)
+   * @returns {Promise<object | null>} Session with messages array, or null if not found/unauthorized
    */
   async getConversation(conversationId: string, userId: string) {
     const session = await ModelFactory.chatSession.findById(conversationId)
     if (!session) return null
+
+    // Verify ownership — only the conversation owner can access it
     if (session.user_id !== userId) return null
 
     // Fetch messages ordered by timestamp
@@ -483,13 +489,16 @@ export class ChatConversationService {
   }
 
   /**
-   * Rename a conversation.
-   * @param conversationId - The conversation ID
-   * @param name - The new name
-   * @param userId - Requesting user ID
+   * @description Rename a conversation.
+   * Returns null if the conversation does not exist or belongs to another user.
+   * @param {string} conversationId - The conversation ID
+   * @param {string} name - The new name
+   * @param {string} userId - Requesting user ID
+   * @returns {Promise<object | null>} Updated session or null if not found/unauthorized
    */
   async renameConversation(conversationId: string, name: string, userId: string) {
     const session = await ModelFactory.chatSession.findById(conversationId)
+    // Verify existence and ownership
     if (!session || session.user_id !== userId) return null
 
     await ModelFactory.chatSession.update(conversationId, { title: name, updated_by: userId } as any)
@@ -497,10 +506,10 @@ export class ChatConversationService {
   }
 
   /**
-   * List conversations for a dialog belonging to a user.
-   * @param dialogId - The dialog ID to filter by
-   * @param userId - The user ID to filter by
-   * @returns Array of conversation sessions
+   * @description List conversations for a dialog belonging to a user.
+   * @param {string} dialogId - The dialog ID to filter by
+   * @param {string} userId - The user ID to filter by
+   * @returns {Promise<object[]>} Array of conversation sessions ordered by creation date descending
    */
   async listConversations(dialogId: string, userId: string) {
     return ModelFactory.chatSession.getKnex()
@@ -509,10 +518,12 @@ export class ChatConversationService {
   }
 
   /**
-   * Bulk delete conversations owned by a user.
-   * @param conversationIds - Array of conversation IDs to delete
-   * @param userId - ID of the user performing deletion
-   * @returns Number of deleted sessions
+   * @description Bulk delete conversations owned by a user.
+   * Only deletes conversations belonging to the requesting user.
+   * Also removes all associated messages.
+   * @param {string[]} conversationIds - Array of conversation IDs to delete
+   * @param {string} userId - ID of the user performing deletion
+   * @returns {Promise<number>} Number of deleted sessions
    */
   async deleteConversations(
     conversationIds: string[],
@@ -541,11 +552,12 @@ export class ChatConversationService {
   }
 
   /**
-   * Delete a specific message from a conversation.
-   * @param conversationId - The conversation ID
-   * @param messageId - The message ID to delete
-   * @param userId - The user requesting deletion
-   * @returns True if deleted
+   * @description Delete a specific message from a conversation.
+   * Verifies conversation ownership before allowing deletion.
+   * @param {string} conversationId - The conversation ID
+   * @param {string} messageId - The message ID to delete
+   * @param {string} userId - The user requesting deletion
+   * @returns {Promise<boolean>} True if the message was deleted
    */
   async deleteMessage(
     conversationId: string,
@@ -553,8 +565,10 @@ export class ChatConversationService {
     userId: string
   ): Promise<boolean> {
     const session = await ModelFactory.chatSession.findById(conversationId)
+    // Verify existence and ownership before deletion
     if (!session || session.user_id !== userId) return false
 
+    // Delete the specific message by ID and session scope
     const deleted = await ModelFactory.chatMessage.getKnex()
       .where({ id: messageId, session_id: conversationId })
       .delete()
@@ -563,19 +577,24 @@ export class ChatConversationService {
   }
 
   /**
-   * Save feedback on a message.
-   * @param messageId - The message ID
-   * @param thumbup - True for positive, false for negative
-   * @param feedback - Optional text feedback
+   * @description Save feedback on a message.
+   * Stores thumbs up/down and optional text feedback in the message's citations JSON.
+   * @param {string} messageId - The message ID
+   * @param {boolean} thumbup - True for positive, false for negative
+   * @param {string} [feedback] - Optional text feedback
+   * @returns {Promise<void>}
+   * @throws {Error} If the message does not exist
    */
   async sendFeedback(
     messageId: string,
     thumbup: boolean,
     feedback?: string
   ): Promise<void> {
+    // Fetch the message to merge feedback into existing citations JSON
     const message = await ModelFactory.chatMessage.findById(messageId)
     if (!message) throw new Error('Message not found')
 
+    // Merge new feedback with existing citations data (preserving reference info)
     const existing = (typeof message.citations === 'object' && message.citations) || {}
     const updated = {
       ...(existing as Record<string, unknown>),
@@ -602,11 +621,13 @@ export class ChatConversationService {
    * 11. Post-processing: citation insertion
    * 12. Persist assistant message
    *
-   * @param conversationId - The conversation ID
-   * @param content - The user's message text
-   * @param dialogId - Dialog configuration ID
-   * @param userId - ID of the requesting user
-   * @param res - Express response object for SSE streaming
+   * @param {string} conversationId - The conversation ID
+   * @param {string} content - The user's message text
+   * @param {string | undefined} dialogId - Dialog configuration ID
+   * @param {string} userId - ID of the requesting user
+   * @param {ExpressResponse} res - Express response object for SSE streaming
+   * @param {Record<string, any>} [overrides] - Optional per-request parameter overrides
+   * @returns {Promise<void>}
    */
   async streamChat(
     conversationId: string,

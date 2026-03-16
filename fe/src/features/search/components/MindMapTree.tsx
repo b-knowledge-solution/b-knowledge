@@ -12,6 +12,7 @@ import type { MindMapNode } from '../types/search.types'
 // Props
 // ============================================================================
 
+/** @description Props for a single tree node in the mind map */
 interface MindMapTreeNodeProps {
   /** The node data to render */
   node: MindMapNode
@@ -21,6 +22,7 @@ interface MindMapTreeNodeProps {
   defaultExpanded?: boolean
 }
 
+/** @description Props for the MindMapTree root component */
 interface MindMapTreeProps {
   /** Root node of the mind map */
   data: MindMapNode

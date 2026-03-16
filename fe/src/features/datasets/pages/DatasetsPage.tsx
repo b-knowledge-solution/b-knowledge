@@ -12,9 +12,17 @@ import CreateDatasetModal from '../components/CreateDatasetModal';
 import DatasetAccessDialog from '../components/DatasetAccessDialog';
 import type { Dataset } from '../types';
 
+/**
+ * @description Datasets listing page with search, grid/list view toggle,
+ * dataset creation modal, and access control dialog.
+ * Admin users can create, edit, delete datasets and manage access.
+ *
+ * @returns {JSX.Element} Rendered datasets page
+ */
 const DatasetsPage: React.FC = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  // Grant admin privileges to admin and leader roles
   const isAdmin = user?.role === 'admin' || user?.role === 'leader';
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   // State for access control dialog

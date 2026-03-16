@@ -73,6 +73,7 @@ function AdminDashboardPage() {
             </div>
 
             <div className="relative">
+                {/* Overlay spinner while data is loading to indicate pending state */}
                 {loading && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50">
                         <Spinner size={32} />

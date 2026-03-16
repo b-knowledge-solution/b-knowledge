@@ -48,6 +48,7 @@ export class HistorySearchRecordModel extends BaseModel<HistorySearchRecord> {
      * @description Joins with sessions table to verify ownership before returning records.
      */
     async findBySessionIdAndUserEmail(sessionId: string, userEmail: string) {
+        // Join with sessions table to verify ownership before returning records
         return await this.knex
             .select('history_search_records.*')
             .from(this.tableName)

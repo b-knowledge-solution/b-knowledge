@@ -9,6 +9,9 @@
 // Types
 // ============================================================================
 
+/**
+ * @description Shape of a search result chunk for the widget results display.
+ */
 interface ChunkData {
   /** Chunk unique identifier */
   chunk_id: string
@@ -22,6 +25,9 @@ interface ChunkData {
   score: number
 }
 
+/**
+ * @description Props for the SearchWidgetResults component.
+ */
 interface SearchWidgetResultsProps {
   /** AI-generated answer (accumulated from SSE deltas) */
   answer: string
@@ -42,8 +48,9 @@ interface SearchWidgetResultsProps {
 // ============================================================================
 
 /**
- * Render a single source chunk card.
- * @param props - Chunk data and index
+ * @description Renders a single source chunk card with document name, score, and text preview.
+ * @param {{ chunk: ChunkData; index: number }} props - Chunk data and display index
+ * @returns {JSX.Element} The rendered chunk card
  */
 function ChunkCard({ chunk, index }: { chunk: ChunkData; index: number }) {
   return (
@@ -112,9 +119,10 @@ function ChunkCard({ chunk, index }: { chunk: ChunkData; index: number }) {
 // ============================================================================
 
 /**
- * Results overlay showing AI summary, source chunks, and related questions.
- * @param props - Component props
- * @returns Results overlay element
+ * @description Results overlay showing AI-generated summary, source chunks, and related questions.
+ * Only renders when there is content to display (answer, chunks, or active streaming).
+ * @param {SearchWidgetResultsProps} props - Component props
+ * @returns {JSX.Element | null} The rendered results overlay or null if no content
  */
 export function SearchWidgetResults({
   answer,
@@ -124,7 +132,7 @@ export function SearchWidgetResults({
   pipelineStatus,
   onFollowUp,
 }: SearchWidgetResultsProps) {
-  // Don't render if no content yet
+  // Guard: don't render the overlay if there is no content and no active stream
   if (!answer && chunks.length === 0 && !isStreaming) {
     return null
   }

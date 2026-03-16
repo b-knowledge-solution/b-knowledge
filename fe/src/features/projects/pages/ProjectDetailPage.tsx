@@ -47,9 +47,10 @@ import SyncTab from '../components/SyncTab'
 // ============================================================================
 
 /**
- * Project detail page with tabs for Documents, Chat, and Settings.
- *
- * Loaded via /projects/:projectId route.
+ * @description Project detail page with tabs for Documents, Chat, Search, Settings, and Sync (datasync only).
+ * Pre-fetches category versions needed by Chat and Search tabs for dataset resolution.
+ * Loaded via /data-studio/projects/:projectId route.
+ * @returns {JSX.Element} Rendered project detail page
  */
 const ProjectDetailPage = () => {
   const { t } = useTranslation()

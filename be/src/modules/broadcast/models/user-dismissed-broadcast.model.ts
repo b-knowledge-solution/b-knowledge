@@ -9,9 +9,7 @@ import { db } from '@/shared/db/knex.js'
 import { UserDismissedBroadcast } from '@/shared/models/types.js'
 
 /**
- * UserDismissedBroadcastModel
- * Tracks message dismissals by users.
- * Prevents broadcast messages from being shown again after dismissal.
+ * @description Tracks message dismissals by users to prevent re-showing dismissed broadcasts
  */
 export class UserDismissedBroadcastModel extends BaseModel<UserDismissedBroadcast> {
   /** Table name in the database */
@@ -20,12 +18,10 @@ export class UserDismissedBroadcastModel extends BaseModel<UserDismissedBroadcas
   protected knex = db
 
   /**
-   * Record a message dismissal (upsert).
-   * Uses ON CONFLICT DO NOTHING since we only care about the first dismissal.
-   * @param userId - ID of the user dismissing the message
-   * @param broadcastId - ID of the message being dismissed
-   * @returns Promise<void>
-   * @description Inserts a dismissal record, ignoring duplicates if the user already dismissed this message.
+   * @description Record a message dismissal using upsert (ON CONFLICT DO NOTHING) since only first dismissal matters
+   * @param {string} userId - ID of the user dismissing the message
+   * @param {string} broadcastId - ID of the message being dismissed
+   * @returns {Promise<void>}
    */
   async upsertDismissal(userId: string, broadcastId: string): Promise<void> {
     // Perform insert with on conflict ignore strategy

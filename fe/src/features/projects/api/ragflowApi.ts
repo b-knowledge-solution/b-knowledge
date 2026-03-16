@@ -112,6 +112,7 @@ export const listDatasets = (
   projectId: string,
   query?: ListDatasetsParams,
 ): Promise<Dataset[]> => {
+  // Build query string from optional filter/pagination params
   const params = new URLSearchParams();
   if (query?.id) params.set("id", query.id);
   if (query?.name) params.set("name", query.name);

@@ -28,10 +28,11 @@ interface ChunkEditInlineProps {
 // ============================================================================
 
 /**
- * Inline editing for a chunk's text content.
+ * @description Inline editing textarea for modifying a chunk's text content.
+ * Shows save/cancel action buttons below the textarea.
  *
- * @param props - Component props
- * @returns React element
+ * @param {ChunkEditInlineProps} props - Component properties
+ * @returns {JSX.Element} Rendered inline editor
  */
 const ChunkEditInline: React.FC<ChunkEditInlineProps> = ({
   text,
@@ -43,7 +44,7 @@ const ChunkEditInline: React.FC<ChunkEditInlineProps> = ({
   const [saving, setSaving] = useState(false);
 
   /**
-   * Handle save.
+   * @description Persist the edited chunk text via the parent callback.
    */
   const handleSave = async () => {
     setSaving(true);

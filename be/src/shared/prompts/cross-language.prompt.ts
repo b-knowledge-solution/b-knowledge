@@ -5,11 +5,11 @@
  */
 
 /**
- * Cross-language query expansion prompt templates.
+ * @description Cross-language query expansion prompt templates for multilingual RAG search.
  */
 export const crossLanguagePrompt = {
   /**
-   * System prompt for multilingual translation.
+   * @description System prompt instructing the LLM to act as a multilingual translator.
    */
   system: `## Role
 A streamlined multilingual translator.
@@ -47,10 +47,10 @@ Bonjour le monde ! Parlons de la sécurité de l'IA.
 こんにちは世界！AIの安全性について話し合いましょう。`,
 
   /**
-   * Build user message for translation request.
-   * @param query - Query text to translate
-   * @param languages - Target languages
-   * @returns Formatted user message
+   * @description Build user message for translation request
+   * @param {string} query - Query text to translate
+   * @param {string[]} languages - Target languages to translate into
+   * @returns {string} Formatted user message for the translation LLM call
    */
   buildUser(query: string, languages: string[]): string {
     return `**Input:**

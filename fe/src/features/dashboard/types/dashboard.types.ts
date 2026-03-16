@@ -4,7 +4,7 @@
  */
 
 /**
- * Daily activity data point for trend charts.
+ * @description Daily activity data point for trend charts.
  */
 export interface DailyActivity {
     /** Date string (YYYY-MM-DD) */
@@ -16,7 +16,7 @@ export interface DailyActivity {
 }
 
 /**
- * Top user entry with session count.
+ * @description Top user entry with session count.
  */
 export interface TopUser {
     /** User email address */
@@ -26,7 +26,7 @@ export interface TopUser {
 }
 
 /**
- * Session count breakdown by source type.
+ * @description Session count breakdown by source type.
  */
 export interface UsageBreakdown {
     /** External AI Chat sessions */
@@ -36,7 +36,7 @@ export interface UsageBreakdown {
 }
 
 /**
- * Complete dashboard statistics payload from the API.
+ * @description Complete dashboard statistics payload from the API.
  */
 export interface DashboardStats {
     /** Total sessions across all sources */

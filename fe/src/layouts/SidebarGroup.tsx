@@ -38,10 +38,9 @@ interface SidebarGroupProps {
 // ============================================================================
 
 /**
- * Renders a collapsible sidebar group with auto-expand on active child.
- *
- * @param props - Group configuration
- * @returns Expandable sidebar menu section
+ * @description Renders a collapsible sidebar group that auto-expands when a child route is active
+ * @param {SidebarGroupProps} props - Group configuration including label, icon, children, and role guards
+ * @returns {JSX.Element} Expandable sidebar menu section
  */
 export function SidebarGroup({
   labelKey,

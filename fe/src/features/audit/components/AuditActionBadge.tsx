@@ -55,6 +55,7 @@ export function getActionBadge(action: string, t: (key: string, opts?: any) => s
         delete_prompt: { label: t('auditLog.actions.delete_prompt'), className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
     }
 
+    // Fall back to a generic slate badge for unknown actions, converting snake_case to Title Case
     return actionMap[action] || {
         label: t(`auditLog.actions.${action}`, { defaultValue: action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) }),
         className: 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300'
@@ -82,6 +83,7 @@ export function formatResourceType(type: string, t: (key: string, opts?: any) =>
         knowledge_base_source: t('auditLog.resourceTypes.knowledge_base_source'),
         prompt: t('auditLog.resourceTypes.prompt'),
     }
+    // Fall back to i18n key lookup or formatted snake_case for unknown resource types
     return typeMap[type] || t(`auditLog.resourceTypes.${type}`, { defaultValue: type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) })
 }
 
@@ -100,12 +102,16 @@ export function formatDateTime(dateString: string): string {
  * @returns Formatted string representation.
  */
 export function formatDetails(details: Record<string, any>): string {
+    // Return dash placeholder for empty or missing details
     if (!details || Object.keys(details).length === 0) return '-'
 
     const entries = Object.entries(details)
+        // Filter out null/undefined values to keep output clean
         .filter(([_, value]) => value !== null && value !== undefined)
         .map(([key, value]) => {
+            // Convert camelCase keys to spaced Title Case for readability
             const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())
+            // Serialize objects to JSON, primitives to string
             const formattedValue = typeof value === 'object' ? JSON.stringify(value) : String(value)
             return `${formattedKey}: ${formattedValue}`
         })
@@ -118,10 +124,10 @@ export function formatDetails(details: Record<string, any>): string {
 // ============================================================================
 
 /**
- * @description Renders an action type as a colored badge.
- * @param props
- * @param props.action - The action identifier string.
- * @returns Badge element.
+ * @description Renders an action type as a colored badge with i18n label.
+ * @param {{ action: string }} props - Component props.
+ * @param {string} props.action - The action identifier string.
+ * @returns {JSX.Element} Styled badge element.
  */
 export function AuditActionBadge({ action }: { action: string }) {
     const { t } = useTranslation()

@@ -85,17 +85,20 @@ export class HistoryChatSessionModel extends BaseModel<HistoryChatSession> {
             .limit(limit)
             .offset(offset)
 
-        // Apply search filter if provided
+        // Apply full-text search filter if provided
         if (search) {
+            // Sanitize input: strip special characters to prevent tsquery injection
             const cleanSearch = search.replace(/[^\w\s]/g, '').trim()
             const terms = cleanSearch.split(/\s+/).filter(t => t.length > 0)
 
+            // Use EXISTS subquery against messages to find sessions containing matching content
             query = query.where(builder => {
                 builder.whereExists(function () {
                     const sub = this.select('id').from('history_chat_messages')
                         .whereRaw('history_chat_messages.session_id = history_chat_sessions.session_id')
 
                     if (terms.length > 0) {
+                        // Try three tsquery strategies for best recall: websearch, prefix match, and OR match
                         const prefixQuery = terms.join(' & ') + ':*'
                         const orQuery = terms.join(' | ')
                         sub.where(b => {
@@ -104,17 +107,19 @@ export class HistoryChatSessionModel extends BaseModel<HistoryChatSession> {
                                 .orWhereRaw("search_vector @@ to_tsquery('english', ?)", [orQuery])
                         })
                     } else {
+                        // Fall back to websearch tsquery for empty-after-cleaning searches
                         sub.whereRaw("search_vector @@ websearch_to_tsquery('english', ?)", [search])
                     }
                 })
             })
         }
 
-        // Apply date range filters
+        // Apply start date lower bound filter
         if (startDate) {
             query = query.where('history_chat_sessions.updated_at', '>=', startDate)
         }
 
+        // Apply end date upper bound filter (include entire end day by appending 23:59:59)
         if (endDate) {
             query = query.where('history_chat_sessions.updated_at', '<=', `${endDate} 23:59:59`)
         }

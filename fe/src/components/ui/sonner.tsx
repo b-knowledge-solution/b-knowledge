@@ -1,11 +1,13 @@
 import { Toaster as Sonner } from 'sonner';
 import { useSettings } from '@/app/contexts/SettingsContext';
 
+/** @description Props for the Toaster component inherited from Sonner */
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
 /**
- * Themed toast notification container.
- * Replaces Ant Design's message API.
+ * @description Themed toast notification container using sonner, replacing Ant Design's message API
+ * @param {ToasterProps} props - Sonner toaster configuration
+ * @returns {JSX.Element} Rendered toast container that responds to the current theme
  */
 const Toaster = ({ ...props }: ToasterProps) => {
   const { resolvedTheme } = useSettings();

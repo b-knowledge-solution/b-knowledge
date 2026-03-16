@@ -67,7 +67,7 @@ export interface AuditFilters {
     endDate: string
 }
 
-/** Default empty filter state */
+/** @description Default empty filter state for initialising audit filter UI */
 export const DEFAULT_AUDIT_FILTERS: AuditFilters = {
     search: '',
     action: '',

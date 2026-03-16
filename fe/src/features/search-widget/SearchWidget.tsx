@@ -17,16 +17,24 @@ import type { WidgetApiConfig } from '@/lib/widgetAuth'
 // Types
 // ============================================================================
 
+/**
+ * @description Shape of a search result chunk used within the widget.
+ */
 interface ChunkData {
+  /** Chunk unique identifier */
   chunk_id: string
+  /** Text content of the chunk */
   text: string
+  /** Parent document identifier */
   doc_id: string
+  /** Document file name */
   doc_name: string
+  /** Relevance score (0-1) */
   score: number
 }
 
 /**
- * Props for the SearchWidget component.
+ * @description Props for the SearchWidget component.
  */
 export interface SearchWidgetProps {
   /** Auth mode: 'internal' uses session, 'external' uses token */
@@ -46,9 +54,10 @@ export interface SearchWidgetProps {
 // ============================================================================
 
 /**
- * Parse SSE events from a ReadableStream and invoke callbacks.
- * @param response - Fetch response with SSE body
- * @param callbacks - Event handlers for different SSE data types
+ * @description Parses SSE events from a ReadableStream and dispatches to typed callbacks.
+ * Handles delta tokens, status updates, reference data, final answers, and errors.
+ * @param {Response} response - Fetch response with SSE body
+ * @param {object} callbacks - Event handlers for different SSE data types
  */
 async function consumeSSE(
   response: Response,
@@ -94,6 +103,7 @@ async function consumeSSE(
       try {
         const data = JSON.parse(payload)
 
+        // Dispatch to the appropriate callback based on the SSE event type
         if (data.error) {
           callbacks.onError(data.error)
         } else if (data.delta) {
@@ -106,7 +116,7 @@ async function consumeSSE(
           callbacks.onFinal(data)
         }
       } catch {
-        // Skip unparseable lines
+        // Skip unparseable JSON lines (e.g., partial SSE frames)
       }
     }
   }
@@ -119,9 +129,10 @@ async function consumeSSE(
 // ============================================================================
 
 /**
- * Embeddable search widget with compact search bar and results overlay.
- * @param props - Widget configuration props
- * @returns Search widget element
+ * @description Embeddable search widget with compact search bar and results overlay.
+ * Supports internal (session auth) and external (token auth) modes.
+ * @param {SearchWidgetProps} props - Widget configuration props
+ * @returns {JSX.Element} The rendered search widget
  */
 export function SearchWidget({ mode, appId, token, baseUrl, placeholder }: SearchWidgetProps) {
   // State
@@ -131,15 +142,16 @@ export function SearchWidget({ mode, appId, token, baseUrl, placeholder }: Searc
   const [isSearching, setIsSearching] = useState(false)
   const [pipelineStatus, setPipelineStatus] = useState('')
 
-  // API client (created once based on config)
+  // Select auth strategy based on widget mode: token for external, session for internal
   const apiConfig: WidgetApiConfig = mode === 'external' && token
     ? { token, baseUrl: baseUrl || '' }
     : {}
+  // API client persists across renders via ref
   const apiRef = useRef(createSearchWidgetApi(apiConfig))
 
   /**
-   * Execute a search query via SSE streaming.
-   * @param query - The search query string
+   * @description Execute a search query via SSE streaming.
+   * @param {string} query - The search query string
    */
   const handleSearch = async (query: string) => {
     // Reset state for new search
@@ -150,14 +162,16 @@ export function SearchWidget({ mode, appId, token, baseUrl, placeholder }: Searc
     setIsSearching(true)
 
     try {
+      // Initiate SSE streaming request via the widget API
       const response = await apiRef.current.askSearch(query, undefined, appId)
 
+      // Check for HTTP-level errors before processing the stream
       if (!response.ok) {
         const err = await response.json().catch(() => ({}))
         throw new Error(err.error || `Search failed: ${response.status}`)
       }
 
-      // Consume the SSE stream
+      // Consume the SSE stream and update state via callbacks
       await consumeSSE(response, {
         onDelta: (text) => setAnswer((prev) => prev + text),
         onStatus: (status) => setPipelineStatus(status),

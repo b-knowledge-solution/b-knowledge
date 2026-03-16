@@ -25,7 +25,10 @@ import { queryKeys } from '@/lib/queryKeys'
 // Form data type (used by useDatasets)
 // ============================================================================
 
-/** Form data shape for the dataset create/edit form. */
+/**
+ * @description Form data shape for the dataset create/edit form.
+ * Maps UI fields to API payload, including permission model state.
+ */
 export interface DatasetFormData {
   name: string
   description: string
@@ -54,6 +57,9 @@ const EMPTY_FORM: DatasetFormData = {
 // useDatasets — Dataset list management
 // ============================================================================
 
+/**
+ * @description Return type for the useDatasets hook with all dataset list management state and handlers.
+ */
 export interface UseDatasetsReturn {
   datasets: Dataset[]
   loading: boolean
@@ -174,7 +180,9 @@ export function useDatasets(): UseDatasetsReturn {
     },
   })
 
+  /** Build payload from form state and dispatch create or update mutation */
   const handleSubmit = async () => {
+    // Map permission UI state to access_control shape expected by the API
     const payload: CreateDatasetDto = {
       name: formData.name,
       description: formData.description,
@@ -187,10 +195,12 @@ export function useDatasets(): UseDatasetsReturn {
         user_ids: formData.permission === 'specific' ? formData.user_ids : [],
       }
     }
-    
+
+    // Only include embedding_model when explicitly selected to allow system default fallback
     if (formData.embedding_model) {
       payload.embedding_model = formData.embedding_model;
     }
+    // Dispatch update for existing dataset, otherwise create new
     if (editingDataset) {
       await updateMutation.mutateAsync({ id: editingDataset.id, payload })
     } else {
@@ -233,6 +243,9 @@ export function useDatasets(): UseDatasetsReturn {
 // useDocuments — Document list for a specific dataset
 // ============================================================================
 
+/**
+ * @description Return type for the useDocuments hook with document list state and operations.
+ */
 export interface UseDocumentsReturn {
   documents: Document[]
   loading: boolean
@@ -414,6 +427,9 @@ export function useDocuments(datasetId: string | undefined): UseDocumentsReturn 
 // useChunks — Chunk management with pagination
 // ============================================================================
 
+/**
+ * @description Return type for the useChunks hook with paginated chunk state and operations.
+ */
 export interface UseChunksReturn {
   /** List of chunks */
   chunks: Chunk[]
@@ -533,6 +549,9 @@ export function useChunks(datasetId: string | undefined, docId?: string): UseChu
 // useDatasetSettings — Dataset settings CRUD
 // ============================================================================
 
+/**
+ * @description Return type for the useDatasetSettings hook with settings state and save operations.
+ */
 export interface UseDatasetSettingsReturn {
   /** Current settings */
   settings: DatasetSettings | null
@@ -595,3 +614,177 @@ export function useDatasetSettings(datasetId: string | undefined): UseDatasetSet
     updateSettings,
   }
 }
+
+// ============================================================================
+// Dataset Overview
+// ============================================================================
+
+/**
+ * @description Hook to fetch dataset overview statistics.
+ * @param datasetId - Dataset UUID
+ * @returns Overview stats (total_documents, finished, failed, processing, cancelled)
+ */
+export function useDatasetOverview(datasetId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.datasets.overview(datasetId ?? ''),
+    queryFn: () => datasetApi.getOverview(datasetId!),
+    enabled: !!datasetId,
+  })
+}
+
+/**
+ * @description Hook to fetch paginated dataset processing logs.
+ * @param datasetId - Dataset UUID
+ * @param params - Pagination and filter params
+ * @returns Paginated logs and total count
+ */
+export function useDatasetLogs(
+  datasetId: string | undefined,
+  params: { page?: number; limit?: number; status?: string } = {},
+) {
+  return useQuery({
+    queryKey: queryKeys.datasets.logs(datasetId ?? '', params),
+    queryFn: () => datasetApi.getLogs(datasetId!, params),
+    enabled: !!datasetId,
+  })
+}
+
+// ============================================================================
+// Document Logs (Process Log Modal)
+// ============================================================================
+
+/**
+ * @description Hook to fetch processing logs for a specific document.
+ * @param datasetId - Dataset UUID
+ * @param docId - Document ID
+ * @returns Document info + array of task logs
+ */
+export function useDocumentLogs(
+  datasetId: string | undefined,
+  docId: string | undefined,
+) {
+  return useQuery({
+    queryKey: queryKeys.datasets.documentLogs(datasetId ?? '', docId ?? ''),
+    queryFn: () => datasetApi.getDocumentLogs(datasetId!, docId!),
+    enabled: !!datasetId && !!docId,
+  })
+}
+
+// ============================================================================
+// Knowledge Graph & RAPTOR
+// ============================================================================
+
+/**
+ * @description Hook to fetch knowledge graph data for visualization.
+ * @param datasetId - Dataset UUID
+ * @returns Graph nodes and edges
+ */
+export function useGraphData(datasetId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.datasets.graph(datasetId ?? ''),
+    queryFn: () => datasetApi.getGraphData(datasetId!),
+    enabled: !!datasetId,
+  })
+}
+
+/**
+ * @description Hook to poll GraphRAG task status.
+ * @param datasetId - Dataset UUID
+ */
+export function useGraphRAGStatus(datasetId: string | undefined) {
+  const query = useQuery({
+    queryKey: queryKeys.datasets.graphragStatus(datasetId ?? ''),
+    queryFn: () => datasetApi.getAdvancedTaskStatus(datasetId!, 'graphrag'),
+    enabled: !!datasetId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+      return status === 'running' ? 3000 : false
+    },
+  })
+  return query
+}
+
+/**
+ * @description Hook to poll RAPTOR task status.
+ * @param datasetId - Dataset UUID
+ */
+export function useRaptorStatus(datasetId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.datasets.raptorStatus(datasetId ?? ''),
+    queryFn: () => datasetApi.getAdvancedTaskStatus(datasetId!, 'raptor'),
+    enabled: !!datasetId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+      return status === 'running' ? 3000 : false
+    },
+  })
+}
+
+/**
+ * @description Mutation to trigger a GraphRAG task.
+ * @param datasetId - Dataset UUID
+ */
+export function useRunGraphRAG(datasetId: string) {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (docIds?: string[]) => datasetApi.runGraphRAG(datasetId, docIds),
+    meta: { successMessage: t('datasets.graphRAGStarted') },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.datasets.graphragStatus(datasetId) })
+    },
+  })
+}
+
+/**
+ * @description Mutation to trigger a RAPTOR task.
+ * @param datasetId - Dataset UUID
+ */
+export function useRunRaptor(datasetId: string) {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (docIds?: string[]) => datasetApi.runRaptor(datasetId, docIds),
+    meta: { successMessage: t('datasets.raptorStarted') },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.datasets.raptorStatus(datasetId) })
+    },
+  })
+}
+
+// ============================================================================
+// Metadata Management
+// ============================================================================
+
+/**
+ * @description Hook to fetch metadata fields for a dataset.
+ * @param datasetId - Dataset UUID
+ */
+export function useMetadata(datasetId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.datasets.metadata(datasetId ?? ''),
+    queryFn: () => datasetApi.getMetadata(datasetId!),
+    enabled: !!datasetId,
+  })
+}
+
+/**
+ * @description Mutation to update metadata fields for a dataset.
+ * @param datasetId - Dataset UUID
+ */
+export function useUpdateMetadata(datasetId: string) {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (fields: import('../types').MetadataField[]) =>
+      datasetApi.updateMetadata(datasetId, fields),
+    meta: { successMessage: t('datasets.metadataUpdated') },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.datasets.metadata(datasetId) })
+    },
+  })
+}
+

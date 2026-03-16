@@ -23,7 +23,7 @@ import './index.css';
 // ============================================================================
 
 /**
- * React Query client with default options and global notification handlers.
+ * @description React Query client configured with 5-minute stale time, single retry, and global mutation notification handlers
  */
 const queryClient = new QueryClient({
   defaultOptions: {

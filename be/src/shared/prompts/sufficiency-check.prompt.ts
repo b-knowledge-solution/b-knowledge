@@ -5,14 +5,14 @@
  */
 
 /**
- * Sufficiency check prompt templates.
+ * @description Sufficiency check prompt templates for evaluating whether retrieved context adequately answers a question.
  */
 export const sufficiencyCheckPrompt = {
   /**
-   * Build the sufficiency evaluation prompt.
-   * @param question - User's question
-   * @param retrievedDocs - Retrieved context content
-   * @returns Formatted prompt string
+   * @description Build the sufficiency evaluation prompt with question and retrieved content
+   * @param {string} question - User's question to evaluate sufficiency against
+   * @param {string} retrievedDocs - Retrieved context content from RAG search
+   * @returns {string} Formatted prompt string requesting JSON sufficiency assessment
    */
   build(question: string, retrievedDocs: string): string {
     return `You are a information retrieval evaluation expert. Please assess whether the currently retrieved content is sufficient to answer the user's question.

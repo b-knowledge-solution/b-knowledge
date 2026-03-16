@@ -35,10 +35,12 @@ interface DatasetSettingsDrawerProps {
 // ============================================================================
 
 /**
- * Dataset settings drawer with tabbed settings panels.
+ * @description Right-side sheet drawer for dataset settings with tabbed panels.
+ * Contains Configuration (GeneralSettingsForm) and Retrieval Test tabs.
+ * Only fetches settings when the drawer is open.
  *
- * @param props - Component props
- * @returns React element
+ * @param {DatasetSettingsDrawerProps} props - Component properties
+ * @returns {JSX.Element} Rendered settings drawer
  */
 const DatasetSettingsDrawer: React.FC<DatasetSettingsDrawerProps> = ({
   open,

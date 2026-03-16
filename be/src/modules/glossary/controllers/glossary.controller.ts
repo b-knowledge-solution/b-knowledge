@@ -5,9 +5,10 @@
  */
 import { Request, Response } from "express";
 import { glossaryService } from "@/modules/glossary/services/glossary.service.js";
+import { log } from "@/shared/services/logger.service.js";
 
 /**
- * Controller for glossary tasks and keywords API endpoints.
+ * @description Controller for glossary tasks, keywords, prompt builder, and bulk import API endpoints
  */
 export class GlossaryController {
   // ========================================================================
@@ -15,26 +16,34 @@ export class GlossaryController {
   // ========================================================================
 
   /**
-   * GET /glossary/tasks — List all glossary tasks.
+   * @description List all glossary tasks
+   * @param {Request} _req - Express request object (unused)
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   static async listTasks(_req: Request, res: Response): Promise<void> {
     try {
+      // Fetch all tasks from service layer
       const tasks = await glossaryService.listTasks();
       res.json(tasks);
     } catch (error: any) {
-      console.error("Error listing glossary tasks:", error);
+      log.error("Error listing glossary tasks:", error);
       res.status(500).json({ error: error.message || "Failed to list tasks" });
     }
   }
 
   /**
-   * GET /glossary/tasks/:id — Get a single task.
+   * @description Get a single glossary task by ID
+   * @param {Request} req - Express request with task ID param
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   static async getTask(req: Request, res: Response): Promise<void> {
     try {
       const id = req.params.id!;
       const task = await glossaryService.getTask(id);
 
+      // Return 404 if task not found
       if (!task) {
         res.status(404).json({ error: "Task not found" });
         return;
@@ -42,13 +51,16 @@ export class GlossaryController {
 
       res.json(task);
     } catch (error: any) {
-      console.error("Error getting glossary task:", error);
+      log.error("Error getting glossary task:", error);
       res.status(500).json({ error: error.message || "Failed to get task" });
     }
   }
 
   /**
-   * POST /glossary/tasks — Create a new glossary task.
+   * @description Create a new glossary task with required instruction and template fields
+   * @param {Request} req - Express request with task data in body
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   static async createTask(req: Request, res: Response): Promise<void> {
     try {
@@ -88,7 +100,7 @@ export class GlossaryController {
 
       res.status(201).json(task);
     } catch (error: any) {
-      console.error("Error creating glossary task:", error);
+      log.error("Error creating glossary task:", error);
       // Handle unique constraint violation
       if (error.message?.includes("unique") || error.code === "23505") {
         res.status(409).json({ error: "Task name already exists" });
@@ -99,7 +111,10 @@ export class GlossaryController {
   }
 
   /**
-   * PUT /glossary/tasks/:id — Update a glossary task.
+   * @description Update an existing glossary task by ID with partial data
+   * @param {Request} req - Express request with task ID param and update data in body
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   static async updateTask(req: Request, res: Response): Promise<void> {
     try {
@@ -117,6 +132,7 @@ export class GlossaryController {
         is_active,
       } = req.body;
 
+      // Build update payload with only defined fields to support partial updates
       const updateData: Record<string, any> = { updated_by: userId };
       if (name !== undefined) updateData.name = name.trim();
       if (description !== undefined) updateData.description = description;
@@ -132,6 +148,7 @@ export class GlossaryController {
       if (is_active !== undefined) updateData.is_active = is_active;
 
       const task = await glossaryService.updateTask(id, updateData);
+      // Return 404 if task not found
       if (!task) {
         res.status(404).json({ error: "Task not found" });
         return;
@@ -139,7 +156,7 @@ export class GlossaryController {
 
       res.json(task);
     } catch (error: any) {
-      console.error("Error updating glossary task:", error);
+      log.error("Error updating glossary task:", error);
       if (error.message?.includes("unique") || error.code === "23505") {
         res.status(409).json({ error: "Task name already exists" });
         return;
@@ -149,7 +166,10 @@ export class GlossaryController {
   }
 
   /**
-   * DELETE /glossary/tasks/:id — Delete a glossary task.
+   * @description Delete a glossary task by ID
+   * @param {Request} req - Express request with task ID param
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   static async deleteTask(req: Request, res: Response): Promise<void> {
     try {
@@ -157,7 +177,7 @@ export class GlossaryController {
       await glossaryService.deleteTask(id);
       res.status(204).send();
     } catch (error: any) {
-      console.error("Error deleting glossary task:", error);
+      log.error("Error deleting glossary task:", error);
       res.status(500).json({ error: error.message || "Failed to delete task" });
     }
   }
@@ -167,13 +187,17 @@ export class GlossaryController {
   // ========================================================================
 
   /**
-   * GET /glossary/keywords/search — Search keywords with pagination.
-   * Query params: q (search text), page (default 1), pageSize (default 20).
+   * @description Search keywords with pagination and filtering
+   * @param {Request} req - Express request with query params: q, page, pageSize
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   static async searchKeywords(req: Request, res: Response): Promise<void> {
     try {
+      // Parse search and pagination parameters with safe defaults
       const q = (req.query.q as string) || "";
       const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+      // Clamp pageSize between 1 and 100 to prevent excessive result sets
       const pageSize = Math.min(
         100,
         Math.max(1, parseInt(req.query.pageSize as string, 10) || 20),
@@ -182,7 +206,7 @@ export class GlossaryController {
       const result = await glossaryService.searchKeywords(q, page, pageSize);
       res.json(result);
     } catch (error: any) {
-      console.error("Error searching glossary keywords:", error);
+      log.error("Error searching glossary keywords:", error);
       res
         .status(500)
         .json({ error: error.message || "Failed to search keywords" });
@@ -190,14 +214,17 @@ export class GlossaryController {
   }
 
   /**
-   * GET /glossary/keywords — List all keywords.
+   * @description List all glossary keywords
+   * @param {Request} _req - Express request object (unused)
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   static async listKeywords(_req: Request, res: Response): Promise<void> {
     try {
       const keywords = await glossaryService.listKeywords();
       res.json(keywords);
     } catch (error: any) {
-      console.error("Error listing glossary keywords:", error);
+      log.error("Error listing glossary keywords:", error);
       res
         .status(500)
         .json({ error: error.message || "Failed to list keywords" });
@@ -205,7 +232,10 @@ export class GlossaryController {
   }
 
   /**
-   * POST /glossary/keywords — Create a new keyword.
+   * @description Create a new glossary keyword
+   * @param {Request} req - Express request with keyword data in body
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   static async createKeyword(req: Request, res: Response): Promise<void> {
     try {
@@ -231,7 +261,7 @@ export class GlossaryController {
 
       res.status(201).json(keyword);
     } catch (error: any) {
-      console.error("Error creating glossary keyword:", error);
+      log.error("Error creating glossary keyword:", error);
       if (error.message?.includes("unique") || error.code === "23505") {
         res.status(409).json({ error: "Keyword name already exists" });
         return;
@@ -243,7 +273,10 @@ export class GlossaryController {
   }
 
   /**
-   * PUT /glossary/keywords/:id — Update a keyword.
+   * @description Update an existing glossary keyword by ID
+   * @param {Request} req - Express request with keyword ID param and update data in body
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   static async updateKeyword(req: Request, res: Response): Promise<void> {
     try {
@@ -252,6 +285,7 @@ export class GlossaryController {
       const id = req.params.id!;
       const { name, en_keyword, description, sort_order, is_active } = req.body;
 
+      // Build update payload with only defined fields to support partial updates
       const updateData: Record<string, any> = { updated_by: userId };
       if (name !== undefined) updateData.name = name.trim();
       if (en_keyword !== undefined) updateData.en_keyword = en_keyword;
@@ -260,6 +294,7 @@ export class GlossaryController {
       if (is_active !== undefined) updateData.is_active = is_active;
 
       const keyword = await glossaryService.updateKeyword(id, updateData);
+      // Return 404 if keyword not found
       if (!keyword) {
         res.status(404).json({ error: "Keyword not found" });
         return;
@@ -267,7 +302,7 @@ export class GlossaryController {
 
       res.json(keyword);
     } catch (error: any) {
-      console.error("Error updating glossary keyword:", error);
+      log.error("Error updating glossary keyword:", error);
       if (error.message?.includes("unique") || error.code === "23505") {
         res.status(409).json({ error: "Keyword name already exists" });
         return;
@@ -279,7 +314,10 @@ export class GlossaryController {
   }
 
   /**
-   * DELETE /glossary/keywords/:id — Delete a keyword.
+   * @description Delete a glossary keyword by ID
+   * @param {Request} req - Express request with keyword ID param
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   static async deleteKeyword(req: Request, res: Response): Promise<void> {
     try {
@@ -287,7 +325,7 @@ export class GlossaryController {
       await glossaryService.deleteKeyword(id);
       res.status(204).send();
     } catch (error: any) {
-      console.error("Error deleting glossary keyword:", error);
+      log.error("Error deleting glossary keyword:", error);
       res
         .status(500)
         .json({ error: error.message || "Failed to delete keyword" });
@@ -299,11 +337,15 @@ export class GlossaryController {
   // ========================================================================
 
   /**
-   * GET /glossary/search — Search tasks and keywords by name.
+   * @description Search both tasks and keywords by name for prompt builder
+   * @param {Request} req - Express request with q query param
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   static async search(req: Request, res: Response): Promise<void> {
     try {
       const query = (req.query.q as string) || "";
+      // Return empty results for blank queries
       if (!query.trim()) {
         res.json({ tasks: [], keywords: [] });
         return;
@@ -311,7 +353,7 @@ export class GlossaryController {
       const results = await glossaryService.search(query);
       res.json(results);
     } catch (error: any) {
-      console.error("Error searching glossary:", error);
+      log.error("Error searching glossary:", error);
       res
         .status(500)
         .json({ error: error.message || "Failed to search glossary" });
@@ -319,12 +361,16 @@ export class GlossaryController {
   }
 
   /**
-   * POST /glossary/generate-prompt — Generate a prompt from task + keywords.
+   * @description Generate a structured prompt by combining a task instruction with selected keywords
+   * @param {Request} req - Express request with taskId and keywordIds in body
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   static async generatePrompt(req: Request, res: Response): Promise<void> {
     try {
       const { taskId, keywordIds } = req.body;
 
+      // Validate both taskId and keywordIds array are provided
       if (!taskId || !keywordIds || !Array.isArray(keywordIds)) {
         res.status(400).json({
           error: "taskId and keywordIds (array) are required",
@@ -335,7 +381,7 @@ export class GlossaryController {
       const prompt = await glossaryService.generatePrompt(taskId, keywordIds);
       res.json({ prompt });
     } catch (error: any) {
-      console.error("Error generating prompt:", error);
+      log.error("Error generating prompt:", error);
       res
         .status(500)
         .json({ error: error.message || "Failed to generate prompt" });
@@ -343,7 +389,10 @@ export class GlossaryController {
   }
 
   /**
-   * POST /glossary/bulk-import — Bulk import tasks from parsed Excel data.
+   * @description Bulk import glossary tasks from parsed Excel row data
+   * @param {Request} req - Express request with rows array in body
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   static async bulkImport(req: Request, res: Response): Promise<void> {
     try {
@@ -351,6 +400,7 @@ export class GlossaryController {
       const userId = req.user?.id || undefined;
       const { rows } = req.body;
 
+      // Validate rows array is non-empty
       if (!rows || !Array.isArray(rows) || rows.length === 0) {
         res
           .status(400)
@@ -361,13 +411,16 @@ export class GlossaryController {
       const result = await glossaryService.bulkImport(rows, userId);
       res.json(result);
     } catch (error: any) {
-      console.error("Error bulk importing glossary:", error);
+      log.error("Error bulk importing glossary:", error);
       res.status(500).json({ error: error.message || "Failed to bulk import" });
     }
   }
 
   /**
-   * POST /glossary/keywords/bulk-import — Bulk import keywords from parsed Excel data.
+   * @description Bulk import glossary keywords from parsed Excel row data
+   * @param {Request} req - Express request with rows array in body
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   static async bulkImportKeywords(req: Request, res: Response): Promise<void> {
     try {
@@ -375,6 +428,7 @@ export class GlossaryController {
       const userId = req.user?.id || undefined;
       const { rows } = req.body;
 
+      // Validate rows array is non-empty
       if (!rows || !Array.isArray(rows) || rows.length === 0) {
         res
           .status(400)
@@ -385,7 +439,7 @@ export class GlossaryController {
       const result = await glossaryService.bulkImportKeywords(rows, userId);
       res.json(result);
     } catch (error: any) {
-      console.error("Error bulk importing keywords:", error);
+      log.error("Error bulk importing keywords:", error);
       res
         .status(500)
         .json({ error: error.message || "Failed to bulk import keywords" });

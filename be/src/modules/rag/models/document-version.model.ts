@@ -15,9 +15,9 @@ export class DocumentVersionModel extends BaseModel<DocumentVersion> {
   protected knex = db
 
   /**
-   * Find all versions belonging to a dataset, ordered by creation date descending.
-   * @param datasetId - UUID of the parent dataset
-   * @returns Array of DocumentVersion records
+   * @description Find all versions belonging to a dataset, ordered by creation date descending
+   * @param {string} datasetId - UUID of the parent dataset
+   * @returns {Promise<DocumentVersion[]>} Array of DocumentVersion records
    */
   async findByDatasetId(datasetId: string): Promise<DocumentVersion[]> {
     return this.knex(this.tableName)
@@ -26,10 +26,10 @@ export class DocumentVersionModel extends BaseModel<DocumentVersion> {
   }
 
   /**
-   * Find a version by dataset ID and version label.
-   * @param datasetId - UUID of the parent dataset
-   * @param versionLabel - Version label string
-   * @returns DocumentVersion or undefined
+   * @description Find a version by dataset ID and version label (unique combination)
+   * @param {string} datasetId - UUID of the parent dataset
+   * @param {string} versionLabel - Version label string
+   * @returns {Promise<DocumentVersion | undefined>} DocumentVersion or undefined
    */
   async findByLabel(datasetId: string, versionLabel: string): Promise<DocumentVersion | undefined> {
     return this.knex(this.tableName)

@@ -22,7 +22,7 @@ import { timingSafeEqual } from 'crypto'
 import { config } from '@/shared/config/index.js'
 import { log } from '@/shared/services/logger.service.js'
 
-/** Notification event payload interface */
+/** @description Notification event payload sent via WebSocket */
 export interface NotificationPayload {
     type: string
     title?: string
@@ -31,7 +31,7 @@ export interface NotificationPayload {
     timestamp?: string
 }
 
-/** Socket authentication data */
+/** @description Socket authentication data provided during handshake */
 export interface SocketAuthData {
     userId?: string
     email?: string
@@ -40,7 +40,7 @@ export interface SocketAuthData {
     apiKey?: string
 }
 
-/** Client type based on authentication method */
+/** @description Client type based on authentication method (browser or external API) */
 export type SocketClientType = 'browser' | 'external'
 
 /** Connected user socket mapping */

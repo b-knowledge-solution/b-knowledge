@@ -4,14 +4,14 @@
  */
 
 /**
- * Keyword extraction prompt templates.
+ * @description Keyword extraction prompt templates for extracting important terms from text content.
  */
 export const keywordPrompt = {
   /**
-   * Build keyword extraction prompt.
-   * @param content - Text content to extract keywords from
-   * @param topN - Number of keywords to extract
-   * @returns Formatted prompt string
+   * @description Build keyword extraction prompt for LLM call
+   * @param {string} content - Text content to extract keywords from
+   * @param {number} topN - Number of keywords to extract (defaults to 5)
+   * @returns {string} Formatted prompt string for keyword extraction
    */
   build(content: string, topN: number = 5): string {
     return `## Role

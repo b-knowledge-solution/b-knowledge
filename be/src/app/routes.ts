@@ -18,10 +18,7 @@ import userRoutes from '@/modules/users/routes/users.routes.js';
 import teamRoutes from '@/modules/teams/routes/teams.routes.js';
 import systemToolsRoutes from '@/modules/system-tools/system-tools.routes.js';
 import auditRoutes from '@/modules/audit/routes/audit.routes.js';
-import traceRoutes from '@/modules/trace/routes/trace.routes.js';
-import traceHistoryRoutes from '@/modules/trace/routes/history.routes.js';
-import { checkTraceEnabled } from '@/modules/trace/middleware/trace-enabled.middleware.js';
-import { TraceController } from '@/modules/trace/controllers/trace.controller.js';
+
 import broadcastMessageRoutes from '@/modules/broadcast/routes/broadcast-message.routes.js';
 import adminHistoryRoutes from '@/modules/admin/routes/admin-history.routes.js';
 import chatConversationRoutes from '@/modules/chat/routes/chat-conversation.routes.js';
@@ -46,7 +43,7 @@ import projectRoutes from '@/modules/projects/routes/projects.routes.js';
 // ============================================================================
 
 /**
- * General API rate limiter to prevent abuse.
+ * @description General API rate limiter: 1000 requests per 15-minute window per IP.
  */
 const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -57,7 +54,7 @@ const generalLimiter = rateLimit({
 });
 
 /**
- * Stricter rate limit for authentication endpoints.
+ * @description Stricter rate limit for authentication endpoints: 20 attempts per 15-minute window.
  */
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -72,20 +69,27 @@ const authLimiter = rateLimit({
 // ============================================================================
 
 /**
- * Validate Content-Type header for mutation requests.
- * @description Ensures POST/PUT/PATCH requests use allowed content types.
+ * @description Validates the Content-Type header on mutation requests (POST/PUT/PATCH).
+ * Rejects requests with unsupported content types with HTTP 415.
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ * @param {NextFunction} next - Next middleware function
  */
 const validateContentType = (req: Request, res: Response, next: NextFunction) => {
+    // Only validate mutation methods that typically carry a body
     if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
         const contentType = req.headers['content-type'];
+        // Allow requests without Content-Type (e.g. empty body)
         if (!contentType) return next();
 
+        // Accept standard web content types
         if (contentType.includes('application/json') ||
             contentType.includes('multipart/form-data') ||
             contentType.includes('application/x-www-form-urlencoded')) {
             return next();
         }
 
+        // Reject unsupported content types
         return res.status(415).json({
             error: 'Unsupported Media Type',
             message: 'Content-Type must be application/json, multipart/form-data, or application/x-www-form-urlencoded'
@@ -99,9 +103,10 @@ const validateContentType = (req: Request, res: Response, next: NextFunction) =>
 // ============================================================================
 
 /**
- * Register all API routes on the provided Express router.
- * @param apiRouter - Express Router instance to mount routes on.
- * @description Mounts all feature routes with their respective base paths.
+ * @description Register all feature-module routes on the provided Express router.
+ * Each module is mounted at its own base path under /api/.
+ * @param {Router} apiRouter - Express Router instance to mount routes on
+ * @returns {void}
  */
 function registerRoutes(apiRouter: Router): void {
     // Apply auth rate limiting to login endpoints
@@ -129,11 +134,6 @@ function registerRoutes(apiRouter: Router): void {
     // Audit logging
     apiRouter.use('/audit', auditRoutes);
 
-    // External integrations (trace module — backward compatible at /api/external/*)
-    const traceController = new TraceController();
-    apiRouter.use('/external/trace', traceRoutes);
-    apiRouter.use('/external/history', traceHistoryRoutes);
-    apiRouter.get('/external/health', checkTraceEnabled, traceController.getHealth.bind(traceController));
 
     // Broadcast messages
     apiRouter.use('/broadcast-messages', broadcastMessageRoutes);
@@ -181,10 +181,11 @@ function registerRoutes(apiRouter: Router): void {
 // ============================================================================
 
 /**
- * Setup all API routes and middleware on the Express app.
- * @param app - Express application instance.
- * @description Configures rate limiting, content validation, health check, 
- *              API routes, 404 handler, and error handler.
+ * @description Configure all API routes and middleware on the Express app.
+ * Sets up rate limiting, content validation, the health check endpoint,
+ * all feature-module API routes, the 404 handler, and the global error handler.
+ * @param {Express} app - Express application instance
+ * @returns {void}
  */
 export function setupApiRoutes(app: Express): void {
     // Apply general rate limiter to all API routes
@@ -196,6 +197,7 @@ export function setupApiRoutes(app: Express): void {
         const dbConnected = await checkConnection();
         const redisStatus = getRedisStatus();
 
+        // Report 'ok' only when both DB and Redis are healthy; treat unconfigured Redis as acceptable
         const healthPayload = {
             status: dbConnected && (redisStatus === 'connected' || redisStatus === 'not_configured') ? 'ok' : 'degraded',
             timestamp,

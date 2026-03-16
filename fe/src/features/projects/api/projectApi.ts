@@ -141,18 +141,23 @@ export interface ProjectChat {
 // ============================================================================
 
 /**
- * List projects accessible to the current user.
+ * @description List projects accessible to the current user
+ * @returns {Promise<Project[]>} Array of project records
  */
 export const getProjects = (): Promise<Project[]> => api.get("/api/projects");
 
 /**
- * Get a project by ID.
+ * @description Get a project by ID
+ * @param {string} id - Project UUID
+ * @returns {Promise<Project>} Project record
  */
 export const getProjectById = (id: string): Promise<Project> =>
   api.get(`/api/projects/${id}`);
 
 /**
- * Create a new project.
+ * @description Create a new project
+ * @param {object} data - Project creation payload
+ * @returns {Promise<Project>} Created project record
  */
 export const createProject = (data: {
   name: string;
@@ -166,7 +171,10 @@ export const createProject = (data: {
 }): Promise<Project> => api.post("/api/projects", data);
 
 /**
- * Update a project.
+ * @description Update a project
+ * @param {string} id - Project UUID
+ * @param {Partial<Project>} data - Fields to update
+ * @returns {Promise<Project>} Updated project record
  */
 export const updateProject = (
   id: string,
@@ -174,7 +182,9 @@ export const updateProject = (
 ): Promise<Project> => api.put(`/api/projects/${id}`, data);
 
 /**
- * Delete a project.
+ * @description Delete a project
+ * @param {string} id - Project UUID
+ * @returns {Promise<void>}
  */
 export const deleteProject = (id: string): Promise<void> =>
   api.delete(`/api/projects/${id}`);
@@ -184,7 +194,9 @@ export const deleteProject = (id: string): Promise<void> =>
 // ============================================================================
 
 /**
- * Get permissions for a project.
+ * @description Get permissions for a project
+ * @param {string} projectId - Project UUID
+ * @returns {Promise<ProjectPermission[]>} Array of permission records
  */
 export const getProjectPermissions = (
   projectId: string,
@@ -192,7 +204,10 @@ export const getProjectPermissions = (
   api.get(`/api/projects/${projectId}/permissions`);
 
 /**
- * Set a permission for a grantee on a project.
+ * @description Set a permission for a grantee on a project
+ * @param {string} projectId - Project UUID
+ * @param {object} data - Permission data including grantee and tab access levels
+ * @returns {Promise<ProjectPermission>} Created or updated permission record
  */
 export const setProjectPermission = (
   projectId: string,
@@ -207,7 +222,10 @@ export const setProjectPermission = (
   api.post(`/api/projects/${projectId}/permissions`, data);
 
 /**
- * Remove a permission.
+ * @description Remove a permission from a project
+ * @param {string} projectId - Project UUID
+ * @param {string} permissionId - Permission UUID to remove
+ * @returns {Promise<void>}
  */
 export const removeProjectPermission = (
   projectId: string,
@@ -220,7 +238,9 @@ export const removeProjectPermission = (
 // ============================================================================
 
 /**
- * List categories for a project.
+ * @description List document categories for a project
+ * @param {string} projectId - Project UUID
+ * @returns {Promise<DocumentCategory[]>} Array of category records
  */
 export const getDocumentCategories = (
   projectId: string,
@@ -228,7 +248,10 @@ export const getDocumentCategories = (
   api.get(`/api/projects/${projectId}/categories`);
 
 /**
- * Create a document category.
+ * @description Create a document category within a project
+ * @param {string} projectId - Project UUID
+ * @param {object} data - Category creation data with name and optional config
+ * @returns {Promise<DocumentCategory>} Created category record
  */
 export const createDocumentCategory = (
   projectId: string,
@@ -242,7 +265,11 @@ export const createDocumentCategory = (
   api.post(`/api/projects/${projectId}/categories`, data);
 
 /**
- * Update a document category.
+ * @description Update a document category
+ * @param {string} projectId - Project UUID
+ * @param {string} categoryId - Category UUID
+ * @param {Partial<DocumentCategory>} data - Fields to update
+ * @returns {Promise<DocumentCategory>} Updated category record
  */
 export const updateDocumentCategory = (
   projectId: string,
@@ -252,7 +279,10 @@ export const updateDocumentCategory = (
   api.put(`/api/projects/${projectId}/categories/${categoryId}`, data);
 
 /**
- * Delete a document category.
+ * @description Delete a document category
+ * @param {string} projectId - Project UUID
+ * @param {string} categoryId - Category UUID
+ * @returns {Promise<void>}
  */
 export const deleteDocumentCategory = (
   projectId: string,
@@ -265,7 +295,10 @@ export const deleteDocumentCategory = (
 // ============================================================================
 
 /**
- * List versions for a category.
+ * @description List versions for a document category
+ * @param {string} projectId - Project UUID
+ * @param {string} categoryId - Category UUID
+ * @returns {Promise<DocumentCategoryVersion[]>} Array of version records
  */
 export const getCategoryVersions = (
   projectId: string,
@@ -274,7 +307,11 @@ export const getCategoryVersions = (
   api.get(`/api/projects/${projectId}/categories/${categoryId}/versions`);
 
 /**
- * Create a new version.
+ * @description Create a new version within a document category
+ * @param {string} projectId - Project UUID
+ * @param {string} categoryId - Category UUID
+ * @param {object} data - Version creation data including label and parser config
+ * @returns {Promise<DocumentCategoryVersion>} Created version record
  */
 export const createCategoryVersion = (
   projectId: string,
@@ -294,7 +331,11 @@ export const createCategoryVersion = (
   );
 
 /**
- * Sync a version from RAGFlow.
+ * @description Sync a version's dataset from RAGFlow
+ * @param {string} projectId - Project UUID
+ * @param {string} categoryId - Category UUID
+ * @param {string} versionId - Version UUID
+ * @returns {Promise<DocumentCategoryVersion>} Updated version record
  */
 export const syncCategoryVersion = (
   projectId: string,
@@ -306,7 +347,11 @@ export const syncCategoryVersion = (
   );
 
 /**
- * Archive a version.
+ * @description Archive (deactivate) a version
+ * @param {string} projectId - Project UUID
+ * @param {string} categoryId - Category UUID
+ * @param {string} versionId - Version UUID
+ * @returns {Promise<DocumentCategoryVersion>} Updated version record with archived status
  */
 export const archiveCategoryVersion = (
   projectId: string,
@@ -318,7 +363,12 @@ export const archiveCategoryVersion = (
   );
 
 /**
- * Update a version's metadata (e.g. label).
+ * @description Update a version's metadata (e.g. label, parser config)
+ * @param {string} projectId - Project UUID
+ * @param {string} categoryId - Category UUID
+ * @param {string} versionId - Version UUID
+ * @param {object} data - Fields to update
+ * @returns {Promise<DocumentCategoryVersion>} Updated version record
  */
 export const updateCategoryVersion = (
   projectId: string,
@@ -339,7 +389,11 @@ export const updateCategoryVersion = (
   );
 
 /**
- * Delete a version.
+ * @description Delete a version and its associated RAGFlow dataset
+ * @param {string} projectId - Project UUID
+ * @param {string} categoryId - Category UUID
+ * @param {string} versionId - Version UUID
+ * @returns {Promise<void>}
  */
 export const deleteCategoryVersion = (
   projectId: string,
@@ -374,7 +428,12 @@ export interface VersionDocument {
 }
 
 /**
- * List documents in a version's dataset.
+ * @description List documents in a version's dataset with optional pagination and search
+ * @param {string} projectId - Project UUID
+ * @param {string} categoryId - Category UUID
+ * @param {string} versionId - Version UUID
+ * @param {object} [query] - Optional pagination and search parameters
+ * @returns {Promise<VersionDocument[]>} Array of document records
  */
 export const getVersionDocuments = (
   projectId: string,
@@ -386,6 +445,7 @@ export const getVersionDocuments = (
     keywords?: string;
   },
 ): Promise<VersionDocument[]> => {
+  // Build query string from optional pagination/search params
   const params = new URLSearchParams();
   if (query?.page) params.set("page", String(query.page));
   if (query?.page_size) params.set("page_size", String(query.page_size));
@@ -489,13 +549,18 @@ export const parseVersionDocuments = (
 // ============================================================================
 
 /**
- * List chat assistants for a project.
+ * @description List chat assistants for a project
+ * @param {string} projectId - Project UUID
+ * @returns {Promise<ProjectChat[]>} Array of chat assistant records
  */
 export const getProjectChats = (projectId: string): Promise<ProjectChat[]> =>
   api.get(`/api/projects/${projectId}/chats`);
 
 /**
- * Get a chat assistant by ID.
+ * @description Get a chat assistant by ID
+ * @param {string} projectId - Project UUID
+ * @param {string} chatId - Chat UUID
+ * @returns {Promise<ProjectChat>} Chat assistant record
  */
 export const getProjectChatById = (
   projectId: string,
@@ -504,7 +569,10 @@ export const getProjectChatById = (
   api.get(`/api/projects/${projectId}/chats/${chatId}`);
 
 /**
- * Create a chat assistant.
+ * @description Create a chat assistant for a project
+ * @param {string} projectId - Project UUID
+ * @param {object} data - Chat creation payload including name and dataset IDs
+ * @returns {Promise<ProjectChat>} Created chat assistant record
  */
 export const createProjectChat = (
   projectId: string,
@@ -518,7 +586,11 @@ export const createProjectChat = (
 ): Promise<ProjectChat> => api.post(`/api/projects/${projectId}/chats`, data);
 
 /**
- * Update a chat assistant.
+ * @description Update a chat assistant
+ * @param {string} projectId - Project UUID
+ * @param {string} chatId - Chat UUID
+ * @param {Partial<ProjectChat>} data - Fields to update
+ * @returns {Promise<ProjectChat>} Updated chat assistant record
  */
 export const updateProjectChat = (
   projectId: string,
@@ -528,7 +600,10 @@ export const updateProjectChat = (
   api.put(`/api/projects/${projectId}/chats/${chatId}`, data);
 
 /**
- * Delete a chat assistant.
+ * @description Delete a chat assistant
+ * @param {string} projectId - Project UUID
+ * @param {string} chatId - Chat UUID
+ * @returns {Promise<void>}
  */
 export const deleteProjectChat = (
   projectId: string,
@@ -536,7 +611,10 @@ export const deleteProjectChat = (
 ): Promise<void> => api.delete(`/api/projects/${projectId}/chats/${chatId}`);
 
 /**
- * Sync a chat assistant from RAGFlow.
+ * @description Sync a chat assistant configuration from RAGFlow
+ * @param {string} projectId - Project UUID
+ * @param {string} chatId - Chat UUID
+ * @returns {Promise<ProjectChat>} Updated chat assistant record
  */
 export const syncProjectChat = (
   projectId: string,
@@ -568,14 +646,19 @@ export interface ProjectSearch {
 }
 
 /**
- * List search apps for a project.
+ * @description List search apps for a project
+ * @param {string} projectId - Project UUID
+ * @returns {Promise<ProjectSearch[]>} Array of search app records
  */
 export const getProjectSearches = (
   projectId: string,
 ): Promise<ProjectSearch[]> => api.get(`/api/projects/${projectId}/searches`);
 
 /**
- * Get a search app by ID.
+ * @description Get a search app by ID
+ * @param {string} projectId - Project UUID
+ * @param {string} searchId - Search app UUID
+ * @returns {Promise<ProjectSearch>} Search app record
  */
 export const getProjectSearchById = (
   projectId: string,
@@ -584,7 +667,10 @@ export const getProjectSearchById = (
   api.get(`/api/projects/${projectId}/searches/${searchId}`);
 
 /**
- * Create a search app.
+ * @description Create a search app for a project
+ * @param {string} projectId - Project UUID
+ * @param {object} data - Search app creation payload
+ * @returns {Promise<ProjectSearch>} Created search app record
  */
 export const createProjectSearch = (
   projectId: string,
@@ -599,7 +685,11 @@ export const createProjectSearch = (
   api.post(`/api/projects/${projectId}/searches`, data);
 
 /**
- * Update a search app.
+ * @description Update a search app
+ * @param {string} projectId - Project UUID
+ * @param {string} searchId - Search app UUID
+ * @param {Partial<ProjectSearch>} data - Fields to update
+ * @returns {Promise<ProjectSearch>} Updated search app record
  */
 export const updateProjectSearch = (
   projectId: string,
@@ -609,7 +699,10 @@ export const updateProjectSearch = (
   api.put(`/api/projects/${projectId}/searches/${searchId}`, data);
 
 /**
- * Delete a search app.
+ * @description Delete a search app
+ * @param {string} projectId - Project UUID
+ * @param {string} searchId - Search app UUID
+ * @returns {Promise<void>}
  */
 export const deleteProjectSearch = (
   projectId: string,
@@ -618,7 +711,10 @@ export const deleteProjectSearch = (
   api.delete(`/api/projects/${projectId}/searches/${searchId}`);
 
 /**
- * Sync a search app from RAGFlow.
+ * @description Sync a search app configuration from RAGFlow
+ * @param {string} projectId - Project UUID
+ * @param {string} searchId - Search app UUID
+ * @returns {Promise<ProjectSearch>} Updated search app record
  */
 export const syncProjectSearch = (
   projectId: string,
@@ -649,7 +745,9 @@ export interface ProjectEntityPermission {
 }
 
 /**
- * List all entity permissions for a project.
+ * @description List all entity permissions for a project
+ * @param {string} projectId - Project UUID
+ * @returns {Promise<ProjectEntityPermission[]>} Array of entity permission records
  */
 export const getEntityPermissions = (
   projectId: string,
@@ -657,7 +755,11 @@ export const getEntityPermissions = (
   api.get(`/api/projects/${projectId}/entity-permissions`);
 
 /**
- * List permissions for a specific entity.
+ * @description List permissions for a specific entity (category, chat, or search)
+ * @param {string} projectId - Project UUID
+ * @param {string} entityType - Entity type identifier
+ * @param {string} entityId - Entity UUID
+ * @returns {Promise<ProjectEntityPermission[]>} Array of entity permission records
  */
 export const getEntityPermissionsByEntity = (
   projectId: string,
@@ -669,7 +771,10 @@ export const getEntityPermissionsByEntity = (
   );
 
 /**
- * Set (upsert) a permission for a grantee on an entity.
+ * @description Set (upsert) a permission for a grantee on an entity
+ * @param {string} projectId - Project UUID
+ * @param {object} data - Permission data including entity info and permission level
+ * @returns {Promise<ProjectEntityPermission>} Created or updated permission record
  */
 export const setEntityPermission = (
   projectId: string,
@@ -684,7 +789,10 @@ export const setEntityPermission = (
   api.post(`/api/projects/${projectId}/entity-permissions`, data);
 
 /**
- * Remove an entity permission.
+ * @description Remove an entity permission
+ * @param {string} projectId - Project UUID
+ * @param {string} permissionId - Permission UUID to remove
+ * @returns {Promise<void>}
  */
 export const removeEntityPermission = (
   projectId: string,
@@ -724,7 +832,9 @@ export const syncVersionParserStatus = (
 // ============================================================================
 
 /**
- * List datasets linked to a project.
+ * @description List datasets linked to a project
+ * @param {string} projectId - Project UUID
+ * @returns {Promise<ProjectDataset[]>} Array of project dataset records
  */
 export const getProjectDatasets = (
   projectId: string,
@@ -732,7 +842,10 @@ export const getProjectDatasets = (
   api.get(`/api/projects/${projectId}/datasets`);
 
 /**
- * Link or create a dataset for a project.
+ * @description Link an existing dataset or create a new one for a project
+ * @param {string} projectId - Project UUID
+ * @param {object} data - Dataset ID to link or name to create
+ * @returns {Promise<ProjectDataset>} Created project-dataset link record
  */
 export const linkProjectDataset = (
   projectId: string,
@@ -741,7 +854,10 @@ export const linkProjectDataset = (
   api.post(`/api/projects/${projectId}/datasets`, data);
 
 /**
- * Unlink a dataset from a project.
+ * @description Unlink a dataset from a project
+ * @param {string} projectId - Project UUID
+ * @param {string} datasetId - Dataset UUID to unlink
+ * @returns {Promise<void>}
  */
 export const unlinkProjectDataset = (
   projectId: string,
@@ -754,7 +870,9 @@ export const unlinkProjectDataset = (
 // ============================================================================
 
 /**
- * List sync configs for a project.
+ * @description List sync configs for a datasync project
+ * @param {string} projectId - Project UUID
+ * @returns {Promise<ProjectSyncConfig[]>} Array of sync config records
  */
 export const getSyncConfigs = (
   projectId: string,
@@ -762,7 +880,10 @@ export const getSyncConfigs = (
   api.get(`/api/projects/${projectId}/sync-configs`);
 
 /**
- * Create a sync config.
+ * @description Create a sync config for a datasync project
+ * @param {string} projectId - Project UUID
+ * @param {object} data - Sync config creation payload
+ * @returns {Promise<ProjectSyncConfig>} Created sync config record
  */
 export const createSyncConfig = (
   projectId: string,
@@ -776,7 +897,11 @@ export const createSyncConfig = (
   api.post(`/api/projects/${projectId}/sync-configs`, data);
 
 /**
- * Update a sync config.
+ * @description Update a sync config
+ * @param {string} projectId - Project UUID
+ * @param {string} configId - Sync config UUID
+ * @param {Partial<ProjectSyncConfig>} data - Fields to update
+ * @returns {Promise<ProjectSyncConfig>} Updated sync config record
  */
 export const updateSyncConfig = (
   projectId: string,
@@ -786,7 +911,10 @@ export const updateSyncConfig = (
   api.put(`/api/projects/${projectId}/sync-configs/${configId}`, data);
 
 /**
- * Delete a sync config.
+ * @description Delete a sync config
+ * @param {string} projectId - Project UUID
+ * @param {string} configId - Sync config UUID
+ * @returns {Promise<void>}
  */
 export const deleteSyncConfig = (
   projectId: string,
@@ -795,7 +923,10 @@ export const deleteSyncConfig = (
   api.delete(`/api/projects/${projectId}/sync-configs/${configId}`);
 
 /**
- * Test a sync connection.
+ * @description Test a sync connection before saving
+ * @param {string} projectId - Project UUID
+ * @param {object} data - Connection test payload with source type and config
+ * @returns {Promise<{ success: boolean; message: string }>} Test result
  */
 export const testSyncConnection = (
   projectId: string,
@@ -807,7 +938,10 @@ export const testSyncConnection = (
   api.post(`/api/projects/${projectId}/sync-configs/test`, data);
 
 /**
- * Manually trigger a sync.
+ * @description Manually trigger a data sync
+ * @param {string} projectId - Project UUID
+ * @param {string} configId - Sync config UUID
+ * @returns {Promise<{ message: string }>} Trigger result message
  */
 export const triggerSync = (
   projectId: string,

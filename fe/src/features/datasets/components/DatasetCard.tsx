@@ -6,22 +6,40 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Dataset } from '../types';
 
+/**
+ * @description Props for the DatasetCard component.
+ */
 interface DatasetCardProps {
+  /** The dataset to display */
   dataset: Dataset;
+  /** Callback when edit button is clicked */
   onEdit: (dataset: Dataset) => void;
+  /** Callback when delete button is clicked */
   onDelete: (dataset: Dataset) => void;
+  /** Optional callback for manage access button (admin only) */
   onManageAccess?: ((dataset: Dataset) => void) | undefined;
+  /** Whether the current user has admin privileges */
   isAdmin: boolean;
 }
 
+/**
+ * @description Card component displaying a dataset summary with name, status,
+ * document/chunk counts, access level, and admin action buttons (edit, delete, manage access).
+ * Clicking the card navigates to the dataset detail page.
+ *
+ * @param {DatasetCardProps} props - Component properties
+ * @returns {JSX.Element} Rendered dataset card
+ */
 const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onEdit, onDelete, onManageAccess, isAdmin }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
+  /** Navigate to dataset detail page on card click */
   const handleClick = () => {
     navigate(`/data-studio/datasets/${dataset.id}`);
   };
 
+  // Map dataset status to Tailwind color classes for the status badge
   const statusColor = dataset.status === 'active'
     ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
     : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400';

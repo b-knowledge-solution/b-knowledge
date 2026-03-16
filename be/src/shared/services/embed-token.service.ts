@@ -20,7 +20,7 @@ import { log } from '@/shared/services/logger.service.js'
 // ---------------------------------------------------------------------------
 
 /**
- * Generic embed token row returned from the database.
+ * @description Generic embed token row returned from the database
  */
 export interface EmbedTokenRow {
   id: string
@@ -67,9 +67,9 @@ export class EmbedTokenService {
   private validationCache = new Map<string, CachedToken>()
 
   /**
-   * Create a new EmbedTokenService instance.
-   * @param tableName - The database table to operate on (e.g. 'chat_embed_tokens')
-   * @param fkColumn - The foreign key column name (e.g. 'dialog_id' or 'app_id')
+   * @description Create a new EmbedTokenService instance.
+   * @param {string} tableName - The database table to operate on (e.g. 'chat_embed_tokens')
+   * @param {string} [fkColumn='app_id'] - The foreign key column name (e.g. 'dialog_id' or 'app_id')
    */
   constructor(tableName: string, fkColumn: string = 'app_id') {
     this.tableName = tableName
@@ -77,20 +77,20 @@ export class EmbedTokenService {
   }
 
   /**
-   * Generate a cryptographically secure 64-character hex token.
-   * @returns Random 64-char hex string
+   * @description Generate a cryptographically secure 64-character hex token.
+   * @returns {string} Random 64-char hex string
    */
   private generateToken(): string {
     return randomBytes(32).toString('hex')
   }
 
   /**
-   * Create a new embed token for a resource.
-   * @param resourceId - UUID of the parent resource (dialog or search app)
-   * @param name - Human-readable label for the token
-   * @param createdBy - UUID of the user creating the token
-   * @param expiresAt - Optional expiration date
-   * @returns The created token row
+   * @description Create a new embed token for a resource.
+   * @param {string} resourceId - UUID of the parent resource (dialog or search app)
+   * @param {string} name - Human-readable label for the token
+   * @param {string} createdBy - UUID of the user creating the token
+   * @param {Date | null} [expiresAt] - Optional expiration date
+   * @returns {Promise<EmbedTokenRow>} The created token row
    */
   async createToken(
     resourceId: string,
@@ -116,10 +116,10 @@ export class EmbedTokenService {
   }
 
   /**
-   * List all tokens for a given resource.
+   * @description List all tokens for a given resource.
    * Token values are masked for security — only first 8 and last 4 chars shown.
-   * @param resourceId - UUID of the parent resource
-   * @returns Array of token rows with masked token values
+   * @param {string} resourceId - UUID of the parent resource
+   * @returns {Promise<EmbedTokenRow[]>} Array of token rows with masked token values
    */
   async listTokens(resourceId: string): Promise<EmbedTokenRow[]> {
     const tokens = await db(this.tableName)
@@ -134,9 +134,10 @@ export class EmbedTokenService {
   }
 
   /**
-   * Revoke (delete) a token by its ID.
+   * @description Revoke (delete) a token by its ID.
    * Also removes any cached validation entry.
-   * @param tokenId - UUID of the token record to delete
+   * @param {string} tokenId - UUID of the token record to delete
+   * @returns {Promise<void>}
    */
   async revokeToken(tokenId: string): Promise<void> {
     // Find the token first to clear from cache
@@ -150,11 +151,11 @@ export class EmbedTokenService {
   }
 
   /**
-   * Validate a token string and return the associated record.
+   * @description Validate a token string and return the associated record.
    * Uses a 30-second in-memory cache to avoid repeated DB lookups.
    * Checks that the token exists, is active, and is not expired.
-   * @param tokenString - The 64-char hex token to validate
-   * @returns The token row if valid, undefined otherwise
+   * @param {string} tokenString - The 64-char hex token to validate
+   * @returns {Promise<EmbedTokenRow | undefined>} The token row if valid, undefined otherwise
    */
   async validateToken(tokenString: string): Promise<EmbedTokenRow | undefined> {
     // Check cache first
@@ -180,9 +181,9 @@ export class EmbedTokenService {
   }
 
   /**
-   * Find a token by its ID.
-   * @param tokenId - UUID of the token record
-   * @returns The token row if found, undefined otherwise
+   * @description Find a token by its ID.
+   * @param {string} tokenId - UUID of the token record
+   * @returns {Promise<EmbedTokenRow | undefined>} The token row if found, undefined otherwise
    */
   async findById(tokenId: string): Promise<EmbedTokenRow | undefined> {
     return db(this.tableName).where({ id: tokenId }).first()

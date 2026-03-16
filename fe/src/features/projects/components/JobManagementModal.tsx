@@ -195,9 +195,10 @@ const FileExpandRow = ({ jobId }: { jobId: string }) => {
 // ============================================================================
 
 /**
- * JobManagementModal — shows version-level jobs with Active/History tabs,
- * a Force Start button (with confirm dialog), and an optional auto-parse
- * checkbox that triggers RAGFlow parsing after all files are uploaded.
+ * @description Modal showing version-level conversion jobs with Active/History tabs,
+ * Force Start button (with confirm dialog), and optional auto-parse after upload finishes
+ * @param {JobManagementModalProps} props - Modal configuration with project/category/version IDs
+ * @returns {JSX.Element} Rendered job management modal with confirm dialog
  */
 const JobManagementModal = ({
   open,

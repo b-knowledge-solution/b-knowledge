@@ -6,7 +6,8 @@ import { db } from '@/shared/db/knex.js'
 import { DocumentCategory } from '@/shared/models/types.js'
 
 /**
- * DocumentCategoryModel provides CRUD operations for the document_categories table.
+ * @description Provides CRUD operations for the document_categories table,
+ *   which organizes project documents into named groups with ordering
  * @extends BaseModel<DocumentCategory>
  */
 export class DocumentCategoryModel extends BaseModel<DocumentCategory> {
@@ -14,9 +15,9 @@ export class DocumentCategoryModel extends BaseModel<DocumentCategory> {
   protected knex = db
 
   /**
-   * Find all categories for a given project, ordered by sort_order.
-   * @param projectId - UUID of the project
-   * @returns Array of category records
+   * @description Find all categories for a given project, ordered by sort_order ascending
+   * @param {string} projectId - UUID of the project
+   * @returns {Promise<DocumentCategory[]>} Array of category records
    */
   async findByProjectId(projectId: string): Promise<DocumentCategory[]> {
     return this.knex(this.tableName)

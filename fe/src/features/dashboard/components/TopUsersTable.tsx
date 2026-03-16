@@ -120,7 +120,7 @@ export function TopUsersTable({ topUsers, limit, onLimitChange }: TopUsersTableP
                                             ${index % 2 === 1 ? 'bg-slate-50/50 dark:bg-slate-800/20' : ''}
                                         `}
                                     >
-                                        {/* Rank badge */}
+                                        {/* Rank badge — gold/silver/bronze for top 3, plain number otherwise */}
                                         <td className="px-5 py-3">
                                             {style ? (
                                                 <span

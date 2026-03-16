@@ -5,7 +5,7 @@
  */
 
 /**
- * User interface representing a record in the 'users' table.
+ * @description User interface representing a record in the 'users' table.
  */
 export interface User {
     /** Unique UUID for the user */
@@ -47,7 +47,7 @@ export interface User {
 }
 
 /**
- * Team interface representing a record in the 'teams' table.
+ * @description Team interface representing a record in the 'teams' table.
  */
 export interface Team {
     /** Unique UUID for the team */
@@ -69,7 +69,7 @@ export interface Team {
 }
 
 /**
- * UserTeam interface representing the many-to-many relationship
+ * @description UserTeam interface representing the many-to-many relationship
  * between Users and Teams in the 'user_teams' table.
  */
 export interface UserTeam {
@@ -92,7 +92,7 @@ export interface UserTeam {
 }
 
 /**
- * ChatSession interface representing a conversation session.
+ * @description ChatSession interface representing a conversation session.
  */
 export interface ChatSession {
     /** Unique UUID for the session */
@@ -114,7 +114,7 @@ export interface ChatSession {
 }
 
 /**
- * ChatMessage interface representing an individual message in a session.
+ * @description ChatMessage interface representing an individual message in a session.
  */
 export interface ChatMessage {
     /** Unique UUID for the message */
@@ -138,7 +138,7 @@ export interface ChatMessage {
 }
 
 /**
- * ChatAssistant interface representing a chat assistant configuration.
+ * @description ChatAssistant interface representing a chat assistant configuration.
  */
 export interface ChatAssistant {
     /** Unique UUID for the assistant */
@@ -168,7 +168,7 @@ export interface ChatAssistant {
 }
 
 /**
- * ChatAssistantAccess interface representing an RBAC access entry for a chat assistant.
+ * @description ChatAssistantAccess interface representing an RBAC access entry for a chat assistant.
  * Links an assistant to a user or team that has been granted access.
  */
 export interface ChatAssistantAccess {
@@ -187,7 +187,7 @@ export interface ChatAssistantAccess {
 }
 
 /**
- * SearchApp interface representing a saved search application configuration.
+ * @description SearchApp interface representing a saved search application configuration.
  */
 export interface SearchApp {
     /** Unique UUID for the search app */
@@ -213,7 +213,7 @@ export interface SearchApp {
 }
 
 /**
- * SearchAppAccess interface representing an RBAC access entry for a search app.
+ * @description SearchAppAccess interface representing an RBAC access entry for a search app.
  * Links a search app to a user or team that has been granted access.
  */
 export interface SearchAppAccess {
@@ -232,7 +232,7 @@ export interface SearchAppAccess {
 }
 
 /**
- * SearchEmbedToken interface representing an API token for embedded search widget access.
+ * @description SearchEmbedToken interface representing an API token for embedded search widget access.
  * Links a token to a search app for unauthenticated public access.
  */
 export interface SearchEmbedToken {
@@ -255,7 +255,7 @@ export interface SearchEmbedToken {
 }
 
 /**
- * SystemConfig interface representing key-value configuration pairs.
+ * @description SystemConfig interface representing key-value configuration pairs in the 'system_configs' table.
  */
 export interface SystemConfig {
     /** Configuration key name */
@@ -273,7 +273,7 @@ export interface SystemConfig {
 }
 
 /**
- * KnowledgeBaseSource interface representing a data source for RAG.
+ * @description KnowledgeBaseSource interface representing a data source for RAG.
  */
 export interface KnowledgeBaseSource {
     /** Unique UUID for the source */
@@ -303,7 +303,7 @@ export interface KnowledgeBaseSource {
 }
 
 /**
- * AuditLog interface representing a system audit event.
+ * @description AuditLog interface representing a system audit event.
  */
 export interface AuditLog {
     /** Auto-incrementing integer ID */
@@ -331,7 +331,7 @@ export interface AuditLog {
 }
 
 /**
- * UserIpHistory interface representing IP tracking records.
+ * @description UserIpHistory interface representing IP tracking records.
  */
 export interface UserIpHistory {
     /** Auto-incrementing integer ID */
@@ -349,7 +349,7 @@ export interface UserIpHistory {
 }
 
 /**
- * BroadcastMessage interface representing system-wide alerts.
+ * @description BroadcastMessage interface representing system-wide alerts.
  */
 export interface BroadcastMessage {
     /** Unique UUID for the message */
@@ -379,7 +379,7 @@ export interface BroadcastMessage {
 }
 
 /**
- * UserDismissedBroadcast interface tracking dismissed messages.
+ * @description UserDismissedBroadcast interface tracking dismissed messages.
  */
 export interface UserDismissedBroadcast {
     /** UUID of the user */
@@ -395,7 +395,7 @@ export interface UserDismissedBroadcast {
 }
 
 /**
- * PermissionLevels enum defining access hierarchy.
+ * @description PermissionLevels enum defining access hierarchy for RBAC.
  */
 export enum PermissionLevel {
     /** No access */
@@ -409,7 +409,7 @@ export enum PermissionLevel {
 }
 
 /**
- * Prompt interface representing a saved prompt.
+ * @description Prompt interface representing a saved prompt.
  */
 export interface Prompt {
     /** Unique UUID for the prompt */
@@ -435,7 +435,7 @@ export interface Prompt {
 }
 
 /**
- * PromptInteraction interface representing user feedback (Like, Dislike, Comment).
+ * @description PromptInteraction interface representing user feedback (Like, Dislike, Comment).
  */
 export interface PromptInteraction {
     /** Unique UUID for the interaction */
@@ -455,7 +455,7 @@ export interface PromptInteraction {
 }
 
 /**
- * PromptTag interface representing a reusable tag with color.
+ * @description PromptTag interface representing a reusable tag with color.
  */
 export interface PromptTag {
     /** Unique UUID for the tag */
@@ -474,7 +474,7 @@ export interface PromptTag {
     updated_at: Date;
 }
 /**
- * PromptPermission interface representing a record in the 'prompt_permissions' table.
+ * @description PromptPermission interface representing a record in the 'prompt_permissions' table.
  */
 export interface PromptPermission {
     /** Unique UUID for the permission record */
@@ -496,7 +496,7 @@ export interface PromptPermission {
 }
 
 /**
- * DTO for bulk creating prompts.
+ * @description DTO for bulk creating prompts via import.
  */
 export interface BulkCreatePromptDto {
     /** The prompt text (required) */
@@ -510,7 +510,7 @@ export interface BulkCreatePromptDto {
 }
 
 /**
- * Result of bulk prompt creation.
+ * @description Result of bulk prompt creation operation.
  */
 export interface BulkCreateResult {
     /** Whether the operation completed successfully */
@@ -524,7 +524,7 @@ export interface BulkCreateResult {
 }
 
 /**
- * GlossaryTask interface representing a task in the glossary management system.
+ * @description GlossaryTask interface representing a task in the glossary management system.
  * Tasks are the parent entity containing prompt template instructions.
  */
 export interface GlossaryTask {
@@ -557,7 +557,7 @@ export interface GlossaryTask {
 }
 
 /**
- * GlossaryKeyword interface representing a standalone keyword entity.
+ * @description GlossaryKeyword interface representing a standalone keyword entity.
  * Keywords are independent entries in the glossary system.
  */
 export interface GlossaryKeyword {
@@ -584,7 +584,7 @@ export interface GlossaryKeyword {
 }
 
 /**
- * DTO for a single row in the glossary bulk import Excel file.
+ * @description DTO for a single row in the glossary bulk import Excel file.
  */
 export interface BulkImportGlossaryRow {
     /** Name of the task (required) */
@@ -600,53 +600,81 @@ export interface BulkImportGlossaryRow {
 }
 
 /**
- * Result of glossary bulk import operation.
- */
-/**
- * Dataset interface representing a RAG dataset (knowledgebase).
+ * @description Dataset interface representing a RAG dataset (knowledgebase) record in the 'datasets' table.
  */
 export interface Dataset {
+    /** Unique UUID for the dataset */
     id: string;
+    /** Display name of the dataset */
     name: string;
+    /** Optional description */
     description?: string | null;
+    /** Language of the dataset content (e.g., 'English', 'Japanese') */
     language: string;
+    /** Embedding model identifier used for vectorization */
     embedding_model?: string | null;
+    /** Parser/chunking method identifier (e.g., 'naive', 'qa') */
     parser_id: string;
+    /** Parser configuration (JSONB) including chunk size, overlap, etc. */
     parser_config: any;
+    /** Access control settings (JSONB) with public flag, team_ids, user_ids */
     access_control: any;
+    /** Dataset status (e.g., 'active', 'archived') */
     status: string;
+    /** Number of documents in this dataset */
     doc_count: number;
+    /** Number of chunks across all documents */
     chunk_count: number;
+    /** Total token count across all chunks */
     token_count?: number;
+    /** PageRank score for ranking datasets */
     pagerank?: number;
+    /** User ID who created this record */
     created_by?: string | null;
+    /** User ID who last updated this record */
     updated_by?: string | null;
+    /** Timestamp of record creation */
     created_at: Date;
+    /** Timestamp of last update */
     updated_at: Date;
 }
 
 /**
- * Document interface representing a file within a dataset.
+ * @description Document interface representing a file within a dataset in the 'documents' table.
  */
 export interface Document {
+    /** Unique UUID for the document */
     id: string;
+    /** UUID of the parent dataset */
     dataset_id: string;
+    /** Original file name */
     name: string;
+    /** File size in bytes */
     size: number;
+    /** MIME type or file extension */
     type?: string | null;
+    /** Processing status (e.g., 'pending', 'parsing', 'done', 'failed') */
     status: string;
+    /** Processing progress percentage (0-100) */
     progress: number;
+    /** Human-readable progress message or error details */
     progress_msg?: string | null;
+    /** Number of chunks generated from this document */
     chunk_count: number;
+    /** Total token count across all chunks */
     token_count: number;
+    /** S3/MinIO storage path for the original file */
     storage_path?: string | null;
+    /** User ID who created this record */
     created_by?: string | null;
+    /** Timestamp of record creation */
     created_at: Date;
+    /** Timestamp of last update */
     updated_at: Date;
 }
 
 /**
- * ModelProvider interface representing a system-wide model provider config.
+ * @description ModelProvider interface representing a system-wide model provider config.
  *
  * Supported `model_type` values (RAGFlow canonical types):
  * - `chat`        – Conversational LLM (e.g. GPT-4o, Claude)
@@ -660,26 +688,38 @@ export interface Document {
  * (image-to-text) models by the Python worker.
  */
 export interface ModelProvider {
+    /** Unique UUID for the model provider config */
     id: string;
+    /** Provider factory name (e.g., 'OpenAI', 'Azure-OpenAI', 'Ollama') */
     factory_name: string;
     /** One of: chat, embedding, speech2text, rerank, tts, ocr */
     model_type: string;
+    /** Model identifier (e.g., 'gpt-4o', 'text-embedding-3-large') */
     model_name: string;
+    /** API key for authentication with the provider */
     api_key?: string | null;
+    /** Custom API base URL for self-hosted or proxy endpoints */
     api_base?: string | null;
+    /** Maximum token limit for the model */
     max_tokens?: number | null;
     /** Whether this chat model supports vision (image understanding) */
     vision?: boolean;
+    /** Provider status (e.g., 'active', 'inactive') */
     status: string;
+    /** Whether this is the default provider for its model type */
     is_default: boolean;
+    /** User ID who created this record */
     created_by?: string | null;
+    /** User ID who last updated this record */
     updated_by?: string | null;
+    /** Timestamp of record creation */
     created_at: Date;
+    /** Timestamp of last update */
     updated_at: Date;
 }
 
 /**
- * TenantLlm interface representing a row in the shared 'tenant_llm' table.
+ * @description TenantLlm interface representing a row in the shared 'tenant_llm' table.
  * This table is read by Python task executors to load LLM provider configs.
  */
 export interface TenantLlm {
@@ -703,6 +743,9 @@ export interface TenantLlm {
     vision?: boolean;
 }
 
+/**
+ * @description Result of glossary bulk import operation.
+ */
 export interface BulkImportGlossaryResult {
     /** Whether the operation completed successfully */
     success: boolean;
@@ -719,7 +762,7 @@ export interface BulkImportGlossaryResult {
 // ---------------------------------------------------------------------------
 
 /**
- * Project interface representing a record in the 'projects' table.
+ * @description Project interface representing a record in the 'projects' table.
  */
 export interface Project {
   /** Unique UUID for the project */
@@ -751,7 +794,7 @@ export interface Project {
 }
 
 /**
- * ProjectPermission interface representing tab-level access control.
+ * @description ProjectPermission interface representing tab-level access control.
  */
 export interface ProjectPermission {
   /** Unique UUID */
@@ -779,7 +822,7 @@ export interface ProjectPermission {
 }
 
 /**
- * ProjectDataset interface representing the project-dataset junction.
+ * @description ProjectDataset interface representing the project-dataset junction table.
  */
 export interface ProjectDataset {
   /** Unique UUID */
@@ -795,7 +838,7 @@ export interface ProjectDataset {
 }
 
 /**
- * ProjectSyncConfig interface for external data source sync configuration.
+ * @description ProjectSyncConfig interface for external data source sync configuration.
  */
 export interface ProjectSyncConfig {
   /** Unique UUID */
@@ -825,7 +868,7 @@ export interface ProjectSyncConfig {
 }
 
 /**
- * DocumentCategory interface representing a grouping within a project.
+ * @description DocumentCategory interface representing a grouping within a project.
  */
 export interface DocumentCategory {
   /** Unique UUID */
@@ -851,7 +894,7 @@ export interface DocumentCategory {
 }
 
 /**
- * DocumentCategoryVersion interface representing a version within a category.
+ * @description DocumentCategoryVersion interface representing a version within a category.
  */
 export interface DocumentCategoryVersion {
   /** Unique UUID */
@@ -881,7 +924,7 @@ export interface DocumentCategoryVersion {
 }
 
 /**
- * DocumentCategoryVersionFile interface for files within a category version.
+ * @description DocumentCategoryVersionFile interface for files within a category version.
  */
 export interface DocumentCategoryVersionFile {
   /** Unique UUID */
@@ -903,7 +946,7 @@ export interface DocumentCategoryVersionFile {
 }
 
 /**
- * ProjectChat interface for chat assistants linked to projects.
+ * @description ProjectChat interface for chat assistants linked to projects.
  */
 export interface ProjectChat {
   /** Unique UUID */
@@ -937,7 +980,7 @@ export interface ProjectChat {
 }
 
 /**
- * ProjectSearch interface for search apps linked to projects.
+ * @description ProjectSearch interface for search apps linked to projects.
  */
 export interface ProjectSearch {
   /** Unique UUID */
@@ -971,7 +1014,7 @@ export interface ProjectSearch {
 }
 
 /**
- * ProjectEntityPermission interface for granular entity-level access.
+ * @description ProjectEntityPermission interface for granular entity-level access.
  */
 export interface ProjectEntityPermission {
   /** Unique UUID */
@@ -1003,7 +1046,7 @@ export interface ProjectEntityPermission {
 // ---------------------------------------------------------------------------
 
 /**
- * ChatEmbedToken interface representing a record in the 'chat_embed_tokens' table.
+ * @description ChatEmbedToken interface representing a record in the 'chat_embed_tokens' table.
  * Tokens grant public access to a chat dialog via embed endpoints.
  */
 export interface ChatEmbedToken {
@@ -1030,69 +1073,115 @@ export interface ChatEmbedToken {
 // ---------------------------------------------------------------------------
 
 /**
- * DocumentRow represents a row in the Peewee 'document' table.
+ * @description DocumentRow represents a row in the Peewee 'document' table.
  * Table schema matches advance-rag/db/db_models.py.
  */
 export interface DocumentRow {
+    /** Hex UUID without hyphens (Peewee format) */
     id: string;
+    /** Knowledgebase ID this document belongs to */
     kb_id: string;
+    /** Parser/chunking method identifier */
     parser_id: string;
+    /** Parser configuration (JSONB) */
     parser_config: Record<string, unknown>;
+    /** Source type (e.g., 'local', 'web') */
     source_type: string;
+    /** Document type identifier */
     type: string;
+    /** User ID who uploaded this document */
     created_by: string;
+    /** Original file name */
     name: string;
+    /** S3/MinIO storage location path */
     location: string;
+    /** File size in bytes */
     size: number;
+    /** File extension (e.g., '.pdf', '.docx') */
     suffix: string;
     /** "0"=not started, "1"=running, "2"=cancelled, "3"=done, "4"=fail */
     run: string;
     /** "0"=deleted, "1"=valid */
     status: string;
+    /** Processing progress (0.0 - 1.0) */
     progress: number;
+    /** Human-readable progress or error message */
     progress_msg: string;
+    /** Total token count after chunking */
     token_num: number;
+    /** Total chunk count after parsing */
     chunk_num: number;
+    /** Index signature for additional Peewee fields */
     [key: string]: unknown;
 }
 
 /**
- * TaskRow represents a row in the Peewee 'task' table.
+ * @description TaskRow represents a row in the Peewee 'task' table.
+ * Used by advance-rag task executors for document parsing jobs.
  */
 export interface TaskRow {
+    /** Hex UUID without hyphens (Peewee format) */
     id: string;
+    /** Document ID this task processes */
     doc_id: string;
+    /** Start page for page-range processing */
     from_page: number;
+    /** End page for page-range processing */
     to_page: number;
+    /** Task type (e.g., 'parse', 'graphrag', 'raptor') */
     task_type: string;
+    /** Task priority (higher = more urgent) */
     priority: number;
+    /** Processing progress (0.0 - 1.0) */
     progress: number;
+    /** Human-readable progress or error message */
     progress_msg: string;
+    /** ISO timestamp when the task started */
     begin_at: string;
+    /** Content digest hash for deduplication */
     digest: string;
+    /** Comma-separated chunk IDs produced by this task */
     chunk_ids: string;
+    /** Index signature for additional Peewee fields */
     [key: string]: unknown;
 }
 
 /**
- * KnowledgebaseRow represents a row in the Peewee 'knowledgebase' table.
+ * @description KnowledgebaseRow represents a row in the Peewee 'knowledgebase' table.
+ * Shared schema between Node.js backend and Python task executors.
  */
 export interface KnowledgebaseRow {
+    /** Hex UUID without hyphens (Peewee format) */
     id: string;
+    /** Tenant UUID this knowledgebase belongs to */
     tenant_id: string;
+    /** Display name of the knowledgebase */
     name: string;
+    /** Content language (e.g., 'English', 'Chinese') */
     language: string;
+    /** Description of the knowledgebase */
     description: string;
+    /** Embedding model identifier */
     embd_id: string;
+    /** Parser/chunking method identifier */
     parser_id: string;
+    /** Parser configuration (JSONB) */
     parser_config: Record<string, unknown>;
+    /** Total document count */
     doc_num: number;
+    /** Total token count across all chunks */
     token_num: number;
+    /** Total chunk count */
     chunk_num: number;
+    /** GraphRAG background task ID (null if not started) */
     graphrag_task_id: string | null;
+    /** RAPTOR background task ID (null if not started) */
     raptor_task_id: string | null;
+    /** Mindmap background task ID (null if not started) */
     mindmap_task_id: string | null;
+    /** Status: '1'=valid, '0'=invalid */
     status: string;
+    /** Index signature for additional Peewee fields */
     [key: string]: unknown;
 }
 
@@ -1101,7 +1190,7 @@ export interface KnowledgebaseRow {
 // ---------------------------------------------------------------------------
 
 /**
- * DocumentVersion interface representing a versioned snapshot of dataset documents.
+ * @description DocumentVersion interface representing a versioned snapshot of dataset documents.
  */
 export interface DocumentVersion {
     /** Unique UUID for the version */
@@ -1129,7 +1218,7 @@ export interface DocumentVersion {
 }
 
 /**
- * DocumentVersionFile interface representing a file within a document version.
+ * @description DocumentVersionFile interface representing a file within a document version.
  */
 export interface DocumentVersionFile {
     /** Unique UUID for the file record */
@@ -1151,7 +1240,7 @@ export interface DocumentVersionFile {
 }
 
 /**
- * ConverterJob interface representing a conversion job for a document version.
+ * @description ConverterJob interface representing a conversion job for a document version.
  */
 export interface ConverterJob {
     /** Unique UUID for the job */
@@ -1179,7 +1268,7 @@ export interface ConverterJob {
 // ---------------------------------------------------------------------------
 
 /**
- * PromptVariable defines a user-replaceable placeholder in a dialog's system prompt.
+ * @description PromptVariable defines a user-replaceable placeholder in a dialog's system prompt.
  * Variables use `{variable_name}` syntax in the prompt template.
  */
 export interface PromptVariable {
@@ -1194,7 +1283,7 @@ export interface PromptVariable {
 }
 
 /**
- * MetadataFilterCondition defines a single metadata filter for RAG search.
+ * @description MetadataFilterCondition defines a single metadata filter for RAG search.
  */
 export interface MetadataFilterCondition {
   /** Field name in the OpenSearch document metadata */
@@ -1210,7 +1299,7 @@ export interface MetadataFilterCondition {
 // ---------------------------------------------------------------------------
 
 /**
- * Access control definition for datasets and knowledge base sources.
+ * @description Access control definition for datasets and knowledge base sources.
  */
 export interface AccessControl {
     public: boolean;
@@ -1219,7 +1308,7 @@ export interface AccessControl {
 }
 
 /**
- * Authenticated user context passed to service methods for audit logging.
+ * @description Authenticated user context passed to service methods for audit logging and authorization.
  */
 export interface UserContext {
     id: string;
@@ -1233,7 +1322,7 @@ export interface UserContext {
 // ---------------------------------------------------------------------------
 
 /**
- * A single chunk result from Elasticsearch search.
+ * @description A single chunk result returned from OpenSearch vector/text search.
  */
 export interface ChunkResult {
     chunk_id: string;
@@ -1251,7 +1340,7 @@ export interface ChunkResult {
 }
 
 /**
- * Search request parameters for RAG search.
+ * @description Search request parameters for RAG retrieval queries.
  */
 export interface SearchRequest {
     query: string;
@@ -1276,7 +1365,7 @@ export interface SearchRequest {
 // ---------------------------------------------------------------------------
 
 /**
- * Task message sent to Redis Streams for advance-rag task executors.
+ * @description Task message sent to Redis Streams for advance-rag task executors.
  */
 export interface TaskMessage {
     id: string;

@@ -118,10 +118,9 @@ const PasswordInput = ({
 // ============================================================================
 
 /**
- * Renders dynamic connection fields based on the selected source type.
- *
- * @param props - Component props
- * @returns React element
+ * @description Renders dynamic connection fields based on the selected data source type
+ * @param {SyncConnectionFieldsProps} props - Source type and config state handlers
+ * @returns {JSX.Element} Rendered connection form fields
  */
 const SyncConnectionFields = ({
   sourceType,

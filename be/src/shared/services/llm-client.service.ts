@@ -18,7 +18,7 @@ import type { LangfuseParent } from '@/shared/services/langfuse.service.js'
 import { config } from '@/shared/config/index.js'
 
 /**
- * A text content part for multimodal messages.
+ * @description A text content part for multimodal messages
  */
 export interface LlmTextPart {
   type: 'text'
@@ -26,18 +26,18 @@ export interface LlmTextPart {
 }
 
 /**
- * An image content part for multimodal messages (vision).
+ * @description An image content part for multimodal messages (vision)
  */
 export interface LlmImagePart {
   type: 'image_url'
   image_url: { url: string; detail?: 'low' | 'high' | 'auto' }
 }
 
-/** Union of content parts that can appear in a multimodal user message. */
+/** @description Union of content parts that can appear in a multimodal user message */
 export type LlmContentPart = LlmTextPart | LlmImagePart
 
 /**
- * Message in the OpenAI chat completion format.
+ * @description Message in the OpenAI chat completion format.
  * User messages support both plain text and multimodal content arrays.
  */
 export type LlmMessage =
@@ -71,7 +71,7 @@ export function buildMultimodalUserMessage(text: string, imageUrls: string[]): L
 }
 
 /**
- * Options for a chat completion request.
+ * @description Options for a chat completion request
  */
 export interface LlmCompletionOptions {
   /** Model provider ID from model_providers table */
@@ -89,7 +89,7 @@ export interface LlmCompletionOptions {
 }
 
 /**
- * Streamed chunk from the LLM.
+ * @description Streamed chunk from the LLM
  */
 export interface LlmStreamChunk {
   /** Delta text content */
@@ -99,19 +99,23 @@ export interface LlmStreamChunk {
 }
 
 /**
- * LLM client service. Reads provider config from DB, instantiates OpenAI SDK.
+ * @description LLM client service that reads provider config from the model_providers
+ * table and calls LLMs via the OpenAI SDK. Supports any OpenAI-compatible API.
  */
 export class LlmClientService {
   /** Cache of OpenAI client instances by provider ID */
   private clients = new Map<string, { client: OpenAI; provider: ModelProvider }>()
 
   /**
-   * Resolve which model provider to use.
-   * If providerId is given, fetch that one. Otherwise get the default chat provider.
-   * @param providerId - Optional specific provider ID
-   * @returns The ModelProvider record
+   * @description Resolve which model provider to use.
+   * If providerId is given, fetch that specific one from the DB.
+   * Otherwise, find the default chat provider.
+   * @param {string} [providerId] - Optional specific provider ID
+   * @returns {Promise<ModelProvider>} The ModelProvider record
+   * @throws {Error} If the specified provider is not found or inactive, or no default exists
    */
   async resolveProvider(providerId?: string): Promise<ModelProvider> {
+    // Look up specific provider when ID is given
     if (providerId) {
       const provider = await ModelFactory.modelProvider.findById(providerId)
       if (!provider || provider.status !== 'active') {
@@ -120,7 +124,7 @@ export class LlmClientService {
       return provider
     }
 
-    // Find default chat model
+    // Find default chat model from model_providers table
     const defaults = await ModelFactory.modelProvider.findDefaults()
     const chatDefault = defaults.find(p => p.model_type === 'chat')
     if (!chatDefault) {
@@ -130,11 +134,13 @@ export class LlmClientService {
   }
 
   /**
-   * Get or create an OpenAI client instance for the given provider.
-   * @param provider - The model provider config
-   * @returns OpenAI SDK client
+   * @description Get or create an OpenAI client instance for the given provider.
+   * Caches clients by provider ID to avoid creating duplicate connections.
+   * @param {ModelProvider} provider - The model provider config
+   * @returns {OpenAI} OpenAI SDK client
    */
   private getClient(provider: ModelProvider): OpenAI {
+    // Return cached client if one exists for this provider
     const cached = this.clients.get(provider.id)
     if (cached) return cached.client
 
@@ -149,11 +155,11 @@ export class LlmClientService {
   }
 
   /**
-   * Send a non-streaming chat completion request.
-   * @param messages - Conversation messages
-   * @param options - Completion options
-   * @param parent - Optional Langfuse parent (trace or span) for observability
-   * @returns The assistant's response text
+   * @description Send a non-streaming chat completion request.
+   * @param {LlmMessage[]} messages - Conversation messages
+   * @param {LlmCompletionOptions} [options] - Completion options
+   * @param {LangfuseParent} [parent] - Optional Langfuse parent (trace or span) for observability
+   * @returns {Promise<string>} The assistant's response text
    */
   async chatCompletion(
     messages: LlmMessage[],
@@ -201,12 +207,12 @@ export class LlmClientService {
   }
 
   /**
-   * Send a streaming chat completion request.
+   * @description Send a streaming chat completion request.
    * Yields text chunks as they arrive from the LLM.
-   * @param messages - Conversation messages
-   * @param options - Completion options
-   * @param parent - Optional Langfuse parent (trace or span) for observability
-   * @returns Async iterable of LlmStreamChunk
+   * @param {LlmMessage[]} messages - Conversation messages
+   * @param {LlmCompletionOptions} [options] - Completion options
+   * @param {LangfuseParent} [parent] - Optional Langfuse parent (trace or span) for observability
+   * @returns {AsyncGenerator<LlmStreamChunk>} Async iterable of LlmStreamChunk
    */
   async *chatCompletionStream(
     messages: LlmMessage[],
@@ -341,7 +347,8 @@ export class LlmClientService {
   }
 
   /**
-   * Clear cached clients (useful when provider configs are updated).
+   * @description Clear cached OpenAI clients (useful when provider configs are updated in the DB).
+   * @returns {void}
    */
   clearCache(): void {
     this.clients.clear()

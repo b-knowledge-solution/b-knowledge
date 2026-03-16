@@ -27,15 +27,27 @@ import type { Document } from '../types'
 // Types
 // ============================================================================
 
+/**
+ * @description Props for the DocumentTable component.
+ */
 interface DocumentTableProps {
+  /** Array of documents to display */
   documents: Document[]
+  /** Whether documents are currently loading */
   loading: boolean
+  /** Whether the current user has admin privileges */
   isAdmin: boolean
+  /** Callback to trigger parsing for a single document */
   onParse: (docId: string) => void
+  /** Callback to delete a single document */
   onDelete: (docId: string) => void
+  /** Optional callback to open document viewer */
   onView?: (doc: Document) => void
+  /** Optional callback to toggle document availability */
   onToggleAvailability?: (docId: string, enabled: boolean) => void
+  /** Optional callback for bulk parse/cancel operations */
   onBulkParse?: (docIds: string[], run?: number) => void
+  /** Optional callback for bulk delete operations */
   onBulkDelete?: (docIds: string[]) => void
 }
 
@@ -61,7 +73,12 @@ function formatDocDate(doc: Document): string {
   return d.toLocaleDateString()
 }
 
-/** Map run/progress to status badge props */
+/**
+ * @description Map document run/progress fields to status badge label and variant.
+ * Uses RAGflow run field first, then progress value, then string status fallback.
+ * @param {Document} doc - Document to evaluate
+ * @returns {{ label: string; variant: string }} Badge display properties
+ */
 function getStatusBadge(doc: Document): {
   label: string
   variant: 'default' | 'secondary' | 'destructive' | 'outline'
@@ -83,6 +100,13 @@ function getStatusBadge(doc: Document): {
 // Component
 // ============================================================================
 
+/**
+ * @description Document table with checkbox multi-select, bulk actions bar,
+ * inline parse status with progress bars, enabled toggle, and process log dialog.
+ *
+ * @param {DocumentTableProps} props - Component properties
+ * @returns {JSX.Element} Rendered document table with bulk action controls
+ */
 const DocumentTable: React.FC<DocumentTableProps> = ({
   documents,
   loading,
@@ -99,10 +123,11 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
   const [logDocument, setLogDocument] = useState<Document | null>(null)
   const [logOpen, setLogOpen] = useState(false)
 
-  // Selection helpers
+  // Derived selection state
   const allSelected = documents.length > 0 && selectedIds.size === documents.length
   const hasSelection = selectedIds.size > 0
 
+  /** Select or deselect all documents in the table */
   const toggleAll = (checked: boolean) => {
     if (checked) {
       setSelectedIds(new Set(documents.map((d) => d.id)))
@@ -111,6 +136,7 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
     }
   }
 
+  /** Toggle selection for a single document row */
   const toggleRow = (docId: string, checked: boolean) => {
     setSelectedIds((prev) => {
       const next = new Set(prev)

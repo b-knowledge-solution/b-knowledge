@@ -14,6 +14,7 @@ import { fileUploadParamsSchema, fileContentParamsSchema } from '../schemas/chat
 
 const router = Router()
 const controller = new ChatFileController()
+// Use in-memory storage for multer — files are streamed to S3 after validation
 const upload = multer({ storage: multer.memoryStorage() })
 
 /**

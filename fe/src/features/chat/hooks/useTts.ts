@@ -21,7 +21,7 @@ export function useTts() {
   const urlRef = useRef<string | null>(null)
 
   /**
-   * Synthesize and play speech for the given text.
+   * @description Synthesize and play speech for the given text via the TTS API.
    * @param text - Text to speak
    */
   const speak = async (text: string) => {
@@ -74,7 +74,7 @@ export function useTts() {
   }
 
   /**
-   * Stop the currently playing audio.
+   * @description Stop the currently playing audio and clean up resources.
    */
   const stop = () => {
     if (audioRef.current) {

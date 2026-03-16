@@ -53,19 +53,21 @@ export class SyncWorkerService {
   private adapters = new Map<string, ConnectorAdapter>()
 
   /**
-   * Register a connector adapter for a source type.
-   * @param sourceType - The source type key (e.g., 'github', 'notion')
-   * @param adapter - The adapter implementation
+   * @description Register a connector adapter for a source type in the adapter registry
+   * @param {string} sourceType - The source type key (e.g., 'github', 'notion')
+   * @param {ConnectorAdapter} adapter - The adapter implementation
+   * @returns {void}
    */
   registerAdapter(sourceType: string, adapter: ConnectorAdapter): void {
     this.adapters.set(sourceType, adapter)
   }
 
   /**
-   * Execute a sync operation for a connector.
-   * @description Main entry point called when a sync task is dequeued.
-   * @param connectorId - UUID of the connector to sync
-   * @param syncLogId - UUID of the sync log entry to update
+   * @description Execute a sync operation for a connector. Main entry point called when a sync task is dequeued.
+   *   Fetches documents via the registered adapter, stores them in MinIO, creates DB records, and enqueues parse tasks.
+   * @param {string} connectorId - UUID of the connector to sync
+   * @param {string} syncLogId - UUID of the sync log entry to update with progress
+   * @returns {Promise<void>}
    */
   async execute(connectorId: string, syncLogId: string): Promise<void> {
     // Load connector config
@@ -148,9 +150,11 @@ export class SyncWorkerService {
   }
 
   /**
-   * Ingest a single document: store in MinIO, create DB record, enqueue parse task.
-   * @param connector - The connector that sourced this document
-   * @param doc - The fetched document to ingest
+   * @description Ingest a single document through the full pipeline: MinIO storage,
+   *   file record, document record, file-document link, and parse task enqueue
+   * @param {Connector} connector - The connector that sourced this document
+   * @param {FetchedDocument} doc - The fetched document to ingest
+   * @returns {Promise<void>}
    */
   private async ingestDocument(connector: Connector, doc: FetchedDocument): Promise<void> {
     const docId = getUuid()
@@ -203,9 +207,9 @@ export class SyncWorkerService {
   }
 
   /**
-   * Select the appropriate parser based on file extension.
-   * @param suffix - File extension without dot
-   * @returns Parser ID matching advance-rag parser types
+   * @description Select the appropriate parser based on file extension, mapping to advance-rag ParserType
+   * @param {string} suffix - File extension without dot (e.g., 'pdf', 'xlsx')
+   * @returns {string} Parser ID matching advance-rag parser types (defaults to 'naive')
    */
   private selectParser(suffix: string): string {
     // Map file extensions to parser types (matches advance-rag/db/db_models.py ParserType)
@@ -240,9 +244,10 @@ export class SyncWorkerService {
   }
 
   /**
-   * Mark a sync log as failed with an error message.
-   * @param syncLogId - Sync log UUID
-   * @param message - Error message
+   * @description Mark a sync log entry as failed with an error message and finished timestamp
+   * @param {string} syncLogId - Sync log UUID
+   * @param {string} message - Error message describing the failure
+   * @returns {Promise<void>}
    */
   private async failSyncLog(syncLogId: string, message: string): Promise<void> {
     await ModelFactory.syncLog.update(syncLogId, {

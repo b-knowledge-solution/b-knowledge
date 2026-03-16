@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Data access layer for the shared tenant_llm table consumed by Python task executors.
+ * @module modules/llm-provider/models/tenant-llm
+ */
 import { BaseModel } from "@/shared/models/base.model.js";
 import { db } from "@/shared/db/knex.js";
 import { TenantLlm, ModelProvider } from "@/shared/models/types.js";
@@ -8,20 +12,19 @@ const SYSTEM_TENANT_ID = (
 ).replace(/-/g, "");
 
 /**
- * TenantLlmModel provides CRUD access to the shared 'tenant_llm' table.
- * This table is consumed by Python task executors to load LLM provider configs.
- * Follows the Factory Pattern — instantiated as a singleton via ModelFactory.
+ * @description Provides CRUD access to the shared tenant_llm table consumed by Python task executors for LLM provider configs.
+ * Follows the Factory Pattern -- instantiated as a singleton via ModelFactory.
  */
 export class TenantLlmModel extends BaseModel<TenantLlm> {
   protected tableName = "tenant_llm";
   protected knex = db;
 
   /**
-   * Find an existing tenant_llm row by the composite business key.
-   * @param tenantId - Tenant ID (32-char hex string)
-   * @param llmFactory - Provider factory name (e.g., 'OpenAI')
-   * @param llmName - Model identifier (e.g., 'gpt-4o')
-   * @returns The matching row if found, undefined otherwise
+   * @description Find an existing tenant_llm row by the composite business key (tenant_id + factory + model)
+   * @param {string} tenantId - Tenant ID (32-char hex string)
+   * @param {string} llmFactory - Provider factory name (e.g., 'OpenAI')
+   * @param {string} llmName - Model identifier (e.g., 'gpt-4o')
+   * @returns {Promise<TenantLlm | undefined>} The matching row if found, undefined otherwise
    */
   async findByKey(
     tenantId: string,
@@ -39,9 +42,9 @@ export class TenantLlmModel extends BaseModel<TenantLlm> {
   }
 
   /**
-   * Sync a model provider config to the shared tenant_llm table
-   * that the Python task executors read from.
-   * @param provider - The model provider record to sync
+   * @description Sync a model provider config to the shared tenant_llm table consumed by Python task executors
+   * @param {ModelProvider} provider - The model provider record to sync
+   * @returns {Promise<void>}
    */
   async syncFromProvider(provider: ModelProvider): Promise<void> {
     // Look up an existing row using the composite business key
@@ -74,9 +77,9 @@ export class TenantLlmModel extends BaseModel<TenantLlm> {
   }
 
   /**
-   * Remove the tenant_llm row(s) associated with a model provider.
-   * Called when a provider is soft-deleted so Python workers stop using it.
-   * @param provider - The model provider being deleted
+   * @description Remove tenant_llm row(s) for a soft-deleted provider so Python workers stop using it
+   * @param {ModelProvider} provider - The model provider being deleted
+   * @returns {Promise<void>}
    */
   async deleteByProvider(provider: ModelProvider): Promise<void> {
     // Delete by composite business key rather than by id

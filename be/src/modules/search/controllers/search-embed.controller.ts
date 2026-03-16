@@ -12,7 +12,8 @@ import { searchService } from '../services/search.service.js'
 import { ModelFactory } from '@/shared/models/factory.js'
 
 /**
- * Controller class for search embed endpoints.
+ * @description Controller handling search embed/widget endpoints including
+ *   admin token management and public token-authenticated search execution
  */
 export class SearchEmbedController {
   // ============================================================================
@@ -20,13 +21,15 @@ export class SearchEmbedController {
   // ============================================================================
 
   /**
-   * Create a new embed token for a search app.
-   * @param req - Express request with :id param and { name, expires_at } in body
-   * @param res - Express response
+   * @description Create a new embed token for a search app (admin only)
+   * @param {Request} req - Express request with :id param and { name, expires_at } in body
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
    */
   async createToken(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.id
+      // Guard: require authentication for token creation
       if (!userId) {
         res.status(401).json({ error: 'Unauthorized' })
         return
@@ -54,9 +57,10 @@ export class SearchEmbedController {
   }
 
   /**
-   * List all embed tokens for a search app.
-   * @param req - Express request with :id param
-   * @param res - Express response
+   * @description List all embed tokens for a search app with masked values
+   * @param {Request} req - Express request with :id param
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
    */
   async listTokens(req: Request, res: Response): Promise<void> {
     try {
@@ -79,9 +83,10 @@ export class SearchEmbedController {
   }
 
   /**
-   * Revoke (delete) an embed token.
-   * @param req - Express request with :tokenId param
-   * @param res - Express response
+   * @description Revoke (permanently delete) an embed token
+   * @param {Request} req - Express request with :tokenId param
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
    */
   async revokeToken(req: Request, res: Response): Promise<void> {
     try {
@@ -107,10 +112,10 @@ export class SearchEmbedController {
   // ============================================================================
 
   /**
-   * Get public search app info for an embed token.
-   * Returns app name and description only (no sensitive config).
-   * @param req - Express request with :token param
-   * @param res - Express response
+   * @description Get public search app info for an embed token, returning only name and description
+   * @param {Request} req - Express request with :token param
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
    */
   async getInfo(req: Request, res: Response): Promise<void> {
     try {
@@ -142,10 +147,11 @@ export class SearchEmbedController {
   }
 
   /**
-   * Stream an AI-generated search answer via SSE for an embed token.
-   * Public endpoint — no session auth required, uses token for authorization.
-   * @param req - Express request with :token param and search query in body
-   * @param res - Express response configured for SSE
+   * @description Stream an AI-generated search answer via SSE for an embed token.
+   *   Public endpoint using token-based authorization instead of session auth.
+   * @param {Request} req - Express request with :token param and search query in body
+   * @param {Response} res - Express response configured for SSE
+   * @returns {Promise<void>}
    */
   async askSearch(req: Request, res: Response): Promise<void> {
     try {

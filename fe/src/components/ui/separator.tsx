@@ -2,6 +2,11 @@ import * as React from 'react';
 import * as SeparatorPrimitive from '@radix-ui/react-separator';
 import { cn } from '@/lib/utils';
 
+/**
+ * @description Visual divider line, horizontal or vertical, wrapping Radix Separator primitive
+ * @param {React.ComponentPropsWithoutRef<typeof SeparatorPrimitive.Root>} props - Separator props including orientation
+ * @returns {JSX.Element} Rendered separator line
+ */
 const Separator = React.forwardRef<
   React.ElementRef<typeof SeparatorPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof SeparatorPrimitive.Root>

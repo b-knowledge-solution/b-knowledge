@@ -54,7 +54,7 @@ import { ProjectSearchModel } from '@/modules/projects/models/project-search.mod
 import { ProjectEntityPermissionModel } from '@/modules/projects/models/project-entity-permission.model.js';
 
 /**
- * ModelFactory class implementing the Factory Pattern.
+ * @description ModelFactory class implementing the Factory Pattern.
  * Provides lazy-loaded singletons for all data models.
  * Ensures connection sharing is consistent across the application.
  * Each model is instantiated only once on first access.
@@ -84,21 +84,30 @@ export class ModelFactory {
   private static userDismissedBroadcastModel: UserDismissedBroadcastModel;
 
   // History Models
+  /** History chat session model singleton instance */
   private static historyChatSessionModel: HistoryChatSessionModel;
+  /** History chat message model singleton instance */
   private static historyChatMessageModel: HistoryChatMessageModel;
+  /** History search session model singleton instance */
   private static historySearchSessionModel: HistorySearchSessionModel;
+  /** History search record model singleton instance */
   private static historySearchRecordModel: HistorySearchRecordModel;
 
 
 
 
   // Glossary Models
+  /** Glossary task model singleton instance */
   private static glossaryTaskModel: GlossaryTaskModel;
+  /** Glossary keyword model singleton instance */
   private static glossaryKeywordModel: GlossaryKeywordModel;
 
   // RAG Models
+  /** Dataset model singleton instance */
   private static datasetModel: DatasetModel;
+  /** Document model singleton instance */
   private static documentModel: DocumentModel;
+  /** Model provider model singleton instance */
   private static modelProviderModel: ModelProviderModel;
   /** TenantLlm model singleton instance */
   private static tenantLlmModel: TenantLlmModel;
@@ -268,33 +277,41 @@ export class ModelFactory {
   }
 
   /**
-   * Get the HistoryChatSession model singleton.
+   * @description Get the HistoryChatSession model singleton
+   * @returns {HistoryChatSessionModel} Instance for chat session history operations
    */
   static get historyChatSession() {
+    // Create instance on first access (lazy initialization)
     if (!this.historyChatSessionModel) this.historyChatSessionModel = new HistoryChatSessionModel();
     return this.historyChatSessionModel;
   }
 
   /**
-   * Get the HistoryChatMessage model singleton.
+   * @description Get the HistoryChatMessage model singleton
+   * @returns {HistoryChatMessageModel} Instance for chat message history operations
    */
   static get historyChatMessage() {
+    // Create instance on first access (lazy initialization)
     if (!this.historyChatMessageModel) this.historyChatMessageModel = new HistoryChatMessageModel();
     return this.historyChatMessageModel;
   }
 
   /**
-   * Get the HistorySearchSession model singleton.
+   * @description Get the HistorySearchSession model singleton
+   * @returns {HistorySearchSessionModel} Instance for search session history operations
    */
   static get historySearchSession() {
+    // Create instance on first access (lazy initialization)
     if (!this.historySearchSessionModel) this.historySearchSessionModel = new HistorySearchSessionModel();
     return this.historySearchSessionModel;
   }
 
   /**
-   * Get the HistorySearchRecord model singleton.
+   * @description Get the HistorySearchRecord model singleton
+   * @returns {HistorySearchRecordModel} Instance for search record history operations
    */
   static get historySearchRecord() {
+    // Create instance on first access (lazy initialization)
     if (!this.historySearchRecordModel) this.historySearchRecordModel = new HistorySearchRecordModel();
     return this.historySearchRecordModel;
   }
@@ -322,17 +339,32 @@ export class ModelFactory {
     return this.glossaryKeywordModel;
   }
 
+  /**
+   * @description Get the Dataset model singleton
+   * @returns {DatasetModel} Instance for dataset CRUD operations
+   */
   static get dataset() {
+    // Create instance on first access (lazy initialization)
     if (!this.datasetModel) this.datasetModel = new DatasetModel();
     return this.datasetModel;
   }
 
+  /**
+   * @description Get the Document model singleton
+   * @returns {DocumentModel} Instance for document CRUD operations
+   */
   static get document() {
+    // Create instance on first access (lazy initialization)
     if (!this.documentModel) this.documentModel = new DocumentModel();
     return this.documentModel;
   }
 
+  /**
+   * @description Get the ModelProvider model singleton
+   * @returns {ModelProviderModel} Instance for model provider CRUD operations
+   */
   static get modelProvider() {
+    // Create instance on first access (lazy initialization)
     if (!this.modelProviderModel) this.modelProviderModel = new ModelProviderModel();
     return this.modelProviderModel;
   }
@@ -348,22 +380,42 @@ export class ModelFactory {
     return this.tenantLlmModel;
   }
 
+  /**
+   * @description Get the Knowledgebase model singleton for Peewee-schema knowledgebase table
+   * @returns {KnowledgebaseModel} Instance for knowledgebase CRUD operations
+   */
   static get knowledgebase() {
+    // Create instance on first access (lazy initialization)
     if (!this.knowledgebaseModel) this.knowledgebaseModel = new KnowledgebaseModel();
     return this.knowledgebaseModel;
   }
 
+  /**
+   * @description Get the RagDocument model singleton for Peewee-schema document table
+   * @returns {RagDocumentModel} Instance for RAG document CRUD operations
+   */
   static get ragDocument() {
+    // Create instance on first access (lazy initialization)
     if (!this.ragDocumentModel) this.ragDocumentModel = new RagDocumentModel();
     return this.ragDocumentModel;
   }
 
+  /**
+   * @description Get the RagFile model singleton for Peewee-schema file table
+   * @returns {RagFileModel} Instance for RAG file CRUD operations
+   */
   static get ragFile() {
+    // Create instance on first access (lazy initialization)
     if (!this.ragFileModel) this.ragFileModel = new RagFileModel();
     return this.ragFileModel;
   }
 
+  /**
+   * @description Get the RagTask model singleton for Peewee-schema task table
+   * @returns {RagTaskModel} Instance for RAG task CRUD operations
+   */
   static get ragTask() {
+    // Create instance on first access (lazy initialization)
     if (!this.ragTaskModel) this.ragTaskModel = new RagTaskModel();
     return this.ragTaskModel;
   }

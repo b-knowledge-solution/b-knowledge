@@ -27,7 +27,7 @@ import type { ChatReference, ChatChunk, PromptVariable, SendMessageOptions } fro
 // ============================================================================
 
 /**
- * Determine which variables require user input (required, no default).
+ * @description Determine which variables require user input (required, no default).
  * @param variables - Variable definitions from the assistant
  * @returns Array of variables that the user must fill
  */
@@ -112,7 +112,7 @@ function DatasetChatPage() {
   }, [assistants.activeAssistant?.id])
 
   /**
-   * Check if all required variables have been filled.
+   * @description Check if all required variables have been filled.
    * @returns True if all required variables have non-empty values
    */
   const areVariablesFilled = (): boolean => {
@@ -124,7 +124,7 @@ function DatasetChatPage() {
   }
 
   /**
-   * Handle sending a message: auto-create conversation if none active.
+   * @description Handle sending a message: auto-create conversation if none active.
    * Passes variable values and toggle options to sendMessage.
    */
   const handleSendMessage = async (
@@ -168,7 +168,7 @@ function DatasetChatPage() {
   }
 
   /**
-   * Handle citation click: open reference panel.
+   * @description Handle citation click: open reference panel with clicked reference.
    */
   const handleCitationClick = (reference: ChatReference) => {
     setActiveReference(reference)
@@ -176,7 +176,7 @@ function DatasetChatPage() {
   }
 
   /**
-   * Handle inline chunk citation click: open document preview drawer.
+   * @description Handle inline chunk citation click: open document preview drawer.
    */
   const handleChunkCitationClick = (chunk: ChatChunk) => {
     setPreviewChunk(chunk)
@@ -184,7 +184,7 @@ function DatasetChatPage() {
   }
 
   /**
-   * Handle document click from reference panel: open document preview drawer.
+   * @description Handle document click from reference panel: find chunk and open preview drawer.
    */
   const handleDocumentClick = (docId: string) => {
     const ref = activeReference || stream.references
@@ -196,14 +196,14 @@ function DatasetChatPage() {
   }
 
   /**
-   * Handle regenerating the last assistant message.
+   * @description Handle regenerating the last assistant message.
    */
   const handleRegenerate = () => {
     stream.regenerateLastMessage()
   }
 
   /**
-   * Handle renaming a conversation from the sidebar.
+   * @description Handle renaming a conversation from the sidebar.
    */
   const handleRenameConversation = (id: string, newName: string) => {
     renameMutation.mutate(

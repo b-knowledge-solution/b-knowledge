@@ -54,10 +54,9 @@ const SOURCE_TYPE_OPTIONS: { value: SyncSourceType; label: string }[] = [
 // ============================================================================
 
 /**
- * Panel for configuring sync source connection.
- *
- * @param props - Component props
- * @returns React element
+ * @description Panel for configuring sync source type and connection credentials
+ * @param {SyncConfigPanelProps} props - Component props with existing config and save handler
+ * @returns {JSX.Element} Rendered sync configuration panel
  */
 const SyncConfigPanel = ({ config, onSave, saving }: SyncConfigPanelProps) => {
   const { t } = useTranslation()

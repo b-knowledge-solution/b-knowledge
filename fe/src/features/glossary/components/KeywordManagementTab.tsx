@@ -27,15 +27,19 @@ import { KeywordBulkImportModal } from './KeywordBulkImportModal'
 import { globalMessage } from '@/app/App'
 
 /**
- * Props for the KeywordManagementTab component.
+ * @description Props for the KeywordManagementTab component.
  */
 interface KeywordManagementTabProps {
+    /** All values and handlers from useGlossaryKeywords */
     keywordHook: UseGlossaryKeywordsReturn
+    /** Whether the current user has admin/leader privileges */
     isAdmin: boolean
 }
 
 /**
- * Keyword Management tab — table with search, CRUD actions, multi-select bulk delete, and a create/edit modal.
+ * @description Keyword Management tab with searchable table, CRUD actions, multi-select bulk delete, and create/edit modal.
+ * @param {KeywordManagementTabProps} props - Keyword hook return and admin flag.
+ * @returns {JSX.Element} Rendered keyword management tab.
  */
 export const KeywordManagementTab: React.FC<KeywordManagementTabProps> = ({
     keywordHook,

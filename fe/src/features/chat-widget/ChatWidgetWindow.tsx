@@ -16,7 +16,9 @@ import type { WidgetDialogInfo } from './chatWidgetApi'
 // Types
 // ============================================================================
 
-/** A message in the widget conversation */
+/**
+ * @description A message in the widget conversation.
+ */
 export interface WidgetMessage {
   /** Unique message identifier */
   id: string
@@ -54,11 +56,11 @@ interface ChatWidgetWindowProps {
 // ============================================================================
 
 /**
- * Chat widget window overlay with header, message list, and input.
+ * @description Chat widget window overlay with header, message list, and input.
  * Positioned above the FAB button with a fixed width of 380px.
  *
- * @param props - Component props
- * @returns JSX element
+ * @param {ChatWidgetWindowProps} props - Component props including messages, streaming state, and callbacks
+ * @returns {JSX.Element | null} The rendered chat window or null when closed
  */
 export default function ChatWidgetWindow({
   isOpen,
@@ -90,7 +92,7 @@ export default function ChatWidgetWindow({
   }, [isOpen])
 
   /**
-   * Handle message submission.
+   * @description Handle message submission, clearing input on success.
    */
   const handleSubmit = () => {
     const trimmed = input.trim()
@@ -100,7 +102,7 @@ export default function ChatWidgetWindow({
   }
 
   /**
-   * Handle keyboard events in the textarea.
+   * @description Handle keyboard events: Enter to send, Shift+Enter for newline.
    */
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Submit on Enter (without Shift)

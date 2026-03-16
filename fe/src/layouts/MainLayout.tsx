@@ -19,14 +19,12 @@ import BroadcastBanner from '@/features/broadcast/components/BroadcastBanner';
 // ============================================================================
 
 /**
- * Main application layout with sidebar and content area.
- *
- * - Sidebar: Navigation, user profile, settings
- * - Header: Page title, actions, source selectors
- * - Content: Page outlet with conditional padding
+ * @description Renders the main application shell with sidebar navigation, header bar, broadcast banner, and content outlet
+ * @returns {JSX.Element} Full-screen layout with sidebar and content area
  */
 function Layout() {
   const location = useLocation();
+  // Determine layout behavior (padding, overflow) based on the current route
   const routeMetadata = getRouteMetadata(location.pathname);
 
   return (
@@ -36,6 +34,7 @@ function Layout() {
       <main className="flex-1 flex flex-col bg-gradient-to-br from-slate-50 via-white to-blue-50/30 dark:from-slate-850 dark:via-slate-800 dark:to-slate-900 overflow-hidden">
         <BroadcastBanner />
         <Header />
+        {/* Apply padding only for non-fullBleed routes; fullBleed pages manage their own padding */}
         <div className={`flex-1 overflow-hidden ${routeMetadata.fullBleed ? '' : 'p-8 overflow-auto'}`}>
           <Outlet />
         </div>

@@ -4,15 +4,15 @@
  */
 
 /**
- * SQL generation prompt templates.
+ * @description SQL generation prompt templates for converting natural language to OpenSearch SQL queries.
  */
 export const sqlGenerationPrompt = {
   /**
-   * Build the SQL generation system prompt.
-   * @param tableName - OpenSearch index/table name
-   * @param fieldDesc - Available fields description
-   * @param isCount - Whether this is a count query
-   * @returns System prompt string
+   * @description Build the SQL generation system prompt with table schema context
+   * @param {string} tableName - OpenSearch index/table name to query against
+   * @param {string} fieldDesc - Available fields description including types and semantics
+   * @param {boolean} isCount - Whether this is a count query (uses COUNT(*) vs LIMIT)
+   * @returns {string} System prompt string for SQL generation
    */
   build(tableName: string, fieldDesc: string, isCount: boolean): string {
     return `You are a SQL expert. Generate an OpenSearch SQL query for the given question.

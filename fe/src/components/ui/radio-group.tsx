@@ -4,6 +4,11 @@ import { Circle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * @description Radio button group container wrapping Radix RadioGroup primitive
+ * @param {React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>} props - Radio group props including value and onValueChange
+ * @returns {JSX.Element} Rendered radio group with grid layout
+ */
 const RadioGroup = React.forwardRef<
   React.ElementRef<typeof RadioGroupPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>
@@ -18,6 +23,11 @@ const RadioGroup = React.forwardRef<
 })
 RadioGroup.displayName = RadioGroupPrimitive.Root.displayName
 
+/**
+ * @description Individual radio button with circular indicator
+ * @param {React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>} props - Radio item props including value
+ * @returns {JSX.Element} Rendered radio button with filled circle indicator when selected
+ */
 const RadioGroupItem = React.forwardRef<
   React.ElementRef<typeof RadioGroupPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>

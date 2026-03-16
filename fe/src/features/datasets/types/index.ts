@@ -1,9 +1,22 @@
+/**
+ * @fileoverview Type definitions for the datasets feature module.
+ * Includes domain models, DTOs, settings, retrieval test, process logs,
+ * knowledge graph, and metadata management types.
+ *
+ * @module features/datasets/types
+ */
+
+/**
+ * @description Access control configuration for a dataset.
+ * Determines visibility: public to all, or restricted to specific users/teams.
+ */
 export interface AccessControl {
   public: boolean;
   user_ids?: string[];
   team_ids?: string[];
 }
 
+/** @description Core dataset entity with metadata, counts, and access control */
 export interface Dataset {
   id: string;
   name: string;
@@ -24,6 +37,7 @@ export interface Dataset {
   updated_at: string;
 }
 
+/** @description Payload for creating a new dataset */
 export interface CreateDatasetDto {
   name: string;
   description?: string;
@@ -35,8 +49,10 @@ export interface CreateDatasetDto {
   access_control?: AccessControl;
 }
 
+/** @description Payload for updating an existing dataset (all fields optional) */
 export interface UpdateDatasetDto extends Partial<CreateDatasetDto> {}
 
+/** @description Document entity within a dataset, includes RAGflow compatibility fields */
 export interface Document {
   id: string;
   dataset_id: string;
@@ -71,8 +87,10 @@ export interface Document {
   kb_id?: string;
 }
 
+/** @description Possible document processing status values */
 export type DocumentStatus = 'pending' | 'parsing' | 'completed' | 'failed';
 
+/** @description A text chunk extracted from a document */
 export interface Chunk {
   chunk_id: string;
   text: string;
@@ -84,6 +102,7 @@ export interface Chunk {
   method?: string;
 }
 
+/** @description Paginated response for chunk listing */
 export interface ChunksResponse {
   chunks: Chunk[];
   total: number;
@@ -91,6 +110,7 @@ export interface ChunksResponse {
   limit: number;
 }
 
+/** @description Available built-in document parser options for chunking strategy selection */
 export const PARSER_OPTIONS = [
   { value: 'naive', label: 'General' },
   { value: 'qa', label: 'Q&A' },
@@ -115,6 +135,7 @@ export const PDF_PARSER_OPTIONS = [
   { value: 'PaddleOCR', label: 'PaddleOCR' },
 ] as const;
 
+/** @description Available language options for dataset content */
 export const LANGUAGE_OPTIONS = [
   { value: 'English', label: 'English' },
   { value: 'Vietnamese', label: 'Vietnamese' },
@@ -281,3 +302,127 @@ export interface RetrievalChunk {
   term_similarity?: number;
   token_count?: number;
 }
+
+// ============================================================================
+// Process Log Types
+// ============================================================================
+
+/** @description A single task/log entry from the RAG worker */
+export interface ProcessLogTask {
+  task_id: string;
+  task_type: string;
+  progress: number;
+  progress_msg: string;
+  begin_at: string;
+  process_duration: number;
+  create_time?: number;
+  create_date?: string;
+  status: 'done' | 'failed' | 'running';
+}
+
+/** @description Document info returned alongside process logs */
+export interface ProcessLogDocument {
+  id: string;
+  name: string;
+  suffix: string;
+  size: number;
+  type: string;
+  status: string;
+  run: string;
+  progress: number;
+  progress_msg: string;
+  chunk_num: number;
+  token_num: number;
+  create_time?: number;
+  create_date?: string;
+  update_date?: string;
+}
+
+/** @description Response shape for document logs endpoint */
+export interface DocumentLogsResponse {
+  document: ProcessLogDocument;
+  tasks: ProcessLogTask[];
+}
+
+// ============================================================================
+// Dataset Overview Types
+// ============================================================================
+
+/** @description Overview statistics for a dataset */
+export interface DatasetOverviewStats {
+  total_documents: number;
+  finished: number;
+  failed: number;
+  processing: number;
+  cancelled: number;
+}
+
+/** @description A log entry in the dataset logs table */
+export interface DatasetLogEntry {
+  id: string;
+  doc_id: string;
+  task_type: string;
+  progress: number;
+  progress_msg: string;
+  begin_at: string;
+  process_duration?: number;
+  create_time?: number;
+  create_date?: string;
+  document_name?: string;
+  document_suffix?: string;
+}
+
+/** @description Paginated response for dataset logs */
+export interface DatasetLogsResponse {
+  logs: DatasetLogEntry[];
+  total: number;
+}
+
+// ============================================================================
+// Knowledge Graph Types
+// ============================================================================
+
+/** @description A node in the knowledge graph */
+export interface GraphNode {
+  id: string;
+  label: string;
+  type: string;
+  description: string;
+  pagerank: number;
+}
+
+/** @description An edge in the knowledge graph */
+export interface GraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  label: string;
+  weight: number;
+}
+
+/** @description Response shape for graph data endpoint */
+export interface GraphDataResponse {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+// ============================================================================
+// Metadata Management Types
+// ============================================================================
+
+/** @description Supported metadata value types */
+export type MetadataValueType = 'string' | 'number' | 'list' | 'time';
+
+/** @description A single metadata field definition */
+export interface MetadataField {
+  name: string;
+  type: MetadataValueType;
+  description?: string;
+  values?: string[];
+}
+
+/** @description Response shape for metadata endpoint */
+export interface MetadataResponse {
+  fields: MetadataField[];
+}
+

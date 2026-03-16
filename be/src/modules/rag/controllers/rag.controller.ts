@@ -1,3 +1,14 @@
+/**
+ * @fileoverview RAG module controller — handles HTTP requests for dataset,
+ * document, chunk, search, and advanced task management.
+ *
+ * All methods follow the Express (req, res) pattern and delegate business
+ * logic to service classes. Errors are caught and returned as JSON with
+ * appropriate HTTP status codes.
+ *
+ * @module modules/rag/controllers/rag
+ */
+
 import { Request, Response } from 'express';
 import path from 'path';
 import { ragService } from '../services/rag.service.js';
@@ -10,11 +21,22 @@ import { ModelFactory } from '@/shared/models/factory.js';
 import { getClientIp } from '@/shared/utils/ip.js';
 import { getRedisClient } from '@/shared/services/redis.service.js';
 
+/**
+ * @description Controller for all RAG module endpoints including dataset CRUD,
+ * document upload/parse/delete, chunk management, search, and advanced tasks.
+ */
 export class RagController {
     // -------------------------------------------------------------------------
     // Datasets
     // -------------------------------------------------------------------------
 
+    /**
+     * @description GET /datasets — List all datasets accessible to the current user.
+     * Filters by access control (public, team, user grants).
+     * @param {Request} req - Express request with optional user context
+     * @param {Response} res - Express response with dataset array
+     * @returns {Promise<void>}
+     */
     async listDatasets(req: Request, res: Response): Promise<void> {
         try {
             const datasets = await ragService.getAvailableDatasets(req.user);
@@ -25,9 +47,17 @@ export class RagController {
         }
     }
 
+    /**
+     * @description GET /datasets/:id — Get a single dataset by ID.
+     * Returns 404 if dataset is not found or has been soft-deleted.
+     * @param {Request} req - Express request with dataset ID param
+     * @param {Response} res - Express response with dataset object
+     * @returns {Promise<void>}
+     */
     async getDataset(req: Request, res: Response): Promise<void> {
         try {
             const dataset = await ragService.getDatasetById(req.params['id']!);
+            // Return 404 for missing or soft-deleted datasets
             if (!dataset || dataset.status === 'deleted') {
                 res.status(404).json({ error: 'Dataset not found' });
                 return;
@@ -39,6 +69,14 @@ export class RagController {
         }
     }
 
+    /**
+     * @description POST /datasets — Create a new dataset with optional access control.
+     * Also syncs to the Peewee knowledgebase table used by Python task executors.
+     * Returns 409 if a dataset with the same name already exists.
+     * @param {Request} req - Express request with dataset creation body
+     * @param {Response} res - Express response with created dataset (201)
+     * @returns {Promise<void>}
+     */
     async createDataset(req: Request, res: Response): Promise<void> {
         try {
             const user = req.user
@@ -75,8 +113,16 @@ export class RagController {
         }
     }
 
+    /**
+     * @description PUT /datasets/:id — Update dataset properties.
+     * Syncs changes to the Peewee knowledgebase table (non-blocking).
+     * @param {Request} req - Express request with dataset ID and update body
+     * @param {Response} res - Express response with updated dataset
+     * @returns {Promise<void>}
+     */
     async updateDataset(req: Request, res: Response): Promise<void> {
         const { id } = req.params;
+        // Guard: require dataset ID
         if (!id) { res.status(400).json({ error: 'ID is required' }); return; }
 
         try {
@@ -87,6 +133,7 @@ export class RagController {
             const dataset = await ragService.updateDataset(id, req.body, user);
             if (!dataset) { res.status(404).json({ error: 'Dataset not found' }); return; }
 
+            // Sync changed fields to Peewee knowledgebase table (non-blocking)
             try {
                 const kbData: any = {};
                 if (req.body.name !== undefined) kbData.name = req.body.name;
@@ -96,7 +143,7 @@ export class RagController {
                 if (req.body.parser_id !== undefined) kbData.parser_id = req.body.parser_id;
                 if (req.body.parser_config !== undefined) kbData.parser_config = req.body.parser_config;
                 if (req.body.pagerank !== undefined) kbData.pagerank = req.body.pagerank;
-                
+
                 if (Object.keys(kbData).length > 0) {
                     await ragDocumentService.updateKnowledgebase(id, kbData);
                 }
@@ -111,8 +158,16 @@ export class RagController {
         }
     }
 
+    /**
+     * @description DELETE /datasets/:id — Soft-delete a dataset and clean stale references.
+     * Also soft-deletes the corresponding knowledgebase record.
+     * @param {Request} req - Express request with dataset ID param
+     * @param {Response} res - Express response (204 on success)
+     * @returns {Promise<void>}
+     */
     async deleteDataset(req: Request, res: Response): Promise<void> {
         const { id } = req.params;
+        // Guard: require dataset ID
         if (!id) { res.status(400).json({ error: 'ID is required' }); return; }
 
         try {
@@ -122,6 +177,7 @@ export class RagController {
 
             await ragService.deleteDataset(id, user);
 
+            // Sync deletion to Peewee knowledgebase table (non-blocking)
             try {
                 await ragDocumentService.deleteKnowledgebase(id);
             } catch (syncErr) {
@@ -231,6 +287,13 @@ export class RagController {
     // Documents
     // -------------------------------------------------------------------------
 
+    /**
+     * @description GET /datasets/:id/documents — List all documents in a dataset.
+     * Returns documents from the Peewee 'document' table ordered by creation time.
+     * @param {Request} req - Express request with dataset ID param
+     * @param {Response} res - Express response with document array
+     * @returns {Promise<void>}
+     */
     async listDocuments(req: Request, res: Response): Promise<void> {
         try {
             const docs = await ragDocumentService.listDocuments(req.params['id']!);
@@ -241,12 +304,22 @@ export class RagController {
         }
     }
 
+    /**
+     * @description POST /datasets/:id/documents — Upload one or more files to a dataset.
+     * Stores files in S3, creates file/document/file2document records in PostgreSQL,
+     * and increments the dataset doc count.
+     * @param {Request} req - Express request with multipart file uploads
+     * @param {Response} res - Express response with created document array (201)
+     * @returns {Promise<void>}
+     */
     async uploadDocuments(req: Request, res: Response): Promise<void> {
         const datasetId = req.params['id'];
+        // Guard: require dataset ID
         if (!datasetId) { res.status(400).json({ error: 'Dataset ID is required' }); return; }
 
         try {
             const files = req.files as Express.Multer.File[] | undefined;
+            // Guard: require at least one file
             if (!files || files.length === 0) {
                 res.status(400).json({ error: 'No files provided' });
                 return;
@@ -321,6 +394,14 @@ export class RagController {
         }
     }
 
+    /**
+     * @description POST /datasets/:id/documents/:docId/parse — Trigger document parsing.
+     * Marks the document as queued and sends a parse_init task to the Redis Stream
+     * for the Python task executor to process.
+     * @param {Request} req - Express request with dataset ID and document ID params
+     * @param {Response} res - Express response with parsing status
+     * @returns {Promise<void>}
+     */
     async parseDocument(req: Request, res: Response): Promise<void> {
         const { id: datasetId, docId } = req.params;
         if (!datasetId || !docId) {
@@ -348,6 +429,13 @@ export class RagController {
         }
     }
 
+    /**
+     * @description GET /datasets/:id/documents/:docId/download — Download a document file.
+     * Streams the file from S3 storage with appropriate Content-Type and Content-Disposition headers.
+     * @param {Request} req - Express request with dataset ID and document ID params
+     * @param {Response} res - Express response with file content
+     * @returns {Promise<void>}
+     */
     async downloadDocument(req: Request, res: Response): Promise<void> {
         const { id: datasetId, docId } = req.params;
         if (!datasetId || !docId) {
@@ -382,6 +470,14 @@ export class RagController {
         }
     }
 
+    /**
+     * @description DELETE /datasets/:id/documents/:docId — Delete a document and all associated data.
+     * Performs a multi-step cleanup: S3 file, OpenSearch chunks, PG file records, document row,
+     * and decrements the dataset doc count. Each step is best-effort to avoid partial failures.
+     * @param {Request} req - Express request with dataset ID and document ID params
+     * @param {Response} res - Express response (204 on success)
+     * @returns {Promise<void>}
+     */
     async deleteDocument(req: Request, res: Response): Promise<void> {
         const { id: datasetId, docId } = req.params;
         if (!datasetId || !docId) {
@@ -529,6 +625,14 @@ export class RagController {
     // Progress SSE
     // -------------------------------------------------------------------------
 
+    /**
+     * @description GET /datasets/:id/documents/:docId/status — Stream parsing progress via SSE.
+     * Subscribes to the Redis pub/sub channel for the document and forwards progress events
+     * to the client as Server-Sent Events.
+     * @param {Request} req - Express request with dataset ID and document ID params
+     * @param {Response} res - Express SSE response stream
+     * @returns {Promise<void>}
+     */
     async streamDocumentProgress(req: Request, res: Response): Promise<void> {
         const { id: datasetId, docId } = req.params;
         if (!datasetId || !docId) {
@@ -750,6 +854,13 @@ export class RagController {
     // Search + Chunks
     // -------------------------------------------------------------------------
 
+    /**
+     * @description POST /datasets/:id/search — Search chunks within a dataset.
+     * Delegates to the search service which supports full-text, semantic, and hybrid methods.
+     * @param {Request} req - Express request with search query body
+     * @param {Response} res - Express response with search results
+     * @returns {Promise<void>}
+     */
     async searchChunks(req: Request, res: Response): Promise<void> {
         const datasetId = req.params['id'];
         if (!datasetId) { res.status(400).json({ error: 'Dataset ID is required' }); return; }
@@ -765,6 +876,12 @@ export class RagController {
         }
     }
 
+    /**
+     * @description GET /datasets/:id/chunks — List chunks with optional doc_id filter and pagination.
+     * @param {Request} req - Express request with dataset ID param and optional query params (doc_id, page, limit)
+     * @param {Response} res - Express response with paginated chunk results
+     * @returns {Promise<void>}
+     */
     async listChunks(req: Request, res: Response): Promise<void> {
         const datasetId = req.params['id'];
         if (!datasetId) { res.status(400).json({ error: 'Dataset ID is required' }); return; }
@@ -786,6 +903,15 @@ export class RagController {
     // Advanced Tasks (GraphRAG, RAPTOR, Mindmap, Enrichment)
     // -------------------------------------------------------------------------
 
+    /**
+     * @description POST /datasets/:id/:taskType(graphrag|raptor|mindmap) — Start an advanced processing task.
+     * Creates a task record in PostgreSQL, updates the knowledgebase with the task ID,
+     * and queues the task to the Redis Stream for the Python task executor.
+     * Returns 409 if a task of the same type is already running.
+     * @param {Request} req - Express request with dataset ID and taskType params
+     * @param {Response} res - Express response with task info
+     * @returns {Promise<void>}
+     */
     async runAdvancedTask(req: Request, res: Response): Promise<void> {
         const { id: datasetId, taskType } = req.params;
         if (!datasetId || !taskType) {
@@ -856,6 +982,12 @@ export class RagController {
         }
     }
 
+    /**
+     * @description GET /datasets/:id/:taskType(graphrag|raptor|mindmap)/status — Get advanced task status.
+     * @param {Request} req - Express request with dataset ID and taskType params
+     * @param {Response} res - Express response with task progress info
+     * @returns {Promise<void>}
+     */
     async traceAdvancedTask(req: Request, res: Response): Promise<void> {
         const { id: datasetId, taskType } = req.params;
         if (!datasetId || !taskType) {
@@ -872,6 +1004,14 @@ export class RagController {
         }
     }
 
+    /**
+     * @description POST /datasets/:id/documents/:docId/:enrichType — Run document enrichment.
+     * Supports keyword extraction, question generation, tagging, and metadata enrichment.
+     * Creates a task record and queues the enrichment job to Redis Stream.
+     * @param {Request} req - Express request with dataset ID, document ID, and enrichType params
+     * @param {Response} res - Express response with task info
+     * @returns {Promise<void>}
+     */
     async runDocumentEnrichment(req: Request, res: Response): Promise<void> {
         const { id: datasetId, docId, enrichType } = req.params;
         if (!datasetId || !docId || !enrichType) {
@@ -879,6 +1019,7 @@ export class RagController {
             return;
         }
 
+        // Map plural URL param to singular task type expected by the Python executor
         const typeMap: Record<string, string> = {
             keywords: 'keyword',
             questions: 'question',
@@ -921,6 +1062,13 @@ export class RagController {
         }
     }
 
+    /**
+     * @description GET /tasks/:taskId/status — Get the current status of a task.
+     * Returns progress, progress_msg, and computed status (done/failed/running/not_found).
+     * @param {Request} req - Express request with taskId param
+     * @param {Response} res - Express response with task status
+     * @returns {Promise<void>}
+     */
     async getTaskStatus(req: Request, res: Response): Promise<void> {
         const { taskId } = req.params;
         if (!taskId) { res.status(400).json({ error: 'Task ID is required' }); return; }
@@ -931,6 +1079,213 @@ export class RagController {
         } catch (error) {
             log.error('Failed to get task status', { error: String(error) });
             res.status(500).json({ error: 'Failed to get task status' });
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Dataset Overview & Logs
+    // -------------------------------------------------------------------------
+
+    /**
+     * GET /datasets/:id/overview — return stats for a dataset.
+     * @param req - Express request with dataset ID
+     * @param res - Express response with overview stats
+     */
+    async getDatasetOverview(req: Request, res: Response): Promise<void> {
+        const { id } = req.params;
+        if (!id) { res.status(400).json({ error: 'ID is required' }); return; }
+
+        try {
+            const stats = await ragDocumentService.getOverviewStats(id);
+            res.json(stats);
+        } catch (error) {
+            log.error('Failed to get dataset overview', { error: String(error) });
+            res.status(500).json({ error: 'Failed to get dataset overview' });
+        }
+    }
+
+    /**
+     * GET /datasets/:id/logs — return paginated processing logs for a dataset.
+     * @param req - Express request with dataset ID and query params (page, limit, status)
+     * @param res - Express response with paginated logs
+     */
+    async getDatasetLogs(req: Request, res: Response): Promise<void> {
+        const { id } = req.params;
+        if (!id) { res.status(400).json({ error: 'ID is required' }); return; }
+
+        try {
+            const page = req.query['page'] ? parseInt(req.query['page'] as string, 10) : 1;
+            const limit = req.query['limit'] ? parseInt(req.query['limit'] as string, 10) : 20;
+            const status = req.query['status'] as string | undefined;
+
+            const result = await ragDocumentService.getDatasetLogs(id, { page, limit, ...(status ? { status } : {}) });
+            res.json(result);
+        } catch (error) {
+            log.error('Failed to get dataset logs', { error: String(error) });
+            res.status(500).json({ error: 'Failed to get dataset logs' });
+        }
+    }
+
+    /**
+     * GET /datasets/:id/documents/:docId/logs — return RAG worker logs for a document.
+     * @param req - Express request with dataset ID and document ID
+     * @param res - Express response with document processing logs
+     */
+    async getDocumentLogs(req: Request, res: Response): Promise<void> {
+        const { id: datasetId, docId } = req.params;
+        if (!datasetId || !docId) {
+            res.status(400).json({ error: 'Dataset ID and document ID are required' });
+            return;
+        }
+
+        try {
+            const doc = await ragDocumentService.getDocument(docId!);
+            if (!doc) {
+                res.status(404).json({ error: 'Document not found' });
+                return;
+            }
+
+            const tasks = await ragDocumentService.getDocumentLogs(docId!);
+
+            res.json({
+                document: {
+                    id: doc.id,
+                    name: doc.name,
+                    suffix: doc.suffix,
+                    size: doc.size,
+                    type: doc.type,
+                    status: doc.status,
+                    run: doc.run,
+                    progress: doc.progress,
+                    progress_msg: doc.progress_msg,
+                    chunk_num: doc.chunk_num,
+                    token_num: doc.token_num,
+                    create_time: doc.create_time,
+                    create_date: doc.create_date,
+                    update_date: doc.update_date,
+                },
+                tasks: tasks.map(t => ({
+                    task_id: t.id,
+                    task_type: t.task_type || 'parse',
+                    progress: t.progress,
+                    progress_msg: t.progress_msg,
+                    begin_at: t.begin_at,
+                    process_duration: t.process_duration ?? 0,
+                    create_time: t.create_time,
+                    create_date: t.create_date,
+                    status: t.progress === 1 ? 'done'
+                        : t.progress === -1 ? 'failed'
+                        : 'running',
+                })),
+            });
+        } catch (error) {
+            log.error('Failed to get document logs', { error: String(error) });
+            res.status(500).json({ error: 'Failed to get document logs' });
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Knowledge Graph Data (for visualization)
+    // -------------------------------------------------------------------------
+
+    /**
+     * GET /datasets/:id/graph — return graph entities and relations from OpenSearch.
+     * @param req - Express request with dataset ID
+     * @param res - Express response with nodes and edges arrays
+     */
+    async getGraphData(req: Request, res: Response): Promise<void> {
+        const { id: datasetId } = req.params;
+        if (!datasetId) { res.status(400).json({ error: 'Dataset ID is required' }); return; }
+
+        try {
+            const { ragGraphragService } = await import('../services/rag-graphrag.service.js');
+            const kbId = datasetId.replace(/-/g, '');
+
+            // Fetch entities and relations from OpenSearch
+            const entities = await ragGraphragService.getRelevantEntsByTypes([kbId], [], 200);
+            const relations = await ragGraphragService.getRelevantRelations([kbId], '*', 500);
+
+            // Map to graph visualization format
+            const nodes = entities.map(e => ({
+                id: e.entity,
+                label: e.entity,
+                type: e.type,
+                description: e.description,
+                pagerank: e.pagerank,
+            }));
+
+            const edges = relations.map((r, idx) => ({
+                id: `edge-${idx}`,
+                source: r.from,
+                target: r.to,
+                label: r.description,
+                weight: r.score,
+            }));
+
+            res.json({ nodes, edges });
+        } catch (error) {
+            log.error('Failed to get graph data', { error: String(error) });
+            res.status(500).json({ error: 'Failed to get graph data' });
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Metadata Management
+    // -------------------------------------------------------------------------
+
+    /**
+     * GET /datasets/:id/metadata — return metadata schema for a dataset.
+     * @param req - Express request with dataset ID
+     * @param res - Express response with metadata fields
+     */
+    async getMetadata(req: Request, res: Response): Promise<void> {
+        const { id } = req.params;
+        if (!id) { res.status(400).json({ error: 'ID is required' }); return; }
+
+        try {
+            const kb = await ragDocumentService.getKnowledgebase(id);
+            if (!kb) { res.status(404).json({ error: 'Dataset not found' }); return; }
+
+            // Metadata schema is stored in knowledgebase.parser_config.metadata_fields
+            const parserConfig = typeof kb.parser_config === 'string'
+                ? JSON.parse(kb.parser_config)
+                : kb.parser_config;
+            const metadata = parserConfig?.metadata_fields || [];
+
+            res.json({ fields: metadata });
+        } catch (error) {
+            log.error('Failed to get metadata', { error: String(error) });
+            res.status(500).json({ error: 'Failed to get metadata' });
+        }
+    }
+
+    /**
+     * PUT /datasets/:id/metadata — update metadata schema for a dataset.
+     * @param req - Express request with metadata fields in body
+     * @param res - Express response
+     */
+    async updateMetadata(req: Request, res: Response): Promise<void> {
+        const { id } = req.params;
+        if (!id) { res.status(400).json({ error: 'ID is required' }); return; }
+
+        try {
+            const kb = await ragDocumentService.getKnowledgebase(id);
+            if (!kb) { res.status(404).json({ error: 'Dataset not found' }); return; }
+
+            // Update metadata_fields in parser_config
+            const parserConfig = typeof kb.parser_config === 'string'
+                ? JSON.parse(kb.parser_config)
+                : (kb.parser_config || {});
+            parserConfig.metadata_fields = req.body.fields || [];
+
+            await ragDocumentService.updateKnowledgebase(id, {
+                parser_config: JSON.stringify(parserConfig),
+            });
+
+            res.json({ fields: parserConfig.metadata_fields });
+        } catch (error) {
+            log.error('Failed to update metadata', { error: String(error) });
+            res.status(500).json({ error: 'Failed to update metadata' });
         }
     }
 

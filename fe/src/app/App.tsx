@@ -51,6 +51,7 @@ const SearchAppManagementPage = lazy(() => import('@/features/search/pages/Searc
 const ProjectListPage = lazy(() => import('@/features/projects/pages/ProjectListPage'));
 const ProjectDetailPage = lazy(() => import('@/features/projects/pages/ProjectDetailPage'));
 const LLMProviderPage = lazy(() => import('@/features/llm-provider/pages/LLMProviderPage'));
+const DocumentReviewerPage = lazy(() => import('@/features/datasets/pages/DocumentReviewerPage'));
 
 // ============================================================================
 // Loading Component
@@ -59,6 +60,10 @@ const LLMProviderPage = lazy(() => import('@/features/llm-provider/pages/LLMProv
 /**
  * Full-screen loader shown during initial app load or non-layout routes.
  * Layout pages use their own ContentLoader inside the layout.
+ */
+/**
+ * @description Displays a full-screen loading spinner during lazy-loaded page transitions
+ * @returns {JSX.Element} Centered spinner with themed background
  */
 const PageLoader = () => (
   <div data-suspense-fallback="true" className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -70,10 +75,15 @@ const PageLoader = () => (
 // Main App Component
 // ============================================================================
 
+/**
+ * @description Root application component that defines all routes, wraps them with providers, and manages favicon setup
+ * @returns {JSX.Element} Complete application with routing, providers, and lazy-loaded pages
+ */
 function App() {
-  /** Set the icon of the app */
+  // Set the favicon dynamically on mount
   useEffect(() => {
     let link: HTMLLinkElement = document.querySelector('link[rel~="icon"]') as HTMLLinkElement;
+    // Create the link element if it doesn't exist in the HTML
     if (!link) {
       link = document.createElement('link');
       link.rel = 'icon';
@@ -82,7 +92,12 @@ function App() {
     link.href = '/favicon.svg';
   }, []);
 
+  /**
+   * @description Determines the default landing path based on enabled feature flags
+   * @returns {string} The default route path for authenticated users
+   */
   const getDefaultPath = () => {
+    // Prefer chat if enabled, then search, fallback to chat
     if (config.features.enableAiChat) return '/chat';
     if (config.features.enableAiSearch) return '/search';
     return '/chat';
@@ -132,6 +147,13 @@ function App() {
                 <FeatureErrorBoundary>
                   <RoleRoute allowedRoles={['admin', 'leader']}>
                     <DatasetDetailPage />
+                  </RoleRoute>
+                </FeatureErrorBoundary>
+              } />
+              <Route path="data-studio/datasets/:id/documents/:docId" element={
+                <FeatureErrorBoundary>
+                  <RoleRoute allowedRoles={['admin', 'leader']}>
+                    <DocumentReviewerPage />
                   </RoleRoute>
                 </FeatureErrorBoundary>
               } />

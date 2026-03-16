@@ -136,9 +136,10 @@ function LoginPage() {
       });
 
       if (response.ok) {
-        // Force reload to pick up session and redirect
+        // Force full page reload to pick up the new session cookie and redirect
         window.location.href = redirect;
       } else {
+        // Extract error message from API response or fall back to generic error
         const data = await response.json();
         setRootLoginError(data.error || t('login.error'));
       }
@@ -158,7 +159,7 @@ function LoginPage() {
     }
   };
 
-  // Show loading while checking auth status to prevent flicker
+  // Guard: show loading spinner while checking auth status to prevent login form flicker
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
@@ -185,6 +186,7 @@ function LoginPage() {
           <p className="text-slate-600 dark:text-slate-400">{t('login.subtitle')}</p>
         </div>
 
+        {/* Display OAuth error message passed back via URL query param */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
             {t('login.error')}: {decodeURIComponent(error)}
@@ -205,6 +207,7 @@ function LoginPage() {
             {t('login.signInMicrosoft')}
           </button>
 
+          {/* Show local account login button only when enabled in backend config */}
           {enableLocalLogin && (
             <button
               onClick={() => setIsRootLoginOpen(true)}

@@ -5,12 +5,15 @@ import { Request, Response } from 'express'
 import { previewService } from '@/modules/preview/preview.service.js'
 import { log } from '@/shared/services/logger.service.js'
 
+/**
+ * @description Controller for generating and serving document previews from MinIO storage
+ */
 export class PreviewController {
   /**
-   * Get document preview by bucket and filename.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Get document preview by bucket and filename, downloading from MinIO if not cached
+   * @param {Request} req - Express request with bucketName param and filename wildcard
+   * @param {Response} res - Express response serving the preview file
+   * @returns {Promise<void>}
    */
   async getPreview(req: Request, res: Response): Promise<void> {
     const { bucketName } = req.params;

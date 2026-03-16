@@ -20,6 +20,7 @@ import type { SearchResult } from '../types/search.types'
 // Props
 // ============================================================================
 
+/** @description Props for the SearchDocumentPreviewDrawer component */
 interface SearchDocumentPreviewDrawerProps {
   /** Whether the drawer is open */
   open: boolean

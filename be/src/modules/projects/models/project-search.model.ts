@@ -6,7 +6,8 @@ import { db } from '@/shared/db/knex.js'
 import { ProjectSearch } from '@/shared/models/types.js'
 
 /**
- * ProjectSearchModel provides CRUD operations for the project_searches table.
+ * @description Provides CRUD operations for the project_searches table,
+ *   which stores search app configurations linked to projects
  * @extends BaseModel<ProjectSearch>
  */
 export class ProjectSearchModel extends BaseModel<ProjectSearch> {
@@ -14,9 +15,9 @@ export class ProjectSearchModel extends BaseModel<ProjectSearch> {
   protected knex = db
 
   /**
-   * Find all search configs for a given project.
-   * @param projectId - UUID of the project
-   * @returns Array of project search records
+   * @description Find all search app configurations for a given project, ordered newest first
+   * @param {string} projectId - UUID of the project
+   * @returns {Promise<ProjectSearch[]>} Array of project search records
    */
   async findByProjectId(projectId: string): Promise<ProjectSearch[]> {
     return this.knex(this.tableName)

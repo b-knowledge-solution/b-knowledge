@@ -3,10 +3,18 @@ import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+/** @description Root select state container wrapping Radix Select */
 const Select = SelectPrimitive.Root;
+/** @description Groups related select items with an optional label */
 const SelectGroup = SelectPrimitive.Group;
+/** @description Displays the currently selected value in the trigger */
 const SelectValue = SelectPrimitive.Value;
 
+/**
+ * @description Select trigger button with chevron icon
+ * @param {React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>} props - Trigger props
+ * @returns {JSX.Element} Rendered select trigger
+ */
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
@@ -27,6 +35,11 @@ const SelectTrigger = React.forwardRef<
 ));
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
 
+/**
+ * @description Scroll-up indicator button shown when content overflows
+ * @param {React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollUpButton>} props - Scroll button props
+ * @returns {JSX.Element} Rendered scroll-up button with chevron
+ */
 const SelectScrollUpButton = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.ScrollUpButton>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollUpButton>
@@ -37,6 +50,11 @@ const SelectScrollUpButton = React.forwardRef<
 ));
 SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName;
 
+/**
+ * @description Scroll-down indicator button shown when content overflows
+ * @param {React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollDownButton>} props - Scroll button props
+ * @returns {JSX.Element} Rendered scroll-down button with chevron
+ */
 const SelectScrollDownButton = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.ScrollDownButton>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollDownButton>
@@ -47,6 +65,11 @@ const SelectScrollDownButton = React.forwardRef<
 ));
 SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName;
 
+/**
+ * @description Dropdown content panel with scroll buttons and enter/exit animations
+ * @param {React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>} props - Content props including position strategy
+ * @returns {JSX.Element} Rendered select dropdown in a portal
+ */
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
@@ -74,6 +97,11 @@ const SelectContent = React.forwardRef<
 ));
 SelectContent.displayName = SelectPrimitive.Content.displayName;
 
+/**
+ * @description Label for a group of select items
+ * @param {React.ComponentPropsWithoutRef<typeof SelectPrimitive.Label>} props - Label props
+ * @returns {JSX.Element} Rendered select group label
+ */
 const SelectLabel = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Label>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Label>
@@ -82,6 +110,11 @@ const SelectLabel = React.forwardRef<
 ));
 SelectLabel.displayName = SelectPrimitive.Label.displayName;
 
+/**
+ * @description Individual selectable option with check indicator when selected
+ * @param {React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>} props - Item props including value
+ * @returns {JSX.Element} Rendered select option
+ */
 const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
@@ -104,6 +137,11 @@ const SelectItem = React.forwardRef<
 ));
 SelectItem.displayName = SelectPrimitive.Item.displayName;
 
+/**
+ * @description Horizontal divider between select items or groups
+ * @param {React.ComponentPropsWithoutRef<typeof SelectPrimitive.Separator>} props - Separator props
+ * @returns {JSX.Element} Rendered separator line
+ */
 const SelectSeparator = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Separator>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Separator>

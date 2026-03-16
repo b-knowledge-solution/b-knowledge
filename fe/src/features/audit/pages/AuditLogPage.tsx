@@ -61,10 +61,11 @@ function AuditLogPageContent() {
         refresh,
     } = useAuditLogs()
 
-    // Guideline dialog
+    // Guideline dialog — shows onboarding guide on user's first visit
     const { isFirstVisit } = useFirstVisit('audit')
     const [showGuide, setShowGuide] = useState(false)
     useEffect(() => {
+        // Trigger guide dialog when first-visit flag is detected
         if (isFirstVisit) setShowGuide(true)
     }, [isFirstVisit])
 
@@ -206,6 +207,7 @@ function AuditLogPageContent() {
                             </Table>
                         )}
                     </div>
+                    {/* Only show pagination controls when results exceed page size */}
                     {pagination.total > pagination.limit && (
                         <div className="flex justify-end p-4 border-t border-slate-200 dark:border-slate-700">
                             <Pagination

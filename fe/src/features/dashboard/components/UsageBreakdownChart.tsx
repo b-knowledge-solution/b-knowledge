@@ -46,9 +46,10 @@ const renderCustomLabel = ({
     outerRadius,
     percent,
 }: any) => {
-    // Only show label if slice is large enough
+    // Skip labels for slices smaller than 5% to avoid overlapping text
     if (percent < 0.05) return null
 
+    // Position label at 55% of the way between inner and outer radius
     const RADIAN = Math.PI / 180
     const radius = innerRadius + (outerRadius - innerRadius) * 0.55
     const x = cx + radius * Math.cos(-midAngle * RADIAN)
@@ -73,6 +74,7 @@ const renderCustomLabel = ({
  * @description Styled tooltip with dark background for the donut chart.
  */
 const CustomTooltip = ({ active, payload }: any) => {
+    // Only render tooltip when hovering over a slice with valid payload
     if (!active || !payload?.length) return null
 
     const { name, value } = payload[0]

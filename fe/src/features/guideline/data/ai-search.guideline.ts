@@ -1,5 +1,11 @@
+/**
+ * @fileoverview AI Search feature guideline data.
+ * @description Defines the step-by-step user guide for the AI Search feature.
+ * @module features/guideline/data/ai-search.guideline
+ */
 import { IFeatureGuideline } from './types';
 
+/** @description Guideline configuration for the AI Search feature */
 export const aiSearchGuideline: IFeatureGuideline = {
     featureId: 'ai-search',
     roleRequired: 'user',

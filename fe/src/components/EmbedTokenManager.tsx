@@ -55,7 +55,12 @@ interface EmbedTokenManagerProps {
 // API Helpers
 // ============================================================================
 
-/** Map entity type to API path prefix */
+/**
+ * @description Map entity type to the API path for listing and creating tokens
+ * @param {string} entityType - Entity type ('chat_dialog' or 'search_app')
+ * @param {string} entityId - Entity ID
+ * @returns {string} API path for token CRUD operations
+ */
 function getApiPath(entityType: 'chat_dialog' | 'search_app', entityId: string): string {
   if (entityType === 'chat_dialog') {
     return `/api/chat/dialogs/${entityId}/embed-tokens`
@@ -63,7 +68,12 @@ function getApiPath(entityType: 'chat_dialog' | 'search_app', entityId: string):
   return `/api/search/apps/${entityId}/embed-tokens`
 }
 
-/** Map entity type to revoke API path */
+/**
+ * @description Map entity type to the API path for revoking a specific token
+ * @param {string} entityType - Entity type ('chat_dialog' or 'search_app')
+ * @param {string} tokenId - Token ID to revoke
+ * @returns {string} API path for token revocation
+ */
 function getRevokeApiPath(entityType: 'chat_dialog' | 'search_app', tokenId: string): string {
   if (entityType === 'chat_dialog') {
     return `/api/chat/embed-tokens/${tokenId}`
@@ -76,11 +86,11 @@ function getRevokeApiPath(entityType: 'chat_dialog' | 'search_app', tokenId: str
 // ============================================================================
 
 /**
- * Embed token manager with create, list, copy, and revoke functionality.
+ * @description Embed token manager with create, list, copy, and revoke functionality.
  * Displays tokens in a list with action buttons and a creation form.
  *
- * @param props - Component props
- * @returns JSX element
+ * @param {EmbedTokenManagerProps} props - Entity ID, type, and optional change callback
+ * @returns {JSX.Element} Token management UI with CRUD operations
  */
 export default function EmbedTokenManager({
   entityId,

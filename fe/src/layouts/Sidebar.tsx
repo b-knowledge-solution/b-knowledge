@@ -28,11 +28,14 @@ import { SidebarGroup } from './SidebarGroup'
 // ============================================================================
 
 /**
- * User avatar component with image or initials fallback.
+ * @description Renders a user avatar with image or initials fallback derived from the display name
+ * @param {{ user: User; size?: 'sm' | 'md' }} props - User data and optional size variant
+ * @returns {JSX.Element} Avatar image or initials circle
  */
 function UserAvatar({ user, size = 'md' }: { user: User; size?: 'sm' | 'md' }) {
   const sizeClasses = size === 'sm' ? 'w-8 h-8 text-sm' : 'w-10 h-10 text-base'
 
+  // Use the user's avatar image if available
   if (user.avatar) {
     return (
       <img
@@ -43,6 +46,7 @@ function UserAvatar({ user, size = 'md' }: { user: User; size?: 'sm' | 'md' }) {
     )
   }
 
+  // Extract up to 2 initials from the user's display name for the fallback avatar
   const initials = user.displayName
     .split(' ')
     .map(n => n[0])
@@ -61,9 +65,14 @@ function UserAvatar({ user, size = 'md' }: { user: User; size?: 'sm' | 'md' }) {
 // Sidebar Component
 // ============================================================================
 
+/**
+ * @description Renders the collapsible sidebar with data-driven navigation links, user profile section, and settings/logout actions
+ * @returns {JSX.Element} Sidebar navigation panel
+ */
 export function Sidebar() {
   const { t } = useTranslation()
 
+  // Track whether the sidebar is in collapsed (icon-only) mode
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   const { user } = useAuth()

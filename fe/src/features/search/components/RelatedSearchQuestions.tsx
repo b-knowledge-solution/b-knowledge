@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 // Props
 // ============================================================================
 
+/** @description Props for the RelatedSearchQuestions component */
 interface RelatedSearchQuestionsProps {
   /** Array of related question strings */
   questions: string[]

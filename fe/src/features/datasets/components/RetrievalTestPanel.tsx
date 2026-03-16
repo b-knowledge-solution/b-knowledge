@@ -24,8 +24,9 @@ import ChunkResultCard from './ChunkResultCard';
 // Types
 // ============================================================================
 
+/** @description Props for the RetrievalTestPanel component. */
 interface RetrievalTestPanelProps {
-  /** Dataset ID */
+  /** Dataset UUID to test retrieval against */
   datasetId: string;
 }
 
@@ -34,10 +35,12 @@ interface RetrievalTestPanelProps {
 // ============================================================================
 
 /**
- * Panel for running retrieval tests.
+ * @description Panel for running retrieval tests against a dataset.
+ * Provides query input, search method selector, top-K control,
+ * and displays ranked chunk results using ChunkResultCard.
  *
- * @param props - Component props
- * @returns React element
+ * @param {RetrievalTestPanelProps} props - Component properties
+ * @returns {JSX.Element} Rendered retrieval test panel
  */
 const RetrievalTestPanel: React.FC<RetrievalTestPanelProps> = ({ datasetId }) => {
   const { t } = useTranslation();
@@ -48,9 +51,10 @@ const RetrievalTestPanel: React.FC<RetrievalTestPanelProps> = ({ datasetId }) =>
   const { results, testing, runTest } = useRetrievalTest(datasetId);
 
   /**
-   * Handle running the test.
+   * @description Execute retrieval test with current query, method, and top-K parameters.
    */
   const handleTest = () => {
+    // Guard against empty query submission
     if (!query.trim()) return;
     runTest({ query, method, top_k: topK });
   };

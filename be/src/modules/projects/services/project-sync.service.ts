@@ -8,33 +8,34 @@ import { cryptoService } from '@/shared/services/crypto.service.js'
 import { ProjectSyncConfig, UserContext } from '@/shared/models/types.js'
 
 /**
- * ProjectSyncService handles CRUD for external data source sync configs.
+ * @description Service handling CRUD for external data source sync configurations,
+ *   including encrypted connection config management
  */
 export class ProjectSyncService {
   /**
-   * List all sync configs for a project.
-   * @param projectId - UUID of the project
-   * @returns Array of sync config records (connection_config is NOT decrypted)
+   * @description List all sync configurations for a project (connection_config remains encrypted)
+   * @param {string} projectId - UUID of the project
+   * @returns {Promise<ProjectSyncConfig[]>} Array of sync config records
    */
   async listSyncConfigs(projectId: string): Promise<ProjectSyncConfig[]> {
     return ModelFactory.projectSyncConfig.findByProjectId(projectId)
   }
 
   /**
-   * Get a single sync config by ID with decrypted connection_config.
-   * @param configId - UUID of the sync config
-   * @returns Sync config record or undefined
+   * @description Retrieve a single sync config by UUID
+   * @param {string} configId - UUID of the sync config
+   * @returns {Promise<ProjectSyncConfig | undefined>} Sync config record or undefined if not found
    */
   async getSyncConfigById(configId: string): Promise<ProjectSyncConfig | undefined> {
     return ModelFactory.projectSyncConfig.findById(configId)
   }
 
   /**
-   * Create a new sync config with encrypted connection_config.
-   * @param projectId - UUID of the project
-   * @param data - Sync config creation data
-   * @param user - Authenticated user context
-   * @returns Created sync config
+   * @description Create a new sync config, encrypting the connection_config before storage
+   * @param {string} projectId - UUID of the project
+   * @param {any} data - Sync config creation data including source_type, connection_config
+   * @param {UserContext} user - Authenticated user context
+   * @returns {Promise<ProjectSyncConfig>} Created sync config record
    */
   async createSyncConfig(projectId: string, data: any, user: UserContext): Promise<ProjectSyncConfig> {
     // Encrypt connection config before storage
@@ -53,11 +54,11 @@ export class ProjectSyncService {
   }
 
   /**
-   * Update a sync config. Encrypts connection_config if provided.
-   * @param configId - UUID of the sync config
-   * @param data - Partial update data
-   * @param user - Authenticated user context
-   * @returns Updated sync config or undefined
+   * @description Update a sync config with partial data, re-encrypting connection_config if changed
+   * @param {string} configId - UUID of the sync config
+   * @param {any} data - Partial update data
+   * @param {UserContext} user - Authenticated user context
+   * @returns {Promise<ProjectSyncConfig | undefined>} Updated sync config or undefined if not found
    */
   async updateSyncConfig(configId: string, data: any, user: UserContext): Promise<ProjectSyncConfig | undefined> {
     const updateData: any = { updated_by: user.id }
@@ -73,18 +74,18 @@ export class ProjectSyncService {
   }
 
   /**
-   * Delete a sync config by ID.
-   * @param configId - UUID of the sync config
+   * @description Delete a sync config by its UUID
+   * @param {string} configId - UUID of the sync config
+   * @returns {Promise<void>}
    */
   async deleteSyncConfig(configId: string): Promise<void> {
     await ModelFactory.projectSyncConfig.delete(configId)
   }
 
   /**
-   * Test a connection to an external data source.
-   * Placeholder implementation - will be expanded with actual connector logic.
-   * @param data - Connection config data to test
-   * @returns Object with success flag and message
+   * @description Test a connection to an external data source (placeholder implementation)
+   * @param {any} data - Connection config data to test
+   * @returns {Promise<{ success: boolean; message: string }>} Test result with success flag and message
    */
   async testConnection(data: any): Promise<{ success: boolean; message: string }> {
     // Placeholder: actual implementation depends on connector type

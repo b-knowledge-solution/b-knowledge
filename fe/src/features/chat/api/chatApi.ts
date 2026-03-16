@@ -24,9 +24,13 @@ const RAG_URL = '/api/rag'
 // Assistant CRUD
 // ============================================================================
 
+/**
+ * @description API client for chat-related endpoints including assistants, conversations,
+ * messages, file uploads, access control, and text-to-speech.
+ */
 export const chatApi = {
   /**
-   * List assistants with optional server-side pagination and search.
+   * @description List assistants with optional server-side pagination and search.
    * @param params - Optional pagination and filter parameters
    * @returns Paginated response with data array and total count
    */
@@ -48,7 +52,7 @@ export const chatApi = {
   },
 
   /**
-   * Get a single assistant by ID.
+   * @description Get a single assistant by ID.
    * @param id - Assistant identifier
    * @returns The chat assistant
    */
@@ -57,7 +61,7 @@ export const chatApi = {
   },
 
   /**
-   * Create a new assistant.
+   * @description Create a new assistant.
    * @param data - Assistant creation payload
    * @returns The created assistant
    */
@@ -66,7 +70,7 @@ export const chatApi = {
   },
 
   /**
-   * Update an existing assistant.
+   * @description Update an existing assistant.
    * @param id - Assistant identifier
    * @param data - Partial assistant data to update
    * @returns The updated assistant
@@ -76,7 +80,7 @@ export const chatApi = {
   },
 
   /**
-   * Delete an assistant by ID.
+   * @description Delete an assistant by ID.
    * @param id - Assistant identifier
    */
   deleteAssistant: async (id: string): Promise<void> => {
@@ -88,7 +92,7 @@ export const chatApi = {
   // ============================================================================
 
   /**
-   * List conversations for a given assistant.
+   * @description List conversations for a given assistant.
    * @param assistantId - Parent assistant identifier
    * @returns Array of conversations
    */
@@ -97,7 +101,7 @@ export const chatApi = {
   },
 
   /**
-   * Get a single conversation with messages.
+   * @description Get a single conversation with messages.
    * @param conversationId - Conversation identifier
    * @returns The conversation with messages
    */
@@ -106,7 +110,7 @@ export const chatApi = {
   },
 
   /**
-   * Create a new conversation under an assistant.
+   * @description Create a new conversation under an assistant.
    * @param data - Conversation creation payload
    * @returns The created conversation
    */
@@ -115,7 +119,7 @@ export const chatApi = {
   },
 
   /**
-   * Delete a conversation by ID.
+   * @description Delete a conversation by ID.
    * @param id - Conversation identifier
    */
   deleteConversation: async (id: string): Promise<void> => {
@@ -123,7 +127,7 @@ export const chatApi = {
   },
 
   /**
-   * Rename a conversation.
+   * @description Rename a conversation.
    * @param conversationId - Conversation identifier
    * @param name - New display name
    * @returns The updated conversation
@@ -133,7 +137,7 @@ export const chatApi = {
   },
 
   /**
-   * Delete multiple conversations.
+   * @description Delete multiple conversations.
    * @param ids - Array of conversation identifiers
    */
   deleteConversations: async (ids: string[]): Promise<void> => {
@@ -148,7 +152,7 @@ export const chatApi = {
   // ============================================================================
 
   /**
-   * Delete a specific message from a conversation.
+   * @description Delete a specific message from a conversation.
    * Used during message regeneration to remove the old assistant response.
    * @param conversationId - Parent conversation identifier
    * @param messageId - Message identifier to delete
@@ -158,7 +162,7 @@ export const chatApi = {
   },
 
   /**
-   * Send feedback (thumbs up/down) on an assistant message.
+   * @description Send feedback (thumbs up/down) on an assistant message.
    * @param conversationId - Conversation identifier
    * @param messageId - Message identifier
    * @param thumbup - True for positive, false for negative
@@ -182,12 +186,13 @@ export const chatApi = {
   // ============================================================================
 
   /**
-   * Send a chat message and receive a streaming SSE response.
+   * @description Send a chat message and receive a streaming SSE response.
    * Returns the raw Response for the caller to consume as a ReadableStream.
    * @param conversationId - Conversation to send the message in
    * @param content - User message text
    * @param assistantId - Assistant configuration to use
    * @param options - Optional variables, reasoning, and internet search flags
+   * @param signal - Optional AbortSignal for cancellation
    * @returns Raw fetch Response with SSE body
    */
   sendMessage: async (
@@ -246,7 +251,7 @@ export const chatApi = {
   // ============================================================================
 
   /**
-   * Upload files to a chat conversation.
+   * @description Upload files to a chat conversation.
    * @param conversationId - Conversation to attach files to
    * @param formData - FormData with 'files' field
    * @returns Array of uploaded file metadata
@@ -277,7 +282,7 @@ export const chatApi = {
   // ============================================================================
 
   /**
-   * Get access entries (users and teams) for an assistant.
+   * @description Get access entries (users and teams) for an assistant.
    * @param assistantId - Assistant identifier
    * @returns Array of access entries
    */
@@ -286,7 +291,7 @@ export const chatApi = {
   },
 
   /**
-   * Set access entries (users and teams) for an assistant.
+   * @description Set access entries (users and teams) for an assistant.
    * @param assistantId - Assistant identifier
    * @param entries - Array of access entries to assign
    * @returns Updated access entries
@@ -300,8 +305,8 @@ export const chatApi = {
   // ============================================================================
 
   /**
-   * List available datasets/knowledge bases for assistant configuration.
-   * @returns Array of datasets
+   * @description List available datasets/knowledge bases for assistant configuration.
+   * @returns Array of datasets with id and name
    */
   listDatasets: async (): Promise<{ id: string; name: string }[]> => {
     return api.get<{ id: string; name: string }[]>(`${RAG_URL}/datasets`)
@@ -312,10 +317,10 @@ export const chatApi = {
   // ============================================================================
 
   /**
-   * Convert text to speech audio.
+   * @description Convert text to speech audio via the TTS endpoint.
    * @param text - Text to synthesize
    * @param options - TTS options (voice, speed)
-   * @returns Audio blob
+   * @returns Audio blob for playback
    */
   tts: async (text: string, options?: { voice?: string; speed?: number }): Promise<Blob> => {
     const apiBase = import.meta.env.VITE_API_BASE_URL || ''

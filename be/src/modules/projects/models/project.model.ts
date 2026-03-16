@@ -6,7 +6,8 @@ import { db } from '@/shared/db/knex.js'
 import { Project } from '@/shared/models/types.js'
 
 /**
- * ProjectModel provides CRUD operations for the projects table.
+ * @description Provides CRUD operations for the projects table,
+ *   which is the top-level organizational entity for datasets, chats, and searches
  * @extends BaseModel<Project>
  */
 export class ProjectModel extends BaseModel<Project> {
@@ -14,9 +15,9 @@ export class ProjectModel extends BaseModel<Project> {
   protected knex = db
 
   /**
-   * Find all projects created by a specific user.
-   * @param userId - UUID of the creator
-   * @returns Array of projects created by the user
+   * @description Find all projects created by a specific user, ordered newest first
+   * @param {string} userId - UUID of the creator
+   * @returns {Promise<Project[]>} Array of projects created by the user
    */
   async findByCreator(userId: string): Promise<Project[]> {
     return this.knex(this.tableName)
@@ -25,8 +26,8 @@ export class ProjectModel extends BaseModel<Project> {
   }
 
   /**
-   * Find all active projects.
-   * @returns Array of active projects
+   * @description Find all projects with active status, ordered newest first
+   * @returns {Promise<Project[]>} Array of active projects
    */
   async findActive(): Promise<Project[]> {
     return this.knex(this.tableName)

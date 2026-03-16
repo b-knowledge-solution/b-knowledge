@@ -43,13 +43,13 @@ const TAB_OPTIONS: TabOption[] = [
 // ============================================================================
 
 /**
- * Category filter tabs for the project list.
- *
- * @param props - Component props
- * @returns React element
+ * @description Category filter tabs for the project list, allowing users to filter by project type
+ * @param {CategoryFilterTabsProps} props - Component props with selected state and change handler
+ * @returns {JSX.Element} Rendered filter tabs
  */
 const CategoryFilterTabs = ({ selected, onChange }: CategoryFilterTabsProps) => {
   const { t } = useTranslation()
+  // Default to 'all' when no category is selected
   const currentValue = selected || 'all'
 
   return (

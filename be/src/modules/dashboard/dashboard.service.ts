@@ -8,7 +8,7 @@
 import { db } from '@/shared/db/knex.js'
 
 /**
- * Shape of daily activity data point for trend charts.
+ * @description Shape of daily activity data point for trend charts
  */
 export interface DailyActivity {
   /** Date string (YYYY-MM-DD) */
@@ -20,7 +20,7 @@ export interface DailyActivity {
 }
 
 /**
- * Shape of a top user entry.
+ * @description Shape of a top user entry by session count
  */
 export interface TopUser {
   /** User email address */
@@ -30,7 +30,7 @@ export interface TopUser {
 }
 
 /**
- * Usage breakdown by source type.
+ * @description Usage breakdown by source type for pie chart display
  */
 export interface UsageBreakdown {
   /** External AI Chat session count */
@@ -40,7 +40,7 @@ export interface UsageBreakdown {
 }
 
 /**
- * Complete dashboard statistics payload.
+ * @description Complete dashboard statistics payload including summaries, trends, and breakdowns
  */
 export interface DashboardStats {
   /** Summary card numbers */
@@ -57,15 +57,14 @@ export interface DashboardStats {
 }
 
 /**
- * DashboardService aggregates statistics from external chat and search sources.
- * Uses parallel Knex queries for performance.
+ * @description Aggregates statistics from external chat and search sources using parallel Knex queries
  */
 class DashboardService {
   /**
-   * Get comprehensive dashboard statistics.
-   * @param startDate - Optional ISO date string for range start
-   * @param endDate - Optional ISO date string for range end
-   * @returns Promise<DashboardStats> - All dashboard data in a single payload
+   * @description Get comprehensive dashboard statistics by aggregating data from multiple sources in parallel
+   * @param {string} startDate - Optional ISO date string for range start
+   * @param {string} endDate - Optional ISO date string for range end
+   * @returns {Promise<DashboardStats>} All dashboard data in a single payload
    */
   async getStats(startDate?: string, endDate?: string): Promise<DashboardStats> {
     // Run all queries in parallel for performance
@@ -127,12 +126,12 @@ class DashboardService {
   }
 
   /**
-   * Count rows in a table with optional date filter.
-   * @param table - Table name
-   * @param dateCol - Date column for filtering
-   * @param startDate - Optional start date
-   * @param endDate - Optional end date
-   * @returns Row count
+   * @description Count rows in a table with optional date range filter
+   * @param {string} table - Table name
+   * @param {string} dateCol - Date column for filtering
+   * @param {string} startDate - Optional start date
+   * @param {string} endDate - Optional end date
+   * @returns {Promise<number>} Row count
    */
   private async countRows(table: string, dateCol: string, startDate?: string, endDate?: string): Promise<number> {
     // Build query with optional date range
@@ -144,13 +143,13 @@ class DashboardService {
   }
 
   /**
-   * Get distinct emails from an external session table.
-   * @param table - Table name
-   * @param emailCol - Column containing email
-   * @param dateCol - Date column for filtering
-   * @param startDate - Optional start date
-   * @param endDate - Optional end date
-   * @returns Array of unique email strings
+   * @description Get distinct emails from an external session table
+   * @param {string} table - Table name
+   * @param {string} emailCol - Column containing email
+   * @param {string} dateCol - Date column for filtering
+   * @param {string} startDate - Optional start date
+   * @param {string} endDate - Optional end date
+   * @returns {Promise<string[]>} Array of unique email strings
    */
   private async getDistinctEmails(
     table: string, emailCol: string, dateCol: string,
@@ -165,12 +164,12 @@ class DashboardService {
   }
 
   /**
-   * Get daily message/record counts from a table.
-   * @param table - Table name
-   * @param dateCol - Timestamp column
-   * @param startDate - Optional start date
-   * @param endDate - Optional end date
-   * @returns Map of date string -> count
+   * @description Get daily message/record counts grouped by day from a table
+   * @param {string} table - Table name
+   * @param {string} dateCol - Timestamp column
+   * @param {string} startDate - Optional start date
+   * @param {string} endDate - Optional end date
+   * @returns {Promise<Map<string, number>>} Map of date string to count
    */
   private async getDailyCount(
     table: string, dateCol: string,
@@ -196,10 +195,10 @@ class DashboardService {
   }
 
   /**
-   * Merge daily trends from two sources into a single array.
-   * @param chat - Chat daily counts
-   * @param search - Search daily counts
-   * @returns Sorted array of DailyActivity
+   * @description Merge daily trends from two sources into a single sorted array
+   * @param {Map<string, number>} chat - Chat daily counts
+   * @param {Map<string, number>} search - Search daily counts
+   * @returns {DailyActivity[]} Sorted array of DailyActivity
    */
   private mergeTrends(
     chat: Map<string, number>,
@@ -224,10 +223,10 @@ class DashboardService {
   }
 
   /**
-   * Get the top 10 most active users by session count across all sources.
-   * @param startDate - Optional start date
-   * @param endDate - Optional end date
-   * @returns Array of top user objects sorted descending by session count
+   * @description Get the top 50 most active users by session count across all sources using UNION ALL
+   * @param {string} startDate - Optional start date
+   * @param {string} endDate - Optional end date
+   * @returns {Promise<TopUser[]>} Array of top user objects sorted descending by session count
    */
   private async getTopUsers(startDate?: string, endDate?: string): Promise<TopUser[]> {
     // Build separate queries for each source, then combine with raw SQL

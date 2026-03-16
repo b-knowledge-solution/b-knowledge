@@ -6,7 +6,8 @@ import { db } from '@/shared/db/knex.js'
 import { DocumentCategoryVersion } from '@/shared/models/types.js'
 
 /**
- * DocumentCategoryVersionModel provides CRUD for the document_category_versions table.
+ * @description Provides CRUD operations for the document_category_versions table,
+ *   which tracks versioned snapshots of document categories
  * @extends BaseModel<DocumentCategoryVersion>
  */
 export class DocumentCategoryVersionModel extends BaseModel<DocumentCategoryVersion> {
@@ -14,9 +15,9 @@ export class DocumentCategoryVersionModel extends BaseModel<DocumentCategoryVers
   protected knex = db
 
   /**
-   * Find all versions for a given category.
-   * @param categoryId - UUID of the category
-   * @returns Array of version records
+   * @description Find all versions for a given category, ordered newest first
+   * @param {string} categoryId - UUID of the category
+   * @returns {Promise<DocumentCategoryVersion[]>} Array of version records
    */
   async findByCategoryId(categoryId: string): Promise<DocumentCategoryVersion[]> {
     return this.knex(this.tableName)

@@ -5,9 +5,7 @@
 import { z } from 'zod';
 
 /**
- * All supported model types.
- * Vision support is handled via the `vision` boolean flag on chat models,
- * not as a separate model type.
+ * @description All supported model types. Vision support is handled via the `vision` boolean flag on chat models.
  * @see https://ragflow.io/docs/references/model-providers
  */
 export const MODEL_TYPES = [
@@ -18,15 +16,21 @@ export const MODEL_TYPES = [
   'tts',
 ] as const;
 
-/** TypeScript type for the canonical model types */
+/**
+ * @description TypeScript type for the canonical model types
+ */
 export type ModelType = (typeof MODEL_TYPES)[number];
 
-/** UUID v4 param schema */
+/**
+ * @description UUID v4 param validation schema for route parameters
+ */
 export const uuidParamSchema = z.object({
   id: z.string().uuid('Invalid UUID format'),
 });
 
-/** POST /api/llm-providers – body */
+/**
+ * @description Validation schema for creating a new LLM provider configuration
+ */
 export const createProviderSchema = z.object({
   factory_name: z.string().min(1, 'Factory name is required').max(100),
   model_type: z.enum(MODEL_TYPES, {
@@ -42,5 +46,7 @@ export const createProviderSchema = z.object({
   vision: z.boolean().optional(),
 });
 
-/** PUT /api/llm-providers/:id – body */
+/**
+ * @description Validation schema for updating an LLM provider configuration (all fields optional)
+ */
 export const updateProviderSchema = createProviderSchema.partial();

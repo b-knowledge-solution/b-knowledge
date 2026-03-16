@@ -10,18 +10,17 @@ import { GlossaryTask } from '@/shared/models/types.js';
 import { db } from '@/shared/db/knex.js';
 
 /**
- * Model for glossary_tasks table operations.
- * Provides task management for the prompt builder.
+ * @description Model for glossary_tasks table operations, providing task management for the prompt builder
  */
 export class GlossaryTaskModel extends BaseModel<GlossaryTask> {
     protected tableName = 'glossary_tasks';
     protected knex: Knex = db;
 
     /**
-     * Search tasks by name using case-insensitive LIKE.
-     * @param query - Search query string
-     * @param limit - Maximum results to return
-     * @returns Array of matching tasks
+     * @description Search tasks by name using case-insensitive LIKE matching
+     * @param {string} query - Search query string
+     * @param {number} limit - Maximum results to return
+     * @returns {Promise<GlossaryTask[]>} Array of matching tasks
      */
     async searchByName(query: string, limit = 50): Promise<GlossaryTask[]> {
         return this.knex(this.tableName)
@@ -32,9 +31,9 @@ export class GlossaryTaskModel extends BaseModel<GlossaryTask> {
     }
 
     /**
-     * Find a task by exact name match.
-     * @param name - Exact task name to find
-     * @returns Task if found, undefined otherwise
+     * @description Find a task by exact name using case-insensitive comparison
+     * @param {string} name - Exact task name to find
+     * @returns {Promise<GlossaryTask | undefined>} Task if found, undefined otherwise
      */
     async findByName(name: string): Promise<GlossaryTask | undefined> {
         return this.knex(this.tableName)
@@ -43,15 +42,14 @@ export class GlossaryTaskModel extends BaseModel<GlossaryTask> {
     }
 
     /**
-     * Find or create a task by name.
-     * Used during bulk import to ensure tasks exist.
-     * @param name - Task name
-     * @param taskInstructionEn - English task instruction
-     * @param contextTemplate - Line 2 context template with {keyword}
-     * @param userId - User performing the action
-     * @param taskInstructionJa - Japanese task instruction (optional)
-     * @param taskInstructionVi - Vietnamese task instruction (optional)
-     * @returns The found or created task
+     * @description Find an existing task by name or create a new one, used during bulk import
+     * @param {string} name - Task name
+     * @param {string} taskInstructionEn - English task instruction
+     * @param {string} contextTemplate - Context template with {keyword} placeholder
+     * @param {string} userId - User performing the action
+     * @param {string} taskInstructionJa - Japanese task instruction (optional)
+     * @param {string} taskInstructionVi - Vietnamese task instruction (optional)
+     * @returns {Promise<GlossaryTask>} The found or created task
      */
     async findOrCreate(
         name: string,
@@ -78,12 +76,11 @@ export class GlossaryTaskModel extends BaseModel<GlossaryTask> {
     }
 
     /**
-     * Bulk insert a chunk of task rows within a single transaction.
-     * Skips duplicates by name (case-insensitive) using both the DB and a seen Set.
-     * @param rows - Array of task rows to insert
-     * @param seen - Set of already-processed names (lowercase) for cross-chunk dedup
-     * @param userId - User performing the import
-     * @returns Object with created and skipped counts
+     * @description Bulk insert a chunk of task rows within a transaction, skipping duplicates using DB checks and in-memory seen set
+     * @param {Array} rows - Array of task rows to insert
+     * @param {Set<string>} seen - Set of already-processed names (lowercase) for cross-chunk dedup
+     * @param {string} userId - User performing the import
+     * @returns {Promise<{ created: number; skipped: number }>} Object with created and skipped counts
      */
     async bulkInsertChunk(
         rows: Array<{

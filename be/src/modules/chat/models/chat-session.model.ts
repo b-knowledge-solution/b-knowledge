@@ -7,9 +7,9 @@ import { db } from '@/shared/db/knex.js'
 import { ChatSession } from '@/shared/models/types.js'
 
 /**
- * ChatSessionModel
- * Represents the 'chat_sessions' table.
- * Manages chat conversation metadata and ownership.
+ * @description ChatSessionModel — represents the 'chat_sessions' table.
+ * Manages chat conversation metadata, ownership, and dialog association.
+ * Each session belongs to a user and is linked to a chat assistant (dialog).
  */
 export class ChatSessionModel extends BaseModel<ChatSession> {
   /** Table name in the database */

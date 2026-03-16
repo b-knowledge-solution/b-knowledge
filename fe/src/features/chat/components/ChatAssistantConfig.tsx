@@ -94,7 +94,7 @@ function ChatAssistantConfig({
   }, [dialog, open])
 
   /**
-   * Toggle a knowledge base in the selection.
+   * @description Toggle a knowledge base in the selection.
    * @param kbId - Knowledge base ID to toggle
    */
   const toggleKb = (kbId: string) => {
@@ -104,7 +104,7 @@ function ChatAssistantConfig({
   }
 
   /**
-   * Handle form save.
+   * @description Validate and submit the form, building a prompt config payload.
    */
   const handleSave = () => {
     if (!name.trim()) return

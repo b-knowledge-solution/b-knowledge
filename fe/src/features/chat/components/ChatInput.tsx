@@ -68,7 +68,7 @@ function ChatInput({
   const [internetEnabled, setInternetEnabled] = useState(false)
 
   /**
-   * Auto-resize the textarea based on content.
+   * @description Auto-resize the textarea based on content, capped at 200px.
    */
   const autoResize = () => {
     const textarea = textareaRef.current
@@ -79,7 +79,7 @@ function ChatInput({
   }
 
   /**
-   * Handle form submission.
+   * @description Handle form submission, building options from toggle states.
    */
   const handleSubmit = () => {
     const textarea = textareaRef.current
@@ -101,7 +101,7 @@ function ChatInput({
   }
 
   /**
-   * Handle keyboard events: Enter to send, Shift+Enter for newline.
+   * @description Handle keyboard events: Enter to send, Shift+Enter for newline.
    */
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -111,7 +111,7 @@ function ChatInput({
   }
 
   /**
-   * Handle file input change event.
+   * @description Handle file input change event and forward selected files to parent.
    */
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files

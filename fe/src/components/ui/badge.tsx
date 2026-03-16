@@ -2,6 +2,7 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
+/** @description Variant styles for badge: default, secondary, destructive, outline, success, warning, info */
 const badgeVariants = cva(
   'inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
   {
@@ -22,8 +23,14 @@ const badgeVariants = cva(
   }
 );
 
+/** @description Props for the Badge component combining HTML div attributes with variant options */
 export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
 
+/**
+ * @description Displays a small status or category label with variant-based styling
+ * @param {BadgeProps} props - Badge props including variant and className
+ * @returns {JSX.Element} Rendered badge element
+ */
 function Badge({ className, variant, ...props }: BadgeProps) {
   return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
 }

@@ -25,9 +25,13 @@ import { globalMessage } from '@/app/App'
 // Props
 // ============================================================================
 
+/** @description Props for the GlossaryBulkImportModal component */
 interface GlossaryBulkImportModalProps {
+    /** Whether the modal is visible */
     open: boolean
+    /** Callback to close the modal */
     onClose: () => void
+    /** Callback invoked after a successful import */
     onSuccess: () => void
 }
 
@@ -35,6 +39,12 @@ interface GlossaryBulkImportModalProps {
 // Component
 // ============================================================================
 
+/**
+ * @description Modal for bulk importing glossary tasks via Excel file.
+ * Supports drag-and-drop upload, preview table, and template download.
+ * @param {GlossaryBulkImportModalProps} props - Component props.
+ * @returns {JSX.Element} Rendered bulk import modal.
+ */
 export const GlossaryBulkImportModal = ({ open, onClose, onSuccess }: GlossaryBulkImportModalProps) => {
     const { t } = useTranslation()
 

@@ -47,11 +47,10 @@ interface ProjectPermissionModalProps {
 // ============================================================================
 
 /**
- * ProjectPermissionModal component.
- * Manages project-level public/private access with team grants.
- *
- * @param props - Modal configuration
- * @returns Modal dialog for project permission management
+ * @description Modal for managing project-level public/private access with team-based permissions.
+ * Supports toggling between public and private access, and assigning teams for private access.
+ * @param {ProjectPermissionModalProps} props - Modal configuration including project and save callback
+ * @returns {JSX.Element} Rendered project permission modal
  */
 export const ProjectPermissionModal: React.FC<ProjectPermissionModalProps> = ({
   open,

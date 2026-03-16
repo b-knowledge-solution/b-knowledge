@@ -111,8 +111,11 @@ export const PermissionsSelector: React.FC<PermissionsSelectorProps> = ({
   const selectedTeams = teams.filter(team => selectedTeamIds.includes(team.id));
   const selectedUsers = users.filter(user => selectedUserIds.includes(user.id));
 
+  /** Toggle a team's selection state (add if not present, remove if present) */
   const toggleTeam = (teamId: string) => {
+    // Guard: skip if no setter provided
     if (!setSelectedTeamIds) return;
+    // Remove team if already selected, otherwise add it
     if (selectedTeamIds.includes(teamId)) {
       setSelectedTeamIds(selectedTeamIds.filter(id => id !== teamId));
     } else {
@@ -120,8 +123,11 @@ export const PermissionsSelector: React.FC<PermissionsSelectorProps> = ({
     }
   };
 
+  /** Toggle a user's selection state (add if not present, remove if present) */
   const toggleUser = (userId: string) => {
+    // Guard: skip if no setter provided
     if (!setSelectedUserIds) return;
+    // Remove user if already selected, otherwise add it
     if (selectedUserIds.includes(userId)) {
       setSelectedUserIds(selectedUserIds.filter(id => id !== userId));
     } else {
@@ -368,7 +374,7 @@ export const SourcePermissionsModal: React.FC<SourcePermissionsModalProps> = ({
   const [users, setUsers] = useState<UserType[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(false);
 
-  // Sync state when source changes
+  // Sync local state with source's access control when source prop changes
   useEffect(() => {
     if (source?.access_control) {
       setIsPublic(source.access_control.public);
@@ -382,7 +388,7 @@ export const SourcePermissionsModal: React.FC<SourcePermissionsModalProps> = ({
     }
   }, [source]);
 
-  // Fetch teams and users when modal opens or becomes private
+  // Lazily fetch teams and users when modal opens with private access mode
   useEffect(() => {
     if (open && !isPublic && teams.length === 0 && users.length === 0) {
       const fetchData = async () => {
@@ -410,6 +416,7 @@ export const SourcePermissionsModal: React.FC<SourcePermissionsModalProps> = ({
   const handleSave = () => {
     if (!source?.id) return;
 
+    // Clear team/user IDs when public to avoid stale ACLs
     const accessControl: AccessControl = {
       public: isPublic,
       team_ids: isPublic ? [] : selectedTeamIds,
@@ -419,6 +426,7 @@ export const SourcePermissionsModal: React.FC<SourcePermissionsModalProps> = ({
     onSave(source.id, accessControl);
   };
 
+  // Guard: render nothing when modal is closed
   if (!open) return null;
 
   return (

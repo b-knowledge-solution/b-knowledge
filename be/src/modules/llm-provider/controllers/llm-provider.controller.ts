@@ -1,3 +1,7 @@
+/**
+ * @fileoverview LLM provider controller for CRUD, preset listing, and connection testing.
+ * @module modules/llm-provider/controllers/llm-provider
+ */
 import { Request, Response } from 'express';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
@@ -6,23 +10,32 @@ import { llmProviderService } from '../services/llm-provider.service.js';
 import { log } from '@/shared/services/logger.service.js';
 import { getClientIp } from '@/shared/utils/ip.js';
 
-/** Pre-load factory presets JSON at module init for fast responses */
+// Pre-load factory presets JSON at module init for fast responses
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const factoryPresets = JSON.parse(
     readFileSync(join(__dirname, '..', 'data', 'factory-presets.json'), 'utf-8'),
 );
 
+/**
+ * @description Controller for LLM provider CRUD, preset listing, and connection testing
+ */
 export class LlmProviderController {
     /**
-     * Return static factory preset configurations for all supported LLM providers.
-     * @description GET /api/llm-provider/presets
-     * @param _req - Express request
-     * @param res - Express response with factory presets array
+     * @description Return static factory preset configurations for all supported LLM providers
+     * @param {Request} _req - Express request (unused)
+     * @param {Response} res - Express response with factory presets array
+     * @returns {Promise<void>}
      */
     async getPresets(_req: Request, res: Response): Promise<void> {
         res.json(factoryPresets);
     }
 
+    /**
+     * @description List all active LLM providers with masked API keys
+     * @param {Request} _req - Express request (unused)
+     * @param {Response} res - Express response with providers array
+     * @returns {Promise<void>}
+     */
     async list(_req: Request, res: Response): Promise<void> {
         try {
             const providers = await llmProviderService.list();
@@ -38,9 +51,16 @@ export class LlmProviderController {
         }
     }
 
+    /**
+     * @description Get a single LLM provider by ID with masked API key
+     * @param {Request} req - Express request with provider ID param
+     * @param {Response} res - Express response with provider details
+     * @returns {Promise<void>}
+     */
     async getById(req: Request, res: Response): Promise<void> {
         try {
             const provider = await llmProviderService.getById(req.params['id']!);
+            // Return 404 if provider not found
             if (!provider) {
                 res.status(404).json({ error: 'Model provider not found' });
                 return;
@@ -52,6 +72,12 @@ export class LlmProviderController {
         }
     }
 
+    /**
+     * @description Get default LLM providers for each model type
+     * @param {Request} _req - Express request (unused)
+     * @param {Response} res - Express response with default providers
+     * @returns {Promise<void>}
+     */
     async getDefaults(_req: Request, res: Response): Promise<void> {
         try {
             const defaults = await llmProviderService.getDefaults();
@@ -62,8 +88,15 @@ export class LlmProviderController {
         }
     }
 
+    /**
+     * @description Create a new LLM provider configuration with encrypted API key
+     * @param {Request} req - Express request with provider data in body
+     * @param {Response} res - Express response with created provider
+     * @returns {Promise<void>}
+     */
     async create(req: Request, res: Response): Promise<void> {
         try {
+            // Capture user context for audit trail
             const user = req.user
                 ? { id: req.user.id, email: req.user.email, ip: getClientIp(req) }
                 : undefined;
@@ -76,8 +109,15 @@ export class LlmProviderController {
         }
     }
 
+    /**
+     * @description Update an existing LLM provider configuration
+     * @param {Request} req - Express request with provider ID param and update data in body
+     * @param {Response} res - Express response with updated provider
+     * @returns {Promise<void>}
+     */
     async update(req: Request, res: Response): Promise<void> {
         const { id } = req.params;
+        // Guard: validate ID presence
         if (!id) { res.status(400).json({ error: 'ID is required' }); return; }
 
         try {
@@ -93,8 +133,15 @@ export class LlmProviderController {
         }
     }
 
+    /**
+     * @description Soft-delete an LLM provider and remove its tenant_llm sync row
+     * @param {Request} req - Express request with provider ID param
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
+     */
     async delete(req: Request, res: Response): Promise<void> {
         const { id } = req.params;
+        // Guard: validate ID presence
         if (!id) { res.status(400).json({ error: 'ID is required' }); return; }
 
         try {

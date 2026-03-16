@@ -21,7 +21,7 @@ import {
 } from '@/shared/services/openai-format.service.js'
 import { ModelFactory } from '@/shared/models/factory.js'
 
-/** Default model identifier returned by the API. */
+/** @description Default model identifier returned by the API. */
 const MODEL_ID = 'b-knowledge-rag'
 
 /**
@@ -32,11 +32,12 @@ const MODEL_ID = 'b-knowledge-rag'
  */
 export class ChatOpenaiController {
   /**
-   * POST /api/v1/chat/completions — OpenAI-compatible chat completion.
-   * @param req - Express request with OpenAI-format body (messages, stream, model)
-   * @param res - Express response (JSON or SSE depending on stream flag)
-   * @description Extracts Bearer token, validates it, gets the last user message,
-   *   and routes to the chat pipeline. Supports both streaming and non-streaming.
+   * @description POST /api/v1/chat/completions — OpenAI-compatible chat completion.
+   * Extracts Bearer token, validates it, gets the last user message,
+   * and routes to the chat pipeline. Supports both streaming and non-streaming.
+   * @param {Request} req - Express request with OpenAI-format body (messages, stream, model)
+   * @param {Response} res - Express response (JSON or SSE depending on stream flag)
+   * @returns {Promise<void>} OpenAI-format completion response
    */
   async chatCompletion(req: Request, res: Response): Promise<void> {
     try {
@@ -142,9 +143,11 @@ export class ChatOpenaiController {
   }
 
   /**
-   * GET /api/v1/models — List available models.
-   * @param _req - Express request
-   * @param res - Express response with OpenAI model list format
+   * @description GET /api/v1/models — List available models.
+   * Returns a single model entry representing the B-Knowledge RAG pipeline.
+   * @param {Request} _req - Express request (unused)
+   * @param {Response} res - Express response with OpenAI model list format
+   * @returns {Promise<void>} OpenAI-format model list
    */
   async listModels(_req: Request, res: Response): Promise<void> {
     res.json({
@@ -162,13 +165,13 @@ export class ChatOpenaiController {
 }
 
 /**
- * Create a mock Express response that intercepts SSE writes and re-formats
+ * @description Create a mock Express response that intercepts SSE writes and re-formats
  * them as OpenAI streaming chunks.
- * @param realRes - The actual Express response to write to
- * @param completionId - Shared completion ID for all chunks
- * @param model - Model identifier
- * @param onDelta - Callback invoked with each content delta
- * @returns A mock response object compatible with chatConversationService.streamChat
+ * @param {Response} realRes - The actual Express response to write to
+ * @param {string} completionId - Shared completion ID for all chunks
+ * @param {string} model - Model identifier
+ * @param {(delta: string) => void} onDelta - Callback invoked with each content delta
+ * @returns {object} A mock response object compatible with chatConversationService.streamChat
  */
 function createStreamInterceptor(
   realRes: Response,
@@ -216,10 +219,10 @@ function createStreamInterceptor(
 }
 
 /**
- * Create a buffer interceptor that collects content deltas without writing
+ * @description Create a buffer interceptor that collects content deltas without writing
  * to any response. Used for non-streaming mode.
- * @param onDelta - Callback invoked with each content delta
- * @returns A mock response object compatible with chatConversationService.streamChat
+ * @param {(delta: string) => void} onDelta - Callback invoked with each content delta
+ * @returns {object} A mock response object compatible with chatConversationService.streamChat
  */
 function createBufferInterceptor(onDelta: (delta: string) => void) {
   return {

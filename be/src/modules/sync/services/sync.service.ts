@@ -12,7 +12,7 @@ import { Connector, SyncLog } from '../models/sync.types.js'
 import { syncWorkerService } from './sync-worker.service.js'
 
 /**
- * UserContext captures the acting user for audit trails.
+ * @description Captures the acting user for audit trails on connector operations
  */
 interface UserContext {
   id: string
@@ -27,10 +27,11 @@ interface UserContext {
  */
 export class SyncService {
   /**
-   * Create a new connector.
-   * @param data - Connector creation payload
-   * @param user - Optional user context for audit
-   * @returns The created connector record
+   * @description Create a new connector with default active status
+   * @param {Partial<Connector>} data - Connector creation payload
+   * @param {UserContext} [user] - Optional user context for audit trail
+   * @returns {Promise<Connector>} The created connector record
+   * @throws {Error} If creation fails
    */
   async createConnector(data: Partial<Connector>, user?: UserContext): Promise<Connector> {
     try {
@@ -51,18 +52,18 @@ export class SyncService {
   }
 
   /**
-   * Get a connector by ID.
-   * @param id - Connector UUID
-   * @returns The connector or undefined
+   * @description Retrieve a connector by its UUID
+   * @param {string} id - Connector UUID
+   * @returns {Promise<Connector | undefined>} The connector or undefined if not found
    */
   async getConnector(id: string): Promise<Connector | undefined> {
     return ModelFactory.connector.findById(id)
   }
 
   /**
-   * List all connectors, optionally filtered by knowledge base.
-   * @param kbId - Optional knowledge base ID filter
-   * @returns Array of connectors
+   * @description List all connectors, optionally filtered by knowledge base ID
+   * @param {string} [kbId] - Optional knowledge base ID filter
+   * @returns {Promise<Connector[]>} Array of connectors ordered newest first
    */
   async listConnectors(kbId?: string): Promise<Connector[]> {
     // Filter by kb_id if provided, otherwise return all
@@ -71,11 +72,12 @@ export class SyncService {
   }
 
   /**
-   * Update an existing connector.
-   * @param id - Connector UUID
-   * @param data - Partial update data
-   * @param user - Optional user context for audit
-   * @returns Updated connector or undefined
+   * @description Update an existing connector with partial data, serializing config if present
+   * @param {string} id - Connector UUID
+   * @param {Partial<Connector>} data - Partial update data
+   * @param {UserContext} [user] - Optional user context for audit trail
+   * @returns {Promise<Connector | undefined>} Updated connector or undefined if not found
+   * @throws {Error} If update fails
    */
   async updateConnector(id: string, data: Partial<Connector>, user?: UserContext): Promise<Connector | undefined> {
     try {
@@ -101,8 +103,10 @@ export class SyncService {
   }
 
   /**
-   * Delete a connector and its sync logs.
-   * @param id - Connector UUID
+   * @description Delete a connector and its associated sync logs
+   * @param {string} id - Connector UUID
+   * @returns {Promise<void>}
+   * @throws {Error} If deletion fails
    */
   async deleteConnector(id: string): Promise<void> {
     try {
@@ -115,13 +119,13 @@ export class SyncService {
   }
 
   /**
-   * Trigger a manual sync for a connector.
-   * @description Creates a sync log entry and enqueues the sync task.
-   *   The actual file fetching will be handled by connector-specific logic,
-   *   storing raw files to MinIO, then creating parse tasks for advance-rag.
-   * @param connectorId - Connector UUID
-   * @param pollRangeStart - Optional override for incremental sync start
-   * @returns The created sync log entry
+   * @description Trigger a manual sync for a connector by creating a sync log entry
+   *   and launching the background worker. File fetching is connector-specific,
+   *   storing raw files in MinIO and enqueuing parse tasks for advance-rag.
+   * @param {string} connectorId - Connector UUID
+   * @param {string} [pollRangeStart] - Optional override for incremental sync start
+   * @returns {Promise<SyncLog>} The created sync log entry with pending status
+   * @throws {Error} If connector not found or sync creation fails
    */
   async triggerSync(connectorId: string, pollRangeStart?: string): Promise<SyncLog> {
     // Verify connector exists
@@ -156,12 +160,12 @@ export class SyncService {
   }
 
   /**
-   * List sync logs for a connector with pagination.
-   * @param connectorId - Connector UUID
-   * @param page - Page number (1-based)
-   * @param limit - Items per page
-   * @param status - Optional status filter
-   * @returns Array of sync log entries
+   * @description List sync logs for a connector with pagination and optional status filtering
+   * @param {string} connectorId - Connector UUID
+   * @param {number} [page=1] - Page number (1-based)
+   * @param {number} [limit=20] - Items per page
+   * @param {string} [status] - Optional sync status filter
+   * @returns {Promise<SyncLog[]>} Array of sync log entries ordered newest first
    */
   async listSyncLogs(
     connectorId: string,

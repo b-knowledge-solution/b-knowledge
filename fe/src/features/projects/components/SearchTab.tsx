@@ -53,8 +53,10 @@ interface SearchTabProps {
 // ============================================================================
 
 /**
- * Search tab -- AI Search app list with CRUD.
- * Resolves selected categories -> ragflow_dataset_ids on creation/update.
+ * @description Search tab displaying AI Search app list with full CRUD operations.
+ * Resolves selected categories into ragflow_dataset_ids on creation/update.
+ * @param {SearchTabProps} props - Component props with project data and category versions
+ * @returns {JSX.Element} Rendered search tab content
  */
 const SearchTab = ({
   projectId,

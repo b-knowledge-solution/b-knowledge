@@ -8,55 +8,55 @@ import { z } from 'zod'
 // Param schemas
 // ---------------------------------------------------------------------------
 
-/** Text ID param schema for project IDs */
+/** @description Validates project ID path parameter */
 export const projectIdParamSchema = z.object({
   id: z.string().min(1, 'Project ID is required'),
 })
 
-/** Project + permission ID params */
+/** @description Validates project ID and permission ID path parameters */
 export const permissionParamSchema = z.object({
   id: z.string().min(1, 'Project ID is required'),
   permId: z.string().min(1, 'Permission ID is required'),
 })
 
-/** Project + dataset ID params */
+/** @description Validates project ID and dataset UUID path parameters */
 export const projectDatasetParamSchema = z.object({
   id: z.string().min(1, 'Project ID is required'),
   datasetId: z.string().uuid('Invalid dataset UUID'),
 })
 
-/** Project + category ID params */
+/** @description Validates project ID and category ID path parameters */
 export const categoryParamSchema = z.object({
   id: z.string().min(1, 'Project ID is required'),
   catId: z.string().min(1, 'Category ID is required'),
 })
 
-/** Project + category + version ID params */
+/** @description Validates project, category, and version ID path parameters */
 export const versionParamSchema = z.object({
   id: z.string().min(1, 'Project ID is required'),
   catId: z.string().min(1, 'Category ID is required'),
   verId: z.string().min(1, 'Version ID is required'),
 })
 
-/** Project + chat ID params */
+/** @description Validates project ID and chat ID path parameters */
 export const chatParamSchema = z.object({
   id: z.string().min(1, 'Project ID is required'),
   chatId: z.string().min(1, 'Chat ID is required'),
 })
 
-/** Project + search ID params */
+/** @description Validates project ID and search ID path parameters */
 export const searchParamSchema = z.object({
   id: z.string().min(1, 'Project ID is required'),
   searchId: z.string().min(1, 'Search ID is required'),
 })
 
-/** Project + sync config ID params */
+/** @description Validates project ID and sync config ID path parameters */
 export const syncConfigParamSchema = z.object({
   id: z.string().min(1, 'Project ID is required'),
   configId: z.string().min(1, 'Config ID is required'),
 })
 
-/** Project + entity permission ID params */
+/** @description Validates project ID and entity permission ID path parameters */
 export const entityPermParamSchema = z.object({
   id: z.string().min(1, 'Project ID is required'),
   permId: z.string().min(1, 'Entity permission ID is required'),
@@ -66,7 +66,7 @@ export const entityPermParamSchema = z.object({
 // Project CRUD schemas
 // ---------------------------------------------------------------------------
 
-/** POST /api/projects - body */
+/** @description Validates POST /api/projects request body for project creation */
 export const createProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required').max(255),
   description: z.string().max(2000).optional(),
@@ -77,7 +77,7 @@ export const createProjectSchema = z.object({
   is_private: z.boolean().optional(),
 })
 
-/** PUT /api/projects/:id - body */
+/** @description Validates PUT /api/projects/:id request body for project updates */
 export const updateProjectSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   description: z.string().max(2000).nullable().optional(),
@@ -93,7 +93,7 @@ export const updateProjectSchema = z.object({
 // Permission schemas
 // ---------------------------------------------------------------------------
 
-/** POST /api/projects/:id/permissions - body */
+/** @description Validates POST /api/projects/:id/permissions body for permission upsert */
 export const setPermissionSchema = z.object({
   grantee_type: z.enum(['user', 'team']),
   grantee_id: z.string().min(1, 'Grantee ID is required'),
@@ -106,7 +106,7 @@ export const setPermissionSchema = z.object({
 // Project Datasets schemas
 // ---------------------------------------------------------------------------
 
-/** POST /api/projects/:id/datasets - body */
+/** @description Validates POST /api/projects/:id/datasets body for dataset linking */
 export const linkDatasetSchema = z.object({
   dataset_id: z.string().uuid('Invalid dataset UUID').optional(),
   create_new: z.boolean().optional(),
@@ -117,7 +117,7 @@ export const linkDatasetSchema = z.object({
 // Category schemas
 // ---------------------------------------------------------------------------
 
-/** POST /api/projects/:id/categories - body */
+/** @description Validates POST /api/projects/:id/categories body for category creation */
 export const createCategorySchema = z.object({
   name: z.string().min(1, 'Category name is required').max(255),
   description: z.string().max(2000).optional(),
@@ -125,7 +125,7 @@ export const createCategorySchema = z.object({
   dataset_config: z.record(z.unknown()).optional(),
 })
 
-/** PUT /api/projects/:id/categories/:catId - body */
+/** @description Validates PUT /api/projects/:id/categories/:catId body for category updates */
 export const updateCategorySchema = z.object({
   name: z.string().min(1).max(255).optional(),
   description: z.string().max(2000).nullable().optional(),
@@ -137,13 +137,13 @@ export const updateCategorySchema = z.object({
 // Category Version schemas
 // ---------------------------------------------------------------------------
 
-/** POST /api/projects/:id/categories/:catId/versions - body */
+/** @description Validates POST body for category version creation */
 export const createCategoryVersionSchema = z.object({
   version_label: z.string().min(1, 'Version label is required').max(128),
   metadata: z.record(z.unknown()).optional(),
 })
 
-/** PUT /api/projects/:id/categories/:catId/versions/:verId - body */
+/** @description Validates PUT body for category version updates */
 export const updateCategoryVersionSchema = z.object({
   version_label: z.string().min(1).max(128).optional(),
   status: z.enum(['active', 'archived']).optional(),
@@ -156,7 +156,7 @@ export const updateCategoryVersionSchema = z.object({
 // Chat schemas
 // ---------------------------------------------------------------------------
 
-/** POST /api/projects/:id/chats - body */
+/** @description Validates POST /api/projects/:id/chats body for chat creation */
 export const createChatSchema = z.object({
   name: z.string().min(1, 'Chat name is required').max(255),
   dataset_ids: z.array(z.string()).optional(),
@@ -165,7 +165,7 @@ export const createChatSchema = z.object({
   prompt_config: z.record(z.unknown()).optional(),
 })
 
-/** PUT /api/projects/:id/chats/:chatId - body */
+/** @description Validates PUT /api/projects/:id/chats/:chatId body for chat updates */
 export const updateChatSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   dataset_ids: z.array(z.string()).optional(),
@@ -179,7 +179,7 @@ export const updateChatSchema = z.object({
 // Search schemas
 // ---------------------------------------------------------------------------
 
-/** POST /api/projects/:id/searches - body */
+/** @description Validates POST /api/projects/:id/searches body for search creation */
 export const createSearchSchema = z.object({
   name: z.string().min(1, 'Search name is required').max(255),
   description: z.string().max(2000).optional(),
@@ -188,7 +188,7 @@ export const createSearchSchema = z.object({
   search_config: z.record(z.unknown()).optional(),
 })
 
-/** PUT /api/projects/:id/searches/:searchId - body */
+/** @description Validates PUT /api/projects/:id/searches/:searchId body for search updates */
 export const updateSearchSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   description: z.string().max(2000).nullable().optional(),
@@ -202,7 +202,7 @@ export const updateSearchSchema = z.object({
 // Sync Config schemas
 // ---------------------------------------------------------------------------
 
-/** POST /api/projects/:id/sync-configs - body */
+/** @description Validates POST /api/projects/:id/sync-configs body for sync config creation */
 export const createSyncConfigSchema = z.object({
   source_type: z.enum(['sharepoint', 'jira', 'confluence', 'gitlab', 'github']),
   connection_config: z.string().min(1, 'Connection config is required'),
@@ -210,7 +210,7 @@ export const createSyncConfigSchema = z.object({
   filter_rules: z.record(z.unknown()).optional(),
 })
 
-/** PUT /api/projects/:id/sync-configs/:configId - body */
+/** @description Validates PUT body for sync config updates */
 export const updateSyncConfigSchema = z.object({
   connection_config: z.string().optional(),
   sync_schedule: z.string().max(128).nullable().optional(),
@@ -222,7 +222,7 @@ export const updateSyncConfigSchema = z.object({
 // Entity Permission schemas
 // ---------------------------------------------------------------------------
 
-/** POST /api/projects/:id/entity-permissions - body */
+/** @description Validates POST body for entity-level permission creation */
 export const createEntityPermissionSchema = z.object({
   entity_type: z.enum(['category', 'chat', 'search']),
   entity_id: z.string().min(1, 'Entity ID is required'),

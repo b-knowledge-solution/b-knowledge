@@ -26,10 +26,11 @@ interface ChunkResultCardProps {
 // ============================================================================
 
 /**
- * Displays a single retrieval test result chunk.
+ * @description Displays a single retrieval test result chunk with rank badge,
+ * relevance score, document name, token count, and truncated text preview.
  *
- * @param props - Component props
- * @returns React element
+ * @param {ChunkResultCardProps} props - Component properties
+ * @returns {JSX.Element} Rendered chunk result card
  */
 const ChunkResultCard: React.FC<ChunkResultCardProps> = ({ chunk, index }) => {
   const { t } = useTranslation();

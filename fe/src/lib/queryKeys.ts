@@ -12,6 +12,9 @@
 // Query Key Factory
 // ============================================================================
 
+/**
+ * @description Centralized query key factory for all TanStack Query cache operations across every feature domain
+ */
 export const queryKeys = {
   // --------------------------------------------------------------------------
   // Auth
@@ -39,6 +42,15 @@ export const queryKeys = {
       [...queryKeys.datasets.all, datasetId, 'versions', versionId, 'files'] as const,
     converterJobs: (datasetId: string, versionId: string) =>
       [...queryKeys.datasets.all, datasetId, 'versions', versionId, 'jobs'] as const,
+    overview: (datasetId: string) => [...queryKeys.datasets.all, datasetId, 'overview'] as const,
+    logs: (datasetId: string, params?: Record<string, unknown>) =>
+      [...queryKeys.datasets.all, datasetId, 'logs', params] as const,
+    documentLogs: (datasetId: string, docId: string) =>
+      [...queryKeys.datasets.all, datasetId, 'documents', docId, 'logs'] as const,
+    graph: (datasetId: string) => [...queryKeys.datasets.all, datasetId, 'graph'] as const,
+    graphragStatus: (datasetId: string) => [...queryKeys.datasets.all, datasetId, 'graphrag-status'] as const,
+    raptorStatus: (datasetId: string) => [...queryKeys.datasets.all, datasetId, 'raptor-status'] as const,
+    metadata: (datasetId: string) => [...queryKeys.datasets.all, datasetId, 'metadata'] as const,
   },
 
   // --------------------------------------------------------------------------

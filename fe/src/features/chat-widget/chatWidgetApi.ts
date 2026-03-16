@@ -12,7 +12,9 @@ import { createWidgetApiClient, type WidgetApiConfig } from '@/lib/widgetAuth'
 // Types
 // ============================================================================
 
-/** Dialog info returned by the embed info endpoint */
+/**
+ * @description Dialog info returned by the embed info endpoint for widget header display.
+ */
 export interface WidgetDialogInfo {
   name: string
   icon: string | null
@@ -20,7 +22,9 @@ export interface WidgetDialogInfo {
   prologue: string | null
 }
 
-/** Session created for the widget conversation */
+/**
+ * @description Session created for the widget conversation to maintain continuity.
+ */
 export interface WidgetSession {
   id: string
   dialog_id: string
@@ -32,7 +36,7 @@ export interface WidgetSession {
 // ============================================================================
 
 /**
- * Chat widget API client with dual-mode authentication.
+ * @description Chat widget API client with dual-mode authentication.
  * In internal mode, uses session cookies with standard /api/chat endpoints.
  * In external mode, uses embed token with /api/chat/embed/:token endpoints.
  */
@@ -41,7 +45,8 @@ export class ChatWidgetApi {
   private dialogId: string | undefined
 
   /**
-   * @param config - Widget API configuration
+   * @description Create a new ChatWidgetApi instance.
+   * @param config - Widget API configuration for auth mode
    * @param dialogId - Dialog ID (required for internal mode)
    */
   constructor(config: WidgetApiConfig, dialogId?: string) {
@@ -50,7 +55,7 @@ export class ChatWidgetApi {
   }
 
   /**
-   * Get dialog info for widget display (name, icon, prologue).
+   * @description Get dialog info for widget display (name, icon, prologue).
    * @returns Dialog info object
    */
   async getInfo(): Promise<WidgetDialogInfo> {
@@ -74,7 +79,7 @@ export class ChatWidgetApi {
   }
 
   /**
-   * Create a new session for the widget conversation.
+   * @description Create a new session for the widget conversation.
    * @param name - Optional session name
    * @returns Created session object
    */
@@ -96,7 +101,7 @@ export class ChatWidgetApi {
   }
 
   /**
-   * Send a message and receive a streaming SSE response.
+   * @description Send a message and receive a streaming SSE response.
    * Returns the raw Response for the caller to consume as a ReadableStream.
    * @param content - User message text
    * @param sessionId - Session ID for conversation continuity

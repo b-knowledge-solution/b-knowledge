@@ -1,3 +1,8 @@
+/**
+ * @fileoverview Barrel exports for all document preview components.
+ * @module components/DocumentPreviewer/previews
+ */
+
 export { PdfPreview } from './PdfPreview';
 export type { PdfPreviewProps } from './PdfPreview';
 export { DocPreviewer } from './DocPreview';

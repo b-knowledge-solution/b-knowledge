@@ -46,21 +46,9 @@ interface SelectProps {
 // ============================================================================
 
 /**
- * Custom styled select/dropdown component.
- * 
- * Features:
- * - Gradient background styling
- * - Optional leading icon
- * - Animated chevron indicator
- * - Smooth dropdown transition
- * - Checkmark on selected option
- * - Dark mode support
- * 
- * @param value - Currently selected option ID
- * @param onChange - Selection change callback
- * @param options - Available options
- * @param icon - Optional icon element
- * @param className - Additional CSS classes
+ * @description Custom styled select dropdown using Headless UI Listbox with gradient styling and animations
+ * @param {SelectProps} props - Selected value, options, change handler, and optional icon
+ * @returns {JSX.Element} Rendered select dropdown with animated chevron and checkmark indicators
  */
 export function Select({ value, onChange, options, icon, disabled = false, className = '' }: SelectProps) {
     const { t } = useTranslation();

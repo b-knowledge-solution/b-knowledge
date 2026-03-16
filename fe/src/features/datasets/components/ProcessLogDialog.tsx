@@ -96,11 +96,12 @@ function renderProgressMsg(msg: string) {
 // ============================================================================
 
 /**
- * Dialog showing document parse status and processing details.
+ * @description Dialog showing document parse status and processing details.
+ * Displays file info grid (name, status, parser, duration, size, date, progress)
+ * and a scrollable progress message log with error highlighting.
  *
- * @param open - Whether dialog is visible
- * @param onClose - Close callback
- * @param document - Document to display info for
+ * @param {ProcessLogDialogProps} props - Component properties
+ * @returns {JSX.Element | null} Rendered dialog or null when no document
  */
 const ProcessLogDialog = ({ open, onClose, document: doc }: ProcessLogDialogProps) => {
   const { t } = useTranslation()

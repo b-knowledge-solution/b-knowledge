@@ -56,7 +56,11 @@ function SocketQueryBridge() {
 // Providers Component
 // ============================================================================
 
+/**
+ * @description Props for the root Providers wrapper
+ */
 interface ProvidersProps {
+  /** Application content to wrap with providers */
   children: ReactNode;
 }
 
@@ -74,6 +78,11 @@ interface ProvidersProps {
  * 4. ConfirmProvider (confirmation dialogs)
  * 5. HeaderActionsProvider (page-level header actions)
  * 6. NavigationProvider (loading overlay)
+ */
+/**
+ * @description Composes all application-wide context providers into a flat structure
+ * @param {ProvidersProps} props - Contains the children to wrap
+ * @returns {JSX.Element} Nested provider tree wrapping the application content
  */
 export function Providers({ children }: ProvidersProps) {
   return (

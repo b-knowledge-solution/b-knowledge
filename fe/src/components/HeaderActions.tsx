@@ -35,8 +35,9 @@ interface HeaderActionsProviderProps {
 }
 
 /**
- * Provider component for header actions context.
- * Wrap this around your app to enable header actions injection.
+ * @description Provider component for header actions context that manages shared action state
+ * @param {HeaderActionsProviderProps} props - Children to wrap with the context
+ * @returns {JSX.Element} Context provider wrapping children
  */
 export function HeaderActionsProvider({ children }: HeaderActionsProviderProps) {
     const [actions, setActionsState] = useState<ReactNode | null>(null);
@@ -57,8 +58,9 @@ export function HeaderActionsProvider({ children }: HeaderActionsProviderProps) 
 // ============================================================================
 
 /**
- * Hook to access the current header actions.
- * Use this in the layout to render the actions.
+ * @description Hook to access the current header actions content for rendering in layout
+ * @returns {ReactNode | null} Current header actions or null if none set
+ * @throws {Error} If used outside HeaderActionsProvider
  */
 export function useHeaderActionsContent() {
     const context = useContext(HeaderActionsContext);
@@ -69,8 +71,9 @@ export function useHeaderActionsContent() {
 }
 
 /**
- * Hook to set header actions from a page component.
- * Actions are automatically cleared when the component unmounts.
+ * @description Hook to set header actions from a page component. Actions are automatically cleared on unmount.
+ * @returns {(actions: ReactNode | null) => void} Setter function for header actions
+ * @throws {Error} If used outside HeaderActionsProvider
  */
 export function useHeaderActions() {
     const context = useContext(HeaderActionsContext);
@@ -89,10 +92,11 @@ interface HeaderActionsProps {
 }
 
 /**
- * Component that sets its children as header actions.
- * Automatically cleans up on unmount to prevent stale actions.
- * 
- * Usage:
+ * @description Declarative component that sets its children as header actions and cleans up on unmount
+ * @param {HeaderActionsProps} props - Children to render as header actions
+ * @returns {null} Renders nothing directly; injects children into header via context
+ *
+ * @example
  * ```tsx
  * <HeaderActions>
  *   <Button onClick={handleAdd}>Add New</Button>

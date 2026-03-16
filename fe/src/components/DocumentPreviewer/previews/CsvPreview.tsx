@@ -1,36 +1,56 @@
+/**
+ * @fileoverview CSV file previewer component.
+ * Fetches and parses CSV data using PapaParse, rendering it as an HTML table.
+ *
+ * @module components/DocumentPreviewer/previews/CsvPreview
+ */
+
 import { Spinner } from '@/components/ui/spinner';
 import Papa from 'papaparse';
 import React, { useEffect, useState } from 'react';
 
+/** Parsed CSV data with separate headers and rows */
 interface CSVData {
   rows: string[][];
   headers: string[];
 }
 
+/** Props for the CsvPreviewer component */
 interface CsvPreviewerProps {
+  /** Additional CSS classes */
   className?: string;
+  /** URL to fetch the CSV file from */
   url: string;
 }
 
+/**
+ * @description Fetches and renders CSV file content as a styled HTML table
+ * @param {CsvPreviewerProps} props - URL to fetch and optional class names
+ * @returns {JSX.Element} Table rendering of the CSV data
+ */
 const CsvPreviewer: React.FC<CsvPreviewerProps> = ({ className, url }) => {
   const [data, setData] = useState<CSVData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Fetch and parse CSV when URL changes
   useEffect(() => {
     const loadCSV = async () => {
       setIsLoading(true);
       try {
+        // Fetch CSV with credentials for authenticated access
         const res = await fetch(url, { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to load CSV');
         const blob = await res.blob();
         const reader = new FileReader();
         reader.readAsText(blob);
         reader.onload = () => {
+          // Parse CSV without header mode to treat first row as headers manually
           const result = Papa.parse<string[]>(reader.result as string, {
             header: false,
             skipEmptyLines: false,
           });
           const rows = result.data as string[][];
+          // Extract first row as headers, remaining as data rows
           const headers = rows[0] || [];
           setData({ headers, rows: rows.slice(1) });
           setIsLoading(false);
@@ -40,6 +60,7 @@ const CsvPreviewer: React.FC<CsvPreviewerProps> = ({ className, url }) => {
       }
     };
     loadCSV();
+    // Clean up data on URL change
     return () => setData(null);
   }, [url]);
 

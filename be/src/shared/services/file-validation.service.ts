@@ -18,12 +18,14 @@ import {
 // Type Definitions
 // ============================================================================
 
+/** @description Result of a file validation check */
 export interface ValidationResult {
     isValid: boolean;
     error?: string | undefined;
     warning?: string | undefined;
 }
 
+/** @description Result of a filename sanitization operation */
 export interface SanitizeResult {
     sanitized: string | null;
     error?: string | undefined;

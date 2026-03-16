@@ -8,7 +8,7 @@
 import { createWidgetApiClient, type WidgetApiConfig } from '@/lib/widgetAuth'
 
 /**
- * Search app info returned by the embed /info endpoint.
+ * @description Search app info returned by the embed /info endpoint.
  */
 export interface SearchWidgetAppInfo {
   /** Display name of the search app */
@@ -18,7 +18,7 @@ export interface SearchWidgetAppInfo {
 }
 
 /**
- * A single search result chunk from the widget.
+ * @description A single search result chunk returned by the widget API.
  */
 export interface SearchWidgetChunk {
   /** Chunk unique identifier */
@@ -34,9 +34,9 @@ export interface SearchWidgetChunk {
 }
 
 /**
- * Create a search widget API client.
- * @param config - Widget configuration (token for external, empty for internal)
- * @returns API methods for the search widget
+ * @description Creates a search widget API client with dual-mode auth support.
+ * @param {WidgetApiConfig} config - Widget configuration (token for external, empty for internal)
+ * @returns {object} API methods for the search widget (getInfo, askSearch)
  */
 export function createSearchWidgetApi(config: WidgetApiConfig) {
   const client = createWidgetApiClient('search', config)

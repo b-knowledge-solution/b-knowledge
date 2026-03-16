@@ -9,16 +9,16 @@ import { teamService } from '@/modules/teams/services/team.service.js'
 import { Project, ProjectPermission, ProjectDataset, UserContext } from '@/shared/models/types.js'
 
 /**
- * ProjectsService handles core project CRUD, auto-create dataset on project creation,
- * and RBAC-based project listing.
+ * @description Core project service handling CRUD operations, auto-dataset creation on project setup,
+ *   RBAC-based project listing, permission management, and entity-level access control
  */
 export class ProjectsService {
   /**
-   * Get all projects accessible to the given user based on RBAC rules.
-   * Admins see all projects. Other users see public projects and those
-   * they have explicit permissions for (directly or via team).
-   * @param user - Authenticated user context
-   * @returns Array of accessible projects
+   * @description Get all projects accessible to the given user based on RBAC rules.
+   *   Admins see all projects. Other users see public projects and those
+   *   they have explicit permissions for (directly or via team membership).
+   * @param {UserContext} user - Authenticated user context
+   * @returns {Promise<Project[]>} Array of accessible projects
    */
   async getAccessibleProjects(user: UserContext): Promise<Project[]> {
     // Admins see all active projects
@@ -55,19 +55,20 @@ export class ProjectsService {
   }
 
   /**
-   * Get a single project by ID.
-   * @param id - UUID of the project
-   * @returns Project record or undefined
+   * @description Retrieve a single project by its UUID
+   * @param {string} id - UUID of the project
+   * @returns {Promise<Project | undefined>} Project record or undefined if not found
    */
   async getProjectById(id: string): Promise<Project | undefined> {
     return ModelFactory.project.findById(id)
   }
 
   /**
-   * Create a new project and auto-create a linked dataset.
-   * @param data - Project creation data
-   * @param user - Authenticated user context
-   * @returns The created project
+   * @description Create a new project and auto-create a linked dataset for document ingestion
+   * @param {any} data - Project creation data including name, embedding model defaults
+   * @param {UserContext} user - Authenticated user context
+   * @returns {Promise<Project>} The created project
+   * @throws {Error} If project creation fails
    */
   async createProject(data: any, user: UserContext): Promise<Project> {
     try {
@@ -132,11 +133,12 @@ export class ProjectsService {
   }
 
   /**
-   * Update an existing project.
-   * @param id - UUID of the project
-   * @param data - Partial update data
-   * @param user - Authenticated user context
-   * @returns Updated project or undefined
+   * @description Update an existing project with partial data and log the change to audit
+   * @param {string} id - UUID of the project
+   * @param {any} data - Partial update data
+   * @param {UserContext} user - Authenticated user context
+   * @returns {Promise<Project | undefined>} Updated project or undefined if not found
+   * @throws {Error} If update fails
    */
   async updateProject(id: string, data: any, user: UserContext): Promise<Project | undefined> {
     try {
@@ -174,9 +176,11 @@ export class ProjectsService {
   }
 
   /**
-   * Delete a project and cascade-delete auto-created datasets.
-   * @param id - UUID of the project
-   * @param user - Authenticated user context
+   * @description Delete a project and cascade-delete any auto-created datasets linked to it
+   * @param {string} id - UUID of the project
+   * @param {UserContext} user - Authenticated user context
+   * @returns {Promise<void>}
+   * @throws {Error} If deletion fails
    */
   async deleteProject(id: string, user: UserContext): Promise<void> {
     try {
@@ -211,20 +215,20 @@ export class ProjectsService {
   // -------------------------------------------------------------------------
 
   /**
-   * Get all permissions for a project.
-   * @param projectId - UUID of the project
-   * @returns Array of permission records
+   * @description Get all permission entries for a project
+   * @param {string} projectId - UUID of the project
+   * @returns {Promise<ProjectPermission[]>} Array of permission records
    */
   async getPermissions(projectId: string): Promise<ProjectPermission[]> {
     return ModelFactory.projectPermission.findByProjectId(projectId)
   }
 
   /**
-   * Set (upsert) a permission for a project.
-   * @param projectId - UUID of the project
-   * @param data - Permission data
-   * @param user - Authenticated user context
-   * @returns Created or updated permission
+   * @description Set (upsert) a permission for a project, updating if one already exists for the grantee
+   * @param {string} projectId - UUID of the project
+   * @param {any} data - Permission data including grantee_type, grantee_id, tab access levels
+   * @param {UserContext} user - Authenticated user context
+   * @returns {Promise<ProjectPermission>} Created or updated permission record
    */
   async setPermission(projectId: string, data: any, user: UserContext): Promise<ProjectPermission> {
     // Check if permission already exists
@@ -261,8 +265,9 @@ export class ProjectsService {
   }
 
   /**
-   * Delete a permission by ID.
-   * @param permId - UUID of the permission
+   * @description Delete a permission entry by its UUID
+   * @param {string} permId - UUID of the permission
+   * @returns {Promise<void>}
    */
   async deletePermission(permId: string): Promise<void> {
     await ModelFactory.projectPermission.delete(permId)
@@ -273,20 +278,20 @@ export class ProjectsService {
   // -------------------------------------------------------------------------
 
   /**
-   * Get all datasets linked to a project.
-   * @param projectId - UUID of the project
-   * @returns Array of project-dataset links
+   * @description Get all datasets linked to a project
+   * @param {string} projectId - UUID of the project
+   * @returns {Promise<ProjectDataset[]>} Array of project-dataset link records
    */
   async getProjectDatasets(projectId: string): Promise<ProjectDataset[]> {
     return ModelFactory.projectDataset.findByProjectId(projectId)
   }
 
   /**
-   * Link an existing dataset or create a new one for a project.
-   * @param projectId - UUID of the project
-   * @param data - Link or creation data
-   * @param user - Authenticated user context
-   * @returns Created project-dataset link
+   * @description Link an existing dataset or create a new one and link it to a project
+   * @param {string} projectId - UUID of the project
+   * @param {any} data - Link data with dataset_id, or create_new + dataset_name for new dataset
+   * @param {UserContext} user - Authenticated user context
+   * @returns {Promise<ProjectDataset>} Created project-dataset link record
    */
   async linkDataset(projectId: string, data: any, user: UserContext): Promise<ProjectDataset> {
     let datasetId = data.dataset_id
@@ -312,9 +317,10 @@ export class ProjectsService {
   }
 
   /**
-   * Unlink a dataset from a project.
-   * @param projectId - UUID of the project
-   * @param datasetId - UUID of the dataset
+   * @description Remove the link between a dataset and a project
+   * @param {string} projectId - UUID of the project
+   * @param {string} datasetId - UUID of the dataset
+   * @returns {Promise<void>}
    */
   async unlinkDataset(projectId: string, datasetId: string): Promise<void> {
     await ModelFactory.projectDataset.delete({
@@ -328,20 +334,20 @@ export class ProjectsService {
   // -------------------------------------------------------------------------
 
   /**
-   * Get all entity permissions for a project.
-   * @param projectId - UUID of the project
-   * @returns Array of entity permission records
+   * @description Get all entity-level permissions for a project
+   * @param {string} projectId - UUID of the project
+   * @returns {Promise<any[]>} Array of entity permission records
    */
   async getEntityPermissions(projectId: string): Promise<any[]> {
     return ModelFactory.projectEntityPermission.findByProjectId(projectId)
   }
 
   /**
-   * Create an entity permission.
-   * @param projectId - UUID of the project
-   * @param data - Entity permission data
-   * @param user - Authenticated user context
-   * @returns Created entity permission
+   * @description Create a fine-grained entity-level permission grant
+   * @param {string} projectId - UUID of the project
+   * @param {any} data - Entity permission data including entity_type, entity_id, grantee info
+   * @param {UserContext} user - Authenticated user context
+   * @returns {Promise<any>} Created entity permission record
    */
   async createEntityPermission(projectId: string, data: any, user: UserContext): Promise<any> {
     return ModelFactory.projectEntityPermission.create({
@@ -357,8 +363,9 @@ export class ProjectsService {
   }
 
   /**
-   * Delete an entity permission by ID.
-   * @param permId - UUID of the entity permission
+   * @description Delete an entity-level permission by its UUID
+   * @param {string} permId - UUID of the entity permission
+   * @returns {Promise<void>}
    */
   async deleteEntityPermission(permId: string): Promise<void> {
     await ModelFactory.projectEntityPermission.delete(permId)

@@ -29,12 +29,12 @@ interface ChatWidgetButtonProps {
 // ============================================================================
 
 /**
- * Floating action button (FAB) that toggles the chat widget window.
+ * @description Floating action button (FAB) that toggles the chat widget window.
  * Shows a chat icon when closed and an X icon when open.
  * Displays an unread message count badge when applicable.
  *
- * @param props - Component props
- * @returns JSX element
+ * @param {ChatWidgetButtonProps} props - Component props including open state and position
+ * @returns {JSX.Element} The rendered floating action button
  */
 export default function ChatWidgetButton({
   isOpen,

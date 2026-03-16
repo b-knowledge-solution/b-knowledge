@@ -2,6 +2,11 @@ import * as React from 'react';
 import * as SwitchPrimitives from '@radix-ui/react-switch';
 import { cn } from '@/lib/utils';
 
+/**
+ * @description Toggle switch wrapping Radix Switch primitive with thumb animation
+ * @param {React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root>} props - Switch props including checked and onCheckedChange
+ * @returns {JSX.Element} Rendered toggle switch
+ */
 const Switch = React.forwardRef<
   React.ElementRef<typeof SwitchPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root>

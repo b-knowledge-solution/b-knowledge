@@ -5,12 +5,11 @@
  */
 
 /**
- * Multi-turn question refinement prompt templates.
+ * @description Multi-turn question refinement prompt templates for converting follow-up questions into self-contained queries.
  */
 export const fullQuestionPrompt = {
   /**
-   * Build the system prompt for question refinement.
-   * @returns System prompt string
+   * @description System prompt instructing the LLM to refine incomplete follow-up questions.
    */
   system: `## Role
 A helpful assistant.
@@ -62,12 +61,13 @@ USER: What's about tomorrow in Rochester?
 **Output:** What's the weather in Rochester on [tomorrow's date]?`,
 
   /**
-   * Build the user message with conversation history.
-   * @param conversation - Formatted conversation history string
-   * @param today - Today's date string (YYYY-MM-DD)
-   * @returns User message string
+   * @description Build the user message with conversation history and date context
+   * @param {string} conversation - Formatted conversation history string with USER/ASSISTANT turns
+   * @param {string} today - Today's date string (YYYY-MM-DD) for resolving relative date references
+   * @returns {string} User message string with date context and conversation history
    */
   buildUser(conversation: string, today: string): string {
+    // Compute yesterday and tomorrow from today's date for relative date resolution
     const yesterday = new Date(new Date(today).getTime() - 86400000).toISOString().slice(0, 10)
     const tomorrow = new Date(new Date(today).getTime() + 86400000).toISOString().slice(0, 10)
 

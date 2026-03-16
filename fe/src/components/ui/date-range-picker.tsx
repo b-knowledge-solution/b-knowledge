@@ -13,11 +13,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
+/** @description A preset date range option with display label and date tuple */
 export interface DateRangePreset {
   label: string
   value: [Date, Date]
 }
 
+/** @description Configuration props for the DateRangePicker component */
 interface DateRangePickerProps {
   /** Start date value */
   startDate: Date | undefined
@@ -35,8 +37,9 @@ interface DateRangePickerProps {
 }
 
 /**
- * DateRangePicker — two DatePickers with an optional presets dropdown.
- * Replaces Ant Design's DatePicker.RangePicker.
+ * @description Two date pickers with optional presets dropdown, replacing Ant Design's DatePicker.RangePicker
+ * @param {DateRangePickerProps} props - Range picker configuration including start/end dates and presets
+ * @returns {JSX.Element} Rendered date range picker with start, end, and optional presets
  */
 export function DateRangePicker({
   startDate,
@@ -49,6 +52,7 @@ export function DateRangePicker({
 }: DateRangePickerProps) {
   const { t } = useTranslation()
 
+  // Apply a preset's date range when selected from the dropdown
   const handlePresetChange = (presetLabel: string) => {
     const preset = presets?.find((p) => p.label === presetLabel)
     if (preset) {

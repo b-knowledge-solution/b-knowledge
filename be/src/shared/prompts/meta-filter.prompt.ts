@@ -5,16 +5,16 @@
  */
 
 /**
- * Metadata filter prompt template.
+ * @description Metadata filter prompt template for generating JSON filter conditions from natural language queries.
  */
 export const metaFilterPrompt = {
   /**
-   * Build the metadata filter generation prompt.
-   * @param currentDate - Today's date (YYYY-MM-DD)
-   * @param metadataKeys - JSON string of available metadata structure
-   * @param userQuestion - User's question
-   * @param constraints - Optional operator constraints per key
-   * @returns Formatted prompt string
+   * @description Build the metadata filter generation prompt for the LLM
+   * @param {string} currentDate - Today's date (YYYY-MM-DD) for resolving relative dates
+   * @param {string} metadataKeys - JSON string of available metadata structure with keys and value mappings
+   * @param {string} userQuestion - User's natural language question to extract filter conditions from
+   * @param {string} [constraints] - Optional operator constraints per key to restrict allowed operators
+   * @returns {string} Formatted prompt string for metadata filter generation
    */
   build(currentDate: string, metadataKeys: string, userQuestion: string, constraints?: string): string {
     return `You are a metadata filtering condition generator. Analyze the user's question and available document metadata to output a JSON array of filter objects. Follow these rules:

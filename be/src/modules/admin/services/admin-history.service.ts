@@ -1,17 +1,25 @@
+/**
+ * @fileoverview Admin history service for querying chat and search session records.
+ * Provides paginated access to user activity history with full-text search support.
+ * @module services/admin-history
+ */
 import { db } from '@/shared/db/knex.js';
 import { ModelFactory } from '@/shared/models/factory.js';
 
+/**
+ * @description Service for querying chat and search history across all users with filtering, pagination, and full-text search
+ */
 export class AdminHistoryService {
     /**
-     * Get chat history with pagination and search.
-     * @param page - Page number.
-     * @param limit - Items per page.
-     * @param search - Search query string.
-     * @param email - Filter by user email.
-     * @param startDate - Filter by start date.
-     * @param endDate - Filter by end date.
-     * @returns Promise<any> - Paginated chat history.
-     * @description Retrieving chat history with optional search and filtering.
+     * @description Retrieve paginated chat history sessions with optional full-text search, email, and date range filters
+     * @param {number} page - Page number (1-based)
+     * @param {number} limit - Maximum items per page
+     * @param {string} search - Full-text search query applied to messages and email
+     * @param {string} email - Filter sessions by user email (partial match)
+     * @param {string} startDate - Lower bound date filter (inclusive)
+     * @param {string} endDate - Upper bound date filter (inclusive, extended to end of day)
+     * @param {string} [sourceName] - Optional source name filter
+     * @returns {Promise<any[]>} Paginated array of chat session summaries
      */
     async getChatHistory(
         page: number,
@@ -50,21 +58,25 @@ export class AdminHistoryService {
             .limit(limit)
             .offset(offset);
 
-        // Apply filters
+        // Apply full-text search filter across email and message content
         if (search) {
+            // Strip special characters to prevent tsquery injection
             const cleanSearch = search.replace(/[^\w\s]/g, '').trim();
             const terms = cleanSearch.split(/\s+/).filter(t => t.length > 0);
 
             query = query.where(builder => {
-                // Search in session email
+                // Match sessions by user email (case-insensitive partial match)
                 builder.where('history_chat_sessions.user_email', 'ilike', `%${search}%`)
-                    // Or search in messages
+                    // Or match sessions containing relevant messages via full-text search
                     .orWhereExists(function () {
                         const sub = this.select('id').from('history_chat_messages')
                             .whereRaw('history_chat_messages.session_id = history_chat_sessions.session_id');
 
+                        // Use multiple tsquery strategies for better recall
                         if (terms.length > 0) {
+                            // Prefix query: all terms must appear (AND) with prefix matching
                             const prefixQuery = terms.join(' & ') + ':*';
+                            // OR query: any term can match
                             const orQuery = terms.join(' | ');
                             sub.where(b => {
                                 b.whereRaw("search_vector @@ websearch_to_tsquery('english', ?)", [search])
@@ -72,20 +84,24 @@ export class AdminHistoryService {
                                     .orWhereRaw("search_vector @@ to_tsquery('english', ?)", [orQuery]);
                             });
                         } else {
+                            // Fall back to websearch_to_tsquery for single-term or empty search
                             sub.whereRaw("search_vector @@ websearch_to_tsquery('english', ?)", [search]);
                         }
                     });
             });
         }
 
+        // Filter by user email (partial, case-insensitive)
         if (email) {
             query = query.where('history_chat_sessions.user_email', 'ilike', `%${email}%`);
         }
 
+        // Filter sessions updated on or after the start date
         if (startDate) {
             query = query.where('history_chat_sessions.updated_at', '>=', startDate);
         }
 
+        // Filter sessions updated on or before the end date (extended to end of day)
         if (endDate) {
             query = query.where('history_chat_sessions.updated_at', '<=', `${endDate} 23:59:59`);
         }
@@ -96,10 +112,9 @@ export class AdminHistoryService {
     }
 
     /**
-     * Get details for a specific chat session.
-     * @param sessionId - The ID of the session.
-     * @returns Promise<any> - Session details.
-     * @description Retrieving all messages for a specific session ID.
+     * @description Retrieve all messages for a specific chat session ordered chronologically
+     * @param {string} sessionId - The unique session identifier
+     * @returns {Promise<any[]>} Array of chat message records for the session
      */
     async getChatSessionDetails(sessionId: string) {
         // Query to get all history entries for the session
@@ -111,15 +126,15 @@ export class AdminHistoryService {
     }
 
     /**
-     * Get search history grouped by session.
-     * @param page - Page number.
-     * @param limit - Items per page.
-     * @param search - Search query string.
-     * @param email - Filter by user email.
-     * @param startDate - Filter by start date.
-     * @param endDate - Filter by end date.
-     * @returns Promise<any> - Paginated search history.
-     * @description Retrieving search history with optional search and filtering.
+     * @description Retrieve paginated search history sessions with optional full-text search, email, and date range filters
+     * @param {number} page - Page number (1-based)
+     * @param {number} limit - Maximum items per page
+     * @param {string} search - Full-text search query applied to records and email
+     * @param {string} email - Filter sessions by user email (partial match)
+     * @param {string} startDate - Lower bound date filter (inclusive)
+     * @param {string} endDate - Upper bound date filter (inclusive, extended to end of day)
+     * @param {string} [sourceName] - Optional source name filter
+     * @returns {Promise<any[]>} Paginated array of search session summaries
      */
     async getSearchHistory(
         page: number,
@@ -158,17 +173,21 @@ export class AdminHistoryService {
             .limit(limit)
             .offset(offset);
 
-        // Apply filters
+        // Apply full-text search filter across email and search record content
         if (search) {
+            // Strip special characters to prevent tsquery injection
             const cleanSearch = search.replace(/[^\w\s]/g, '').trim();
             const terms = cleanSearch.split(/\s+/).filter(t => t.length > 0);
 
             query = query.where(builder => {
+                // Match sessions by user email (case-insensitive partial match)
                 builder.where('history_search_sessions.user_email', 'ilike', `%${search}%`)
+                    // Or match sessions with relevant search records via full-text search
                     .orWhereExists(function () {
                         const sub = this.select('id').from('history_search_records')
                             .whereRaw('history_search_records.session_id = history_search_sessions.session_id');
 
+                        // Use multiple tsquery strategies for better recall
                         if (terms.length > 0) {
                             const prefixQuery = terms.join(' & ') + ':*';
                             const orQuery = terms.join(' | ');
@@ -178,20 +197,24 @@ export class AdminHistoryService {
                                     .orWhereRaw("search_vector @@ to_tsquery('english', ?)", [orQuery]);
                             });
                         } else {
+                            // Fall back to websearch_to_tsquery for single-term or empty search
                             sub.whereRaw("search_vector @@ websearch_to_tsquery('english', ?)", [search]);
                         }
                     });
             });
         }
 
+        // Filter by user email (partial, case-insensitive)
         if (email) {
             query = query.where('history_search_sessions.user_email', 'ilike', `%${email}%`);
         }
 
+        // Filter sessions updated on or after the start date
         if (startDate) {
             query = query.where('history_search_sessions.updated_at', '>=', startDate);
         }
 
+        // Filter sessions updated on or before the end date (extended to end of day)
         if (endDate) {
             query = query.where('history_search_sessions.updated_at', '<=', `${endDate} 23:59:59`);
         }
@@ -202,10 +225,9 @@ export class AdminHistoryService {
     }
 
     /**
-     * Get details for a specific search session.
-     * @param sessionId - The ID of the session.
-     * @returns Promise<any> - Search session details.
-     * @description Retrieving all search queries for a specific session ID.
+     * @description Retrieve all search records for a specific search session ordered chronologically
+     * @param {string} sessionId - The unique session identifier
+     * @returns {Promise<any[]>} Array of search records for the session
      */
     async getSearchSessionDetails(sessionId: string) {
         // Query to get all search entries for the session
@@ -217,12 +239,11 @@ export class AdminHistoryService {
     }
 
     /**
-     * Get system chat history (internal).
-     * @param page - Page number.
-     * @param limit - Items per page.
-     * @param search - Search query string.
-     * @returns Promise<any> - Paginated system chat history.
-     * @description Retrieving internal system chat sessions joined with user details and aggregated messages.
+     * @description Retrieve paginated system-level chat sessions joined with user details and aggregated messages as JSON
+     * @param {number} page - Page number (1-based)
+     * @param {number} limit - Maximum items per page
+     * @param {string} search - Search query to filter by session title, user email, display name, or message content
+     * @returns {Promise<any[]>} Array of system chat session records with embedded messages
      */
     async getSystemChatHistory(
         page: number,
@@ -280,4 +301,5 @@ export class AdminHistoryService {
     }
 }
 
+/** Singleton instance of AdminHistoryService */
 export const adminHistoryService = new AdminHistoryService();

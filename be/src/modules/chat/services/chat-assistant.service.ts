@@ -19,10 +19,12 @@ import { log } from '@/shared/services/logger.service.js'
  */
 export class ChatAssistantService {
   /**
-   * Create a new assistant configuration.
-   * @param data - Assistant creation data
-   * @param userId - ID of the user creating the assistant
-   * @returns The created ChatAssistant record
+   * @description Create a new assistant configuration.
+   * Validates name uniqueness (case-insensitive) and inserts the record.
+   * @param {object} data - Assistant creation data
+   * @param {string} userId - ID of the user creating the assistant
+   * @returns {Promise<ChatAssistant>} The created ChatAssistant record
+   * @throws {Error} If an assistant with the same name already exists
    */
   async createAssistant(
     data: {
@@ -62,18 +64,18 @@ export class ChatAssistantService {
   }
 
   /**
-   * Get a single assistant by ID.
-   * @param assistantId - UUID of the assistant to retrieve
-   * @returns The ChatAssistant if found, undefined otherwise
+   * @description Get a single assistant by ID.
+   * @param {string} assistantId - UUID of the assistant to retrieve
+   * @returns {Promise<ChatAssistant | undefined>} The ChatAssistant if found, undefined otherwise
    */
   async getAssistant(assistantId: string): Promise<ChatAssistant | undefined> {
     return ModelFactory.chatAssistant.findById(assistantId)
   }
 
   /**
-   * List all assistants, optionally filtered by creator.
-   * @param userId - Optional user ID to filter by creator
-   * @returns Array of ChatAssistant records
+   * @description List all assistants, optionally filtered by creator.
+   * @param {string} [userId] - Optional user ID to filter by creator
+   * @returns {Promise<ChatAssistant[]>} Array of ChatAssistant records ordered by creation date descending
    */
   async listAssistants(userId?: string): Promise<ChatAssistant[]> {
     // Build filter based on optional userId
@@ -82,14 +84,14 @@ export class ChatAssistantService {
   }
 
   /**
-   * List assistants accessible to a user based on RBAC rules, with pagination and search.
+   * @description List assistants accessible to a user based on RBAC rules, with pagination and search.
    * Admins see all assistants. Other users see assistants they created,
    * public assistants, and assistants shared with them or their teams.
-   * @param userId - UUID of the requesting user
-   * @param userRole - Role of the requesting user (e.g., 'admin', 'user')
-   * @param teamIds - Array of team UUIDs the user belongs to
-   * @param options - Pagination, search, and sort options
-   * @returns Paginated result with data array and total count
+   * @param {string} userId - UUID of the requesting user
+   * @param {string} userRole - Role of the requesting user (e.g., 'admin', 'user')
+   * @param {string[]} teamIds - Array of team UUIDs the user belongs to
+   * @param {object} options - Pagination, search, and sort options
+   * @returns {Promise<{ data: ChatAssistant[]; total: number }>} Paginated result with data array and total count
    */
   async listAccessibleAssistants(
     userId: string,
@@ -150,10 +152,10 @@ export class ChatAssistantService {
   }
 
   /**
-   * Get access control entries for an assistant, enriched with display names.
+   * @description Get access control entries for an assistant, enriched with display names.
    * Joins with users and teams tables to resolve entity names.
-   * @param assistantId - UUID of the assistant
-   * @returns Array of access entries with display_name field
+   * @param {string} assistantId - UUID of the assistant
+   * @returns {Promise<Array<ChatAssistantAccess & { display_name?: string }>>} Array of access entries with display_name field
    */
   async getAssistantAccess(
     assistantId: string
@@ -200,12 +202,12 @@ export class ChatAssistantService {
   }
 
   /**
-   * Set (bulk replace) access control entries for an assistant.
+   * @description Set (bulk replace) access control entries for an assistant.
    * Removes all existing entries and inserts the provided ones.
-   * @param assistantId - UUID of the assistant
-   * @param entries - Array of access entries to set
-   * @param userId - UUID of the user performing the operation
-   * @returns Array of newly created access entries
+   * @param {string} assistantId - UUID of the assistant
+   * @param {Array<{ entity_type: 'user' | 'team'; entity_id: string }>} entries - Array of access entries to set
+   * @param {string} userId - UUID of the user performing the operation
+   * @returns {Promise<ChatAssistantAccess[]>} Array of newly created access entries
    */
   async setAssistantAccess(
     assistantId: string,
@@ -219,14 +221,14 @@ export class ChatAssistantService {
   }
 
   /**
-   * Check if a user has access to a specific assistant.
+   * @description Check if a user has access to a specific assistant.
    * Admins always have access. Other users need to be the creator,
    * or the assistant must be public, or they must have an explicit grant.
-   * @param assistantId - UUID of the assistant
-   * @param userId - UUID of the user to check
-   * @param userRole - Role of the user
-   * @param teamIds - Array of team UUIDs the user belongs to
-   * @returns True if the user can access the assistant
+   * @param {string} assistantId - UUID of the assistant
+   * @param {string} userId - UUID of the user to check
+   * @param {string} userRole - Role of the user
+   * @param {string[]} teamIds - Array of team UUIDs the user belongs to
+   * @returns {Promise<boolean>} True if the user can access the assistant
    */
   async checkUserAccess(
     assistantId: string,
@@ -261,11 +263,11 @@ export class ChatAssistantService {
   }
 
   /**
-   * Update an existing assistant configuration.
-   * @param assistantId - UUID of the assistant to update
-   * @param data - Partial assistant data to update
-   * @param userId - ID of the user performing the update
-   * @returns The updated ChatAssistant if found, undefined otherwise
+   * @description Update an existing assistant configuration.
+   * @param {string} assistantId - UUID of the assistant to update
+   * @param {Partial<Pick<ChatAssistant, 'name' | 'description' | 'icon' | 'kb_ids' | 'llm_id' | 'prompt_config' | 'is_public'>>} data - Partial assistant data to update
+   * @param {string} userId - ID of the user performing the update
+   * @returns {Promise<ChatAssistant | undefined>} The updated ChatAssistant if found, undefined otherwise
    */
   async updateAssistant(
     assistantId: string,
@@ -285,9 +287,9 @@ export class ChatAssistantService {
   }
 
   /**
-   * Delete an assistant by ID.
-   * @param assistantId - UUID of the assistant to delete
-   * @returns void
+   * @description Delete an assistant by ID.
+   * @param {string} assistantId - UUID of the assistant to delete
+   * @returns {Promise<void>}
    */
   async deleteAssistant(assistantId: string): Promise<void> {
     await ModelFactory.chatAssistant.delete(assistantId)

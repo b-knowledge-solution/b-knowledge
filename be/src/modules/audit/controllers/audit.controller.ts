@@ -6,12 +6,15 @@ import { Request, Response } from 'express'
 import { auditService } from '@/modules/audit/services/audit.service.js'
 import { log } from '@/shared/services/logger.service.js'
 
+/**
+ * @description Exposes paginated audit logs and metadata (actions/resource types) for the admin UI
+ */
 export class AuditController {
   /**
-   * Get filtered and paginated audit logs.
-   * @param req - Express request object containing query filters.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Retrieve filtered and paginated audit logs with support for user, action, resource type, date range, and text search
+   * @param {Request} req - Express request object containing query filters (page, limit, userId, action, resourceType, startDate, endDate, search)
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   async getLogs(req: Request, res: Response): Promise<void> {
     try {
@@ -63,10 +66,10 @@ export class AuditController {
   }
 
   /**
-   * Get available action types for filtering.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Return the list of distinct audit action types for populating filter dropdowns
+   * @param {Request} req - Express request object
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   async getActions(req: Request, res: Response): Promise<void> {
     try {
@@ -83,10 +86,10 @@ export class AuditController {
   }
 
   /**
-   * Get available resource types for filtering.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Return the list of distinct audit resource types for populating filter dropdowns
+   * @param {Request} req - Express request object
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   async getResourceTypes(req: Request, res: Response): Promise<void> {
     try {
@@ -103,10 +106,10 @@ export class AuditController {
   }
 
   /**
-   * Get history for a specific resource.
-   * @param req - Express request object containing route parameters.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Retrieve audit history for a specific resource identified by type and ID
+   * @param {Request} req - Express request object containing route parameters (type, id)
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   async getResourceHistory(req: Request, res: Response): Promise<void> {
     const { type, id } = req.params;
@@ -128,10 +131,10 @@ export class AuditController {
   }
 
   /**
-   * Export audit logs to CSV.
-   * @param req - Express request object containing query filters.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Export filtered audit logs as a downloadable CSV file
+   * @param {Request} req - Express request object containing query filters (userId, action, resourceType, startDate, endDate)
+   * @param {Response} res - Express response object with CSV content-type headers
+   * @returns {Promise<void>}
    */
   async exportLogs(req: Request, res: Response): Promise<void> {
     try {
@@ -158,9 +161,9 @@ export class AuditController {
   }
 
   /**
-   * Helper to safely extract string parameters from unknown input.
-   * @param value - The value to check.
-   * @returns string | undefined
+   * @description Safely extract a string from an unknown query parameter value, handling array duplicates
+   * @param {unknown} value - The raw query parameter value to normalize
+   * @returns {string | undefined} The extracted string or undefined if not a valid string
    */
   private getStringParam(value: unknown): string | undefined {
     if (typeof value === 'string') {

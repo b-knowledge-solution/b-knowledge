@@ -14,7 +14,8 @@ import { chatConversationService } from '../services/chat-conversation.service.j
 import { ModelFactory } from '@/shared/models/factory.js'
 
 /**
- * Controller class for chat embed token endpoints.
+ * @description Controller class for chat embed token endpoints.
+ * Manages admin token CRUD and public embed widget access for external integrations.
  */
 export class ChatEmbedController {
   // ==========================================================================
@@ -22,12 +23,14 @@ export class ChatEmbedController {
   // ==========================================================================
 
   /**
-   * Create a new embed token for a dialog.
-   * @param req - Express request with :id param (dialog ID) and { name, expires_at } in body
-   * @param res - Express response
+   * @description Create a new embed token for a dialog.
+   * @param {Request} req - Express request with :id param (dialog ID) and { name, expires_at } in body
+   * @param {Response} res - Express response
+   * @returns {Promise<void>} 201 with created token or 404 if assistant not found
    */
   async createToken(req: Request, res: Response): Promise<void> {
     try {
+      // Guard: ensure authenticated user
       const userId = req.user?.id
       if (!userId) {
         res.status(401).json({ error: 'Unauthorized' })
@@ -62,10 +65,11 @@ export class ChatEmbedController {
   }
 
   /**
-   * List all embed tokens for a dialog.
+   * @description List all embed tokens for a dialog.
    * Token values are masked for security.
-   * @param req - Express request with :id param (dialog ID)
-   * @param res - Express response
+   * @param {Request} req - Express request with :id param (dialog ID)
+   * @param {Response} res - Express response
+   * @returns {Promise<void>} 200 with masked token list
    */
   async listTokens(req: Request, res: Response): Promise<void> {
     try {
@@ -79,9 +83,10 @@ export class ChatEmbedController {
   }
 
   /**
-   * Revoke (delete) an embed token.
-   * @param req - Express request with :tokenId param
-   * @param res - Express response
+   * @description Revoke (delete) an embed token.
+   * @param {Request} req - Express request with :tokenId param
+   * @param {Response} res - Express response
+   * @returns {Promise<void>} 204 on success
    */
   async revokeToken(req: Request, res: Response): Promise<void> {
     try {
@@ -100,10 +105,11 @@ export class ChatEmbedController {
   // ==========================================================================
 
   /**
-   * Get dialog info for the embed widget (public, token-based).
+   * @description Get dialog info for the embed widget (public, token-based).
    * Returns dialog name, icon, and prologue for widget display.
-   * @param req - Express request with :token param
-   * @param res - Express response
+   * @param {Request} req - Express request with :token param
+   * @param {Response} res - Express response
+   * @returns {Promise<void>} 200 with public-safe assistant info
    */
   async getInfo(req: Request, res: Response): Promise<void> {
     try {
@@ -138,9 +144,10 @@ export class ChatEmbedController {
   }
 
   /**
-   * Create an anonymous session for the embed widget (public, token-based).
-   * @param req - Express request with :token param and optional { name } in body
-   * @param res - Express response
+   * @description Create an anonymous session for the embed widget (public, token-based).
+   * @param {Request} req - Express request with :token param and optional { name } in body
+   * @param {Response} res - Express response
+   * @returns {Promise<void>} 201 with created session
    */
   async createSession(req: Request, res: Response): Promise<void> {
     try {
@@ -172,11 +179,12 @@ export class ChatEmbedController {
   }
 
   /**
-   * Stream a chat completion via SSE for the embed widget (public, token-based).
+   * @description Stream a chat completion via SSE for the embed widget (public, token-based).
    * Validates the token, resolves the dialog, and delegates to the existing
    * chat conversation service for RAG retrieval and LLM streaming.
-   * @param req - Express request with :token param and { content, session_id } in body
-   * @param res - Express response (SSE stream)
+   * @param {Request} req - Express request with :token param and { content, session_id } in body
+   * @param {Response} res - Express response (SSE stream)
+   * @returns {Promise<void>} SSE stream of chat completion tokens
    */
   async streamCompletion(req: Request, res: Response): Promise<void> {
     try {

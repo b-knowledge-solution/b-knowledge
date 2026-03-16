@@ -35,7 +35,9 @@ export type { WidgetMessage } from './ChatWidgetWindow'
 // IIFE Initialization for External Mode
 // ============================================================================
 
-/** External widget configuration passed to BKnowledgeChat.init() */
+/**
+ * @description External widget configuration passed to BKnowledgeChat.init() for script-tag embedding.
+ */
 interface ExternalWidgetConfig {
   /** Embed token for API authentication */
   token: string
@@ -50,11 +52,11 @@ interface ExternalWidgetConfig {
 }
 
 /**
- * Initialize the chat widget in external mode.
+ * @description Initialize the chat widget in external mode.
  * Creates a mount point in the DOM and renders the widget.
  * This function is exposed as `BKnowledgeChat.init()` in the IIFE bundle.
  *
- * @param config - External widget configuration
+ * @param {ExternalWidgetConfig} config - External widget configuration including token and baseUrl
  */
 function init(config: ExternalWidgetConfig): void {
   // Dynamically import React and ReactDOM to support IIFE bundle

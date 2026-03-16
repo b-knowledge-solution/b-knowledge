@@ -16,12 +16,14 @@ import { cn } from '@/lib/utils'
 // Types
 // ============================================================================
 
+/** @description Document aggregation entry from search results */
 interface DocAgg {
   doc_id: string
   doc_name: string
   count: number
 }
 
+/** @description Props for the DocumentFilterPopover component */
 interface DocumentFilterPopoverProps {
   /** Document aggregation data from search results */
   docAggs: DocAgg[]

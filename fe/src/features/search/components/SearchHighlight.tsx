@@ -8,6 +8,7 @@
 // Props
 // ============================================================================
 
+/** @description Props for the SearchHighlight component */
 interface SearchHighlightProps {
   /** The text content to render with highlights */
   text: string
@@ -30,6 +31,7 @@ interface SearchHighlightProps {
  * @returns {JSX.Element} The rendered text with highlighted matches
  */
 export function SearchHighlight({ text, query, className }: SearchHighlightProps) {
+  // Guard: return plain text when query is empty
   if (!query.trim()) return <span className={className}>{text}</span>
 
   try {

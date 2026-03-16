@@ -11,9 +11,7 @@ import { db } from '@/shared/db/knex.js'
 import { BroadcastMessage } from '@/shared/models/types.js'
 
 /**
- * BroadcastMessageModel
- * Manages system-wide broadcast messages.
- * Includes methods for retrieving active messages based on time and user dismissal status.
+ * @description Manages system-wide broadcast messages with time-based activation and user dismissal tracking
  */
 export class BroadcastMessageModel extends BaseModel<BroadcastMessage> {
   /** Table name in the database */
@@ -22,11 +20,9 @@ export class BroadcastMessageModel extends BaseModel<BroadcastMessage> {
   protected knex = db
 
   /**
-   * Find all currently active broadcast messages.
-   * Active means: is_active=true AND starts_at <= now AND ends_at >= now
-   * @param now - Reference time for checking activity (defaults to current time).
-   * @returns Promise<BroadcastMessage[]> - Array of active messages sorted by creation date descending.
-   * @description Queries for messages that are flagged active and within their effective date range.
+   * @description Find all currently active broadcast messages where is_active=true and within date range
+   * @param {string | Date} now - Reference time for checking activity (defaults to current time)
+   * @returns {Promise<BroadcastMessage[]>} Array of active messages sorted by creation date descending
    */
   async findActive(now: string | Date = new Date()): Promise<BroadcastMessage[]> {
     // Normalizing timestamp to ISO string for database comparison
@@ -42,12 +38,10 @@ export class BroadcastMessageModel extends BaseModel<BroadcastMessage> {
   }
 
   /**
-   * Find active messages excluding those dismissed by a specific user within 24 hours.
-   * Uses LEFT JOIN to filter out dismissed messages.
-   * @param userId - ID of the user to check dismissals for.
-   * @param now - Reference time for checking activity (defaults to current time).
-   * @returns Promise<BroadcastMessage[]> - Array of relevant active messages.
-   * @description Perforns a join with user_dismissed_broadcasts to filter out messages the user has explicitly dismissed recently.
+   * @description Find active messages excluding those dismissed by a specific user within 24 hours using LEFT JOIN
+   * @param {string} userId - ID of the user to check dismissals for
+   * @param {string | Date} now - Reference time for checking activity (defaults to current time)
+   * @returns {Promise<BroadcastMessage[]>} Array of relevant active messages
    */
   async findActiveExcludingDismissed(userId: string, now: string | Date = new Date()): Promise<BroadcastMessage[]> {
     // Normalizing timestamp to ISO string

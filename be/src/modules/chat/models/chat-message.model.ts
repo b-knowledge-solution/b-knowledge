@@ -7,9 +7,9 @@ import { db } from '@/shared/db/knex.js'
 import { ChatMessage } from '@/shared/models/types.js'
 
 /**
- * ChatMessageModel
- * Represents the 'chat_messages' table.
+ * @description ChatMessageModel — represents the 'chat_messages' table.
  * Stores individual messages (user prompts and AI responses) associated with chat sessions.
+ * Each message includes role, content, optional citations, and feedback data.
  */
 export class ChatMessageModel extends BaseModel<ChatMessage> {
   /** Table name in the database */

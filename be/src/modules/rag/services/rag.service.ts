@@ -1,3 +1,12 @@
+/**
+ * @fileoverview Core RAG service — dataset CRUD, RBAC access control, and document operations.
+ *
+ * Manages dataset lifecycle, access control enforcement, and document metadata.
+ * Delegates DB operations to ModelFactory and logs audit events for mutations.
+ *
+ * @module modules/rag/services/rag
+ */
+
 import { ModelFactory } from '@/shared/models/factory.js';
 import { db } from '@/shared/db/knex.js';
 import { log } from '@/shared/services/logger.service.js';
@@ -5,19 +14,30 @@ import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/se
 import { Dataset, Document, AccessControl, UserContext } from '@/shared/models/types.js';
 import { teamService } from '@/modules/teams/services/team.service.js';
 
-
-
+/**
+ * @description Core service for dataset CRUD, RBAC access control, and document operations.
+ * Handles business logic including access filtering, name uniqueness, embedding model locking,
+ * stale reference cleanup, and audit logging.
+ */
 export class RagService {
     // -------------------------------------------------------------------------
     // Dataset CRUD
     // -------------------------------------------------------------------------
 
+    /**
+     * @description Get all datasets accessible to the current user.
+     * Admins see all datasets. Anonymous users see only public ones.
+     * Regular users see public datasets plus those granted via user_ids or team_ids.
+     * @param {any} [user] - Authenticated user context (undefined for anonymous)
+     * @returns {Promise<Dataset[]>} Filtered array of accessible datasets
+     */
     async getAvailableDatasets(user?: any): Promise<Dataset[]> {
         const allDatasets = await ModelFactory.dataset.findAll(
             { status: 'active' },
             { orderBy: { name: 'asc' } }
         );
 
+        // Anonymous users only see public datasets
         if (!user) {
             return allDatasets.filter(d => {
                 const ac = typeof d.access_control === 'string' ? JSON.parse(d.access_control) : d.access_control;
@@ -25,10 +45,12 @@ export class RagService {
             });
         }
 
+        // Admins see all datasets without filtering
         if (user.role === 'admin') {
             return allDatasets;
         }
 
+        // Regular users: filter by public, user grant, or team membership
         const userTeams = await teamService.getUserTeams(user.id);
         const teamIds = userTeams.map((t: any) => t.id);
 
@@ -37,15 +59,29 @@ export class RagService {
             if (!ac) return false;
             if (ac.public === true) return true;
             if (ac.user_ids?.includes(user.id)) return true;
+            // Check team intersection between user's teams and dataset's team grants
             if (ac.team_ids?.some((tid: string) => teamIds.includes(tid))) return true;
             return false;
         });
     }
 
+    /**
+     * @description Retrieve a dataset by its UUID
+     * @param {string} id - Dataset UUID
+     * @returns {Promise<Dataset | undefined>} The dataset record or undefined
+     */
     async getDatasetById(id: string): Promise<Dataset | undefined> {
         return ModelFactory.dataset.findById(id);
     }
 
+    /**
+     * @description Create a new dataset with case-insensitive name uniqueness enforcement.
+     * Logs an audit event if a user context is provided.
+     * @param {any} data - Dataset creation data (name, description, language, etc.)
+     * @param {UserContext} [user] - Authenticated user context for ownership and audit
+     * @returns {Promise<Dataset>} The created dataset record
+     * @throws {Error} If a dataset with the same name already exists
+     */
     async createDataset(data: any, user?: UserContext): Promise<Dataset> {
         try {
             // Case-insensitive name uniqueness check
@@ -90,6 +126,16 @@ export class RagService {
         }
     }
 
+    /**
+     * @description Update a dataset's properties.
+     * Prevents embedding model changes when chunks already exist.
+     * Logs an audit event if a user context is provided.
+     * @param {string} id - Dataset UUID
+     * @param {any} data - Fields to update
+     * @param {UserContext} [user] - Authenticated user context for audit
+     * @returns {Promise<Dataset | undefined>} The updated dataset or undefined if not found
+     * @throws {Error} If attempting to change embedding model after documents are parsed
+     */
     async updateDataset(id: string, data: any, user?: UserContext): Promise<Dataset | undefined> {
         try {
             // Embedding model lock: cannot change if dataset has chunks
@@ -132,6 +178,13 @@ export class RagService {
         }
     }
 
+    /**
+     * @description Soft-delete a dataset and clean up stale references in chat assistants and search apps.
+     * Logs an audit event if a user context is provided.
+     * @param {string} id - Dataset UUID
+     * @param {UserContext} [user] - Authenticated user context for audit
+     * @returns {Promise<void>}
+     */
     async deleteDataset(id: string, user?: UserContext): Promise<void> {
         try {
             // Soft-delete the dataset by setting status to 'deleted'
@@ -328,13 +381,24 @@ export class RagService {
     // Document operations (metadata only — actual files managed by advance-rag)
     // -------------------------------------------------------------------------
 
+    /**
+     * @description Get all documents for a dataset from the Node.js documents table
+     * @param {string} datasetId - Dataset UUID
+     * @returns {Promise<Document[]>} Array of document records
+     */
     async getDocuments(datasetId: string): Promise<Document[]> {
         return ModelFactory.document.findByDatasetId(datasetId);
     }
 
+    /**
+     * @description Retrieve a single document by its UUID
+     * @param {string} id - Document UUID
+     * @returns {Promise<Document | undefined>} The document record or undefined
+     */
     async getDocumentById(id: string): Promise<Document | undefined> {
         return ModelFactory.document.findById(id);
     }
 }
 
+/** Singleton instance of the core RAG service */
 export const ragService = new RagService();

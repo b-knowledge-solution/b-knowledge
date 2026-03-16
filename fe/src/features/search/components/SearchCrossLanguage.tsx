@@ -27,6 +27,7 @@ const SUPPORTED_LANGUAGES = [
 // Props
 // ============================================================================
 
+/** @description Props for the SearchCrossLanguage component */
 interface SearchCrossLanguageProps {
   /** Comma-separated string of selected language codes */
   value: string

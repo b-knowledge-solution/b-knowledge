@@ -22,10 +22,10 @@ const SUPPORTED_EXTENSIONS = new Set([
  */
 export class S3Adapter implements ConnectorAdapter {
   /**
-   * Fetch files from an S3-compatible bucket.
-   * @param config - Must contain: { endpoint, access_key, secret_key, bucket, prefix?, use_ssl? }
-   * @param since - Optional timestamp for incremental sync (filters by lastModified)
-   * @yields FetchedDocument for each supported file found
+   * @description Fetch files from an S3-compatible bucket, filtering by supported extensions
+   * @param {Record<string, unknown>} config - Must contain: { endpoint, access_key, secret_key, bucket, prefix?, use_ssl? }
+   * @param {Date} [since] - Optional timestamp for incremental sync (skips older files)
+   * @yields {FetchedDocument} For each supported file found in the bucket
    */
   async *fetch(config: Record<string, unknown>, since?: Date): AsyncGenerator<FetchedDocument> {
     // Create a temporary S3 client with connector-specific credentials

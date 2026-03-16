@@ -7,9 +7,8 @@ import { db } from '@/shared/db/knex.js'
 import { ChatEmbedToken } from '@/shared/models/types.js'
 
 /**
- * ChatEmbedTokenModel
- * Represents the 'chat_embed_tokens' table.
- * Manages embed tokens that grant public access to chat dialogs.
+ * @description ChatEmbedTokenModel — represents the 'chat_embed_tokens' table.
+ * Manages embed tokens that grant public access to chat dialogs for external widget integrations.
  */
 export class ChatEmbedTokenModel extends BaseModel<ChatEmbedToken> {
   /** Table name in the database */

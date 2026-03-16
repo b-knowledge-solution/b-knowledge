@@ -28,10 +28,9 @@ interface SyncStatusPanelProps {
 // ============================================================================
 
 /**
- * Displays sync status info and manual trigger button.
- *
- * @param props - Component props
- * @returns React element
+ * @description Displays sync configuration status, last sync time, and manual trigger button
+ * @param {SyncStatusPanelProps} props - Sync config and trigger handler
+ * @returns {JSX.Element} Rendered sync status panel
  */
 const SyncStatusPanel = ({
   config,

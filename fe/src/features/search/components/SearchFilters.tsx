@@ -17,6 +17,7 @@ import type { SearchFilters as SearchFiltersType } from '../types/search.types'
 // Props
 // ============================================================================
 
+/** @description Props for the SearchFilters component */
 interface SearchFiltersProps {
   /** Current filter values */
   filters: SearchFiltersType

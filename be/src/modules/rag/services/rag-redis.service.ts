@@ -1,8 +1,11 @@
 /**
- * Direct Redis Streams communication with advance-rag task executors.
+ * @fileoverview Direct Redis Streams communication with advance-rag task executors.
  *
  * Replaces the HTTP proxy to FastAPI — Node.js writes task messages
  * directly to the same Redis Streams that task_executor.py consumes.
+ * Queue and consumer group names must match advance-rag/common/constants.py.
+ *
+ * @module modules/rag/services/rag-redis
  */
 
 import { getRedisClient, type RedisClient } from '@/shared/services/redis.service.js';
@@ -14,31 +17,55 @@ import { TaskMessage } from '@/shared/models/types.js';
 const SVR_QUEUE_NAME = 'rag_flow_svr_queue';
 const SVR_CONSUMER_GROUP_NAME = 'rag_flow_svr_task_broker';
 
-/** Get the queue name for a given priority (matches Python settings.get_svr_queue_name) */
+/**
+ * @description Get the Redis Stream queue name for a given priority level.
+ * Priority 0 uses the base queue; higher priorities use suffixed queues.
+ * Matches Python settings.get_svr_queue_name().
+ * @param {number} priority - Task priority level (0 = default)
+ * @returns {string} Redis Stream key name
+ */
 function getQueueName(priority: number): string {
+    // Priority 0 uses the base queue name
     if (priority === 0) return SVR_QUEUE_NAME;
     return `${SVR_QUEUE_NAME}_${priority}`;
 }
 
-/** Generate UUID without hyphens (matches Python get_uuid()) */
+/**
+ * @description Generate a UUID without hyphens (matches Python get_uuid())
+ * @returns {string} 32-char hex UUID string
+ */
 export function getUuid(): string {
     return randomUUID().replace(/-/g, '');
 }
 
-/** Format current time as "HH:MM:SS" */
+/**
+ * @description Format current time as 'HH:MM:SS' for progress messages
+ * @returns {string} Formatted time string
+ */
 function timeStr(): string {
     return new Date().toLocaleTimeString('en-US', { hour12: false });
 }
 
-/** Format current time as "YYYY-MM-DD HH:MM:SS" */
+/**
+ * @description Format current time as 'YYYY-MM-DD HH:MM:SS' for task begin_at fields
+ * @returns {string} Formatted datetime string
+ */
 function datetimeStr(): string {
     const d = new Date();
     return d.toISOString().replace('T', ' ').slice(0, 19);
 }
 
-
-
+/**
+ * @description Service for communicating with advance-rag task executors via Redis Streams.
+ * Provides methods to queue parse, advanced (GraphRAG/RAPTOR/Mindmap), and enrichment
+ * tasks, as well as publishing progress updates and cancellation signals.
+ */
 export class RagRedisService {
+    /**
+     * @description Get the Redis client, throwing if not available
+     * @returns {RedisClient} Active Redis client
+     * @throws {Error} If Redis is not connected
+     */
     private getClient(): RedisClient {
         const client = getRedisClient();
         if (!client) throw new Error('Redis not available');
@@ -46,8 +73,12 @@ export class RagRedisService {
     }
 
     /**
-     * Push a task message to the Redis Stream (XADD).
-     * This is the same format that task_executor.py's queue_consumer reads.
+     * @description Push a task message to the Redis Stream (XADD).
+     * Creates the consumer group if it does not exist. Message format matches
+     * the payload that task_executor.py's queue_consumer reads.
+     * @param {TaskMessage} message - Task message payload
+     * @param {number} [priority=0] - Task priority level (determines queue)
+     * @returns {Promise<void>}
      */
     async queueTask(message: TaskMessage, priority = 0): Promise<void> {
         const client = this.getClient();
@@ -72,8 +103,12 @@ export class RagRedisService {
     }
 
     /**
-     * Queue a parse_init task — the task executor will split it into
-     * sub-tasks internally (PDF page splitting, digest computation, etc.)
+     * @description Queue a parse_init task for document parsing.
+     * The Python task executor splits this into sub-tasks (PDF page splitting,
+     * digest computation, chunk embedding, etc.)
+     * @param {string} docId - Document UUID (hex, no hyphens)
+     * @param {number} [priority=0] - Task priority level
+     * @returns {Promise<string>} Generated task UUID
      */
     async queueParseInit(docId: string, priority = 0): Promise<string> {
         const taskId = getUuid();
@@ -91,8 +126,13 @@ export class RagRedisService {
     }
 
     /**
-     * Queue a graphrag/raptor/mindmap task.
-     * Uses the "graph_raptor_x" fake doc ID that the task executor expects.
+     * @description Queue a GraphRAG, RAPTOR, or Mindmap task.
+     * Uses the 'graph_raptor_x' fake doc ID convention that the Python task executor expects.
+     * @param {'graphrag' | 'raptor' | 'mindmap'} taskType - Type of advanced task
+     * @param {string} sampleDocId - A sample document ID from the dataset
+     * @param {string[]} docIds - Array of document IDs to process
+     * @param {number} [priority=0] - Task priority level
+     * @returns {Promise<string>} Generated task UUID
      */
     async queueAdvancedTask(
         taskType: 'graphrag' | 'raptor' | 'mindmap',
@@ -117,7 +157,11 @@ export class RagRedisService {
     }
 
     /**
-     * Queue a per-document enrichment task (keyword, question, tag, metadata).
+     * @description Queue a per-document enrichment task (keyword extraction, question generation, tagging, or metadata)
+     * @param {string} docId - Document UUID (hex, no hyphens)
+     * @param {'keyword' | 'question' | 'tag' | 'metadata'} taskType - Enrichment type
+     * @param {number} [priority=0] - Task priority level
+     * @returns {Promise<string>} Generated task UUID
      */
     async queueEnrichmentTask(
         docId: string,
@@ -139,7 +183,10 @@ export class RagRedisService {
     }
 
     /**
-     * Publish progress update via Redis pub/sub (for SSE streaming).
+     * @description Publish a progress update via Redis pub/sub for SSE streaming to clients
+     * @param {string} taskId - Task UUID to publish progress for
+     * @param {Record<string, unknown>} data - Progress data payload
+     * @returns {Promise<void>}
      */
     async publishProgress(taskId: string, data: Record<string, unknown>): Promise<void> {
         const client = this.getClient();
@@ -147,7 +194,10 @@ export class RagRedisService {
     }
 
     /**
-     * Set a cancel flag for a task.
+     * @description Set a cancellation flag in Redis for a task.
+     * The Python task executor checks for this key to abort processing.
+     * @param {string} taskId - Task UUID to cancel
+     * @returns {Promise<void>}
      */
     async cancelTask(taskId: string): Promise<void> {
         const client = this.getClient();
@@ -155,4 +205,5 @@ export class RagRedisService {
     }
 }
 
+/** Singleton instance of the Redis task queue service */
 export const ragRedisService = new RagRedisService();

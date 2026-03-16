@@ -1,5 +1,11 @@
+/**
+ * @fileoverview Global Histories feature guideline data.
+ * @description Defines the step-by-step user guide for the system-wide Chat and Search Histories feature.
+ * @module features/guideline/data/global-histories.guideline
+ */
 import { IFeatureGuideline } from './types';
 
+/** @description Guideline configuration for the Global Histories feature */
 export const globalHistoriesGuideline: IFeatureGuideline = {
     featureId: 'global-histories',
     roleRequired: 'admin',

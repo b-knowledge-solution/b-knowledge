@@ -26,6 +26,7 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({ url, alt }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
 
+    // Display error message if image failed to load
     if (error) {
         return (
             <div className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">

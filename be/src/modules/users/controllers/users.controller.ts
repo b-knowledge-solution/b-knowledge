@@ -9,12 +9,15 @@ import { log } from '@/shared/services/logger.service.js'
 import { getClientIp } from '@/shared/utils/ip.js'
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js'
 
+/**
+ * @description Manages user CRUD, role/permission changes, and IP history access with IDOR prevention and audit logging
+ */
 export class UserController {
   /**
-   * Get list of users, optionally filtered by role.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Retrieve all users with optional role-based filtering, mapping snake_case fields to camelCase
+   * @param {Request} req - Express request object with optional roles query parameter (comma-separated)
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   async getUsers(req: Request, res: Response): Promise<void> {
     try {
@@ -36,10 +39,10 @@ export class UserController {
   }
 
   /**
-   * Get IP history for all users.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Retrieve IP access history for all users, converting Map to JSON-serializable object
+   * @param {Request} req - Express request object
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   async getAllIpHistory(req: Request, res: Response): Promise<void> {
     try {
@@ -59,10 +62,10 @@ export class UserController {
   }
 
   /**
-   * Get IP history for a specific user.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Retrieve IP access history for a specific user by their ID
+   * @param {Request} req - Express request object with user id in route params
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   async getUserIpHistory(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
@@ -85,10 +88,10 @@ export class UserController {
   }
 
   /**
-   * Update a user's role.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Update a user's role with security checks preventing self-modification and unauthorized admin promotion
+   * @param {Request} req - Express request object with user id in params and role in body
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   async updateUserRole(req: Request, res: Response): Promise<void> {
     const { id } = req.params
@@ -141,10 +144,10 @@ export class UserController {
   }
 
   /**
-   * Update a user's permissions.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Update a user's permission array with audit logging
+   * @param {Request} req - Express request object with user id in params and permissions array in body
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   async updateUserPermissions(req: Request, res: Response): Promise<void> {
     const { id } = req.params
@@ -175,10 +178,10 @@ export class UserController {
   }
 
   /**
-   * Create a new local user (admin only).
-   * @param req - Express request object (body: CreateUserDto).
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Create a new local user with optional bcrypt-hashed password, stripping sensitive fields from response
+   * @param {Request} req - Express request object with user data in body (email, display_name, password, role)
+   * @param {Response} res - Express response object returning created user without password_hash
+   * @returns {Promise<void>}
    */
   async createUser(req: Request, res: Response): Promise<void> {
     try {
@@ -212,10 +215,10 @@ export class UserController {
   }
 
   /**
-   * Update user details.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Update user profile fields (display_name, department, job_title, mobile_phone) with audit logging
+   * @param {Request} req - Express request object with user id in params and update fields in body
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   async updateUser(req: Request, res: Response): Promise<void> {
     const { id } = req.params
@@ -242,10 +245,10 @@ export class UserController {
   }
 
   /**
-   * Delete a user.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Delete a user from the system with audit logging
+   * @param {Request} req - Express request object with user id in params
+   * @param {Response} res - Express response object (204 No Content on success)
+   * @returns {Promise<void>}
    */
   async deleteUser(req: Request, res: Response): Promise<void> {
     const { id } = req.params
@@ -268,10 +271,10 @@ export class UserController {
   }
 
   /**
-   * Get current authenticated user details.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Retrieve the currently authenticated user's full profile from database
+   * @param {Request} req - Express request object with authenticated user context
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   async getMe(req: Request, res: Response): Promise<void> {
     try {

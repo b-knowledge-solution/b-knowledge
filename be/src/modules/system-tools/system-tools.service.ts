@@ -1,5 +1,7 @@
-
-// Loads system tool metadata from JSON and exposes health checks.
+/**
+ * @fileoverview Loads system tool metadata from JSON config and exposes health checks.
+ * @module modules/system-tools/system-tools.service
+ */
 import fs from 'fs/promises';
 import { constants } from 'fs';
 import path from 'path';
@@ -10,20 +12,37 @@ import { config } from '@/shared/config/index.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+/**
+ * @description Configuration shape for a single system tool entry
+ */
 export interface SystemTool {
+    /** Unique tool identifier */
     id: string;
+    /** Display name */
     name: string;
+    /** Human-readable description */
     description: string;
+    /** Icon identifier for UI rendering */
     icon: string;
+    /** URL to the tool's interface */
     url: string;
+    /** Sort order for display */
     order: number;
+    /** Whether the tool is currently enabled */
     enabled: boolean;
 }
 
+/**
+ * @description Shape of the system tools config JSON file
+ */
 interface SystemToolsConfig {
+    /** Array of tool definitions */
     tools: SystemTool[];
 }
 
+/**
+ * @description Service for loading system tool configurations and aggregating system health metrics
+ */
 class SystemToolsService {
     private tools: SystemTool[] = [];
     private configPath: string = '';
@@ -32,9 +51,8 @@ class SystemToolsService {
     }
 
     /**
-     * Resolve config file and load tools into memory.
-     * @returns Promise<void>
-     * @description Initializes the service by loading configuration.
+     * @description Initialize the service by resolving the config file path and loading tools into memory
+     * @returns {Promise<void>}
      */
     async initialize(): Promise<void> {
         this.configPath = await this.resolveConfigPath();
@@ -42,9 +60,8 @@ class SystemToolsService {
     }
 
     /**
-     * Pick config path from env > docker mount > repo config.
-     * @returns Promise<string> - The resolved config file path.
-     * @description Checks multiple locations for the system tools config file.
+     * @description Resolve config file path from env variable, docker mount, or fallback to local source
+     * @returns {Promise<string>} The resolved config file path
      */
     private async resolveConfigPath(): Promise<string> {
         // 1. Check environment variable
@@ -69,9 +86,8 @@ class SystemToolsService {
     }
 
     /**
-     * Read and parse system-tools config JSON.
-     * @returns Promise<void>
-     * @description Loads tool definitions from the filtered config file.
+     * @description Read and parse the system-tools config JSON file, populating the tools array
+     * @returns {Promise<void>}
      */
     private async loadConfig(): Promise<void> {
         try {
@@ -106,18 +122,16 @@ class SystemToolsService {
     }
 
     /**
-     * Alias for getEnabledTools().
-     * @returns SystemTool[] - List of enabled tools.
-     * @description Public method to retrieve available tools.
+     * @description Get list of enabled tools (alias for getEnabledTools)
+     * @returns {SystemTool[]} List of enabled tools
      */
     getTools(): SystemTool[] {
         return this.getEnabledTools();
     }
 
     /**
-     * Return enabled tools ordered for UI consumption.
-     * @returns SystemTool[] - Sorted and filtered tools.
-     * @description Filters by enabled flag and sorts by order prop.
+     * @description Return enabled tools filtered and sorted by order for UI consumption
+     * @returns {SystemTool[]} Sorted and filtered tools
      */
     getEnabledTools(): SystemTool[] {
         return this.tools
@@ -126,17 +140,16 @@ class SystemToolsService {
     }
 
     /**
-     * Return all tools regardless of enabled flag.
-     * @returns SystemTool[] - All configured tools.
+     * @description Return all configured tools regardless of enabled flag, sorted by order
+     * @returns {SystemTool[]} All configured tools
      */
     getAllTools(): SystemTool[] {
         return [...this.tools].sort((a, b) => a.order - b.order);
     }
 
     /**
-     * Reload configuration from disk.
-     * @returns Promise<void>
-     * @description Forces a reload of the config file.
+     * @description Force reload of the config file from disk
+     * @returns {Promise<void>}
      */
     async reload(): Promise<void> {
         log.debug('Reloading system tools configuration');
@@ -144,25 +157,25 @@ class SystemToolsService {
     }
 
     /**
-     * Placeholder executor for system tools.
-     * @param id - Tool ID.
-     * @param params - Execution parameters.
-     * @returns Promise<any> - Execution result.
-     * @throws Error if tool not found.
-     * @description Reserved for future tool execution logic.
+     * @description Execute a system tool by ID (placeholder for future tool execution logic)
+     * @param {string} id - Tool ID
+     * @param {any} params - Execution parameters
+     * @returns {Promise<any>} Execution result
+     * @throws {Error} If tool not found
      */
     async runTool(id: string, params: any): Promise<any> {
         const tool = this.tools.find(t => t.id === id);
+        // Guard: tool must exist in configuration
         if (!tool) throw new Error('Tool not found');
         return { message: `Tool ${tool.name} executed`, params };
     }
 
     /**
-     * Aggregate service health (DB, Redis, MinIO, Langfuse) plus host metrics.
-     * @returns Promise<any> - Health status object.
-     * @description Checks connections to dependencies and gathers system stats.
+     * @description Aggregate service health (DB, Redis, Langfuse) plus host OS and disk metrics
+     * @returns {Promise<any>} Health status object with services and system info
      */
     async getSystemHealth(): Promise<any> {
+        // Dynamic import of os module for system metrics
         const os = await import('os');
 
         // Check Database - Knex
@@ -177,11 +190,11 @@ class SystemToolsService {
 
 
 
-        // Check Langfuse
+        // Check Langfuse availability based on required config keys
         const langfuseEnabled = !!(config.langfuse.publicKey && config.langfuse.secretKey && config.langfuse.baseUrl);
         const langfuseStatus = langfuseEnabled ? 'enabled' : 'disabled';
 
-        // Check Redis for session
+        // Check Redis connectivity with a short timeout to avoid blocking
         let redisStatus = 'disconnected';
         try {
             const { createClient } = await import('redis');
@@ -200,6 +213,7 @@ class SystemToolsService {
             redisStatus = 'disconnected';
         }
 
+        // Build and return aggregated health response with service statuses and system metrics
         return {
             timestamp: new Date().toISOString(),
             services: {
@@ -249,4 +263,5 @@ class SystemToolsService {
     }
 }
 
+/** Singleton instance of the system tools service */
 export const systemToolsService = new SystemToolsService();

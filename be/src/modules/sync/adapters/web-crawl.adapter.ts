@@ -14,10 +14,10 @@ import { ConnectorAdapter, FetchedDocument } from '../services/sync-worker.servi
  */
 export class WebCrawlAdapter implements ConnectorAdapter {
   /**
-   * Fetch pages from a list of URLs.
-   * @param config - Must contain: { urls: string[], depth?: number, max_pages?: number }
-   * @param _since - Not used for web crawling (always fetches fresh)
-   * @yields FetchedDocument for each successfully fetched page
+   * @description Fetch and convert web pages from a list of URLs to markdown documents
+   * @param {Record<string, unknown>} config - Must contain: { urls: string[], depth?: number, max_pages?: number }
+   * @param {Date} [_since] - Not used for web crawling (always fetches fresh content)
+   * @yields {FetchedDocument} For each successfully fetched and converted page
    */
   async *fetch(config: Record<string, unknown>, _since?: Date): AsyncGenerator<FetchedDocument> {
     const urls = config.urls as string[]
@@ -89,9 +89,9 @@ export class WebCrawlAdapter implements ConnectorAdapter {
   }
 
   /**
-   * Convert HTML to plain text with basic markdown formatting.
-   * @param html - Raw HTML string
-   * @returns Cleaned text content
+   * @description Convert raw HTML to plain text with basic markdown formatting for headings and lists
+   * @param {string} html - Raw HTML string
+   * @returns {string} Cleaned text content with markdown formatting
    */
   private htmlToText(html: string): string {
     // Remove script and style tags with content
@@ -120,10 +120,10 @@ export class WebCrawlAdapter implements ConnectorAdapter {
   }
 
   /**
-   * Convert a URL to a safe filename.
-   * @param url - Source URL
-   * @param ext - File extension
-   * @returns Safe filename string
+   * @description Convert a URL to a safe filename using hostname and path components
+   * @param {string} url - Source URL
+   * @param {string} ext - File extension to append
+   * @returns {string} Safe filename string (max 200 chars plus extension)
    */
   private urlToFilename(url: string, ext: string): string {
     try {

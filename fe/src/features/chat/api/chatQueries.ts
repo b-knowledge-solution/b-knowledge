@@ -13,6 +13,9 @@ import type { ChatAssistant, Conversation } from '../types/chat.types'
 // Query Keys
 // ============================================================================
 
+/**
+ * @description Query key factory for chat-related TanStack Query cache entries.
+ */
 const chatKeys = {
   all: ['chat'] as const,
   assistants: () => [...chatKeys.all, 'assistants'] as const,
@@ -41,7 +44,7 @@ export function useChatAssistants() {
   const activeAssistant = assistants.find((d) => d.id === activeAssistantId) ?? assistants[0] ?? null
 
   /**
-   * Create a new assistant.
+   * @description Create a new assistant and invalidate the cache.
    * @param data - Assistant creation payload
    * @returns The created assistant
    */
@@ -52,7 +55,7 @@ export function useChatAssistants() {
   }
 
   /**
-   * Delete an assistant by ID.
+   * @description Delete an assistant by ID and invalidate the cache.
    * @param id - Assistant identifier
    */
   const deleteAssistant = async (id: string) => {
@@ -61,7 +64,7 @@ export function useChatAssistants() {
   }
 
   /**
-   * Invalidate assistant cache to trigger refetch.
+   * @description Invalidate assistant cache to trigger refetch.
    */
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: chatKeys.assistants() })
@@ -80,7 +83,9 @@ export function useChatAssistants() {
   }
 }
 
-/** Parameters for the admin chat assistants list query */
+/**
+ * @description Parameters for the admin chat assistants list query with pagination and sorting.
+ */
 export interface ChatAssistantsAdminParams {
   page?: number | undefined
   page_size?: number | undefined
@@ -132,7 +137,7 @@ export function useChatConversations(assistantId: string | null) {
   const activeConversation = conversations.find((c) => c.id === activeConversationId) ?? null
 
   /**
-   * Create a new conversation and set it as active.
+   * @description Create a new conversation and set it as active.
    * @param name - Optional conversation name
    * @returns The created conversation or null on failure
    */
@@ -150,7 +155,7 @@ export function useChatConversations(assistantId: string | null) {
   }
 
   /**
-   * Delete a conversation.
+   * @description Delete a conversation and reset active if it was selected.
    * @param id - Conversation identifier
    */
   const deleteConversation = async (id: string) => {
@@ -164,7 +169,7 @@ export function useChatConversations(assistantId: string | null) {
   }
 
   /**
-   * Refresh the conversation list.
+   * @description Refresh the conversation list by invalidating the cache.
    */
   const refresh = () => {
     if (assistantId) {

@@ -16,9 +16,9 @@ export class DocumentVersionFileModel extends BaseModel<DocumentVersionFile> {
   protected knex = db
 
   /**
-   * Find all files belonging to a version, ordered by file name.
-   * @param versionId - UUID of the parent version
-   * @returns Array of DocumentVersionFile records
+   * @description Find all files belonging to a version, ordered by file name alphabetically
+   * @param {string} versionId - UUID of the parent version
+   * @returns {Promise<DocumentVersionFile[]>} Array of DocumentVersionFile records
    */
   async findByVersionId(versionId: string): Promise<DocumentVersionFile[]> {
     return this.knex(this.tableName)
@@ -27,10 +27,11 @@ export class DocumentVersionFileModel extends BaseModel<DocumentVersionFile> {
   }
 
   /**
-   * Upsert a file record by version_id + file_name unique constraint.
-   * @param data - File data to upsert
-   * @param trx - Optional transaction
-   * @returns The upserted record
+   * @description Upsert a file record using the version_id + file_name unique constraint.
+   * Merges ragflow_doc_id, status, error, and updated_at on conflict.
+   * @param {Partial<DocumentVersionFile>} data - File data to upsert
+   * @param {Knex.Transaction} [trx] - Optional database transaction
+   * @returns {Promise<DocumentVersionFile>} The upserted record
    */
   async upsertByName(data: Partial<DocumentVersionFile>, trx?: Knex.Transaction): Promise<DocumentVersionFile> {
     const query = this.knex(this.tableName)
@@ -49,10 +50,11 @@ export class DocumentVersionFileModel extends BaseModel<DocumentVersionFile> {
   }
 
   /**
-   * Bulk delete files by IDs within a version.
-   * @param versionId - UUID of the parent version
-   * @param fileIds - Array of file UUIDs to delete
-   * @param trx - Optional transaction
+   * @description Bulk delete files by IDs within a specific version
+   * @param {string} versionId - UUID of the parent version
+   * @param {string[]} fileIds - Array of file UUIDs to delete
+   * @param {Knex.Transaction} [trx] - Optional database transaction
+   * @returns {Promise<void>}
    */
   async bulkDeleteByIds(versionId: string, fileIds: string[], trx?: Knex.Transaction): Promise<void> {
     const query = this.knex(this.tableName)

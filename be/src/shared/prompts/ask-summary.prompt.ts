@@ -5,13 +5,13 @@
  */
 
 /**
- * Knowledge base summarization prompt template.
+ * @description Knowledge base summarization prompt template used as default when no custom system prompt is configured.
  */
 export const askSummaryPrompt = {
   /**
-   * Build the system prompt with knowledge context.
-   * @param knowledge - Formatted knowledge chunks text
-   * @returns System prompt string
+   * @description Build the system prompt with injected knowledge context for RAG summarization
+   * @param {string} knowledge - Formatted knowledge chunks text from retrieval
+   * @returns {string} Complete system prompt string with knowledge context embedded
    */
   build(knowledge: string): string {
     return `Role: You're a smart assistant. Your name is Miss R.

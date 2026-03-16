@@ -21,6 +21,7 @@ import type { SearchResult } from '../types/search.types'
 // Props
 // ============================================================================
 
+/** @description Props for the SearchResults component */
 interface SearchResultsProps {
   /** Array of search results */
   results: SearchResult[]

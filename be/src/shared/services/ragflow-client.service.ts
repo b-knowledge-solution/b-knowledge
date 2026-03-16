@@ -17,9 +17,10 @@ const RAGFLOW_API_BASE = process.env['RAGFLOW_API_BASE'] || 'http://localhost:93
 const RAGFLOW_API_KEY = process.env['RAGFLOW_API_KEY'] || ''
 
 /**
- * Build default headers for RAGFlow API requests.
- * @param extra - Additional headers to merge
- * @returns Headers object
+ * @description Build default headers for RAGFlow API requests.
+ * Includes Content-Type and Authorization (when API key is configured).
+ * @param {Record<string, string>} [extra] - Additional headers to merge
+ * @returns {Record<string, string>} Headers object
  */
 function buildHeaders(extra: Record<string, string> = {}): Record<string, string> {
   const headers: Record<string, string> = {
@@ -34,25 +35,27 @@ function buildHeaders(extra: Record<string, string> = {}): Record<string, string
 }
 
 /**
- * Singleton RAGFlow HTTP client.
- * Wraps fetch calls to the RAGFlow backend with auth and error handling.
+ * @description Singleton RAGFlow HTTP client.
+ * Wraps fetch calls to the RAGFlow backend with automatic auth headers
+ * and JSON serialization.
  */
 export class RagflowClient {
   /** Base URL for all RAGFlow requests */
   private baseUrl: string
 
   /**
-   * @param baseUrl - RAGFlow API base URL
+   * @description Create a new RagflowClient instance.
+   * @param {string} [baseUrl] - RAGFlow API base URL (defaults to RAGFLOW_API_BASE env var)
    */
   constructor(baseUrl?: string) {
     this.baseUrl = (baseUrl || RAGFLOW_API_BASE).replace(/\/+$/, '')
   }
 
   /**
-   * Perform a GET request to RAGFlow.
-   * @param path - API path (e.g. '/api/conversation/list')
-   * @param params - Query string parameters
-   * @returns Parsed JSON response body
+   * @description Perform a GET request to RAGFlow.
+   * @param {string} path - API path (e.g. '/api/conversation/list')
+   * @param {Record<string, string>} [params] - Query string parameters
+   * @returns {Promise<T>} Parsed JSON response body
    */
   async get<T = any>(path: string, params?: Record<string, string>): Promise<T> {
     // Build URL with optional query params
@@ -74,10 +77,10 @@ export class RagflowClient {
   }
 
   /**
-   * Perform a POST request to RAGFlow.
-   * @param path - API path
-   * @param data - Request body (will be JSON-serialized)
-   * @returns Parsed JSON response body
+   * @description Perform a POST request to RAGFlow.
+   * @param {string} path - API path
+   * @param {unknown} [data] - Request body (will be JSON-serialized)
+   * @returns {Promise<T>} Parsed JSON response body
    */
   async post<T = any>(path: string, data?: unknown): Promise<T> {
     const url = new URL(path, this.baseUrl)
@@ -93,10 +96,10 @@ export class RagflowClient {
   }
 
   /**
-   * Perform a DELETE request to RAGFlow.
-   * @param path - API path
-   * @param data - Optional request body
-   * @returns Parsed JSON response body
+   * @description Perform a DELETE request to RAGFlow.
+   * @param {string} path - API path
+   * @param {unknown} [data] - Optional request body
+   * @returns {Promise<T>} Parsed JSON response body
    */
   async delete<T = any>(path: string, data?: unknown): Promise<T> {
     const url = new URL(path, this.baseUrl)
@@ -112,10 +115,10 @@ export class RagflowClient {
   }
 
   /**
-   * Perform a PUT request to RAGFlow.
-   * @param path - API path
-   * @param data - Request body
-   * @returns Parsed JSON response body
+   * @description Perform a PUT request to RAGFlow.
+   * @param {string} path - API path
+   * @param {unknown} [data] - Request body
+   * @returns {Promise<T>} Parsed JSON response body
    */
   async put<T = any>(path: string, data?: unknown): Promise<T> {
     const url = new URL(path, this.baseUrl)
@@ -131,11 +134,11 @@ export class RagflowClient {
   }
 
   /**
-   * Open an SSE streaming connection to RAGFlow.
+   * @description Open an SSE streaming connection to RAGFlow.
    * Returns the raw Response so the caller can read the body as a readable stream.
-   * @param path - API path (e.g. '/api/conversation/completion')
-   * @param data - POST body for the streaming request
-   * @returns Raw fetch Response with readable body stream
+   * @param {string} path - API path (e.g. '/api/conversation/completion')
+   * @param {unknown} [data] - POST body for the streaming request
+   * @returns {Promise<Response>} Raw fetch Response with readable body stream
    */
   async stream(path: string, data?: unknown): Promise<Response> {
     const url = new URL(path, this.baseUrl)

@@ -31,10 +31,11 @@ interface AddChunkModalProps {
 // ============================================================================
 
 /**
- * Modal for adding a manual text chunk.
+ * @description Modal dialog for adding a manual text chunk to a dataset.
+ * Provides a textarea for entering chunk content with save/cancel controls.
  *
- * @param props - Component props
- * @returns React element
+ * @param {AddChunkModalProps} props - Component properties
+ * @returns {JSX.Element} Rendered modal dialog
  */
 const AddChunkModal: React.FC<AddChunkModalProps> = ({ open, onClose, onSubmit }) => {
   const { t } = useTranslation();
@@ -42,9 +43,10 @@ const AddChunkModal: React.FC<AddChunkModalProps> = ({ open, onClose, onSubmit }
   const [saving, setSaving] = useState(false);
 
   /**
-   * Handle submit.
+   * @description Submit the chunk text and close the modal on success.
    */
   const handleSubmit = async () => {
+    // Guard against empty content submission
     if (!text.trim()) return;
     setSaving(true);
     try {

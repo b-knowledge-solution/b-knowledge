@@ -2,6 +2,7 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
+/** @description Variant styles for alert: default, destructive, success, warning */
 const alertVariants = cva(
   'relative w-full rounded-lg border px-4 py-3 text-sm [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg~*]:pl-7',
   {
@@ -17,6 +18,11 @@ const alertVariants = cva(
   }
 );
 
+/**
+ * @description Displays a styled alert banner with variant-based theming
+ * @param {React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants>} props - Alert props including variant
+ * @returns {JSX.Element} Rendered alert container with role="alert"
+ */
 const Alert = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants>>(
   ({ className, variant, ...props }, ref) => (
     <div ref={ref} role="alert" className={cn(alertVariants({ variant }), className)} {...props} />
@@ -24,6 +30,11 @@ const Alert = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEleme
 );
 Alert.displayName = 'Alert';
 
+/**
+ * @description Renders the alert heading text
+ * @param {React.HTMLAttributes<HTMLHeadingElement>} props - Standard HTML heading attributes
+ * @returns {JSX.Element} Rendered h5 element
+ */
 const AlertTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
     <h5 ref={ref} className={cn('mb-1 font-medium leading-none tracking-tight', className)} {...props} />
@@ -31,6 +42,11 @@ const AlertTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<H
 );
 AlertTitle.displayName = 'AlertTitle';
 
+/**
+ * @description Renders the alert body/description text
+ * @param {React.HTMLAttributes<HTMLParagraphElement>} props - Standard HTML paragraph attributes
+ * @returns {JSX.Element} Rendered description container
+ */
 const AlertDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
   ({ className, ...props }, ref) => (
     <div ref={ref} className={cn('text-sm [&_p]:leading-relaxed', className)} {...props} />

@@ -49,11 +49,12 @@ const S3_BUCKET = process.env['S3_BUCKET'] || 'ragflow'
  */
 export class ChatFileService {
   /**
-   * Validate a file's type and size before upload.
-   * @param file - Multer file object
-   * @returns Object with valid flag and optional error message
+   * @description Validate a file's type and size before upload.
+   * @param {{ mimetype: string; size: number; originalname: string }} file - Multer file object
+   * @returns {{ valid: boolean; error?: string }} Object with valid flag and optional error message
    */
   validateFile(file: { mimetype: string; size: number; originalname: string }): { valid: boolean; error?: string } {
+    // Reject unsupported file types (only images and PDFs allowed)
     if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
       return {
         valid: false,
@@ -61,6 +62,7 @@ export class ChatFileService {
       }
     }
 
+    // Reject files exceeding the 20MB size limit
     if (file.size > MAX_FILE_SIZE) {
       return {
         valid: false,
@@ -72,11 +74,13 @@ export class ChatFileService {
   }
 
   /**
-   * Upload a file to S3 and store metadata in the database.
-   * @param file - Multer file object with buffer
-   * @param sessionId - Chat session ID the file belongs to
-   * @param userId - ID of the uploading user
-   * @returns The created ChatFile record
+   * @description Upload a file to S3 and store metadata in the database.
+   * Creates the S3 bucket if it does not exist, uploads the file, and persists metadata.
+   * @param {{ originalname: string; mimetype: string; size: number; buffer: Buffer }} file - Multer file object with buffer
+   * @param {string} sessionId - Chat session ID the file belongs to
+   * @param {string} userId - ID of the uploading user
+   * @returns {Promise<ChatFile>} The created ChatFile record
+   * @throws {Error} If S3 bucket creation or file upload fails
    */
   async uploadFile(
     file: { originalname: string; mimetype: string; size: number; buffer: Buffer },
@@ -127,9 +131,9 @@ export class ChatFileService {
   }
 
   /**
-   * Get file content as a readable stream from S3.
-   * @param fileId - The chat file ID
-   * @returns Object with stream, mime type, and original name, or null if not found
+   * @description Get file content as a readable stream from S3.
+   * @param {string} fileId - The chat file ID
+   * @returns {Promise<{ stream: Readable; mimeType: string; originalName: string; size: number } | null>} Object with stream, mime type, and original name, or null if not found
    */
   async getFileContent(fileId: string): Promise<{
     stream: Readable
@@ -137,9 +141,11 @@ export class ChatFileService {
     originalName: string
     size: number
   } | null> {
+    // Look up file metadata in the database
     const chatFile = await ModelFactory.chatFile.findById(fileId)
     if (!chatFile) return null
 
+    // Stream file content directly from S3 without buffering
     const stream = await minioClient.getObject(chatFile.s3_bucket, chatFile.s3_key)
     return {
       stream,
@@ -150,28 +156,30 @@ export class ChatFileService {
   }
 
   /**
-   * Get file metadata by ID.
-   * @param fileId - The chat file ID
-   * @returns The ChatFile record or undefined
+   * @description Get file metadata by ID.
+   * @param {string} fileId - The chat file ID
+   * @returns {Promise<ChatFile | undefined>} The ChatFile record or undefined if not found
    */
   async getFile(fileId: string): Promise<ChatFile | undefined> {
     return ModelFactory.chatFile.findById(fileId)
   }
 
   /**
-   * Get multiple files by their IDs.
-   * @param fileIds - Array of file IDs to look up
-   * @returns Array of ChatFile records
+   * @description Get multiple files by their IDs.
+   * @param {string[]} fileIds - Array of file IDs to look up
+   * @returns {Promise<ChatFile[]>} Array of ChatFile records
    */
   async getFilesByIds(fileIds: string[]): Promise<ChatFile[]> {
+    // Short-circuit for empty input to avoid unnecessary DB query
     if (fileIds.length === 0) return []
     return ModelFactory.chatFile.getKnex().whereIn('id', fileIds)
   }
 
   /**
-   * Generate a presigned URL for a file (for LLM consumption).
-   * @param chatFile - The chat file record
-   * @returns Presigned URL string
+   * @description Generate a presigned URL for a file (for LLM consumption).
+   * URL is valid for 1 hour.
+   * @param {ChatFile} chatFile - The chat file record
+   * @returns {Promise<string>} Presigned URL string
    */
   async getPresignedUrl(chatFile: ChatFile): Promise<string> {
     // Generate a presigned URL valid for 1 hour
@@ -179,11 +187,14 @@ export class ChatFileService {
   }
 
   /**
-   * Clean up expired files from both S3 and the database.
-   * @returns Number of files cleaned up
+   * @description Clean up expired files from both S3 and the database.
+   * Iterates expired files and removes them individually, logging any failures.
+   * @returns {Promise<number>} Number of files cleaned up
    */
   async cleanupExpired(): Promise<number> {
+    // Fetch all files past their expiration date
     const expired = await ModelFactory.chatFile.findExpired()
+    // Short-circuit if nothing to clean
     if (expired.length === 0) return 0
 
     let cleaned = 0

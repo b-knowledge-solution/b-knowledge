@@ -48,6 +48,7 @@ export class HistoryChatMessageModel extends BaseModel<HistoryChatMessage> {
      * @description Joins with sessions table to verify ownership before returning messages.
      */
     async findBySessionIdAndUserEmail(sessionId: string, userEmail: string) {
+        // Join with sessions table to verify ownership before returning messages
         return await this.knex
             .select('history_chat_messages.*')
             .from(this.tableName)

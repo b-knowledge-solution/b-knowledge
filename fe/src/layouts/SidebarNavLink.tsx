@@ -34,11 +34,9 @@ interface SidebarNavLinkProps {
 // ============================================================================
 
 /**
- * Renders a single sidebar link with active-state highlighting,
- * a navigation-loader trigger, and collapsed-mode support.
- *
- * @param props - Link configuration
- * @returns Sidebar NavLink element
+ * @description Renders a single sidebar link with active-state highlighting, navigation-loader trigger, and collapsed-mode support
+ * @param {SidebarNavLinkProps} props - Link configuration including path, label, icon, and collapsed state
+ * @returns {JSX.Element} Styled NavLink element for the sidebar
  */
 export function SidebarNavLink({
   path,

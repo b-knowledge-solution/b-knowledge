@@ -11,6 +11,9 @@ import { useState } from 'react'
 // Types
 // ============================================================================
 
+/**
+ * @description Props for the SearchWidgetBar component.
+ */
 interface SearchWidgetBarProps {
   /** Callback fired when user submits a search query */
   onSearch: (query: string) => void
@@ -25,20 +28,21 @@ interface SearchWidgetBarProps {
 // ============================================================================
 
 /**
- * Compact search input bar with spotlight-style design.
- * @param props - Component props
- * @returns Search input bar element
+ * @description Compact search input bar with spotlight-style design for the embeddable widget.
+ * @param {SearchWidgetBarProps} props - Component props
+ * @returns {JSX.Element} The rendered search input bar
  */
 export function SearchWidgetBar({ onSearch, isSearching, placeholder }: SearchWidgetBarProps) {
   const [query, setQuery] = useState('')
 
   /**
-   * Handle form submission.
-   * Prevents empty queries from being submitted.
+   * @description Handle form submission. Prevents empty queries from being submitted.
+   * @param {React.FormEvent} e - Form submit event
    */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = query.trim()
+    // Guard: only submit non-empty queries when not already searching
     if (trimmed && !isSearching) {
       onSearch(trimmed)
     }

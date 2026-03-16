@@ -20,6 +20,7 @@ import type { RetrievalTestChunk } from '../types/search.types'
 // Props
 // ============================================================================
 
+/** @description Props for the SearchRetrievalTest component */
 interface SearchRetrievalTestProps {
   /** Search app ID to test against */
   appId: string

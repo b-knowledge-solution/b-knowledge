@@ -7,12 +7,15 @@ import { teamService } from '@/modules/teams/services/team.service.js'
 import { log } from '@/shared/services/logger.service.js'
 import { getClientIp } from '@/shared/utils/ip.js'
 
+/**
+ * @description CRUD controller for teams and membership management with audit context propagation
+ */
 export class TeamController {
   /**
-   * Get all teams.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Retrieve all teams with member count and leader information
+   * @param {Request} req - Express request object
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   async getTeams(req: Request, res: Response): Promise<void> {
     try {
@@ -27,10 +30,10 @@ export class TeamController {
   }
 
   /**
-   * Create a new team.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Create a new team with optional metadata and audit logging
+   * @param {Request} req - Express request object with team data in body (name, project_name, description)
+   * @param {Response} res - Express response object (201 Created)
+   * @returns {Promise<void>}
    */
   async createTeam(req: Request, res: Response): Promise<void> {
     try {
@@ -47,10 +50,10 @@ export class TeamController {
   }
 
   /**
-   * Update an existing team.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Update an existing team's name, project, or description with audit logging
+   * @param {Request} req - Express request object with team id in params and update fields in body
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   async updateTeam(req: Request, res: Response): Promise<void> {
     const { id } = req.params
@@ -78,10 +81,10 @@ export class TeamController {
   }
 
   /**
-   * Delete a team.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Delete a team and cascade member cleanup with audit logging
+   * @param {Request} req - Express request object with team id in params
+   * @param {Response} res - Express response object (204 No Content)
+   * @returns {Promise<void>}
    */
   async deleteTeam(req: Request, res: Response): Promise<void> {
     const { id } = req.params
@@ -104,10 +107,10 @@ export class TeamController {
   }
 
   /**
-   * Get members of a specific team.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Retrieve all members of a specific team with user details and membership roles
+   * @param {Request} req - Express request object with team id in params
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   async getTeamMembers(req: Request, res: Response): Promise<void> {
     const { id } = req.params
@@ -128,10 +131,10 @@ export class TeamController {
   }
 
   /**
-   * Add members to a team.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<any>
+   * @description Add one or more members to a team with automatic role assignment based on their global role
+   * @param {Request} req - Express request object with team id in params and userId/userIds in body
+   * @param {Response} res - Express response object (201 Created)
+   * @returns {Promise<any>}
    */
   async addMembers(req: Request, res: Response): Promise<any> {
     try {
@@ -142,6 +145,7 @@ export class TeamController {
       }
 
       const { userId, userIds } = req.body
+      // Support both single userId and batch userIds for flexibility
       const idsToAdd = userIds || (userId ? [userId] : [])
 
       if (idsToAdd.length === 0) {
@@ -169,10 +173,10 @@ export class TeamController {
   }
 
   /**
-   * Remove a member from a team.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Remove a specific member from a team with audit logging
+   * @param {Request} req - Express request object with team id and userId in params
+   * @param {Response} res - Express response object (204 No Content)
+   * @returns {Promise<void>}
    */
   async removeMember(req: Request, res: Response): Promise<void> {
     const { id, userId } = req.params
@@ -195,10 +199,10 @@ export class TeamController {
   }
 
   /**
-   * Grant permissions to a team.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Grant permissions to all members of a team by merging into their user profiles
+   * @param {Request} req - Express request object with team id in params and permissions array in body
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
    */
   async grantPermissions(req: Request, res: Response): Promise<void> {
     const { id } = req.params

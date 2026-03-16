@@ -5,11 +5,20 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 
+/** @description Root sheet state container using Radix Dialog under the hood */
 const Sheet = DialogPrimitive.Root;
+/** @description Element that triggers the sheet open state */
 const SheetTrigger = DialogPrimitive.Trigger;
+/** @description Button that closes the sheet */
 const SheetClose = DialogPrimitive.Close;
+/** @description Portal for rendering sheet outside the DOM tree */
 const SheetPortal = DialogPrimitive.Portal;
 
+/**
+ * @description Semi-transparent backdrop overlay behind the sheet
+ * @param {React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>} props - Overlay props
+ * @returns {JSX.Element} Rendered overlay with fade animation
+ */
 const SheetOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
@@ -25,6 +34,7 @@ const SheetOverlay = React.forwardRef<
 ));
 SheetOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
+/** @description Side-dependent slide animation variants for sheet positioning (top, bottom, left, right) */
 const sheetVariants = cva(
   'fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500',
   {
@@ -40,6 +50,7 @@ const sheetVariants = cva(
   }
 );
 
+/** @description Props for SheetContent combining dialog content with side variant */
 interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>,
     VariantProps<typeof sheetVariants> {
@@ -47,6 +58,11 @@ interface SheetContentProps
   children?: React.ReactNode;
 }
 
+/**
+ * @description Slide-in panel from a specified side with overlay and close button
+ * @param {SheetContentProps} props - Sheet content props including side direction
+ * @returns {JSX.Element} Rendered sheet panel
+ */
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   SheetContentProps
@@ -68,16 +84,31 @@ const SheetContent = React.forwardRef<
 });
 SheetContent.displayName = DialogPrimitive.Content.displayName;
 
+/**
+ * @description Sheet header layout with vertical spacing
+ * @param {React.HTMLAttributes<HTMLDivElement>} props - Standard div attributes
+ * @returns {JSX.Element} Rendered sheet header
+ */
 const SheetHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div className={cn('flex flex-col space-y-2 text-center sm:text-left', className)} {...props} />
 );
 SheetHeader.displayName = 'SheetHeader';
 
+/**
+ * @description Sheet footer layout with responsive flex direction for action buttons
+ * @param {React.HTMLAttributes<HTMLDivElement>} props - Standard div attributes
+ * @returns {JSX.Element} Rendered sheet footer
+ */
 const SheetFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div className={cn('flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2', className)} {...props} />
 );
 SheetFooter.displayName = 'SheetFooter';
 
+/**
+ * @description Sheet title text with semibold styling
+ * @param {React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>} props - Title props
+ * @returns {JSX.Element} Rendered sheet title
+ */
 const SheetTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
@@ -86,6 +117,11 @@ const SheetTitle = React.forwardRef<
 ));
 SheetTitle.displayName = DialogPrimitive.Title.displayName;
 
+/**
+ * @description Sheet description text with muted foreground color
+ * @param {React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>} props - Description props
+ * @returns {JSX.Element} Rendered sheet description
+ */
 const SheetDescription = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>

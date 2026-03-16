@@ -13,16 +13,19 @@ import { chatConversationService } from '../services/chat-conversation.service.j
 import { ttsService } from '@/shared/services/tts.service.js'
 
 /**
- * Controller class for chat conversation endpoints.
+ * @description Controller class for chat conversation endpoints.
+ * Handles conversation CRUD, streaming chat, feedback, and text-to-speech.
  */
 export class ChatConversationController {
   /**
-   * Create a new conversation.
-   * @param req - Express request with { name, dialog_id } in body
-   * @param res - Express response
+   * @description Create a new conversation.
+   * @param {Request} req - Express request with { name, dialog_id } in body
+   * @param {Response} res - Express response
+   * @returns {Promise<void>} 201 with created conversation session
    */
   async createConversation(req: Request, res: Response): Promise<void> {
     try {
+      // Guard: ensure authenticated user
       const userId = req.user?.id
       if (!userId) {
         res.status(401).json({ error: 'Unauthorized' })
@@ -41,12 +44,14 @@ export class ChatConversationController {
   }
 
   /**
-   * Get a conversation by ID with its messages.
-   * @param req - Express request with :id param
-   * @param res - Express response
+   * @description Get a conversation by ID with its messages.
+   * @param {Request} req - Express request with :id param
+   * @param {Response} res - Express response
+   * @returns {Promise<void>} 200 with conversation and messages or 404 if not found
    */
   async getConversation(req: Request, res: Response): Promise<void> {
     try {
+      // Guard: ensure authenticated user
       const userId = req.user?.id
       if (!userId) {
         res.status(401).json({ error: 'Unauthorized' })
@@ -57,6 +62,7 @@ export class ChatConversationController {
 
       // Fetch conversation with messages from local DB
       const result = await chatConversationService.getConversation(id!, userId)
+      // Return 404 if conversation does not exist or belongs to another user
       if (!result) {
         res.status(404).json({ error: 'Conversation not found' })
         return
@@ -69,12 +75,14 @@ export class ChatConversationController {
   }
 
   /**
-   * List conversations for a dialog.
-   * @param req - Express request with dialogId query param
-   * @param res - Express response
+   * @description List conversations for a dialog.
+   * @param {Request} req - Express request with dialogId query param
+   * @param {Response} res - Express response
+   * @returns {Promise<void>} 200 with conversations array
    */
   async listConversations(req: Request, res: Response): Promise<void> {
     try {
+      // Guard: ensure authenticated user
       const userId = req.user?.id
       if (!userId) {
         res.status(401).json({ error: 'Unauthorized' })
@@ -83,6 +91,7 @@ export class ChatConversationController {
 
       const dialogId = req.query.dialogId as string
 
+      // Require dialogId to scope the listing to a specific assistant
       if (!dialogId) {
         res.status(400).json({ error: 'dialogId query parameter is required' })
         return
@@ -98,12 +107,14 @@ export class ChatConversationController {
   }
 
   /**
-   * Bulk delete conversations.
-   * @param req - Express request with { ids } in body
-   * @param res - Express response
+   * @description Bulk delete conversations.
+   * @param {Request} req - Express request with { ids } in body
+   * @param {Response} res - Express response
+   * @returns {Promise<void>} 200 with count of deleted conversations
    */
   async deleteConversations(req: Request, res: Response): Promise<void> {
     try {
+      // Guard: ensure authenticated user
       const userId = req.user?.id
       if (!userId) {
         res.status(401).json({ error: 'Unauthorized' })
@@ -122,12 +133,14 @@ export class ChatConversationController {
   }
 
   /**
-   * Rename a conversation.
-   * @param req - Express request with :id param and { name } in body
-   * @param res - Express response
+   * @description Rename a conversation.
+   * @param {Request} req - Express request with :id param and { name } in body
+   * @param {Response} res - Express response
+   * @returns {Promise<void>} 200 with updated conversation or 404 if not found
    */
   async renameConversation(req: Request, res: Response): Promise<void> {
     try {
+      // Guard: ensure authenticated user
       const userId = req.user?.id
       if (!userId) {
         res.status(401).json({ error: 'Unauthorized' })
@@ -139,6 +152,7 @@ export class ChatConversationController {
 
       // Rename conversation in local DB
       const updated = await chatConversationService.renameConversation(id!, name, userId)
+      // Return 404 if conversation does not exist or belongs to another user
       if (!updated) {
         res.status(404).json({ error: 'Conversation not found' })
         return
@@ -151,12 +165,14 @@ export class ChatConversationController {
   }
 
   /**
-   * Delete a specific message from a conversation.
-   * @param req - Express request with :id and :msgId params
-   * @param res - Express response
+   * @description Delete a specific message from a conversation.
+   * @param {Request} req - Express request with :id and :msgId params
+   * @param {Response} res - Express response
+   * @returns {Promise<void>} 204 on success or 404 if message not found
    */
   async deleteMessage(req: Request, res: Response): Promise<void> {
     try {
+      // Guard: ensure authenticated user
       const userId = req.user?.id
       if (!userId) {
         res.status(401).json({ error: 'Unauthorized' })
@@ -167,6 +183,7 @@ export class ChatConversationController {
 
       // Delete message from local DB
       const deleted = await chatConversationService.deleteMessage(id!, msgId!, userId)
+      // Return 404 if message does not exist or conversation belongs to another user
       if (!deleted) {
         res.status(404).json({ error: 'Message not found' })
         return
@@ -179,12 +196,15 @@ export class ChatConversationController {
   }
 
   /**
-   * Stream a chat completion response via SSE.
-   * @param req - Express request with { content, dialog_id } in body
-   * @param res - Express response (SSE stream)
+   * @description Stream a chat completion response via SSE.
+   * Orchestrates the full RAG pipeline: retrieval, LLM generation, and citation processing.
+   * @param {Request} req - Express request with { content, dialog_id } in body
+   * @param {Response} res - Express response (SSE stream)
+   * @returns {Promise<void>} SSE stream of chat completion tokens
    */
   async streamChat(req: Request, res: Response): Promise<void> {
     try {
+      // Guard: ensure authenticated user
       const userId = req.user?.id
       if (!userId) {
         res.status(401).json({ error: 'Unauthorized' })
@@ -211,9 +231,10 @@ export class ChatConversationController {
   }
 
   /**
-   * Send feedback (thumbs up/down) on a message.
-   * @param req - Express request with { message_id, thumbup, feedback } in body
-   * @param res - Express response
+   * @description Send feedback (thumbs up/down) on a message.
+   * @param {Request} req - Express request with { message_id, thumbup, feedback } in body
+   * @param {Response} res - Express response
+   * @returns {Promise<void>} 200 with success flag
    */
   async sendFeedback(req: Request, res: Response): Promise<void> {
     try {
@@ -229,10 +250,11 @@ export class ChatConversationController {
   }
 
   /**
-   * Convert text to speech audio.
+   * @description Convert text to speech audio.
    * Streams audio response using the configured TTS provider.
-   * @param req - Express request with { text, voice?, speed?, format? } in body
-   * @param res - Express response (audio stream)
+   * @param {Request} req - Express request with { text, voice?, speed?, format? } in body
+   * @param {Response} res - Express response (audio stream)
+   * @returns {Promise<void>} Audio stream with appropriate Content-Type
    */
   async textToSpeech(req: Request, res: Response): Promise<void> {
     try {

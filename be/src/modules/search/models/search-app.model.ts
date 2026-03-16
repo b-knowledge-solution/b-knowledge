@@ -7,9 +7,8 @@ import { db } from '@/shared/db/knex.js'
 import { SearchApp } from '@/shared/models/types.js'
 
 /**
- * SearchAppModel
- * Represents the 'search_apps' table.
- * Manages search application CRUD operations.
+ * @description Model for the search_apps table, providing CRUD operations
+ *   for saved search application configurations including dataset references and LLM settings
  */
 export class SearchAppModel extends BaseModel<SearchApp> {
   /** Table name in the database */

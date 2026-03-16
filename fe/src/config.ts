@@ -17,14 +17,14 @@
 // ============================================================================
 
 /**
- * Parses a boolean environment variable.
- * 
- * @param key - Environment variable key (VITE_* prefix)
- * @param defaultValue - Default value if not set or invalid
- * @returns Parsed boolean value
+ * @description Parses a boolean environment variable, returning the default if the value is not explicitly 'true' or 'false'
+ * @param {string} key - Environment variable key (VITE_* prefix)
+ * @param {boolean} defaultValue - Default value if not set or invalid
+ * @returns {boolean} Parsed boolean value
  */
 const getBoolEnv = (key: string, defaultValue: boolean): boolean => {
     const value = import.meta.env[key];
+    // Only accept explicit string booleans
     if (value === 'true') return true;
     if (value === 'false') return false;
     return defaultValue;

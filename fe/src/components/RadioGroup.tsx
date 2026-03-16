@@ -46,21 +46,9 @@ interface RadioGroupProps {
 // ============================================================================
 
 /**
- * Grid-based radio group with styled option cards.
- * 
- * Features:
- * - Configurable grid columns (1-4)
- * - Optional icon display
- * - Optional description text
- * - Selected state with check indicator
- * - Primary color accent on selection
- * - Dark mode support
- * 
- * @param value - Currently selected value
- * @param onChange - Selection change callback
- * @param options - Available options
- * @param columns - Grid columns (default: 3)
- * @param className - Additional CSS classes
+ * @description Grid-based radio group with styled option cards, icons, and check indicators
+ * @param {RadioGroupProps} props - Selected value, change handler, options, and grid configuration
+ * @returns {JSX.Element} Rendered radio group with grid layout option cards
  */
 export function RadioGroup({
     value,

@@ -24,6 +24,7 @@ import type { MindMapNode } from '../types/search.types'
 // Props
 // ============================================================================
 
+/** @description Props for the SearchMindMapDrawer component */
 interface SearchMindMapDrawerProps {
   /** Whether the drawer is open */
   open: boolean

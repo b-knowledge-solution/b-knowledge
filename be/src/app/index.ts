@@ -1,7 +1,15 @@
 
 /**
- * Application entrypoint: configures middleware, routes, background jobs, and graceful shutdown.
+ * @fileoverview Application entrypoint: configures middleware, routes, background jobs,
+ * and graceful shutdown.
+ *
+ * This module is the main Express server bootstrap. It initializes Redis,
+ * sets up security middleware (Helmet, CORS, sessions), registers API routes,
+ * runs database migrations on boot, and wires up graceful shutdown handlers.
+ *
  * Keep all environment access through `config` to preserve centralized validation.
+ *
+ * @module app/index
  */
 import express from 'express';
 import session from 'express-session';
@@ -24,12 +32,16 @@ import { cronService } from '@/shared/services/cron.service.js';
 import { systemToolsService } from '@/modules/system-tools/system-tools.service.js';
 import { userService } from '@/modules/users/index.js';
 import { shutdownLangfuse } from '@/shared/services/langfuse.service.js';
-import { traceAuthService } from '@/modules/trace/services/trace-auth.service.js';
+
 import { socketService } from '@/shared/services/socket.service.js';
 
 import { setupApiRoutes } from '@/app/routes.js';
 import { registerAllAdapters } from '@/modules/sync/index.js';
 
+/**
+ * @description Express application instance shared across the module.
+ * Exported for test access and route registration.
+ */
 const app = express();
 
 // Initialize Redis before any middleware that relies on it (sessions, rate limiting storage)
@@ -91,11 +103,16 @@ setupApiRoutes(app);
 // Register sync connector adapters
 registerAllAdapters();
 
-// Bootstraps HTTP/HTTPS server and initializes background services that require the listener
+/**
+ * @description Bootstraps the HTTP/HTTPS server and initializes background services
+ * (Socket.IO, cron, migrations, root user) that require the listener to be active.
+ * @returns {Promise<http.Server | https.Server>} The started server instance
+ */
 const startServer = async (): Promise<http.Server | https.Server> => {
   let server: http.Server | https.Server;
   const protocol = config.https.enabled ? 'https' : 'http';
 
+  // Create HTTPS server if enabled and certs available, otherwise fall back to HTTP
   if (config.https.enabled) {
     const credentials = config.https.getCredentials();
     if (credentials) {
@@ -115,6 +132,7 @@ const startServer = async (): Promise<http.Server | https.Server> => {
   }
 
   server.listen(config.port, async () => {
+    // Allow long-running requests (e.g. file uploads, RAG processing) up to 30 minutes
     server.setTimeout(30 * 60 * 1000);
 
     log.info(`Backend server started`, {
@@ -177,6 +195,7 @@ process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) =>
   });
 });
 
+// Skip server startup in test environments to allow Vitest to control the lifecycle
 const isTest = process.env.NODE_ENV === 'test' || !!process.env.VITEST;
 if (!isTest) {
   startServer().then((server) => {
@@ -188,7 +207,7 @@ if (!isTest) {
       await shutdownRedis();
       await closePool();
       await shutdownLangfuse();
-      await traceAuthService.shutdown();
+
       await socketService.shutdown();
       process.exit(0);
     };

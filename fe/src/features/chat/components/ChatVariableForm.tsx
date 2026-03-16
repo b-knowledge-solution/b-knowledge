@@ -29,7 +29,7 @@ interface ChatVariableFormProps {
 const VARIABLE_KEY_REGEX = /^[a-zA-Z_][a-zA-Z0-9_]*$/
 
 /**
- * Create a new empty variable with defaults.
+ * @description Create a new empty variable with defaults.
  * @returns A fresh PromptVariable object
  */
 function createEmptyVariable(): PromptVariable {
@@ -58,14 +58,14 @@ function ChatVariableForm({ value, onChange }: ChatVariableFormProps) {
   const [keyErrors, setKeyErrors] = useState<Record<number, string>>({})
 
   /**
-   * Add a new empty variable row.
+   * @description Add a new empty variable row to the list.
    */
   const handleAdd = () => {
     onChange([...value, createEmptyVariable()])
   }
 
   /**
-   * Remove a variable row by index.
+   * @description Remove a variable row by index and clear its validation error.
    * @param index - Row index to remove
    */
   const handleRemove = (index: number) => {
@@ -77,7 +77,7 @@ function ChatVariableForm({ value, onChange }: ChatVariableFormProps) {
   }
 
   /**
-   * Update a field on a specific variable row.
+   * @description Update a field on a specific variable row with key validation.
    * @param index - Row index
    * @param field - Field name to update
    * @param fieldValue - New value for the field

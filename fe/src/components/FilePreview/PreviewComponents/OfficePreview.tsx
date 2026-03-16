@@ -94,11 +94,15 @@ export const OfficePreview: React.FC<OfficePreviewProps> = ({ url }) => {
             }
         };
 
+        /** Route the file content to the appropriate renderer based on extension */
         const processFile = async (arrayBuffer: ArrayBuffer, extension: string | undefined) => {
+            // Route to DOCX renderer
             if (extension === 'docx') {
                 await renderDocx(arrayBuffer);
+            // Route to Excel/CSV renderer
             } else if (extension === 'xlsx' || extension === 'xls' || extension === 'csv') {
                 renderExcel(arrayBuffer);
+            // Route to PowerPoint renderer
             } else if (extension === 'pptx' || extension === 'ppt') {
                 await renderPptx(arrayBuffer);
             } else {
@@ -316,25 +320,33 @@ export const OfficePreview: React.FC<OfficePreviewProps> = ({ url }) => {
     );
 };
 
-// PowerPoint Viewer Component (Private Sub-component)
+/**
+ * @description Internal slide viewer component with navigation controls for PPTX presentations
+ * @param {{ slides: SlideData[] }} props - Array of parsed slide data
+ * @returns {JSX.Element} Slide viewer with prev/next navigation and thumbnail dots
+ */
 const PptxViewer: React.FC<{ slides: SlideData[] }> = ({ slides }) => {
     const { t } = useTranslation();
     const [currentSlide, setCurrentSlide] = useState(0);
 
+    /** Advance to the next slide, clamped to the last index */
     const nextSlide = () => {
         setCurrentSlide((prev) => Math.min(prev + 1, slides.length - 1));
     };
 
+    /** Go to the previous slide, clamped to index 0 */
     const previousSlide = () => {
         setCurrentSlide((prev) => Math.max(prev - 1, 0));
     };
 
+    /** Jump to a specific slide by index */
     const goToSlide = (index: number) => {
         setCurrentSlide(index);
     };
 
     const slide = slides[currentSlide];
 
+    // Guard against invalid slide index
     if (!slide) {
         return (
             <div className="flex items-center justify-center h-full text-red-500">

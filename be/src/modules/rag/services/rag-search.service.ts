@@ -1,9 +1,15 @@
 /**
- * OpenSearch search and chunk retrieval service.
+ * @fileoverview OpenSearch search and chunk retrieval service.
  *
  * Queries the same OpenSearch index that advance-rag task executors write to.
+ * Supports full-text, semantic (vector), and hybrid search methods.
+ * Also provides chunk CRUD operations (manual add/edit/delete) and
+ * document-level chunk toggling.
+ *
  * Index naming: "ragflow_{SYSTEM_TENANT_ID}"
  * Chunks are filtered by kb_id (dataset_id).
+ *
+ * @module modules/rag/services/rag-search
  */
 
 import { Client } from '@opensearch-project/opensearch'
@@ -44,6 +50,11 @@ function getClient(): Client {
 
 
 
+/**
+ * @description Service for searching and managing chunks in OpenSearch.
+ * Provides full-text, semantic, and hybrid search, as well as manual
+ * chunk CRUD and document-level availability toggling.
+ */
 export class RagSearchService {
     /**
      * Build OpenSearch filter clauses from metadata filter conditions.
@@ -52,6 +63,7 @@ export class RagSearchService {
      */
     private buildMetadataFilters(filter?: { logic?: string; conditions?: Array<{ name: string; comparison_operator: string; value: unknown }> }): Record<string, unknown>[] {
         if (!filter?.conditions?.length) return []
+        // Map each metadata condition to an OpenSearch query clause
         return filter.conditions.map(c => {
             switch (c.comparison_operator) {
                 case 'is': return { term: { [c.name]: c.value } }
@@ -244,11 +256,13 @@ export class RagSearchService {
 
         let result: { chunks: ChunkResult[]; total: number }
 
+        // Route to the appropriate search method
         switch (method) {
             case 'full_text':
                 result = await this.fullTextSearch(datasetId, req.query, topK, extraFilters)
                 break
             case 'semantic':
+                // Fall back to full-text if no query vector is available
                 if (!queryVector?.length) {
                     result = await this.fullTextSearch(datasetId, req.query, topK, extraFilters)
                 } else {
@@ -488,4 +502,5 @@ export class RagSearchService {
     }
 }
 
+/** Singleton instance of the OpenSearch search service */
 export const ragSearchService = new RagSearchService()

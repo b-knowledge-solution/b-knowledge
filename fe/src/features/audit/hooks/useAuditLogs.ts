@@ -95,10 +95,12 @@ export const useAuditLogs = (): UseAuditLogsReturn => {
      * @param newPageSize - New page size (triggers reset to page 1).
      */
     const handlePageChange = (newPage: number, newPageSize?: number) => {
+        // When page size changes, reset to page 1 to avoid out-of-range pages
         if (newPageSize && newPageSize !== limit) {
             setLimit(newPageSize)
             setPage(1)
         } else {
+            // Navigate to the requested page within current page size
             setPage(newPage)
         }
     }

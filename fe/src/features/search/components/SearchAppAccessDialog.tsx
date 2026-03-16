@@ -44,6 +44,7 @@ interface AccessTeam {
 // Props
 // ============================================================================
 
+/** @description Props for the SearchAppAccessDialog component */
 interface SearchAppAccessDialogProps {
   /** Whether the dialog is open */
   open: boolean

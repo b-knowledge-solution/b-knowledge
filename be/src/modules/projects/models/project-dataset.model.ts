@@ -6,7 +6,8 @@ import { db } from '@/shared/db/knex.js'
 import { ProjectDataset } from '@/shared/models/types.js'
 
 /**
- * ProjectDatasetModel provides CRUD operations for the project_datasets junction table.
+ * @description Provides CRUD operations for the project_datasets junction table,
+ *   which links datasets to projects with an auto_created flag for cascade management
  * @extends BaseModel<ProjectDataset>
  */
 export class ProjectDatasetModel extends BaseModel<ProjectDataset> {
@@ -14,9 +15,9 @@ export class ProjectDatasetModel extends BaseModel<ProjectDataset> {
   protected knex = db
 
   /**
-   * Find all dataset links for a given project.
-   * @param projectId - UUID of the project
-   * @returns Array of project-dataset link records
+   * @description Find all dataset links for a given project, ordered newest first
+   * @param {string} projectId - UUID of the project
+   * @returns {Promise<ProjectDataset[]>} Array of project-dataset link records
    */
   async findByProjectId(projectId: string): Promise<ProjectDataset[]> {
     return this.knex(this.tableName)
@@ -25,9 +26,9 @@ export class ProjectDatasetModel extends BaseModel<ProjectDataset> {
   }
 
   /**
-   * Find auto-created dataset links for a project (for cascade delete).
-   * @param projectId - UUID of the project
-   * @returns Array of auto-created project-dataset link records
+   * @description Find auto-created dataset links for a project, used during cascade deletion
+   * @param {string} projectId - UUID of the project
+   * @returns {Promise<ProjectDataset[]>} Array of auto-created project-dataset link records
    */
   async findAutoCreated(projectId: string): Promise<ProjectDataset[]> {
     return this.knex(this.tableName)

@@ -1,3 +1,8 @@
+/**
+ * @fileoverview Guideline dialog component for displaying feature-specific user guides.
+ * Renders a tabbed interface with overview, searchable step-by-step guides, and markdown content.
+ * @module features/guideline/components/GuidelineDialog
+ */
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -9,12 +14,23 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { IGuidelineTab } from '../data/types';
 
+/**
+ * @description Props for the GuidelineDialog component.
+ */
 interface GuidelineDialogProps {
+    /** Whether the dialog is open */
     open: boolean;
+    /** Callback to close the dialog */
     onClose: () => void;
+    /** Feature identifier to look up the guideline data */
     featureId: string;
 }
 
+/**
+ * @description Feature-specific guideline dialog with tabbed navigation, search, and markdown rendering.
+ * @param {GuidelineDialogProps} props - Dialog state and feature identifier.
+ * @returns {JSX.Element | null} The rendered guideline dialog or null if no guideline exists.
+ */
 export function GuidelineDialog({ open, onClose, featureId }: GuidelineDialogProps) {
     const { t, i18n } = useTranslation();
     const { guideline } = useGuideline(featureId);

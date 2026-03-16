@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Upload, RefreshCw, Shield, Settings } from 'lucide-react';
+import { ArrowLeft, Upload, RefreshCw, Shield, Settings, Database, BarChart3, Network, Tags } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,14 +16,25 @@ import DocumentTable from '../components/DocumentTable';
 import FileUploadModal from '../components/FileUploadModal';
 import DatasetAccessDialog from '../components/DatasetAccessDialog';
 import DatasetSettingsDrawer from '../components/DatasetSettingsDrawer';
+import DatasetOverviewTab from '../components/DatasetOverviewTab';
+import KnowledgeGraphTab from '../components/KnowledgeGraphTab';
+import MetadataManageDialog from '../components/MetadataManageDialog';
 import { DocumentPreviewer } from '@/components/DocumentPreviewer';
 import type { Dataset, Document } from '../types';
 
+/**
+ * @description Dataset detail page with tabbed interface for Documents, Overview,
+ * and Knowledge Graph. Includes header with dataset info, admin actions
+ * (upload, access control, settings, metadata), and document preview sheet.
+ *
+ * @returns {JSX.Element} Rendered dataset detail page
+ */
 const DatasetDetailPage: React.FC = () => {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  // Grant admin privileges to admin and leader roles for write operations
   const isAdmin = user?.role === 'admin' || user?.role === 'leader';
 
   const [dataset, setDataset] = useState<Dataset | null>(null);
@@ -34,13 +45,20 @@ const DatasetDetailPage: React.FC = () => {
   const [accessDialogOpen, setAccessDialogOpen] = useState(false);
   // State for settings drawer
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // State for active tab
+  const [activeTab, setActiveTab] = useState<'documents' | 'overview' | 'graph'>('documents');
+  // State for metadata dialog
+  const [metadataOpen, setMetadataOpen] = useState(false);
 
+  /** Open the document preview sheet for the selected document */
   const handleViewDocument = (doc: Document) => {
     setPreviewDoc(doc)
   }
 
+  // Fetch documents for this dataset with all CRUD operations
   const { documents, loading: loadingDocs, uploading, refresh, uploadFiles, deleteDocument, parseDocument, toggleAvailability, bulkParse, bulkDelete } = useDocuments(id);
 
+  // Fetch dataset details on mount; redirect to list on failure (e.g. 404)
   useEffect(() => {
     if (!id) return;
     setLoadingDataset(true);
@@ -51,11 +69,12 @@ const DatasetDetailPage: React.FC = () => {
       .finally(() => setLoadingDataset(false));
   }, [id, navigate]);
 
+  /** Upload files and refresh dataset counts on success */
   const handleUpload = async (files: File[]) => {
     try {
       await uploadFiles(files);
       setUploadModalOpen(false);
-      // Refresh dataset to update counts
+      // Refresh dataset to update document and chunk counts in the header
       if (id) {
         const updated = await datasetApi.getDataset(id);
         setDataset(updated);
@@ -107,6 +126,10 @@ const DatasetDetailPage: React.FC = () => {
           </Button>
           {isAdmin && (
             <>
+              {/* Metadata button */}
+              <Button variant="outline" size="icon" onClick={() => setMetadataOpen(true)}>
+                <Tags size={16} />
+              </Button>
               {/* Manage Access button */}
               <Button variant="outline" onClick={() => setAccessDialogOpen(true)}>
                 <Shield size={16} className="mr-1" />
@@ -159,25 +182,57 @@ const DatasetDetailPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Documents Table */}
-      <Card className="dark:bg-slate-800 dark:border-slate-700 flex-1">
-        <CardHeader className="pb-0">
-          <CardTitle className="text-base">{t('datasets.documents')}</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <DocumentTable
-            documents={documents}
-            loading={loadingDocs}
-            isAdmin={isAdmin}
-            onParse={parseDocument}
-            onDelete={deleteDocument}
-            onView={handleViewDocument}
-            onToggleAvailability={toggleAvailability}
-            onBulkParse={bulkParse}
-            onBulkDelete={bulkDelete}
-          />
-        </CardContent>
-      </Card>
+      {/* Tab navigation */}
+      <div className="flex items-center gap-1 mb-4 border-b">
+        {[
+          { key: 'documents' as const, label: t('datasets.documents'), icon: Database },
+          { key: 'overview' as const, label: t('datasets.overview'), icon: BarChart3 },
+          { key: 'graph' as const, label: t('datasets.knowledgeGraph'), icon: Network },
+        ].map(tab => (
+          <button
+            key={tab.key}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-[1px] ${
+              activeTab === tab.key
+                ? 'text-primary border-primary'
+                : 'text-muted-foreground border-transparent hover:text-foreground'
+            }`}
+            onClick={() => setActiveTab(tab.key)}
+          >
+            <tab.icon className="h-4 w-4" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {activeTab === 'documents' && (
+        <Card className="dark:bg-slate-800 dark:border-slate-700 flex-1">
+          <CardHeader className="pb-0">
+            <CardTitle className="text-base">{t('datasets.documents')}</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <DocumentTable
+              documents={documents}
+              loading={loadingDocs}
+              isAdmin={isAdmin}
+              onParse={parseDocument}
+              onDelete={deleteDocument}
+              onView={handleViewDocument}
+              onToggleAvailability={toggleAvailability}
+              onBulkParse={bulkParse}
+              onBulkDelete={bulkDelete}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === 'overview' && id && (
+        <DatasetOverviewTab datasetId={id} />
+      )}
+
+      {activeTab === 'graph' && id && (
+        <KnowledgeGraphTab datasetId={id} />
+      )}
 
       {/* Settings Drawer */}
       {id && (
@@ -222,6 +277,15 @@ const DatasetDetailPage: React.FC = () => {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Metadata Dialog */}
+      {id && (
+        <MetadataManageDialog
+          open={metadataOpen}
+          onClose={() => setMetadataOpen(false)}
+          datasetId={id}
+        />
+      )}
     </div>
   );
 };

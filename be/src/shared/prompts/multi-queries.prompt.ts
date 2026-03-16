@@ -5,16 +5,16 @@
  */
 
 /**
- * Multi-query generation prompt templates.
+ * @description Multi-query generation prompt templates for generating complementary queries when initial retrieval is insufficient.
  */
 export const multiQueriesPrompt = {
   /**
-   * Build the multi-query generation prompt.
-   * @param originalQuery - Original search query
-   * @param originalQuestion - Original user question
-   * @param retrievedDocs - Currently retrieved content
-   * @param missingInfo - List of missing information items
-   * @returns Formatted prompt string
+   * @description Build the multi-query generation prompt with context about retrieval gaps
+   * @param {string} originalQuery - Original search query that returned insufficient results
+   * @param {string} originalQuestion - Original user question in natural language
+   * @param {string} retrievedDocs - Currently retrieved content from initial search
+   * @param {string} missingInfo - List of missing information items identified by sufficiency check
+   * @returns {string} Formatted prompt string for generating 2-3 complementary queries
    */
   build(originalQuery: string, originalQuestion: string, retrievedDocs: string, missingInfo: string): string {
     return `You are a query optimization expert.

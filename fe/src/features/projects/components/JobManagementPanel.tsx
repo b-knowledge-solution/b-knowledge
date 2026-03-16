@@ -196,8 +196,10 @@ const FileExpandRow = ({ jobId }: { jobId: string }) => {
 // ============================================================================
 
 /**
- * JobManagementPanel — shows version-level jobs for a specific version
- * with inline file tracking expand.
+ * @description Collapsible panel showing version-level conversion jobs with inline file tracking expand.
+ * Includes WebSocket real-time updates and 30s polling fallback.
+ * @param {JobManagementPanelProps} props - Project, category, and version IDs for job filtering
+ * @returns {JSX.Element | null} Rendered job panel or null when no jobs exist
  */
 const JobManagementPanel = ({
   projectId,

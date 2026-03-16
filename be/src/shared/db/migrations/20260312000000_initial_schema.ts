@@ -9,9 +9,10 @@ import type { Knex } from 'knex'
 import { cryptoService } from '../../services/crypto.service.js'
 
 /**
- * Create all application tables in dependency order.
- * @param knex - Knex instance
- * @returns Promise<void>
+ * @description Create all application tables in dependency order, set up indexes,
+ * foreign key constraints, and encrypt any existing plaintext API keys.
+ * @param {Knex} knex - Knex instance for schema operations
+ * @returns {Promise<void>}
  */
 export async function up(knex: Knex): Promise<void> {
   // ──────────────────────────────────────────────
@@ -880,9 +881,10 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 /**
- * Drop all application tables in reverse dependency order.
- * @param knex - Knex instance
- * @returns Promise<void>
+ * @description Drop all application tables in reverse dependency order and
+ * decrypt any encrypted API keys back to plaintext before removal.
+ * @param {Knex} knex - Knex instance for schema operations
+ * @returns {Promise<void>}
  */
 export async function down(knex: Knex): Promise<void> {
   // Decrypt api_key values back to plaintext (rollback)

@@ -1,5 +1,7 @@
-
-// Caches downloaded MinIO files locally to serve preview responses.
+/**
+ * @fileoverview Preview service that caches downloaded MinIO files locally to serve preview responses.
+ * @module modules/preview/preview.service
+ */
 import fs from 'fs';
 import fsPromises from 'fs/promises';
 import { constants } from 'fs';
@@ -9,25 +11,22 @@ import { ModelFactory } from '@/shared/models/factory.js';
 import { config } from '@/shared/config/index.js';
 import { log } from '@/shared/services/logger.service.js';
 
+// Ensure temp cache directory exists for storing downloaded preview files
 const tempDir = path.resolve(config.tempCachePath);
 if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir, { recursive: true });
 }
 
 /**
- * PreviewService
- * Caches downloaded MinIO files locally to serve preview responses.
- * Manages temp file caching with TTL-based expiration for efficient file serving.
+ * @description Caches downloaded MinIO files locally to serve preview responses with TTL-based expiration
  */
 export class PreviewService {
     /**
-     * Generate a local preview file for a MinIO object.
-     * Downloads the object if not cached or if cache has expired.
-     * @param bucketName - MinIO bucket name or bucket UUID.
-     * @param fileName - Object name/path within the bucket.
-     * @returns Promise<string> - Absolute path to the local cached file.
-     * @throws Error if download fails.
-     * @description Handles mapping UUID to bucket name, sanitizing local filenames, checking cache validity (TTL), and downloading from MinIO.
+     * @description Generate a local preview file for a MinIO object, downloading if not cached or cache expired
+     * @param {string} bucketName - MinIO bucket name or bucket UUID
+     * @param {string} fileName - Object name/path within the bucket
+     * @returns {Promise<string>} Absolute path to the local cached file
+     * @throws {Error} If download from MinIO fails
      */
     async generatePreview(bucketName: string, fileName: string): Promise<string> {
         // Start with the provided bucket name as target
@@ -104,4 +103,5 @@ export class PreviewService {
     }
 }
 
+/** Singleton instance of the preview service */
 export const previewService = new PreviewService();

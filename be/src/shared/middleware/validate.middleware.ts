@@ -20,7 +20,7 @@ import { Request, Response, NextFunction } from 'express';
 import { ZodSchema, ZodError } from 'zod';
 
 /**
- * Configuration for which parts of the request to validate.
+ * @description Configuration for which parts of the request to validate.
  */
 export interface ValidationTarget {
   /** Zod schema to validate req.body */
@@ -32,9 +32,9 @@ export interface ValidationTarget {
 }
 
 /**
- * Format Zod validation errors into a flat, readable structure.
- * @param error - ZodError instance
- * @returns Array of { field, message } objects
+ * @description Format Zod validation errors into a flat, readable structure.
+ * @param {ZodError} error - ZodError instance containing validation issues
+ * @returns {Array<{ field: string; message: string }>} Array of field-level error objects
  */
 function formatZodErrors(error: ZodError): Array<{ field: string; message: string }> {
   return error.issues.map((issue) => ({
@@ -44,16 +44,17 @@ function formatZodErrors(error: ZodError): Array<{ field: string; message: strin
 }
 
 /**
- * Middleware factory that validates request data against Zod schemas.
+ * @description Middleware factory that validates request data against Zod schemas.
  *
  * Accepts either:
  * - A single Zod schema (validates req.body only)
  * - A ValidationTarget object (validates body, params, and/or query)
  *
  * On validation failure, returns HTTP 400 with structured error details.
+ * On success, replaces req.body with parsed/coerced values from Zod.
  *
- * @param schema - Zod schema for body validation, or ValidationTarget for multiple targets
- * @returns Express middleware function
+ * @param {ZodSchema | ValidationTarget} schema - Zod schema for body validation, or ValidationTarget for multiple targets
+ * @returns {Function} Express middleware function
  *
  * @example
  * // Validate body only (shorthand)

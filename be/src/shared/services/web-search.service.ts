@@ -11,11 +11,14 @@ import { ChunkResult } from '@/shared/models/types.js'
 import { log } from '@/shared/services/logger.service.js'
 
 /**
- * Search the web via Tavily API for supplemental context.
- * @param query - Search query
- * @param apiKey - Tavily API key
- * @param maxResults - Maximum results to return
- * @returns Array of ChunkResult from web search
+ * @description Search the web via Tavily API for supplemental context.
+ * Uses the "advanced" search depth for higher quality results and converts
+ * Tavily results into the internal ChunkResult format for RAG pipeline consumption.
+ * Returns an empty array on any error to allow graceful degradation.
+ * @param {string} query - Search query
+ * @param {string} apiKey - Tavily API key
+ * @param {number} [maxResults=3] - Maximum results to return
+ * @returns {Promise<ChunkResult[]>} Array of ChunkResult from web search
  */
 export async function searchWeb(
   query: string,
@@ -23,6 +26,7 @@ export async function searchWeb(
   maxResults: number = 3
 ): Promise<ChunkResult[]> {
   try {
+    // Call Tavily API with advanced search depth for better quality results
     const response = await fetch('https://api.tavily.com/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -35,6 +39,7 @@ export async function searchWeb(
       }),
     })
 
+    // Return empty results on non-OK status to allow graceful fallback
     if (!response.ok) {
       log.warn('Tavily search failed', { status: response.status })
       return []
@@ -44,7 +49,7 @@ export async function searchWeb(
       results: Array<{ url: string; title: string; content: string; score: number }>
     }
 
-    // Convert Tavily results to ChunkResult format
+    // Convert Tavily results to ChunkResult format for unified RAG pipeline consumption
     return (data.results || []).map((r, i) => ({
       chunk_id: `web_${i}`,
       text: `[Web: ${r.title}]\n${r.content}\nSource: ${r.url}`,
@@ -53,6 +58,7 @@ export async function searchWeb(
       method: 'web_search',
     }))
   } catch (err) {
+    // Catch network or parsing errors and return empty to avoid breaking the pipeline
     log.warn('Web search error', { error: String(err) })
     return []
   }

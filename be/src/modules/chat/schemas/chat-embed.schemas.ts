@@ -6,7 +6,8 @@
 import { z } from 'zod'
 
 /**
- * Schema for creating a new embed token.
+ * @description Schema for creating a new embed token.
+ * Validates token name and optional ISO 8601 expiration date.
  */
 export const createEmbedTokenSchema = z.object({
   /** Human-readable name for the token */
@@ -16,28 +17,30 @@ export const createEmbedTokenSchema = z.object({
 })
 
 /**
- * Schema for dialog ID path parameter on embed token routes.
+ * @description Schema for dialog ID path parameter on embed token routes.
  */
 export const embedDialogIdParamSchema = z.object({
   id: z.string().uuid('Invalid dialog ID'),
 })
 
 /**
- * Schema for token ID path parameter on revoke route.
+ * @description Schema for token ID path parameter on revoke route.
  */
 export const embedTokenIdParamSchema = z.object({
   tokenId: z.string().uuid('Invalid token ID'),
 })
 
 /**
- * Schema for embed token path parameter on public routes.
+ * @description Schema for embed token path parameter on public routes.
+ * Tokens are exactly 64 characters long.
  */
 export const embedTokenParamSchema = z.object({
   token: z.string().length(64, 'Invalid embed token'),
 })
 
 /**
- * Schema for embed chat completion request body.
+ * @description Schema for embed chat completion request body.
+ * Validates message content and optional session ID for continuation.
  */
 export const embedCompletionSchema = z.object({
   /** The user message content */
@@ -47,7 +50,7 @@ export const embedCompletionSchema = z.object({
 })
 
 /**
- * Schema for creating an anonymous session via embed endpoint.
+ * @description Schema for creating an anonymous session via embed endpoint.
  */
 export const embedCreateSessionSchema = z.object({
   /** Optional display name for the session */

@@ -9,15 +9,14 @@ import { log } from '@/shared/services/logger.service.js'
 import { dashboardService } from '@/modules/dashboard/dashboard.service.js'
 
 /**
- * DashboardController
- * Exposes endpoint for fetching aggregated dashboard statistics.
+ * @description Exposes endpoint for fetching aggregated dashboard statistics
  */
 export class DashboardController {
   /**
-   * Get dashboard statistics with optional date range filtering.
-   * @param req - Express request with optional startDate/endDate query params
-   * @param res - Express response returning DashboardStats JSON
-   * @returns Promise<void>
+   * @description Get dashboard statistics with optional date range filtering
+   * @param {Request} req - Express request with optional startDate/endDate query params
+   * @param {Response} res - Express response returning DashboardStats JSON
+   * @returns {Promise<void>}
    */
   async getStats(req: Request, res: Response): Promise<void> {
     try {

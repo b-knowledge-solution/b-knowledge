@@ -6,7 +6,8 @@ import { db } from '@/shared/db/knex.js'
 import { ProjectEntityPermission } from '@/shared/models/types.js'
 
 /**
- * ProjectEntityPermissionModel provides CRUD for project_entity_permissions.
+ * @description Provides CRUD operations for the project_entity_permissions table,
+ *   which stores fine-grained permissions on individual entities (categories, chats, searches)
  * @extends BaseModel<ProjectEntityPermission>
  */
 export class ProjectEntityPermissionModel extends BaseModel<ProjectEntityPermission> {
@@ -14,9 +15,9 @@ export class ProjectEntityPermissionModel extends BaseModel<ProjectEntityPermiss
   protected knex = db
 
   /**
-   * Find all entity permissions for a given project.
-   * @param projectId - UUID of the project
-   * @returns Array of entity permission records
+   * @description Find all entity-level permissions for a given project, ordered newest first
+   * @param {string} projectId - UUID of the project
+   * @returns {Promise<ProjectEntityPermission[]>} Array of entity permission records
    */
   async findByProjectId(projectId: string): Promise<ProjectEntityPermission[]> {
     return this.knex(this.tableName)
@@ -25,11 +26,11 @@ export class ProjectEntityPermissionModel extends BaseModel<ProjectEntityPermiss
   }
 
   /**
-   * Find permissions for a specific entity within a project.
-   * @param projectId - UUID of the project
-   * @param entityType - Entity type ('category', 'chat', 'search')
-   * @param entityId - UUID of the entity
-   * @returns Array of entity permission records
+   * @description Find permissions for a specific entity within a project
+   * @param {string} projectId - UUID of the project
+   * @param {string} entityType - Entity type ('category', 'chat', 'search')
+   * @param {string} entityId - UUID of the entity
+   * @returns {Promise<ProjectEntityPermission[]>} Array of entity permission records
    */
   async findByEntity(projectId: string, entityType: string, entityId: string): Promise<ProjectEntityPermission[]> {
     return this.knex(this.tableName)

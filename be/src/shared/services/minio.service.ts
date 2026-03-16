@@ -10,8 +10,9 @@
 import * as Minio from 'minio'
 
 /**
- * MinioSingleton
- * Wrapper class to ensure a single instance of the MinIO client.
+ * @description Wrapper class to ensure a single instance of the MinIO client
+ * is shared across all services. Reads S3-compatible credentials from
+ * environment variables.
  */
 class MinioSingleton {
   /** Static instance holder */
@@ -21,9 +22,8 @@ class MinioSingleton {
   private constructor() { }
 
   /**
-   * Lazily create/reuse MinIO client using env/override values.
-   * @returns Minio.Client - The singleton MinIO client instance.
-   * @description Initializes MinIO client with environment variables on first call.
+   * @description Lazily create or reuse the MinIO client using environment variables.
+   * @returns {Minio.Client} The singleton MinIO client instance
    */
   public static getInstance(): Minio.Client {
     // Check if instance already exists

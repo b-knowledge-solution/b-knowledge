@@ -53,11 +53,11 @@ interface NavigationProviderProps {
 }
 
 /**
- * Navigation provider that manages the loading overlay state.
- * 
- * The overlay is shown immediately when startNavigation() is called,
- * and hidden either by stopNavigation() or automatically when the
- * route changes (indicating the new page has loaded).
+ * @description Navigation provider that manages the loading overlay state.
+ * Shows overlay immediately on startNavigation() and hides it automatically
+ * when the route changes or after a safety timeout.
+ * @param {NavigationProviderProps} props - Children to wrap with navigation context
+ * @returns {JSX.Element} Provider with optional overlay when navigating
  */
 export function NavigationProvider({ children }: NavigationProviderProps) {
     const [isNavigating, setIsNavigating] = useState(false);
@@ -144,10 +144,9 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
 // ============================================================================
 
 /**
- * Hook to access navigation loading state and controls.
- * 
- * @returns Navigation context with isNavigating state and control functions
- * @throws Error if used outside NavigationProvider
+ * @description Hook to access navigation loading state and control functions
+ * @returns {NavigationContextType} Navigation context with isNavigating state and control functions
+ * @throws {Error} If used outside NavigationProvider
  */
 export function useNavigation(): NavigationContextType {
     const context = useContext(NavigationContext);
@@ -162,13 +161,8 @@ export function useNavigation(): NavigationContextType {
 // ============================================================================
 
 /**
- * Full-screen loading overlay that blocks user interaction.
- * 
- * Features:
- * - Semi-transparent backdrop with blur
- * - Centered loading spinner
- * - Blocks all pointer events
- * - Smooth fade-in animation
+ * @description Full-screen loading overlay that blocks user interaction during navigation
+ * @returns {JSX.Element} Semi-transparent backdrop with centered loading spinner
  */
 function NavigationOverlay() {
     const { t } = useTranslation();
@@ -214,12 +208,9 @@ interface NavLinkWithLoaderProps {
 }
 
 /**
- * NavLink wrapper that shows loading overlay on click.
- * 
- * This component wraps React Router's NavLink and triggers the
- * loading overlay IMMEDIATELY when clicked, before the navigation
- * starts. This prevents the delay issue where the user clicks
- * but nothing seems to happen.
+ * @description NavLink wrapper that triggers loading overlay immediately on click before navigation
+ * @param {NavLinkWithLoaderProps} props - Route path, styling, and children
+ * @returns {JSX.Element} NavLink with integrated loading overlay trigger
  */
 export function NavLinkWithLoader({ to, className, title, children, onClick }: NavLinkWithLoaderProps) {
     const { startNavigation } = useNavigation();

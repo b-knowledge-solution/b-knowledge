@@ -17,12 +17,18 @@ import { Team } from '@/shared/models/types.js';
 // TYPE DEFINITIONS
 // ============================================================================
 
+/**
+ * @description Data transfer object for creating a new team
+ */
 export interface CreateTeamDTO {
     name: string;
     project_name?: string;
     description?: string;
 }
 
+/**
+ * @description Data transfer object for updating an existing team
+ */
 export interface UpdateTeamDTO {
     name?: string;
     project_name?: string;
@@ -33,6 +39,9 @@ export interface UpdateTeamDTO {
 // TEAM SERVICE CLASS
 // ============================================================================
 
+/**
+ * @description Handles CRUD operations for teams and user-team membership management with audit logging
+ */
 export class TeamService {
     /**
      * Create a new team.
@@ -361,4 +370,5 @@ export class TeamService {
     }
 }
 
+/** Singleton instance of TeamService */
 export const teamService = new TeamService();

@@ -6,7 +6,8 @@
 import { z } from 'zod'
 
 /**
- * Schema for creating a new conversation.
+ * @description Schema for creating a new conversation.
+ * Requires a name and valid dialog (assistant) UUID.
  */
 export const createConversationSchema = z.object({
   /** Name/title of the conversation */
@@ -16,7 +17,8 @@ export const createConversationSchema = z.object({
 })
 
 /**
- * Schema for bulk deleting conversations.
+ * @description Schema for bulk deleting conversations.
+ * Requires at least one conversation UUID.
  */
 export const deleteConversationsSchema = z.object({
   /** Array of conversation IDs to delete */
@@ -24,7 +26,7 @@ export const deleteConversationsSchema = z.object({
 })
 
 /**
- * Schema for sending a chat completion request.
+ * @description Schema for sending a chat completion request.
  * Supports per-message overrides for variables, filtering, and LLM settings.
  */
 export const chatCompletionSchema = z.object({
@@ -61,7 +63,8 @@ export const chatCompletionSchema = z.object({
 })
 
 /**
- * Schema for sending feedback on a message.
+ * @description Schema for sending feedback on a message.
+ * Validates message ID and thumbs up/down boolean.
  */
 export const feedbackSchema = z.object({
   /** Message ID to provide feedback on */
@@ -73,7 +76,8 @@ export const feedbackSchema = z.object({
 })
 
 /**
- * Schema for deleting a specific message.
+ * @description Schema for deleting a specific message.
+ * Validates both conversation ID and message ID path params.
  */
 export const deleteMessageParamsSchema = z.object({
   /** Conversation ID */
@@ -83,14 +87,14 @@ export const deleteMessageParamsSchema = z.object({
 })
 
 /**
- * Schema for UUID path param.
+ * @description Schema for conversation UUID path param.
  */
 export const conversationIdParamSchema = z.object({
   id: z.string().uuid('Invalid conversation ID'),
 })
 
 /**
- * Schema for renaming a conversation.
+ * @description Schema for renaming a conversation.
  */
 export const renameConversationSchema = z.object({
   /** New name/title for the conversation */
@@ -98,7 +102,8 @@ export const renameConversationSchema = z.object({
 })
 
 /**
- * Schema for text-to-speech request body.
+ * @description Schema for text-to-speech request body.
+ * Validates text content and optional voice/speed/format parameters.
  */
 export const ttsSchema = z.object({
   /** Text to synthesize into speech */

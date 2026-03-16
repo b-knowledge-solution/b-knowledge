@@ -1,17 +1,21 @@
 /**
- * Broadcast message controller: serves active system notices and manages admin CRUD with audit context.
+ * @fileoverview Broadcast message controller: serves active system notices and manages admin CRUD with audit context.
+ * @module modules/broadcast/controllers/broadcast-message
  */
 import { Request, Response } from 'express'
 import { broadcastMessageService } from '@/modules/broadcast/services/broadcast-message.service.js'
 import { log } from '@/shared/services/logger.service.js'
 import { getClientIp } from '@/shared/utils/ip.js'
 
+/**
+ * @description Controller for broadcast message endpoints including public active messages and admin CRUD
+ */
 export class BroadcastMessageController {
     /**
-     * Get active broadcast messages for the current user.
-     * @param req - Express request object.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Get active broadcast messages for the current user
+     * @param {Request} req - Express request object
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
      */
     async getActive(req: Request, res: Response): Promise<void> {
         try {
@@ -28,10 +32,10 @@ export class BroadcastMessageController {
     }
 
     /**
-     * Get all broadcast messages (Admin only).
-     * @param req - Express request object.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Get all broadcast messages for admin management
+     * @param {Request} req - Express request object
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
      */
     async getAll(req: Request, res: Response): Promise<void> {
         try {
@@ -46,10 +50,10 @@ export class BroadcastMessageController {
     }
 
     /**
-     * Create a new broadcast message.
-     * @param req - Express request object containing message details.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Create a new broadcast message with audit trail
+     * @param {Request} req - Express request object containing message details
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
      */
     async create(req: Request, res: Response): Promise<void> {
         try {
@@ -66,10 +70,10 @@ export class BroadcastMessageController {
     }
 
     /**
-     * Update an existing broadcast message.
-     * @param req - Express request object containing updates.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Update an existing broadcast message by ID
+     * @param {Request} req - Express request object containing updates
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
      */
     async update(req: Request, res: Response): Promise<void> {
         const { id } = req.params;
@@ -98,10 +102,10 @@ export class BroadcastMessageController {
     }
 
     /**
-     * Delete a broadcast message.
-     * @param req - Express request object.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Delete a broadcast message by ID with audit trail
+     * @param {Request} req - Express request object
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
      */
     async delete(req: Request, res: Response): Promise<void> {
         const { id } = req.params;
@@ -130,10 +134,10 @@ export class BroadcastMessageController {
     }
 
     /**
-     * Dismiss a broadcast message for the current user.
-     * @param req - Express request object.
-     * @param res - Express response object.
-     * @returns Promise<any>
+     * @description Dismiss a broadcast message for the current user, storing preference server-side if authenticated
+     * @param {Request} req - Express request object
+     * @param {Response} res - Express response object
+     * @returns {Promise<any>}
      */
     async dismiss(req: Request, res: Response): Promise<any> {
         try {

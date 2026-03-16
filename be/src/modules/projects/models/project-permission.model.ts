@@ -6,7 +6,8 @@ import { db } from '@/shared/db/knex.js'
 import { ProjectPermission } from '@/shared/models/types.js'
 
 /**
- * ProjectPermissionModel provides CRUD operations for the project_permissions table.
+ * @description Provides CRUD operations for the project_permissions table,
+ *   which stores tab-level access grants (documents, chat, settings) for users and teams
  * @extends BaseModel<ProjectPermission>
  */
 export class ProjectPermissionModel extends BaseModel<ProjectPermission> {
@@ -14,9 +15,9 @@ export class ProjectPermissionModel extends BaseModel<ProjectPermission> {
   protected knex = db
 
   /**
-   * Find all permissions for a given project.
-   * @param projectId - UUID of the project
-   * @returns Array of permission records
+   * @description Find all permission entries for a given project, ordered newest first
+   * @param {string} projectId - UUID of the project
+   * @returns {Promise<ProjectPermission[]>} Array of permission records
    */
   async findByProjectId(projectId: string): Promise<ProjectPermission[]> {
     return this.knex(this.tableName)
@@ -25,10 +26,10 @@ export class ProjectPermissionModel extends BaseModel<ProjectPermission> {
   }
 
   /**
-   * Find permissions granted to a specific grantee across all projects.
-   * @param granteeType - 'user' or 'team'
-   * @param granteeId - UUID of the grantee
-   * @returns Array of permission records
+   * @description Find all permissions granted to a specific grantee across all projects
+   * @param {string} granteeType - 'user' or 'team'
+   * @param {string} granteeId - UUID of the grantee
+   * @returns {Promise<ProjectPermission[]>} Array of permission records
    */
   async findByGrantee(granteeType: string, granteeId: string): Promise<ProjectPermission[]> {
     return this.knex(this.tableName)

@@ -1,17 +1,20 @@
 /**
- * Admin History Controller
+ * @fileoverview Admin History Controller
  * Handles internal requests for viewing chat and search history.
  */
 import { Request, Response } from 'express';
 import { log } from '@/shared/services/logger.service.js';
 import { adminHistoryService } from '@/modules/admin/services/admin-history.service.js';
 
+/**
+ * @description Handles admin requests for viewing chat and search history across all users
+ */
 export class AdminHistoryController {
     /**
-     * Get chat history grouped by session.
-     * @param req - Express request object containing query parameters.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Retrieve paginated chat history with optional filters for email, date range, and search text
+     * @param {Request} req - Express request object containing query parameters (page, limit, q, email, startDate, endDate, sourceName)
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
      */
     async getChatHistory(req: Request, res: Response): Promise<void> {
         try {
@@ -35,15 +38,16 @@ export class AdminHistoryController {
     }
 
     /**
-     * Get details for a specific chat session.
-     * @param req - Express request object containing route parameters.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Retrieve all messages for a specific chat session by its session ID
+     * @param {Request} req - Express request object containing sessionId route parameter
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
      */
     async getChatSessionDetails(req: Request, res: Response): Promise<void> {
         try {
             // Extract session ID from route parameters
             const { sessionId } = req.params;
+            // Guard: reject requests without a session ID
             if (!sessionId) {
                 res.status(400).json({ error: 'Session ID is required' });
                 return;
@@ -60,10 +64,10 @@ export class AdminHistoryController {
     }
 
     /**
-     * Get search history grouped by session.
-     * @param req - Express request object containing query parameters.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Retrieve paginated search history with optional filters for email, date range, and search text
+     * @param {Request} req - Express request object containing query parameters (page, limit, q, email, startDate, endDate, sourceName)
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
      */
     async getSearchHistory(req: Request, res: Response): Promise<void> {
         try {
@@ -87,15 +91,16 @@ export class AdminHistoryController {
     }
 
     /**
-     * Get details for a specific search session.
-     * @param req - Express request object containing route parameters.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Retrieve all records for a specific search session by its session ID
+     * @param {Request} req - Express request object containing sessionId route parameter
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
      */
     async getSearchSessionDetails(req: Request, res: Response): Promise<void> {
         try {
             // Extract session ID from route parameters
             const { sessionId } = req.params;
+            // Guard: reject requests without a session ID
             if (!sessionId) {
                 res.status(400).json({ error: 'Session ID is required' });
                 return;
@@ -112,10 +117,10 @@ export class AdminHistoryController {
     }
 
     /**
-     * Get system chat history.
-     * @param req - Express request object containing query parameters.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Retrieve paginated system-level chat history with optional search filtering
+     * @param {Request} req - Express request object containing query parameters (page, limit, q)
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
      */
     async getSystemChatHistory(req: Request, res: Response): Promise<void> {
         try {

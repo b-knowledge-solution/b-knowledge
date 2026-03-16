@@ -2,10 +2,18 @@ import * as React from 'react';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import { cn } from '@/lib/utils';
 
+/** @description Global tooltip delay and skip-delay configuration provider */
 const TooltipProvider = TooltipPrimitive.Provider;
+/** @description Root tooltip state container wrapping Radix Tooltip */
 const Tooltip = TooltipPrimitive.Root;
+/** @description Element that triggers the tooltip on hover/focus */
 const TooltipTrigger = TooltipPrimitive.Trigger;
 
+/**
+ * @description Tooltip content popup with enter/exit animations
+ * @param {React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>} props - Content props including sideOffset
+ * @returns {JSX.Element} Rendered tooltip content
+ */
 const TooltipContent = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>

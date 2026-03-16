@@ -13,7 +13,7 @@ import { db } from '@/shared/db/knex.js'
 import { UserTeam, User, Team } from '@/shared/models/types.js'
 
 /**
- * Extended user info returned when fetching team members.
+ * @description Extended user info returned when fetching team members, including membership role and join date
  */
 export interface TeamMemberInfo {
   id: string

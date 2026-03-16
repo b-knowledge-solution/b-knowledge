@@ -65,10 +65,10 @@ import CreateProjectModal from '../components/CreateProjectModal'
 // ============================================================================
 
 /**
- * Project list page showing all projects as cards.
- *
- * Users can create, edit, and delete projects here.
+ * @description Project list page showing all projects as cards with category filtering.
+ * Supports create, edit, delete, and permission management for projects.
  * Clicking a project card navigates to the project detail page.
+ * @returns {JSX.Element} Rendered project list page
  */
 const ProjectListPage = () => {
   const { t } = useTranslation()

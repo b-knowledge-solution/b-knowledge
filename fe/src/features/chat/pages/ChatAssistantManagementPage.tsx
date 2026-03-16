@@ -63,7 +63,7 @@ export default function ChatAssistantManagementPage() {
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
   /**
-   * Update the search term in URL state, resetting to page 1.
+   * @description Update the search term in URL state, resetting to page 1.
    * @param value - New search term
    */
   const handleSearchChange = (value: string) => {
@@ -79,7 +79,7 @@ export default function ChatAssistantManagementPage() {
   }
 
   /**
-   * Update the current page in URL state.
+   * @description Update the current page in URL state.
    * @param newPage - Target page number
    */
   const handlePageChange = (newPage: number) => {
@@ -93,7 +93,7 @@ export default function ChatAssistantManagementPage() {
   }
 
   /**
-   * Invalidate assistant cache to trigger refetch.
+   * @description Invalidate assistant cache to trigger refetch.
    */
   const refreshAssistants = () =>
     queryClient.invalidateQueries({ queryKey: queryKeys.chat.all })
@@ -107,7 +107,7 @@ export default function ChatAssistantManagementPage() {
   const [accessAssistant, setAccessAssistant] = useState<ChatAssistant | null>(null)
 
   /**
-   * Open the config dialog in create mode.
+   * @description Open the config dialog in create mode.
    */
   const openCreate = () => {
     setEditingAssistant(null)
@@ -115,7 +115,7 @@ export default function ChatAssistantManagementPage() {
   }
 
   /**
-   * Open the config dialog in edit mode.
+   * @description Open the config dialog in edit mode.
    * @param assistant - The assistant to edit
    */
   const openEdit = (assistant: ChatAssistant) => {
@@ -124,7 +124,7 @@ export default function ChatAssistantManagementPage() {
   }
 
   /**
-   * Handle save from config dialog (create or update).
+   * @description Handle save from config dialog (create or update).
    * @param data - The assistant payload
    */
   const handleSave = async (data: CreateAssistantPayload) => {
@@ -145,7 +145,7 @@ export default function ChatAssistantManagementPage() {
   }
 
   /**
-   * Confirm and delete an assistant.
+   * @description Confirm and delete an assistant with user confirmation.
    * @param assistant - The assistant to delete
    */
   const handleDelete = async (assistant: ChatAssistant) => {
@@ -166,7 +166,7 @@ export default function ChatAssistantManagementPage() {
   }
 
   /**
-   * Open the access control dialog for a specific assistant.
+   * @description Open the access control dialog for a specific assistant.
    * @param assistant - The assistant to manage access for
    */
   const openAccess = (assistant: ChatAssistant) => {

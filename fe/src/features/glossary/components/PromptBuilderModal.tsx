@@ -135,6 +135,12 @@ const StepIndicator = ({ steps, currentStep }: { steps: string[]; currentStep: n
 // Component
 // ============================================================================
 
+/**
+ * @description Step-by-step prompt builder modal. Users select a language, task, and keyword
+ * to generate a formatted prompt with task instructions and contextual keyword references.
+ * @param {PromptBuilderModalProps} props - Modal open state, close handler, and optional apply callback.
+ * @returns {JSX.Element} Rendered prompt builder dialog.
+ */
 export const PromptBuilderModal = ({ open, onClose, onApply }: PromptBuilderModalProps) => {
     const { t, i18n } = useTranslation()
 

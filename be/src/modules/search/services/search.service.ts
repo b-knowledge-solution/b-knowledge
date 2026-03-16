@@ -21,14 +21,15 @@ import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
 import type { LangfuseTraceClient } from 'langfuse'
 
 /**
- * Service class for search app CRUD and search execution.
+ * @description Service handling search app CRUD, RBAC-based listing, multi-dataset search execution,
+ *   AI-powered summary streaming, related question generation, and mindmap creation
  */
 export class SearchService {
   /**
-   * Create a new search app configuration.
-   * @param data - Search app creation data
-   * @param userId - ID of the user creating the app
-   * @returns The created SearchApp record
+   * @description Create a new search app configuration in the database
+   * @param {object} data - Search app creation data including name, dataset_ids, and optional config
+   * @param {string} userId - ID of the user creating the app
+   * @returns {Promise<SearchApp>} The created SearchApp record
    */
   async createSearchApp(
     data: {
@@ -56,11 +57,11 @@ export class SearchService {
   }
 
   /**
-   * Update an existing search app.
-   * @param searchId - UUID of the search app to update
-   * @param data - Partial search app data to update
-   * @param userId - ID of the user performing the update
-   * @returns The updated SearchApp if found, undefined otherwise
+   * @description Update an existing search app with partial data
+   * @param {string} searchId - UUID of the search app to update
+   * @param {Partial<Pick<SearchApp, 'name' | 'description' | 'dataset_ids' | 'search_config' | 'is_public'>>} data - Partial search app data
+   * @param {string} userId - ID of the user performing the update
+   * @returns {Promise<SearchApp | undefined>} The updated SearchApp if found, undefined otherwise
    */
   async updateSearchApp(
     searchId: string,
@@ -79,9 +80,9 @@ export class SearchService {
   }
 
   /**
-   * List all search apps, optionally filtered by creator.
-   * @param userId - Optional user ID to filter by
-   * @returns Array of SearchApp records
+   * @description List all search apps, optionally filtered by creator user
+   * @param {string} [userId] - Optional user ID to filter by creator
+   * @returns {Promise<SearchApp[]>} Array of SearchApp records
    */
   async listSearchApps(userId?: string): Promise<SearchApp[]> {
     const filter = userId ? { created_by: userId } : undefined
@@ -89,17 +90,18 @@ export class SearchService {
   }
 
   /**
-   * Get a single search app by ID.
-   * @param searchId - UUID of the search app
-   * @returns The SearchApp if found, undefined otherwise
+   * @description Retrieve a single search app by its UUID
+   * @param {string} searchId - UUID of the search app
+   * @returns {Promise<SearchApp | undefined>} The SearchApp if found, undefined otherwise
    */
   async getSearchApp(searchId: string): Promise<SearchApp | undefined> {
     return ModelFactory.searchApp.findById(searchId)
   }
 
   /**
-   * Delete a search app by ID.
-   * @param searchId - UUID of the search app to delete
+   * @description Delete a search app by its UUID
+   * @param {string} searchId - UUID of the search app to delete
+   * @returns {Promise<void>}
    */
   async deleteSearchApp(searchId: string): Promise<void> {
     await ModelFactory.searchApp.delete(searchId)
@@ -328,9 +330,11 @@ export class SearchService {
   }
 
   /**
-   * Perform a dry-run retrieval test without LLM summary.
-   * @param searchId - UUID of the search app
-   * @param data - Request body containing test parameters
+   * @description Perform a dry-run retrieval test without LLM summary for testing search quality
+   * @param {string} searchId - UUID of the search app
+   * @param {any} data - Request body containing query, top_k, method, similarity_threshold
+   * @returns {Promise<{ chunks: any[], doc_aggs: any[] }>} Raw chunks with scores and document aggregations
+   * @throws {Error} If search app not found
    */
   async retrievalTest(searchId: string, data: any): Promise<{ chunks: any[], doc_aggs: any[] }> {
     const app = await ModelFactory.searchApp.findById(searchId)

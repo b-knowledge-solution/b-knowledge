@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { Button, type ButtonProps } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 
+/** @description Configuration props for the Pagination component */
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
@@ -12,10 +13,18 @@ interface PaginationProps {
   siblingCount?: number;
 }
 
-/** Generates the range of page numbers to display */
+/**
+ * @description Generates the range of page numbers to display with ellipsis dots
+ * @param {number} current - Current active page number
+ * @param {number} total - Total number of pages
+ * @param {number} siblings - Number of sibling pages to show around current
+ * @returns {(number | 'dots')[]} Array of page numbers and 'dots' placeholders
+ */
 function generatePageRange(current: number, total: number, siblings: number): (number | 'dots')[] {
-  const totalNumbers = siblings * 2 + 5; // siblings + boundaries + current + 2 dots
+  // Total visible slots: siblings on each side + first + last + current + 2 dot slots
+  const totalNumbers = siblings * 2 + 5;
 
+  // Show all pages when total fits within available slots
   if (total <= totalNumbers) {
     return Array.from({ length: total }, (_, i) => i + 1);
   }
@@ -26,25 +35,29 @@ function generatePageRange(current: number, total: number, siblings: number): (n
   const showLeftDots = leftSiblingIndex > 2;
   const showRightDots = rightSiblingIndex < total - 1;
 
+  // Near the start: show left pages + dots + last page
   if (!showLeftDots && showRightDots) {
     const leftItemCount = 3 + 2 * siblings;
     const leftRange = Array.from({ length: leftItemCount }, (_, i) => i + 1);
     return [...leftRange, 'dots' as const, total];
   }
 
+  // Near the end: show first page + dots + right pages
   if (showLeftDots && !showRightDots) {
     const rightItemCount = 3 + 2 * siblings;
     const rightRange = Array.from({ length: rightItemCount }, (_, i) => total - rightItemCount + i + 1);
     return [1, 'dots' as const, ...rightRange];
   }
 
+  // In the middle: first + dots + siblings + dots + last
   const middleRange = Array.from({ length: rightSiblingIndex - leftSiblingIndex + 1 }, (_, i) => leftSiblingIndex + i);
   return [1, 'dots' as const, ...middleRange, 'dots' as const, total];
 }
 
 /**
- * Pagination component.
- * Replaces Ant Design's Pagination.
+ * @description Page navigation with prev/next buttons and numbered page links
+ * @param {PaginationProps} props - Pagination configuration including currentPage and totalPages
+ * @returns {JSX.Element | null} Rendered pagination nav or null when totalPages <= 1
  */
 export function Pagination({ currentPage, totalPages, onPageChange, className, siblingCount = 1 }: PaginationProps) {
   const { t } = useTranslation();
@@ -95,6 +108,11 @@ export function Pagination({ currentPage, totalPages, onPageChange, className, s
   );
 }
 
+/**
+ * @description Compact button styled for pagination controls
+ * @param {ButtonProps} props - Button props
+ * @returns {JSX.Element} Rendered pagination button
+ */
 function PaginationButton({ className, ...props }: ButtonProps) {
   return <Button className={cn('h-9 min-w-9 px-3', className)} {...props} />;
 }

@@ -10,12 +10,15 @@ import { getClientIp } from '@/shared/utils/ip.js'
 import { config } from '@/shared/config/index.js'
 import { updateAuthTimestamp, getCurrentUser } from '@/shared/middleware/auth.middleware.js'
 
+/**
+ * @description Handles Azure AD OAuth, root/local login, token refresh, and session lifecycle management
+ */
 export class AuthController {
     /**
-     * Get authenication configuration (public).
-     * @param req - Express request object.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Return public authentication configuration for frontend MSAL initialization
+     * @param {Request} req - Express request object
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
      */
     async getAuthConfig(req: Request, res: Response): Promise<void> {
         res.json({
@@ -29,10 +32,10 @@ export class AuthController {
     }
 
     /**
-     * Get current user session info.
-     * @param req - Express request object.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Return current authenticated user from session, verifying user still exists in DB
+     * @param {Request} req - Express request object
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
      */
     async getMe(req: Request, res: Response): Promise<void> {
         if (req.session?.user) {
@@ -75,10 +78,10 @@ export class AuthController {
     }
 
     /**
-     * Initiate Azure AD login flow.
-     * @param req - Express request object.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Initiate Azure AD OAuth login flow by generating state token and redirecting to authorization URL
+     * @param {Request} req - Express request object
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
      */
     async loginAzureAd(req: Request, res: Response): Promise<void> {
         // CSRF-style state guard per OAuth best practices
@@ -89,10 +92,10 @@ export class AuthController {
     }
 
     /**
-     * Handle Azure AD callback.
-     * @param req - Express request object.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Handle Azure AD OAuth callback: validate state, exchange code for tokens, upsert user, and create session
+     * @param {Request} req - Express request object containing code, state, and error query parameters
+     * @param {Response} res - Express response object (redirects to frontend)
+     * @returns {Promise<void>}
      */
     async handleCallback(req: Request, res: Response): Promise<void> {
         const { code, state, error } = req.query;
@@ -167,10 +170,10 @@ export class AuthController {
     }
 
     /**
-     * Logout user and destroy session.
-     * @param req - Express request object.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Destroy the current user session to log them out
+     * @param {Request} req - Express request object
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
      */
     async logout(req: Request, res: Response): Promise<void> {
         // Destroy session
@@ -185,10 +188,10 @@ export class AuthController {
     }
 
     /**
-     * Re-authenticate user (e.g. for sensitive actions).
-     * @param req - Express request object.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Re-authenticate user by verifying password for sensitive operations (supports root, test, and local accounts)
+     * @param {Request} req - Express request object with password in body
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
      */
     async reauth(req: Request, res: Response): Promise<void> {
         const user = getCurrentUser(req)
@@ -266,10 +269,10 @@ export class AuthController {
     }
 
     /**
-     * Refresh access token.
-     * @param req - Express request object.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Refresh the Azure AD access token using the stored refresh token in session
+     * @param {Request} req - Express request object
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
      */
     async refreshToken(req: Request, res: Response): Promise<void> {
         const user = getCurrentUser(req)
@@ -307,10 +310,10 @@ export class AuthController {
     }
 
     /**
-     * Get status of current token.
-     * @param req - Express request object.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Report whether the session contains a valid access token for client-side expiry decisions
+     * @param {Request} req - Express request object
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
      */
     async getTokenStatus(req: Request, res: Response): Promise<void> {
         // Check if access token exists in session
@@ -319,10 +322,10 @@ export class AuthController {
     }
 
     /**
-     * Login as root user.
-     * @param req - Express request object.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Authenticate using local root credentials and create a session with admin privileges
+     * @param {Request} req - Express request object with username and password in body
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
      */
     async loginRoot(req: Request, res: Response): Promise<void> {
         try {
@@ -349,20 +352,20 @@ export class AuthController {
     }
 
     /**
-     * Generic login handler (aliased to loginRoot for now).
-     * @param req - Express request object.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Generic login handler, currently delegates to loginRoot
+     * @param {Request} req - Express request object
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
      */
     async login(req: Request, res: Response): Promise<void> {
         await this.loginRoot(req, res);
     }
 
     /**
-     * Callback alias.
-     * @param req - Express request object.
-     * @param res - Express response object.
-     * @returns Promise<void>
+     * @description Callback alias that delegates to handleCallback for route flexibility
+     * @param {Request} req - Express request object
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
      */
     async callback(req: Request, res: Response): Promise<void> {
         await this.handleCallback(req, res);

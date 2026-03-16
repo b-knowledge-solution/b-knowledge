@@ -6,7 +6,8 @@ import { db } from '@/shared/db/knex.js'
 import { ProjectSyncConfig } from '@/shared/models/types.js'
 
 /**
- * ProjectSyncConfigModel provides CRUD operations for the project_sync_configs table.
+ * @description Provides CRUD operations for the project_sync_configs table,
+ *   which stores external data source sync configurations linked to projects
  * @extends BaseModel<ProjectSyncConfig>
  */
 export class ProjectSyncConfigModel extends BaseModel<ProjectSyncConfig> {
@@ -14,9 +15,9 @@ export class ProjectSyncConfigModel extends BaseModel<ProjectSyncConfig> {
   protected knex = db
 
   /**
-   * Find all sync configs for a given project.
-   * @param projectId - UUID of the project
-   * @returns Array of sync config records
+   * @description Find all sync configurations for a given project, ordered newest first
+   * @param {string} projectId - UUID of the project
+   * @returns {Promise<ProjectSyncConfig[]>} Array of sync config records
    */
   async findByProjectId(projectId: string): Promise<ProjectSyncConfig[]> {
     return this.knex(this.tableName)

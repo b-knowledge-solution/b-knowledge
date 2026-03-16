@@ -5,11 +5,11 @@
  */
 
 /**
- * Related question generation prompt template.
+ * @description Related question generation prompt template for expanding search scope with alternative queries.
  */
 export const relatedQuestionPrompt = {
   /**
-   * System prompt for generating related questions.
+   * @description System prompt instructing the LLM to generate 5-10 related questions from a user's query.
    */
   system: `# Role
 You are an AI language model assistant tasked with generating **5-10 related questions** based on a user's original query.

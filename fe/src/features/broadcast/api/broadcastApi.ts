@@ -19,9 +19,11 @@ export const broadcastMessageService = {
      * @throws {Error} If the fetch fails.
      */
     async getActiveMessages(): Promise<BroadcastMessage[]> {
+        // Include credentials for session-based auth to filter user-specific dismissals
         const response = await fetch(`${API_BASE_URL}/api/broadcast-messages/active`, {
             credentials: 'include',
         });
+        // Throw on non-2xx to let TanStack Query handle error state
         if (!response.ok) {
             throw new Error('Failed to fetch active broadcast messages');
         }

@@ -20,7 +20,9 @@ import { LanguageCode, SUPPORTED_LANGUAGES } from '@/i18n';
 // Types
 // ============================================================================
 
-/** Theme options: explicit light/dark or system preference */
+/**
+ * @description Theme preference options: explicit light/dark or automatic system detection
+ */
 export type Theme = 'light' | 'dark' | 'system';
 
 /**
@@ -110,10 +112,9 @@ interface SettingsProviderProps {
 }
 
 /**
- * Settings provider component.
- * Manages theme, language, and settings dialog state.
- * 
- * @param children - Child components to wrap
+ * @description Manages theme, language, and settings dialog state with localStorage persistence
+ * @param {SettingsProviderProps} props - Provider props containing children to wrap
+ * @returns {JSX.Element} Context provider wrapping children with settings state
  */
 export function SettingsProvider({ children }: SettingsProviderProps) {
   const { i18n } = useTranslation();
@@ -207,12 +208,10 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
 // ============================================================================
 
 /**
- * Hook to access settings context.
- * Must be used within a SettingsProvider.
- * 
- * @returns Settings context with theme, language, and dialog controls
- * @throws Error if used outside SettingsProvider
- * 
+ * @description Accesses the settings context for theme, language, and dialog controls
+ * @returns {SettingsContextType} Settings context value
+ * @throws {Error} If used outside of a SettingsProvider
+ *
  * @example
  * ```tsx
  * const { theme, setTheme, isDarkMode } = useSettings();

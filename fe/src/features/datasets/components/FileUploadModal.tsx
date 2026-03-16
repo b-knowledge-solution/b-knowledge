@@ -16,10 +16,15 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
 
+/** @description Props for the FileUploadModal component. */
 interface FileUploadModalProps {
+  /** Whether the modal is open */
   open: boolean
+  /** Whether upload is in progress */
   uploading: boolean
+  /** Callback to upload selected files */
   onUpload: (files: File[]) => Promise<void>
+  /** Callback to cancel and close the modal */
   onCancel: () => void
 }
 
@@ -96,6 +101,14 @@ function formatSize(bytes: number): string {
 // Component
 // ============================================================================
 
+/**
+ * @description Modal dialog for uploading files and folders to a dataset.
+ * Supports drag-and-drop (including recursive folder traversal), file picker,
+ * and folder picker with accepted extension filtering and file list preview.
+ *
+ * @param {FileUploadModalProps} props - Component properties
+ * @returns {JSX.Element} Rendered file upload modal
+ */
 const FileUploadModal: React.FC<FileUploadModalProps> = ({
   open,
   uploading,

@@ -22,7 +22,7 @@
 // ============================================================================
 
 /**
- * Available user roles in the system.
+ * @description Available user roles in the system.
  * Roles are hierarchical in terms of permissions:
  * - admin: Full system access
  * - leader: User management and content access
@@ -31,7 +31,7 @@
 export type Role = 'admin' | 'leader' | 'user';
 
 /**
- * Available permissions that can be assigned to roles.
+ * @description Available permissions that can be assigned to roles.
  * 
  * Permissions:
  * - view_chat: Access to AI Chat feature
@@ -65,30 +65,29 @@ export type Permission =
 // ============================================================================
 
 /**
- * Default role assigned to new users.
+ * @description Default role assigned to new users.
  * New users from Azure AD get this role until an admin upgrades them.
  */
 export const DEFAULT_ROLE: Role = 'user';
 
 /**
- * Roles that have administrative privileges.
+ * @description Roles that have administrative privileges.
  * These roles can bypass certain ownership checks (IDOR prevention).
  * Used in authorization middleware for resource access decisions.
  */
 export const ADMIN_ROLES: readonly Role[] = ['admin', 'leader'] as const;
 
 /**
- * Check if a role has administrative privileges.
- * 
- * @param role - The role to check
- * @returns True if the role is an admin role
+ * @description Check if a role has administrative privileges.
+ * @param {string} role - The role to check
+ * @returns {boolean} True if the role is an admin role (admin or leader)
  */
 export function isAdminRole(role: string): boolean {
     return ADMIN_ROLES.includes(role as Role);
 }
 
 /**
- * Permission mappings for each role.
+ * @description Permission mappings for each role.
  * Defines which permissions are granted to each role.
  * 
  * Role capabilities:
@@ -137,20 +136,21 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 // ============================================================================
 
 /**
- * Checks if a given role has a specific permission.
- * 
- * @param userRole - The role to check (as string for flexibility)
- * @param permission - The permission to verify
- * @returns True if the role has the permission, false otherwise
- * 
+ * @description Checks if a given role has a specific permission.
+ * Admin role is granted all permissions by default (short-circuit).
+ * @param {string} userRole - The role to check (as string for flexibility)
+ * @param {Permission} permission - The permission to verify
+ * @returns {boolean} True if the role has the permission, false otherwise
+ *
  * @example
  * // Check if admin can manage users
  * hasPermission('admin', 'manage_users'); // true
- * 
+ *
  * // Check if regular user can manage system
  * hasPermission('user', 'manage_system'); // false
  */
 export const hasPermission = (userRole: string, permission: Permission): boolean => {
+    // Admin role has all permissions — no need to check the permission list
     if (userRole === 'admin') return true;
     const role = userRole as Role;
     const permissions = ROLE_PERMISSIONS[role] || [];

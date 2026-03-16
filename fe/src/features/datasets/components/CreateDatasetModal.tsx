@@ -16,16 +16,34 @@ import { PARSER_OPTIONS, LANGUAGE_OPTIONS } from '../types';
 import type { DatasetFormData } from '../api/datasetQueries';
 import { useProviders } from '@/features/llm-provider/api/llmProviderQueries';
 
+/**
+ * @description Props for the CreateDatasetModal component.
+ */
 interface CreateDatasetModalProps {
+  /** Whether the modal is open */
   open: boolean;
+  /** The dataset being edited, or null for creation mode */
   editingDataset: Dataset | null;
+  /** Whether the form is currently submitting */
   submitting: boolean;
+  /** Current form field values */
   formData: DatasetFormData;
+  /** Callback to update a single form field */
   setFormField: <K extends keyof DatasetFormData>(key: K, value: DatasetFormData[K]) => void;
+  /** Callback to submit the form */
   onSubmit: () => Promise<void>;
+  /** Callback to cancel and close the modal */
   onCancel: () => void;
 }
 
+/**
+ * @description Modal dialog for creating or editing a dataset.
+ * Includes fields for name, embedding model, parse type, language,
+ * page rank, and authorization settings.
+ *
+ * @param {CreateDatasetModalProps} props - Component properties
+ * @returns {JSX.Element} Rendered create/edit dataset modal
+ */
 const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
   open,
   editingDataset,
@@ -36,7 +54,9 @@ const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
   onCancel,
 }) => {
   const { t } = useTranslation();
+  // Fetch available LLM providers to populate embedding model dropdown
   const { data: providers } = useProviders();
+  // Filter providers to only show embedding-type models
   const embeddingModels = providers?.filter((p) => p.model_type === 'embedding') || [];
 
   return (

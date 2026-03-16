@@ -67,7 +67,7 @@ function ChatMessage({ message, onCitationClick, onChunkCitationClick, isLast, o
     : 'bg-muted text-muted-foreground ring-2 ring-muted-foreground/10'
 
   /**
-   * Copy message content to clipboard.
+   * @description Copy message content to clipboard with temporary success feedback.
    */
   const handleCopy = async () => {
     await navigator.clipboard.writeText(message.content)
@@ -76,8 +76,8 @@ function ChatMessage({ message, onCitationClick, onChunkCitationClick, isLast, o
   }
 
   /**
-   * Handle feedback button click and send to backend.
-   * @param type - Feedback type
+   * @description Handle feedback button click, toggle state, and send to backend.
+   * @param type - Feedback type ('up' or 'down')
    */
   const handleFeedback = async (type: 'up' | 'down') => {
     const newValue = feedback === type ? null : type

@@ -9,12 +9,14 @@ import { log } from '@/shared/services/logger.service.js';
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/index.js';
 import { BroadcastMessage } from '@/shared/models/types.js';
 
+/**
+ * @description Service for managing broadcast message lifecycle including CRUD, dismissal tracking, and audit logging
+ */
 export class BroadcastMessageService {
     /**
-     * Get all currently active broadcast messages.
-     * @param userId - Optional User ID to filter out dismissed messages.
-     * @returns Promise<BroadcastMessage[]> - List of active messages.
-     * @description Fetches messages that are currently active, optionally excluding those dismissed by the user.
+     * @description Fetch active broadcast messages, optionally excluding those dismissed by the user within 24h
+     * @param {string} userId - Optional User ID to filter out dismissed messages
+     * @returns {Promise<BroadcastMessage[]>} List of active messages
      */
     async getActiveMessages(userId?: string): Promise<BroadcastMessage[]> {
         try {
@@ -36,13 +38,12 @@ export class BroadcastMessageService {
     }
 
     /**
-     * Record a message dismissal for a user.
-     * @param userId - The ID of the user.
-     * @param broadcastId - The ID of the broadcast message.
-     * @param userEmail - Optional email for audit log.
-     * @param ipAddress - Optional IP address for audit log.
-     * @returns Promise<void>
-     * @description Marks a message as dismissed for a specific user and logs the action.
+     * @description Record a message dismissal for a user and log the action to audit trail
+     * @param {string} userId - The ID of the user
+     * @param {string} broadcastId - The ID of the broadcast message
+     * @param {string} userEmail - Optional email for audit log
+     * @param {string} ipAddress - Optional IP address for audit log
+     * @returns {Promise<void>}
      */
     async dismissMessage(userId: string, broadcastId: string, userEmail?: string, ipAddress?: string): Promise<void> {
         try {
@@ -68,9 +69,8 @@ export class BroadcastMessageService {
     }
 
     /**
-     * Get all broadcast messages (admin only).
-     * @returns Promise<BroadcastMessage[]> - List of all messages.
-     * @description Fetches all broadcast messages ordered by creation date.
+     * @description Fetch all broadcast messages ordered by creation date for admin listing
+     * @returns {Promise<BroadcastMessage[]>} List of all messages
      */
     async getAllMessages(): Promise<BroadcastMessage[]> {
         try {
@@ -84,11 +84,10 @@ export class BroadcastMessageService {
     }
 
     /**
-     * Create a new broadcast message.
-     * @param data - The message data.
-     * @param user - Optional user context for audit.
-     * @returns Promise<BroadcastMessage> - The created message.
-     * @description Creates a new broadcast message and logs the action.
+     * @description Create a new broadcast message with default colors and log to audit trail
+     * @param {Omit<BroadcastMessage, 'id' | 'created_at' | 'updated_at'>} data - The message data
+     * @param {{ id: string; email: string; ip?: string }} user - Optional user context for audit
+     * @returns {Promise<BroadcastMessage>} The created message
      */
     async createMessage(
         data: Omit<BroadcastMessage, 'id' | 'created_at' | 'updated_at'>,
@@ -134,12 +133,11 @@ export class BroadcastMessageService {
     }
 
     /**
-     * Update an existing broadcast message.
-     * @param id - The ID of the message to update.
-     * @param data - The data to update.
-     * @param user - Optional user context for audit.
-     * @returns Promise<BroadcastMessage | null> - The updated message or null.
-     * @description Updates a broadcast message and logs the action.
+     * @description Update an existing broadcast message with partial data and log to audit trail
+     * @param {string} id - The ID of the message to update
+     * @param {Partial<Omit<BroadcastMessage, 'id' | 'created_at' | 'updated_at'>>} data - The data to update
+     * @param {{ id: string; email: string; ip?: string }} user - Optional user context for audit
+     * @returns {Promise<BroadcastMessage | null>} The updated message or null
      */
     async updateMessage(
         id: string,
@@ -188,11 +186,10 @@ export class BroadcastMessageService {
     }
 
     /**
-     * Delete a broadcast message.
-     * @param id - The ID of the message to delete.
-     * @param user - Optional user context for audit.
-     * @returns Promise<boolean> - True if deleted successfully.
-     * @description Deletes a broadcast message and logs the action.
+     * @description Delete a broadcast message and log the action to audit trail
+     * @param {string} id - The ID of the message to delete
+     * @param {{ id: string; email: string; ip?: string }} user - Optional user context for audit
+     * @returns {Promise<boolean>} True if deleted successfully
      */
     async deleteMessage(id: string, user?: { id: string, email: string, ip?: string }): Promise<boolean> {
         try {
@@ -224,4 +221,5 @@ export class BroadcastMessageService {
     }
 }
 
+/** Singleton instance of the broadcast message service */
 export const broadcastMessageService = new BroadcastMessageService();

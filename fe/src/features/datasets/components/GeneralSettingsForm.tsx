@@ -139,7 +139,13 @@ const DEFAULT_ENTITY_TYPES = ['organization', 'person', 'geo', 'event', 'categor
 // Sub-components
 // ============================================================================
 
-/** Tag chip input for entity types / tag sets */
+/**
+ * @description Tag chip input component for managing lists of string tags.
+ * Supports Enter key to add, Backspace to remove last, and inline plus button.
+ *
+ * @param {{ tags: string[]; onChange: (tags: string[]) => void; placeholder?: string }} props
+ * @returns {JSX.Element} Rendered chip input
+ */
 const TagChipInput: React.FC<{
   tags: string[]
   onChange: (tags: string[]) => void
@@ -200,7 +206,13 @@ const TagChipInput: React.FC<{
   )
 }
 
-/** Slider with numeric display and validation range */
+/**
+ * @description Slider field with range input, numeric input, label, and optional tooltip.
+ * Clamps value within [min, max] on blur.
+ *
+ * @param {{ label: string; value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number; tooltip?: string }} props
+ * @returns {JSX.Element} Rendered slider with numeric input
+ */
 const SliderField: React.FC<{
   label: string
   value: number
@@ -252,6 +264,17 @@ const SliderField: React.FC<{
 // Main Component
 // ============================================================================
 
+/**
+ * @description Unified dataset configuration form organized into 5 sections:
+ * Basic (name, language, embedding model, page rank, tags),
+ * Ingestion Pipeline (parser, chunk size, toggles, sliders),
+ * Data Source (placeholder), Global Index (GraphRAG settings),
+ * and RAPTOR (summarization settings). Includes a right panel with
+ * parser method illustrations.
+ *
+ * @param {GeneralSettingsFormProps} props - Component properties
+ * @returns {JSX.Element} Rendered settings form with side panel
+ */
 const GeneralSettingsForm: React.FC<GeneralSettingsFormProps> = ({
   settings,
   saving,

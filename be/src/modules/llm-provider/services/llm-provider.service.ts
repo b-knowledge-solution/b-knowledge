@@ -1,12 +1,22 @@
+/**
+ * @fileoverview Service for managing LLM provider configurations with encryption, tenant sync, and connection testing.
+ * @module modules/llm-provider/services/llm-provider
+ */
 import { ModelFactory } from '@/shared/models/factory.js';
 import { log } from '@/shared/services/logger.service.js';
 import { cryptoService } from '@/shared/services/crypto.service.js';
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js';
 import { ModelProvider } from '@/shared/models/types.js';
 
+/**
+ * @description User context for audit logging on provider operations
+ */
 interface UserContext {
+    /** User UUID */
     id: string;
+    /** User email address */
     email: string;
+    /** Client IP address */
     ip?: string;
 }
 
@@ -20,7 +30,14 @@ export interface TestConnectionResult {
     error?: string;
 }
 
+/**
+ * @description Service for managing LLM provider configurations including CRUD, encryption, tenant sync, and connection testing
+ */
 export class LlmProviderService {
+    /**
+     * @description List all active model providers ordered by factory name
+     * @returns {Promise<ModelProvider[]>} Array of active providers
+     */
     async list(): Promise<ModelProvider[]> {
         return ModelFactory.modelProvider.findAll(
             { status: 'active' },
@@ -28,14 +45,29 @@ export class LlmProviderService {
         );
     }
 
+    /**
+     * @description Get a single model provider by ID
+     * @param {string} id - Provider UUID
+     * @returns {Promise<ModelProvider | undefined>} The provider or undefined
+     */
     async getById(id: string): Promise<ModelProvider | undefined> {
         return ModelFactory.modelProvider.findById(id);
     }
 
+    /**
+     * @description Get default model providers for each model type
+     * @returns {Promise<ModelProvider[]>} Array of default providers
+     */
     async getDefaults(): Promise<ModelProvider[]> {
         return ModelFactory.modelProvider.findDefaults();
     }
 
+    /**
+     * @description Create a new model provider, reactivating soft-deleted duplicates if found
+     * @param {any} data - Provider configuration data
+     * @param {UserContext} user - Optional user context for audit trail
+     * @returns {Promise<ModelProvider>} The created or reactivated provider
+     */
     async create(data: any, user?: UserContext): Promise<ModelProvider> {
         // Encrypt the API key before persisting to database
         const encryptedKey = data.api_key
@@ -104,7 +136,15 @@ export class LlmProviderService {
         return provider;
     }
 
+    /**
+     * @description Update an existing model provider and sync changes to tenant_llm
+     * @param {string} id - Provider UUID
+     * @param {any} data - Fields to update
+     * @param {UserContext} user - Optional user context for audit trail
+     * @returns {Promise<ModelProvider | undefined>} The updated provider or undefined if not found
+     */
     async update(id: string, data: any, user?: UserContext): Promise<ModelProvider | undefined> {
+        // Build update payload with only provided fields
         const updateData: any = {};
         if (data.factory_name !== undefined) updateData.factory_name = data.factory_name;
         if (data.model_type !== undefined) updateData.model_type = data.model_type;
@@ -145,6 +185,12 @@ export class LlmProviderService {
         return provider;
     }
 
+    /**
+     * @description Soft-delete a model provider and remove its tenant_llm sync row
+     * @param {string} id - Provider UUID
+     * @param {UserContext} user - Optional user context for audit trail
+     * @returns {Promise<void>}
+     */
     async delete(id: string, user?: UserContext): Promise<void> {
         // Fetch the provider before soft-deleting so we have the composite key
         const provider = await ModelFactory.modelProvider.findById(id);
@@ -174,14 +220,9 @@ export class LlmProviderService {
     }
 
     /**
-     * Test the connection to an LLM provider using raw HTTP fetch.
-     * Routes by model_type for accurate health checks:
-     *   - chat/VLM → POST chat/completions with a "hello" prompt
-     *   - embedding → POST embeddings with a test input
-     *   - others   → GET models list
-     * Tries multiple URL patterns to support OpenAI, LiteLLM, and Ollama.
-     * @param id - Provider UUID
-     * @returns Test result with success flag, latency, and optional error
+     * @description Test LLM provider connectivity using model-type-specific probe requests, trying multiple URL patterns
+     * @param {string} id - Provider UUID
+     * @returns {Promise<TestConnectionResult>} Test result with success flag, latency, and optional error
      */
     async testConnection(id: string): Promise<TestConnectionResult> {
         const provider = await ModelFactory.modelProvider.findById(id);
@@ -292,9 +333,9 @@ export class LlmProviderService {
     }
 
     /**
-     * Build the probe configuration (endpoint + method + body) for a model type.
-     * @param provider - The model provider record
-     * @returns Probe config with endpoint path, HTTP method, and optional body
+     * @description Build the probe configuration (endpoint, method, body) based on model type for connection testing
+     * @param {ModelProvider} provider - The model provider record
+     * @returns {{ endpoint: string; method: 'GET' | 'POST'; body?: Record<string, unknown> }} Probe config
      */
     private buildProbeConfig(provider: ModelProvider): {
         endpoint: string;
@@ -337,4 +378,5 @@ export class LlmProviderService {
     }
 }
 
+/** Singleton instance of the LLM provider service */
 export const llmProviderService = new LlmProviderService();

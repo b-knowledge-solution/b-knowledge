@@ -11,8 +11,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
  * Calendar (react-day-picker wrapper)
  * ======================================================================== */
 
+/** @description Props inherited from react-day-picker's DayPicker component */
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
+/**
+ * @description Styled calendar grid wrapping react-day-picker with themed class names
+ * @param {CalendarProps} props - DayPicker props including mode, selected, and onSelect
+ * @returns {JSX.Element} Rendered calendar grid
+ */
 function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
   return (
     <DayPicker
@@ -58,6 +64,7 @@ Calendar.displayName = 'Calendar';
  * DatePicker (Calendar in a Popover)
  * ======================================================================== */
 
+/** @description Configuration props for the DatePicker component */
 interface DatePickerProps {
   value?: Date | undefined;
   onChange?: ((date: Date | undefined) => void) | undefined;
@@ -71,8 +78,9 @@ interface DatePickerProps {
 }
 
 /**
- * DatePicker component.
- * Replaces Ant Design's DatePicker.
+ * @description Single date picker with popover calendar, replacing Ant Design's DatePicker
+ * @param {DatePickerProps} props - Date picker configuration including value, onChange, and format
+ * @returns {JSX.Element} Rendered date picker with trigger button and calendar popover
  */
 export function DatePicker({
   value,

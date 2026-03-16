@@ -20,7 +20,9 @@ import type { ChatMessage, ChatReference, SendMessageOptions } from '../types/ch
 // Types
 // ============================================================================
 
-/** Pipeline status sent during retrieval/processing phases */
+/**
+ * @description Pipeline status sent during retrieval/processing phases of the RAG pipeline.
+ */
 export type PipelineStatus =
   | 'refining_question'
   | 'retrieving'
@@ -31,7 +33,9 @@ export type PipelineStatus =
   | 'deep_research'
   | 'embedding'
 
-/** Performance metrics from the RAG pipeline */
+/**
+ * @description Performance metrics from the RAG pipeline for timing and retrieval stats.
+ */
 export interface PipelineMetrics {
   refinement_ms?: number
   retrieval_ms?: number
@@ -265,7 +269,7 @@ export function useChatStream(
   }
 
   /**
-   * Abort the current streaming response.
+   * @description Abort the current streaming response and save partial answer.
    */
   const stopStream = () => {
     if (abortRef.current) {
@@ -291,7 +295,7 @@ export function useChatStream(
   }
 
   /**
-   * Clear all messages.
+   * @description Clear all messages and reset streaming state.
    */
   const clearMessages = () => {
     setMessages([])
@@ -305,7 +309,7 @@ export function useChatStream(
   }
 
   /**
-   * Regenerate the last assistant message by removing it and re-sending
+   * @description Regenerate the last assistant message by removing it and re-sending
    * the last user message.
    */
   const regenerateLastMessage = () => {

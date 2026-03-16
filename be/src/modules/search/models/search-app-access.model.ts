@@ -8,9 +8,8 @@ import { db } from '@/shared/db/knex.js'
 import { SearchAppAccess } from '@/shared/models/types.js'
 
 /**
- * SearchAppAccessModel
- * Represents the 'search_app_access' table.
- * Manages user and team access grants for search app configurations.
+ * @description Model for the search_app_access junction table, managing user and team
+ *   access grants for search app configurations with transactional bulk replace support
  */
 export class SearchAppAccessModel extends BaseModel<SearchAppAccess> {
   /** Table name in the database */
@@ -19,9 +18,9 @@ export class SearchAppAccessModel extends BaseModel<SearchAppAccess> {
   protected knex = db
 
   /**
-   * Find all access entries for a specific search app.
-   * @param appId - UUID of the search app
-   * @returns Array of SearchAppAccess records for the app
+   * @description Find all access control entries for a specific search app
+   * @param {string} appId - UUID of the search app
+   * @returns {Promise<SearchAppAccess[]>} Array of SearchAppAccess records for the app
    */
   async findByAppId(appId: string): Promise<SearchAppAccess[]> {
     // Query access entries filtered by app_id
@@ -29,10 +28,10 @@ export class SearchAppAccessModel extends BaseModel<SearchAppAccess> {
   }
 
   /**
-   * Find all search app IDs accessible by a user (directly or via team membership).
-   * @param userId - UUID of the user
-   * @param teamIds - Array of team UUIDs the user belongs to
-   * @returns Array of unique app IDs the user can access
+   * @description Find all search app IDs accessible by a user (directly or via team membership)
+   * @param {string} userId - UUID of the user
+   * @param {string[]} teamIds - Array of team UUIDs the user belongs to
+   * @returns {Promise<string[]>} Array of unique app IDs the user can access
    */
   async findAccessibleAppIds(userId: string, teamIds: string[]): Promise<string[]> {
     // Build query to find apps accessible via user or team grants
@@ -57,12 +56,12 @@ export class SearchAppAccessModel extends BaseModel<SearchAppAccess> {
   }
 
   /**
-   * Replace all access entries for a search app with new entries (bulk upsert).
-   * Deletes existing entries and inserts new ones within a transaction.
-   * @param appId - UUID of the search app
-   * @param entries - Array of new access entries (entity_type + entity_id)
-   * @param createdBy - UUID of the user performing the operation
-   * @returns Array of newly created SearchAppAccess records
+   * @description Atomically replace all access entries for a search app with new entries.
+   *   Deletes existing entries and inserts new ones within a single transaction.
+   * @param {string} appId - UUID of the search app
+   * @param {Array<{ entity_type: 'user' | 'team'; entity_id: string }>} entries - New access entries
+   * @param {string} createdBy - UUID of the user performing the operation
+   * @returns {Promise<SearchAppAccess[]>} Array of newly created SearchAppAccess records
    */
   async bulkReplace(
     appId: string,

@@ -12,7 +12,7 @@
 // ============================================================================
 
 /**
- * Configuration for a widget API client.
+ * @description Configuration for a widget API client supporting both internal (cookie) and external (token) auth modes
  */
 export interface WidgetApiConfig {
   /** Embed token for external (cross-origin) mode */
@@ -22,7 +22,7 @@ export interface WidgetApiConfig {
 }
 
 /**
- * Determines the auth mode based on config.
+ * @description Authentication mode determined by whether a token is provided (external) or cookies are used (internal)
  */
 export type WidgetAuthMode = 'internal' | 'external'
 
@@ -31,14 +31,13 @@ export type WidgetAuthMode = 'internal' | 'external'
 // ============================================================================
 
 /**
- * Create a widget API client for a given module (search or chat).
- * Handles dual-mode authentication transparently.
- *
- * @param module - The widget module ('search' or 'chat')
- * @param config - Widget configuration with optional token and baseUrl
- * @returns Object with fetch methods scoped to the widget module
+ * @description Creates a widget API client for search or chat modules with transparent dual-mode authentication
+ * @param {'search' | 'chat'} module - The widget module type
+ * @param {WidgetApiConfig} config - Widget configuration with optional token and baseUrl
+ * @returns {{ mode: WidgetAuthMode; get: Function; post: Function; postStream: Function; getBaseUrl: Function; buildUrl: Function }} Widget API client with fetch methods
  */
 export function createWidgetApiClient(module: 'search' | 'chat', config: WidgetApiConfig) {
+  // Determine auth mode: token present means external (cross-origin), otherwise internal (same-origin cookies)
   const mode: WidgetAuthMode = config.token ? 'external' : 'internal'
 
   /**

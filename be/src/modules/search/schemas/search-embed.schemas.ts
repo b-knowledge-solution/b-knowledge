@@ -5,7 +5,7 @@
 import { z } from 'zod'
 
 /**
- * Schema for creating a new embed token for a search app.
+ * @description Validates request body for creating a new embed token for a search app
  */
 export const createEmbedTokenSchema = z.object({
   /** Human-readable label for the token */
@@ -15,28 +15,28 @@ export const createEmbedTokenSchema = z.object({
 })
 
 /**
- * Schema for the search app ID path parameter.
+ * @description Validates the search app UUID path parameter
  */
 export const embedAppIdParamSchema = z.object({
   id: z.string().uuid('Invalid search app ID'),
 })
 
 /**
- * Schema for the token ID path parameter (for revoke).
+ * @description Validates the token UUID path parameter for revocation
  */
 export const embedTokenIdParamSchema = z.object({
   tokenId: z.string().uuid('Invalid token ID'),
 })
 
 /**
- * Schema for the embed token path parameter (public endpoints).
+ * @description Validates the 64-character embed token path parameter for public endpoints
  */
 export const embedTokenParamSchema = z.object({
   token: z.string().length(64, 'Invalid token format'),
 })
 
 /**
- * Schema for the public embed search ask endpoint.
+ * @description Validates request body for the public embed search ask endpoint
  */
 export const embedAskSchema = z.object({
   /** The search query string */

@@ -18,7 +18,7 @@ import { log } from '@/shared/services/logger.service.js'
 // ============================================================================
 
 /**
- * Options for text-to-speech synthesis.
+ * @description Options for text-to-speech synthesis
  */
 export interface TtsOptions {
   /** Voice name (default: "alloy") */
@@ -34,20 +34,15 @@ export interface TtsOptions {
 // ============================================================================
 
 /**
- * TTS service class. Reads provider config from DB, calls OpenAI-compatible
+ * @description TTS service class. Reads provider config from the DB, calls OpenAI-compatible
  * TTS APIs, and streams audio chunks back to the caller.
  */
 export class TtsService {
   /**
-   * Normalize text for TTS: remove markdown formatting, code blocks, citations.
-   * Matches RAGFlow's normalize_text():
-   * - Strip **bold**, *italic* markers
-   * - Strip ## headers ##
-   * - Strip ``` code blocks ```
-   * - Strip citation markers ##ID:n$$
-   * - Collapse multiple whitespace
-   * @param text - Raw text with markdown
-   * @returns Clean text suitable for speech
+   * @description Normalize text for TTS: remove markdown formatting, code blocks, citations.
+   * Matches RAGFlow's normalize_text() behavior for consistent TTS output.
+   * @param {string} text - Raw text with markdown
+   * @returns {string} Clean text suitable for speech
    */
   normalizeText(text: string): string {
     let normalized = text
@@ -96,11 +91,11 @@ export class TtsService {
   }
 
   /**
-   * Split text into chunks suitable for TTS processing.
+   * @description Split text into chunks suitable for TTS processing.
    * Splits by sentence boundaries, keeping chunks under maxChars.
-   * @param text - Text to split
-   * @param maxChars - Max chars per chunk (default 500)
-   * @returns Array of text chunks
+   * @param {string} text - Text to split
+   * @param {number} [maxChars=500] - Max chars per chunk
+   * @returns {string[]} Array of text chunks
    */
   splitForTts(text: string, maxChars: number = 500): string[] {
     // Return as single chunk if short enough
@@ -140,14 +135,13 @@ export class TtsService {
   }
 
   /**
-   * Generate speech audio from text.
+   * @description Generate speech audio from text.
    * Reads TTS provider from model_providers (model_type = 'tts').
    * Streams audio chunks for efficient delivery.
-   *
-   * @param text - Text to synthesize
-   * @param options - TTS options (voice, speed, format)
-   * @param providerId - Optional specific TTS provider ID
-   * @returns Async generator yielding audio Buffer chunks
+   * @param {string} text - Text to synthesize
+   * @param {TtsOptions} [options] - TTS options (voice, speed, format)
+   * @param {string} [providerId] - Optional specific TTS provider ID
+   * @returns {AsyncGenerator<Buffer>} Async generator yielding audio Buffer chunks
    */
   async *synthesize(
     text: string,
@@ -181,15 +175,13 @@ export class TtsService {
   }
 
   /**
-   * Generate speech via OpenAI-compatible TTS API.
-   * POST {base_url}/v1/audio/speech
-   * Body: { model, voice, input, response_format, speed }
-   * Response: audio stream
-   *
-   * @param text - Text chunk to synthesize
-   * @param provider - Model provider config from DB
-   * @param options - TTS options
-   * @returns Async generator yielding audio Buffer chunks
+   * @description Generate speech via OpenAI-compatible TTS API.
+   * POST {base_url}/v1/audio/speech and stream the audio response.
+   * @param {string} text - Text chunk to synthesize
+   * @param {ModelProvider} provider - Model provider config from DB
+   * @param {TtsOptions} options - TTS options
+   * @returns {AsyncGenerator<Buffer>} Async generator yielding audio Buffer chunks
+   * @throws {Error} If the TTS API returns a non-OK response or empty body
    */
   private async *openaiTts(
     text: string,
@@ -245,12 +237,12 @@ export class TtsService {
   }
 
   /**
-   * Resolve TTS model provider from DB.
+   * @description Resolve TTS model provider from DB.
    * If providerId is given, fetch that specific provider.
-   * Otherwise find the first active TTS provider.
-   *
-   * @param providerId - Optional specific provider ID
-   * @returns The ModelProvider record for TTS
+   * Otherwise find the default or any active TTS provider.
+   * @param {string} [providerId] - Optional specific provider ID
+   * @returns {Promise<ModelProvider>} The ModelProvider record for TTS
+   * @throws {Error} If no active TTS provider is found
    */
   private async resolveTtsProvider(providerId?: string): Promise<ModelProvider> {
     // If a specific provider ID is given, look it up directly

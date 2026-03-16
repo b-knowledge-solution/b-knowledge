@@ -6,7 +6,7 @@
 import { z } from 'zod'
 
 /**
- * Shared LLM settings sub-schema for search app configuration.
+ * @description Shared LLM settings sub-schema for search app configuration
  */
 const llmSettingSchema = z.object({
   /** LLM temperature for response randomness */
@@ -18,7 +18,7 @@ const llmSettingSchema = z.object({
 }).optional()
 
 /**
- * Metadata filter condition sub-schema for OpenSearch bool query filtering.
+ * @description Metadata filter condition sub-schema for OpenSearch bool query filtering
  */
 const metadataConditionSchema = z.object({
   /** Field name to filter on */
@@ -30,7 +30,7 @@ const metadataConditionSchema = z.object({
 })
 
 /**
- * Metadata filter schema with logic combinator and conditions array.
+ * @description Metadata filter schema with logic combinator (and/or) and conditions array
  */
 const metadataFilterSchema = z.object({
   /** Logic combinator for conditions */
@@ -40,7 +40,7 @@ const metadataFilterSchema = z.object({
 }).optional()
 
 /**
- * Search configuration sub-schema with all supported config fields.
+ * @description Search configuration sub-schema with LLM, reranking, and retrieval settings
  */
 const searchConfigSchema = z.record(z.unknown()).and(
   z.object({
@@ -68,7 +68,7 @@ const searchConfigSchema = z.record(z.unknown()).and(
 ).optional()
 
 /**
- * Schema for creating a new search app.
+ * @description Validates request body for creating a new search app
  */
 export const createSearchAppSchema = z.object({
   /** Display name for the search app */
@@ -84,7 +84,7 @@ export const createSearchAppSchema = z.object({
 })
 
 /**
- * Schema for updating an existing search app.
+ * @description Validates request body for updating an existing search app
  */
 export const updateSearchAppSchema = z.object({
   /** Display name */
@@ -100,7 +100,7 @@ export const updateSearchAppSchema = z.object({
 })
 
 /**
- * Schema for executing a search query with pagination.
+ * @description Validates request body for executing a search query with pagination
  */
 export const executeSearchSchema = z.object({
   /** The search query string */
@@ -120,7 +120,7 @@ export const executeSearchSchema = z.object({
 })
 
 /**
- * Schema for the ask search endpoint (SSE streaming AI summary).
+ * @description Validates request body for the ask search endpoint (SSE streaming AI summary)
  */
 export const askSearchSchema = z.object({
   /** The search query string */
@@ -138,7 +138,7 @@ export const askSearchSchema = z.object({
 })
 
 /**
- * Schema for the related questions endpoint.
+ * @description Validates request body for the related questions generation endpoint
  */
 export const relatedQuestionsSchema = z.object({
   /** The user query to generate related questions from */
@@ -146,7 +146,7 @@ export const relatedQuestionsSchema = z.object({
 })
 
 /**
- * Schema for the mindmap generation endpoint.
+ * @description Validates request body for the mindmap generation endpoint
  */
 export const mindmapSchema = z.object({
   /** The search query string */
@@ -160,8 +160,7 @@ export const mindmapSchema = z.object({
 })
 
 /**
- * Schema for setting search app access control entries.
- * Validates the array of user/team access grants.
+ * @description Validates request body for setting search app access control entries (user/team grants)
  */
 export const searchAppAccessSchema = z.object({
   /** Array of access entries to assign to the search app */
@@ -176,7 +175,7 @@ export const searchAppAccessSchema = z.object({
 })
 
 /**
- * Schema for retrieval testing (dry-run without LLM summary).
+ * @description Validates request body for retrieval testing (dry-run without LLM summary)
  */
 export const retrievalTestSchema = z.object({
   /** The search query string */
@@ -198,7 +197,7 @@ export const retrievalTestSchema = z.object({
 })
 
 /**
- * Schema for listing search apps with pagination, search, and sorting.
+ * @description Validates query parameters for listing search apps with pagination, search, and sorting
  */
 export const listSearchAppsSchema = z.object({
   /** Page number (1-indexed) */
@@ -214,7 +213,7 @@ export const listSearchAppsSchema = z.object({
 })
 
 /**
- * Schema for search app UUID path param.
+ * @description Validates the search app UUID path parameter
  */
 export const searchAppIdParamSchema = z.object({
   id: z.string().uuid('Invalid search app ID'),

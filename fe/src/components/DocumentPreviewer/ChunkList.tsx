@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Paginated chunk list panel for the document previewer.
+ * Displays searchable, paginated list of document chunks with CRUD operations.
+ *
+ * @module components/DocumentPreviewer/ChunkList
+ */
+
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, Plus } from 'lucide-react';
@@ -11,13 +18,25 @@ import type { Chunk } from '@/features/datasets/types';
 import ChunkCard from './ChunkCard';
 import AddChunkModal from '@/features/datasets/components/AddChunkModal';
 
+/**
+ * @description Props for the ChunkList component.
+ */
 interface ChunkListProps {
+  /** Dataset ID that owns the document */
   datasetId: string;
+  /** Document ID to load chunks for */
   docId: string;
+  /** Currently selected chunk (controlled from parent) */
   selectedChunk?: Chunk | null | undefined;
+  /** Callback when a chunk is selected */
   onSelectChunk?: ((chunk: Chunk) => void) | undefined;
 }
 
+/**
+ * @description Displays a searchable, paginated list of document chunks with add, edit, and delete capabilities
+ * @param {ChunkListProps} props - Dataset/document IDs and selection callbacks
+ * @returns {JSX.Element} Rendered chunk list panel
+ */
 const ChunkList: React.FC<ChunkListProps> = ({
   datasetId,
   docId,
@@ -27,6 +46,7 @@ const ChunkList: React.FC<ChunkListProps> = ({
   const { t } = useTranslation();
   const [addModalOpen, setAddModalOpen] = useState(false);
   
+  // Fetch chunks with search, pagination, and CRUD operations
   const {
     chunks,
     total,
@@ -40,6 +60,7 @@ const ChunkList: React.FC<ChunkListProps> = ({
     deleteChunk,
   } = useChunks(datasetId, docId);
 
+  // Calculate total pages based on 20 items per page
   const totalPages = Math.ceil(total / 20);
 
   return (
@@ -65,6 +86,7 @@ const ChunkList: React.FC<ChunkListProps> = ({
         </div>
       </div>
 
+      {/* Chunk cards with loading, empty, and populated states */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {loading ? (
           <div className="flex items-center justify-center h-32">
@@ -77,6 +99,7 @@ const ChunkList: React.FC<ChunkListProps> = ({
             <ChunkCard
               key={chunk.chunk_id}
               chunk={chunk}
+              // Calculate global index across pages for correct numbering
               index={(page - 1) * 20 + index}
               isSelected={selectedChunk?.chunk_id === chunk.chunk_id}
               onClick={onSelectChunk}
@@ -87,6 +110,7 @@ const ChunkList: React.FC<ChunkListProps> = ({
         )}
       </div>
 
+      {/* Show pagination controls only when more than one page exists */}
       {totalPages > 1 && (
         <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-center">
           <Pagination

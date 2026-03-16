@@ -7,7 +7,8 @@ import { log } from '@/shared/services/logger.service.js'
 import { DocumentCategory, DocumentCategoryVersion, DocumentCategoryVersionFile, UserContext } from '@/shared/models/types.js'
 
 /**
- * ProjectCategoryService handles category CRUD and version management.
+ * @description Service handling document category CRUD, version management,
+ *   and version file listing within projects
  */
 export class ProjectCategoryService {
   // -------------------------------------------------------------------------
@@ -15,36 +16,38 @@ export class ProjectCategoryService {
   // -------------------------------------------------------------------------
 
   /**
-   * List all categories for a project.
-   * @param projectId - UUID of the project
-   * @returns Array of category records
+   * @description List all document categories for a project
+   * @param {string} projectId - UUID of the project
+   * @returns {Promise<DocumentCategory[]>} Array of category records
    */
   async listCategories(projectId: string): Promise<DocumentCategory[]> {
     return ModelFactory.documentCategory.findByProjectId(projectId)
   }
 
   /**
-   * Get a single category by ID.
-   * @param categoryId - UUID of the category
-   * @returns Category record or undefined
+   * @description Retrieve a single document category by its UUID
+   * @param {string} categoryId - UUID of the category
+   * @returns {Promise<DocumentCategory | undefined>} Category record or undefined if not found
    */
   async getCategoryById(categoryId: string): Promise<DocumentCategory | undefined> {
     return ModelFactory.documentCategory.findById(categoryId)
   }
 
   /**
-   * Create a new document category.
-   * @param projectId - UUID of the project
-   * @param data - Category creation data
-   * @param user - Authenticated user context
-   * @returns Created category
+   * @description Create a new document category within a project
+   * @param {string} projectId - UUID of the project
+   * @param {any} data - Category creation data including name, description, sort_order, dataset_config
+   * @param {UserContext} user - Authenticated user context
+   * @returns {Promise<DocumentCategory>} Created category record
    */
   async createCategory(projectId: string, data: any, user: UserContext): Promise<DocumentCategory> {
     return ModelFactory.documentCategory.create({
       project_id: projectId,
       name: data.name,
       description: data.description || null,
+      // Default sort_order to 0 when not specified
       sort_order: data.sort_order ?? 0,
+      // Serialize dataset_config as JSON string for storage
       dataset_config: JSON.stringify(data.dataset_config || {}),
       created_by: user.id,
       updated_by: user.id,
@@ -52,25 +55,28 @@ export class ProjectCategoryService {
   }
 
   /**
-   * Update a document category.
-   * @param categoryId - UUID of the category
-   * @param data - Partial update data
-   * @param user - Authenticated user context
-   * @returns Updated category or undefined
+   * @description Update a document category with partial data
+   * @param {string} categoryId - UUID of the category
+   * @param {any} data - Partial update data
+   * @param {UserContext} user - Authenticated user context
+   * @returns {Promise<DocumentCategory | undefined>} Updated category or undefined if not found
    */
   async updateCategory(categoryId: string, data: any, user: UserContext): Promise<DocumentCategory | undefined> {
+    // Build update payload including only provided fields
     const updateData: any = { updated_by: user.id }
     if (data.name !== undefined) updateData.name = data.name
     if (data.description !== undefined) updateData.description = data.description
     if (data.sort_order !== undefined) updateData.sort_order = data.sort_order
+    // Serialize dataset_config as JSON string if provided
     if (data.dataset_config !== undefined) updateData.dataset_config = JSON.stringify(data.dataset_config)
 
     return ModelFactory.documentCategory.update(categoryId, updateData)
   }
 
   /**
-   * Delete a document category by ID (cascades to versions and files).
-   * @param categoryId - UUID of the category
+   * @description Delete a document category by ID, cascading to versions and files via DB constraints
+   * @param {string} categoryId - UUID of the category
+   * @returns {Promise<void>}
    */
   async deleteCategory(categoryId: string): Promise<void> {
     await ModelFactory.documentCategory.delete(categoryId)
@@ -81,35 +87,36 @@ export class ProjectCategoryService {
   // -------------------------------------------------------------------------
 
   /**
-   * List all versions for a category.
-   * @param categoryId - UUID of the category
-   * @returns Array of version records
+   * @description List all versions for a document category
+   * @param {string} categoryId - UUID of the category
+   * @returns {Promise<DocumentCategoryVersion[]>} Array of version records
    */
   async listVersions(categoryId: string): Promise<DocumentCategoryVersion[]> {
     return ModelFactory.documentCategoryVersion.findByCategoryId(categoryId)
   }
 
   /**
-   * Get a single version by ID.
-   * @param versionId - UUID of the version
-   * @returns Version record or undefined
+   * @description Retrieve a single category version by its UUID
+   * @param {string} versionId - UUID of the version
+   * @returns {Promise<DocumentCategoryVersion | undefined>} Version record or undefined if not found
    */
   async getVersionById(versionId: string): Promise<DocumentCategoryVersion | undefined> {
     return ModelFactory.documentCategoryVersion.findById(versionId)
   }
 
   /**
-   * Create a new category version.
-   * @param categoryId - UUID of the category
-   * @param data - Version creation data
-   * @param user - Authenticated user context
-   * @returns Created version
+   * @description Create a new version snapshot for a document category
+   * @param {string} categoryId - UUID of the category
+   * @param {any} data - Version creation data including version_label and optional metadata
+   * @param {UserContext} user - Authenticated user context
+   * @returns {Promise<DocumentCategoryVersion>} Created version record
    */
   async createVersion(categoryId: string, data: any, user: UserContext): Promise<DocumentCategoryVersion> {
     return ModelFactory.documentCategoryVersion.create({
       category_id: categoryId,
       version_label: data.version_label,
       status: 'active',
+      // Serialize metadata as JSON string for storage
       metadata: JSON.stringify(data.metadata || {}),
       created_by: user.id,
       updated_by: user.id,
@@ -117,26 +124,29 @@ export class ProjectCategoryService {
   }
 
   /**
-   * Update a category version.
-   * @param versionId - UUID of the version
-   * @param data - Partial update data
-   * @param user - Authenticated user context
-   * @returns Updated version or undefined
+   * @description Update a category version with partial data
+   * @param {string} versionId - UUID of the version
+   * @param {any} data - Partial update data
+   * @param {UserContext} user - Authenticated user context
+   * @returns {Promise<DocumentCategoryVersion | undefined>} Updated version or undefined if not found
    */
   async updateVersion(versionId: string, data: any, user: UserContext): Promise<DocumentCategoryVersion | undefined> {
+    // Build update payload including only provided fields
     const updateData: any = { updated_by: user.id }
     if (data.version_label !== undefined) updateData.version_label = data.version_label
     if (data.status !== undefined) updateData.status = data.status
     if (data.ragflow_dataset_id !== undefined) updateData.ragflow_dataset_id = data.ragflow_dataset_id
     if (data.ragflow_dataset_name !== undefined) updateData.ragflow_dataset_name = data.ragflow_dataset_name
+    // Serialize metadata as JSON string if provided
     if (data.metadata !== undefined) updateData.metadata = JSON.stringify(data.metadata)
 
     return ModelFactory.documentCategoryVersion.update(versionId, updateData)
   }
 
   /**
-   * Delete a category version by ID (cascades to files).
-   * @param versionId - UUID of the version
+   * @description Delete a category version by ID, cascading to version files via DB constraints
+   * @param {string} versionId - UUID of the version
+   * @returns {Promise<void>}
    */
   async deleteVersion(versionId: string): Promise<void> {
     await ModelFactory.documentCategoryVersion.delete(versionId)
@@ -147,9 +157,9 @@ export class ProjectCategoryService {
   // -------------------------------------------------------------------------
 
   /**
-   * List all files for a version.
-   * @param versionId - UUID of the version
-   * @returns Array of file records
+   * @description List all files attached to a specific category version
+   * @param {string} versionId - UUID of the version
+   * @returns {Promise<DocumentCategoryVersionFile[]>} Array of file records
    */
   async listVersionFiles(versionId: string): Promise<DocumentCategoryVersionFile[]> {
     return ModelFactory.documentCategoryVersionFile.findByVersionId(versionId)

@@ -27,14 +27,18 @@ import type { ChatAssistant, ChatAssistantAccessEntry } from '../types/chat.type
 // Types
 // ============================================================================
 
-/** Minimal user shape for the access list */
+/**
+ * @description Minimal user shape for the access list display.
+ */
 interface AccessUser {
   id: string
   display_name: string
   email?: string
 }
 
-/** Minimal team shape for the access list */
+/**
+ * @description Minimal team shape for the access list display.
+ */
 interface AccessTeam {
   id: string
   name: string
@@ -90,7 +94,7 @@ export default function ChatAssistantAccessDialog({
   const [saving, setSaving] = useState(false)
 
   /**
-   * Fetch access entries, users, and teams when dialog opens.
+   * @description Fetch access entries, users, and teams when dialog opens.
    */
   const loadData = async () => {
     if (!dialog) return
@@ -130,7 +134,7 @@ export default function ChatAssistantAccessDialog({
   }, [open, dialog])
 
   /**
-   * Toggle a user in the selected set.
+   * @description Toggle a user in the selected set.
    * @param userId - User ID to toggle
    */
   const toggleUser = (userId: string) => {
@@ -146,7 +150,7 @@ export default function ChatAssistantAccessDialog({
   }
 
   /**
-   * Toggle a team in the selected set.
+   * @description Toggle a team in the selected set.
    * @param teamId - Team ID to toggle
    */
   const toggleTeam = (teamId: string) => {
@@ -162,7 +166,7 @@ export default function ChatAssistantAccessDialog({
   }
 
   /**
-   * Save the updated access entries to the API.
+   * @description Save the updated access entries to the API.
    */
   const handleSave = async () => {
     if (!dialog) return

@@ -24,7 +24,7 @@ import { log } from '@/shared/services/logger.service.js'
 // Types
 // ---------------------------------------------------------------------------
 
-/** Parameters for creating a new Langfuse trace */
+/** @description Parameters for creating a new Langfuse trace */
 export interface CreateTraceParams {
   /** Descriptive name for the trace (e.g. 'chat-rag-pipeline') */
   name: string
@@ -42,7 +42,7 @@ export interface CreateTraceParams {
   tags?: string[] | null
 }
 
-/** Parameters for creating a span under a trace or another span */
+/** @description Parameters for creating a span under a trace or another span */
 export interface CreateSpanParams {
   /** Descriptive name for the span (e.g. 'retrieval', 'reranking') */
   name: string
@@ -54,7 +54,7 @@ export interface CreateSpanParams {
   metadata?: Record<string, unknown>
 }
 
-/** Parameters for creating a generation (LLM call) */
+/** @description Parameters for creating a generation (LLM call) */
 export interface CreateGenerationParams {
   /** Descriptive name for the generation */
   name: string
@@ -70,7 +70,7 @@ export interface CreateGenerationParams {
   metadata?: Record<string, unknown> | null
 }
 
-/** Union type for trace or span — both can be parents of generations */
+/** @description Union type for trace or span — both can be parents of generations */
 export type LangfuseParent = LangfuseTraceClient | LangfuseSpanClient
 
 // ---------------------------------------------------------------------------

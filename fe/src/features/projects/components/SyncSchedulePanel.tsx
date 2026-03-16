@@ -41,10 +41,9 @@ const PRESETS = [
 // ============================================================================
 
 /**
- * Panel for configuring sync schedule.
- *
- * @param props - Component props
- * @returns React element
+ * @description Panel for configuring sync schedule with preset options and custom cron expression
+ * @param {SyncSchedulePanelProps} props - Current schedule and save handler
+ * @returns {JSX.Element} Rendered schedule configuration panel
  */
 const SyncSchedulePanel = ({ schedule, onSave, saving }: SyncSchedulePanelProps) => {
   const { t } = useTranslation()

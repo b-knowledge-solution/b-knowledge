@@ -1,8 +1,14 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
+/** @description Props for the Input component extending native input attributes */
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
 
+/**
+ * @description Styled text input with consistent border, focus ring, and disabled states
+ * @param {InputProps} props - Input props including type and className
+ * @returns {JSX.Element} Rendered input element
+ */
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, ...props }, ref) => {
     return (

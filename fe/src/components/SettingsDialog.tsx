@@ -22,16 +22,15 @@ import { RadioGroup } from './RadioGroup';
 // ============================================================================
 
 /**
- * Settings dialog for configuring language and theme.
- * 
- * Displays when isSettingsOpen is true in SettingsContext.
- * Changes are applied immediately and persisted.
+ * @description Settings dialog for configuring language and theme preferences.
+ * Displays when isSettingsOpen is true in SettingsContext. Changes are applied immediately.
+ * @returns {JSX.Element} Dialog with language and theme radio group selectors
  */
 function SettingsDialog() {
   const { t } = useTranslation();
   const { theme, setTheme, language, setLanguage, isSettingsOpen, closeSettings } = useSettings();
 
-  // Build language options from supported languages config (native names and flags)
+  // Build radio options from supported language config with native names and flag emojis
   const languageOptions = SUPPORTED_LANGUAGES.map(lang => ({
     value: lang.code,
     label: lang.nativeName,

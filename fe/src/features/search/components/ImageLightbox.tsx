@@ -13,6 +13,7 @@ import {
 // Props
 // ============================================================================
 
+/** @description Props for the ImageLightbox component */
 interface ImageLightboxProps {
   /** Image source URL */
   src: string

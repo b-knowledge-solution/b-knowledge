@@ -8,15 +8,14 @@ import { config } from '@/shared/config/index.js';
 import { log } from '@/shared/services/logger.service.js';
 
 /**
- * CronService
- * Singleton service that schedules and runs recurring maintenance tasks.
+ * @description Singleton service that schedules and runs recurring maintenance tasks.
  * Currently handles temp cache file cleanup based on configurable TTL and schedule.
  */
 export class CronService {
     /**
-     * Start the temp file cleanup cron job.
-     * @returns void
-     * @description Registers a scheduled task that periodically removes expired files from temp cache.
+     * @description Start the temp file cleanup cron job using node-cron.
+     * Registers a scheduled task that periodically removes expired files from temp cache.
+     * @returns {void}
      */
     public startCleanupJob() {
         // Log startup configuration
@@ -33,9 +32,9 @@ export class CronService {
     }
 
     /**
-     * Execute the temp file cleanup process.
-     * @returns Promise<void>
-     * @description Scans the temp directory and deletes files older than the configured TTL.
+     * @description Execute the temp file cleanup process.
+     * Scans the temp directory and deletes files older than the configured TTL.
+     * @returns {Promise<void>}
      */
     private async runCleanup() {
         log.debug('Running scheduled temp file cleanup');
@@ -91,4 +90,5 @@ export class CronService {
     }
 }
 
+/** Singleton instance of the cron service for scheduling maintenance tasks */
 export const cronService = new CronService();

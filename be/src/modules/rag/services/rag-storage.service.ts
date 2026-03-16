@@ -1,10 +1,12 @@
 /**
- * S3-compatible storage service for RAG document files.
+ * @fileoverview S3-compatible storage service for RAG document files.
  *
  * Handles file upload/download to S3-compatible storage (RustFS/MinIO/etc.),
  * matching the same bucket/path conventions used by the Python advance-rag task executor.
  *
  * Storage path convention: {SYSTEM_TENANT_ID}/{dataset_id}/{file_id}/{filename}
+ *
+ * @module modules/rag/services/rag-storage
  */
 
 import { minioClient } from '@/shared/services/minio.service.js';
@@ -22,16 +24,26 @@ const SYSTEM_TENANT_ID = (
  */
 const S3_BUCKET = process.env['S3_BUCKET'] || 'ragflow';
 
+/**
+ * @description Service for managing RAG document files in S3-compatible storage.
+ * Provides upload, download, delete, and file type detection capabilities.
+ */
 export class RagStorageService {
     /**
-     * Build the storage path for a document file.
+     * @description Build the hierarchical storage path for a document file
+     * @param {string} datasetId - Dataset UUID
+     * @param {string} fileId - File UUID
+     * @param {string} filename - Original filename
+     * @returns {string} S3 object path in the format: {tenant}/{dataset}/{file}/{filename}
      */
     buildStoragePath(datasetId: string, fileId: string, filename: string): string {
         return `${SYSTEM_TENANT_ID}/${datasetId}/${fileId}/${filename}`;
     }
 
     /**
-     * Ensure the bucket exists.
+     * @description Ensure the S3 bucket exists, creating it if necessary
+     * @returns {Promise<void>}
+     * @throws {Error} If bucket creation fails
      */
     async ensureBucket(): Promise<void> {
         try {
@@ -47,7 +59,10 @@ export class RagStorageService {
     }
 
     /**
-     * Upload a file to S3 storage.
+     * @description Upload a file to S3 storage, ensuring the bucket exists first
+     * @param {string} storagePath - S3 object path
+     * @param {Buffer} content - File content as a Buffer
+     * @returns {Promise<void>}
      */
     async putFile(storagePath: string, content: Buffer): Promise<void> {
         await this.ensureBucket();
@@ -56,7 +71,9 @@ export class RagStorageService {
     }
 
     /**
-     * Download a file from S3 as a Buffer.
+     * @description Download a file from S3 as a Buffer (loads entire file into memory)
+     * @param {string} storagePath - S3 object path
+     * @returns {Promise<Buffer>} File content as a Buffer
      */
     async getFile(storagePath: string): Promise<Buffer> {
         const stream = await minioClient.getObject(S3_BUCKET, storagePath);
@@ -69,14 +86,18 @@ export class RagStorageService {
     }
 
     /**
-     * Get a readable stream for a file (for streaming downloads).
+     * @description Get a readable stream for a file (for streaming downloads without buffering)
+     * @param {string} storagePath - S3 object path
+     * @returns {Promise<Readable>} Readable stream of the file content
      */
     async getFileStream(storagePath: string): Promise<Readable> {
         return minioClient.getObject(S3_BUCKET, storagePath);
     }
 
     /**
-     * Delete a file from S3.
+     * @description Delete a file from S3 storage (best-effort, logs warnings on failure)
+     * @param {string} storagePath - S3 object path
+     * @returns {Promise<void>}
      */
     async deleteFile(storagePath: string): Promise<void> {
         try {
@@ -87,7 +108,9 @@ export class RagStorageService {
     }
 
     /**
-     * Check if a file exists.
+     * @description Check if a file exists in S3 storage
+     * @param {string} storagePath - S3 object path
+     * @returns {Promise<boolean>} True if the file exists
      */
     async fileExists(storagePath: string): Promise<boolean> {
         try {
@@ -99,7 +122,10 @@ export class RagStorageService {
     }
 
     /**
-     * Get the MIME content type for a file extension.
+     * @description Map a file extension to its MIME content type.
+     * Falls back to 'application/octet-stream' for unknown extensions.
+     * @param {string} suffix - File extension including the dot (e.g., '.pdf')
+     * @returns {string} MIME type string
      */
     getContentType(suffix: string): string {
         const mimeMap: Record<string, string> = {
@@ -131,7 +157,10 @@ export class RagStorageService {
     }
 
     /**
-     * Map file extension to RAGFlow file type category.
+     * @description Map a file extension (without dot) to a RAGFlow file type category.
+     * Categories: pdf, doc, visual, aural, other.
+     * @param {string} suffix - File extension without dot (e.g., 'pdf', 'docx')
+     * @returns {string} RAGFlow file type category
      */
     getFileType(suffix: string): string {
         const pdfTypes = new Set(['pdf']);
@@ -147,4 +176,5 @@ export class RagStorageService {
     }
 }
 
+/** Singleton instance of the S3 storage service */
 export const ragStorageService = new RagStorageService();

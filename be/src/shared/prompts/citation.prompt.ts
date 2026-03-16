@@ -5,12 +5,12 @@
  */
 
 /**
- * System-level citation instructions appended to the RAG context prompt.
+ * @description System-level citation instructions appended to the RAG context prompt.
  * Uses ##ID:n$ format for inline citation markers.
  */
 export const citationPrompt = {
   /**
-   * Full citation instruction block for system prompt.
+   * @description Full citation instruction block for system prompt.
    * Migrated from advance-rag/rag/prompts/citation_prompt.md
    */
   system: `## Citation Instructions

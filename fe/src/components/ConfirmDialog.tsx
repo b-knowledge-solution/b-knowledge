@@ -50,11 +50,9 @@ interface ConfirmContextType {
 const ConfirmContext = createContext<ConfirmContextType | null>(null);
 
 /**
- * Hook to access the confirmation service.
- * Returns the `confirm` function which prompts the user and awaits their decision.
- * 
- * @returns {Function} confirm function
- * @throws {Error} if used outside a ConfirmProvider
+ * @description Hook to access the global confirmation service
+ * @returns {(options: ConfirmOptions) => Promise<boolean>} Confirm function that triggers the dialog and resolves to user choice
+ * @throws {Error} If used outside a ConfirmProvider
  */
 export const useConfirm = () => {
     const context = useContext(ConfirmContext);
@@ -71,8 +69,9 @@ interface ConfirmProviderProps {
 }
 
 /**
- * Context provider for the global confirmation dialog.
- * Manages the shared state of the single confirmation modal instance.
+ * @description Context provider for the global confirmation dialog, managing shared modal state
+ * @param {ConfirmProviderProps} props - Application children to wrap
+ * @returns {JSX.Element} Context provider with confirmation dialog overlay
  */
 export const ConfirmProvider: React.FC<ConfirmProviderProps> = ({ children }) => {
     const { t } = useTranslation();

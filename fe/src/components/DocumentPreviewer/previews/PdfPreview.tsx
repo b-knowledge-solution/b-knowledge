@@ -1,3 +1,11 @@
+/**
+ * @fileoverview PDF previewer with chunk highlight overlay support.
+ * Uses react-pdf-highlighter for rendering PDFs with area/text highlights
+ * that correspond to selected chunks.
+ *
+ * @module components/DocumentPreviewer/previews/PdfPreview
+ */
+
 import { memo, useEffect, useRef } from 'react';
 import {
   AreaHighlight,
@@ -17,24 +25,38 @@ const Loader = PdfLoader as any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Highlighter = PdfHighlighter as any;
 
+/**
+ * @description Props for the PdfPreview component.
+ */
 export interface PdfPreviewProps {
+  /** Array of highlight regions to display on the PDF */
   highlights?: IHighlight[] | undefined;
+  /** Callback to report PDF page dimensions for highlight coordinate mapping */
   setWidthAndHeight?: ((width: number, height: number) => void) | undefined;
+  /** URL to fetch the PDF from */
   url: string;
+  /** Additional CSS classes */
   className?: string | undefined;
 }
 
+/** Popup content shown on hover over a highlight region */
 const HighlightPopup = ({
   comment,
 }: {
   comment: { text: string; emoji: string };
 }) =>
+  // Only render popup if there is comment text
   comment.text ? (
     <div className="Highlight__popup">
       {comment.emoji} {comment.text}
     </div>
   ) : null;
 
+/**
+ * @description Renders a PDF with interactive highlight overlay for chunk visualization
+ * @param {PdfPreviewProps} props - PDF URL, highlights, and dimension callback
+ * @returns {JSX.Element} PDF viewer with highlight support
+ */
 const PdfPreview = ({
   highlights: state,
   setWidthAndHeight,
@@ -44,9 +66,11 @@ const PdfPreview = ({
   const { t } = useTranslation();
   const ref = useRef<(highlight: IHighlight) => void>(() => {});
 
+  // Auto-scroll to the first highlight when highlights change
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
     if (state?.length && state.length > 0) {
+      // Delay scroll to ensure PDF has rendered the highlight elements
       timer = setTimeout(() => {
         if (state[0]) ref?.current(state[0]);
       }, 100);
@@ -83,6 +107,7 @@ const PdfPreview = ({
       >
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         {(pdfDocument: any) => {
+          // Extract first page dimensions to support coordinate-based highlights
           pdfDocument.getPage(1).then((page: any) => {
             const viewport = page.getViewport({ scale: 1 });
             setWidthAndHeight?.(viewport.width, viewport.height);
@@ -106,10 +131,12 @@ const PdfPreview = ({
                 _screenshot: any,
                 isScrolledTo: boolean,
               ) => {
+                // Distinguish between text highlights and area (image) highlights
                 const isTextHighlight = !Boolean(
                   highlight.content && highlight.content.image,
                 );
 
+                // Use text Highlight for text selections, AreaHighlight for region selections
                 const component = isTextHighlight ? (
                   <Highlight
                     isScrolledTo={isScrolledTo}

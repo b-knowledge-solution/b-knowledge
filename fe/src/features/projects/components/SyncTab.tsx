@@ -38,10 +38,9 @@ interface SyncTabProps {
 // ============================================================================
 
 /**
- * Sync tab with sub-tabs for config, schedule, and status.
- *
- * @param props - Component props
- * @returns React element
+ * @description Sync tab with sub-tabs for connection config, schedule, and status management
+ * @param {SyncTabProps} props - Project ID for fetching sync configs
+ * @returns {JSX.Element} Rendered sync tab with sub-tabs
  */
 const SyncTab = ({ projectId }: SyncTabProps) => {
   const { t } = useTranslation()

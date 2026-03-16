@@ -101,7 +101,9 @@ export function useSearch(): UseSearchReturn {
 // Search App Hooks
 // ============================================================================
 
-/** Parameters for the search apps list query */
+/**
+ * @description Parameters for the search apps list query.
+ */
 export interface SearchAppsParams {
   page?: number | undefined
   page_size?: number | undefined

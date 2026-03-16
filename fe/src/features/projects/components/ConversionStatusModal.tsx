@@ -46,6 +46,11 @@ interface ConversionStatusModalProps {
 // Status Badge
 // ============================================================================
 
+/**
+ * @description Renders a colored status badge with icon for a conversion job status
+ * @param {{ status: ConversionJobStatus }} props - The job status to display
+ * @returns {JSX.Element} Rendered status badge
+ */
 const StatusBadge = ({ status }: { status: ConversionJobStatus }) => {
   const { t } = useTranslation();
   const map: Record<ConversionJobStatus, { color: string; icon: typeof CheckCircle2; label: string }> = {
@@ -90,6 +95,11 @@ const StatusBadge = ({ status }: { status: ConversionJobStatus }) => {
 // Mini Stats Row
 // ============================================================================
 
+/**
+ * @description Renders a compact stats row showing counts for each conversion status
+ * @param {{ stats: QueueStats }} props - Queue statistics to display
+ * @returns {JSX.Element} Rendered stats row
+ */
 const MiniStats = ({ stats }: { stats: QueueStats }) => {
   const { t } = useTranslation();
   const items = [
@@ -116,6 +126,11 @@ const MiniStats = ({ stats }: { stats: QueueStats }) => {
 // Main Component
 // ============================================================================
 
+/**
+ * @description Modal showing conversion queue jobs for a specific project with auto-refresh and WebSocket updates
+ * @param {ConversionStatusModalProps} props - Modal configuration including project ID and visibility
+ * @returns {JSX.Element | null} Rendered modal or null when closed
+ */
 const ConversionStatusModal = ({ open, onClose, projectId }: ConversionStatusModalProps) => {
   const { t } = useTranslation();
 
@@ -125,6 +140,10 @@ const ConversionStatusModal = ({ open, onClose, projectId }: ConversionStatusMod
   const [error, setError] = useState<string | null>(null);
   const isFetchingRef = useRef(false);
 
+  /**
+   * @description Fetch conversion jobs and queue stats from the API
+   * @param {boolean} silent - When true, skip setting the loading spinner
+   */
   const fetchData = async (silent = false) => {
     if (isFetchingRef.current || !projectId) return;
     try {
@@ -166,6 +185,7 @@ const ConversionStatusModal = ({ open, onClose, projectId }: ConversionStatusMod
     onJobUpdate: () => fetchData(true),
   });
 
+  /** Format ISO date string into a compact DD/MM HH:MM display */
   const formatTime = (iso: string) => {
     if (!iso) return '—';
     const d = new Date(iso);

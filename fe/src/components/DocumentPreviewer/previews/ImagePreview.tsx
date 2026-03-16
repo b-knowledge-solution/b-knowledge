@@ -1,15 +1,31 @@
+/**
+ * @fileoverview Image file previewer component.
+ * Fetches an image via authenticated request and displays it as an object URL.
+ *
+ * @module components/DocumentPreviewer/previews/ImagePreview
+ */
+
 import { Spinner } from '@/components/ui/spinner';
 import { useEffect, useState } from 'react';
 
+/** Props for the ImagePreviewer component */
 interface ImagePreviewerProps {
+  /** Additional CSS classes */
   className?: string;
+  /** URL to fetch the image from */
   url: string;
 }
 
+/**
+ * @description Fetches and displays an image with loading state via blob URL
+ * @param {ImagePreviewerProps} props - URL to fetch and optional class names
+ * @returns {JSX.Element} Image element with loading spinner
+ */
 export const ImagePreviewer: React.FC<ImagePreviewerProps> = ({ className, url }) => {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Fetch image blob and create object URL when source URL changes
   useEffect(() => {
     if (!url) return;
     const fetchImage = async () => {
@@ -28,6 +44,7 @@ export const ImagePreviewer: React.FC<ImagePreviewerProps> = ({ className, url }
     fetchImage();
   }, [url]);
 
+  // Revoke object URL on cleanup to prevent memory leaks
   useEffect(() => {
     return () => {
       if (imageSrc) URL.revokeObjectURL(imageSrc);

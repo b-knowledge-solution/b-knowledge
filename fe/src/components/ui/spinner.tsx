@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+/** @description Configuration props for the Spinner component */
 interface SpinnerProps {
   className?: string;
   /** Size of the spinner icon */
@@ -10,8 +11,9 @@ interface SpinnerProps {
 }
 
 /**
- * Loading spinner component.
- * Replaces Ant Design's Spin component.
+ * @description Animated loading spinner with optional text label
+ * @param {SpinnerProps} props - Spinner configuration including size and label
+ * @returns {JSX.Element} Rendered spinning loader icon
  */
 export function Spinner({ className, size = 24, label }: SpinnerProps) {
   return (
@@ -23,10 +25,12 @@ export function Spinner({ className, size = 24, label }: SpinnerProps) {
 }
 
 /**
- * Full-page or container-level loading overlay.
- * Replaces antd's `<Spin spinning={loading}>` wrapper pattern.
+ * @description Full-page or container-level loading overlay that dims content while loading
+ * @param {{ loading: boolean; children: React.ReactNode; label?: string }} props - Overlay configuration
+ * @returns {JSX.Element} Rendered children with optional spinner overlay
  */
 export function SpinnerOverlay({ loading, children, label }: { loading: boolean; children: React.ReactNode; label?: string }) {
+  // Skip overlay when not loading to avoid unnecessary DOM nesting
   if (!loading) return <>{children}</>;
 
   return (

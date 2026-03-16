@@ -8,7 +8,9 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 
 /**
- * Textarea component with consistent styling.
+ * @description Multi-line text input with consistent border, focus ring, and disabled states
+ * @param {React.ComponentProps<'textarea'>} props - Standard textarea attributes
+ * @returns {JSX.Element} Rendered textarea element
  */
 const Textarea = React.forwardRef<
   HTMLTextAreaElement,

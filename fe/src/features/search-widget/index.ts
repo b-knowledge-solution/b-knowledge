@@ -40,7 +40,7 @@ export { createSearchWidgetApi } from './searchWidgetApi'
 // ============================================================================
 
 /**
- * Configuration for external IIFE initialization.
+ * @description Configuration for external IIFE initialization of the search widget.
  */
 interface SearchWidgetInitConfig {
   /** Embed token for authentication */
@@ -54,16 +54,18 @@ interface SearchWidgetInitConfig {
 }
 
 /**
- * Initialize the search widget in a DOM container.
- * Used by external sites via the IIFE bundle.
- * @param config - Widget initialization configuration
+ * @description Initializes the search widget in a DOM container.
+ * Used by external sites via the IIFE bundle to mount a React-powered search widget.
+ * @param {SearchWidgetInitConfig} config - Widget initialization configuration
  */
 function init(config: SearchWidgetInitConfig): void {
+  // Resolve the container element from CSS selector or direct DOM reference
   const container =
     typeof config.el === 'string'
       ? document.querySelector(config.el)
       : config.el
 
+  // Guard: bail if the target element does not exist in the DOM
   if (!container) {
     console.error('[BKnowledgeSearch] Container element not found:', config.el)
     return

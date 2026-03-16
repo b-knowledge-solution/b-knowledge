@@ -53,11 +53,10 @@ interface EntityPermissionModalProps {
 // ============================================================================
 
 /**
- * EntityPermissionModal component.
- * Manages per-entity permission grantees with a clean form layout.
- *
- * @param props - Modal configuration
- * @returns Modal dialog for permission management
+ * @description Modal for managing per-entity (category/chat/search) permissions with team and user grantees.
+ * Supports private access toggle, multi-select for teams/users, and batch save with diff-based API calls.
+ * @param {EntityPermissionModalProps} props - Modal configuration including entity info and project ID
+ * @returns {JSX.Element} Rendered permission management modal
  */
 export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
   open,

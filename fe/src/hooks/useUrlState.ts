@@ -14,7 +14,9 @@ import { useCallback, useRef } from 'react'
 // Types
 // ============================================================================
 
-/** Configuration options for useUrlState */
+/**
+ * @description Configuration options for the useUrlState hook
+ */
 interface UseUrlStateOptions<T> {
   /** Default value when the param is absent from the URL */
   defaultValue: T
@@ -26,7 +28,9 @@ interface UseUrlStateOptions<T> {
   serialize?: 'string' | 'json'
 }
 
-/** Return tuple from useUrlState */
+/**
+ * @description Return tuple from useUrlState, matching the useState API signature
+ */
 type UseUrlStateReturn<T> = [T, (value: T | ((prev: T) => T)) => void]
 
 // ============================================================================
@@ -34,11 +38,11 @@ type UseUrlStateReturn<T> = [T, (value: T | ((prev: T) => T)) => void]
 // ============================================================================
 
 /**
- * Sync a single URL search parameter with React state.
- *
- * @param key - The query parameter name
- * @param options - Configuration including default value and serialization mode
- * @returns A tuple of [currentValue, setValue] similar to useState
+ * @description Syncs a single URL search parameter with React state, supporting string and JSON serialization modes
+ * @template T - The type of the state value
+ * @param {string} key - The query parameter name in the URL
+ * @param {UseUrlStateOptions<T>} options - Configuration including default value and serialization mode
+ * @returns {UseUrlStateReturn<T>} A tuple of [currentValue, setValue] similar to useState
  *
  * @example
  * ```ts

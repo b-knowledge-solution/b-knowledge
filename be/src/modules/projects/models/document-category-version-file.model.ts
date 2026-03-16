@@ -6,7 +6,8 @@ import { db } from '@/shared/db/knex.js'
 import { DocumentCategoryVersionFile } from '@/shared/models/types.js'
 
 /**
- * DocumentCategoryVersionFileModel provides CRUD for document_category_version_files.
+ * @description Provides CRUD operations for the document_category_version_files table,
+ *   which stores files attached to specific versions of document categories
  * @extends BaseModel<DocumentCategoryVersionFile>
  */
 export class DocumentCategoryVersionFileModel extends BaseModel<DocumentCategoryVersionFile> {
@@ -14,9 +15,9 @@ export class DocumentCategoryVersionFileModel extends BaseModel<DocumentCategory
   protected knex = db
 
   /**
-   * Find all files for a given version.
-   * @param versionId - UUID of the version
-   * @returns Array of file records
+   * @description Find all files attached to a given category version, ordered newest first
+   * @param {string} versionId - UUID of the version
+   * @returns {Promise<DocumentCategoryVersionFile[]>} Array of file records
    */
   async findByVersionId(versionId: string): Promise<DocumentCategoryVersionFile[]> {
     return this.knex(this.tableName)

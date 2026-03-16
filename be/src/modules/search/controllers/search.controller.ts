@@ -12,17 +12,20 @@ import { searchService } from '../services/search.service.js'
 import { ModelFactory } from '@/shared/models/factory.js'
 
 /**
- * Controller class for search endpoints.
+ * @description Controller handling search app CRUD, search execution,
+ *   AI summary streaming, related questions, mindmap generation, and retrieval testing
  */
 export class SearchController {
   /**
-   * Create a new search app.
-   * @param req - Express request with search app data in body
-   * @param res - Express response
+   * @description Create a new search app configuration
+   * @param {Request} req - Express request with search app data in body
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
    */
   async createSearchApp(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.id
+      // Guard: require authentication for search app creation
       if (!userId) {
         res.status(401).json({ error: 'Unauthorized' })
         return
@@ -46,16 +49,18 @@ export class SearchController {
   }
 
   /**
-   * List all search apps with RBAC filtering, pagination, search, and sorting.
-   * Admins see all; other users see their own, public, and shared apps.
-   * @param req - Express request with optional query params for pagination/search
-   * @param res - Express response with paginated results
+   * @description List all search apps with RBAC filtering, pagination, search, and sorting.
+   *   Admins see all apps; other users see their own, public, and shared apps.
+   * @param {Request} req - Express request with optional query params for pagination/search
+   * @param {Response} res - Express response with paginated results
+   * @returns {Promise<void>}
    */
   async listSearchApps(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.id
       const userRole = req.user?.role
 
+      // Guard: require authentication for listing search apps
       if (!userId || !userRole) {
         res.status(401).json({ error: 'Unauthorized' })
         return
@@ -84,10 +89,10 @@ export class SearchController {
   }
 
   /**
-   * Get access control entries for a search app.
-   * Returns entries enriched with user/team display names.
-   * @param req - Express request with :id param
-   * @param res - Express response
+   * @description Get access control entries for a search app, enriched with display names
+   * @param {Request} req - Express request with :id param
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
    */
   async getAppAccess(req: Request, res: Response): Promise<void> {
     try {
@@ -101,14 +106,15 @@ export class SearchController {
   }
 
   /**
-   * Set (replace) access control entries for a search app.
-   * Bulk replaces all existing entries with the provided list.
-   * @param req - Express request with :id param and entries in body
-   * @param res - Express response
+   * @description Bulk replace all access control entries for a search app
+   * @param {Request} req - Express request with :id param and entries array in body
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
    */
   async setAppAccess(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.id
+      // Guard: require authentication for access control changes
       if (!userId) {
         res.status(401).json({ error: 'Unauthorized' })
         return
@@ -128,14 +134,16 @@ export class SearchController {
   }
 
   /**
-   * Get a search app by ID.
-   * @param req - Express request with :id param
-   * @param res - Express response
+   * @description Retrieve a search app by its UUID
+   * @param {Request} req - Express request with :id param
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
    */
   async getSearchApp(req: Request, res: Response): Promise<void> {
     try {
       const app = await searchService.getSearchApp(req.params.id!)
 
+      // Guard: return 404 if search app does not exist
       if (!app) {
         res.status(404).json({ error: 'Search app not found' })
         return
@@ -149,13 +157,15 @@ export class SearchController {
   }
 
   /**
-   * Update an existing search app.
-   * @param req - Express request with :id param and update data in body
-   * @param res - Express response
+   * @description Update an existing search app configuration
+   * @param {Request} req - Express request with :id param and update data in body
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
    */
   async updateSearchApp(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.id
+      // Guard: require authentication for search app updates
       if (!userId) {
         res.status(401).json({ error: 'Unauthorized' })
         return
@@ -163,6 +173,7 @@ export class SearchController {
 
       const updated = await searchService.updateSearchApp(req.params.id!, req.body, userId)
 
+      // Guard: return 404 if search app not found
       if (!updated) {
         res.status(404).json({ error: 'Search app not found' })
         return
@@ -176,9 +187,10 @@ export class SearchController {
   }
 
   /**
-   * Delete a search app.
-   * @param req - Express request with :id param
-   * @param res - Express response
+   * @description Delete a search app by its UUID
+   * @param {Request} req - Express request with :id param
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
    */
   async deleteSearchApp(req: Request, res: Response): Promise<void> {
     try {
@@ -303,9 +315,10 @@ export class SearchController {
   }
 
   /**
-   * Execute a search query against a search app with pagination.
-   * @param req - Express request with :id param and search options in body
-   * @param res - Express response with paginated results
+   * @description Execute a search query against a search app with pagination and filtering
+   * @param {Request} req - Express request with :id param and search options in body
+   * @param {Response} res - Express response with paginated results
+   * @returns {Promise<void>}
    */
   async executeSearch(req: Request, res: Response): Promise<void> {
     try {

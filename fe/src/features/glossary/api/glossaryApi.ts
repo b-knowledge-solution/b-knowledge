@@ -111,6 +111,9 @@ export interface KeywordSearchResult {
 // API Service
 // ============================================================================
 
+/**
+ * @description Glossary API service object providing CRUD, search, prompt generation, and bulk import operations.
+ */
 export const glossaryApi = {
   // ========================================================================
   // Task CRUD

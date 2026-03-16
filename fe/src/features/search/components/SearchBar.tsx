@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 // Props
 // ============================================================================
 
+/** @description Props for the SearchBar component */
 interface SearchBarProps {
   /** Callback when a search is submitted */
   onSearch: (query: string) => void

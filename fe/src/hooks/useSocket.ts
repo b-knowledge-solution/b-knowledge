@@ -23,12 +23,8 @@ import { queryKeys } from '@/lib/queryKeys'
 // ============================================================================
 
 /**
- * Reactive hook that tracks the current Socket.IO connection status.
- *
- * @description Listens to connect, disconnect, and connect_error events
- * on the singleton socket and exposes the status as React state.
- *
- * @returns The current socket connection status
+ * @description Tracks the current Socket.IO connection status reactively by listening to connect, disconnect, and error events
+ * @returns {SocketStatus} The current socket connection status
  */
 export function useSocketStatus(): SocketStatus {
   const [status, setStatus] = useState<SocketStatus>(getSocketStatus)
@@ -70,14 +66,10 @@ export function useSocketStatus(): SocketStatus {
 // ============================================================================
 
 /**
- * Subscribe to a specific Socket.IO event with automatic cleanup on unmount.
- *
- * @description Attaches the callback to the given event on the singleton
- * socket instance. The subscription is cleaned up when the component
- * unmounts or when the event name changes.
- *
- * @param event - The socket event name to listen for
- * @param callback - Handler invoked with the event payload
+ * @description Subscribes to a specific Socket.IO event with automatic cleanup on unmount or event name change
+ * @template T - Expected event payload type
+ * @param {string} event - The socket event name to listen for
+ * @param {(data: T) => void} callback - Handler invoked with the event payload
  *
  * @example
  * ```ts
@@ -138,15 +130,8 @@ const DEFAULT_EVENT_KEY_MAP: Record<string, readonly (readonly string[])[]> = {
 }
 
 /**
- * Automatically invalidate TanStack Query caches when socket events arrive.
- *
- * @description Subscribes to a predefined set of socket events and, when
- * any fires, invalidates the corresponding query key prefixes. This keeps
- * list/detail views in sync with real-time server-side changes without
- * manual refetching.
- *
- * @param eventKeyMap - Optional custom mapping of event names to query key
- *   arrays. Defaults to `DEFAULT_EVENT_KEY_MAP`.
+ * @description Automatically invalidates TanStack Query caches when matching socket events arrive, keeping UI in sync with server-side changes
+ * @param {Record<string, readonly (readonly string[])[]>} [eventKeyMap] - Custom mapping of event names to query key arrays. Defaults to DEFAULT_EVENT_KEY_MAP.
  */
 export function useSocketQueryInvalidation(
   eventKeyMap: Record<string, readonly (readonly string[])[]> = DEFAULT_EVENT_KEY_MAP,

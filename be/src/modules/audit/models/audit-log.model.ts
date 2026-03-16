@@ -17,12 +17,13 @@ export class AuditLogModel extends BaseModel<AuditLog> {
   protected knex = db
 
   /**
-   * Count records matching the given filter.
-   * @param filter - Optional WHERE clause conditions
-   * @returns Total count of matching records
+   * @description Count audit log records matching the given filter conditions
+   * @param {Partial<AuditLog>} [filter] - Optional WHERE clause conditions to narrow the count
+   * @returns {Promise<number>} Total count of matching records
    */
   async count(filter?: Partial<AuditLog>): Promise<number> {
     const query = this.knex(this.tableName).count('* as count')
+    // Apply optional filter conditions to narrow the count
     if (filter) {
       query.where(filter)
     }

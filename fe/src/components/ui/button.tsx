@@ -3,6 +3,7 @@ import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
+/** @description Variant and size styles for button: default, destructive, outline, secondary, ghost, link */
 const buttonVariants = cva(
   'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
   {
@@ -29,14 +30,24 @@ const buttonVariants = cva(
   }
 );
 
+/**
+ * @description Props for the Button component
+ * @property {boolean} [asChild] - When true, renders as Radix Slot to merge props onto child element
+ */
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
 }
 
+/**
+ * @description Versatile button component with variant and size options
+ * @param {ButtonProps} props - Button configuration including variant, size, and asChild
+ * @returns {JSX.Element} Rendered button or slotted child element
+ */
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
+    // Use Radix Slot when asChild is true to pass button styles to child element
     const Comp = asChild ? Slot : 'button';
     return (
       <Comp

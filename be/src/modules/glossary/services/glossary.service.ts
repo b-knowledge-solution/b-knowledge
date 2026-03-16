@@ -14,8 +14,7 @@ import {
 import { log } from "@/shared/services/logger.service.js";
 
 /**
- * Service class for glossary management operations.
- * Handles tasks, keywords, prompt generation, and bulk import.
+ * @description Service for glossary management including tasks, keywords, prompt generation, and bulk import
  */
 class GlossaryService {
   // ========================================================================
@@ -23,9 +22,9 @@ class GlossaryService {
   // ========================================================================
 
   /**
-   * List all glossary tasks.
-   * @param activeOnly - If true, only return active tasks
-   * @returns Array of tasks
+   * @description List all glossary tasks, optionally filtering to active-only
+   * @param {boolean} activeOnly - If true, only return active tasks
+   * @returns {Promise<GlossaryTask[]>} Array of tasks
    */
   async listTasks(activeOnly = false): Promise<GlossaryTask[]> {
     const filter = activeOnly ? { is_active: true } : undefined;
@@ -35,28 +34,28 @@ class GlossaryService {
   }
 
   /**
-   * Get a single task by ID.
-   * @param id - Task UUID
-   * @returns Task, or undefined
+   * @description Get a single task by ID
+   * @param {string} id - Task UUID
+   * @returns {Promise<GlossaryTask | undefined>} Task, or undefined
    */
   async getTask(id: string): Promise<GlossaryTask | undefined> {
     return ModelFactory.glossaryTask.findById(id);
   }
 
   /**
-   * Create a new glossary task.
-   * @param data - Task data to create
-   * @returns Created task
+   * @description Create a new glossary task
+   * @param {Partial<GlossaryTask>} data - Task data to create
+   * @returns {Promise<GlossaryTask>} Created task
    */
   async createTask(data: Partial<GlossaryTask>): Promise<GlossaryTask> {
     return ModelFactory.glossaryTask.create(data);
   }
 
   /**
-   * Update an existing glossary task.
-   * @param id - Task UUID
-   * @param data - Fields to update
-   * @returns Updated task
+   * @description Update an existing glossary task with timestamp
+   * @param {string} id - Task UUID
+   * @param {Partial<GlossaryTask>} data - Fields to update
+   * @returns {Promise<GlossaryTask | undefined>} Updated task
    */
   async updateTask(
     id: string,
@@ -69,8 +68,9 @@ class GlossaryService {
   }
 
   /**
-   * Delete a glossary task.
-   * @param id - Task UUID
+   * @description Delete a glossary task by ID
+   * @param {string} id - Task UUID
+   * @returns {Promise<void>}
    */
   async deleteTask(id: string): Promise<void> {
     return ModelFactory.glossaryTask.delete(id);
@@ -81,8 +81,8 @@ class GlossaryService {
   // ========================================================================
 
   /**
-   * List all keywords.
-   * @returns Array of keywords sorted by sort_order then name
+   * @description List all keywords sorted by sort_order then name
+   * @returns {Promise<GlossaryKeyword[]>} Array of keywords
    */
   async listKeywords(): Promise<GlossaryKeyword[]> {
     return ModelFactory.glossaryKeyword.findAll(undefined, {
@@ -91,12 +91,11 @@ class GlossaryService {
   }
 
   /**
-   * Search keywords with server-side pagination and filtering.
-   * Only returns active keywords matching the search query.
-   * @param search - Search query string (empty = all active)
-   * @param page - Page number (1-indexed)
-   * @param pageSize - Items per page
-   * @returns Paginated result object
+   * @description Search active keywords with server-side pagination and filtering
+   * @param {string} search - Search query string (empty = all active)
+   * @param {number} page - Page number (1-indexed)
+   * @param {number} pageSize - Items per page
+   * @returns {Promise<{ data: GlossaryKeyword[]; total: number; page: number; pageSize: number }>} Paginated result
    */
   async searchKeywords(
     search: string,
@@ -112,9 +111,9 @@ class GlossaryService {
   }
 
   /**
-   * Create a new keyword.
-   * @param data - Keyword data to create
-   * @returns Created keyword
+   * @description Create a new glossary keyword
+   * @param {Partial<GlossaryKeyword>} data - Keyword data to create
+   * @returns {Promise<GlossaryKeyword>} Created keyword
    */
   async createKeyword(
     data: Partial<GlossaryKeyword>,
@@ -123,10 +122,10 @@ class GlossaryService {
   }
 
   /**
-   * Update an existing keyword.
-   * @param id - Keyword UUID
-   * @param data - Fields to update
-   * @returns Updated keyword
+   * @description Update an existing keyword with timestamp
+   * @param {string} id - Keyword UUID
+   * @param {Partial<GlossaryKeyword>} data - Fields to update
+   * @returns {Promise<GlossaryKeyword | undefined>} Updated keyword
    */
   async updateKeyword(
     id: string,
@@ -139,8 +138,9 @@ class GlossaryService {
   }
 
   /**
-   * Delete a keyword.
-   * @param id - Keyword UUID
+   * @description Delete a glossary keyword by ID
+   * @param {string} id - Keyword UUID
+   * @returns {Promise<void>}
    */
   async deleteKeyword(id: string): Promise<void> {
     return ModelFactory.glossaryKeyword.delete(id);
@@ -151,10 +151,9 @@ class GlossaryService {
   // ========================================================================
 
   /**
-   * Search tasks and keywords by name.
-   * Used by the Prompt Builder search feature.
-   * @param query - Search string
-   * @returns Object with matching tasks and keywords
+   * @description Search tasks and keywords by name for the Prompt Builder feature
+   * @param {string} query - Search string
+   * @returns {Promise<{ tasks: GlossaryTask[]; keywords: GlossaryKeyword[] }>} Object with matching tasks and keywords
    */
   async search(query: string): Promise<{
     tasks: GlossaryTask[];
@@ -168,12 +167,11 @@ class GlossaryService {
   }
 
   /**
-   * Generate a structured prompt from task and keyword selections.
-   * Combines task_instruction_en (Line 1) with context_template (Line 2)
-   * replacing {keyword} with selected keyword names.
-   * @param taskId - Task UUID
-   * @param keywordIds - Array of keyword UUIDs to include
-   * @returns Generated prompt string
+   * @description Generate a structured prompt by combining task instruction with keyword-replaced context template
+   * @param {string} taskId - Task UUID
+   * @param {string[]} keywordIds - Array of keyword UUIDs to include
+   * @returns {Promise<string>} Generated prompt string
+   * @throws {Error} If task not found or no valid keywords selected
    */
   async generatePrompt(taskId: string, keywordIds: string[]): Promise<string> {
     // Fetch the task
@@ -208,12 +206,10 @@ class GlossaryService {
   private readonly CHUNK_SIZE = 100;
 
   /**
-   * Bulk import glossary tasks from parsed Excel rows.
-   * Processes in chunks of CHUNK_SIZE with separate transactions per chunk.
-   * Skips duplicates by name (case-insensitive).
-   * @param rows - Parsed rows from Excel import
-   * @param userId - User performing the import
-   * @returns Import result with counts
+   * @description Bulk import glossary tasks from parsed Excel rows in chunks, skipping duplicates
+   * @param {BulkImportGlossaryRow[]} rows - Parsed rows from Excel import
+   * @param {string} userId - User performing the import
+   * @returns {Promise<BulkImportGlossaryResult>} Import result with counts
    */
   async bulkImport(
     rows: BulkImportGlossaryRow[],
@@ -288,12 +284,10 @@ class GlossaryService {
   }
 
   /**
-   * Bulk import keywords from parsed Excel rows.
-   * Processes in chunks of CHUNK_SIZE with separate transactions per chunk.
-   * Skips duplicates by name (case-insensitive).
-   * @param rows - Parsed rows with name, en_keyword, description
-   * @param userId - User performing the import
-   * @returns Import result with counts
+   * @description Bulk import keywords from parsed Excel rows in chunks, skipping duplicates
+   * @param {Array<{ name: string; en_keyword?: string; description?: string }>} rows - Parsed rows
+   * @param {string} userId - User performing the import
+   * @returns {Promise<{ success: boolean; created: number; skipped: number; errors: string[] }>} Import result
    */
   async bulkImportKeywords(
     rows: { name: string; en_keyword?: string; description?: string }[],

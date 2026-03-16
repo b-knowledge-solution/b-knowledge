@@ -29,6 +29,7 @@ import type { SearchApp, CreateSearchAppPayload } from '../types/search.types'
 // Props
 // ============================================================================
 
+/** @description Props for the SearchAppConfig dialog component */
 interface SearchAppConfigProps {
   /** Whether the dialog is open */
   open: boolean

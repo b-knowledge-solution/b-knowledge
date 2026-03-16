@@ -1,3 +1,16 @@
+/**
+ * @fileoverview RAG module route definitions.
+ *
+ * Registers all dataset, document, chunk, search, and advanced task endpoints
+ * under the `/api/rag` prefix (mounted in app/routes.ts).
+ *
+ * Auth requirements:
+ * - Read endpoints: `requireAuth` (any authenticated user)
+ * - Mutation endpoints: `requirePermission('manage_datasets')` (admin/manager)
+ *
+ * @module modules/rag/routes/rag
+ */
+
 import { Router } from 'express';
 import multer from 'multer';
 import { RagController } from '../controllers/rag.controller.js';
@@ -12,6 +25,7 @@ import {
 
 const router = Router();
 const controller = new RagController();
+// Use memory storage for file uploads — files are forwarded to S3 immediately
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Dataset endpoints
@@ -64,5 +78,19 @@ router.post('/datasets/:id/documents/:docId/:enrichType(keywords|questions|tags|
 
 // Task status
 router.get('/tasks/:taskId/status', requireAuth, controller.getTaskStatus.bind(controller));
+
+// Dataset overview & logs
+router.get('/datasets/:id/overview', requireAuth, controller.getDatasetOverview.bind(controller));
+router.get('/datasets/:id/logs', requireAuth, controller.getDatasetLogs.bind(controller));
+
+// Document logs (process log modal)
+router.get('/datasets/:id/documents/:docId/logs', requireAuth, controller.getDocumentLogs.bind(controller));
+
+// Knowledge graph data (visualization)
+router.get('/datasets/:id/graph', requireAuth, controller.getGraphData.bind(controller));
+
+// Metadata management
+router.get('/datasets/:id/metadata', requireAuth, controller.getMetadata.bind(controller));
+router.put('/datasets/:id/metadata', requirePermission('manage_datasets'), controller.updateMetadata.bind(controller));
 
 export default router;

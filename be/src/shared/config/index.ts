@@ -54,12 +54,13 @@ const isProduction = nodeEnv === 'production';
 // ============================================================================
 
 /**
- * Safely retrieves an environment variable with production validation.
- * 
- * @param key - The environment variable name to retrieve
- * @param defaultValue - Optional default value if not set
- * @returns The environment variable value, default value, or empty string
- * @throws Error in production if required variable is missing (no default provided)
+ * @description Safely retrieves an environment variable with production validation.
+ * In production, throws if a required variable (no default) is missing.
+ * In development, returns empty string for missing required variables.
+ * @param {string} key - The environment variable name to retrieve
+ * @param {string} defaultValue - Optional default value if not set
+ * @returns {string} The environment variable value, default value, or empty string
+ * @throws {Error} In production if required variable is missing (no default provided)
  * 
  * @example
  * // Required in production, optional in development
@@ -87,9 +88,9 @@ const getEnv = (key: string, defaultValue?: string): string => {
 // ============================================================================
 
 /**
- * Application configuration object.
+ * @description Application configuration object.
  * Provides centralized, type-safe access to all configuration values.
- * 
+ *
  * @remarks
  * This object is frozen with `as const` to ensure immutability.
  * Access environment variables through this object instead of process.env directly.
@@ -434,7 +435,7 @@ export const config = {
 } as const;
 
 /**
- * Type definition for the configuration object.
+ * @description Type definition derived from the configuration object.
  * Useful for function parameters that need config type hints.
  */
 export type Config = typeof config;

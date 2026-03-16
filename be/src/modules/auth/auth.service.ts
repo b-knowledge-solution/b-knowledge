@@ -1,10 +1,16 @@
-
+/**
+ * @fileoverview Authentication service handling Azure AD OAuth2, root/local login, and password utilities.
+ * @module auth/auth.service
+ */
 import { config } from "@/shared/config/index.js";
 import { log } from "@/shared/services/logger.service.js";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { ModelFactory } from "@/shared/models/factory.js";
 
+/**
+ * @description User profile data retrieved from Azure AD via Microsoft Graph
+ */
 export interface AzureAdUser {
   id: string;
   email: string;
@@ -16,6 +22,9 @@ export interface AzureAdUser {
   mobilePhone?: string | undefined;
 }
 
+/**
+ * @description OAuth2 token response from Azure AD token endpoint
+ */
 export interface TokenResponse {
   access_token: string;
   token_type: string;
@@ -25,6 +34,9 @@ export interface TokenResponse {
   id_token?: string | undefined;
 }
 
+/**
+ * @description Decoded Azure AD ID token profile claims
+ */
 export interface AzureAdProfile {
   sub: string;
   name?: string | undefined;
@@ -34,7 +46,9 @@ export interface AzureAdProfile {
   picture?: string | undefined;
 }
 
-// Handles Azure AD OAuth2 helpers plus legacy root login utilities.
+/**
+ * @description Handles Azure AD OAuth2 flow, root/test/local login, and password hashing utilities
+ */
 export class AuthService {
 
   /**
@@ -465,4 +479,5 @@ export class AuthService {
   }
 }
 
+/** Singleton instance of AuthService */
 export const authService = new AuthService();

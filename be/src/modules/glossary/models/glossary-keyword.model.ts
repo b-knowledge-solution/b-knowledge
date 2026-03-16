@@ -10,18 +10,17 @@ import { GlossaryKeyword } from "@/shared/models/types.js";
 import { db } from "@/shared/db/knex.js";
 
 /**
- * Model for glossary_keywords table operations.
- * Keywords are standalone entities in the glossary system.
+ * @description Model for glossary_keywords table operations. Keywords are standalone entities in the glossary system.
  */
 export class GlossaryKeywordModel extends BaseModel<GlossaryKeyword> {
   protected tableName = "glossary_keywords";
   protected knex: Knex = db;
 
   /**
-   * Search keywords by name (case-insensitive).
-   * @param query - Search query string
-   * @param limit - Maximum results to return
-   * @returns Array of matching keywords
+   * @description Search keywords by name using case-insensitive LIKE matching
+   * @param {string} query - Search query string
+   * @param {number} limit - Maximum results to return
+   * @returns {Promise<GlossaryKeyword[]>} Array of matching keywords
    */
   async searchByName(query: string, limit = 50): Promise<GlossaryKeyword[]> {
     return this.knex(this.tableName)
@@ -31,9 +30,9 @@ export class GlossaryKeywordModel extends BaseModel<GlossaryKeyword> {
   }
 
   /**
-   * Find a keyword by exact name (case-insensitive).
-   * @param name - Exact keyword name
-   * @returns Keyword if found, undefined otherwise
+   * @description Find a keyword by exact name using case-insensitive comparison
+   * @param {string} name - Exact keyword name
+   * @returns {Promise<GlossaryKeyword | undefined>} Keyword if found, undefined otherwise
    */
   async findByName(name: string): Promise<GlossaryKeyword | undefined> {
     return this.knex(this.tableName)
@@ -42,12 +41,11 @@ export class GlossaryKeywordModel extends BaseModel<GlossaryKeyword> {
   }
 
   /**
-   * Bulk create multiple keywords within a transaction.
-   * Skips duplicates by name.
-   * @param keywords - Array of keyword data to insert
-   * @param userId - User performing the action
-   * @param trx - Optional Knex transaction
-   * @returns Array of created keywords
+   * @description Bulk create multiple keywords within a transaction, skipping duplicates by name
+   * @param {Array<{ name: string; en_keyword?: string; description?: string }>} keywords - Array of keyword data to insert
+   * @param {string} userId - User performing the action
+   * @param {Knex.Transaction} trx - Optional Knex transaction
+   * @returns {Promise<GlossaryKeyword[]>} Array of created keywords
    */
   async bulkCreate(
     keywords: Array<{
@@ -91,12 +89,11 @@ export class GlossaryKeywordModel extends BaseModel<GlossaryKeyword> {
   }
 
   /**
-   * Search keywords with pagination, filtering active-only.
-   * Supports ILIKE search across name, en_keyword, description.
-   * @param search - Search query string (empty = no filter)
-   * @param page - Page number (1-indexed)
-   * @param pageSize - Number of items per page
-   * @returns Paginated result with data, total, page, and pageSize
+   * @description Search active keywords with pagination, supporting ILIKE search across name, en_keyword, and description
+   * @param {string} search - Search query string (empty = no filter)
+   * @param {number} page - Page number (1-indexed)
+   * @param {number} pageSize - Number of items per page
+   * @returns {Promise<{ data: GlossaryKeyword[]; total: number; page: number; pageSize: number }>} Paginated result
    */
   async searchPaginated(
     search: string,
@@ -139,12 +136,11 @@ export class GlossaryKeywordModel extends BaseModel<GlossaryKeyword> {
   }
 
   /**
-   * Bulk insert a chunk of keyword rows within a single transaction.
-   * Skips duplicates by name (case-insensitive) using both the DB and a seen Set.
-   * @param rows - Array of keyword rows to insert
-   * @param seen - Set of already-processed names (lowercase) for cross-chunk dedup
-   * @param userId - User performing the import
-   * @returns Object with created and skipped counts
+   * @description Bulk insert a chunk of keyword rows within a transaction, skipping duplicates using DB checks and in-memory seen set
+   * @param {Array<{ name: string; en_keyword?: string; description?: string }>} rows - Array of keyword rows to insert
+   * @param {Set<string>} seen - Set of already-processed names (lowercase) for cross-chunk dedup
+   * @param {string} userId - User performing the import
+   * @returns {Promise<{ created: number; skipped: number }>} Object with created and skipped counts
    */
   async bulkInsertChunk(
     rows: Array<{ name: string; en_keyword?: string; description?: string }>,

@@ -4,12 +4,16 @@
  */
 import { z } from 'zod';
 
-/** UUID v4 param schema */
+/**
+ * @description UUID v4 param validation schema for route parameters
+ */
 export const uuidParamSchema = z.object({
   id: z.string().uuid('Invalid UUID format'),
 });
 
-/** POST /api/broadcast-messages – body */
+/**
+ * @description Validation schema for creating a broadcast message
+ */
 export const createBroadcastSchema = z.object({
   message: z.string().min(1, 'Message is required').max(5000),
   starts_at: z.coerce.date(),
@@ -20,5 +24,7 @@ export const createBroadcastSchema = z.object({
   is_dismissible: z.boolean().optional(),
 });
 
-/** PUT /api/broadcast-messages/:id – body */
+/**
+ * @description Validation schema for updating a broadcast message (all fields optional)
+ */
 export const updateBroadcastSchema = createBroadcastSchema.partial();

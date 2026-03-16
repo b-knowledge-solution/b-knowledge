@@ -39,6 +39,7 @@ const BroadcastMessagePage: React.FC = () => {
     const { isFirstVisit } = useFirstVisit('broadcast');
     const [showGuide, setShowGuide] = useState(false);
 
+    // Show the onboarding guide dialog on the user's first visit to this page
     React.useEffect(() => {
         if (isFirstVisit) {
             setShowGuide(true);
@@ -55,10 +56,11 @@ const BroadcastMessagePage: React.FC = () => {
         queryFn: broadcastMessageService.getAllMessages
     });
 
-    // Save Mutation (Create or Update)
+    // Save Mutation (Create or Update) — determines operation by presence of msg.id
     const saveMutation = useMutation({
         mutationKey: ['save', 'broadcastMessage'],
         mutationFn: (msg: Partial<BroadcastMessage>) => {
+            // Update existing message if ID is present, otherwise create new
             if (msg.id) {
                 return broadcastMessageService.updateMessage(msg.id, msg);
             } else {
@@ -86,6 +88,7 @@ const BroadcastMessagePage: React.FC = () => {
      * @description Validation and submission handler for saving a message.
      */
     const handleSave = async () => {
+        // Guard: require message content and both date bounds before submitting
         if (!editingMessage?.message || !editingMessage?.starts_at || !editingMessage?.ends_at) {
             alert(t('common.fillRequiredFields'));
             return;
@@ -137,7 +140,7 @@ const BroadcastMessagePage: React.FC = () => {
         );
     };
 
-    // Pagination
+    // Client-side pagination — messages are fetched in full then sliced per page
     const totalPages = Math.ceil((messages || []).length / pageSize);
     const paginatedMessages = (messages || []).slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
@@ -163,6 +166,7 @@ const BroadcastMessagePage: React.FC = () => {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
+                                        {/* Show empty state row when no messages exist */}
                                         {paginatedMessages.length === 0 ? (
                                             <TableRow>
                                                 <TableCell colSpan={4} className="text-center py-8 text-slate-500">
@@ -189,6 +193,7 @@ const BroadcastMessagePage: React.FC = () => {
                                                         {record.ends_at ? new Date(record.ends_at).toLocaleString() : '-'}
                                                     </div>
                                                 </TableCell>
+                                                {/* Status badge — green for active, grey for inactive */}
                                                 <TableCell>
                                                     <div className="whitespace-nowrap">
                                                         {record.is_active ? (

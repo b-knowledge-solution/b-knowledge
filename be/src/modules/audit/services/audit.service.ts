@@ -1,9 +1,15 @@
-
-// Centralized audit logging for user actions and resource changes.
+/**
+ * @fileoverview Centralized audit logging for user actions and resource changes.
+ * Provides a best-effort, append-only audit trail that never throws on failures.
+ * @module services/audit
+ */
 import { ModelFactory } from '@/shared/models/factory.js';
 import { log } from '@/shared/services/logger.service.js';
 import { AuditLog } from '@/shared/models/types.js';
 
+/**
+ * @description Enumeration of all auditable action types in the system
+ */
 export const AuditAction = {
     CREATE_USER: 'create_user',
     UPDATE_USER: 'update_user',
@@ -44,8 +50,12 @@ export const AuditAction = {
     DELETE_PROMPT: 'delete_prompt',
 } as const;
 
+/** @description Union type of all valid audit action string values */
 export type AuditActionType = typeof AuditAction[keyof typeof AuditAction];
 
+/**
+ * @description Enumeration of all auditable resource types in the system
+ */
 export const AuditResourceType = {
     USER: 'user',
     TEAM: 'team',
@@ -64,8 +74,12 @@ export const AuditResourceType = {
     MODEL_PROVIDER: 'model_provider',
 } as const;
 
+/** @description Union type of all valid audit resource type string values */
 export type AuditResourceTypeValue = typeof AuditResourceType[keyof typeof AuditResourceType];
 
+/**
+ * @description Parameters required to create a new audit log entry
+ */
 export interface AuditLogParams {
     userId?: string | null | undefined;
     userEmail: string;
@@ -76,6 +90,9 @@ export interface AuditLogParams {
     ipAddress?: string | null | undefined;
 }
 
+/**
+ * @description Query parameters for filtering and paginating audit log results
+ */
 export interface AuditLogQueryParams {
     page?: number;
     limit?: number;
@@ -87,6 +104,9 @@ export interface AuditLogQueryParams {
     search?: string;
 }
 
+/**
+ * @description Response shape for paginated audit log queries including data and pagination metadata
+ */
 export interface AuditLogResponse {
     data: AuditLog[];
     pagination: {
@@ -97,12 +117,14 @@ export interface AuditLogResponse {
     };
 }
 
+/**
+ * @description Centralized audit service providing best-effort, append-only logging for security events and resource changes
+ */
 class AuditService {
     /**
-     * Persist a single audit entry.
-     * @param params - The audit log parameters.
-     * @returns Promise<number | null> - The ID of the created log entry or null on failure.
-     * @description Best-effort logging to avoid throwing on logging failures.
+     * @description Persist a single audit entry using best-effort semantics (never throws on failure)
+     * @param {AuditLogParams} params - The audit log parameters including user, action, and resource details
+     * @returns {Promise<number | null>} The ID of the created log entry, or null if logging failed
      */
     async log(params: AuditLogParams): Promise<number | null> {
         try {
@@ -150,12 +172,11 @@ class AuditService {
     }
 
     /**
-     * Retrieve paginated logs with lightweight filtering.
-     * @param filters - Filtering criteria (userId, action, resourceType).
-     * @param limit - Number of logs per page.
-     * @param offset - Pagination offset.
-     * @returns Promise<AuditLogResponse> - Paginated audit logs.
-     * @description Fetches logs based on filters and pagination, returning metadata.
+     * @description Retrieve paginated audit logs with lightweight filtering by user, action, and resource type
+     * @param {Record<string, string>} filters - Filtering criteria (userId, action, resourceType)
+     * @param {number} limit - Number of logs per page (default: 50)
+     * @param {number} offset - Pagination offset (default: 0)
+     * @returns {Promise<AuditLogResponse>} Paginated audit logs with parsed details and pagination metadata
      */
     async getLogs(filters: any = {}, limit: number = 50, offset: number = 0): Promise<AuditLogResponse> {
         // Build where clause based on filters
@@ -198,11 +219,10 @@ class AuditService {
     }
 
     /**
-     * Return audit history for a specific resource.
-     * @param resourceType - The type of resource.
-     * @param resourceId - The ID of the resource.
-     * @returns Promise<AuditLog[]> - Array of audit logs.
-     * @description Fetches logs filtered by resource type and ID.
+     * @description Retrieve the full audit history for a specific resource identified by type and ID
+     * @param {string} resourceType - The resource type to filter by (e.g., 'user', 'team')
+     * @param {string} resourceId - The unique resource identifier
+     * @returns {Promise<AuditLog[]>} Array of audit logs sorted newest-first with parsed details
      */
     async getResourceHistory(resourceType: string, resourceId: string): Promise<AuditLog[]> {
         // Fetch logs for the specific resource
@@ -219,10 +239,9 @@ class AuditService {
     }
 
     /**
-     * Produce CSV snapshot for bulk export/download.
-     * @param filters - Filters to apply to the export.
-     * @returns Promise<string> - CSV string content.
-     * @description Generates a CSV string containing all logs matching the filters.
+     * @description Generate a CSV-formatted string of all audit logs matching the given filters for bulk export
+     * @param {Record<string, any>} filters - Filters to apply (same as getLogs filters)
+     * @returns {Promise<string>} CSV string with header row, or empty string if no logs match
      */
     async exportLogsToCsv(filters: any): Promise<string> {
         // Fetch a large batch of logs (limit 1,000,000)
@@ -257,9 +276,8 @@ class AuditService {
     }
 
     /**
-     * Expose allowed action type values.
-     * @returns Promise<string[]> - List of action types.
-     * @description Returns all possible audit action types.
+     * @description Return all defined audit action type values for filter dropdown population
+     * @returns {Promise<string[]>} Array of action type strings
      */
     async getActionTypes(): Promise<string[]> {
         // Return values of AuditAction constant
@@ -267,9 +285,8 @@ class AuditService {
     }
 
     /**
-     * Expose allowed resource type values.
-     * @returns Promise<string[]> - List of resource types.
-     * @description Returns all possible audit resource types.
+     * @description Return all defined audit resource type values for filter dropdown population
+     * @returns {Promise<string[]>} Array of resource type strings
      */
     async getResourceTypes(): Promise<string[]> {
         // Return values of AuditResourceType constant
@@ -277,10 +294,9 @@ class AuditService {
     }
 
     /**
-     * Placeholder for retention policy hook.
-     * @param olderThanDays - Threshold in days for log deletion.
-     * @returns Promise<number> - Number of deleted logs.
-     * @description Intended for future implementation of log retention policies.
+     * @description Placeholder for future log retention policy; currently a no-op returning 0
+     * @param {number} olderThanDays - Threshold in days for log deletion
+     * @returns {Promise<number>} Number of deleted logs (currently always 0)
      */
     async deleteOldLogs(olderThanDays: number): Promise<number> {
         // Currently returns 0 as not implemented
@@ -288,4 +304,5 @@ class AuditService {
     }
 }
 
+/** Singleton instance of AuditService */
 export const auditService = new AuditService();

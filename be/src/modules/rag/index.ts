@@ -1,3 +1,13 @@
+/**
+ * @fileoverview Barrel export for the RAG module.
+ *
+ * Re-exports all public services, routes, and types used by other modules.
+ * Import from this barrel (`@/modules/rag/index.js`) rather than reaching
+ * into internal files directly.
+ *
+ * @module modules/rag
+ */
+
 export { default as ragRoutes } from './routes/rag.routes.js';
 export { ragService } from './services/rag.service.js';
 export { ragDocumentService } from './services/rag-document.service.js';

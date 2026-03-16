@@ -1,4 +1,12 @@
-
+/**
+ * @fileoverview Authentication and authorization middleware for Express routes.
+ *
+ * Provides middleware factories for session-based authentication, role-based
+ * access control, permission checking, ownership verification, and
+ * re-authentication enforcement for sensitive operations.
+ *
+ * @module middleware/auth
+ */
 import { Request, Response, NextFunction } from 'express'
 import { log } from '@/shared/services/logger.service.js'
 import { User } from '@/shared/models/types.js'
@@ -8,10 +16,11 @@ import { hasPermission, Role, Permission, ADMIN_ROLES } from '@/shared/config/rb
 export const REAUTH_REQUIRED_ERROR = 'REAUTH_REQUIRED'
 
 /**
- * Refreshes session timestamps whenever a user authenticates or reauthenticates.
+ * @description Refreshes session timestamps whenever a user authenticates or reauthenticates.
  * Downstream middleware uses these timestamps to enforce recent-auth checks.
- * @param req - Express request object with session
- * @param isReauth - If true, updates both lastAuthAt and lastReauthAt timestamps
+ * @param {Request} req - Express request object with session
+ * @param {boolean} isReauth - If true, updates both lastAuthAt and lastReauthAt timestamps
+ * @returns {void}
  */
 export function updateAuthTimestamp(req: Request, isReauth: boolean = false): void {
   // Only update timestamps if session exists
@@ -27,11 +36,12 @@ export function updateAuthTimestamp(req: Request, isReauth: boolean = false): vo
 }
 
 /**
- * Middleware that requires a valid user session to proceed.
- * Attaches user to request object if authenticated.
- * @param req - Express request object
- * @param res - Express response object
- * @param next - Next middleware function
+ * @description Middleware that requires a valid user session to proceed.
+ * Attaches user to request object if authenticated, returns 401 otherwise.
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ * @param {NextFunction} next - Next middleware function
+ * @returns {void}
  */
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   // Check if session contains authenticated user
@@ -46,10 +56,10 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
 }
 
 /**
- * Middleware factory that requires authentication within a time window.
+ * @description Middleware factory that requires authentication within a time window.
  * Returns REAUTH_REQUIRED error if auth is too old, prompting frontend re-auth flow.
- * @param maxAgeMinutes - Maximum age in minutes for valid auth (default: 15)
- * @returns Express middleware function
+ * @param {number} maxAgeMinutes - Maximum age in minutes for valid auth (default: 15)
+ * @returns {Function} Express middleware function
  */
 export function requireRecentAuth(maxAgeMinutes: number = 15) {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -89,11 +99,12 @@ export function requireRecentAuth(maxAgeMinutes: number = 15) {
 }
 
 /**
- * Middleware that optionally attaches session user to request.
+ * @description Middleware that optionally attaches session user to request.
  * Does not enforce authentication - allows requests to proceed regardless.
- * @param req - Express request object
- * @param _res - Express response object (unused)
- * @param next - Next middleware function
+ * @param {Request} req - Express request object
+ * @param {Response} _res - Express response object (unused)
+ * @param {NextFunction} next - Next middleware function
+ * @returns {void}
  */
 export function checkSession(req: Request, _res: Response, next: NextFunction): void {
   // If session has user, attach to request for convenience
@@ -105,10 +116,10 @@ export function checkSession(req: Request, _res: Response, next: NextFunction): 
 }
 
 /**
- * Utility function to get current authenticated user from request.
- * Checks session first, falls back to request.user.
- * @param req - Express request object
- * @returns User object if authenticated, undefined otherwise
+ * @description Utility function to get the current authenticated user from request.
+ * Checks session first (source of truth), then falls back to request.user.
+ * @param {Request} req - Express request object
+ * @returns {User | undefined} User object if authenticated, undefined otherwise
  */
 export function getCurrentUser(req: Request): User | undefined {
   // Prefer session user (source of truth)
@@ -120,10 +131,10 @@ export function getCurrentUser(req: Request): User | undefined {
 }
 
 /**
- * Middleware factory that requires a specific permission to access route.
- * Checks both role-based permissions and explicit user permissions.
- * @param permission - The permission required to access the route
- * @returns Express middleware function
+ * @description Middleware factory that requires a specific permission to access route.
+ * Checks both role-based permissions (via RBAC config) and explicit user permissions.
+ * @param {Permission} permission - The permission required to access the route
+ * @returns {Function} Express middleware function
  */
 export function requirePermission(permission: Permission) {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -178,9 +189,10 @@ export function requirePermission(permission: Permission) {
 }
 
 /**
- * Middleware factory that requires one of the specified roles to access route.
- * @param roles - Allowed roles (variadic parameter)
- * @returns Express middleware function
+ * @description Middleware factory that requires one of the specified roles to access route.
+ * Returns 403 if the user's role is not in the allowed list.
+ * @param {...Role} roles - Allowed roles (variadic parameter)
+ * @returns {Function} Express middleware function
  */
 export function requireRole(...roles: Role[]) {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -215,12 +227,13 @@ export function requireRole(...roles: Role[]) {
 }
 
 /**
- * Middleware factory that requires the authenticated user to own the resource.
+ * @description Middleware factory that requires the authenticated user to own the resource.
  * Ownership is determined by matching user ID with a URL parameter.
- * @param userIdParam - Name of the URL parameter containing the owner's user ID
- * @param options - Configuration options
- * @param options.allowAdminBypass - If true, admin roles bypass ownership check (default: true)
- * @returns Express middleware function
+ * Admin roles can optionally bypass the ownership check (IDOR prevention).
+ * @param {string} userIdParam - Name of the URL parameter containing the owner's user ID
+ * @param {object} options - Configuration options
+ * @param {boolean} options.allowAdminBypass - If true, admin roles bypass ownership check (default: true)
+ * @returns {Function} Express middleware function
  */
 export function requireOwnership(
   userIdParam: string,
@@ -268,12 +281,13 @@ export function requireOwnership(
 }
 
 /**
- * Middleware factory with custom ownership resolution logic.
- * Allows flexible ownership checks using a custom getter function.
- * @param getOwnerId - Function to extract owner ID from request
- * @param options - Configuration options
- * @param options.allowAdminBypass - If true, admin roles bypass ownership check (default: true)
- * @returns Express middleware function
+ * @description Middleware factory with custom ownership resolution logic.
+ * Allows flexible ownership checks using a custom getter function to
+ * extract the owner ID from the request (e.g. from body or query).
+ * @param {Function} getOwnerId - Function to extract owner ID from request
+ * @param {object} options - Configuration options
+ * @param {boolean} options.allowAdminBypass - If true, admin roles bypass ownership check (default: true)
+ * @returns {Function} Express middleware function
  */
 export function requireOwnershipCustom(
   getOwnerId: (req: Request) => string | undefined,
@@ -321,12 +335,13 @@ export function requireOwnershipCustom(
 }
 
 /**
- * Centralized helper for authorization errors.
- * Logs warning and sends consistent JSON error response.
- * @param res - Express response object
- * @param statusCode - HTTP status code (401 or 403)
- * @param logMessage - Message to log
- * @param logDetails - Additional details for logging
+ * @description Centralized helper for authorization errors.
+ * Logs a warning with details and sends a consistent JSON error response.
+ * @param {Response} res - Express response object
+ * @param {401 | 403} statusCode - HTTP status code (401 for unauthenticated, 403 for unauthorized)
+ * @param {string} logMessage - Message to log for debugging
+ * @param {Record<string, unknown>} logDetails - Additional details for structured logging
+ * @returns {void}
  */
 export function authorizationError(
   res: Response,

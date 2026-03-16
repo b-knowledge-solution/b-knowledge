@@ -28,8 +28,8 @@ interface AuditFilterPanelProps {
  * @description Collapsible filter panel with action, resource type, and date range filters.
  * Consumes filter state directly from AuditFilterContext.
  *
- * @param props - Action and resource type options.
- * @returns Filter panel element, or null when hidden.
+ * @param {AuditFilterPanelProps} props - Action and resource type options.
+ * @returns {JSX.Element | null} Filter panel element, or null when hidden.
  */
 export function AuditFilterPanel({ actionTypes, resourceTypes }: AuditFilterPanelProps) {
     const { t } = useTranslation()
@@ -101,6 +101,7 @@ export function AuditFilterPanel({ actionTypes, resourceTypes }: AuditFilterPane
                     <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
                         {t('auditLog.startDate')}
                     </label>
+                    {/* Disable dates after the selected end date to enforce valid range */}
                     <DatePicker
                         value={filters.startDate ? new Date(filters.startDate) : undefined}
                         onChange={(date) => setFilter('startDate', date?.toISOString() || '')}
@@ -114,6 +115,7 @@ export function AuditFilterPanel({ actionTypes, resourceTypes }: AuditFilterPane
                     <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
                         {t('auditLog.endDate')}
                     </label>
+                    {/* Disable dates before the selected start date to enforce valid range */}
                     <DatePicker
                         value={filters.endDate ? new Date(filters.endDate) : undefined}
                         onChange={(date) => setFilter('endDate', date?.toISOString() || '')}

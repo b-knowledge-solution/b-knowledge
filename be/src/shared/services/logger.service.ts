@@ -182,38 +182,38 @@ allLogsTransport.on('rotate', (oldFilename, newFilename) => {
 // ============================================================================
 
 /**
- * Convenience logging methods.
- * Provides a simpler API than the full Winston logger.
+ * @description Convenience logging methods.
+ * Provides a simpler API than the full Winston logger with structured metadata support.
  */
 export const log = {
   /**
-   * Log debug-level message (development details).
-   * @param message - Log message.
-   * @param meta - Optional metadata object.
+   * @description Log debug-level message (development details).
+   * @param {string} message - Log message
+   * @param {Record<string, unknown>} [meta] - Optional metadata object
    */
   debug: (message: string, meta?: Record<string, unknown>) => {
     logger.debug(message, meta);
   },
   /**
-   * Log info-level message (normal operations).
-   * @param message - Log message.
-   * @param meta - Optional metadata object.
+   * @description Log info-level message (normal operations).
+   * @param {string} message - Log message
+   * @param {Record<string, unknown>} [meta] - Optional metadata object
    */
   info: (message: string, meta?: Record<string, unknown>) => {
     logger.info(message, meta);
   },
   /**
-   * Log warning-level message (potential issues).
-   * @param message - Log message.
-   * @param meta - Optional metadata object.
+   * @description Log warning-level message (potential issues).
+   * @param {string} message - Log message
+   * @param {Record<string, unknown>} [meta] - Optional metadata object
    */
   warn: (message: string, meta?: Record<string, unknown>) => {
     logger.warn(message, meta);
   },
   /**
-   * Log error-level message (errors and failures).
-   * @param message - Log message.
-   * @param meta - Optional metadata object.
+   * @description Log error-level message (errors and failures).
+   * @param {string} message - Log message
+   * @param {Record<string, unknown>} [meta] - Optional metadata object
    */
   error: (message: string, meta?: Record<string, unknown>) => {
     logger.error(message, meta);
