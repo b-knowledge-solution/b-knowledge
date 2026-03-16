@@ -100,6 +100,12 @@ export interface Chunk {
   positions?: number[][];
   score?: number;
   method?: string;
+  /** Whether this chunk is available for search */
+  available?: boolean;
+  /** Important keywords */
+  important_kwd?: string[];
+  /** Associated questions */
+  question_kwd?: string[];
 }
 
 /** @description Paginated response for chunk listing */
@@ -301,6 +307,11 @@ export interface RetrievalChunk {
   vector_similarity?: number;
   term_similarity?: number;
   token_count?: number;
+  /** Highlighted text with <mark> tags */
+  highlight?: string;
+  doc_id?: string;
+  page_num?: number[];
+  positions?: number[][];
 }
 
 // ============================================================================

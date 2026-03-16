@@ -225,9 +225,15 @@ export const datasetApi = {
    * @param {{ doc_id?: string; page?: number; limit?: number; search?: string }} params - Query parameters
    * @returns {Promise<ChunksResponse>} Paginated chunks with total count
    */
+  /**
+   * @description Fetch paginated chunks for a dataset, optionally filtered by document, search term, and availability.
+   * @param {string} datasetId - Dataset UUID
+   * @param {object} params - Query parameters including optional available filter
+   * @returns {Promise<ChunksResponse>} Paginated chunks with total count
+   */
   listChunks: async (
     datasetId: string,
-    params?: { doc_id?: string; page?: number; limit?: number; search?: string },
+    params?: { doc_id?: string; page?: number; limit?: number; search?: string; available?: boolean },
   ): Promise<ChunksResponse> => {
     // Build query string from optional parameters
     const query = new URLSearchParams();
@@ -235,6 +241,8 @@ export const datasetApi = {
     if (params?.page) query.set('page', String(params.page));
     if (params?.limit) query.set('limit', String(params.limit));
     if (params?.search) query.set('search', params.search);
+    // Pass availability filter as '1' or '0' when explicitly set
+    if (params?.available !== undefined) query.set('available', params.available ? '1' : '0');
     const qs = query.toString();
     return api.get<ChunksResponse>(`${BASE_URL}/datasets/${datasetId}/chunks${qs ? `?${qs}` : ''}`);
   },
@@ -256,7 +264,7 @@ export const datasetApi = {
    * @param {{ text: string }} data - Updated text content
    * @returns {Promise<Chunk>} The updated chunk
    */
-  updateChunk: async (datasetId: string, chunkId: string, data: { text: string }): Promise<Chunk> => {
+  updateChunk: async (datasetId: string, chunkId: string, data: { text?: string; available?: boolean }): Promise<Chunk> => {
     return api.put<Chunk>(`${BASE_URL}/datasets/${datasetId}/chunks/${chunkId}`, data);
   },
 
@@ -268,6 +276,16 @@ export const datasetApi = {
    */
   deleteChunk: async (datasetId: string, chunkId: string): Promise<void> => {
     return api.delete<void>(`${BASE_URL}/datasets/${datasetId}/chunks/${chunkId}`);
+  },
+
+  /**
+   * @description Bulk enable/disable chunks by IDs.
+   * @param {string} datasetId - Dataset UUID
+   * @param {{ chunk_ids: string[]; available: boolean }} data - Chunk IDs and availability status
+   * @returns {Promise<{ updated: number }>} Count of updated chunks
+   */
+  bulkSwitchChunks: async (datasetId: string, data: { chunk_ids: string[]; available: boolean }): Promise<{ updated: number }> => {
+    return api.post<{ updated: number }>(`${BASE_URL}/datasets/${datasetId}/chunks/bulk-switch`, data);
   },
 
   // ============================================================================

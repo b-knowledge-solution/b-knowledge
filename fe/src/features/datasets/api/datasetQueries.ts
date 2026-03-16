@@ -453,6 +453,12 @@ export interface UseChunksReturn {
   updateChunk: (chunkId: string, text: string) => Promise<void>
   /** Delete a chunk */
   deleteChunk: (chunkId: string) => Promise<void>
+  /** Available filter: undefined = all, true = enabled, false = disabled */
+  availableFilter: boolean | undefined
+  /** Set available filter */
+  setAvailableFilter: (value: boolean | undefined) => void
+  /** Toggle a single chunk's availability */
+  toggleChunk: (chunkId: string, available: boolean) => Promise<void>
 }
 
 const CHUNK_LIMIT = 20
@@ -467,18 +473,20 @@ export function useChunks(datasetId: string | undefined, docId?: string): UseChu
   const { t } = useTranslation()
   const queryClient = useQueryClient()
 
-  // UI-only state for pagination and search
+  // UI-only state for pagination, search, and availability filter
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
+  const [availableFilter, setAvailableFilter] = useState<boolean | undefined>(undefined)
 
   // Fetch chunks via TanStack Query with pagination params
   const { data, isLoading } = useQuery({
-    queryKey: queryKeys.datasets.chunks(datasetId ?? '', { page, search, docId }),
+    queryKey: queryKeys.datasets.chunks(datasetId ?? '', { page, search, docId, available: availableFilter }),
     queryFn: () => datasetApi.listChunks(datasetId!, {
       page,
       limit: CHUNK_LIMIT,
       ...(search ? { search } : {}),
       ...(docId ? { doc_id: docId } : {}),
+      ...(availableFilter !== undefined ? { available: availableFilter } : {}),
     }),
     enabled: !!datasetId,
   })
@@ -512,6 +520,15 @@ export function useChunks(datasetId: string | undefined, docId?: string): UseChu
     onSuccess: invalidateChunks,
   })
 
+  // Toggle single chunk availability via updateChunk API
+  const toggleMutation = useMutation({
+    mutationKey: ['datasets', 'chunks', 'toggle'],
+    mutationFn: ({ chunkId, available }: { chunkId: string; available: boolean }) =>
+      datasetApi.updateChunk(datasetId!, chunkId, { available }),
+    meta: { successMessage: t('datasetSettings.chunks.toggleSuccess') },
+    onSuccess: invalidateChunks,
+  })
+
   /** Add a manual chunk */
   const addChunk = async (text: string) => {
     if (!datasetId) return
@@ -530,6 +547,12 @@ export function useChunks(datasetId: string | undefined, docId?: string): UseChu
     await deleteMutation.mutateAsync(chunkId)
   }
 
+  /** Toggle a single chunk's availability */
+  const toggleChunk = async (chunkId: string, available: boolean) => {
+    if (!datasetId) return
+    await toggleMutation.mutateAsync({ chunkId, available })
+  }
+
   return {
     chunks: data?.chunks ?? [],
     total: data?.total ?? 0,
@@ -542,6 +565,9 @@ export function useChunks(datasetId: string | undefined, docId?: string): UseChu
     addChunk,
     updateChunk,
     deleteChunk,
+    availableFilter,
+    setAvailableFilter,
+    toggleChunk,
   }
 }
 
