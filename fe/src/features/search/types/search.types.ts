@@ -21,10 +21,10 @@ export interface SearchResult {
   doc_id: string
   /** Document file name */
   doc_name: string
-  /** Page number in the document */
-  page_num: number
-  /** Position within the page */
-  position: number
+  /** Page number(s) in the document */
+  page_num: number | number[]
+  /** Position(s) within the page */
+  position: number | number[]
   /** Relevance score (0-1) */
   score: number
   /** Dataset identifier the chunk belongs to */
@@ -187,8 +187,8 @@ export interface RetrievalTestChunk {
   doc_id: string
   /** Document file name */
   doc_name: string
-  /** Page number in the document */
-  page_num: number
+  /** Page number(s) in the document */
+  page_num: number | number[]
   /** Relevance score (0-1) */
   score: number
   /** Dataset identifier */

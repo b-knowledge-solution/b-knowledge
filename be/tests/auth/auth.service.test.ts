@@ -55,7 +55,7 @@ vi.mock('../../src/shared/config/index.js', () => ({
       tenantId: 'test-tenant-id',
       redirectUri: 'http://localhost:3001/api/auth/callback',
     },
-    enableRootLogin: true,
+    enableLocalLogin: true,
     rootUser: 'root@example.com',
     rootPassword: 'secret',
   },

@@ -4,7 +4,7 @@
  * @module features/chat/components/ChatMessageList
  */
 
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import ChatMessage from './ChatMessage'
 import type { ChatMessage as ChatMessageType, ChatReference, ChatChunk } from '../types/chat.types'
@@ -60,28 +60,27 @@ function ChatMessageList({
   const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
-  const [isNearBottom, setIsNearBottom] = useState(true)
+  const isNearBottomRef = useRef(true)
 
   // Track whether user is near the bottom of the scroll container
   const handleScroll = () => {
     const el = containerRef.current
     if (!el) return
     const threshold = 100
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold
-    setIsNearBottom(nearBottom)
+    isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < threshold
   }
 
-  // Auto-scroll only when user is near the bottom or new messages arrive
+  // Auto-scroll only when user is near the bottom
   useEffect(() => {
-    if (isNearBottom) {
+    if (isNearBottomRef.current) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
-  }, [messages.length, currentAnswer, isNearBottom])
+  }, [messages.length, currentAnswer])
 
   // Always scroll to bottom when conversation changes (messages reset)
   useEffect(() => {
+    isNearBottomRef.current = true
     bottomRef.current?.scrollIntoView({ behavior: 'instant' })
-    setIsNearBottom(true)
   }, [conversationId])
 
   return (

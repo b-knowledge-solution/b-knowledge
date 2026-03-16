@@ -21,7 +21,7 @@ vi.mock('../../src/shared/config/index.js', () => ({
         frontendUrl: 'http://localhost:5173',
         sharedStorageDomain: '.localhost',
         https: { enabled: false },
-        enableRootLogin: true,
+        enableLocalLogin: true,
         azureAd: {
             clientId: 'test-client-id',
             clientSecret: 'test-secret',
@@ -118,7 +118,7 @@ describe('Auth Routes', () => {
             const { config } = await import('../../src/shared/config/index.js');
             expect(config.nodeEnv).toBe('test');
             expect(config.frontendUrl).toBe('http://localhost:5173');
-            expect(config.enableRootLogin).toBe(true);
+            expect(config.enableLocalLogin).toBe(true);
         });
     });
 

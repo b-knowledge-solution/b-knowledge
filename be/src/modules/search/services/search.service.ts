@@ -10,7 +10,7 @@
 
 import { Response } from 'express'
 import { ModelFactory } from '@/shared/models/factory.js'
-import { SearchApp, SearchAppAccess, ChunkResult } from '@/shared/models/types.js'
+import { SearchApp, SearchAppAccess, ChunkResult, SearchRequest } from '@/shared/models/types.js'
 import { ragSearchService } from '@/modules/rag/services/rag-search.service.js'
 import { ragRerankService } from '@/modules/rag/services/rag-rerank.service.js'
 import { ragCitationService } from '@/modules/rag/services/rag-citation.service.js'
@@ -121,49 +121,46 @@ export class SearchService {
     userRole: string,
     teamIds: string[],
     options?: { page?: number; pageSize?: number; search?: string; sortBy?: string; sortOrder?: string }
-  ): Promise<any> {
-    // Admins can see all apps without restriction
-    if (userRole === 'admin' || userRole === 'superadmin') {
-      return ModelFactory.searchApp.findAll(undefined, { orderBy: { created_at: 'desc' } })
-    }
+  ): Promise<{ data: SearchApp[]; total: number }> {
+    const page = options?.page ?? 1
+    const pageSize = options?.pageSize ?? 20
+    const sortBy = options?.sortBy || 'created_at'
+    const sortOrder = options?.sortOrder || 'desc'
 
-    // Get app IDs the user has been explicitly granted access to
-    const accessibleIds = await ModelFactory.searchAppAccess.findAccessibleAppIds(userId, teamIds)
+    // Build base query
+    let baseQuery = ModelFactory.searchApp.getKnex()
 
-    // Build query: created_by user OR is_public OR in accessible IDs
-    const appsQuery = ModelFactory.searchApp.getKnex()
-      .where(function (this: any) {
-        // User's own apps
+    // RBAC filter: admins see all, others see own + public + shared
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
+      const accessibleIds = await ModelFactory.searchAppAccess.findAccessibleAppIds(userId, teamIds)
+      baseQuery = baseQuery.where(function (this: any) {
         this.where('created_by', userId)
-        // Public apps
         this.orWhere('is_public', true)
-        // Apps shared via access control entries
         if (accessibleIds.length > 0) {
           this.orWhereIn('id', accessibleIds)
         }
       })
+    }
 
+    // Apply search filter
     if (options?.search) {
-      appsQuery.where(function(this: any) {
-        this.where('name', 'ilike', `%${options.search}%`)
-          .orWhere('description', 'ilike', `%${options.search}%`)
+      baseQuery = baseQuery.andWhere(function (this: any) {
+        this.where('name', 'ilike', `%${options!.search}%`)
+          .orWhere('description', 'ilike', `%${options!.search}%`)
       })
     }
 
-    if (options?.page && options?.pageSize) {
-      // count total
-      const countQuery = appsQuery.clone().clearSelect().count('* as count').first()
-      const totalResult = await countQuery
-      const total = Number((totalResult as any)?.count || 0)
+    // Count total before pagination
+    const countResult = await baseQuery.clone().clearSelect().clearOrder().count('* as count').first()
+    const total = Number((countResult as any)?.count || 0)
 
-      appsQuery.orderBy(options.sortBy || 'created_at', options.sortOrder || 'desc')
-      appsQuery.limit(options.pageSize).offset((options.page - 1) * options.pageSize)
-      const data = await appsQuery
-      return { data, total, page: options.page, pageSize: options.pageSize }
-    }
+    // Apply sort and pagination
+    const data = await baseQuery
+      .orderBy(sortBy, sortOrder)
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
 
-    appsQuery.orderBy('created_at', 'desc')
-    return appsQuery
+    return { data, total }
   }
 
   /**
@@ -292,53 +289,42 @@ export class SearchService {
       topK?: number
       method?: 'full_text' | 'semantic' | 'hybrid'
       similarityThreshold?: number
+      vectorSimilarityWeight?: number
       page?: number
       pageSize?: number
     }
-  ): Promise<{ chunks: any[]; total: number }> {
+  ): Promise<{ chunks: any[]; total: number; doc_aggs?: any[] }> {
     // Load the search app to get dataset IDs
     const app = await ModelFactory.searchApp.findById(searchId)
     if (!app) {
       throw new Error('Search app not found')
     }
 
-    // Parse dataset_ids (may be stored as JSONB)
-    const datasetIds: string[] = Array.isArray(app.dataset_ids)
-      ? app.dataset_ids
-      : JSON.parse(app.dataset_ids as unknown as string)
-
     const topK = options?.topK ?? 10
     const method = options?.method ?? 'full_text'
     const similarityThreshold = options?.similarityThreshold ?? 0
+    const vectorSimilarityWeight = options?.vectorSimilarityWeight
 
-    // Search across all datasets and merge results
-    const allChunks: any[] = []
-    for (const datasetId of datasetIds) {
-      const result = await ragSearchService.search(
-        datasetId,
-        { query, top_k: topK, method, similarity_threshold: similarityThreshold },
-      )
-      // Warn if a dataset returned no results (may have been deleted)
-      if (result.chunks.length === 0) {
-        log.warn(`Dataset ${datasetId} returned no results — it may have been deleted`)
-      }
-      allChunks.push(...result.chunks)
-    }
+    // Use shared retrieveChunks (applies embedding + reranking)
+    const { chunks: allChunks, total: totalHits } = await this.retrieveChunks(
+      app, query, topK, method, similarityThreshold, vectorSimilarityWeight,
+    )
 
-    // Sort merged results by score descending
-    allChunks.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-    
-    // Apply pagination if provided, otherwise fallback to topK
+    // Apply pagination if provided
     let limited = allChunks
     if (options?.page && options?.pageSize) {
-      const page = options.page
-      const pageSize = options.pageSize
-      limited = allChunks.slice((page - 1) * pageSize, page * pageSize)
-    } else {
-      limited = allChunks.slice(0, topK)
+      const start = (options.page - 1) * options.pageSize
+      limited = allChunks.slice(start, start + options.pageSize)
     }
 
-    return { chunks: limited, total: allChunks.length }
+    // Map content fields for FE compatibility
+    const mappedChunks = limited.map((c: any) => ({
+      ...c,
+      content: c.text,
+      content_with_weight: c.text,
+    }))
+
+    return { chunks: mappedChunks, total: totalHits, doc_aggs: this.buildDocAggs(limited) }
   }
 
   /**
@@ -350,10 +336,33 @@ export class SearchService {
     const app = await ModelFactory.searchApp.findById(searchId)
     if (!app) throw new Error('Search app not found')
     
-    const chunks = await this.retrieveChunks(app, data.query, data.top_k, data.method, data.similarity_threshold)
+    const { chunks } = await this.retrieveChunks(app, data.query, data.top_k, data.method, data.similarity_threshold)
     return {
-      chunks: chunks.map((c, i) => ({ ...c, chunk_id: c.chunk_id, id: i })),
+      chunks: chunks.map((c, i) => ({
+        ...c,
+        chunk_id: c.chunk_id,
+        id: i,
+        content: c.text,
+        content_with_weight: c.text,
+      })),
       doc_aggs: this.buildDocAggs(chunks)
+    }
+  }
+
+  /**
+   * Embed a query string for semantic/hybrid search.
+   * Returns null if no embedding model is configured or embedding fails.
+   * @param query - The query string to embed
+   * @param providerId - Optional embedding provider ID
+   * @returns The query embedding vector, or null on failure
+   */
+  private async embedQuery(query: string, providerId?: string): Promise<number[] | null> {
+    try {
+      const vectors = await llmClientService.embedTexts([query], providerId)
+      return vectors[0] ?? null
+    } catch (err) {
+      log.warn('Query embedding failed, falling back to full-text search', { error: (err as Error).message })
+      return null
     }
   }
 
@@ -364,33 +373,55 @@ export class SearchService {
    * @param topK - Maximum results
    * @param method - Search method
    * @param similarityThreshold - Minimum similarity score
-   * @returns Array of chunk results
-   * @description Shared retrieval logic used by askSearch and mindmap
+   * @param vectorSimilarityWeight - Optional weight for vector vs text scoring
+   * @param metadataFilter - Optional metadata filter conditions
+   * @returns Object with chunk results array and total hit count
+   * @description Shared retrieval logic used by askSearch, executeSearch, and mindmap
    */
   private async retrieveChunks(
     app: SearchApp,
     query: string,
     topK: number = 10,
     method: 'full_text' | 'semantic' | 'hybrid' = 'full_text',
-    similarityThreshold: number = 0
-  ): Promise<ChunkResult[]> {
+    similarityThreshold: number = 0,
+    vectorSimilarityWeight?: number,
+    metadataFilter?: { logic: string; conditions: Array<{ name: string; comparison_operator: string; value: unknown }> },
+  ): Promise<{ chunks: ChunkResult[]; total: number }> {
     // Parse dataset_ids (may be stored as JSONB)
     const datasetIds: string[] = Array.isArray(app.dataset_ids)
       ? app.dataset_ids
       : JSON.parse(app.dataset_ids as unknown as string)
 
+    // Embed query for semantic/hybrid search
+    let queryVector: number[] | null = null
+    if (method !== 'full_text') {
+      queryVector = await this.embedQuery(query)
+    }
+
     // Search across all datasets and merge results
     const allChunks: ChunkResult[] = []
+    let totalHits = 0
     for (const datasetId of datasetIds) {
+      const searchReq: SearchRequest = {
+        query,
+        top_k: topK,
+        method,
+        similarity_threshold: similarityThreshold,
+      }
+      if (vectorSimilarityWeight != null) searchReq.vector_similarity_weight = vectorSimilarityWeight
+      if (metadataFilter) searchReq.metadata_filter = metadataFilter as NonNullable<SearchRequest['metadata_filter']>
+
       const result = await ragSearchService.search(
         datasetId,
-        { query, top_k: topK, method, similarity_threshold: similarityThreshold },
+        searchReq,
+        queryVector,
       )
       // Warn if a dataset returned no results (may have been deleted)
       if (result.chunks.length === 0) {
         log.warn(`Dataset ${datasetId} returned no results — it may have been deleted`)
       }
       allChunks.push(...result.chunks)
+      totalHits += result.total
     }
 
     // Sort by score descending and limit
@@ -403,7 +434,7 @@ export class SearchService {
       chunks = await ragRerankService.rerank(query, chunks, topK, config.rerank_id as string)
     }
 
-    return chunks
+    return { chunks, total: totalHits }
   }
 
   /**
@@ -454,6 +485,7 @@ export class SearchService {
       method?: 'full_text' | 'semantic' | 'hybrid'
       similarity_threshold?: number
       vector_similarity_weight?: number
+      metadata_filter?: SearchRequest['metadata_filter']
     },
     res: Response
   ): Promise<void> {
@@ -466,7 +498,7 @@ export class SearchService {
     }
 
     const searchConfig = app.search_config as Record<string, unknown>
-    const { query, top_k = 10, method = 'full_text', similarity_threshold = 0 } = params
+    const { query, top_k = 10, method = 'full_text', similarity_threshold = 0, vector_similarity_weight, metadata_filter } = params
 
     // Create Langfuse trace for the search pipeline (fire-and-forget)
     let trace: LangfuseTraceClient | undefined
@@ -491,7 +523,7 @@ export class SearchService {
     }
 
     // Retrieve and optionally rerank chunks
-    const chunks = await this.retrieveChunks(app, query, top_k, method, similarity_threshold)
+    const { chunks } = await this.retrieveChunks(app, query, top_k, method, similarity_threshold, vector_similarity_weight, metadata_filter as any)
 
     // End retrieval span with chunk texts
     if (retrievalSpan) {
@@ -503,7 +535,13 @@ export class SearchService {
 
     // Build reference data
     const reference = {
-      chunks: chunks.map((c, i) => ({ ...c, chunk_id: c.chunk_id, id: i })),
+      chunks: chunks.map((c, i) => ({
+        ...c,
+        chunk_id: c.chunk_id,
+        id: i,
+        content: c.text,
+        content_with_weight: c.text,
+      })),
       doc_aggs: this.buildDocAggs(chunks),
     }
 
@@ -529,7 +567,9 @@ export class SearchService {
       ],
       {
         providerId: searchConfig?.llm_id as string | undefined,
-        temperature: (searchConfig?.temperature as number) ?? 0.7,
+        temperature: ((searchConfig?.llm_setting as any)?.temperature as number) ?? 0.7,
+        max_tokens: ((searchConfig?.llm_setting as any)?.max_tokens as number) ?? undefined,
+        top_p: ((searchConfig?.llm_setting as any)?.top_p as number) ?? undefined,
       },
       mainSpan
     )
@@ -552,7 +592,7 @@ export class SearchService {
 
     // Generate related questions if configured
     let relatedQuestions: string[] = []
-    if (searchConfig?.related_search) {
+    if (searchConfig?.enable_related_questions) {
       try {
         relatedQuestions = await this.generateRelatedQuestions(query, searchConfig?.llm_id as string | undefined)
       } catch (err) {
@@ -660,7 +700,7 @@ export class SearchService {
     const { query, top_k = 10, method = 'full_text', similarity_threshold = 0 } = params
 
     // Retrieve chunks for context
-    const chunks = await this.retrieveChunks(app, query, top_k, method, similarity_threshold)
+    const { chunks } = await this.retrieveChunks(app, query, top_k, method, similarity_threshold)
 
     // Build knowledge context
     const knowledge = this.buildKnowledgeContext(chunks)

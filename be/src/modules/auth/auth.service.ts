@@ -289,7 +289,7 @@ export class AuthService {
    */
   async login(username: string, password: string, ipAddress?: string): Promise<any> {
     // ── Path 1: Root user (from environment config) ──────────────────────────
-    if (config.enableRootLogin && username === config.rootUser && password === config.rootPassword) {
+    if (config.enableLocalLogin && username === config.rootUser && password === config.rootPassword) {
       const user = {
         id: 'root-user',
         email: username,
@@ -338,7 +338,7 @@ export class AuthService {
     }
 
     // ── Path 2: Test user login with TEST_PASSWORD (dev/seed convenience) ────
-    if (config.enableRootLogin && config.testPassword && password === config.testPassword) {
+    if (config.enableLocalLogin && config.testPassword && password === config.testPassword) {
       // Look up user by email in database
       const dbUser = await ModelFactory.user.findByEmail(username);
 
@@ -381,7 +381,7 @@ export class AuthService {
     }
 
     // ── Path 3: Local DB user with bcrypt password_hash ──────────────────────
-    if (config.enableRootLogin) {
+    if (config.enableLocalLogin) {
       // Look up user by email address
       const localUser = await ModelFactory.user.findByEmail(username);
 
@@ -435,7 +435,7 @@ export class AuthService {
     log.warn('Failed login attempt', {
       username,
       ipAddress,
-      isRootEnabled: config.enableRootLogin,
+      isLocalLoginEnabled: config.enableLocalLogin,
       isRootUser: username === config.rootUser
     });
 

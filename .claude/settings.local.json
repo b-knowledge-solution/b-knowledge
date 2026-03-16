@@ -65,7 +65,8 @@
       "Bash(pip install shapely pyclipper editdistance)",
       "Bash(cp:*)",
       "Bash(winget install:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(for wt:*)"
     ]
   },
   "sandbox": {

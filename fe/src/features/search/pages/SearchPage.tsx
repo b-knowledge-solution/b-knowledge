@@ -19,7 +19,8 @@ import SearchResults from '../components/SearchResults'
 import SearchFilters from '../components/SearchFilters'
 import SearchDocumentPreviewDrawer from '../components/SearchDocumentPreviewDrawer'
 import SearchMindMapDrawer from '../components/SearchMindMapDrawer'
-import { useAccessibleSearchApps, useSearch } from '../api/searchQueries'
+import { searchApi } from '../api/searchApi'
+import { useAccessibleSearchApps } from '../api/searchQueries'
 import { useSearchStream } from '../hooks/useSearchStream'
 import type { SearchFilters as SearchFiltersType, SearchResult } from '../types/search.types'
 
@@ -47,8 +48,10 @@ function DatasetSearchPage() {
   // Search app selection (replaces hardcoded 'default')
   const { apps: searchApps, activeAppId: searchAppId, setActiveAppId } = useAccessibleSearchApps()
 
-  // Paginated search for non-first pages (avoids re-triggering SSE stream)
-  const paginatedSearch = useSearch()
+  // Paginated search state for non-first pages (avoids re-triggering SSE stream)
+  const [paginatedResults, setPaginatedResults] = useState<SearchResult[]>([])
+  const [paginatedTotal, setPaginatedTotal] = useState(0)
+  const [isPaginating, setIsPaginating] = useState(false)
 
   // Pagination state
   const [page, setPage] = useState(1)
@@ -80,8 +83,8 @@ function DatasetSearchPage() {
       content_with_weight: c.content_with_weight || c.content,
       doc_id: c.doc_id,
       docnm_kwd: c.doc_name,
-      page_num_int: c.page_num,
-      position_int: c.position,
+      page_num_int: Array.isArray(c.page_num) ? (c.page_num[0] ?? 0) : c.page_num,
+      position_int: Array.isArray(c.position) ? (c.position[0] ?? 0) : c.position,
       positions: c.positions,
       score: c.score,
     }))
@@ -109,8 +112,8 @@ function DatasetSearchPage() {
       content_with_weight: chunk.content_with_weight,
       doc_id: chunk.doc_id,
       doc_name: chunk.docnm_kwd,
-      page_num: chunk.page_num_int,
-      position: chunk.position_int,
+      page_num: chunk.page_num_int ?? 0,
+      position: chunk.position_int ?? 0,
       score: chunk.score || 0,
       dataset_id: matchingChunk?.dataset_id || '',
       ...(chunk.positions ? { positions: chunk.positions } : {}),
@@ -131,9 +134,11 @@ function DatasetSearchPage() {
    */
   const handleSearch = (query: string) => {
     if (!searchAppId) return
-    // Reset pagination and document filter on new search
+    // Reset pagination, document filter, and stale paginated results
     setPage(1)
     setSelectedDocIds([])
+    setPaginatedResults([])
+    setPaginatedTotal(0)
     searchStream.askSearch(searchAppId, query, {
       ...filters,
       page: 1,
@@ -184,24 +189,39 @@ function DatasetSearchPage() {
    * Handle page change for pagination.
    * @param newPage - New page number
    */
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage)
-    if (searchStream.lastQuery) {
-      paginatedSearch.search(searchStream.lastQuery, {
+  const handlePageChange = async (newPage: number) => {
+    if (!searchStream.lastQuery || !searchAppId) return
+
+    if (newPage === 1) {
+      setPage(1)
+      searchStream.askSearch(searchAppId, searchStream.lastQuery, {
         ...filters,
-        page: newPage,
+        page: 1,
         page_size: pageSize,
       })
+    } else {
+      setIsPaginating(true)
+      try {
+        const result = await searchApi.searchByApp(searchAppId, searchStream.lastQuery, {
+          ...filters,
+          page: newPage,
+          page_size: pageSize,
+        })
+        setPage(newPage)
+        setPaginatedResults(result.chunks)
+        setPaginatedTotal(result.total)
+      } catch {
+        // Keep current page and results on error
+      } finally {
+        setIsPaginating(false)
+      }
     }
   }
 
   // Use paginated results for non-first pages, SSE stream results for page 1
-  const displayResults = page === 1 ? searchStream.chunks : paginatedSearch.results
-  // Use paginatedSearch.totalResults when available (it has the true server total),
-  // otherwise fall back to stream chunks length (page 1 initial load)
-  const displayTotal = paginatedSearch.totalResults > 0
-    ? paginatedSearch.totalResults
-    : searchStream.chunks.length
+  const displayResults = page === 1 ? searchStream.chunks : paginatedResults
+  const streamTotal = searchStream.total || searchStream.chunks.length
+  const displayTotal = page === 1 ? streamTotal : paginatedTotal
 
   return (
     <>
@@ -290,7 +310,7 @@ function DatasetSearchPage() {
               <div className="max-w-3xl mx-auto">
                 <SearchResults
                   results={displayResults}
-                  isSearching={searchStream.isStreaming && !searchStream.answer}
+                  isSearching={(searchStream.isStreaming && !searchStream.answer) || isPaginating}
                   summary={searchStream.answer}
                   totalResults={displayTotal}
                   query={searchStream.lastQuery}

@@ -19,9 +19,7 @@ export class AuthController {
      */
     async getAuthConfig(req: Request, res: Response): Promise<void> {
         res.json({
-            enableRootLogin: config.enableRootLogin,
-            // Alias for UI: local login (by DB password) is enabled when root login is enabled
-            enableLocalLogin: config.enableRootLogin,
+            enableLocalLogin: config.enableLocalLogin,
             azureAd: {
                 clientId: config.azureAd.clientId,
                 tenantId: config.azureAd.tenantId,

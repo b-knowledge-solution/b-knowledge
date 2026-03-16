@@ -76,17 +76,26 @@ export interface ChunksResponse {
 
 export const PARSER_OPTIONS = [
   { value: 'naive', label: 'General' },
-  { value: 'book', label: 'Book' },
-  { value: 'paper', label: 'Paper' },
-  { value: 'table', label: 'Table' },
   { value: 'qa', label: 'Q&A' },
-  { value: 'laws', label: 'Laws' },
+  { value: 'resume', label: 'Resume' },
   { value: 'manual', label: 'Manual' },
+  { value: 'table', label: 'Table' },
+  { value: 'paper', label: 'Paper' },
+  { value: 'book', label: 'Book' },
+  { value: 'laws', label: 'Laws' },
   { value: 'presentation', label: 'Presentation' },
   { value: 'one', label: 'One (No Split)' },
   { value: 'picture', label: 'Picture' },
   { value: 'audio', label: 'Audio' },
   { value: 'email', label: 'Email' },
+] as const;
+
+/** PDF layout recognition engine options */
+export const PDF_PARSER_OPTIONS = [
+  { value: 'DeepDOC', label: 'DeepDOC' },
+  { value: 'Plain Text', label: 'Plain Text' },
+  { value: 'MinerU', label: 'MinerU' },
+  { value: 'PaddleOCR', label: 'PaddleOCR' },
 ] as const;
 
 export const LANGUAGE_OPTIONS = [
@@ -97,7 +106,103 @@ export const LANGUAGE_OPTIONS = [
   { value: 'Korean', label: 'Korean' },
 ] as const;
 
-// Removed Versioning Types
+/** @description Human-readable descriptions for each built-in parser method */
+export const PARSER_DESCRIPTIONS: Record<string, { title: string; description: string; formats: string }> = {
+  naive: {
+    title: '"General" Chunking method description',
+    description:
+      'This method chunks files using a \'naive\' method:\n' +
+      '• Use vision detection model to split the texts into smaller segments.\n' +
+      '• Then, combine adjacent segments until the token count exceeds the threshold specified by \'Chunk token number for text\', at which point a chunk is created.',
+    formats: 'Supported file formats are MD, MDX, DOCX, XLSX, XLS (Excel 97-2003), PPTX, PDF, TXT, JPEG, JPG, PNG, TIF, GIF, CSV, JSON, EML, HTML.',
+  },
+  qa: {
+    title: '"Q&A" Chunking method description',
+    description:
+      'This method extracts question-answer pairs from the document.\n' +
+      '• Each Q&A pair becomes a separate chunk.',
+    formats: 'Supported: DOCX, PDF, TXT, XLSX, MD.',
+  },
+  resume: {
+    title: '"Resume" Chunking method description',
+    description:
+      'This method is optimized for extracting structured data from resumes.\n' +
+      '• Extracts fields like name, education, experience, skills.',
+    formats: 'Supported: DOCX, PDF, TXT, JPG, PNG.',
+  },
+  manual: {
+    title: '"Manual" Chunking method description',
+    description:
+      'This method parses documents that have a hierarchical structure with numbered headings.\n' +
+      '• Splits on heading boundaries.\n' +
+      '• Creates chunks aligned with manual sections.',
+    formats: 'Supported: DOCX, PDF, TXT.',
+  },
+  table: {
+    title: '"Table" Chunking method description',
+    description:
+      'This method is optimized for spreadsheet-like data.\n' +
+      '• Each row in the table becomes a separate chunk with column headers prepended.',
+    formats: 'Supported: XLSX, XLS, CSV.',
+  },
+  paper: {
+    title: '"Paper" Chunking method description',
+    description:
+      'This method is designed for academic papers.\n' +
+      '• Detects abstract, sections, figures, tables, and references.\n' +
+      '• Splits on section boundaries.',
+    formats: 'Supported: PDF.',
+  },
+  book: {
+    title: '"Book" Chunking method description',
+    description:
+      'This method is designed for book-length documents.\n' +
+      '• Uses table of contents and chapter headings to split.',
+    formats: 'Supported: DOCX, PDF, TXT.',
+  },
+  laws: {
+    title: '"Laws" Chunking method description',
+    description:
+      'This method is optimized for legal documents.\n' +
+      '• Splits on article/section boundaries.',
+    formats: 'Supported: DOCX, PDF, TXT.',
+  },
+  presentation: {
+    title: '"Presentation" Chunking method description',
+    description:
+      'This method is designed for slide decks.\n' +
+      '• Each slide becomes a chunk.',
+    formats: 'Supported: PPTX, PPT.',
+  },
+  one: {
+    title: '"One (No Split)" method description',
+    description:
+      'This method treats the entire document as a single chunk.\n' +
+      '• No splitting is performed.',
+    formats: 'Supported: All text-based formats.',
+  },
+  picture: {
+    title: '"Picture" method description',
+    description:
+      'This method extracts text from images using OCR.\n' +
+      '• The extracted text becomes a single chunk.',
+    formats: 'Supported: JPG, JPEG, PNG, GIF, TIF.',
+  },
+  audio: {
+    title: '"Audio" method description',
+    description:
+      'This method transcribes audio files using speech-to-text.\n' +
+      '• The transcription becomes a single chunk.',
+    formats: 'Supported: MP3, WAV, FLAC, OGG, AAC.',
+  },
+  email: {
+    title: '"Email" method description',
+    description:
+      'This method parses email files.\n' +
+      '• Extracts headers, body, and attachments as separate chunks.',
+    formats: 'Supported: EML.',
+  },
+};
 
 // ============================================================================
 // Dataset Settings Types
@@ -114,26 +219,33 @@ export interface DatasetSettings {
   parser_id: string;
   parser_config: Record<string, unknown>;
   pagerank?: number;
+  tag_sets?: string[];
   graphrag?: GraphRAGConfig;
   raptor?: RAPTORConfig;
   auto_keywords?: number;
   auto_questions?: number;
 }
 
-/** @description GraphRAG configuration */
+/** @description GraphRAG / Global Index configuration */
 export interface GraphRAGConfig {
+  use_graphrag?: boolean;
   enabled: boolean;
   entity_types?: string[];
   method?: string;
+  resolution?: boolean;
+  community?: boolean;
 }
 
 /** @description RAPTOR configuration */
 export interface RAPTORConfig {
+  use_raptor?: boolean;
   enabled: boolean;
   max_token?: number;
   threshold?: number;
   max_cluster?: number;
   random_seed?: number;
+  scope?: 'file' | 'dataset';
+  prompt?: string;
 }
 
 /** @description Result from a retrieval test */

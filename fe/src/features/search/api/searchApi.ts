@@ -7,6 +7,7 @@ import { api } from '@/lib/api'
 import type {
   SearchFilters,
   SearchResponse,
+  SearchResult,
   SearchApp,
   SearchAppAccessEntry,
   CreateSearchAppPayload,
@@ -57,6 +58,41 @@ export const searchApi = {
    */
   listDatasets: async (): Promise<{ id: string; name: string; description?: string }[]> => {
     return api.get<{ id: string; name: string; description?: string }[]>(`${BASE_URL}/datasets`)
+  },
+
+  /**
+   * Execute a paginated search query against a search app (non-streaming).
+   * Uses the app's configured datasets, reranking, and settings.
+   * @param searchAppId - Search application ID
+   * @param query - Search query text
+   * @param options - Search and pagination options
+   * @returns Search results with chunks, total count, and doc aggregations
+   */
+  searchByApp: async (
+    searchAppId: string,
+    query: string,
+    options?: {
+      top_k?: number
+      method?: string
+      search_method?: string
+      similarity_threshold?: number
+      vector_similarity_weight?: number
+      page?: number
+      page_size?: number
+    },
+  ): Promise<{
+    chunks: SearchResult[]
+    total: number
+    doc_aggs?: Array<{ doc_id: string; doc_name: string; count: number }>
+  }> => {
+    // Map frontend filter field names to backend schema field names
+    const { search_method, ...rest } = options ?? {}
+    const methodMap: Record<string, string> = { fulltext: 'full_text' }
+    return api.post(`/api/search/apps/${searchAppId}/search`, {
+      query,
+      ...rest,
+      ...(search_method ? { method: methodMap[search_method] ?? search_method } : {}),
+    })
   },
 
   /**

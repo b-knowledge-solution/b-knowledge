@@ -91,6 +91,11 @@ function DatasetChatPage() {
 
   // Load conversation messages when active conversation changes
   useEffect(() => {
+    // Abort any in-flight stream when switching conversations
+    if (stream.isStreaming) {
+      stream.stopStream()
+    }
+
     const conv = conversations.activeConversation
     if (conv?.messages) {
       stream.setMessages(conv.messages)

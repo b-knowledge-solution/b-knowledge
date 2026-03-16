@@ -1258,6 +1258,8 @@ export interface SearchRequest {
     method?: 'hybrid' | 'semantic' | 'full_text';
     top_k?: number;
     similarity_threshold?: number;
+    /** Optional vector similarity weight for hybrid search (0-1) */
+    vector_similarity_weight?: number;
     /** Optional metadata filter for OpenSearch bool query conditions */
     metadata_filter?: {
         logic: 'and' | 'or';

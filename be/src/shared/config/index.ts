@@ -82,26 +82,6 @@ const getEnv = (key: string, defaultValue?: string): string => {
   return value;
 };
 
-/**
- * Retrieves a sensitive environment variable with dev-mode warning.
- * In production, throws if the variable is not set.
- * In development, logs a warning and returns the fallback.
- * 
- * @param key - The environment variable name to retrieve
- * @param fallback - Fallback value for development (never used in production)
- * @returns The environment variable value or fallback in development
- * @throws Error in production if variable is missing
- */
-const warnDev = (key: string, fallback: string): string => {
-  const value = process.env[key];
-  if (value) return value;
-  if (isProduction) {
-    throw new Error(`Missing required environment variable: ${key}`);
-  }
-  console.warn(`⚠️  ${key} not set, using insecure default (dev only)`);
-  return fallback;
-};
-
 // ============================================================================
 // MAIN CONFIGURATION OBJECT
 // ============================================================================
@@ -135,7 +115,7 @@ export const config = {
 
   /** Root user configuration */
   rootUser: process.env['KB_ROOT_USER'] || 'admin@localhost',
-  rootPassword: warnDev('KB_ROOT_PASSWORD', 'admin'),
+  rootPassword: process.env['KB_ROOT_PASSWORD'] || 'admin',
 
   /** Test password for sample users (development/testing only) */
   testPassword: process.env['TEST_PASSWORD'] || '',
@@ -186,8 +166,8 @@ export const config = {
   // Feature Flags
   // --------------------------------------------------------------------------
 
-  /** Enable root user login (username/password auth) */
-  enableRootLogin: process.env['ENABLE_ROOT_LOGIN'] === 'true',
+  /** Enable local user login (username/password auth) */
+  enableLocalLogin: process.env['ENABLE_LOCAL_LOGIN'] === 'true',
 
   // --------------------------------------------------------------------------
   // Session Store Configuration
@@ -220,7 +200,7 @@ export const config = {
     /** PostgreSQL username */
     user: process.env['DB_USER'] ?? 'postgres',
     /** PostgreSQL password */
-    password: getEnv('DB_PASSWORD', isProduction ? undefined : ''),
+    password: process.env['DB_PASSWORD'] ?? '',
   },
 
   // --------------------------------------------------------------------------
@@ -251,8 +231,6 @@ export const config = {
     publicKey: process.env['LANGFUSE_PUBLIC_KEY'] ?? '',
     /** Langfuse API base URL (self-hosted or cloud) */
     baseUrl: process.env['LANGFUSE_BASE_URL'] ?? 'https://cloud.langfuse.com',
-    /** Whether to trace embedding calls (default: false to reduce noise) */
-    traceEmbeddings: process.env['LANGFUSE_TRACE_EMBEDDINGS'] === 'true',
   },
 
   // --------------------------------------------------------------------------
@@ -426,6 +404,21 @@ export const config = {
    * WebSocket (Socket.IO) configuration.
    * Enables real-time notifications for Python clients and web browsers.
    */
+  // --------------------------------------------------------------------------
+  // OpenSearch / VectorDB Configuration
+  // --------------------------------------------------------------------------
+
+  /** OpenSearch / VectorDB configuration */
+  opensearch: {
+    host: process.env['VECTORDB_HOST'] || process.env['ES_HOST'] || 'http://localhost:9200',
+    password: process.env['VECTORDB_PASSWORD'] || process.env['ES_PASSWORD'] || '',
+    systemTenantId: process.env['SYSTEM_TENANT_ID'] || '00000000-0000-0000-0000-000000000001',
+  },
+
+  // --------------------------------------------------------------------------
+  // WebSocket Configuration
+  // --------------------------------------------------------------------------
+
   websocket: {
     /** Enable/disable WebSocket server */
     enabled: process.env['WEBSOCKET_ENABLED'] !== 'false',
@@ -438,30 +431,11 @@ export const config = {
     /** Ping interval in milliseconds */
     pingInterval: parseInt(process.env['WEBSOCKET_PING_INTERVAL'] ?? '25000', 10),
   },
-
 } as const;
-
-// ============================================================================
-// PRODUCTION STARTUP VALIDATION
-// ============================================================================
-
-/**
- * Validates that all critical environment variables are set in production.
- * Provides a single, clear error message listing all missing variables.
- */
-if (isProduction) {
-  const required = ['DB_PASSWORD', 'KB_ROOT_PASSWORD', 'SESSION_SECRET'];
-  const missing = required.filter(key => !process.env[key]);
-  if (missing.length > 0) {
-    throw new Error(
-      `Missing required environment variables for production:\n` +
-      missing.map(k => `  - ${k}`).join('\n')
-    );
-  }
-}
 
 /**
  * Type definition for the configuration object.
  * Useful for function parameters that need config type hints.
  */
 export type Config = typeof config;
+

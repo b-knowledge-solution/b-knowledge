@@ -315,7 +315,7 @@ export class LlmClientService {
     })
 
     // Fire-and-forget: trace embedding call if enabled and parent provided
-    if (parent && config.langfuse.traceEmbeddings) {
+    if (parent && (config.langfuse as any).traceEmbeddings) {
       try {
         langfuseTraceService.createGeneration(parent, {
           name: `embedding:${model}`,

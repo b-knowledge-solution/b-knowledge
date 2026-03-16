@@ -6,6 +6,7 @@ import { ragRedisService, getUuid } from '../services/rag-redis.service.js';
 import { ragStorageService } from '../services/rag-storage.service.js';
 import { ragSearchService } from '../services/rag-search.service.js';
 import { log } from '@/shared/services/logger.service.js';
+import { ModelFactory } from '@/shared/models/factory.js';
 import { getClientIp } from '@/shared/utils/ip.js';
 import { getRedisClient } from '@/shared/services/redis.service.js';
 
@@ -241,9 +242,9 @@ export class RagController {
                 return;
             }
 
-            // Verify dataset exists in knowledgebase table
-            const kb = await ragDocumentService.getKnowledgebase(datasetId);
-            if (!kb) {
+            // Verify dataset exists in datasets table
+            const dataset = await ModelFactory.dataset.findById(datasetId);
+            if (!dataset) {
                 res.status(404).json({ error: 'Dataset not found' });
                 return;
             }
@@ -269,14 +270,14 @@ export class RagController {
                     type: fileType,
                 });
 
-                // Create Document record
-                const parserConfig = typeof kb.parser_config === 'string'
-                    ? JSON.parse(kb.parser_config)
-                    : kb.parser_config;
+                // Create Document record — use parser settings from the dataset
+                const parserConfig = typeof dataset.parser_config === 'string'
+                    ? JSON.parse(dataset.parser_config)
+                    : dataset.parser_config;
                 await ragDocumentService.createDocument({
                     id: docId,
                     kb_id: datasetId.replace(/-/g, ''),
-                    parser_id: kb.parser_id,
+                    parser_id: dataset.parser_id || 'naive',
                     parser_config: parserConfig || { pages: [[1, 1000000]] },
                     name: filename,
                     location: storagePath,
@@ -298,8 +299,10 @@ export class RagController {
                 });
             }
 
-            // Update doc count
-            await ragDocumentService.incrementDocCount(datasetId, results.length);
+            // Update doc count on datasets table
+            await ModelFactory.dataset.getKnex()
+                .where({ id: datasetId })
+                .increment('doc_count', results.length);
 
             res.status(201).json(results);
         } catch (error) {

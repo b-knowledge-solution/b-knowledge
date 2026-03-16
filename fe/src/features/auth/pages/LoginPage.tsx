@@ -52,7 +52,7 @@ function LoginPage() {
   const { isAuthenticated, isLoading } = useAuth();
 
   // Root login state
-  const [enableRootLogin, setEnableRootLogin] = useState(false);
+  const [enableLocalLogin, setEnableLocalLogin] = useState(false);
   const [isRootLoginOpen, setIsRootLoginOpen] = useState(false);
   const [rootUsername, setRootUsername] = useState('');
   const [rootPassword, setRootPassword] = useState('');
@@ -87,8 +87,7 @@ function LoginPage() {
         const response = await fetch(`${API_BASE_URL}/api/auth/config`);
         if (response.ok) {
           const data = await response.json();
-          // Support both legacy enableRootLogin and new enableLocalLogin flag
-          setEnableRootLogin(data.enableLocalLogin || data.enableRootLogin);
+          setEnableLocalLogin(data.enableLocalLogin);
         }
       } catch (err) {
         console.error('Failed to fetch auth config:', err);
@@ -206,7 +205,7 @@ function LoginPage() {
             {t('login.signInMicrosoft')}
           </button>
 
-          {enableRootLogin && (
+          {enableLocalLogin && (
             <button
               onClick={() => setIsRootLoginOpen(true)}
               className="w-full btn btn-secondary py-3 text-base"

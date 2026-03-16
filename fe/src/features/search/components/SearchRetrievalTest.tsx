@@ -44,9 +44,9 @@ function ChunkCard({ chunk, maxScore }: { chunk: RetrievalTestChunk; maxScore: n
         <div className="flex items-center gap-1.5 text-muted-foreground">
           <FileText className="h-3.5 w-3.5" />
           <span className="font-medium truncate max-w-[200px]">{chunk.doc_name}</span>
-          {chunk.page_num > 0 && (
+          {(Array.isArray(chunk.page_num) ? (chunk.page_num[0] ?? 0) : chunk.page_num) > 0 && (
             <span className="text-xs">
-              ({t('searchAdmin.retrievalTest.page')} {chunk.page_num})
+              ({t('searchAdmin.retrievalTest.page')} {Array.isArray(chunk.page_num) ? chunk.page_num.join(', ') : chunk.page_num})
             </span>
           )}
         </div>

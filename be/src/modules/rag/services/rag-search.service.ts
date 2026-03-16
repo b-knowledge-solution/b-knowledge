@@ -9,10 +9,11 @@
 import { Client } from '@opensearch-project/opensearch'
 import { log } from '@/shared/services/logger.service.js'
 import { ChunkResult, SearchRequest } from '@/shared/models/types.js'
+import { config } from '@/shared/config/index.js'
 
-const SYSTEM_TENANT_ID = process.env['SYSTEM_TENANT_ID'] || '00000000-0000-0000-0000-000000000001'
-const ES_HOST = process.env['ES_HOST'] || 'http://localhost:9200'
-const ES_PASSWORD = process.env['ES_PASSWORD'] || ''
+const SYSTEM_TENANT_ID = config.opensearch.systemTenantId
+const ES_HOST = config.opensearch.host
+const ES_PASSWORD = config.opensearch.password
 
 /**
  * Get the OpenSearch index name based on the system tenant ID.
@@ -45,13 +46,37 @@ function getClient(): Client {
 
 export class RagSearchService {
     /**
+     * Build OpenSearch filter clauses from metadata filter conditions.
+     * @param filter - Optional metadata filter with logic and conditions
+     * @returns Array of OpenSearch query clauses
+     */
+    private buildMetadataFilters(filter?: { logic?: string; conditions?: Array<{ name: string; comparison_operator: string; value: unknown }> }): Record<string, unknown>[] {
+        if (!filter?.conditions?.length) return []
+        return filter.conditions.map(c => {
+            switch (c.comparison_operator) {
+                case 'is': return { term: { [c.name]: c.value } }
+                case 'is_not': return { bool: { must_not: [{ term: { [c.name]: c.value } }] } }
+                case 'contains': return { match: { [c.name]: c.value } }
+                case 'gt': return { range: { [c.name]: { gt: c.value } } }
+                case 'lt': return { range: { [c.name]: { lt: c.value } } }
+                case 'range': {
+                    const arr = c.value as unknown[]
+                    return { range: { [c.name]: { gte: arr[0], lte: arr[1] } } }
+                }
+                default: return {}
+            }
+        }).filter(f => Object.keys(f).length > 0)
+    }
+
+    /**
      * Full-text search over chunks in a dataset.
      * @param datasetId - The dataset (kb_id) to search within
      * @param query - The search query string
      * @param topK - Maximum number of results to return
-     * @returns Array of matching chunk results
+     * @param extraFilters - Optional additional OpenSearch filter clauses
+     * @returns Object with matching chunk results and total hit count from OpenSearch
      */
-    async fullTextSearch(datasetId: string, query: string, topK: number): Promise<ChunkResult[]> {
+    async fullTextSearch(datasetId: string, query: string, topK: number, extraFilters: Record<string, unknown>[] = []): Promise<{ chunks: ChunkResult[]; total: number }> {
         const client = getClient()
         const res = await client.search({
             index: getIndexName(),
@@ -64,6 +89,7 @@ export class RagSearchService {
                         ],
                         filter: [
                             { term: { available_int: 1 } },
+                            ...extraFilters,
                         ],
                     },
                 },
@@ -72,7 +98,10 @@ export class RagSearchService {
             },
         })
 
-        return this.mapHits(res.body.hits.hits, 'full_text')
+        const hitsTotal = res.body.hits.total
+        const total = typeof hitsTotal === 'number' ? hitsTotal : hitsTotal?.value ?? 0
+        const chunks = this.mapHits(res.body.hits.hits, 'full_text')
+        return { chunks, total }
     }
 
     /**
@@ -82,14 +111,16 @@ export class RagSearchService {
      * @param queryVector - The query embedding vector
      * @param topK - Maximum number of results to return
      * @param threshold - Minimum similarity score threshold
-     * @returns Array of matching chunk results above the threshold
+     * @param extraFilters - Optional additional OpenSearch filter clauses
+     * @returns Object with matching chunk results above the threshold and total hit count
      */
     async semanticSearch(
         datasetId: string,
         queryVector: number[],
         topK: number,
         threshold: number,
-    ): Promise<ChunkResult[]> {
+        extraFilters: Record<string, unknown>[] = [],
+    ): Promise<{ chunks: ChunkResult[]; total: number }> {
         const client = getClient()
         const res = await client.search({
             index: getIndexName(),
@@ -101,6 +132,7 @@ export class RagSearchService {
                         ],
                         filter: [
                             { term: { available_int: 1 } },
+                            ...extraFilters,
                         ],
                         should: [
                             {
@@ -119,17 +151,21 @@ export class RagSearchService {
             },
         })
 
-        return this.mapHits(res.body.hits.hits, 'semantic').filter(c => (c.score ?? 0) >= threshold)
+        const hitsTotal = res.body.hits.total
+        const total = typeof hitsTotal === 'number' ? hitsTotal : hitsTotal?.value ?? 0
+        const chunks = this.mapHits(res.body.hits.hits, 'semantic').filter(c => (c.score ?? 0) >= threshold)
+        return { chunks, total }
     }
 
     /**
-     * Hybrid search: combine full-text and semantic results, keep highest score per chunk.
+     * Hybrid search: combine full-text and semantic results with weighted scoring.
      * @param datasetId - The dataset (kb_id) to search within
      * @param query - The search query string
      * @param queryVector - The query embedding vector (optional)
      * @param topK - Maximum number of results to return
      * @param threshold - Minimum similarity score threshold for semantic results
-     * @returns Merged and deduplicated chunk results sorted by score
+     * @param vectorWeight - Weight for semantic scores (0-1). 0 = pure text, 1 = pure semantic. Default 0.5
+     * @returns Object with merged chunk results sorted by weighted score and total hit count
      */
     async hybridSearch(
         datasetId: string,
@@ -137,27 +173,52 @@ export class RagSearchService {
         queryVector: number[] | null,
         topK: number,
         threshold: number,
-    ): Promise<ChunkResult[]> {
-        const textResults = await this.fullTextSearch(datasetId, query, topK)
+        vectorWeight: number = 0.5,
+        extraFilters: Record<string, unknown>[] = [],
+    ): Promise<{ chunks: ChunkResult[]; total: number }> {
+        const textResult = await this.fullTextSearch(datasetId, query, topK, extraFilters)
 
         if (!queryVector || queryVector.length === 0) {
-            return textResults
+            return textResult
         }
 
-        const semanticResults = await this.semanticSearch(datasetId, queryVector, topK, threshold)
+        const semanticResult = await this.semanticSearch(datasetId, queryVector, topK, threshold, extraFilters)
 
-        // Merge by chunk_id, keep highest score
+        // Apply weighted scoring: vectorWeight controls the balance
+        const textWeight = 1 - vectorWeight
+
+        // Find max scores for normalization (avoid division by zero)
+        const maxTextScore = Math.max(...textResult.chunks.map(r => r.score ?? 0), 0.001)
+        const maxSemanticScore = Math.max(...semanticResult.chunks.map(r => r.score ?? 0), 0.001)
+
+        // Build lookup maps with normalized scores
+        const textMap = new Map<string, number>()
+        for (const r of textResult.chunks) {
+            textMap.set(r.chunk_id, (r.score ?? 0) / maxTextScore)
+        }
+        const semanticMap = new Map<string, number>()
+        for (const r of semanticResult.chunks) {
+            semanticMap.set(r.chunk_id, (r.score ?? 0) / maxSemanticScore)
+        }
+
+        // Merge and compute weighted scores
         const seen = new Map<string, ChunkResult>()
-        for (const r of [...textResults, ...semanticResults]) {
-            const existing = seen.get(r.chunk_id)
-            if (!existing || (r.score ?? 0) > (existing.score ?? 0)) {
-                seen.set(r.chunk_id, r)
-            }
+        for (const r of [...textResult.chunks, ...semanticResult.chunks]) {
+            if (seen.has(r.chunk_id)) continue
+            const textScore = textMap.get(r.chunk_id) ?? 0
+            const semanticScore = semanticMap.get(r.chunk_id) ?? 0
+            const weightedScore = textWeight * textScore + vectorWeight * semanticScore
+            seen.set(r.chunk_id, { ...r, score: weightedScore })
         }
 
-        return [...seen.values()]
+        const chunks = [...seen.values()]
             .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
             .slice(0, topK)
+
+        // Use the max of both totals as an approximation (chunks may overlap)
+        const total = Math.max(textResult.total, semanticResult.total)
+
+        return { chunks, total }
     }
 
     /**
@@ -176,27 +237,31 @@ export class RagSearchService {
         const method = req.method || 'full_text'
         const topK = req.top_k || 10
         const threshold = req.similarity_threshold || 0
+        const vectorWeight = req.vector_similarity_weight ?? 0.5
 
-        let chunks: ChunkResult[]
+        // Build extra OpenSearch filters from metadata_filter conditions
+        const extraFilters = this.buildMetadataFilters(req.metadata_filter)
+
+        let result: { chunks: ChunkResult[]; total: number }
 
         switch (method) {
             case 'full_text':
-                chunks = await this.fullTextSearch(datasetId, req.query, topK)
+                result = await this.fullTextSearch(datasetId, req.query, topK, extraFilters)
                 break
             case 'semantic':
                 if (!queryVector?.length) {
-                    chunks = await this.fullTextSearch(datasetId, req.query, topK)
+                    result = await this.fullTextSearch(datasetId, req.query, topK, extraFilters)
                 } else {
-                    chunks = await this.semanticSearch(datasetId, queryVector, topK, threshold)
+                    result = await this.semanticSearch(datasetId, queryVector, topK, threshold, extraFilters)
                 }
                 break
             case 'hybrid':
             default:
-                chunks = await this.hybridSearch(datasetId, req.query, queryVector ?? null, topK, threshold)
+                result = await this.hybridSearch(datasetId, req.query, queryVector ?? null, topK, threshold, vectorWeight, extraFilters)
                 break
         }
 
-        return { chunks, total: chunks.length }
+        return result
     }
 
     /**

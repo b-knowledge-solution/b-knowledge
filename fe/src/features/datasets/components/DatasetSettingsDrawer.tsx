@@ -15,8 +15,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Spinner } from '@/components/ui/spinner';
 import { useDatasetSettings } from '../api/datasetQueries';
 import GeneralSettingsForm from './GeneralSettingsForm';
-import ChunkingSettingsForm from './ChunkingSettingsForm';
-import AdvancedSettingsForm from './AdvancedSettingsForm';
 import RetrievalTestPanel from './RetrievalTestPanel';
 
 // ============================================================================
@@ -68,13 +66,7 @@ const DatasetSettingsDrawer: React.FC<DatasetSettingsDrawerProps> = ({
             <Tabs defaultValue="general">
               <TabsList className="mb-4">
                 <TabsTrigger value="general">
-                  {t('datasetSettings.tabs.general')}
-                </TabsTrigger>
-                <TabsTrigger value="chunking">
-                  {t('datasetSettings.tabs.chunking')}
-                </TabsTrigger>
-                <TabsTrigger value="advanced">
-                  {t('datasetSettings.tabs.advanced')}
+                  Configuration
                 </TabsTrigger>
                 <TabsTrigger value="retrieval">
                   {t('datasetSettings.tabs.retrievalTest')}
@@ -83,22 +75,6 @@ const DatasetSettingsDrawer: React.FC<DatasetSettingsDrawerProps> = ({
 
               <TabsContent value="general">
                 <GeneralSettingsForm
-                  settings={settings}
-                  saving={saving}
-                  onSave={updateSettings}
-                />
-              </TabsContent>
-
-              <TabsContent value="chunking">
-                <ChunkingSettingsForm
-                  settings={settings}
-                  saving={saving}
-                  onSave={updateSettings}
-                />
-              </TabsContent>
-
-              <TabsContent value="advanced">
-                <AdvancedSettingsForm
                   settings={settings}
                   saving={saving}
                   onSave={updateSettings}

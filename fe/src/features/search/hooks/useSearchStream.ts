@@ -38,6 +38,8 @@ export interface UseSearchStreamReturn {
   error: string | null
   /** Document aggregation counts */
   docAggs: Array<{ doc_id: string; doc_name: string; count: number }>
+  /** Total number of matching results from the server */
+  total: number
   /** Start a streaming search query */
   askSearch: (searchAppId: string, query: string, filters?: SearchFilters) => void
   /** Abort the current stream */
@@ -65,6 +67,7 @@ export function useSearchStream(): UseSearchStreamReturn {
   const [pipelineStatus, setPipelineStatus] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [docAggs, setDocAggs] = useState<Array<{ doc_id: string; doc_name: string; count: number }>>([])
+  const [total, setTotal] = useState(0)
   const [lastQuery, setLastQuery] = useState('')
 
   // Abort controller reference for cancelling streams
@@ -89,6 +92,7 @@ export function useSearchStream(): UseSearchStreamReturn {
     setChunks([])
     setRelatedQuestions([])
     setDocAggs([])
+    setTotal(0)
     setLastQuery(query)
     setIsStreaming(true)
     answerRef.current = ''
@@ -159,6 +163,9 @@ export function useSearchStream(): UseSearchStreamReturn {
               if (data.reference.doc_aggs) {
                 setDocAggs(data.reference.doc_aggs)
               }
+              if (data.reference.total !== undefined) {
+                setTotal(data.reference.total)
+              }
             }
 
             // Handle final processed answer
@@ -169,6 +176,12 @@ export function useSearchStream(): UseSearchStreamReturn {
               }
               if (data.reference?.doc_aggs) {
                 setDocAggs(data.reference.doc_aggs)
+              }
+              if (data.total !== undefined) {
+                setTotal(data.total)
+              }
+              if (data.reference?.total !== undefined) {
+                setTotal(data.reference.total)
               }
             }
 
@@ -182,12 +195,10 @@ export function useSearchStream(): UseSearchStreamReturn {
               throw new Error(data.error)
             }
           } catch (parseErr: unknown) {
-            // Re-throw actual errors (not JSON parse errors)
-            const errMsg = parseErr instanceof Error ? parseErr.message : ''
-            if (errMsg && !errMsg.includes('JSON')) {
+            // Skip JSON parse errors from malformed SSE lines; re-throw real errors
+            if (!(parseErr instanceof SyntaxError)) {
               throw parseErr
             }
-            // Skip malformed JSON lines
           }
         }
       }
@@ -232,6 +243,7 @@ export function useSearchStream(): UseSearchStreamReturn {
     setChunks([])
     setRelatedQuestions([])
     setDocAggs([])
+    setTotal(0)
     setError(null)
     setPipelineStatus('')
     setLastQuery('')
@@ -246,6 +258,7 @@ export function useSearchStream(): UseSearchStreamReturn {
     pipelineStatus,
     error,
     docAggs,
+    total,
     askSearch,
     stopStream,
     clearResults,

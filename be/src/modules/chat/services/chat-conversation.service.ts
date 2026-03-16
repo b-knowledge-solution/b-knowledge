@@ -518,14 +518,22 @@ export class ChatConversationService {
     conversationIds: string[],
     userId: string
   ): Promise<number> {
-    // Delete messages first (cascade may handle this, but be explicit)
-    await ModelFactory.chatMessage.getKnex()
-      .whereIn('session_id', conversationIds)
-      .delete()
-
-    const deleted = await ModelFactory.chatSession.getKnex()
+    // First verify ownership — only delete conversations belonging to this user
+    const ownedIds: string[] = await ModelFactory.chatSession.getKnex()
       .whereIn('id', conversationIds)
       .andWhere('user_id', userId)
+      .pluck('id')
+
+    if (ownedIds.length === 0) return 0
+
+    // Delete messages for owned conversations only
+    await ModelFactory.chatMessage.getKnex()
+      .whereIn('session_id', ownedIds)
+      .delete()
+
+    // Delete the sessions
+    const deleted = await ModelFactory.chatSession.getKnex()
+      .whereIn('id', ownedIds)
       .delete()
 
     log.info('Conversations deleted', { count: deleted, userId })
@@ -655,9 +663,16 @@ Requirements and restriction:
   - If the information from knowledge is irrelevant with user's question, JUST SAY: Sorry, no relevant information provided.
   - Answer with markdown format text.
   - Answer in language of user's question.`
-      const topN = cfg.top_n ?? 6
       const kbIds = assistant?.kb_ids || []
-      const providerId = assistant?.llm_id || undefined
+
+      // Apply per-request overrides from the client
+      const providerId = overrides?.llm_id || assistant?.llm_id || undefined
+      const topN = overrides?.top_n ?? cfg.top_n ?? 6
+      const effectiveTemperature = overrides?.temperature ?? cfg.temperature ?? 0.7
+      const effectiveMaxTokens = overrides?.max_tokens ?? cfg.max_tokens
+      const useReasoning = overrides?.reasoning ?? cfg.reasoning ?? false
+      const useInternet = overrides?.use_internet ?? (cfg.tavily_api_key ? true : false)
+      const variableValues: Record<string, string> = overrides?.variables ?? {}
 
       // ── Step 3: Load conversation history ───────────────────────────────
       const history = await ModelFactory.chatMessage.getKnex()
@@ -760,17 +775,30 @@ Requirements and restriction:
         try { retrievalSpan = langfuseTraceService.createSpan(trace, { name: 'retrieval', input: searchQuery }) } catch (err) { log.error('Langfuse span failed', { error: String(err) }) }
       }
 
+      // Embed the search query for semantic/hybrid retrieval
+      let queryVector: number[] | null = null
+      try {
+        const vectors = await llmClientService.embedTexts([searchQuery])
+        queryVector = vectors[0] ?? null
+      } catch (err) {
+        log.warn('Query embedding failed, falling back to full-text', { error: String(err) })
+      }
+
       if (kbIds.length > 0) {
         res.write(`data: ${JSON.stringify({ status: 'retrieving' })}\n\n`)
 
         // Search all knowledge bases in parallel
         const searchPromises = kbIds.map(kbId =>
-          ragSearchService.search(kbId, {
-            query: searchQuery,
-            method: 'hybrid',
-            top_k: topN * 2, // Retrieve more for reranking
-            similarity_threshold: cfg.similarity_threshold ?? 0.2,
-          }).catch(err => {
+          ragSearchService.search(kbId, (() => {
+            const req: import('@/shared/models/types.js').SearchRequest = {
+              query: searchQuery,
+              method: 'hybrid',
+              top_k: topN * 2,
+              similarity_threshold: cfg.similarity_threshold ?? 0.2,
+            }
+            if (cfg.vector_similarity_weight != null) req.vector_similarity_weight = cfg.vector_similarity_weight
+            return req
+          })(), queryVector).catch(err => {
             log.warn('Search failed for dataset', { kbId, error: String(err) })
             return { chunks: [] as ChunkResult[], total: 0 }
           })
@@ -792,7 +820,7 @@ Requirements and restriction:
       }
 
       // ── Step 8: Web search (Tavily) ─────────────────────────────────────
-      if (cfg.tavily_api_key) {
+      if (useInternet && cfg.tavily_api_key) {
         res.write(`data: ${JSON.stringify({ status: 'searching_web' })}\n\n`)
         const webResults = await searchWeb(searchQuery, cfg.tavily_api_key, 3)
         allChunks.push(...webResults)
@@ -810,7 +838,7 @@ Requirements and restriction:
       }
 
       // ── Step 8b: Deep research mode (if enabled) ──────────────────────
-      if (cfg.reasoning && kbIds.length > 0) {
+      if (useReasoning && kbIds.length > 0) {
         res.write(`data: ${JSON.stringify({ status: 'deep_research' })}\n\n`)
         try {
           const deepChunks = await ragDeepResearchService.research(
@@ -903,9 +931,15 @@ Requirements and restriction:
         cfg.quote !== false // Enable citations by default
       )
 
+      // Apply variable substitution to system prompt
+      let effectiveSystemPrompt = contextSystemPrompt
+      for (const [key, value] of Object.entries(variableValues)) {
+        effectiveSystemPrompt = effectiveSystemPrompt.replace(new RegExp(`\\{${key}\\}`, 'g'), value)
+      }
+
       // Assemble LLM messages: system + history + current
       const llmMessages: LlmMessage[] = [
-        { role: 'system', content: contextSystemPrompt },
+        { role: 'system', content: effectiveSystemPrompt },
       ]
 
       for (const msg of history as Array<{ role: string; content: string }>) {
@@ -936,9 +970,9 @@ Requirements and restriction:
       // Stream LLM tokens as deltas (NOT accumulated)
       const stream = llmClientService.chatCompletionStream(llmMessages, {
         providerId,
-        temperature: cfg.temperature ?? 0.7,
+        temperature: effectiveTemperature,
         ...(cfg.top_p != null ? { top_p: cfg.top_p } : {}),
-        ...(cfg.max_tokens != null ? { max_tokens: cfg.max_tokens } : {}),
+        ...(effectiveMaxTokens != null ? { max_tokens: effectiveMaxTokens } : {}),
       }, mainSpan)
 
       for await (const chunk of stream) {
@@ -1043,7 +1077,9 @@ Requirements and restriction:
       log.error('Stream chat error', { conversationId, error: (error as Error).message })
       res.write(`data: ${JSON.stringify({ error: (error as Error).message })}\n\n`)
     } finally {
-      res.end()
+      if (!res.writableEnded) {
+        res.end()
+      }
     }
   }
 }

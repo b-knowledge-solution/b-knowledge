@@ -25,8 +25,11 @@ export type PipelineStatus =
   | 'refining_question'
   | 'retrieving'
   | 'searching_web'
+  | 'searching_knowledge_graph'
   | 'reranking'
   | 'generating'
+  | 'deep_research'
+  | 'embedding'
 
 /** Performance metrics from the RAG pipeline */
 export interface PipelineMetrics {
@@ -126,6 +129,7 @@ export function useChatStream(
     setCurrentAnswer('')
     setReferences(null)
     answerRef.current = ''
+    referencesRef.current = null
 
     try {
       // Create a new abort controller for this request

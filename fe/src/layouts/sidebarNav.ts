@@ -142,12 +142,6 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
         roles: ['admin'],
       },
       {
-        path: '/data-studio/histories',
-        labelKey: 'nav.histories',
-        icon: History,
-        roles: ['admin'],
-      },
-      {
         path: '/data-studio/datasets',
         labelKey: 'nav.datasets',
         icon: Database,
@@ -156,6 +150,12 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
         path: '/data-studio/llm-providers',
         labelKey: 'nav.llmProviders',
         icon: BrainCircuit,
+        roles: ['admin'],
+      },
+      {
+        path: '/data-studio/histories',
+        labelKey: 'nav.histories',
+        icon: History,
         roles: ['admin'],
       },
     ],

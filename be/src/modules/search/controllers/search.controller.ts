@@ -265,7 +265,7 @@ export class SearchController {
     try {
       // Generate mindmap from search results
       const tree = await searchService.mindmap(req.params.id!, req.body)
-      res.json(tree)
+      res.json({ mindmap: tree })
     } catch (error) {
       const errMsg = (error as Error).message
 
@@ -309,7 +309,7 @@ export class SearchController {
    */
   async executeSearch(req: Request, res: Response): Promise<void> {
     try {
-      const { query, top_k, method, similarity_threshold, page, page_size } = req.body
+      const { query, top_k, method, similarity_threshold, vector_similarity_weight, page, page_size } = req.body
 
       // Execute search across configured datasets with pagination
       const result = await searchService.executeSearch(
@@ -319,6 +319,7 @@ export class SearchController {
           topK: top_k,
           method,
           similarityThreshold: similarity_threshold,
+          vectorSimilarityWeight: vector_similarity_weight,
           page,
           pageSize: page_size,
         }

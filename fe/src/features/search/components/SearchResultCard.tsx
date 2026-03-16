@@ -115,9 +115,9 @@ function SearchResultCard({ result, query, onClick, className }: SearchResultCar
                   {result.dataset_name}
                 </Badge>
               )}
-              {result.page_num > 0 && (
+              {(Array.isArray(result.page_num) ? (result.page_num[0] ?? 0) : result.page_num) > 0 && (
                 <span className="text-[10px] text-muted-foreground">
-                  {t('search.page')} {result.page_num}
+                  {t('search.page')} {Array.isArray(result.page_num) ? result.page_num.join(', ') : result.page_num}
                 </span>
               )}
             </div>

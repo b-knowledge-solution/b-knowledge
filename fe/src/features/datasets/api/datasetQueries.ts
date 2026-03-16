@@ -30,7 +30,11 @@ export interface DatasetFormData {
   description: string
   language: string
   parser_id: string
+  embedding_model: string
   pagerank: number
+  permission: 'me' | 'workspace' | 'specific' // UI state
+  team_ids: string[]
+  user_ids: string[]
 }
 
 const EMPTY_FORM: DatasetFormData = {
@@ -38,7 +42,11 @@ const EMPTY_FORM: DatasetFormData = {
   description: '',
   language: 'English',
   parser_id: 'naive',
+  embedding_model: '',
   pagerank: 0,
+  permission: 'me',
+  team_ids: [],
+  user_ids: [],
 }
 
 // ============================================================================
@@ -108,7 +116,13 @@ export function useDatasets(): UseDatasetsReturn {
         description: dataset.description || '',
         language: dataset.language || 'English',
         parser_id: dataset.parser_id || 'naive',
+        embedding_model: dataset.embedding_model || '',
         pagerank: dataset.pagerank || 0,
+        permission: dataset.access_control?.public ? 'workspace' : (
+          dataset.access_control?.team_ids?.length || dataset.access_control?.user_ids?.length ? 'specific' : 'me'
+        ),
+        team_ids: dataset.access_control?.team_ids || [],
+        user_ids: dataset.access_control?.user_ids || [],
       })
     } else {
       setEditingDataset(null)
@@ -158,7 +172,6 @@ export function useDatasets(): UseDatasetsReturn {
     },
   })
 
-  /** Submit create or update based on editing state */
   const handleSubmit = async () => {
     const payload: CreateDatasetDto = {
       name: formData.name,
@@ -166,6 +179,15 @@ export function useDatasets(): UseDatasetsReturn {
       language: formData.language,
       parser_id: formData.parser_id,
       pagerank: formData.pagerank,
+      access_control: {
+        public: formData.permission === 'workspace',
+        team_ids: formData.permission === 'specific' ? formData.team_ids : [],
+        user_ids: formData.permission === 'specific' ? formData.user_ids : [],
+      }
+    }
+    
+    if (formData.embedding_model) {
+      payload.embedding_model = formData.embedding_model;
     }
     if (editingDataset) {
       await updateMutation.mutateAsync({ id: editingDataset.id, payload })

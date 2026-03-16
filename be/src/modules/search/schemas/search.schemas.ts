@@ -111,6 +111,8 @@ export const executeSearchSchema = z.object({
   method: z.enum(['full_text', 'semantic', 'hybrid']).optional().default('full_text'),
   /** Minimum similarity threshold for semantic results */
   similarity_threshold: z.number().min(0).max(1).optional().default(0),
+  /** Vector similarity weight for hybrid search (0 = full text, 1 = full semantic) */
+  vector_similarity_weight: z.number().min(0).max(1).optional(),
   /** Page number (1-indexed) */
   page: z.number().int().min(1).optional().default(1),
   /** Number of results per page */
