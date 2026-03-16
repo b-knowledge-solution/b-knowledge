@@ -9,7 +9,7 @@
 
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Play, Trash2, Eye, XCircle } from 'lucide-react'
+import { Play, Trash2, Eye, XCircle, Settings2, Globe } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -49,6 +49,8 @@ interface DocumentTableProps {
   onBulkParse?: (docIds: string[], run?: number) => void
   /** Optional callback for bulk delete operations */
   onBulkDelete?: (docIds: string[]) => void
+  /** Optional callback to change a document's parser */
+  onChangeParser?: (doc: Document) => void
 }
 
 // ============================================================================
@@ -117,6 +119,7 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
   onToggleAvailability,
   onBulkParse,
   onBulkDelete,
+  onChangeParser,
 }) => {
   const { t } = useTranslation()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -255,16 +258,28 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
                     </TableCell>
                   )}
 
-                  {/* Name */}
+                  {/* Name — show Globe icon for web-crawled documents */}
                   <TableCell className="max-w-[300px]">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="font-medium truncate block cursor-default">{doc.name}</span>
-                        </TooltipTrigger>
-                        <TooltipContent>{doc.name}</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <div className="flex items-center gap-1.5">
+                      {doc.source_type === 'web_crawl' && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Globe size={14} className="flex-shrink-0 text-blue-500" />
+                            </TooltipTrigger>
+                            <TooltipContent>{doc.source_url || 'Web crawl'}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="font-medium truncate block cursor-default">{doc.name}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>{doc.name}</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                   </TableCell>
 
                   {/* Size */}
@@ -321,6 +336,25 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>{t('datasets.viewDocument', 'View')}</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        {/* Change Parser button — disabled while parsing */}
+                        {onChangeParser && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => onChangeParser(doc)}
+                                  disabled={doc.run === '1'}
+                                >
+                                  <Settings2 size={14} />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{t('datasets.changeParser')}</TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                         )}

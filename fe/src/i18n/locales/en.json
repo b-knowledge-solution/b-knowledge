@@ -1479,7 +1479,21 @@
     "download": "Download",
     "downloadFile": "Download File",
     "previewNotAvailable": "Preview is not available for this file type",
-    "total": "total"
+    "total": "total",
+    "changeParser": "Change Parser",
+    "currentParser": "Current",
+    "newParser": "New Parser",
+    "changeParserWarning": "Changing the parser will delete all existing chunks and re-parse the document.",
+    "changeParserSuccess": "Parser changed. Document will be re-parsed.",
+    "webCrawl": "Web Crawl",
+    "webCrawlUrl": "URL",
+    "webCrawlName": "Document Name",
+    "webCrawlNamePlaceholder": "Auto-detected from page",
+    "webCrawlAutoParse": "Auto-parse after crawl",
+    "webCrawlSubmit": "Crawl",
+    "webCrawlSuccess": "Web page queued for processing",
+    "webCrawlInvalidUrl": "Please enter a valid HTTP or HTTPS URL",
+    "webCrawlFailed": "Failed to crawl URL"
   },
   "versions": {
     "title": "Versions",

@@ -442,4 +442,40 @@ export const datasetApi = {
   updateMetadata: async (datasetId: string, fields: MetadataField[]): Promise<MetadataResponse> => {
     return api.put<MetadataResponse>(`${BASE_URL}/datasets/${datasetId}/metadata`, { fields });
   },
+
+  // ============================================================================
+  // Per-Document Parser Change
+  // ============================================================================
+
+  /**
+   * @description Change a document's parser/chunking method. Deletes existing chunks and resets for re-parsing.
+   * @param {string} datasetId - Dataset UUID
+   * @param {string} docId - Document UUID
+   * @param {{ parser_id: string; parser_config?: Record<string, unknown> }} data - New parser settings
+   * @returns {Promise<Document>} Updated document record
+   */
+  changeDocumentParser: async (
+    datasetId: string,
+    docId: string,
+    data: { parser_id: string; parser_config?: Record<string, unknown> },
+  ): Promise<Document> => {
+    return api.put<Document>(`${BASE_URL}/datasets/${datasetId}/documents/${docId}/parser`, data);
+  },
+
+  // ============================================================================
+  // Web Crawl
+  // ============================================================================
+
+  /**
+   * @description Create a document by crawling a web URL.
+   * @param {string} datasetId - Dataset UUID
+   * @param {{ url: string; name?: string; auto_parse?: boolean }} data - Crawl parameters
+   * @returns {Promise<Document>} Created placeholder document
+   */
+  webCrawlDocument: async (
+    datasetId: string,
+    data: { url: string; name?: string; auto_parse?: boolean },
+  ): Promise<Document> => {
+    return api.post<Document>(`${BASE_URL}/datasets/${datasetId}/documents/web-crawl`, data);
+  },
 };

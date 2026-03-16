@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Upload, RefreshCw, Shield, Settings, Database, BarChart3, Network, Tags } from 'lucide-react';
+import { ArrowLeft, Upload, RefreshCw, Shield, Settings, Database, BarChart3, Network, Tags, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/sheet';
 import { useAuth } from '@/features/auth';
 import { datasetApi } from '../api/datasetApi';
-import { useDocuments } from '../api/datasetQueries';
+import { useDocuments, useChangeDocumentParser, useWebCrawl } from '../api/datasetQueries';
 import DocumentTable from '../components/DocumentTable';
 import FileUploadModal from '../components/FileUploadModal';
 import DatasetAccessDialog from '../components/DatasetAccessDialog';
@@ -19,6 +19,8 @@ import DatasetSettingsDrawer from '../components/DatasetSettingsDrawer';
 import DatasetOverviewTab from '../components/DatasetOverviewTab';
 import KnowledgeGraphTab from '../components/KnowledgeGraphTab';
 import MetadataManageDialog from '../components/MetadataManageDialog';
+import ChangeParserDialog from '../components/ChangeParserDialog';
+import WebCrawlDialog from '../components/WebCrawlDialog';
 import { DocumentPreviewer } from '@/components/DocumentPreviewer';
 import type { Dataset, Document } from '../types';
 
@@ -49,6 +51,11 @@ const DatasetDetailPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'documents' | 'overview' | 'graph'>('documents');
   // State for metadata dialog
   const [metadataOpen, setMetadataOpen] = useState(false);
+  // State for change parser dialog
+  const [parserDialogOpen, setParserDialogOpen] = useState(false);
+  const [parserDialogDoc, setParserDialogDoc] = useState<Document | null>(null);
+  // State for web crawl dialog
+  const [webCrawlOpen, setWebCrawlOpen] = useState(false);
 
   /** Open the document preview sheet for the selected document */
   const handleViewDocument = (doc: Document) => {
@@ -57,6 +64,29 @@ const DatasetDetailPage: React.FC = () => {
 
   // Fetch documents for this dataset with all CRUD operations
   const { documents, loading: loadingDocs, uploading, refresh, uploadFiles, deleteDocument, parseDocument, toggleAvailability, bulkParse, bulkDelete } = useDocuments(id);
+
+  // Mutation hooks for parser change and web crawl
+  const changeParserMutation = useChangeDocumentParser(id ?? '')
+  const webCrawlMutation = useWebCrawl(id ?? '')
+
+  /** Open change parser dialog for a specific document */
+  const handleOpenChangeParser = (doc: Document) => {
+    setParserDialogDoc(doc)
+    setParserDialogOpen(true)
+  }
+
+  /** Confirm parser change and close the dialog */
+  const handleConfirmChangeParser = async (docId: string, parserId: string) => {
+    await changeParserMutation.mutateAsync({ docId, parser_id: parserId })
+    setParserDialogOpen(false)
+    setParserDialogDoc(null)
+  }
+
+  /** Submit web crawl and close the dialog */
+  const handleWebCrawlSubmit = async (data: { url: string; name?: string; auto_parse?: boolean }) => {
+    await webCrawlMutation.mutateAsync(data)
+    setWebCrawlOpen(false)
+  }
 
   // Fetch dataset details on mount; redirect to list on failure (e.g. 404)
   useEffect(() => {
@@ -134,6 +164,10 @@ const DatasetDetailPage: React.FC = () => {
               <Button variant="outline" onClick={() => setAccessDialogOpen(true)}>
                 <Shield size={16} className="mr-1" />
                 {t('datasetAccess.manageAccess')}
+              </Button>
+              <Button variant="outline" onClick={() => setWebCrawlOpen(true)}>
+                <Globe size={16} className="mr-1" />
+                {t('datasets.webCrawl')}
               </Button>
               <Button onClick={() => setUploadModalOpen(true)}>
                 <Upload size={16} className="mr-1" />
@@ -221,6 +255,7 @@ const DatasetDetailPage: React.FC = () => {
               onToggleAvailability={toggleAvailability}
               onBulkParse={bulkParse}
               onBulkDelete={bulkDelete}
+              onChangeParser={handleOpenChangeParser}
             />
           </CardContent>
         </Card>
@@ -286,6 +321,23 @@ const DatasetDetailPage: React.FC = () => {
           datasetId={id}
         />
       )}
+
+      {/* Change Parser Dialog */}
+      <ChangeParserDialog
+        open={parserDialogOpen}
+        onClose={() => { setParserDialogOpen(false); setParserDialogDoc(null) }}
+        document={parserDialogDoc}
+        submitting={changeParserMutation.isPending}
+        onConfirm={handleConfirmChangeParser}
+      />
+
+      {/* Web Crawl Dialog */}
+      <WebCrawlDialog
+        open={webCrawlOpen}
+        onClose={() => setWebCrawlOpen(false)}
+        submitting={webCrawlMutation.isPending}
+        onSubmit={handleWebCrawlSubmit}
+      />
     </div>
   );
 };
