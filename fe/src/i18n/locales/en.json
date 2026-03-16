@@ -1597,7 +1597,11 @@
       "keywords": "Keywords",
       "keywordsPlaceholder": "Add keyword and press Enter",
       "questions": "Questions",
-      "questionsPlaceholder": "Add question and press Enter"
+      "questionsPlaceholder": "Add question and press Enter",
+      "filterAll": "All",
+      "filterEnabled": "Enabled",
+      "filterDisabled": "Disabled",
+      "toggleSuccess": "Chunk availability updated"
     },
     "retrieval": {
       "query": "Query",

@@ -11,8 +11,10 @@ import { FileText, Edit2, Trash2, Check, X } from 'lucide-react';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { TagEditor } from '@/components/ui/tag-editor';
+import { cn } from '@/lib/utils';
 import type { Chunk } from '@/features/datasets/types';
 
 /**
@@ -31,6 +33,8 @@ interface ChunkCardProps {
   onUpdate?: ((chunkId: string, data: { content?: string; important_keywords?: string[]; question_keywords?: string[] }) => Promise<void>) | undefined;
   /** Callback to delete a chunk (enables delete button) */
   onDelete?: ((chunkId: string) => Promise<void>) | undefined;
+  /** Callback to toggle chunk availability (enables switch control) */
+  onToggle?: ((chunkId: string, available: boolean) => Promise<void>) | undefined;
 }
 
 /**
@@ -38,7 +42,7 @@ interface ChunkCardProps {
  * @param {ChunkCardProps} props - Chunk data, index, selection state, and action callbacks
  * @returns {JSX.Element} Rendered chunk card with hover actions
  */
-const ChunkCard: React.FC<ChunkCardProps> = ({ chunk, index, isSelected, onClick, onUpdate, onDelete }) => {
+const ChunkCard: React.FC<ChunkCardProps> = ({ chunk, index, isSelected, onClick, onUpdate, onDelete, onToggle }) => {
   const { t } = useTranslation();
   const confirm = useConfirm();
   const [isEditing, setIsEditing] = useState(false);
@@ -46,6 +50,14 @@ const ChunkCard: React.FC<ChunkCardProps> = ({ chunk, index, isSelected, onClick
   const [editKeywords, setEditKeywords] = useState<string[]>(chunk.important_kwd ?? []);
   const [editQuestions, setEditQuestions] = useState<string[]>(chunk.question_kwd ?? []);
   const [saving, setSaving] = useState(false);
+
+  /** Reset edit state from current chunk props and enter edit mode */
+  const handleStartEdit = () => {
+    setEditText(chunk.text);
+    setEditKeywords(chunk.important_kwd ?? []);
+    setEditQuestions(chunk.question_kwd ?? []);
+    setIsEditing(true);
+  };
 
   /** Save edited chunk text via the onUpdate callback */
   const handleSave = async (e: React.MouseEvent) => {
@@ -94,12 +106,14 @@ const ChunkCard: React.FC<ChunkCardProps> = ({ chunk, index, isSelected, onClick
 
   return (
     <div
-      // Highlight the card border when selected
-      className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-sm group flex flex-col ${
+      // Highlight the card border when selected; dim disabled chunks
+      className={cn(
+        'p-3 rounded-lg border cursor-pointer transition-all hover:shadow-sm group flex flex-col',
         isSelected
           ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-400'
-          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-      }`}
+          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600',
+        chunk.available === false && 'opacity-50',
+      )}
       onClick={() => onClick?.(chunk)}
     >
       <div className="flex items-center gap-2 mb-2">
@@ -115,6 +129,15 @@ const ChunkCard: React.FC<ChunkCardProps> = ({ chunk, index, isSelected, onClick
         )}
         {/* Action buttons visible on hover */}
         <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Toggle chunk availability when onToggle is provided */}
+          {onToggle && (
+            <Switch
+              checked={chunk.available !== false}
+              onCheckedChange={(checked: boolean) => onToggle(chunk.chunk_id, checked)}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              className="h-4 w-7"
+            />
+          )}
           {/* Show edit button only when onUpdate handler is provided and not already editing */}
           {onUpdate && !isEditing && (
             <Button
@@ -123,7 +146,7 @@ const ChunkCard: React.FC<ChunkCardProps> = ({ chunk, index, isSelected, onClick
               className="h-6 w-6 text-gray-500 hover:text-primary-600"
               onClick={(e) => {
                 e.stopPropagation();
-                setIsEditing(true);
+                handleStartEdit();
               }}
             >
               <Edit2 size={12} />

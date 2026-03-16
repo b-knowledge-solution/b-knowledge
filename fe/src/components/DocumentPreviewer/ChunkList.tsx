@@ -13,6 +13,9 @@ import { Pagination } from '@/components/ui/pagination';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { useChunks } from '@/features/datasets/api/datasetQueries';
 import type { Chunk } from '@/features/datasets/types';
 import ChunkCard from './ChunkCard';
@@ -58,6 +61,9 @@ const ChunkList: React.FC<ChunkListProps> = ({
     addChunk,
     updateChunk,
     deleteChunk,
+    availableFilter,
+    setAvailableFilter,
+    toggleChunk,
   } = useChunks(datasetId, docId);
 
   // Calculate total pages based on 20 items per page
@@ -75,14 +81,30 @@ const ChunkList: React.FC<ChunkListProps> = ({
             <Plus size={14} />
           </Button>
         </div>
-        <div className="relative">
-          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <Input
-            placeholder={t('datasetSettings.chunks.searchPlaceholder', 'Search chunks...')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 h-8 text-xs"
-          />
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Input
+              placeholder={t('datasetSettings.chunks.searchPlaceholder', 'Search chunks...')}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 h-8 text-xs"
+            />
+          </div>
+          {/* Filter chunks by availability status */}
+          <Select
+            value={availableFilter === undefined ? 'all' : availableFilter ? 'enabled' : 'disabled'}
+            onValueChange={(v: string) => setAvailableFilter(v === 'all' ? undefined : v === 'enabled')}
+          >
+            <SelectTrigger className="w-[120px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('datasetSettings.chunks.filterAll', 'All')}</SelectItem>
+              <SelectItem value="enabled">{t('datasetSettings.chunks.filterEnabled', 'Enabled')}</SelectItem>
+              <SelectItem value="disabled">{t('datasetSettings.chunks.filterDisabled', 'Disabled')}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -105,6 +127,7 @@ const ChunkList: React.FC<ChunkListProps> = ({
               onClick={onSelectChunk}
               onUpdate={updateChunk}
               onDelete={deleteChunk}
+              onToggle={toggleChunk}
             />
           ))
         )}

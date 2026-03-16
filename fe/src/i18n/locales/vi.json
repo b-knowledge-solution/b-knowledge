@@ -1581,7 +1581,11 @@
       "keywords": "Từ khóa",
       "keywordsPlaceholder": "Thêm từ khóa và nhấn Enter",
       "questions": "Câu hỏi",
-      "questionsPlaceholder": "Thêm câu hỏi và nhấn Enter"
+      "questionsPlaceholder": "Thêm câu hỏi và nhấn Enter",
+      "filterAll": "Tất cả",
+      "filterEnabled": "Đã bật",
+      "filterDisabled": "Đã tắt",
+      "toggleSuccess": "Đã cập nhật trạng thái chunk"
     },
     "retrieval": {
       "query": "Truy vấn",

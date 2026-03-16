@@ -98,7 +98,7 @@ const RetrievalTestPanel: React.FC<RetrievalTestPanelProps> = ({ datasetId }) =>
             <SelectContent>
               <SelectItem value="hybrid">{t('search.method.hybrid')}</SelectItem>
               <SelectItem value="semantic">{t('search.method.semantic')}</SelectItem>
-              <SelectItem value="fulltext">{t('search.method.fulltext')}</SelectItem>
+              <SelectItem value="full_text">{t('search.method.fulltext')}</SelectItem>
             </SelectContent>
           </Select>
         </div>

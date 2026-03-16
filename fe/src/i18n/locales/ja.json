@@ -1567,7 +1567,11 @@
       "keywords": "キーワード",
       "keywordsPlaceholder": "キーワードを入力してEnterを押す",
       "questions": "質問",
-      "questionsPlaceholder": "質問を入力してEnterを押す"
+      "questionsPlaceholder": "質問を入力してEnterを押す",
+      "filterAll": "すべて",
+      "filterEnabled": "有効",
+      "filterDisabled": "無効",
+      "toggleSuccess": "チャンクの可用性を更新しました"
     },
     "retrieval": {
       "query": "クエリ",
