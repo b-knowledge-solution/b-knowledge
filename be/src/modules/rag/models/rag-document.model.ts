@@ -64,6 +64,8 @@ export class RagDocumentModel {
         size: number;
         suffix: string;
         type: string;
+        source_type?: string;
+        source_url?: string;
     }): Promise<void> {
         const now = nowMs();
         await db(this.tableName).insert({
@@ -71,7 +73,8 @@ export class RagDocumentModel {
             kb_id: data.kb_id,
             parser_id: data.parser_id,
             parser_config: JSON.stringify(data.parser_config),
-            source_type: 'local',
+            source_type: data.source_type || 'local',
+            ...(data.source_url ? { source_url: data.source_url } : {}),
             type: data.type,
             created_by: SYSTEM_TENANT_ID,
             name: data.name,

@@ -194,7 +194,7 @@ def handle_crawl_task(task: dict, r: redis.Redis):
     doc_id = task["doc_id"]
     kb_id = task["kb_id"]
     url = task["url"]
-    auto_parse = task.get("auto_parse", False)
+    auto_parse = task.get("auto_parse", True)
 
     logger.info(f"Processing crawl task: doc_id={doc_id}, url={url}")
 

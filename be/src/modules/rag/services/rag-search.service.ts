@@ -177,7 +177,7 @@ export class RagSearchService {
 
         const hitsTotal = res.body.hits.total
         const total = typeof hitsTotal === 'number' ? hitsTotal : hitsTotal?.value ?? 0
-        const chunks = this.mapHits(res.body.hits.hits, 'semantic').filter(c => (c.score ?? 0) >= threshold)
+        const chunks = this.mapHits(res.body.hits.hits, 'semantic')
         return { chunks, total }
     }
 
@@ -232,7 +232,8 @@ export class RagSearchService {
             const textScore = textMap.get(r.chunk_id) ?? 0
             const semanticScore = semanticMap.get(r.chunk_id) ?? 0
             const weightedScore = textWeight * textScore + vectorWeight * semanticScore
-            seen.set(r.chunk_id, { ...r, score: weightedScore })
+            // Preserve individual similarity scores for debugging and UI display
+            seen.set(r.chunk_id, { ...r, score: weightedScore, vector_similarity: semanticScore, term_similarity: textScore })
         }
 
         const chunks = [...seen.values()]
@@ -290,6 +291,13 @@ export class RagSearchService {
             default:
                 result = await this.hybridSearch(datasetId, req.query, queryVector ?? null, topK, threshold, vectorWeight, extraFilters)
                 break
+        }
+
+        // Populate similarity breakdown fields for non-hybrid search methods
+        if (method === 'full_text') {
+            result.chunks = result.chunks.map(c => ({ ...c, term_similarity: c.score ?? 0 }))
+        } else if (method === 'semantic') {
+            result.chunks = result.chunks.map(c => ({ ...c, vector_similarity: c.score ?? 0 }))
         }
 
         // Apply similarity threshold filter to remove low-scoring results
@@ -467,7 +475,7 @@ export class RagSearchService {
                     bool: {
                         must: [
                             { term: { kb_id: datasetId } },
-                            { term: { doc_id: docId } },
+                            { term: { doc_id: docId.replace(/-/g, '') } },
                         ],
                     },
                 },

@@ -374,6 +374,10 @@ export class RagDocumentService {
             /^localhost$/i,
             /^::1$/,
             /^fe80:/i,
+            /^169\.254\./,              // IPv4 link-local (AWS/GCP/Azure metadata 169.254.169.254)
+            /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./,  // Shared Address Space RFC 6598
+            /^\[?::ffff:/i,             // IPv4-mapped IPv6
+            /^f[cd][0-9a-f]{2}:/i,     // IPv6 ULA fc00::/7 + fd00::/8
         ]
         for (const pattern of privatePatterns) {
             if (pattern.test(hostname)) {
@@ -406,7 +410,7 @@ export class RagDocumentService {
         // Generate a UUID hex string (32 chars, no hyphens) matching RAGFlow format
         const docId = crypto.randomUUID().replace(/-/g, '')
 
-        // Create placeholder document record with all required fields for the model
+        // Create placeholder document record with source_type and source_url set directly
         await ModelFactory.ragDocument.create({
             id: docId,
             kb_id: datasetId,
@@ -421,12 +425,12 @@ export class RagDocumentService {
                     ? JSON.parse(dataset.parser_config as string)
                     : dataset.parser_config) as Record<string, unknown>
                 : {},
-        })
-
-        // Mark the document source as web_crawl with the original URL
-        await ModelFactory.ragDocument.update(docId, {
             source_type: 'web_crawl',
             source_url: data.url,
+        })
+
+        // Set initial progress message for the UI
+        await ModelFactory.ragDocument.update(docId, {
             progress_msg: 'Queued for web crawl',
         })
 
