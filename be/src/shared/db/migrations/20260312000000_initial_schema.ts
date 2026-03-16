@@ -28,6 +28,8 @@ export async function up(knex: Knex): Promise<void> {
     table.text('department')
     table.text('job_title')
     table.text('mobile_phone')
+    // Nullable bcrypt hash for local-auth users; Azure AD users remain null
+    table.text('password_hash').nullable()
     table.text('created_by')
     table.text('updated_by')
     table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
@@ -76,8 +78,8 @@ export async function up(knex: Knex): Promise<void> {
   // 3. Chat tables (depends on users)
   // ──────────────────────────────────────────────
 
-  // Chat dialogs - RAGFlow dialog (chat assistant) configurations
-  await knex.schema.createTable('chat_dialogs', (table) => {
+  // Chat assistants - chat assistant configurations (RAGFlow "dialog")
+  await knex.schema.createTable('chat_assistants', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
     table.string('name', 128).notNullable()
     table.text('description')
@@ -91,11 +93,11 @@ export async function up(knex: Knex): Promise<void> {
     table.timestamps(true, true)
   })
 
-  // Chat dialog access - RBAC junction table for dialog sharing
-  await knex.schema.createTable('chat_dialog_access', (table) => {
+  // Chat assistant access - RBAC junction table for assistant sharing
+  await knex.schema.createTable('chat_assistant_access', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
-    // Reference to the dialog being shared
-    table.uuid('dialog_id').notNullable().references('id').inTable('chat_dialogs').onDelete('CASCADE')
+    // Reference to the assistant being shared
+    table.uuid('assistant_id').notNullable().references('id').inTable('chat_assistants').onDelete('CASCADE')
     // Entity type: 'user' or 'team'
     table.string('entity_type', 16).notNullable()
     // UUID of the user or team granted access
@@ -107,11 +109,25 @@ export async function up(knex: Knex): Promise<void> {
     // Enforce valid entity types
     table.check('?? IN (?, ?)', ['entity_type', 'user', 'team'])
     // Prevent duplicate access entries
-    table.unique(['dialog_id', 'entity_type', 'entity_id'])
-    // Index for fast lookups by dialog
-    table.index('dialog_id', 'idx_chat_dialog_access_dialog_id')
-    // Composite index for querying accessible dialogs by entity
-    table.index(['entity_type', 'entity_id'], 'idx_chat_dialog_access_entity')
+    table.unique(['assistant_id', 'entity_type', 'entity_id'])
+    // Index for fast lookups by assistant
+    table.index('assistant_id', 'idx_chat_assistant_access_assistant_id')
+    // Composite index for querying accessible assistants by entity
+    table.index(['entity_type', 'entity_id'], 'idx_chat_assistant_access_entity')
+  })
+
+  // Chat embed tokens - tokens for external chat widget authentication
+  await knex.schema.createTable('chat_embed_tokens', (table) => {
+    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.uuid('assistant_id').notNullable().references('id').inTable('chat_assistants').onDelete('CASCADE')
+    table.string('token', 64).notNullable().unique()
+    table.string('name', 128).notNullable()
+    table.boolean('is_active').defaultTo(true)
+    table.text('created_by').references('id').inTable('users').onDelete('SET NULL')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('expires_at', { useTz: true }).nullable()
+    table.index('assistant_id', 'idx_embed_tokens_assistant')
+    table.index('token', 'idx_embed_tokens_token')
   })
 
   // Chat sessions - user conversation sessions
@@ -139,6 +155,25 @@ export async function up(knex: Knex): Promise<void> {
     table.text('updated_by')
     table.timestamp('timestamp', { useTz: true }).defaultTo(knex.fn.now())
     table.foreign('session_id').references('chat_sessions.id').onDelete('CASCADE')
+  })
+
+  // Chat files - file attachments uploaded during chat conversations
+  await knex.schema.createTable('chat_files', (table) => {
+    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    // session_id must be text to match chat_sessions.id which is defined as text
+    table.text('session_id').notNullable().references('id').inTable('chat_sessions').onDelete('CASCADE')
+    table.text('message_id').nullable()
+    table.string('original_name', 256).notNullable()
+    table.string('mime_type', 128).notNullable()
+    table.bigInteger('size').notNullable()
+    table.string('s3_key', 1024).notNullable()
+    table.string('s3_bucket', 256).notNullable()
+    table.text('url').nullable()
+    table.text('uploaded_by').references('id').inTable('users').onDelete('SET NULL')
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('expires_at', { useTz: true }).nullable()
+    table.index('session_id', 'idx_chat_files_session')
+    table.index('expires_at', 'idx_chat_files_expires')
   })
 
   // ──────────────────────────────────────────────
@@ -179,6 +214,30 @@ export async function up(knex: Knex): Promise<void> {
     table.index('app_id', 'idx_search_app_access_app_id')
     // Composite index for querying accessible apps by entity
     table.index(['entity_type', 'entity_id'], 'idx_search_app_access_entity')
+  })
+
+  // Search embed tokens - tokens for external search widget authentication
+  await knex.schema.createTable('search_embed_tokens', (table) => {
+    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    // Reference to the search app this token grants access to
+    table.uuid('app_id').notNullable().references('id').inTable('search_apps').onDelete('CASCADE')
+    // Unique 64-char hex token for API authentication
+    table.string('token', 64).notNullable().unique()
+    // Human-readable label for the token
+    table.string('name', 128).notNullable()
+    // Whether the token is currently active
+    table.boolean('is_active').defaultTo(true)
+    // User who created this token
+    table.text('created_by').references('id').inTable('users').onDelete('SET NULL')
+    // Creation timestamp
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    // Optional expiration timestamp
+    table.timestamp('expires_at', { useTz: true }).nullable()
+
+    // Index for fast lookups by app
+    table.index('app_id', 'idx_search_embed_tokens_app_id')
+    // Index for token-based authentication lookups
+    table.index('token', 'idx_search_embed_tokens_token')
   })
 
   // ──────────────────────────────────────────────
@@ -419,14 +478,20 @@ export async function up(knex: Knex): Promise<void> {
     table.text('api_key')
     table.string('api_base', 512)
     table.integer('max_tokens')
+    // Whether this chat model supports vision (image understanding)
+    table.boolean('vision').defaultTo(false).notNullable()
     table.string('status', 16).defaultTo('active')
     table.boolean('is_default').defaultTo(false)
     table.text('created_by').references('id').inTable('users').onDelete('SET NULL')
     table.text('updated_by').references('id').inTable('users').onDelete('SET NULL')
     table.timestamps(true, true)
-
-    table.unique(['factory_name', 'model_type', 'model_name'])
   })
+  // Partial unique index — only active rows must have unique (factory_name, model_name)
+  await knex.raw(`
+    CREATE UNIQUE INDEX model_providers_factory_model_active_unique
+    ON model_providers (factory_name, model_name)
+    WHERE status = 'active'
+  `)
 
   // ──────────────────────────────────────────────
   // 10. Document versioning (depends on datasets, users)
@@ -896,14 +961,17 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists('audit_logs')
 
   // Search apps
+  await knex.schema.dropTableIfExists('search_embed_tokens')
   await knex.schema.dropTableIfExists('search_app_access')
   await knex.schema.dropTableIfExists('search_apps')
 
   // Chat tables
+  await knex.schema.dropTableIfExists('chat_files')
   await knex.schema.dropTableIfExists('chat_messages')
   await knex.schema.dropTableIfExists('chat_sessions')
-  await knex.schema.dropTableIfExists('chat_dialog_access')
-  await knex.schema.dropTableIfExists('chat_dialogs')
+  await knex.schema.dropTableIfExists('chat_embed_tokens')
+  await knex.schema.dropTableIfExists('chat_assistant_access')
+  await knex.schema.dropTableIfExists('chat_assistants')
 
   // User-Teams junction
   await knex.schema.dropTableIfExists('user_teams')

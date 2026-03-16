@@ -1,3 +1,16 @@
+"""Resume parsing step two: field enrichment, tokenization, and search index preparation.
+
+Takes the normalized resume dict from step_one and produces a search-optimized
+document with tokenized fields, keyword arrays, date parsing, education/work/project
+analysis, school ranking, company quality tags, and composite feature fields.
+
+Key enrichments include:
+- Education analysis: degree hierarchy, school rankings (211/985/overseas), first degree
+- Work analysis: company quality tags, job duration, industry classification
+- Project analysis: tokenized project names and descriptions
+- Name processing: pinyin conversion, prefix generation for typeahead search
+- Composite tags: corp+school+degree cross-features for ranking
+"""
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -30,11 +43,20 @@ from contextlib import contextmanager
 
 
 class TimeoutException(Exception):
+    """Raised when a time-limited operation exceeds its deadline."""
     pass
 
 
 @contextmanager
 def time_limit(seconds):
+    """Context manager that raises TimeoutException after the given seconds.
+
+    Args:
+        seconds: Maximum number of seconds to allow execution.
+
+    Raises:
+        TimeoutException: If the code block exceeds the time limit.
+    """
     def signal_handler(signum, frame):
         raise TimeoutException("Timed out!")
 
@@ -51,10 +73,26 @@ PY = Pinyin()
 
 
 def rmHtmlTag(line):
+    """Strip HTML tags from a text string.
+
+    Args:
+        line: Input string potentially containing HTML tags.
+
+    Returns:
+        The string with all HTML tags replaced by spaces.
+    """
     return re.sub(r"<[a-z0-9.\"=';,:\+_/ -]+>", " ", line, count=100000, flags=re.IGNORECASE)
 
 
 def highest_degree(dg):
+    """Return the highest education degree from a list of degree names.
+
+    Args:
+        dg: A single degree string or list of degree strings (in Chinese).
+
+    Returns:
+        The highest-ranked degree string, or empty string if none.
+    """
     if not dg:
         return ""
     if isinstance(dg, str):
@@ -64,6 +102,19 @@ def highest_degree(dg):
 
 
 def forEdu(cv):
+    """Analyze and enrich education-related fields in the resume.
+
+    Processes education history to extract school features (211/985/overseas),
+    school rankings, degree hierarchy, first degree info, major keywords,
+    and education date ranges. Tags candidates with quality labels like
+    'good school' and 'good education'.
+
+    Args:
+        cv: The resume dict to enrich.
+
+    Returns:
+        The enriched resume dict with education analysis fields added.
+    """
     if not cv.get("education_obj"):
         cv["integerity_flt"] *= 0.8
         return cv
@@ -226,6 +277,16 @@ def forEdu(cv):
 
 
 def forProj(cv):
+    """Analyze and enrich project experience fields in the resume.
+
+    Extracts project names and descriptions, tokenizes them for search indexing.
+
+    Args:
+        cv: The resume dict to enrich.
+
+    Returns:
+        The enriched resume dict with project tokenized fields added.
+    """
     if not cv.get("project_obj"):
         return cv
 
@@ -253,10 +314,31 @@ def forProj(cv):
 
 
 def json_loads(line):
+    """Parse a JSON string with tolerance for Python True/False literals.
+
+    Args:
+        line: A JSON-like string to parse.
+
+    Returns:
+        The parsed Python object.
+    """
     return demjson3.decode(re.sub(r": *(True|False)", r": '\1'", line))
 
 
 def forWork(cv):
+    """Analyze and enrich work experience fields in the resume.
+
+    Processes work history to extract company quality tags, job durations,
+    industry classifications, position tokenization, subordinate counts,
+    Baike (encyclopedia) scores, and company scale. Tags candidates with
+    'good company' labels.
+
+    Args:
+        cv: The resume dict to enrich.
+
+    Returns:
+        The enriched resume dict with work analysis fields added.
+    """
     if not cv.get("work_obj"):
         cv["integerity_flt"] *= 0.7
         return cv
@@ -400,6 +482,14 @@ def forWork(cv):
 
 
 def turnTm2Dt(b):
+    """Convert a Unix timestamp string to a formatted date string.
+
+    Args:
+        b: A timestamp string (10+ digits) or already-formatted date string.
+
+    Returns:
+        A formatted date string (YYYY-MM-DD HH:MM:SS), or None if empty.
+    """
     if not b:
         return None
     b = str(b).strip()
@@ -409,6 +499,14 @@ def turnTm2Dt(b):
 
 
 def getYMD(b):
+    """Extract year, month, and day from a date string in various formats.
+
+    Args:
+        b: A date string, timestamp, or None.
+
+    Returns:
+        A tuple of (year, month, day) strings. Empty strings if not parseable.
+    """
     y, m, d = "", "", "01"
     if not b:
         return y, m, d
@@ -429,6 +527,14 @@ def getYMD(b):
 
 
 def birth(cv):
+    """Parse birth date and calculate age for the resume.
+
+    Args:
+        cv: The resume dict containing a 'birth' field.
+
+    Returns:
+        The enriched resume dict with 'birth_dt', 'birthday_kwd', and 'age_int'.
+    """
     if not cv.get("birth"):
         cv["integerity_flt"] *= 0.9
         return cv
@@ -444,6 +550,19 @@ def birth(cv):
 
 
 def parse(cv):
+    """Main resume parsing function that orchestrates all enrichment steps.
+
+    Tokenizes text fields, creates keyword arrays, processes JSON object fields,
+    handles name/phone normalization, runs education/project/work/birth analysis,
+    builds composite features, and filters the output to only include indexed fields.
+
+    Args:
+        cv: The raw resume dict from step_one.
+
+    Returns:
+        A fully enriched resume dict ready for search indexing, with all non-indexed
+        fields removed and Int64 values converted to native Python ints.
+    """
     for k in cv.keys():
         if cv[k] == '\\N':
             cv[k] = ''
@@ -679,6 +798,14 @@ def parse(cv):
 
 
 def dealWithInt64(d):
+    """Recursively convert numpy integers to native Python ints for JSON serialization.
+
+    Args:
+        d: A dict, list, or scalar value potentially containing numpy integers.
+
+    Returns:
+        The same structure with all numpy integers converted to Python ints.
+    """
     if isinstance(d, dict):
         for n, v in d.items():
             d[n] = dealWithInt64(v)

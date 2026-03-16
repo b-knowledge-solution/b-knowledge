@@ -13,6 +13,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""OceanBase document store connection base implementation.
+
+Provides the abstract base class for connecting to OceanBase as a
+vector-capable document store. Handles table management, document
+CRUD, fulltext + dense vector search with SQL-based queries, and
+schema management for RAG chunk storage. Uses pymysql for MySQL-
+compatible OceanBase connections.
+"""
+
 import json
 import logging
 import os
@@ -95,6 +104,13 @@ def _try_with_lock(lock_name: str, process_func, check_func, timeout: int = None
 
 
 class OBConnectionBase(DocStoreConnection):
+    """Base class for OceanBase document store connections.
+
+    Implements DocStoreConnection interface for OceanBase, providing
+    table creation/deletion, document insert/update/delete, hybrid
+    search (fulltext + vector with SQL MATCH and cosine distance),
+    and field retrieval. Uses MySQL-compatible pymysql driver.
+    """
     """Base class for OceanBase document store connections."""
 
     def __init__(self, logger_name: str = 'ragflow.ob_conn'):

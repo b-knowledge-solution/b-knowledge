@@ -25,9 +25,14 @@ import { TraceController } from '@/modules/trace/controllers/trace.controller.js
 import broadcastMessageRoutes from '@/modules/broadcast/routes/broadcast-message.routes.js';
 import adminHistoryRoutes from '@/modules/admin/routes/admin-history.routes.js';
 import chatConversationRoutes from '@/modules/chat/routes/chat-conversation.routes.js';
-import chatDialogRoutes from '@/modules/chat/routes/chat-dialog.routes.js';
+import chatAssistantRoutes from '@/modules/chat/routes/chat-assistant.routes.js';
+import chatEmbedRoutes from '@/modules/chat/routes/chat-embed.routes.js';
+import chatFileRoutes from '@/modules/chat/routes/chat-file.routes.js';
 import userHistoryRoutes from '@/modules/user-history/user-history.routes.js';
 import searchRoutes from '@/modules/search/routes/search.routes.js';
+import searchEmbedRoutes from '@/modules/search/routes/search-embed.routes.js';
+import chatOpenaiRoutes from '@/modules/chat/routes/chat-openai.routes.js';
+import searchOpenaiRoutes from '@/modules/search/routes/search-openai.routes.js';
 
 import dashboardRoutes from '@/modules/dashboard/dashboard.routes.js';
 import glossaryRoutes from '@/modules/glossary/routes/glossary.routes.js';
@@ -136,13 +141,20 @@ function registerRoutes(apiRouter: Router): void {
     // Chat conversations (local DB + LLM)
     apiRouter.use('/chat', chatConversationRoutes);
 
-    // Chat dialogs (assistant configuration)
-    apiRouter.use('/chat', chatDialogRoutes);
+    // Chat assistants (assistant configuration)
+    apiRouter.use('/chat', chatAssistantRoutes);
+
+    // Chat embed widget (token management + public endpoints)
+    apiRouter.use('/chat', chatEmbedRoutes);
+
+    // Chat file uploads (images + PDFs for multimodal)
+    apiRouter.use('/chat', chatFileRoutes);
 
     // Search apps
     apiRouter.use('/search', searchRoutes);
 
-
+    // Search embed widget (token management + public endpoints)
+    apiRouter.use('/search', searchEmbedRoutes);
 
     // Glossary management (tasks, keywords, prompt builder)
     apiRouter.use('/glossary', glossaryRoutes);
@@ -158,6 +170,10 @@ function registerRoutes(apiRouter: Router): void {
 
     // Projects (multi-category document management)
     apiRouter.use('/projects', projectRoutes);
+
+    // OpenAI-compatible API endpoints (Bearer token auth)
+    apiRouter.use('/v1', chatOpenaiRoutes);
+    apiRouter.use('/v1', searchOpenaiRoutes);
 }
 
 // ============================================================================

@@ -2,7 +2,7 @@
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use it except in compliance with the License.
+#  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
 #
 #      http://www.apache.org/licenses/LICENSE-2.0
@@ -14,14 +14,29 @@
 #  limitations under the License.
 #
 
-"""Pure aggregation helpers for search results (no heavy dependencies)."""
+"""Pure aggregation helpers for search results (no heavy dependencies).
+
+This module provides lightweight utility functions for aggregating search result
+documents by field values. It is intentionally free of heavy dependencies so it
+can be imported from any doc-store backend (OpenSearch, Infinity, OceanBase)
+without pulling in unnecessary libraries.
+"""
 
 
 def aggregate_by_field(messages: list | None, field_name: str) -> list[tuple[str, int]]:
-    """Aggregate message documents by a field; returns [(value, count), ...].
+    """Aggregate message documents by a specified field, returning value-count pairs.
 
-    Handles pre-aggregated rows (dicts with "value" and "count") and
-    per-doc field values (str or list of str).
+    Handles two input formats:
+    - Pre-aggregated rows: dicts containing "value" and "count" keys (passed through directly).
+    - Per-document field values: strings or lists of strings whose occurrences are counted.
+
+    Args:
+        messages: List of message dictionaries to aggregate. May be None or empty.
+        field_name: The field key to aggregate on within each message dict.
+
+    Returns:
+        A list of (value, count) tuples. Pre-aggregated rows appear first,
+        followed by counted per-document values.
     """
     if not messages:
         return []
@@ -30,13 +45,16 @@ def aggregate_by_field(messages: list | None, field_name: str) -> list[tuple[str
     result: list[tuple[str, int]] = []
 
     for doc in messages:
+        # Pass through pre-aggregated rows from the search engine
         if "value" in doc and "count" in doc:
             result.append((doc["value"], doc["count"]))
             continue
 
+        # Skip documents that don't contain the target field
         if field_name not in doc:
             continue
 
+        # Count occurrences of each distinct value (supports both str and list[str])
         v = doc[field_name]
         if isinstance(v, list):
             for vv in v:
@@ -49,6 +67,7 @@ def aggregate_by_field(messages: list | None, field_name: str) -> list[tuple[str
             if key:
                 counts[key] = counts.get(key, 0) + 1
 
+    # Append the manually counted values to the result list
     if counts:
         for k, v in counts.items():
             result.append((k, v))

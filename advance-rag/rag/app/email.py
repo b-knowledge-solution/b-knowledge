@@ -14,6 +14,14 @@
 #  limitations under the License.
 #
 
+"""Email (.eml) file parser module for the RAG pipeline.
+
+Parses email messages including headers, body text (plain and HTML),
+and attachments. The email body is chunked using naive merge strategy,
+while attachments are recursively parsed using the naive chunker.
+Only .eml format is supported.
+"""
+
 import logging
 from email import policy
 from email.parser import BytesParser

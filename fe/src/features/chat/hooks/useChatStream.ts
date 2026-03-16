@@ -2,19 +2,19 @@
  * @fileoverview Hook for SSE-based chat streaming with delta token support.
  *
  * Handles three SSE event types from the backend:
- * - `{ delta: "token" }` — Incremental text token (append to current answer)
- * - `{ reference: {...} }` — Document references/citations
- * - `{ answer: "...", reference: {...}, metrics: {...} }` — Final processed answer
- * - `{ status: "..." }` — Pipeline status updates (retrieving, reranking, etc.)
- * - `{ error: "..." }` — Error message
- * - `[DONE]` — Stream completion signal
+ * - `{ delta: "token" }` -- Incremental text token (append to current answer)
+ * - `{ reference: {...} }` -- Document references/citations
+ * - `{ answer: "...", reference: {...}, metrics: {...} }` -- Final processed answer
+ * - `{ status: "..." }` -- Pipeline status updates (retrieving, reranking, etc.)
+ * - `{ error: "..." }` -- Error message
+ * - `[DONE]` -- Stream completion signal
  *
- * @module features/ai/hooks/useChatStream
+ * @module features/chat/hooks/useChatStream
  */
 
 import { useState, useRef } from 'react'
 import { chatApi } from '../api/chatApi'
-import type { ChatMessage, ChatReference } from '../types/chat.types'
+import type { ChatMessage, ChatReference, SendMessageOptions } from '../types/chat.types'
 
 // ============================================================================
 // Types
@@ -55,7 +55,7 @@ export interface UseChatStreamReturn {
   /** Performance metrics from the last response */
   metrics: PipelineMetrics | null
   /** Send a user message and begin streaming */
-  sendMessage: (content: string) => void
+  sendMessage: (content: string, options?: SendMessageOptions) => void
   /** Abort the current streaming response */
   stopStream: () => void
   /** Current error message if any */
@@ -64,6 +64,8 @@ export interface UseChatStreamReturn {
   setMessages: (messages: ChatMessage[]) => void
   /** Clear all messages */
   clearMessages: () => void
+  /** Regenerate the last assistant message by re-sending the last user message */
+  regenerateLastMessage: () => void
 }
 
 // ============================================================================
@@ -98,8 +100,9 @@ export function useChatStream(
    * Send a user message and begin streaming the assistant response.
    * Uses delta streaming for efficient token-by-token display.
    * @param content - The user message text
+   * @param options - Optional variables, reasoning, and internet search flags
    */
-  const sendMessage = async (content: string) => {
+  const sendMessage = async (content: string, options?: SendMessageOptions) => {
     // Guard: require active conversation and dialog
     if (!conversationId || !dialogId) return
 
@@ -127,8 +130,8 @@ export function useChatStream(
       // Create a new abort controller for this request
       abortRef.current = new AbortController()
 
-      // Call the streaming endpoint
-      const response = await chatApi.sendMessage(conversationId, content, dialogId)
+      // Call the streaming endpoint with optional parameters
+      const response = await chatApi.sendMessage(conversationId, content, dialogId, options)
 
       // Check for HTTP errors
       if (!response.ok) {
@@ -203,9 +206,10 @@ export function useChatStream(
             if (data.error) {
               throw new Error(data.error)
             }
-          } catch (parseErr: any) {
+          } catch (parseErr: unknown) {
             // Re-throw actual errors (not JSON parse errors)
-            if (parseErr.message && !parseErr.message.includes('JSON')) {
+            const errMsg = parseErr instanceof Error ? parseErr.message : ''
+            if (errMsg && !errMsg.includes('JSON')) {
               throw parseErr
             }
             // Skip malformed JSON lines
@@ -230,12 +234,12 @@ export function useChatStream(
       }
       setCurrentAnswer('')
       answerRef.current = ''
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Handle abort (user cancelled)
-      if (err.name === 'AbortError') return
+      if (err instanceof Error && err.name === 'AbortError') return
 
       // Set error state
-      const errorMsg = err.message || 'An error occurred while streaming'
+      const errorMsg = err instanceof Error ? err.message : 'An error occurred while streaming'
       setError(errorMsg)
 
       // Add error as assistant message
@@ -291,6 +295,54 @@ export function useChatStream(
     answerRef.current = ''
   }
 
+  /**
+   * Regenerate the last assistant message by removing it and re-sending
+   * the last user message.
+   */
+  const regenerateLastMessage = () => {
+    // Guard: cannot regenerate during streaming
+    if (isStreaming) return
+
+    // Find the last user message (iterate from end)
+    let lastUserIdx = -1
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i]!.role === 'user') {
+        lastUserIdx = i
+        break
+      }
+    }
+    if (lastUserIdx === -1) return
+
+    const lastUserContent = messages[lastUserIdx]!.content
+
+    // Find the last assistant message (iterate from end)
+    let lastAssistantIdx = -1
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i]!.role === 'assistant') {
+        lastAssistantIdx = i
+        break
+      }
+    }
+    if (lastAssistantIdx > lastUserIdx) {
+      // Delete the assistant message from backend if it has a real ID
+      const assistantMsg = messages[lastAssistantIdx]!
+      if (assistantMsg.id && conversationId && !assistantMsg.id.startsWith('assistant-') && !assistantMsg.id.startsWith('error-')) {
+        chatApi.deleteMessage(conversationId, assistantMsg.id).catch(() => {
+          // Best-effort deletion; proceed even on failure
+        })
+      }
+
+      // Remove the assistant message from local state
+      setMessages((prev) => prev.filter((_, idx) => idx !== lastAssistantIdx))
+    }
+
+    // Also remove the last user message so sendMessage can re-add it
+    setMessages((prev) => prev.filter((_, idx) => idx !== lastUserIdx))
+
+    // Re-send the user message
+    sendMessage(lastUserContent)
+  }
+
   return {
     messages,
     isStreaming,
@@ -303,5 +355,6 @@ export function useChatStream(
     error,
     setMessages,
     clearMessages,
+    regenerateLastMessage,
   }
 }

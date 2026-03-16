@@ -12,17 +12,43 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Custom exception classes for the RAG worker.
+
+These exceptions provide domain-specific error semantics so that callers
+can distinguish between a cancelled task, an invalid argument, and a
+missing resource without relying on generic Exception types.
+"""
+
 
 class TaskCanceledException(Exception):
+    """Raised when a running task is cancelled by user action or system policy.
+
+    Attributes:
+        msg: Human-readable cancellation reason.
+    """
+
     def __init__(self, msg):
         self.msg = msg
 
 
 class ArgumentException(Exception):
+    """Raised when a function receives an invalid or missing argument.
+
+    Attributes:
+        msg: Human-readable description of the argument error.
+    """
+
     def __init__(self, msg):
         self.msg = msg
 
 
 class NotFoundException(Exception):
+    """Raised when a requested resource cannot be found.
+
+    Attributes:
+        msg: Human-readable description of what was not found.
+    """
+
     def __init__(self, msg):
         self.msg = msg

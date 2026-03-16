@@ -62,7 +62,13 @@
       "Bash(xargs grep -l \"^import huggingface_hub\\\\|^from huggingface_hub\")",
       "Bash(xargs grep -l \"^import sqlalchemy\\\\|^from sqlalchemy\")",
       "Bash(xargs grep -l \"^import pydantic\\\\|^from pydantic\")",
-      "Bash(pip install shapely pyclipper editdistance)"
+      "Bash(pip install shapely pyclipper editdistance)",
+      "Bash(cp:*)",
+      "Bash(winget install:*)"
     ]
+  },
+  "sandbox": {
+    "enabled": false,
+    "autoAllowBashIfSandboxed": false
   }
 }

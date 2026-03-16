@@ -1,6 +1,16 @@
 # Licensed under the MIT License
-"""
-Reference:
+"""Query analysis prompt templates for GraphRAG search.
+
+This module defines LLM prompt templates used to analyze user queries during
+knowledge graph retrieval. It includes two main prompts:
+
+- ``minirag_query2kwd``: Extracts answer-type keywords and entity mentions from
+  a query using an answer-type pool (MiniRAG-style). This helps route queries
+  to the correct entity types in the knowledge graph.
+- ``keywords_extraction``: Extracts high-level (thematic) and low-level (specific)
+  keywords from a query for hybrid retrieval (LightRAG-style).
+
+References:
  - [LightRag](https://github.com/HKUDS/LightRAG)
  - [MiniRAG](https://github.com/HKUDS/MiniRAG)
 """
@@ -14,7 +24,7 @@ You are a helpful assistant tasked with identifying both answer-type and low-lev
 
 Given the query, list both answer-type and low-level keywords.
 answer_type_keywords focus on the type of the answer to the certain query, while low-level keywords focus on specific entities, details, or concrete terms.
-The answer_type_keywords must be selected from Answer type pool. 
+The answer_type_keywords must be selected from Answer type pool.
 This pool is in the form of a dictionary, where the key represents the Type you should choose from and the value represents the example samples.
 
 ---Instructions---

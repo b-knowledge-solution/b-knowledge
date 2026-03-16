@@ -14,6 +14,14 @@
 #  limitations under the License.
 #
 
+"""Whole-document (single-chunk) parser module for the RAG pipeline.
+
+Treats each file as a single chunk, preserving the original text order
+without splitting. Supports DOCX, PDF, Excel, TXT, Markdown, and HTML
+formats. Useful when the entire document should be indexed as one unit
+rather than being split into smaller chunks.
+"""
+
 import logging
 from io import BytesIO
 import re
@@ -28,6 +36,12 @@ from common.parser_config_utils import normalize_layout_recognizer
 
 
 class Pdf(PdfParser):
+    """PDF parser for whole-document mode.
+
+    Parses the entire PDF into a single ordered text output.
+    Performs OCR, layout analysis, table extraction, and text
+    merging, then concatenates all content in reading order.
+    """
     def __call__(self, filename, binary=None, from_page=0, to_page=100000, zoomin=3, callback=None):
         from timeit import default_timer as timer
 

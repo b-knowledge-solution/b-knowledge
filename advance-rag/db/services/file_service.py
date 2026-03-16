@@ -13,6 +13,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""File service for managing uploaded files and their processing lifecycle.
+
+Provides operations for file CRUD, S3 storage management, document
+generation from files, duplicate detection, thumbnail generation,
+and bulk file operations. Coordinates between the database (Peewee),
+S3-compatible object storage, and the document processing pipeline.
+"""
 import asyncio
 import base64
 import logging

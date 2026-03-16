@@ -54,7 +54,7 @@ export function Pagination({ currentPage, totalPages, onPageChange, className, s
   const pages = generatePageRange(currentPage, totalPages, siblingCount);
 
   return (
-    <nav className={cn('flex items-center gap-1', className)} aria-label="Pagination">
+    <nav className={cn('flex items-center gap-1', className)} aria-label={t('common.pagination')}>
       <PaginationButton
         variant="outline"
         size="icon"

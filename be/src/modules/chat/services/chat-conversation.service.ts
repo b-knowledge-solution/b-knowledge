@@ -38,7 +38,7 @@ import {
 import { log } from '@/shared/services/logger.service.js'
 import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
 import type { LangfuseTraceClient } from 'langfuse'
-import { ChunkResult, ChatDialog } from '@/shared/models/types.js'
+import { ChunkResult, ChatAssistant } from '@/shared/models/types.js'
 import { Response as ExpressResponse } from 'express'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -46,7 +46,7 @@ import { v4 as uuidv4 } from 'uuid'
 // Types
 // ---------------------------------------------------------------------------
 
-/** Dialog prompt configuration from chat_dialogs.prompt_config */
+/** Assistant prompt configuration from chat_assistants.prompt_config */
 interface PromptConfig {
   /** System prompt template */
   system?: string
@@ -432,10 +432,10 @@ export class ChatConversationService {
     name: string,
     userId: string
   ) {
-    // Verify dialog exists
-    const dialog = await ModelFactory.chatDialog.findById(dialogId)
-    if (!dialog) {
-      throw new Error('Dialog not found')
+    // Verify assistant exists
+    const assistant = await ModelFactory.chatAssistant.findById(dialogId)
+    if (!assistant) {
+      throw new Error('Assistant not found')
     }
 
     // Create local session
@@ -445,6 +445,19 @@ export class ChatConversationService {
       dialog_id: dialogId,
       created_by: userId,
     } as any)
+
+    // Insert prologue as first assistant message if assistant has one configured
+    const promptConfig = typeof assistant.prompt_config === 'string'
+      ? JSON.parse(assistant.prompt_config)
+      : assistant.prompt_config
+    if (promptConfig?.prologue) {
+      await ModelFactory.chatMessage.create({
+        session_id: session.id,
+        role: 'assistant',
+        content: promptConfig.prologue,
+        created_by: 'system',
+      } as any)
+    }
 
     log.info('Conversation created', { sessionId: session.id, dialogId, userId })
     return session
@@ -614,12 +627,12 @@ export class ChatConversationService {
         created_by: userId,
       } as any)
 
-      // ── Step 2: Load dialog config ──────────────────────────────────────
-      const dialog = dialogId
-        ? await ModelFactory.chatDialog.findById(dialogId)
+      // ── Step 2: Load assistant config ──────────────────────────────────────
+      const assistant = dialogId
+        ? await ModelFactory.chatAssistant.findById(dialogId)
         : null
 
-      const cfg: PromptConfig = (dialog?.prompt_config || {}) as PromptConfig
+      const cfg: PromptConfig = (assistant?.prompt_config || {}) as PromptConfig
       const systemPrompt = cfg.system || `Role: You're a smart assistant.
 Task: Summarize the information from knowledge bases and answer user's question.
 Requirements and restriction:
@@ -628,8 +641,8 @@ Requirements and restriction:
   - Answer with markdown format text.
   - Answer in language of user's question.`
       const topN = cfg.top_n ?? 6
-      const kbIds = dialog?.kb_ids || []
-      const providerId = dialog?.llm_id || undefined
+      const kbIds = assistant?.kb_ids || []
+      const providerId = assistant?.llm_id || undefined
 
       // ── Step 3: Load conversation history ───────────────────────────────
       const history = await ModelFactory.chatMessage.getKnex()
@@ -749,6 +762,14 @@ Requirements and restriction:
         )
 
         const results = await Promise.all(searchPromises)
+
+        // Log warnings for datasets that returned no results (may have been deleted)
+        for (let i = 0; i < kbIds.length; i++) {
+          if (results[i]!.chunks.length === 0) {
+            log.warn(`Dataset ${kbIds[i]} returned no results — it may have been deleted`)
+          }
+        }
+
         allChunks = results.flatMap(r => r.chunks)
 
         // Sort by score desc

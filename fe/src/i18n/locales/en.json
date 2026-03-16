@@ -69,14 +69,22 @@
     "copy": "Copy",
     "email": "Email",
     "noDescription": "No description",
-    "create": "Create",
-    "saving": "Saving...",
-    "errorOccurred": "Something went wrong",
-    "tryAgain": "Try again",
-    "selectPlaceholder": "Select...",
-    "pickDate": "Pick a date",
+    "pagination": "Pagination",
     "previousPage": "Previous page",
-    "nextPage": "Next page"
+    "nextPage": "Next page",
+    "download": "Download",
+    "dismiss": "Dismiss",
+    "creating": "Creating...",
+    "create": "Create",
+    "errorOccurred": "Error Occurred",
+    "tryAgain": "Try Again",
+    "selectPlaceholder": "Select Placeholder",
+    "pickDate": "Pick Date",
+    "clear": "Clear",
+    "saving": "Saving...",
+    "comingSoon": "Coming Soon",
+    "yes": "Yes",
+    "no": "No"
   },
   "dialog": {
     "confirm": "Confirm",
@@ -87,6 +95,11 @@
   "nav": {
     "aiChat": "Chat",
     "aiSearch": "Search",
+    "dataStudio": "Data Studio",
+    "datasets": "Datasets",
+    "projects": "Projects",
+    "chatAssistants": "Chat Assistants",
+    "searchApps": "Search Apps",
     "history": "History",
     "chatHistory": "Chat History",
     "searchHistory": "Search History",
@@ -105,16 +118,11 @@
     "broadcastMessages": "Broadcast Messages",
     "histories": "Histories",
     "dashboard": "Dashboard",
+    "llmProviders": "LLM Providers",
     "expandMenu": "Expand menu",
     "administrators": "Administrators",
     "collapseMenu": "Collapse menu",
-    "glossary": "Glossary",
-    "datasets": "Datasets",
-    "chatAssistants": "Chat Assistants",
-    "searchApps": "Search Apps",
-    "projects": "Projects",
-    "dataStudio": "Data Studio",
-    "llmProviders": "LLM Providers"
+    "glossary": "Glossary"
   },
   "iam": {
     "title": "Identity & Access Management",
@@ -138,92 +146,22 @@
     },
     "permissions": {
       "title": "Permission Management",
-      "description": "Manage system permissions"
-    }
-  },
-  "projectManagement": {
-    "title": "Projects",
-    "description": "Manage projects, documents, chat assistants, and search apps",
-    "addProject": "Create Project",
-    "editProject": "Edit Project",
-    "deleteConfirm": "Delete this project?",
-    "deleteWarning": "All categories, versions, chats, and searches in this project will be permanently deleted.",
-    "name": "Name",
-    "namePlaceholder": "Enter project name",
-    "descriptionLabel": "Description",
-    "descriptionPlaceholder": "Enter project description",
-    "ragflowServer": "RAGFlow Server",
-    "selectServer": "Select a RAGFlow server",
-    "noProjects": "No projects yet",
-    "noProjectsHint": "Create your first project to get started",
-    "noDescription": "—",
-    "createSuccess": "Project created successfully",
-    "updateSuccess": "Project updated successfully",
-    "deleteSuccess": "Project deleted successfully",
-    "editPermissions": "Edit Permissions",
-    "privateAccessDesc": "Only selected teams can access this project",
-    "tabs": {
-      "documents": "Documents",
-      "chat": "Chat",
-      "search": "Search",
-      "settings": "Settings",
-      "sync": "Sync"
+      "description": "Manage system permissions",
+      "chatDesc": "Access to AI Chat interface",
+      "searchDesc": "Access to AI Search interface",
+      "sourceDesc": "Ability to choose different Chat/Search sources",
+      "storageReadDesc": "View and download files",
+      "storageWriteDesc": "Upload, delete, and manage files/folders",
+      "userManageDesc": "Add/Remove users, manage teams",
+      "sysConfigDesc": "Configure system settings and API connections",
+      "noteTitle": "Role Assignment Note",
+      "noteBody": "Permissions are predefined and cannot be customized per user. To change a user's access level, assign them a different role (Member or Leader) within their team.",
+      "feature": "Feature / Permission"
     },
-    "createProject": "Create Project",
-    "datasetCount": "datasets",
-    "autoDataset": "Auto-created dataset",
-    "categories": {
-      "office": "Office",
-      "datasync": "DataSync",
-      "source_code": "Source Code"
-    },
-    "categoryDesc": {
-      "office": "Office documents with versioning",
-      "datasync": "External data source synchronization",
-      "source_code": "Source code repositories (coming soon)"
-    },
-    "categoryFilter": {
-      "all": "All"
-    },
-    "steps": {
-      "category": "Category",
-      "details": "Details",
-      "syncConfig": "Sync Config"
-    },
-    "sync": {
-      "sourceType": "Source Type",
-      "connection": "Connection",
-      "schedule": {
-        "title": "Schedule",
-        "every6h": "Every 6 hours",
-        "daily": "Daily",
-        "weekly": "Weekly",
-        "custom": "Custom (Cron)",
-        "cronExpression": "Cron Expression"
-      },
-      "status": "Status",
-      "lastSynced": "Last Synced",
-      "neverSynced": "Never synced",
-      "noConfig": "No sync configuration yet. Set up a connection first.",
-      "triggerNow": "Sync Now",
-      "triggerSuccess": "Sync triggered successfully",
-      "saveSuccess": "Sync config saved successfully",
-      "scheduleUpdated": "Schedule updated successfully",
-      "fields": {
-        "siteUrl": "Site URL",
-        "tenantId": "Tenant ID",
-        "clientId": "Client ID",
-        "clientSecret": "Client Secret",
-        "baseUrl": "Base URL",
-        "email": "Email",
-        "apiToken": "API Token",
-        "projectKey": "Project Key",
-        "spaceKey": "Space Key",
-        "accessToken": "Access Token",
-        "projectId": "Project ID",
-        "owner": "Owner",
-        "repo": "Repository"
-      }
+    "roles": {
+      "user": "Member",
+      "leader": "Leader",
+      "admin": "Admin"
     }
   },
   "login": {
@@ -233,7 +171,38 @@
     "signInPrompt": "Sign in to access the ODC knowledge base",
     "error": "Login failed",
     "rootLogin": "Login as Root",
-    "rootLoginTitle": "Root Login"
+    "rootLoginTitle": "Root Login",
+    "usernamePlaceholder": "admin@localhost",
+    "passwordPlaceholder": "••••••••",
+    "localAccountLogin": "Local Account Login",
+    "localAccountLoginTitle": "Local Account Login Title"
+  },
+  "metadataFilter": {
+    "conditions": "Conditions",
+    "empty": "No filter conditions. Click \"Add\" to create one.",
+    "fieldName": "Field name",
+    "value": "Value"
+  },
+  "permissions": {
+    "noTeamsAvailable": "No teams available",
+    "noUsersAvailable": "No users available",
+    "noMatches": "No matches"
+  },
+  "chatWidget": {
+    "title": "Chat",
+    "minimize": "Minimize",
+    "messagePlaceholder": "Type a message...",
+    "sendMessage": "Send message"
+  },
+  "preview": {
+    "failedToLoadImage": "Failed to load image",
+    "failedToLoadPdf": "Failed to load PDF",
+    "failedToParseDocument": "Failed to parse document",
+    "notAvailable": "Preview not available",
+    "docxOnly": "Only modern .docx files are supported for preview.",
+    "invalidSlideIndex": "Invalid slide index",
+    "noSlideContent": "No content extracted for this slide",
+    "slideOf": "Slide {{current}} of {{total}}"
   },
   "admin": {
     "broadcastMessages": "Broadcast Messages",
@@ -453,7 +422,8 @@
       "archive": "Archives",
       "audio": "Audio",
       "video": "Video"
-    }
+    },
+    "openNewTab": "Open in new tab"
   },
   "UserManagement": {
     "Leader": "Leader",
@@ -493,13 +463,27 @@
     "permissionsUpdateSuccess": "Permissions updated successfully",
     "grantPermissions": "Grant Permissions",
     "permissions": "Permissions",
+    "createUser": "Create User",
+    "editUser": "Edit User",
+    "deleteUser": "Delete User",
+    "displayName": "Display Name",
+    "passwordOptional": "Password (optional)",
+    "passwordMinLength": "At least 6 characters",
+    "jobTitle": "Job Title",
+    "mobilePhone": "Mobile Phone",
+    "emailRequired": "Email is required",
+    "invalidEmail": "Invalid email address",
+    "createUserError": "Failed to create user",
+    "updateUserError": "Failed to update user",
+    "confirmDeleteUserMessage": "Are you sure you want to delete {{name}}? This action cannot be undone.",
     "permissionLabels": {
       "view_chat": "AI Chat Access",
       "view_search": "AI Search Access",
       "manage_knowledge": "Knowledge Base Access",
       "manage_users": "Manage Users",
       "view_system_monitor": "System Monitor"
-    }
+    },
+    "emailPlaceholder": "user@example.com"
   },
   "systemTools": {
     "title": "System Monitoring Tools",
@@ -517,16 +501,15 @@
   "systemMonitor": {
     "title": "System Monitor",
     "description": "Real-time dashboard for service health and system metrics.",
+    "controls": {
+      "autoRefresh": "Auto Refresh",
+      "refreshNow": "Refresh Now",
+      "refreshInterval": "Refresh Interval"
+    },
     "sections": {
       "services": "Service Health",
       "system": "System Resources",
-      "backendSpecs": "Backend Specifications"
-    },
-    "services": {
-      "database": "Database",
-      "redis": "Redis Cache",
-      "minio": "MinIO Storage",
-      "langfuse": "Langfuse Trace"
+      "backendSpecs": "Backend Specs"
     },
     "metrics": {
       "uptime": "Uptime",
@@ -534,23 +517,11 @@
       "cpuLoad": "CPU Load",
       "serverInfo": "Server Info",
       "diskStorage": "Disk Storage",
-      "diskFreeOf": "Free of {{total}}",
-      "heapUsage": "Heap: {{used}} / {{total}}",
-      "loadAvgLabel": "1m / 5m / 15m",
       "unknown": "Unknown",
-      "checkFailed": "Check Failed"
-    },
-    "specs": {
-      "runtimeEnv": "Runtime Environment",
-      "cpu": "CPU",
-      "cores": "{{count}} Cores",
-      "memoryCapacity": "Memory Capacity",
-      "totalSystemMemory": "Total System Memory"
-    },
-    "controls": {
-      "autoRefresh": "Auto Refresh",
-      "refreshNow": "Refresh Now",
-      "refreshInterval": "Refresh interval"
+      "diskFreeOf": "Disk Free Of",
+      "checkFailed": "Check Failed",
+      "heapUsage": "Heap Usage",
+      "loadAvgLabel": "Load Avg Label"
     },
     "status": {
       "healthy": "Healthy",
@@ -559,7 +530,20 @@
       "connecting": "Connecting",
       "notConfigured": "Not Configured"
     },
-    "error": "Failed to fetch health data: {{error}}"
+    "error": "Failed to fetch health data: {{error}}",
+    "services": {
+      "database": "Database",
+      "redis": "Redis",
+      "minio": "Minio",
+      "langfuse": "Langfuse"
+    },
+    "specs": {
+      "runtimeEnv": "Runtime Env",
+      "cpu": "Cpu",
+      "cores": "Cores",
+      "memoryCapacity": "Memory Capacity",
+      "totalSystemMemory": "Total System Memory"
+    }
   },
   "errorPage": {
     "accessDenied": "Access Denied",
@@ -622,7 +606,10 @@
       "create_source": "Create Source",
       "update_source": "Update Source",
       "delete_source": "Delete Source",
-      "batch_delete": "Batch Delete"
+      "batch_delete": "Batch Delete",
+      "create_prompt": "Create Prompt",
+      "update_prompt": "Update Prompt",
+      "delete_prompt": "Delete Prompt"
     },
     "resourceTypes": {
       "user": "User",
@@ -635,7 +622,8 @@
       "role": "Role",
       "broadcast_message": "Broadcast Message",
       "permission": "Permission",
-      "knowledge_base_source": "Knowledge Base Source"
+      "knowledge_base_source": "Knowledge Base Source",
+      "prompt": "Prompt"
     }
   },
   "storage": {
@@ -802,8 +790,68 @@
     "startDateLabel": "Start Date",
     "endDateLabel": "End Date",
     "applyFilter": "Apply Filters",
+    "userEmail": "User Email",
+    "sourceName": "Source Name",
+    "userEmailPlaceholder": "e.g. user@example.com",
+    "sourceNamePlaceholder": "e.g. My Knowledge Base",
     "resetFilter": "Reset",
-    "filterButton": "Filter"
+    "filterButton": "Filter",
+    "conversationHistory": "Conversation History",
+    "loadingDetails": "Restoring context...",
+    "user": "User",
+    "searchSession": "Search Session",
+    "noSessions": "No sessions found",
+    "anonymous": "Anonymous",
+    "noSessionSelected": "No Session Selected",
+    "selectSessionHint": "Select a conversation or search session from the sidebar to view details."
+  },
+  "converter": {
+    "status": {
+      "pending": "Pending",
+      "waiting": "Waiting",
+      "converting": "Converting",
+      "finished": "Finished",
+      "failed": "Failed"
+    },
+    "projectModal": {
+      "version": "Version",
+      "files": "Files",
+      "time": "Time",
+      "failedCount": "({{count}} failed)",
+      "title": "Conversion Queue",
+      "subtitle": "Document conversion status for this project",
+      "empty": "No conversion jobs for this project"
+    },
+    "panel": {
+      "title": "Title",
+      "autoParseNoFiles": "Auto Parse No Files",
+      "autoParseSuccess": "Auto Parse Success",
+      "autoParseError": "Auto Parse Error",
+      "forceStartSuccess": "Force Start Success",
+      "autoParseScheduled": "Auto Parse Scheduled",
+      "forceStartError": "Force Start Error",
+      "activeJobs": "Active Jobs",
+      "jobHistory": "Job History",
+      "parsing": "Parsing",
+      "forceStart": "Force Start",
+      "waitingToAutoparse": "Waiting To Autoparse",
+      "forceStartConfirmTitle": "Force Start Confirm Title",
+      "forceStartConfirmMessage": "Force Start Confirm Message",
+      "autoParseLabel": "Auto Parse Label",
+      "autoParseDesc": "Auto Parse Desc"
+    },
+    "files": {
+      "fileName": "File Name",
+      "status": "Status",
+      "error": "Error",
+      "updatedAt": "Updated At"
+    },
+    "jobs": {
+      "status": "Status",
+      "files": "Files",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At"
+    }
   },
   "userHistory": {
     "chatHistory": "Chat History",
@@ -878,7 +926,8 @@
       "thisMonth": "This Month",
       "lastMonth": "Last Month",
       "last1Year": "Last 1 Year",
-      "last2Years": "Last 2 Years"
+      "last2Years": "Last 2 Years",
+      "select": "Preset"
     },
     "stats": {
       "totalSessions": "Total Sessions",
@@ -902,16 +951,16 @@
       "aiSearch": "AI Search",
       "systemChat": "System Chat"
     },
+    "activityTrend": "Activity Trend",
     "chatSessions": "Chat Sessions",
     "searchSessions": "Search Sessions",
-    "totalSessions": "Total Sessions",
-    "activityTrend": "Activity Trend",
-    "topUsers": "Top Active Users",
-    "usageBreakdown": "Usage Breakdown",
     "sessionsPerDay": "Sessions Per Day",
-    "sessions": "Sessions",
+    "totalSessions": "Total Sessions",
+    "topUsers": "Top Users",
     "user": "User",
-    "noData": "No data available"
+    "sessions": "Sessions",
+    "noData": "No Data",
+    "usageBreakdown": "Usage Breakdown"
   },
   "glossary": {
     "title": "Glossary Management",
@@ -981,7 +1030,8 @@
       "bulkDeleteTitle": "Delete Keywords",
       "bulkDeleteMessage": "Are you sure you want to delete {{count}} selected keyword(s)? This action cannot be undone.",
       "bulkDeleteSuccess": "{{count}} keyword(s) deleted successfully",
-      "empty": "No keywords yet. Add your first keyword."
+      "empty": "No keywords yet. Add your first keyword.",
+      "deleteConfirm": "Delete Confirm"
     },
     "common": {
       "sortOrder": "Sort Order",
@@ -1049,296 +1099,375 @@
       "noTask": "Please select a task first"
     }
   },
+  "chat": {
+    "newConversation": "New Conversation",
+    "inputPlaceholder": "Type a message...",
+    "enterToSend": "Enter to send",
+    "sendMessage": "Send message",
+    "stopGenerating": "Stop generating",
+    "startConversation": "Start a new conversation",
+    "references": "References",
+    "noReferences": "No references available",
+    "chunks": "chunks",
+    "documentPreview": "Document Preview",
+    "toggleReferences": "Toggle references panel",
+    "createDialog": "Create Dialog",
+    "editDialog": "Edit Dialog",
+    "dialogNamePlaceholder": "Enter dialog name",
+    "dialogDescriptionPlaceholder": "Enter dialog description",
+    "knowledgeBases": "Knowledge Bases",
+    "noDatasets": "No datasets available",
+    "llmModel": "LLM Model",
+    "llmModelPlaceholder": "e.g. gpt-4o, deepseek-chat",
+    "systemPrompt": "System Prompt",
+    "systemPromptPlaceholder": "Enter system-level instructions for the AI...",
+    "welcomeMessage": "Welcome Message",
+    "welcomeMessagePlaceholder": "Enter a welcome message for users",
+    "temperature": "Temperature",
+    "topK": "Top K",
+    "topN": "Top N",
+    "variables": "Prompt Variables",
+    "noVariables": "No variables defined. Add variables to use {placeholders} in the system prompt.",
+    "variableKey": "Variable Key",
+    "optional": "Optional",
+    "defaultValue": "Default Value",
+    "defaultValuePlaceholder": "Default value",
+    "variableDescPlaceholder": "Description",
+    "variableKeyInvalid": "Must start with a letter or underscore, then alphanumeric or underscore",
+    "variableRequired": "This variable is required",
+    "fillVariables": "Please fill in the required variables before sending a message.",
+    "deepThinking": "Deep thinking mode",
+    "internetSearch": "Search the internet",
+    "attachFile": "Attach file",
+    "removeFile": "Remove file",
+    "uploadingFiles": "Uploading...",
+    "fileTypeNotAllowed": "This file type is not allowed",
+    "fileTooLarge": "File exceeds the size limit",
+    "page": "Page",
+    "relevance": "Relevance",
+    "ttsStop": "Tts Stop",
+    "ttsPlay": "Tts Play",
+    "thumbsUp": "Thumbs Up",
+    "thumbsDown": "Thumbs Down",
+    "regenerate": "Regenerate",
+    "variableKeyPlaceholder": "Variable Key Placeholder"
+  },
+  "landing": {
+    "nav": {
+      "features": "Features",
+      "useCases": "Use Cases",
+      "sdlc": "SDLC",
+      "deployment": "Deployment",
+      "login": "Login",
+      "getStarted": "Get Started"
+    },
+    "hero": {
+      "badge": "Enterprise-Grade Security",
+      "title": "AI-Powered Knowledge",
+      "titleHighlight": "For Your Organization",
+      "subtitle": "Centralize your documents, chat with AI, and search intelligently — all in one secure platform built for enterprise teams.",
+      "cta": "Get Started",
+      "learnMore": "Learn More",
+      "uptime": "Uptime",
+      "compliant": "Compliant",
+      "support": "Support",
+      "chatBot": "AI Knowledge Assistant",
+      "online": "Online",
+      "mockQuestion": "What are the side effects of this medication?",
+      "mockAnswer": "Based on the clinical guidelines, the common side effects include headache, nausea, and dizziness. Serious reactions are rare but include...",
+      "mockCitation": "📄 Source: Clinical Guidelines v4.2, Page 47",
+      "inputPlaceholder": "Ask anything about your knowledge base...",
+      "evidenceBased": "Evidence-Based"
+    },
+    "features": {
+      "label": "Capabilities",
+      "title": "Everything You Need for AI Knowledge Management",
+      "subtitle": "A comprehensive platform combining RAG-powered chat, document search, and enterprise security.",
+      "ragChat": {
+        "title": "RAG-Powered Chat",
+        "desc": "Chat with AI grounded in your organization's documents. Get accurate, citation-backed answers."
+      },
+      "docSearch": {
+        "title": "Intelligent Document Search",
+        "desc": "Search across thousands of documents with AI-powered semantic understanding."
+      },
+      "hipaa": {
+        "title": "HIPAA Compliant",
+        "desc": "Enterprise-grade security with full HIPAA compliance and data encryption."
+      },
+      "multiTurn": {
+        "title": "Multi-Turn Conversations",
+        "desc": "Maintain context across conversation turns for deeper, more meaningful interactions."
+      },
+      "knowledgeBase": {
+        "title": "Knowledge Base Management",
+        "desc": "Upload, organize, and manage your document repositories with ease."
+      },
+      "realtime": {
+        "title": "Real-Time Processing",
+        "desc": "Instant document processing and indexing for up-to-date knowledge access."
+      },
+      "audit": {
+        "title": "Audit Trail",
+        "desc": "Complete logging of all interactions for compliance and quality assurance."
+      },
+      "roleAccess": {
+        "title": "Role-Based Access",
+        "desc": "Granular access control with team-based permissions and user roles."
+      },
+      "multilang": {
+        "title": "Multi-Language Support",
+        "desc": "Support for English, Vietnamese, and Japanese with easy language switching."
+      }
+    },
+    "useCases": {
+      "label": "Use Cases",
+      "title": "Built for Enterprise Knowledge Needs",
+      "subtitle": "From healthcare to compliance, our platform serves diverse organizational requirements.",
+      "clinical": {
+        "title": "Clinical Decision Support",
+        "desc": "Instant access to clinical guidelines, drug interactions, and treatment protocols."
+      },
+      "pharmacy": {
+        "title": "Pharmacy Knowledge Base",
+        "desc": "Quick lookup for drug information, dosing guidelines, and formulary management."
+      },
+      "patient": {
+        "title": "Patient Education",
+        "desc": "Generate patient-friendly explanations from complex medical documentation."
+      },
+      "training": {
+        "title": "Staff Training & Onboarding",
+        "desc": "Accelerate training with AI-powered Q&A on organizational policies and procedures."
+      },
+      "compliance": {
+        "title": "Regulatory Compliance",
+        "desc": "Stay compliant with instant access to regulatory documents and audit trails."
+      },
+      "operations": {
+        "title": "Operational Efficiency",
+        "desc": "Streamline workflows with instant access to SOPs, guidelines, and best practices."
+      },
+      "sdlcDocs": {
+        "title": "Healthcare SDLC Documentation",
+        "desc": "Centralize IEC 62304, ISO 14971, and FDA guidance documents for fast developer reference during healthcare software projects."
+      },
+      "medDeviceQms": {
+        "title": "Medical Device QMS",
+        "desc": "AI-powered search across ISO 13485 quality management records, CAPAs, and design history files."
+      },
+      "researchData": {
+        "title": "Clinical Research Knowledge",
+        "desc": "Aggregate clinical trial data, research papers, and evidence summaries for data-driven healthcare development."
+      }
+    },
+    "sdlc": {
+      "label": "Our Methodology",
+      "title": "Built with Enterprise SDLC Standards",
+      "subtitle": "We follow a rigorous software development lifecycle to ensure quality, security, and compliance.",
+      "phase": "Phase",
+      "phases": {
+        "discovery": {
+          "title": "Requirements Discovery",
+          "desc": "Deep-dive into stakeholder needs, regulatory requirements, and technical constraints."
+        },
+        "design": {
+          "title": "Architecture Design",
+          "desc": "Design scalable, secure architecture with compliance-first approach."
+        },
+        "develop": {
+          "title": "Agile Development",
+          "desc": "Iterative development with continuous integration and automated testing."
+        },
+        "test": {
+          "title": "Quality Assurance",
+          "desc": "Comprehensive testing including security audits, penetration testing, and compliance verification."
+        },
+        "deploy": {
+          "title": "Secure Deployment",
+          "desc": "Zero-downtime deployment with rollback capabilities and monitoring."
+        },
+        "iterate": {
+          "title": "Continuous Improvement",
+          "desc": "Regular feedback cycles, performance optimization, and feature enhancements."
+        }
+      },
+      "compliance": {
+        "title": "Built for Healthcare Compliance",
+        "desc": "Our platform is designed and validated against the most stringent healthcare and data security standards.",
+        "hipaaDesc": "Health Data Privacy",
+        "fhirDesc": "Interoperability",
+        "gdprDesc": "Data Protection",
+        "soc2Desc": "Security Controls",
+        "iso13485Desc": "Medical Devices QMS",
+        "iso14971Desc": "Risk Management",
+        "iec62304Desc": "Software Lifecycle",
+        "iec62443Desc": "Industrial Security"
+      }
+    },
+    "deployment": {
+      "label": "Deployment Options",
+      "title": "Deploy Your Way",
+      "subtitle": "Choose the deployment model that fits your organization's security and infrastructure requirements.",
+      "cloud": {
+        "title": "Cloud Hosted",
+        "desc": "Fully managed cloud deployment with automatic updates and scaling.",
+        "badge": "Most Popular",
+        "features": [
+          "Automatic scaling & load balancing",
+          "Managed backups & disaster recovery",
+          "99.9% uptime SLA",
+          "Automatic security patches",
+          "Global CDN for fast access"
+        ]
+      },
+      "hybrid": {
+        "title": "Hybrid Cloud",
+        "desc": "Keep sensitive data on-premise while leveraging cloud for compute.",
+        "badge": "Best of Both",
+        "features": [
+          "Data stays in your data center",
+          "Cloud-based AI processing",
+          "Flexible connectivity options",
+          "Unified management console",
+          "Compliance with data residency laws"
+        ]
+      },
+      "onPremise": {
+        "title": "On-Premise",
+        "desc": "Full control with deployment within your own infrastructure.",
+        "badge": "Maximum Control",
+        "features": [
+          "Complete data sovereignty",
+          "Custom security policies",
+          "Air-gapped deployment option",
+          "Integration with existing infrastructure",
+          "Dedicated support team"
+        ]
+      },
+      "architecture": {
+        "title": "Enterprise-Grade Architecture",
+        "desc": "Built on modern containerized infrastructure with support for major cloud providers and orchestration platforms."
+      },
+      "diagram": {
+        "cloud": "Cloud Layer",
+        "cloudDesc": "CDN, Load Balancer, API Gateway",
+        "hybrid": "Application Layer",
+        "hybridDesc": "Microservices, RAG Engine, Auth",
+        "onPremise": "Data Layer",
+        "onPremiseDesc": "Database, Object Storage, Search"
+      }
+    },
+    "cta": {
+      "title": "Ready to Transform Your Knowledge Management?",
+      "subtitle": "Join organizations worldwide who trust B-Knowledge for secure, AI-powered knowledge management.",
+      "getStarted": "Get Started Free",
+      "requestDemo": "Request a Demo"
+    },
+    "footer": {
+      "description": "AI-powered knowledge management platform for enterprise teams. Secure, compliant, and intelligent.",
+      "product": "Product",
+      "compliance": "Compliance",
+      "contact": "Contact",
+      "rights": "All rights reserved.",
+      "language": "Language"
+    }
+  },
   "datasets": {
     "title": "Datasets",
-    "add": "New Dataset",
-    "name": "Dataset Name",
-    "nameRequired": "Please enter a dataset name",
-    "namePlaceholder": "Enter dataset name",
-    "description": "Description",
-    "descriptionPlaceholder": "Optional description",
+    "searchPlaceholder": "Search datasets...",
+    "add": "Add Dataset",
+    "noResults": "No datasets match your search",
+    "empty": "No datasets yet. Create your first dataset.",
+    "refresh": "Refresh",
+    "uploadFiles": "Upload Files",
     "language": "Language",
     "chunkMethod": "Chunk Method",
+    "docCount": "Documents",
+    "chunkCount": "Chunks",
     "embeddingModel": "Embedding Model",
-    "embeddingModelPlaceholder": "Leave empty for system default",
+    "embeddingModelPlaceholder": "Select or type embedding model...",
     "systemDefault": "System Default",
     "access": "Access",
     "public": "Public",
     "private": "Private",
-    "docCount": "Documents",
-    "chunkCount": "Chunks",
     "documents": "Documents",
-    "searchPlaceholder": "Search datasets...",
-    "empty": "No datasets yet. Create one to get started.",
-    "noResults": "No datasets match your search.",
-    "createTitle": "Create Dataset",
+    "chunks": "Chunks",
+    "viewDocument": "Document Preview",
     "editTitle": "Edit Dataset",
-    "createSuccess": "Dataset created successfully",
-    "updateSuccess": "Dataset updated successfully",
-    "deleteSuccess": "Dataset deleted successfully",
-    "confirmDelete": "Delete Dataset",
-    "confirmDeleteMessage": "Are you sure you want to delete dataset \"{{name}}\"? All documents and chunks will be permanently removed.",
-    "uploadTitle": "Upload Documents",
-    "uploadFiles": "Upload Files",
+    "createTitle": "Create Dataset",
+    "name": "Name",
+    "namePlaceholder": "Enter dataset name",
+    "description": "Description",
+    "descriptionPlaceholder": "Optional description",
+    "uploadTitle": "Upload Files",
+    "dropFiles": "Drop files here or click to select",
+    "supportedFormats": "PDF, DOCX, XLSX, PPTX, TXT, MD, CSV, JSON, HTML, images, audio, email",
     "uploadButton": "Upload ({{count}})",
-    "uploadSuccess": "{{count}} file(s) uploaded successfully",
-    "dropFiles": "Drag & drop files here, or click to select",
-    "supportedFormats": "PDF, DOCX, XLSX, PPTX, TXT, MD, CSV, JSON, HTML, images, audio",
-    "docName": "File Name",
+    "docName": "Name",
     "docSize": "Size",
     "docStatus": "Status",
     "docUploadDate": "Upload Date",
     "parse": "Parse",
-    "parseStarted": "Parsing started",
-    "refresh": "Refresh",
-    "confirmDeleteDoc": "Delete Document",
-    "confirmDeleteDocMessage": "Are you sure you want to delete this document?",
+    "createSuccess": "Dataset created successfully",
+    "updateSuccess": "Dataset updated successfully",
+    "deleteSuccess": "Dataset deleted successfully",
+    "confirmDeleteMessage": "Are you sure you want to delete \"{{name}}\"?",
+    "uploadSuccess": "Uploaded {{count}} file(s) successfully",
     "deleteDocSuccess": "Document deleted successfully",
-    "viewDocument": "View",
-    "chunks": "Chunks",
+    "parseStarted": "Parsing started",
+    "confirmDeleteDocMessage": "Are you sure you want to delete this document?",
     "chunksTotal": "total",
     "noChunks": "No chunks found",
     "previewNotSupported": "Preview not supported for this file type"
   },
   "versions": {
-    "title": "Document Versions",
-    "add": "New Version",
-    "createTitle": "Create Version",
+    "title": "Versions",
+    "add": "Add Version",
+    "empty": "No versions yet. Add your first version.",
     "editTitle": "Edit Version",
-    "label": "Version Label",
+    "createTitle": "Create Version",
+    "label": "Label",
     "labelPlaceholder": "e.g. v1.0",
-    "empty": "No versions yet. Create one to get started.",
-    "createSuccess": "Version created successfully",
-    "updateSuccess": "Version updated successfully",
-    "deleteSuccess": "Version deleted successfully",
-    "archiveSuccess": "Version archived successfully",
-    "confirmDeleteMessage": "Are you sure you want to delete this version? All files will be permanently removed.",
     "archive": "Archive",
-    "status": {
-      "active": "Active",
-      "archived": "Archived"
-    },
+    "converterJobs": "Converter Jobs",
+    "viewJobs": "View Jobs",
+    "deleteSelected": "Delete Selected ({{count}})",
+    "convert": "Convert",
+    "convertTooltip": "Convert files to PDF for parsing",
+    "parse": "Parse",
+    "parseTooltip": "Parse files to extract chunks",
+    "requeue": "Requeue",
+    "syncStatus": "Sync Status",
     "fileName": "File Name",
     "fileSize": "Size",
     "fileStatus": "Status",
     "fileUpdated": "Updated",
-    "noFiles": "No files in this version. Upload documents to get started.",
-    "uploadHint": "Drag & drop files here, or click to select",
-    "acceptedTypes": "PDF, DOCX, XLSX, PPTX, TXT, MD, CSV",
-    "uploading": "Uploading...",
-    "uploadSuccess": "{{count}} file(s) uploaded successfully",
-    "deleteFilesSuccess": "{{count}} file(s) deleted successfully",
-    "deleteSelected": "Delete ({{count}})",
-    "convert": "Convert",
-    "convertTooltip": "Start converting pending files",
-    "convertStarted": "File conversion started",
-    "parse": "Parse",
-    "parseTooltip": "Start parsing imported files in RAGFlow",
-    "parseStarted": "Parsing started",
-    "syncStatus": "Sync Status",
-    "syncSuccess": "File statuses synced successfully",
-    "requeue": "Re-queue Failed",
-    "requeueSuccess": "Failed files re-queued for conversion",
-    "converterJobs": "Converter Jobs",
-    "viewJobs": "View converter jobs",
+    "noFiles": "No files in this version",
     "noJobs": "No converter jobs found",
-    "jobId": "Job",
-    "jobStatus": {
-      "pending": "Pending",
-      "converting": "Converting",
-      "finished": "Finished",
-      "failed": "Failed"
-    },
+    "jobId": "Job ID",
     "failedCount": "{{count}} failed",
-    "fileStatus": {
-      "pending": "Pending",
-      "converting": "Converting",
-      "converted": "Converted",
-      "imported": "Imported",
-      "parsing": "Parsing",
-      "done": "Done",
-      "failed": "Failed"
-    }
-  },
-  "datasetAccess": {
-    "title": "Dataset Access Control",
-    "isPublic": "Public Access",
-    "publicDesc": "All users can access this dataset",
-    "teams": "Teams",
-    "users": "Users",
-    "noTeams": "No teams assigned",
-    "noUsers": "No users assigned",
-    "manageAccess": "Manage Access",
-    "saveSuccess": "Access control updated"
-  },
-  "chat": {
-    "newConversation": "New Conversation",
-    "noConversations": "No conversations yet",
-    "confirmDeleteConversation": "Are you sure you want to delete this conversation? This action cannot be undone.",
-    "today": "Today",
-    "yesterday": "Yesterday",
-    "thisWeek": "This Week",
-    "older": "Older",
-    "emptyTitle": "Start a new conversation",
-    "emptyDescription": "Ask questions about your documents and get AI-powered answers with references to the source material.",
-    "suggestedPrompt1": "Summarize the key points from the uploaded documents",
-    "suggestedPrompt2": "What are the main topics covered in the knowledge base?",
-    "suggestedPrompt3": "Find and explain the most important findings",
-    "inputPlaceholder": "Type your message...",
-    "enterToSend": "Enter to send",
-    "sendMessage": "Send message",
-    "stopGenerating": "Stop generating",
-    "thumbsUp": "Helpful",
-    "thumbsDown": "Not helpful",
-    "ttsPlay": "Read aloud",
-    "ttsStop": "Stop reading",
-    "chunks": "chunks",
-    "page": "Page",
-    "relevance": "Relevance",
-    "openDocument": "Open document",
-    "references": "References",
-    "toggleReferences": "Toggle references panel",
-    "dialogSettings": "Chat settings",
-    "createDialog": "Create Chat Assistant",
-    "editDialog": "Edit Chat Assistant",
-    "dialogNamePlaceholder": "e.g., Document Q&A Assistant",
-    "dialogDescriptionPlaceholder": "Describe what this assistant does...",
-    "knowledgeBases": "Knowledge Bases",
-    "noDatasets": "No datasets available",
-    "llmModel": "LLM Model",
-    "llmModelPlaceholder": "e.g., gpt-4o, deepseek-chat",
-    "systemPrompt": "System Prompt",
-    "systemPromptPlaceholder": "You are a helpful assistant...",
-    "welcomeMessage": "Welcome Message",
-    "welcomeMessagePlaceholder": "Hello! How can I help you today?",
-    "temperature": "Temperature",
-    "topK": "Top K (retrieval)",
-    "topN": "Top N (answer)"
-  },
-  "search": {
-    "title": "AI Search",
-    "description": "Search across your knowledge bases with AI-powered semantic search and get instant answers.",
-    "placeholder": "Search your documents...",
-    "hint": "Press Enter to search. Try natural language queries for best results.",
-    "searching": "Searching...",
-    "noResults": "No results found",
-    "noResultsDescription": "Try different keywords or broaden your search filters.",
-    "aiSummary": "AI Summary",
-    "page": "Page",
-    "filters": "Filters",
-    "datasets": "Datasets",
-    "fileTypes": "File Types",
-    "searchMethod": "Search Method",
-    "similarityThreshold": "Similarity Threshold",
-    "searchAcrossDatasets": "Search across all your datasets",
-    "method": {
-      "hybrid": "Hybrid",
-      "semantic": "Semantic",
-      "fulltext": "Full Text"
-    },
-    "aiSummaryStreaming": "AI is generating summary...",
-    "relatedSearch": "Related Search",
-    "stopSearch": "Stop",
-    "vectorWeight": "Vector Weight",
-    "keyword": "Keyword",
-    "semantic": "Semantic",
-    "documentPreview": "Document Preview",
-    "generating": "Generating answer...",
-    "retrieving": "Retrieving documents...",
-    "pagesShowing": "Showing {{from}}-{{to}} of {{total}}",
-    "mindMap": "Mind Map",
-    "generatingMindMap": "Generating mind map...",
-    "mindMapError": "Failed to generate mind map",
-    "retry": "Retry",
-    "greeting": "Hi there",
-    "filterByDocument": "Filter by document",
-    "filesSelected": "{{count}}/{{total}} files",
-    "selectAll": "Select all",
-    "clearAll": "Clear all",
-    "searchDocuments": "Search documents..."
-  },
-  "chatAdmin": {
-    "title": "Chat Assistant Management",
-    "createDialog": "Create Assistant",
-    "editDialog": "Edit Assistant",
-    "deleteDialog": "Delete Assistant",
-    "manageAccess": "Manage Access",
-    "isPublic": "Public",
-    "isPrivate": "Private",
-    "publicDesc": "All users can access this assistant",
-    "accessUsers": "Users",
-    "accessTeams": "Teams",
-    "noDialogs": "No chat assistants found",
-    "confirmDelete": "Are you sure you want to delete this assistant?",
-    "searchPlaceholder": "Search assistants..."
-  },
-  "searchAdmin": {
-    "title": "Search App Management",
-    "createApp": "Create Search App",
-    "editApp": "Edit Search App",
-    "deleteApp": "Delete Search App",
-    "manageAccess": "Manage Access",
-    "isPublic": "Public",
-    "isPrivate": "Private",
-    "publicDesc": "All users can access this search app",
-    "accessUsers": "Users",
-    "accessTeams": "Teams",
-    "noApps": "No search apps found",
-    "confirmDelete": "Are you sure you want to delete this search app?",
-    "searchPlaceholder": "Search apps...",
-    "datasets": "Datasets",
-    "searchMethod": "Search Method",
-    "similarityThreshold": "Similarity Threshold",
-    "topK": "Top K Results",
-    "vectorWeight": "Vector Similarity Weight"
-  },
-  "llmProviders": {
-    "title": "LLM Providers",
-    "addProvider": "Add Provider",
-    "editProvider": "Edit Provider",
-    "factoryName": "Factory",
-    "modelType": "Model Type",
-    "modelName": "Model Name",
-    "apiKey": "API Key",
-    "apiBase": "API Base URL",
-    "maxTokens": "Max Tokens",
-    "default": "Default",
-    "setAsDefault": "Set as default for this model type",
-    "deleteTitle": "Delete Provider",
-    "deleteMessage": "Are you sure you want to delete the provider \"{{name}}\"?",
-    "fetchError": "Failed to load providers",
-    "deleteError": "Failed to delete provider",
-    "chat": "Chat",
-    "embedding": "Embedding",
-    "speech2text": "Speech to Text",
-    "image2text": "Image to Text / Vision",
-    "rerank": "Rerank",
-    "tts": "Text to Speech",
-    "ocr": "OCR",
-    "allTypes": "All Types",
-    "selectFactory": "Select a provider",
-    "selectModel": "Select a model",
-    "customModel": "Custom model name",
-    "customFactory": "Custom",
-    "apiBasePlaceholder": "https://api.example.com/v1",
-    "apiKeyPlaceholder": "Enter API key (leave empty if not required)",
-    "presetModels": "Available Models",
-    "noPresetModels": "Enter model name manually for this provider",
-    "providerSaved": "Provider saved successfully",
-    "providerDeleted": "Provider deleted successfully",
-    "systemDefaults": "System Default Models",
-    "defaultNotSet": "Not set",
-    "selectDefault": "Select default...",
-    "defaultUpdated": "Default model updated",
-    "supportsVision": "This model supports vision (image input)",
-    "vision": "Vision",
-    "chatModel": "Chat Model",
-    "embeddingModel": "Embedding Model",
-    "visionModel": "Vision Model",
-    "sttModel": "Speech to Text Model",
-    "ttsModel": "Text to Speech Model",
-    "rerankModel": "Rerank Model",
-    "ocrModel": "OCR Model"
+    "createSuccess": "Version created successfully",
+    "updateSuccess": "Version updated successfully",
+    "archiveSuccess": "Version archived successfully",
+    "deleteSuccess": "Version deleted successfully",
+    "confirmDeleteMessage": "Are you sure you want to delete this version?",
+    "uploadSuccess": "Uploaded {{count}} file(s) successfully",
+    "deleteFilesSuccess": "Deleted {{count}} file(s) successfully",
+    "convertStarted": "Conversion started",
+    "parseStarted": "Parsing started",
+    "syncSuccess": "Status synced successfully",
+    "requeueSuccess": "Files requeued successfully",
+    "uploadHint": "Drop files here or click to select",
+    "acceptedTypes": "PDF, DOCX, XLSX, PPTX, TXT, MD, CSV, JSON, HTML, images, audio, email",
+    "uploading": "Uploading...",
+    "fileStatus.pending": "Pending",
+    "fileStatus.converting": "Converting",
+    "fileStatus.converted": "Converted",
+    "fileStatus.imported": "Imported",
+    "fileStatus.parsing": "Parsing",
+    "fileStatus.done": "Done",
+    "fileStatus.failed": "Failed"
   },
   "datasetSettings": {
     "title": "Dataset Settings",
@@ -1360,237 +1489,559 @@
     },
     "chunking": {
       "method": "Chunk Method",
-      "chunkSize": "Chunk Size (tokens)",
+      "chunkSize": "Chunk Size",
       "delimiter": "Delimiter",
-      "layoutRecognition": "Layout Recognition",
-      "qaHint": "Q&A parser automatically splits content into question-answer pairs.",
-      "tableHint": "Table parser extracts structured data from tables."
+      "qaHint": "Q&A mode: Each chunk is a question-answer pair.",
+      "tableHint": "Table mode: Chunks are structured as tables.",
+      "layoutRecognition": "Layout Recognition"
     },
     "advanced": {
       "graphrag": "GraphRAG",
-      "graphragDesc": "Enable knowledge graph-based retrieval for better multi-hop reasoning.",
-      "entityTypes": "Entity Types (comma-separated)",
+      "graphragDesc": "Enable knowledge graph-based retrieval for better contextual understanding.",
+      "entityTypes": "Entity Types",
       "raptor": "RAPTOR",
-      "raptorDesc": "Enable recursive abstractive processing for tree-organized retrieval.",
+      "raptorDesc": "Enable hierarchical summarization for long documents.",
       "maxToken": "Max Token",
       "threshold": "Threshold",
       "autoKeywords": "Auto Keywords",
-      "autoQuestions": "Auto Questions"
+      "autoQuestions": "Auto Questions",
+      "entityTypesPlaceholder": "Entity Types Placeholder"
+    },
+    "chunks": {
+      "title": "Chunk Management",
+      "empty": "No chunks found",
+      "confirmDelete": "Are you sure you want to delete this chunk?",
+      "searchPlaceholder": "Search chunks...",
+      "total": "chunks",
+      "add": "Add Chunk",
+      "addTitle": "Add Chunk",
+      "content": "Content",
+      "contentPlaceholder": "Enter chunk content...",
+      "addSuccess": "Chunk added successfully",
+      "updateSuccess": "Chunk updated successfully",
+      "deleteSuccess": "Chunk deleted successfully"
     },
     "retrieval": {
       "query": "Query",
       "queryPlaceholder": "Enter a test query...",
-      "run": "Test",
-      "method": "Method",
+      "run": "Run Test",
+      "method": "Search Method",
       "topK": "Top K",
-      "score": "Score",
-      "noResults": "No results found for this query.",
-      "hint": "Enter a query above to test retrieval against this dataset."
-    },
-    "chunks": {
-      "title": "Chunks",
-      "add": "Add Chunk",
-      "addTitle": "Add Manual Chunk",
-      "content": "Content",
-      "contentPlaceholder": "Enter chunk text content...",
-      "searchPlaceholder": "Search chunks...",
-      "total": "total chunks",
-      "empty": "No chunks found.",
-      "addSuccess": "Chunk added successfully",
-      "updateSuccess": "Chunk updated successfully",
-      "deleteSuccess": "Chunk deleted successfully",
-      "confirmDelete": "Are you sure you want to delete this chunk?"
+      "noResults": "No results found",
+      "hint": "Enter a query and run the test to see matching chunks.",
+      "score": "Score"
     }
   },
-  "landing": {
-    "nav": {
-      "features": "Features",
-      "useCases": "Use Cases",
-      "sdlc": "Our Process",
-      "login": "Sign In",
-      "getStarted": "Get Started",
-      "deployment": "Deployment"
+  "datasetAccess": {
+    "title": "Access Control",
+    "manageAccess": "Manage Access",
+    "saveSuccess": "Access settings saved successfully",
+    "isPublic": "Public Access",
+    "publicDesc": "All authenticated users can access this dataset",
+    "teams": "Teams",
+    "users": "Users",
+    "noTeams": "No teams available",
+    "noUsers": "No users available"
+  },
+  "llmProviders": {
+    "title": "LLM Providers",
+    "addProvider": "Add Provider",
+    "editProvider": "Edit Provider",
+    "allTypes": "All Types",
+    "modelTypes": {
+      "chat": "LLM",
+      "embedding": "Embedding",
+      "vision": "VLM",
+      "speech2text": "ASR",
+      "rerank": "Rerank",
+      "tts": "TTS"
     },
-    "hero": {
-      "badge": "HIPAA Compliant & Secure",
-      "title": "AI-Powered Knowledge Base for ",
-      "titleHighlight": "Healthcare Excellence",
-      "subtitle": "Transform clinical workflows with an intelligent chatbot that delivers evidence-based answers from your medical knowledge base, drug databases, and clinical guidelines — instantly and accurately.",
-      "cta": "Start Free Trial",
-      "learnMore": "Learn More",
-      "uptime": "Uptime SLA",
-      "compliant": "Compliant",
-      "support": "AI Support",
-      "chatBot": "Healthcare AI Assistant",
-      "online": "Online",
-      "mockQuestion": "What are the latest guidelines for managing Type 2 Diabetes with GLP-1 agonists?",
-      "mockAnswer": "Based on the ADA 2026 Standards of Care, GLP-1 receptor agonists are recommended as first-line injectable therapy for T2DM patients with established ASCVD or high cardiovascular risk. Key agents include semaglutide and liraglutide.",
-      "mockCitation": "Source: ADA Standards of Care 2026, Section 9 — Pharmacologic Approaches to Glycemic Treatment",
-      "inputPlaceholder": "Ask about clinical guidelines, drug interactions...",
-      "evidenceBased": "Evidence-Based"
+    "factoryName": "Factory",
+    "modelType": "Model Type",
+    "modelName": "Model Name",
+    "vision": "Vision",
+    "apiBase": "API Base",
+    "maxTokens": "Max Tokens",
+    "supportsVision": "Supports Vision",
+    "apiKey": "API Key",
+    "apiKeyPlaceholder": "Enter API key",
+    "apiKeyMaskedPlaceholder": "Leave blank to keep the current API key",
+    "apiBasePlaceholder": "Enter API base URL",
+    "selectFactory": "Select a factory",
+    "customFactory": "Custom",
+    "selectModel": "Select a model",
+    "presetModels": "Preset models",
+    "customModel": "Enter custom model name",
+    "noPresetModels": "No preset models. Enter a custom model name.",
+    "setAsDefault": "Set as default for its model type",
+    "providerSaved": "Provider saved successfully",
+    "providerDeleted": "Provider deleted successfully",
+    "deleteTitle": "Delete Provider",
+    "deleteMessage": "Are you sure you want to delete \"{{name}}\"?",
+    "deleteError": "Failed to delete provider",
+    "systemDefaults": "System Default Models",
+    "defaultUpdated": "Default model updated",
+    "defaultNotSet": "Not set",
+    "fetchError": "Failed to load providers",
+    "maxTokensPlaceholder": "Enter max tokens"
+  },
+  "chatAdmin": {
+    "title": "Chat Assistants",
+    "isPublic": "Public Access",
+    "publicDesc": "All authenticated users can access this assistant",
+    "isPrivate": "Private Access",
+    "createAssistant": "Create Assistant",
+    "editAssistant": "Edit Assistant",
+    "deleteAssistant": "Delete Assistant",
+    "confirmDelete": "Are you sure you want to delete this assistant?",
+    "searchPlaceholder": "Search assistants...",
+    "noAssistants": "No assistants found",
+    "manageAccess": "Manage Access",
+    "accessUsers": "Users",
+    "accessTeams": "Teams"
+  },
+  "projectManagement": {
+    "title": "Projects",
+    "description": "Manage your data projects, datasets, and RAG pipelines",
+    "addProject": "Add Project",
+    "editProject": "Edit Project",
+    "createProject": "Create Project",
+    "deleteConfirm": "Delete Project?",
+    "deleteWarning": "This action cannot be undone. All project data will be lost.",
+    "noProjects": "No projects yet",
+    "noProjectsHint": "Create your first project to get started.",
+    "noDescription": "—",
+    "name": "Project Name",
+    "namePlaceholder": "Enter project name",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Optional project description",
+    "createSuccess": "Project created successfully",
+    "updateSuccess": "Project updated successfully",
+    "deleteSuccess": "Project deleted successfully",
+    "datasetCount": "datasets",
+    "editPermissions": "Edit Permissions",
+    "permissionsSaved": "Permissions saved",
+    "permissionsSaveError": "Failed to save permissions",
+    "publicAccess": "Public Access",
+    "privateAccess": "Private Access",
+    "publicAccessDesc": "All authenticated users can access this project",
+    "privateAccessDesc": "Only selected teams can access this project",
+    "selectTeams": "Select Teams",
+    "autoDataset": "Auto-create dataset",
+    "common": {
+      "vector": "vector",
+      "fullText": "full-text"
     },
-    "features": {
-      "label": "Capabilities",
-      "title": "Built for Healthcare Teams",
-      "subtitle": "Every feature designed to meet the rigorous demands of clinical environments, from security compliance to real-time medical knowledge retrieval.",
-      "ragChat": {
-        "title": "RAG-Powered Clinical Chat",
-        "desc": "Retrieval-Augmented Generation delivers accurate, citation-backed answers from your uploaded medical documents, formularies, and clinical protocols."
-      },
-      "docSearch": {
-        "title": "Intelligent Document Search",
-        "desc": "Semantic search across thousands of clinical documents, research papers, and SOPs — find the exact information in seconds."
-      },
-      "hipaa": {
-        "title": "HIPAA & Compliance Ready",
-        "desc": "End-to-end encryption, audit logging, role-based access control, and data residency options to meet healthcare regulatory requirements."
-      },
-      "multiTurn": {
-        "title": "Multi-Turn Conversations",
-        "desc": "Context-aware dialogue that remembers previous questions, enabling natural follow-up queries about patient care protocols."
-      },
-      "knowledgeBase": {
-        "title": "Centralized Knowledge Base",
-        "desc": "Upload and manage clinical guidelines, drug databases, hospital SOPs, and training materials in one secure, searchable repository."
-      },
-      "realtime": {
-        "title": "Real-Time Streaming",
-        "desc": "Instant streaming responses with server-sent events for a seamless conversational experience — no waiting for full generation."
-      },
-      "audit": {
-        "title": "Complete Audit Trail",
-        "desc": "Every query, response, and document access is logged for compliance auditing, quality assurance, and usage analytics."
-      },
-      "roleAccess": {
-        "title": "Role-Based Access Control",
-        "desc": "Granular permissions for physicians, nurses, pharmacists, and administrators — each sees only what they need."
-      },
-      "multilang": {
-        "title": "Multilingual Support",
-        "desc": "Serve diverse patient populations and international staff with built-in support for English, Vietnamese, Japanese, and more."
-      }
-    },
-    "useCases": {
-      "label": "Use Cases",
-      "title": "Healthcare Scenarios We Solve",
-      "subtitle": "From bedside clinical decisions to back-office compliance, our AI chatbot empowers every role in the healthcare ecosystem.",
-      "clinical": {
-        "title": "Clinical Decision Support",
-        "desc": "Physicians and nurses get instant access to treatment protocols, drug dosing guidelines, and differential diagnosis support at the point of care."
-      },
-      "pharmacy": {
-        "title": "Pharmacy & Drug Information",
-        "desc": "Pharmacists query drug interactions, contraindications, and formulary alternatives in real-time during medication review."
-      },
-      "patient": {
-        "title": "Patient Education",
-        "desc": "Generate patient-friendly explanations of diagnoses, procedures, and medication instructions in multiple languages."
-      },
-      "training": {
-        "title": "Medical Staff Training",
-        "desc": "New staff onboarding with an AI tutor that answers questions from hospital policies, safety protocols, and best practices."
-      },
-      "compliance": {
-        "title": "Regulatory Compliance",
-        "desc": "Instantly retrieve and cross-reference regulatory requirements, accreditation standards, and internal policy documents."
-      },
-      "operations": {
-        "title": "Hospital Operations",
-        "desc": "Streamline administrative queries about scheduling protocols, supply chain procedures, and operational guidelines."
-      }
-    },
-    "sdlc": {
-      "label": "Development Process",
-      "title": "Healthcare SDLC Methodology",
-      "subtitle": "We follow a rigorous, compliance-first software development lifecycle tailored for healthcare products, ensuring patient safety and data integrity at every stage.",
-      "phase": "Phase",
-      "phases": {
-        "discovery": {
-          "title": "Discovery & Requirements",
-          "desc": "Stakeholder interviews with clinicians, compliance officers, and IT teams. Define user stories, regulatory requirements (HIPAA, HL7 FHIR), and clinical workflow mappings."
+    "categories": {
+      "office": "Office",
+      "medical": "Medical",
+      "legal": "Legal",
+      "engineering": "Engineering",
+      "education": "Education",
+      "other": "Other",
+      "datasetConfig": {
+        "inheritFromCategory": "Inherit from category",
+        "chunkMethods": {
+          "naive": "General",
+          "book": "Book",
+          "email": "Email",
+          "laws": "Laws",
+          "manual": "Manual",
+          "one": "One",
+          "paper": "Paper",
+          "picture": "Picture",
+          "presentation": "Presentation",
+          "qa": "Q&A",
+          "table": "Table",
+          "tag": "Tag"
         },
-        "design": {
-          "title": "Architecture & Design",
-          "desc": "Design HIPAA-compliant data architecture, RAG pipeline topology, role-based access models, and UI/UX wireframes validated by clinical end-users."
+        "pdfParsers": {
+          "DeepDOC": "DeepDOC",
+          "PlainText": "PlainText"
         },
-        "develop": {
-          "title": "Agile Development",
-          "desc": "Two-week sprints with continuous integration. Modular monorepo architecture (Express + React), automated code quality gates, and security-first coding standards."
-        },
-        "test": {
-          "title": "Clinical Validation & QA",
-          "desc": "Multi-layered testing: unit, integration, E2E, penetration testing, and clinical accuracy validation against gold-standard medical references."
-        },
-        "deploy": {
-          "title": "Secure Deployment",
-          "desc": "Zero-downtime deployments to HIPAA-compliant infrastructure. Blue-green deployment strategy with automated rollback and health monitoring."
-        },
-        "iterate": {
-          "title": "Monitor & Iterate",
-          "desc": "Continuous monitoring of AI response quality, user feedback loops with clinical staff, and quarterly compliance re-certification cycles."
-        }
+        "chunkMethod": "Chunk Method",
+        "pdfParser": "Pdf Parser",
+        "chunkTokenNum": "Chunk Token Num",
+        "delimiter": "Delimiter",
+        "childChunk": "Child Chunk",
+        "childChunkDelimiter": "Child Chunk Delimiter",
+        "pageIndex": "Page Index",
+        "pageIndexTip": "Page Index Tip",
+        "imageContextSize": "Image Context Size",
+        "imageContextSizeTip": "Image Context Size Tip",
+        "autoMetadata": "Auto Metadata",
+        "autoMetadataTip": "Auto Metadata Tip",
+        "overlappedPercent": "Overlapped Percent",
+        "autoKeyword": "Auto Keyword",
+        "autoKeywordTip": "Auto Keyword Tip",
+        "autoQuestion": "Auto Question",
+        "autoQuestionTip": "Auto Question Tip",
+        "html4excel": "Html4excel",
+        "html4excelTip": "Html4excel Tip",
+        "title": "Title",
+        "description": "Description",
+        "language": "Language",
+        "embeddingModel": "Embedding Model",
+        "embeddingModelPlaceholder": "Embedding Model Placeholder"
       },
-      "compliance": {
-        "title": "Compliance-First Development",
-        "desc": "Every line of code, every deployment, and every data flow is designed to meet the strictest healthcare compliance standards from day one — not as an afterthought.",
-        "certified": "Compliant",
-        "hipaaDesc": "Data Privacy",
-        "fhirDesc": "Interoperability",
-        "gdprDesc": "EU Data Protection",
-        "soc2Desc": "Security Controls",
-        "iso13485Desc": "Medical Device QMS",
-        "iso14971Desc": "Risk Management",
-        "iec62304Desc": "Software Lifecycle",
-        "iec62443Desc": "Cybersecurity"
-      }
+      "datasync": "Standard",
+      "source_code": "Source Code",
+      "name": "Name",
+      "edit": "Edit",
+      "add": "Add",
+      "namePlaceholder": "Name Placeholder",
+      "title": "Title",
+      "noCategoriesHint": "No Categories Hint",
+      "deleteConfirm": "Delete Confirm"
     },
-    "deployment": {
-      "label": "Deployment Options",
-      "title": "Deploy Your Way — Cloud, Hybrid, or On-Premise",
-      "subtitle": "Choose the deployment model that fits your organization's security requirements, data residency policies, and infrastructure strategy.",
-      "cloud": {
-        "title": "Cloud Managed",
-        "desc": "Fully managed SaaS deployment on HIPAA-compliant cloud infrastructure. Zero maintenance overhead — we handle scaling, updates, and security patches.",
-        "badge": "Fastest Setup",
-        "features": ["Auto-scaling & load balancing", "99.9% uptime SLA", "Automatic backups & disaster recovery", "Multi-region availability (US, EU, APAC)", "SOC 2 & HIPAA BAA included", "Zero-downtime updates"]
-      },
-      "hybrid": {
-        "title": "Hybrid Cloud",
-        "desc": "Keep sensitive patient data on-premise while leveraging cloud AI compute. The best of both worlds for organizations with strict data residency requirements.",
-        "badge": "Most Flexible",
-        "features": ["PHI stays in your data center", "Cloud-based AI inference engine", "Encrypted data tunnels (mTLS)", "Flexible data residency controls", "Unified management dashboard", "Gradual cloud migration path"]
-      },
-      "onPremise": {
-        "title": "On-Premise",
-        "desc": "Full air-gapped deployment within your own infrastructure. Complete control over data, network, and compute — ideal for government and military healthcare.",
-        "badge": "Maximum Control",
-        "features": ["100% air-gapped capable", "Run on your own GPU/CPU clusters", "Full source code audit available", "Custom SSO & LDAP integration", "Offline model inference", "Dedicated support engineer"]
-      },
-      "architecture": {
-        "title": "Infrastructure-Agnostic Architecture",
-        "desc": "Built on containerized microservices with Docker and Kubernetes, our platform deploys identically across any environment. Use Helm charts, Terraform modules, or our CLI installer for repeatable, auditable deployments."
-      },
-      "diagram": {
-        "cloud": "Cloud Layer",
-        "cloudDesc": "AWS / Azure / GCP — Managed K8s, Object Storage, LLM APIs",
-        "hybrid": "Hybrid Bridge",
-        "hybridDesc": "Encrypted tunnels, data sync, split inference pipeline",
-        "onPremise": "On-Premise Layer",
-        "onPremiseDesc": "Private K8s, local GPU cluster, air-gapped storage"
-      }
+    "tabs": {
+      "documents": "Documents",
+      "chat": "Chat",
+      "search": "Search",
+      "settings": "Settings",
+      "sync": "Sync"
     },
-    "cta": {
-      "title": "Ready to Transform Your Healthcare Knowledge Management?",
-      "subtitle": "Join leading healthcare organizations using AI-powered knowledge bases to improve clinical outcomes, reduce errors, and accelerate decision-making.",
-      "getStarted": "Get Started Free",
-      "requestDemo": "Request a Demo"
+    "documents": {
+      "title": "Documents",
+      "name": "File Name",
+      "size": "Size",
+      "status": "Status",
+      "chunks": "Chunks",
+      "totalFiles": "files",
+      "search": "Search documents...",
+      "uploadFiles": "Upload Files",
+      "folderUpload": "Upload Folder",
+      "uploadFolderTitle": "Upload Folder",
+      "uploadHint": "Drop files here or click to select",
+      "folderUploadHint": "Drop a folder here or click to select",
+      "acceptedTypes": "PDF, DOCX, XLSX, PPTX, TXT, MD, CSV, JSON, HTML, images",
+      "selectFolder": "Select Folder",
+      "uploading": "Uploading...",
+      "uploadSuccess": "Files uploaded successfully",
+      "uploadError": "Failed to upload",
+      "noDocumentsHint": "Upload files to get started.",
+      "deleteSelected": "Delete Selected ({{count}})",
+      "deleteConfirm": "Delete {{count}} selected file(s)?",
+      "deleteConfirmRagflow": "Files imported to RAGFlow will also be removed.",
+      "deleteSuccess": "{{count}} file(s) deleted successfully",
+      "deleteError": "Failed to delete files",
+      "retryParse": "Retry Parse",
+      "retryParseSuccess": "Requeued {{count}} file(s) for parsing",
+      "startParse": "Start Parse",
+      "startParseSuccess": "Queued {{count}} file(s) for parsing",
+      "syncParserStatus": "Sync Parser Status",
+      "syncParserSuccess": "Parser status synced",
+      "syncParserError": "Failed to sync parser status",
+      "statusLocal": "Local",
+      "statusConverted": "Converted",
+      "statusImported": "Imported",
+      "statusFailed": "Failed",
+      "statusPending": "Pending",
+      "statusParsing": "Parsing",
+      "statusCancelled": "Cancelled",
+      "statusParsed": "Parsed"
     },
-    "footer": {
-      "description": "AI-powered knowledge base and chatbot platform built specifically for healthcare organizations.",
-      "product": "Product",
-      "compliance": "Compliance",
-      "contact": "Contact",
-      "rights": "All rights reserved."
+    "versions": {
+      "label": "Label",
+      "labelPlaceholder": "e.g. v1.0",
+      "add": "Add Version",
+      "pageRank": "Page Rank",
+      "pageRankTip": "Enable page rank scoring for search results",
+      "pipelineSection": "Pipeline Configuration",
+      "parseType": "Parse Type",
+      "parseTypeBuiltIn": "Built-in Parser",
+      "parseTypeChoosePipeline": "Choose Pipeline",
+      "builtInHint": "Use the default RAGFlow built-in parser",
+      "pipelineSectionTip": "Configure a custom advance-rag pipeline",
+      "pipelineId": "Pipeline ID",
+      "pipelineIdPlaceholder": "Enter pipeline ID",
+      "parseTypeNum": "Parallel Parsing",
+      "parseTypePlaceholder": "Number of parallel tasks",
+      "deactivateSuccess": "Deactivate Success",
+      "duplicateError": "Duplicate Error",
+      "syncSuccess": "Sync Success",
+      "title": "Title",
+      "noVersionsHint": "No Versions Hint",
+      "editLabel": "Edit Label",
+      "deactivateConfirm": "Deactivate Confirm",
+      "deactivate": "Deactivate",
+      "deleteConfirm": "Delete Confirm",
+      "updateSuccess": "Update Success"
+    },
+    "sync": {
+      "connection": "Connection",
+      "status": "Status",
+      "noConfig": "No sync configuration found",
+      "sourceType": "Source Type",
+      "lastSynced": "Last Synced",
+      "triggerSuccess": "Sync triggered successfully",
+      "schedule": {
+        "title": "Schedule",
+        "cronExpression": "Cron Expression",
+        "cronPlaceholder": "Cron Placeholder"
+      },
+      "saveSuccess": "Save Success",
+      "scheduleUpdated": "Schedule Updated",
+      "neverSynced": "Never Synced",
+      "triggerNow": "Trigger Now"
+    },
+    "settings": {
+      "title": "Settings",
+      "parserId": "Parser",
+      "parserIdPlaceholder": "Select parser",
+      "language": "Language",
+      "languagePlaceholder": "Select language"
+    },
+    "chat": {
+      "title": "Chat",
+      "noDialog": "No dialog configured",
+      "selectDialog": "Select a dialog"
+    },
+    "chats": {
+      "variableKey": "Key",
+      "name": "Name",
+      "edit": "Edit",
+      "add": "Add",
+      "namePlaceholder": "Name Placeholder",
+      "description": "Description",
+      "descriptionPlaceholder": "Description Placeholder",
+      "emptyResponse": "Empty Response",
+      "opener": "Opener",
+      "showQuote": "Show Quote",
+      "keywordAnalysis": "Keyword Analysis",
+      "tts": "Tts",
+      "refineMultiturn": "Refine Multiturn",
+      "selectCategories": "Select Categories",
+      "noActiveDatasets": "No Active Datasets",
+      "promptSection": "Prompt Section",
+      "systemPrompt": "System Prompt",
+      "similarityThreshold": "Similarity Threshold",
+      "vectorSimilarityWeight": "Vector Similarity Weight",
+      "topN": "Top N",
+      "rerankModel": "Rerank Model",
+      "rerankModelPlaceholder": "Rerank Model Placeholder",
+      "crossLanguages": "Cross Languages",
+      "crossLanguagesPlaceholder": "Cross Languages Placeholder",
+      "variables": "Variables",
+      "variableOptional": "Variable Optional",
+      "addVariable": "Add Variable",
+      "llmSection": "Llm Section",
+      "modelName": "Model Name",
+      "selectModel": "Select Model",
+      "noModels": "No Models",
+      "creativity": "Creativity",
+      "selectCreativity": "Select Creativity",
+      "creativityImprovise": "Creativity Improvise",
+      "creativityPrecise": "Creativity Precise",
+      "creativityBalance": "Creativity Balance",
+      "creativityCustom": "Creativity Custom",
+      "temperature": "Temperature",
+      "topP": "Top P",
+      "presencePenalty": "Presence Penalty",
+      "frequencyPenalty": "Frequency Penalty",
+      "maxTokens": "Max Tokens",
+      "updateSuccess": "Update Success",
+      "createSuccess": "Create Success",
+      "syncSuccess": "Sync Success",
+      "datasets": "Datasets",
+      "sync": "Sync",
+      "deleteConfirm": "Delete Confirm",
+      "title": "Title",
+      "noChatsHint": "No Chats Hint"
+    },
+    "search": {
+      "title": "Search",
+      "placeholder": "Search across project documents..."
+    },
+    "entityPermissions": {
+      "saved": "Permissions saved",
+      "saveError": "Failed to save",
+      "name": "Name",
+      "email": "Email",
+      "editTitle": "Edit Permissions",
+      "permissions": "Permissions",
+      "privateAccess": "Private Access",
+      "selectTeams": "Select Teams",
+      "selectUsers": "Select Users",
+      "title": "Permissions",
+      "privateAccessDesc": "Only selected teams or users can access this {{type}}",
+      "selectTeamsPlaceholder": "Select teams allowed to access this source",
+      "selectUsersPlaceholder": "Select users allowed to access this source"
+    },
+    "categoryFilter": {
+      "all": "All"
+    },
+    "steps": {
+      "category": "Category",
+      "details": "Details",
+      "syncConfig": "Sync Config"
+    },
+    "selectTeamsPlaceholder": "Select teams allowed to access this project",
+    "searches": {
+      "nameRequired": "Name is required",
+      "editSearch": "Edit Search",
+      "createSearch": "Create Search",
+      "name": "Name",
+      "namePlaceholder": "Enter search app name",
+      "description": "Description",
+      "descriptionPlaceholder": "Enter description",
+      "datasets": "Datasets",
+      "retrievalConfig": "Retrieval Configuration",
+      "similarityThreshold": "Similarity Threshold",
+      "vectorWeight": "Vector Similarity Weight",
+      "rerankModel": "Rerank Model",
+      "aiSummary": "AI Summary",
+      "llmConfig": "LLM Configuration",
+      "model": "Model",
+      "selectModel": "Select model",
+      "modelPlaceholder": "Enter model name",
+      "creativity": "Creativity",
+      "improvise": "Improvise",
+      "precise": "Precise",
+      "balance": "Balance",
+      "custom": "Custom",
+      "temperature": "Temperature",
+      "topP": "Top P",
+      "presencePenalty": "Presence Penalty",
+      "frequencyPenalty": "Frequency Penalty",
+      "fetchError": "Failed to fetch search apps",
+      "deleteSuccess": "Search app deleted",
+      "deleteError": "Failed to delete search app",
+      "syncSuccess": "Search app synced",
+      "syncError": "Failed to sync search app",
+      "updateSuccess": "Search app updated",
+      "createSuccess": "Search app created",
+      "saveError": "Failed to save search app",
+      "ragflowId": "RAGFlow ID",
+      "actions": "Actions",
+      "edit": "Edit",
+      "sync": "Sync",
+      "deleteConfirm": "Delete this search app?",
+      "delete": "Delete",
+      "addSearch": "Add Search",
+      "noSearches": "No search apps yet. Click \"Add Search\" to create one."
+    },
+    "permissions": {
+      "granteeType": "Grantee Type",
+      "grantee": "Grantee",
+      "tabDocuments": "Tab Documents",
+      "tabChat": "Tab Chat",
+      "tabSettings": "Tab Settings",
+      "deleteConfirm": "Delete Confirm",
+      "title": "Title",
+      "noPermissions": "No Permissions"
     }
+  },
+  "search": {
+    "greeting": "Hello",
+    "title": "AI Search",
+    "description": "Search across your knowledge base with AI-powered semantic understanding",
+    "mindMap": "Mind Map",
+    "searchAcrossDatasets": "Search across all datasets",
+    "searching": "Searching...",
+    "noResults": "No results found",
+    "noResultsDescription": "Try adjusting your search query or filters to find what you're looking for.",
+    "retrieving": "Retrieving documents...",
+    "generating": "Generating summary...",
+    "aiSummaryStreaming": "AI Summary (generating...)",
+    "aiSummary": "AI Summary",
+    "stopSearch": "Stop",
+    "pagesShowing": "Showing {{from}}-{{to}} of {{total}} results",
+    "page": "Page",
+    "mindMapError": "Failed to generate mind map",
+    "generatingMindMap": "Generating mind map...",
+    "retry": "Retry",
+    "filters": "Filters",
+    "datasets": "Datasets",
+    "fileTypes": "File Types",
+    "searchMethod": "Search Method",
+    "similarityThreshold": "Similarity Threshold",
+    "topK": "Top K",
+    "vectorWeight": "Vector Weight",
+    "keyword": "Keyword",
+    "semantic": "Semantic",
+    "documentPreview": "Document Preview",
+    "placeholder": "Search your knowledge base...",
+    "hint": "Press Enter to search",
+    "method": {
+      "hybrid": "Hybrid",
+      "semantic": "Semantic",
+      "fulltext": "Full Text"
+    },
+    "relatedSearch": "Related Searches",
+    "filterByDocument": "Filter by Document",
+    "filesSelected": "{{count}} of {{total}} files selected",
+    "searchDocuments": "Search documents...",
+    "selectAll": "Select All",
+    "clearAll": "Clear All"
+  },
+  "searchAdmin": {
+    "title": "Search Apps",
+    "deleteApp": "Delete Search App",
+    "confirmDelete": "Are you sure you want to delete this search app?",
+    "searchPlaceholder": "Search apps...",
+    "noApps": "No search apps found",
+    "datasets": "Datasets",
+    "searchMethod": "Search Method",
+    "isPublic": "Public Access",
+    "isPrivate": "Private Access",
+    "editApp": "Edit Search App",
+    "manageAccess": "Manage Access",
+    "createApp": "Create Search App",
+    "publicDesc": "All authenticated users can access this search app",
+    "searchParams": "Search Parameters",
+    "similarityThreshold": "Similarity Threshold",
+    "topK": "Top K",
+    "vectorWeight": "Vector Weight",
+    "rerankModel": "Rerank Model",
+    "rerankModelPlaceholder": "Select a rerank model",
+    "llmConfig": "LLM Configuration",
+    "enableSummary": "Enable AI Summary",
+    "enableSummaryDesc": "Generate AI-powered summaries from search results",
+    "llmModel": "LLM Model",
+    "llmModelPlaceholder": "Select an LLM model",
+    "temperature": "Temperature",
+    "featureToggles": "Feature Toggles",
+    "keywordExtraction": "Keyword Extraction",
+    "keywordExtractionDesc": "Automatically extract keywords from search queries",
+    "knowledgeGraph": "Knowledge Graph",
+    "knowledgeGraphDesc": "Use knowledge graph for enhanced search context",
+    "webSearch": "Web Search",
+    "webSearchDesc": "Include web search results alongside knowledge base results",
+    "tavilyApiKey": "Tavily API Key",
+    "tavilyApiKeyPlaceholder": "Enter Tavily API key for web search",
+    "relatedQuestions": "Related Questions",
+    "relatedQuestionsDesc": "Suggest related questions after search",
+    "crossLanguages": "Cross-Language Search",
+    "crossLanguagesDesc": "Enable searching across multiple languages",
+    "retrievalTest": {
+      "title": "Retrieval Test",
+      "page": "Page",
+      "queryLabel": "Query",
+      "queryPlaceholder": "Enter a test query...",
+      "running": "Running...",
+      "run": "Run Test",
+      "resultsCount": "{{count}} results found",
+      "noResults": "No results found"
+    },
+    "accessUsers": "Access Users",
+    "accessTeams": "Access Teams",
+    "mindMap": "Mind Map",
+    "mindMapDesc": "Mind Map Desc",
+    "highlight": "Highlight",
+    "highlightDesc": "Highlight Desc"
+  },
+  "embed": {
+    "tokens": "Embed Tokens",
+    "createToken": "Create Token",
+    "tokenCreated": "Token created! Copy it now — it will not be shown again.",
+    "tokenName": "Token Name",
+    "tokenNamePlaceholder": "e.g., Website Widget",
+    "expiresAt": "Expires At (optional)",
+    "noTokens": "No embed tokens created yet.",
+    "revoked": "Revoked",
+    "expired": "Expired",
+    "expiresLabel": "Expires",
+    "revoke": "Revoke"
   }
 }

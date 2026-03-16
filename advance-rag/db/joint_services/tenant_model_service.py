@@ -13,6 +13,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""
+Tenant Model Service (Joint Service)
+
+Provides cross-cutting functions that resolve tenant-level LLM model
+configurations by combining data from the Tenant, TenantLLM, and LLM tables.
+These functions are used throughout the system to look up the correct model
+configuration for a given tenant and model type (chat, embedding, rerank, etc.).
+
+This module acts as a joint service because it orchestrates logic across
+multiple domain services (TenantService, TenantLLMService, LLMService).
+"""
 import os
 import enum
 from common import settings
@@ -22,10 +33,26 @@ from db.services.tenant_llm_service import TenantLLMService, TenantService
 
 
 def get_model_config_by_id(tenant_model_id: int) -> dict:
+    """Retrieve a tenant LLM model configuration by its primary key ID.
+
+    Looks up the TenantLLM record, converts it to a dictionary, and enriches
+    it with tool-calling capability information from the LLM catalog.
+
+    Args:
+        tenant_model_id (int): The auto-increment ID of the TenantLLM record.
+
+    Returns:
+        dict: The model configuration dictionary including llm_factory,
+              llm_name, api_key, api_base, model_type, and is_tools.
+
+    Raises:
+        LookupError: If no TenantLLM record exists with the given ID.
+    """
     found, model_config = TenantLLMService.get_by_id(tenant_model_id)
     if not found:
         raise LookupError(f"Tenant Model with id {tenant_model_id} not found")
     config_dict = model_config.to_dict()
+    # Enrich with tool-calling capability from the global LLM catalog
     llm = LLMService.query(llm_name=config_dict["llm_name"])
     if llm:
         config_dict["is_tools"] = llm[0].is_tools
@@ -33,14 +60,32 @@ def get_model_config_by_id(tenant_model_id: int) -> dict:
 
 
 def get_model_config_by_type_and_name(tenant_id: str, model_type: str, model_name: str):
+    """Retrieve a tenant LLM model configuration by type and name.
+
+    Resolves the model configuration for a specific model name within a tenant.
+    Handles the 'name@factory' format by splitting and retrying if the initial
+    lookup fails. Also handles the special case of built-in TEI embedding models.
+
+    Args:
+        tenant_id (str): The tenant ID to look up.
+        model_type (str): The LLM type (e.g., LLMType.CHAT, LLMType.EMBEDDING).
+        model_name (str): The model name, optionally in 'name@factory' format.
+
+    Returns:
+        dict: The model configuration dictionary.
+
+    Raises:
+        Exception: If model_name is empty.
+        LookupError: If the model is not found for the tenant.
+    """
     if not model_name:
         raise Exception("Model Name is required")
     model_config = TenantLLMService.get_api_key(tenant_id, model_name)
     if not model_config:
-        # model_name in format 'name@factory', split model_name and try again
+        # model_name may be in 'name@factory' format; split and try again
         pure_model_name, fid = TenantLLMService.split_model_name_and_factory(model_name)
+        # Handle built-in TEI embedding model configured via environment
         if model_type == LLMType.EMBEDDING and fid == "Builtin" and "tei-" in os.getenv("COMPOSE_PROFILES", "") and pure_model_name == os.getenv("TEI_MODEL", ""):
-            # configured local embedding model
             embedding_cfg = settings.EMBEDDING_CFG
             config_dict = {
                 "llm_factory": "Builtin",
@@ -55,8 +100,8 @@ def get_model_config_by_type_and_name(tenant_id: str, model_type: str, model_nam
                 raise LookupError(f"Tenant Model with name {model_name} not found")
             config_dict = model_config.to_dict()
     else:
-        # model_name without @factory
         config_dict = model_config.to_dict()
+    # Enrich with tool-calling capability from the global LLM catalog
     llm = LLMService.query(llm_name=config_dict["llm_name"])
     if llm:
         config_dict["is_tools"] = llm[0].is_tools
@@ -64,17 +109,40 @@ def get_model_config_by_type_and_name(tenant_id: str, model_type: str, model_nam
 
 
 def get_tenant_default_model_by_type(tenant_id: str, model_type: str|enum.Enum):
+    """Retrieve the tenant's default model configuration for a given type.
+
+    Looks up the tenant's default model name for the specified type (chat,
+    embedding, rerank, etc.) from the Tenant record, then resolves the full
+    model configuration. For IMAGE2TEXT type, if the resolved model is actually
+    a chat model with vision capability, the config is annotated accordingly.
+
+    Args:
+        tenant_id (str): The tenant ID to look up.
+        model_type (str | enum.Enum): The LLM type. Can be a string or
+            LLMType enum value.
+
+    Returns:
+        dict: The model configuration dictionary for the tenant's default model.
+
+    Raises:
+        LookupError: If the tenant is not found.
+        Exception: If no default model is set for the given type, or if
+                  the model type is unknown or requires a name (OCR).
+    """
     exist, tenant = TenantService.get_by_id(tenant_id)
     if not exist:
         raise LookupError("Tenant not found")
     model_type_val = model_type if isinstance(model_type, str) else model_type.value
     model_name: str = ""
+    # Map model type to the corresponding tenant field
     match model_type_val:
         case LLMType.EMBEDDING.value:
             model_name = tenant.embd_id
         case LLMType.SPEECH2TEXT.value:
             model_name =  tenant.asr_id
         case LLMType.IMAGE2TEXT.value:
+            # VLM default: resolve from img2txt_id which now points to a
+            # chat model with vision=true (no separate image2text rows)
             model_name = tenant.img2txt_id
         case LLMType.CHAT.value:
             model_name = tenant.llm_id
@@ -88,4 +156,9 @@ def get_tenant_default_model_by_type(tenant_id: str, model_type: str|enum.Enum):
             raise Exception(f"Unknown model type {model_type}")
     if not model_name:
         raise Exception(f"No default {model_type} model is set.")
-    return get_model_config_by_type_and_name(tenant_id, model_type, model_name)
+    config = get_model_config_by_type_and_name(tenant_id, model_type, model_name)
+    # For IMAGE2TEXT, the resolved model may be a chat model with vision=true.
+    # Ensure the config reflects vision capability so model_instance() uses CvModel.
+    if model_type_val == LLMType.IMAGE2TEXT.value and config.get("model_type") == LLMType.CHAT.value:
+        config["vision"] = True
+    return config

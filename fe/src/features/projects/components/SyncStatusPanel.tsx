@@ -79,7 +79,7 @@ const SyncStatusPanel = ({
               : t('projectManagement.sync.neverSynced')}
           </span>
         </Descriptions.Item>
-        <Descriptions.Item label={t('projectManagement.sync.schedule')}>
+        <Descriptions.Item label={t('projectManagement.sync.schedule.title')}>
           <code className="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">
             {config.sync_schedule || '—'}
           </code>

@@ -6,6 +6,68 @@
 import { z } from 'zod'
 
 /**
+ * Shared LLM settings sub-schema for search app configuration.
+ */
+const llmSettingSchema = z.object({
+  /** LLM temperature for response randomness */
+  temperature: z.number().min(0).max(2).optional(),
+  /** Top-p nucleus sampling parameter */
+  top_p: z.number().min(0).max(1).optional(),
+  /** Maximum tokens for LLM response */
+  max_tokens: z.number().int().min(1).max(128000).optional(),
+}).optional()
+
+/**
+ * Metadata filter condition sub-schema for OpenSearch bool query filtering.
+ */
+const metadataConditionSchema = z.object({
+  /** Field name to filter on */
+  name: z.string().min(1),
+  /** Comparison operator */
+  comparison_operator: z.enum(['is', 'is_not', 'contains', 'gt', 'lt', 'range']),
+  /** Filter value (string, number, or array for range) */
+  value: z.union([z.string(), z.number(), z.array(z.union([z.string(), z.number()]))]),
+})
+
+/**
+ * Metadata filter schema with logic combinator and conditions array.
+ */
+const metadataFilterSchema = z.object({
+  /** Logic combinator for conditions */
+  logic: z.enum(['and', 'or']).default('and'),
+  /** Array of filter conditions (max 10) */
+  conditions: z.array(metadataConditionSchema).max(10),
+}).optional()
+
+/**
+ * Search configuration sub-schema with all supported config fields.
+ */
+const searchConfigSchema = z.record(z.unknown()).and(
+  z.object({
+    /** LLM provider ID for summary generation */
+    llm_id: z.string().max(128).optional(),
+    /** LLM parameter overrides */
+    llm_setting: llmSettingSchema,
+    /** Toggle AI summary on/off for search results */
+    enable_summary: z.boolean().optional(),
+    /** Comma-separated target languages for cross-language query expansion */
+    cross_languages: z.string().max(256).optional(),
+    /** Rerank model ID for post-retrieval reranking */
+    rerank_id: z.string().max(128).optional(),
+    /** Enable keyword extraction from query before retrieval */
+    keyword: z.boolean().optional(),
+    /** Enable knowledge graph retrieval */
+    use_kg: z.boolean().optional(),
+    /** Enable web search via Tavily */
+    web_search: z.boolean().optional(),
+    /** Tavily API key for web search */
+    tavily_api_key: z.string().optional(),
+    /** Metadata filter for OpenSearch bool query conditions */
+    metadata_filter: metadataFilterSchema,
+  }).partial()
+).optional()
+
+/**
  * Schema for creating a new search app.
  */
 export const createSearchAppSchema = z.object({
@@ -15,8 +77,8 @@ export const createSearchAppSchema = z.object({
   description: z.string().optional(),
   /** Array of dataset IDs to search across */
   dataset_ids: z.array(z.string().uuid()).min(1, 'At least one dataset ID is required'),
-  /** Optional search configuration */
-  search_config: z.record(z.unknown()).optional(),
+  /** Optional search configuration with LLM settings */
+  search_config: searchConfigSchema,
   /** Whether the search app is publicly accessible */
   is_public: z.boolean().optional(),
 })
@@ -31,24 +93,28 @@ export const updateSearchAppSchema = z.object({
   description: z.string().optional(),
   /** Array of dataset IDs */
   dataset_ids: z.array(z.string().uuid()).optional(),
-  /** Search configuration */
-  search_config: z.record(z.unknown()).optional(),
+  /** Search configuration with LLM settings */
+  search_config: searchConfigSchema,
   /** Whether the search app is publicly accessible */
   is_public: z.boolean().optional(),
 })
 
 /**
- * Schema for executing a search query.
+ * Schema for executing a search query with pagination.
  */
 export const executeSearchSchema = z.object({
   /** The search query string */
   query: z.string().min(1, 'Query is required'),
-  /** Maximum number of results to return */
+  /** Maximum number of results to retrieve before pagination */
   top_k: z.number().int().min(1).max(100).optional().default(10),
   /** Search method: full_text, semantic, or hybrid */
   method: z.enum(['full_text', 'semantic', 'hybrid']).optional().default('full_text'),
   /** Minimum similarity threshold for semantic results */
   similarity_threshold: z.number().min(0).max(1).optional().default(0),
+  /** Page number (1-indexed) */
+  page: z.number().int().min(1).optional().default(1),
+  /** Number of results per page */
+  page_size: z.number().int().min(1).max(50).optional().default(10),
 })
 
 /**
@@ -65,6 +131,8 @@ export const askSearchSchema = z.object({
   similarity_threshold: z.number().min(0).max(1).optional(),
   /** Vector similarity weight for hybrid search */
   vector_similarity_weight: z.number().min(0).max(1).optional(),
+  /** Runtime metadata filter to narrow retrieval results */
+  metadata_filter: metadataFilterSchema,
 })
 
 /**
@@ -103,6 +171,44 @@ export const searchAppAccessSchema = z.object({
       entity_id: z.string().uuid(),
     })
   ),
+})
+
+/**
+ * Schema for retrieval testing (dry-run without LLM summary).
+ */
+export const retrievalTestSchema = z.object({
+  /** The search query string */
+  query: z.string().min(1),
+  /** Maximum number of chunks to retrieve */
+  top_k: z.number().int().min(1).max(100).optional().default(30),
+  /** Minimum similarity threshold for semantic results */
+  similarity_threshold: z.number().min(0).max(1).optional().default(0),
+  /** Vector similarity weight for hybrid search */
+  vector_similarity_weight: z.number().min(0).max(1).optional().default(0.3),
+  /** Search method */
+  search_method: z.enum(['full_text', 'semantic', 'hybrid']).optional().default('hybrid'),
+  /** Optional document ID filter */
+  doc_ids: z.array(z.string()).optional(),
+  /** Page number (1-indexed) */
+  page: z.number().int().min(1).optional().default(1),
+  /** Number of results per page */
+  page_size: z.number().int().min(1).max(50).optional().default(10),
+})
+
+/**
+ * Schema for listing search apps with pagination, search, and sorting.
+ */
+export const listSearchAppsSchema = z.object({
+  /** Page number (1-indexed) */
+  page: z.coerce.number().int().min(1).default(1),
+  /** Number of items per page */
+  page_size: z.coerce.number().int().min(1).max(100).default(20),
+  /** Search term to filter by name or description */
+  search: z.string().optional(),
+  /** Field to sort results by */
+  sort_by: z.enum(['created_at', 'name']).default('created_at'),
+  /** Sort direction */
+  sort_order: z.enum(['asc', 'desc']).default('desc'),
 })
 
 /**

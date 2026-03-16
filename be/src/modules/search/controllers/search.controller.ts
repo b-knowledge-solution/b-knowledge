@@ -32,16 +32,24 @@ export class SearchController {
       const app = await searchService.createSearchApp(req.body, userId)
       res.status(201).json(app)
     } catch (error) {
-      log.error('Error creating search app', { error: (error as Error).message })
+      const errMsg = (error as Error).message
+
+      // Return 409 for duplicate name
+      if (errMsg === 'A search app with this name already exists') {
+        res.status(409).json({ error: errMsg })
+        return
+      }
+
+      log.error('Error creating search app', { error: errMsg })
       res.status(500).json({ error: 'Internal server error' })
     }
   }
 
   /**
-   * List all search apps with RBAC filtering.
+   * List all search apps with RBAC filtering, pagination, search, and sorting.
    * Admins see all; other users see their own, public, and shared apps.
-   * @param req - Express request
-   * @param res - Express response
+   * @param req - Express request with optional query params for pagination/search
+   * @param res - Express response with paginated results
    */
   async listSearchApps(req: Request, res: Response): Promise<void> {
     try {
@@ -53,13 +61,22 @@ export class SearchController {
         return
       }
 
+      // Extract validated query params
+      const { page, page_size, search, sort_by, sort_order } = req.query as any
+
       // Fetch team IDs the user belongs to for RBAC evaluation
       const userTeams = await ModelFactory.userTeam.findAll({ user_id: userId })
       const teamIds = userTeams.map((ut: { team_id: string }) => ut.team_id)
 
-      // List apps filtered by RBAC rules
-      const apps = await searchService.listAccessibleApps(userId, userRole, teamIds)
-      res.json(apps)
+      // List apps filtered by RBAC rules with pagination
+      const result = await searchService.listAccessibleApps(userId, userRole, teamIds, {
+        page,
+        pageSize: page_size,
+        search,
+        sortBy: sort_by,
+        sortOrder: sort_order,
+      })
+      res.json(result)
     } catch (error) {
       log.error('Error listing search apps', { error: (error as Error).message })
       res.status(500).json({ error: 'Internal server error' })
@@ -263,21 +280,48 @@ export class SearchController {
   }
 
   /**
-   * Execute a search query against a search app.
-   * @param req - Express request with :id param and { query, top_k, method } in body
-   * @param res - Express response
+   * Perform a dry-run retrieval test without LLM summary.
+   * Returns raw chunks with scores for testing search quality.
+   * @param req - Express request with :id param and retrieval test options in body
+   * @param res - Express response with paginated chunks and doc aggregations
+   */
+  async retrievalTest(req: Request, res: Response): Promise<void> {
+    try {
+      const result = await searchService.retrievalTest(req.params.id!, req.body)
+      res.json(result)
+    } catch (error) {
+      const errMsg = (error as Error).message
+
+      if (errMsg === 'Search app not found') {
+        res.status(404).json({ error: errMsg })
+        return
+      }
+
+      log.error('Error in retrieval test', { error: errMsg })
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+
+  /**
+   * Execute a search query against a search app with pagination.
+   * @param req - Express request with :id param and search options in body
+   * @param res - Express response with paginated results
    */
   async executeSearch(req: Request, res: Response): Promise<void> {
     try {
-      const { query, top_k, method, similarity_threshold } = req.body
+      const { query, top_k, method, similarity_threshold, page, page_size } = req.body
 
-      // Execute search across configured datasets
+      // Execute search across configured datasets with pagination
       const result = await searchService.executeSearch(
         req.params.id!,
         query,
-        top_k,
-        method,
-        similarity_threshold
+        {
+          topK: top_k,
+          method,
+          similarityThreshold: similarity_threshold,
+          page,
+          pageSize: page_size,
+        }
       )
       res.json(result)
     } catch (error) {

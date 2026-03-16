@@ -13,6 +13,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Audio file parser module for the RAG pipeline.
+
+Handles chunking of audio files by transcribing them to text using a
+speech-to-text LLM model. Supported formats include wav, mp3, aac, flac,
+ogg, and other common audio formats. The transcribed text is then tokenized
+into a single document chunk for indexing.
+"""
+
 import logging
 import os
 import re
@@ -25,6 +33,24 @@ from rag.nlp import rag_tokenizer, tokenize
 
 
 def chunk(filename, binary, tenant_id, lang, callback=None, **kwargs):
+    """Parse and chunk an audio file by transcribing it to text.
+
+    Writes the audio binary to a temporary file, uses a speech-to-text
+    LLM model to transcribe it, then tokenizes the resulting text into
+    a single document chunk.
+
+    Args:
+        filename: Original filename of the audio file.
+        binary: Raw binary content of the audio file.
+        tenant_id: Tenant identifier for LLM model lookup.
+        lang: Language of the audio content (e.g., "English", "Chinese").
+        callback: Progress callback function accepting (progress, message).
+        **kwargs: Additional keyword arguments.
+
+    Returns:
+        A list containing a single document dict with tokenized content,
+        or an empty list if transcription fails.
+    """
     doc = {"docnm_kwd": filename, "title_tks": rag_tokenizer.tokenize(re.sub(r"\.[a-zA-Z]+$", "", filename))}
     doc["title_sm_tks"] = rag_tokenizer.fine_grained_tokenize(doc["title_tks"])
 

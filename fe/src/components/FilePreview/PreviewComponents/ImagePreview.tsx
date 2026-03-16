@@ -3,6 +3,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * @description Props for ImagePreview component.
@@ -21,13 +22,14 @@ interface ImagePreviewProps {
  * @returns {JSX.Element} Image preview component.
  */
 export const ImagePreview: React.FC<ImagePreviewProps> = ({ url, alt }) => {
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
 
     if (error) {
         return (
             <div className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
-                <p>Failed to load image</p>
+                <p>{t('preview.failedToLoadImage')}</p>
             </div>
         );
     }

@@ -14,6 +14,16 @@
 #  limitations under the License.
 #
 
+"""General-purpose (naive) document parser module for the RAG pipeline.
+
+The default parser that handles the widest range of file formats including
+PDF, DOCX, DOC, TXT, Markdown, HTML, Excel, CSV, JSON, and more. Supports
+multiple PDF parsing backends (DeepDOC, MinerU, Docling, TCADP, PaddleOCR,
+plain text, VLM). Uses naive merge strategy for text chunking with
+configurable delimiters and token limits. Also handles embedded file
+extraction and cross-format link resolution.
+"""
+
 import logging
 import re
 import os

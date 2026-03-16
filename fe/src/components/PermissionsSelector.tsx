@@ -191,10 +191,10 @@ export const PermissionsSelector: React.FC<PermissionsSelectorProps> = ({
               {/* Scrollable checkbox list */}
               <div className="max-h-40 overflow-y-auto border rounded-md border-gray-200 dark:border-slate-600">
                 {isLoading ? (
-                  <div className="p-3 text-center text-sm text-gray-400">Loading...</div>
+                  <div className="p-3 text-center text-sm text-gray-400">{t('common.loading')}</div>
                 ) : filteredTeams.length === 0 ? (
                   <div className="p-3 text-center text-sm text-gray-400">
-                    {teams.length === 0 ? 'No teams available' : 'No matches'}
+                    {teams.length === 0 ? t('permissions.noTeamsAvailable') : t('permissions.noMatches')}
                   </div>
                 ) : filteredTeams.map(team => (
                   <label
@@ -266,10 +266,10 @@ export const PermissionsSelector: React.FC<PermissionsSelectorProps> = ({
               {/* Scrollable checkbox list */}
               <div className="max-h-40 overflow-y-auto border rounded-md border-gray-200 dark:border-slate-600">
                 {isLoading ? (
-                  <div className="p-3 text-center text-sm text-gray-400">Loading...</div>
+                  <div className="p-3 text-center text-sm text-gray-400">{t('common.loading')}</div>
                 ) : filteredUsers.length === 0 ? (
                   <div className="p-3 text-center text-sm text-gray-400">
-                    {users.length === 0 ? 'No users available' : 'No matches'}
+                    {users.length === 0 ? t('permissions.noUsersAvailable') : t('permissions.noMatches')}
                   </div>
                 ) : filteredUsers.map(user => (
                   <label

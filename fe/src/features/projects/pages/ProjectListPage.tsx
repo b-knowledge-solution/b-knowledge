@@ -32,7 +32,6 @@ import {
 } from 'antd'
 import {
   Plus,
-  FolderOpen,
   Pencil,
   Trash2,
   Lock,
@@ -331,19 +330,8 @@ const ProjectListPage = () => {
     <div className="w-full h-full flex flex-col overflow-hidden">
       <div className="flex-1 overflow-auto p-6">
         <div>
-          {/* Header */}
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-1">
-                <FolderOpen className="w-7 h-7 text-primary-600 dark:text-primary-400" />
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {t('projectManagement.title')}
-                </h1>
-              </div>
-              <p className="text-gray-600 dark:text-gray-400 ml-10">
-                {t('projectManagement.description')}
-              </p>
-            </div>
+          {/* Header actions */}
+          <div className="mb-6 flex items-center justify-end">
             <Button type="primary" icon={<Plus size={16} />} onClick={() => setCreateModalOpen(true)}>
               {t('projectManagement.addProject')}
             </Button>

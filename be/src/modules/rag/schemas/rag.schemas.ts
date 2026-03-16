@@ -124,6 +124,21 @@ export const chunkParamSchema = z.object({
 })
 
 // ---------------------------------------------------------------------------
+// Document Toggle schema
+// ---------------------------------------------------------------------------
+
+/** Document param schema (dataset + document IDs) */
+export const docParamSchema = z.object({
+  id: z.string().uuid('Invalid dataset UUID'),
+  docId: z.string().min(1, 'Document ID is required'),
+})
+
+/** PATCH /api/rag/datasets/:id/documents/:docId/toggle – body */
+export const toggleDocumentSchema = z.object({
+  available: z.boolean({ required_error: 'available (boolean) is required' }),
+})
+
+// ---------------------------------------------------------------------------
 // Retrieval Test schema
 // ---------------------------------------------------------------------------
 

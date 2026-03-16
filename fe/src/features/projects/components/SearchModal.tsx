@@ -96,33 +96,37 @@ const VectorWeightControl = ({
 }: {
   value?: number
   onChange?: (val: number) => void
-}) => (
-  <div>
-    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-      <Text type="secondary" style={{ fontSize: 12 }}>vector {value.toFixed(2)}</Text>
-      <Text type="secondary" style={{ fontSize: 12 }}>full-text {(1 - value).toFixed(2)}</Text>
+}) => {
+  const { t } = useTranslation()
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+        <Text type="secondary" style={{ fontSize: 12 }}>{t('projectManagement.common.vector')} {value.toFixed(2)}</Text>
+        <Text type="secondary" style={{ fontSize: 12 }}>{t('projectManagement.common.fullText')} {(1 - value).toFixed(2)}</Text>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <Slider
+          style={{ flex: 1 }}
+          min={0}
+          max={1}
+          step={0.01}
+          value={value}
+          onChange={onChange}
+        />
+        <InputNumber
+          style={{ width: 72 }}
+          min={0}
+          max={1}
+          step={0.01}
+          value={value}
+          onChange={(v: number | null) => onChange?.(v ?? 0.7)}
+          size="small"
+        />
+      </div>
     </div>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      <Slider
-        style={{ flex: 1 }}
-        min={0}
-        max={1}
-        step={0.01}
-        value={value}
-        onChange={onChange}
-      />
-      <InputNumber
-        style={{ width: 72 }}
-        min={0}
-        max={1}
-        step={0.01}
-        value={value}
-        onChange={(v: number | null) => onChange?.(v ?? 0.7)}
-        size="small"
-      />
-    </div>
-  </div>
-)
+  )
+}
 
 // ============================================================================
 // Types

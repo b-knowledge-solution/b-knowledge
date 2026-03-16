@@ -14,6 +14,18 @@
 #  limitations under the License.
 #
 
+"""OceanBase database connection adapter for memory message storage.
+
+This module implements the OBConnection singleton class that provides CRUD
+operations for memory messages stored in OceanBase. OceanBase is a distributed
+relational database that supports full-text search and vector similarity search,
+making it suitable as an alternative backend to OpenSearch and Infinity.
+
+The class defines the table schema (columns, indexes, full-text search columns),
+handles field mapping between the application message model and database columns,
+and constructs SQL queries for search, insert, update, and delete operations.
+"""
+
 import re
 from typing import Optional
 
@@ -32,7 +44,7 @@ from common.float_utils import get_float
 from rag.nlp import is_english
 from rag.nlp.rag_tokenizer import tokenize, fine_grained_tokenize
 
-# Column definitions for memory message table
+# SQLAlchemy column definitions for the memory message table schema
 COLUMN_DEFINITIONS: list[Column] = [
     Column("id", String(256), primary_key=True, comment="unique record id"),
     Column("message_id", String(256), nullable=False, index=True, comment="message id"),
@@ -51,16 +63,17 @@ COLUMN_DEFINITIONS: list[Column] = [
     Column("tokenized_content_ltks", LONGTEXT, nullable=True, comment="fine-grained tokenized content"),
 ]
 
+# Extract column names from definitions for iteration
 COLUMN_NAMES: list[str] = [col.name for col in COLUMN_DEFINITIONS]
 
-# Index columns for creating indexes
+# Columns to create standard B-tree indexes on for fast filtering
 INDEX_COLUMNS: list[str] = [
     "message_id",
     "memory_id",
     "status_int",
 ]
 
-# Full-text search columns
+# Columns to create full-text search indexes on
 FTS_COLUMNS: list[str] = [
     "content_ltks",
     "tokenized_content_ltks",
@@ -68,13 +81,30 @@ FTS_COLUMNS: list[str] = [
 
 
 class SearchResult(BaseModel):
+    """Container for OceanBase search results.
+
+    Attributes:
+        total: Total number of matching documents.
+        messages: List of message dictionaries from the search.
+    """
     total: int
     messages: list[dict]
 
 
 @singleton
 class OBConnection(OBConnectionBase):
+    """Singleton OceanBase connection for memory message CRUD operations.
+
+    Extends OBConnectionBase with memory-specific schema definitions, field
+    mapping logic, and search implementations that support full-text search,
+    vector similarity search, and hybrid fusion search.
+
+    The table schema stores messages with tokenized content for full-text search,
+    embedding vectors for semantic similarity, and metadata fields for filtering.
+    """
+
     def __init__(self):
+        """Initialize the OceanBase connection with memory-specific logger and FTS config."""
         super().__init__(logger_name='ragflow.memory_ob_conn')
         self._fulltext_search_columns = FTS_COLUMNS
 
@@ -83,28 +113,64 @@ class OBConnection(OBConnectionBase):
     """
 
     def get_index_columns(self) -> list[str]:
+        """Return column names that need standard B-tree indexes.
+
+        Returns:
+            List of column names for index creation.
+        """
         return INDEX_COLUMNS
 
     def get_fulltext_columns(self) -> list[str]:
-        """Return list of column names that need fulltext indexes (without weight suffix)."""
+        """Return column names that need full-text search indexes.
+
+        Strips any weight suffix (e.g. "^2") from column names.
+
+        Returns:
+            List of column names for full-text index creation.
+        """
         return [col.split("^")[0] for col in self._fulltext_search_columns]
 
     def get_column_definitions(self) -> list[Column]:
+        """Return the SQLAlchemy column definitions for the memory message table.
+
+        Returns:
+            List of SQLAlchemy Column objects defining the table schema.
+        """
         return COLUMN_DEFINITIONS
 
     def get_lock_prefix(self) -> str:
+        """Return the prefix for distributed lock keys used by this connection.
+
+        Returns:
+            The lock key prefix string.
+        """
         return "ob_memory_"
 
     def _get_dataset_id_field(self) -> str:
+        """Return the field name used to scope queries to a specific dataset/memory.
+
+        Returns:
+            The dataset ID field name ("memory_id" for memory storage).
+        """
         return "memory_id"
 
     def _get_vector_column_name_from_table(self, table_name: str) -> Optional[str]:
-        """Get the vector column name from the table (q_{size}_vec pattern)."""
+        """Detect the vector embedding column name from the table schema.
+
+        Queries the information schema to find columns matching the q_{size}_vec
+        naming pattern used for embedding vectors.
+
+        Args:
+            table_name: The database table name to inspect.
+
+        Returns:
+            The vector column name if found, or None.
+        """
         sql = f"""
-            SELECT COLUMN_NAME 
-            FROM INFORMATION_SCHEMA.COLUMNS 
-            WHERE TABLE_SCHEMA = '{self.db_name}' 
-              AND TABLE_NAME = '{table_name}' 
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = '{self.db_name}'
+              AND TABLE_NAME = '{table_name}'
               AND COLUMN_NAME REGEXP '^q_[0-9]+_vec$'
             LIMIT 1
         """
@@ -121,7 +187,16 @@ class OBConnection(OBConnectionBase):
 
     @staticmethod
     def convert_field_name(field_name: str, use_tokenized_content=False) -> str:
-        """Convert message field name to database column name."""
+        """Convert an application-level field name to its database column name.
+
+        Args:
+            field_name: The application field name.
+            use_tokenized_content: If True and field is "content", returns the
+                fine-grained tokenized column.
+
+        Returns:
+            The corresponding database column name.
+        """
         match field_name:
             case "message_type":
                 return "message_type_kwd"
@@ -136,7 +211,17 @@ class OBConnection(OBConnectionBase):
 
     @staticmethod
     def map_message_to_ob_fields(message: dict) -> dict:
-        """Map message dictionary fields to OceanBase document fields."""
+        """Map a message dictionary to OceanBase column values for storage.
+
+        Converts application-level keys to database column names, tokenizes
+        content for full-text search, and formats embedding vectors.
+
+        Args:
+            message: A dictionary containing message details.
+
+        Returns:
+            A dictionary formatted for OceanBase insertion/upsert.
+        """
         storage_doc = {
             "id": message.get("id"),
             "message_id": message["message_id"],
@@ -152,9 +237,10 @@ class OBConnection(OBConnectionBase):
             "status_int": 1 if message["status"] else 0,
             "zone_id": message.get("zone_id", 0),
             "content_ltks": message["content"],
+            # Generate fine-grained tokens for improved full-text search recall
             "tokenized_content_ltks": fine_grained_tokenize(tokenize(message["content"])),
         }
-        # Handle vector embedding
+        # Handle vector embedding with dimension-prefixed column name
         content_embed = message.get("content_embed", [])
         if len(content_embed) > 0:
             storage_doc[f"q_{len(content_embed)}_vec"] = content_embed
@@ -162,9 +248,21 @@ class OBConnection(OBConnectionBase):
 
     @staticmethod
     def get_message_from_ob_doc(doc: dict) -> dict:
-        """Convert an OceanBase document back to a message dictionary."""
+        """Convert an OceanBase row back to an application-level message dictionary.
+
+        Reverses the field mapping, detecting the vector column dynamically
+        and handling numpy array conversion for embeddings.
+
+        Args:
+            doc: A dictionary representing the database row.
+
+        Returns:
+            A dictionary formatted as an application-level message.
+        """
+        # Detect embedding vector column by naming pattern
         embd_field_name = next((key for key in doc.keys() if re.match(r"q_\d+_vec", key)), None)
         content_embed = doc.get(embd_field_name, []) if embd_field_name else []
+        # Convert numpy arrays to plain Python lists for serialization
         if isinstance(content_embed, np.ndarray):
             content_embed = content_embed.tolist()
         message = {
@@ -206,20 +304,45 @@ class OBConnection(OBConnectionBase):
         rank_feature: dict | None = None,
         hide_forgotten: bool = True
     ):
-        """Search messages in memory storage."""
+        """Search memory messages using OceanBase full-text, vector, or hybrid fusion search.
+
+        Supports four search modes:
+        - "fusion": Combined full-text + vector search with weighted scoring.
+        - "fulltext": Full-text search only using OceanBase's FTS engine.
+        - "vector": Vector similarity search only using cosine distance.
+        - "filter": Simple filter-based retrieval with optional sorting.
+
+        Args:
+            select_fields: Fields to include in results.
+            highlight_fields: Fields to add to output for later highlighting.
+            condition: Filter conditions as key-value pairs.
+            match_expressions: List of text, dense vector, and fusion expressions.
+            order_by: Sort specification for results.
+            offset: Pagination offset.
+            limit: Maximum number of results.
+            index_names: Table name(s) to search.
+            memory_ids: Memory IDs to scope the search.
+            agg_fields: Optional aggregation fields (unused in SQL mode).
+            rank_feature: Optional rank feature config (unused in OceanBase).
+            hide_forgotten: If True, excludes messages with forget_at set.
+
+        Returns:
+            A tuple of (SearchResult, total_count).
+        """
         if isinstance(index_names, str):
             index_names = index_names.split(",")
         assert isinstance(index_names, list) and len(index_names) > 0
 
         result: SearchResult = SearchResult(total=0, messages=[])
 
+        # Build output field list, ensuring "id" is always included
         output_fields = select_fields.copy()
         if "id" not in output_fields:
             output_fields = ["id"] + output_fields
         if "_score" in output_fields:
             output_fields.remove("_score")
 
-        # Handle content_embed field - resolve to actual vector column name
+        # Resolve the content_embed virtual field to the actual vector column name
         has_content_embed = "content_embed" in output_fields
         actual_vector_column: Optional[str] = None
         if has_content_embed:
@@ -232,6 +355,7 @@ class OBConnection(OBConnectionBase):
                         output_fields.append(actual_vector_column)
                         break
 
+        # Add highlight fields to output so they're available for post-processing
         if highlight_fields:
             for field in highlight_fields:
                 field_name = self.convert_field_name(field)
@@ -241,6 +365,7 @@ class OBConnection(OBConnectionBase):
         db_output_fields = [self.convert_field_name(f) for f in output_fields]
         fields_expr = ", ".join(db_output_fields)
 
+        # Apply memory ID and forgotten message filters
         condition["memory_id"] = memory_ids
         if hide_forgotten:
             condition["must_not"] = {"exists": "forget_at"}
@@ -249,7 +374,7 @@ class OBConnection(OBConnectionBase):
         filters: list[str] = self._get_filters(condition_dict)
         filters_expr = " AND ".join(filters) if filters else "1=1"
 
-        # Parse match expressions
+        # Parse match expressions to determine search type and build query components
         fulltext_query: Optional[str] = None
         fulltext_topn: Optional[int] = None
         fulltext_search_expr: dict[str, str] = {}
@@ -270,9 +395,11 @@ class OBConnection(OBConnectionBase):
             if isinstance(m, MatchTextExpr):
                 assert "original_query" in m.extra_options, "'original_query' is missing in extra_options."
                 fulltext_query = m.extra_options["original_query"]
+                # Escape the query to prevent SQL injection
                 fulltext_query = escape_string(fulltext_query.strip())
                 fulltext_topn = m.topn
 
+                # Parse fulltext columns and their weights for scoring
                 fulltext_search_expr, fulltext_search_weight = self._parse_fulltext_columns(
                     fulltext_query, self._fulltext_search_columns
                 )
@@ -282,20 +409,24 @@ class OBConnection(OBConnectionBase):
                 vector_topn = m.topn
                 vector_similarity_threshold = m.extra_options.get("similarity", 0.0) if m.extra_options else 0.0
             elif isinstance(m, FusionExpr):
+                # Extract vector weight from fusion parameters for weighted scoring
                 weights = m.fusion_params.get("weights", "0.5,0.5") if m.fusion_params else "0.5,0.5"
                 vector_similarity_weight = get_float(weights.split(",")[1])
 
+        # Build full-text search SQL expressions
         if fulltext_query:
             fulltext_search_filter = f"({' OR '.join([expr for expr in fulltext_search_expr.values()])})"
             fulltext_search_score_expr = f"({' + '.join(f'{expr} * {fulltext_search_weight.get(col, 0)}' for col, expr in fulltext_search_expr.items())})"
 
+        # Build vector search SQL expressions
         if vector_data:
             vector_data_str = "[" + ",".join([str(np.float32(v)) for v in vector_data]) + "]"
             vector_search_expr = vector_search_template % (vector_column_name, vector_data_str)
+            # Convert distance to similarity (1 - distance)
             vector_search_score_expr = f"(1 - {vector_search_expr})"
             vector_search_filter = f"{vector_search_score_expr} >= {vector_similarity_threshold}"
 
-        # Determine search type
+        # Determine search type based on which match expressions are present
         if fulltext_query and vector_data:
             search_type = "fusion"
         elif fulltext_query:
@@ -308,6 +439,7 @@ class OBConnection(OBConnectionBase):
         if search_type in ["fusion", "fulltext", "vector"] and "_score" not in output_fields:
             output_fields.append("_score")
 
+        # Cap limit to the most restrictive top-N from match expressions
         if limit:
             if vector_topn is not None:
                 limit = min(vector_topn, limit)
@@ -321,6 +453,7 @@ class OBConnection(OBConnectionBase):
                 continue
 
             if search_type == "fusion":
+                # Hybrid search: full-text pre-filter, then vector re-rank with weighted scoring
                 num_candidates = (vector_topn or limit) + (fulltext_topn or limit)
                 score_expr = f"(relevance * {1 - vector_similarity_weight} + {vector_search_score_expr} * {vector_similarity_weight})"
                 fusion_sql = (
@@ -348,6 +481,7 @@ class OBConnection(OBConnectionBase):
                     result.total += 1
 
             elif search_type == "vector":
+                # Pure vector similarity search
                 vector_sql = self._build_vector_search_sql(
                     table_name, fields_expr, vector_search_score_expr, filters_expr,
                     vector_search_filter, vector_search_expr, limit, vector_topn, offset
@@ -363,6 +497,7 @@ class OBConnection(OBConnectionBase):
                     result.total += 1
 
             elif search_type == "fulltext":
+                # Pure full-text search
                 fulltext_sql = self._build_fulltext_search_sql(
                     table_name, fields_expr, fulltext_search_score_expr, filters_expr,
                     fulltext_search_filter, offset, limit, fulltext_topn
@@ -378,6 +513,7 @@ class OBConnection(OBConnectionBase):
                     result.total += 1
 
             else:
+                # Simple filter-based retrieval with optional ordering
                 orders: list[str] = []
                 if order_by and order_by.fields:
                     for field, order_dir in order_by.fields:
@@ -400,13 +536,24 @@ class OBConnection(OBConnectionBase):
                     result.messages.append(self._row_to_entity(row, db_output_fields))
                     result.total += 1
 
+        # Fallback: if total wasn't tracked, use message count
         if result.total == 0:
             result.total = len(result.messages)
 
         return result, result.total
 
     def get_forgotten_messages(self, select_fields: list[str], index_name: str, memory_id: str, limit: int = 512):
-        """Get forgotten messages (messages with forget_at set)."""
+        """Retrieve messages marked as forgotten (with forget_at set), ordered oldest first.
+
+        Args:
+            select_fields: Fields to include in results.
+            index_name: The table name to query.
+            memory_id: The memory ID to filter by.
+            limit: Maximum number of results.
+
+        Returns:
+            A SearchResult containing forgotten messages, or None if table doesn't exist.
+        """
         if not self._check_table_exists_cached(index_name):
             return None
 
@@ -433,7 +580,19 @@ class OBConnection(OBConnectionBase):
 
     def get_missing_field_message(self, select_fields: list[str], index_name: str, memory_id: str, field_name: str,
                                   limit: int = 512):
-        """Get messages missing a specific field."""
+        """Retrieve messages that are missing a specific field (NULL value).
+
+        Args:
+            select_fields: Fields to include in results.
+            index_name: The table name to query.
+            memory_id: The memory ID to filter by.
+            field_name: The field that must be NULL in matching rows.
+            limit: Maximum number of results.
+
+        Returns:
+            A SearchResult containing messages with the missing field,
+            or None if table doesn't exist.
+        """
         if not self._check_table_exists_cached(index_name):
             return None
 
@@ -460,19 +619,47 @@ class OBConnection(OBConnectionBase):
         return result
 
     def get(self, doc_id: str, index_name: str, memory_ids: list[str]) -> dict | None:
-        """Get single message by id."""
+        """Retrieve a single message by its document ID.
+
+        Delegates to the base class get() and converts the result from
+        OceanBase column format to application message format.
+
+        Args:
+            doc_id: The document ID to retrieve.
+            index_name: The table name.
+            memory_ids: List of memory IDs to scope the lookup.
+
+        Returns:
+            The message dictionary if found, or None.
+        """
         doc = super().get(doc_id, index_name, memory_ids)
         if doc is None:
             return None
         return self.get_message_from_ob_doc(doc)
 
     def insert(self, documents: list[dict], index_name: str, memory_id: str = None) -> list[str]:
-        """Insert messages into memory storage."""
+        """Insert message documents into OceanBase using upsert semantics.
+
+        Creates the table if it doesn't exist and ensures the vector column
+        is present. Maps application fields to database columns before insertion.
+
+        Args:
+            documents: List of message dictionaries to insert.
+            index_name: The table name.
+            memory_id: The memory ID (used for table creation if needed).
+
+        Returns:
+            A list of error strings. Empty list means all inserts succeeded.
+
+        Raises:
+            ValueError: If the table doesn't exist and vector size can't be inferred.
+        """
         if not documents:
             return []
 
         vector_size = len(documents[0].get("content_embed", [])) if "content_embed" in documents[0] else 0
 
+        # Create table if it doesn't exist, or ensure vector column exists
         if not self._check_table_exists_cached(index_name):
             if vector_size == 0:
                 raise ValueError("Cannot infer vector size from documents")
@@ -488,6 +675,7 @@ class OBConnection(OBConnectionBase):
             d = self.map_message_to_ob_fields(document)
             ids.append(d["id"])
 
+            # Ensure all schema columns are present (NULL for missing ones)
             for column_name in COLUMN_NAMES:
                 if column_name not in d:
                     d[column_name] = None
@@ -505,7 +693,18 @@ class OBConnection(OBConnectionBase):
         return res
 
     def update(self, condition: dict, new_value: dict, index_name: str, memory_id: str) -> bool:
-        """Update messages with given condition."""
+        """Update message documents matching the given condition via SQL UPDATE.
+
+        Args:
+            condition: Filter criteria to identify rows to update.
+            new_value: Dictionary of field-value pairs to set. Supports "remove"
+                to set a field to NULL.
+            index_name: The table name.
+            memory_id: The memory ID scope for the update.
+
+        Returns:
+            True if the update succeeded, False on error.
+        """
         if not self._check_table_exists_cached(index_name):
             return True
 
@@ -514,13 +713,16 @@ class OBConnection(OBConnectionBase):
         filters = self._get_filters(condition_dict)
 
         update_dict = {self.convert_field_name(k): v for k, v in new_value.items()}
+        # Re-tokenize content for search index consistency
         if "content_ltks" in update_dict:
             update_dict["tokenized_content_ltks"] = fine_grained_tokenize(tokenize(update_dict["content_ltks"]))
         update_dict.pop("id", None)
 
+        # Build SET clause for SQL UPDATE
         set_values: list[str] = []
         for k, v in update_dict.items():
             if k == "remove":
+                # "remove" sets the field to NULL
                 if isinstance(v, str):
                     set_values.append(f"{v} = NULL")
             elif k == "status":
@@ -546,7 +748,18 @@ class OBConnection(OBConnectionBase):
         return False
 
     def delete(self, condition: dict, index_name: str, memory_id: str) -> int:
-        """Delete messages with given condition."""
+        """Delete message documents matching the given condition.
+
+        Delegates to the base class delete() after converting field names.
+
+        Args:
+            condition: Filter criteria for deletion.
+            index_name: The table name.
+            memory_id: The memory ID scope for deletion.
+
+        Returns:
+            The number of rows deleted.
+        """
         condition_dict = {self.convert_field_name(k): v for k, v in condition.items()}
         return super().delete(condition_dict, index_name, memory_id)
 
@@ -555,6 +768,14 @@ class OBConnection(OBConnectionBase):
     """
 
     def get_total(self, res) -> int:
+        """Extract total count from a search result.
+
+        Args:
+            res: A (SearchResult, count) tuple or a SearchResult object.
+
+        Returns:
+            The total count of matching documents.
+        """
         if isinstance(res, tuple):
             return res[1]
         if hasattr(res, 'total'):
@@ -562,6 +783,14 @@ class OBConnection(OBConnectionBase):
         return 0
 
     def get_doc_ids(self, res) -> list[str]:
+        """Extract document IDs from a search result.
+
+        Args:
+            res: A (SearchResult, count) tuple or a SearchResult object.
+
+        Returns:
+            List of document ID strings.
+        """
         if isinstance(res, tuple):
             res = res[0]
         if hasattr(res, 'messages'):
@@ -569,7 +798,18 @@ class OBConnection(OBConnectionBase):
         return []
 
     def get_fields(self, res, fields: list[str]) -> dict[str, dict]:
-        """Get fields from search result."""
+        """Extract specified fields from search result messages.
+
+        Converts each message from OceanBase format to application format,
+        then filters to only the requested fields.
+
+        Args:
+            res: A (SearchResult, count) tuple or a SearchResult object.
+            fields: List of application-level field names to extract.
+
+        Returns:
+            A dict mapping document IDs to dicts of their requested field values.
+        """
         if isinstance(res, tuple):
             res = res[0]
 
@@ -588,6 +828,7 @@ class OBConnection(OBConnectionBase):
                 if isinstance(v, list):
                     m[n] = v
                     continue
+                # Preserve numeric and boolean types for specific metadata fields
                 if n in ["message_id", "source_id", "valid_at", "invalid_at", "forget_at", "status"] and isinstance(v,
                                                                                                                     (int,
                                                                                                                      float,
@@ -606,7 +847,19 @@ class OBConnection(OBConnectionBase):
         return res_fields
 
     def get_highlight(self, res, keywords: list[str], field_name: str):
-        """Get highlighted text for search results."""
+        """Generate highlighted text for search results by wrapping keywords in <em> tags.
+
+        Unlike OpenSearch which provides native highlighting, OceanBase requires
+        application-level highlighting using the highlight_utils module.
+
+        Args:
+            res: A (SearchResult, count) tuple or a SearchResult object.
+            keywords: List of keywords to highlight.
+            field_name: The field containing text to highlight.
+
+        Returns:
+            A dict mapping document IDs to highlighted text strings.
+        """
         if isinstance(res, tuple):
             res = res[0]
         messages = getattr(res, "messages", None)
@@ -615,7 +868,18 @@ class OBConnection(OBConnectionBase):
         )
 
     def get_aggregation(self, res, field_name: str):
-        """Get aggregation for search results."""
+        """Compute field value aggregation from search results.
+
+        Unlike OpenSearch which provides native aggregations, OceanBase requires
+        application-level aggregation using the aggregation_utils module.
+
+        Args:
+            res: A (SearchResult, count) tuple or a SearchResult object.
+            field_name: The field to aggregate on.
+
+        Returns:
+            A list of (value, count) tuples.
+        """
         if isinstance(res, tuple):
             res_obj = res[0]
         else:

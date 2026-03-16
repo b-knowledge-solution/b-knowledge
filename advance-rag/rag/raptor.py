@@ -13,6 +13,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""RAPTOR (Recursive Abstractive Processing for Tree-Organized Retrieval) implementation.
+
+Implements the RAPTOR algorithm that recursively clusters document chunks
+using UMAP dimensionality reduction and Gaussian Mixture Models, then
+summarizes each cluster via LLM. The process builds a hierarchical tree
+of increasingly abstract summaries, enabling multi-granularity retrieval.
+Supports task cancellation, caching, and configurable error tolerance.
+"""
+
 import asyncio
 import logging
 import re
@@ -36,6 +45,21 @@ from common.misc_utils import thread_pool_exec
 
 
 class RecursiveAbstractiveProcessing4TreeOrganizedRetrieval:
+    """RAPTOR implementation for hierarchical document summarization.
+
+    Recursively clusters chunks by embedding similarity, summarizes
+    each cluster with an LLM, embeds the summaries, and repeats
+    until convergence. Produces a tree of summaries at multiple
+    abstraction levels.
+
+    Attributes:
+        _max_cluster: Maximum number of clusters per level.
+        _llm_model: LLM bundle for generating summaries.
+        _embd_model: Embedding model for chunk vectorization.
+        _threshold: GMM probability threshold for cluster assignment.
+        _prompt: Template prompt for cluster summarization.
+        _max_token: Maximum tokens for LLM summary output.
+    """
     def __init__(
         self,
         max_cluster,

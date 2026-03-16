@@ -13,6 +13,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Tag/label parser module for the RAG pipeline.
+
+Parses content-tag pairs from Excel, CSV, and TXT files. Similar to the
+Q&A parser but treats the second column as comma-separated tags/labels
+rather than answers. Each content-tag pair becomes a separate chunk with
+tags stored as keywords for filtering. Also provides tag-based question
+labeling using cached tag indexes from knowledge bases.
+"""
+
 import json
 import re
 import csv
@@ -25,6 +34,18 @@ from common import settings
 
 
 def beAdoc(d, q, a, eng, row_num=-1):
+    """Build a document chunk from a content-tag pair.
+
+    Args:
+        d: Base document dictionary to populate.
+        q: Content text.
+        a: Comma-separated tag string.
+        eng: Whether the content is in English.
+        row_num: Row number in the source file for position tracking.
+
+    Returns:
+        The populated document dictionary with tokenized content and tags.
+    """
     d["content_with_weight"] = q
     d["content_ltks"] = rag_tokenizer.tokenize(q)
     d["content_sm_ltks"] = rag_tokenizer.fine_grained_tokenize(d["content_ltks"])
@@ -123,6 +144,19 @@ def chunk(filename, binary=None, lang="Chinese", callback=None, **kwargs):
 
 
 def label_question(question, kbs):
+    """Assign tags to a question using tag knowledge bases.
+
+    Looks up tag knowledge bases configured in the given knowledge bases,
+    retrieves all available tags, and matches them against the question
+    using the retriever.
+
+    Args:
+        question: The question text to label.
+        kbs: List of knowledge base objects to check for tag_kb_ids.
+
+    Returns:
+        Matched tags list, or None if no tag knowledge bases are configured.
+    """
     from db.services.knowledgebase_service import KnowledgebaseService
     from rag.graphrag.utils import get_tags_from_cache, set_tags_to_cache
     tags = None

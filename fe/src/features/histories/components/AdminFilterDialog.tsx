@@ -58,7 +58,7 @@ export const AdminFilterDialog = ({
                         value={tempFilters.email}
                         onChange={(e) => setTempFilters({ ...tempFilters, email: e.target.value })}
                         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                        placeholder="e.g. user@example.com"
+                        placeholder={t('histories.userEmailPlaceholder', 'e.g. user@example.com')}
                     />
                 </div>
 
@@ -72,7 +72,7 @@ export const AdminFilterDialog = ({
                         value={tempFilters.sourceName || ''}
                         onChange={(e) => setTempFilters({ ...tempFilters, sourceName: e.target.value })}
                         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                        placeholder="e.g. My Knowledge Base"
+                        placeholder={t('histories.sourceNamePlaceholder', 'e.g. My Knowledge Base')}
                     />
                 </div>
 

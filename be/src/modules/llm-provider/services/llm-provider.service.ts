@@ -50,6 +50,7 @@ export class LlmProviderService {
                 api_key: encryptedKey,
                 api_base: data.api_base || null,
                 max_tokens: data.max_tokens || null,
+                vision: data.vision || false,
                 status: 'active',
                 is_default: data.is_default || false,
                 updated_by: user?.id || null,
@@ -63,6 +64,7 @@ export class LlmProviderService {
                 api_key: encryptedKey,
                 api_base: data.api_base || null,
                 max_tokens: data.max_tokens || null,
+                vision: data.vision || false,
                 status: 'active',
                 is_default: data.is_default || false,
                 created_by: user?.id || null,
@@ -106,6 +108,7 @@ export class LlmProviderService {
         if (data.api_base !== undefined) updateData.api_base = data.api_base;
         if (data.max_tokens !== undefined) updateData.max_tokens = data.max_tokens;
         if (data.is_default !== undefined) updateData.is_default = data.is_default;
+        if (data.vision !== undefined) updateData.vision = data.vision;
         if (user) updateData.updated_by = user.id;
 
         const provider = await ModelFactory.modelProvider.update(id, updateData);

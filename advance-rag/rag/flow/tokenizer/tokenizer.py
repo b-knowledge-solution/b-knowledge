@@ -12,6 +12,15 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""Tokenizer component for the RAG processing flow pipeline.
+
+The final processing stage that prepares chunks for indexing by performing
+full-text tokenization and/or embedding vector generation. Tokenization
+produces search tokens for keyword matching, while embedding generates
+dense vectors for semantic similarity search. Supports configurable
+search methods and filename embedding weight blending.
+"""
+
 import logging
 import random
 import re
@@ -33,6 +42,13 @@ from common.token_utils import truncate
 from common.misc_utils import thread_pool_exec
 
 class TokenizerParam(ProcessParamBase):
+    """Parameter class for the Tokenizer component.
+
+    Attributes:
+        search_method: List of enabled search methods ("full_text", "embedding").
+        filename_embd_weight: Weight for blending filename embedding with content.
+        fields: List of chunk field names to tokenize/embed.
+    """
     def __init__(self):
         super().__init__()
         self.search_method = ["full_text", "embedding"]
@@ -48,6 +64,12 @@ class TokenizerParam(ProcessParamBase):
 
 
 class Tokenizer(ProcessBase):
+    """Tokenization and embedding pipeline component.
+
+    Performs full-text tokenization (content_ltks, content_sm_ltks)
+    and/or embedding vector generation for each chunk. Supports
+    batch embedding with rate limiting and filename weight blending.
+    """
     component_name = "Tokenizer"
 
     async def _embedding(self, name, chunks):

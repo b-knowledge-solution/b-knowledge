@@ -13,6 +13,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Document service for managing RAG documents and their chunks.
+
+Provides comprehensive operations for document lifecycle management
+including CRUD, chunk indexing/deletion in the document store (OpenSearch),
+embedding vector management, document re-parsing triggers, and batch
+operations. Coordinates between the Peewee ORM, document store, and
+S3 storage for full document processing workflows.
+"""
 import asyncio
 import json
 import logging

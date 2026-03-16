@@ -1,6 +1,7 @@
 import { Spinner } from '@/components/ui/spinner';
 import mammoth from 'mammoth';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface DocPreviewerProps {
   className?: string;
@@ -19,6 +20,7 @@ const isZipLikeBlob = async (blob: Blob): Promise<boolean> => {
 };
 
 export const DocPreviewer: React.FC<DocPreviewerProps> = ({ className, url }) => {
+  const { t } = useTranslation();
   const [htmlContent, setHtmlContent] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
@@ -34,7 +36,7 @@ export const DocPreviewer: React.FC<DocPreviewerProps> = ({ className, url }) =>
         const looksLikeZip = await isZipLikeBlob(blob);
         if (!looksLikeZip) {
           setHtmlContent(
-            '<div class="flex h-full items-center justify-center"><div class="border border-dashed rounded-xl p-8 max-w-2xl text-center"><p class="text-2xl font-bold mb-4">Preview not available</p><p class="italic text-sm leading-relaxed">Only modern .docx files are supported for preview.</p></div></div>',
+            `<div class="flex h-full items-center justify-center"><div class="border border-dashed rounded-xl p-8 max-w-2xl text-center"><p class="text-2xl font-bold mb-4">${t('preview.notAvailable')}</p><p class="italic text-sm leading-relaxed">${t('preview.docxOnly')}</p></div></div>`,
           );
           return;
         }
@@ -50,7 +52,7 @@ export const DocPreviewer: React.FC<DocPreviewerProps> = ({ className, url }) =>
         setHtmlContent(styledContent);
       } catch (err) {
         console.error('Error parsing document:', err);
-        setHtmlContent('<p class="text-red-500 text-center p-8">Failed to parse document</p>');
+        setHtmlContent(`<p class="text-red-500 text-center p-8">${t('preview.failedToParseDocument')}</p>`);
       } finally {
         setLoading(false);
       }

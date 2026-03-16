@@ -1,8 +1,8 @@
 /**
  * @fileoverview System Default Models panel for the LLM Provider admin page.
  *
- * Compact single-row layout showing one inline select per model type.
- * Saves vertical space compared to the previous 6-card grid.
+ * Compact single-row layout showing one inline select per model type,
+ * plus a VLM selector for chat models with vision support.
  *
  * @module features/llm-provider/components/DefaultModelsPanel
  */
@@ -38,27 +38,15 @@ import type { ModelProvider, ModelType } from '../types/llmProvider.types'
 const MODEL_TYPE_ICONS: Record<ModelType, LucideIcon> = {
   chat: MessageSquare,
   embedding: Layers,
-  image2text: Eye,
   speech2text: Mic,
   rerank: ArrowUpDown,
   tts: Volume2,
-}
-
-/** Display labels for model types in the defaults panel */
-const MODEL_TYPE_LABELS: Record<ModelType, string> = {
-  chat: 'LLM',
-  embedding: 'Embedding',
-  image2text: 'VLM',
-  speech2text: 'ASR',
-  rerank: 'Rerank',
-  tts: 'TTS',
 }
 
 /** Accent colour classes for each model type icon */
 const ICON_COLORS: Record<ModelType, string> = {
   chat: 'text-blue-600 dark:text-blue-400',
   embedding: 'text-green-600 dark:text-green-400',
-  image2text: 'text-purple-600 dark:text-purple-400',
   speech2text: 'text-orange-600 dark:text-orange-400',
   rerank: 'text-teal-600 dark:text-teal-400',
   tts: 'text-pink-600 dark:text-pink-400',
@@ -80,7 +68,8 @@ interface DefaultModelsPanelProps {
 // ============================================================================
 
 /**
- * Compact single-row panel showing an inline select per model type.
+ * Compact single-row panel showing an inline select per model type,
+ * plus a VLM selector for vision-enabled chat models.
  *
  * @param props - Component props
  * @returns React element
@@ -107,6 +96,11 @@ export function DefaultModelsPanel({ providers, onDefaultChanged }: DefaultModel
     }
   }
 
+  // VLM providers: chat models with vision=true
+  const vlmProviders = providers.filter((p) => p.model_type === 'chat' && p.vision === true)
+  // Current VLM default (among vision-enabled chat providers)
+  const currentVlmDefault = vlmProviders.find((p) => p.is_default)
+
   return (
     <Card>
       <CardHeader className="pb-2 pt-3">
@@ -131,7 +125,7 @@ export function DefaultModelsPanel({ providers, onDefaultChanged }: DefaultModel
                 {/* Type icon + label */}
                 <IconComponent size={14} className={ICON_COLORS[modelType]} />
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                  {MODEL_TYPE_LABELS[modelType]}:
+                  {t(`llmProviders.modelTypes.${modelType}`)}:
                 </span>
 
                 {/* Inline select or "Not set" badge */}
@@ -157,13 +151,41 @@ export function DefaultModelsPanel({ providers, onDefaultChanged }: DefaultModel
                   </span>
                 )}
 
-                {/* Subtle separator between items (not after last) */}
-                {modelType !== MODEL_TYPES[MODEL_TYPES.length - 1] && (
-                  <span className="text-gray-300 dark:text-gray-600 mx-0.5">|</span>
-                )}
+                {/* Separator */}
+                <span className="text-gray-300 dark:text-gray-600 mx-0.5">|</span>
               </div>
             )
           })}
+
+          {/* VLM selector — chat models with vision=true */}
+          <div className="flex items-center gap-1.5">
+            <Eye size={14} className="text-purple-600 dark:text-purple-400" />
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
+              {t('llmProviders.modelTypes.vision')}:
+            </span>
+
+            {vlmProviders.length > 0 ? (
+              <Select
+                value={currentVlmDefault?.id ?? ''}
+                onValueChange={handleDefaultChange}
+              >
+                <SelectTrigger className="h-7 w-auto min-w-[120px] max-w-[200px] text-xs">
+                  <SelectValue placeholder={t('llmProviders.defaultNotSet')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {vlmProviders.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.factory_name} / {p.model_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <span className="text-xs text-gray-400 dark:text-gray-500 italic">
+                {t('llmProviders.defaultNotSet')}
+              </span>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -171,3 +193,4 @@ export function DefaultModelsPanel({ providers, onDefaultChanged }: DefaultModel
 }
 
 export default DefaultModelsPanel
+

@@ -5,9 +5,10 @@
  */
 
 import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/queryKeys'
 import { searchApi } from './searchApi'
-import type { SearchResult, SearchFilters } from '../types/search.types'
+import type { SearchApp, SearchResult, SearchFilters } from '../types/search.types'
 
 // ============================================================================
 // Types
@@ -93,5 +94,37 @@ export function useSearch(): UseSearchReturn {
     clearResults,
     error: mutation.error?.message ?? null,
     lastQuery,
+  }
+}
+
+// ============================================================================
+// Search App Hooks
+// ============================================================================
+
+/** Parameters for the search apps list query */
+export interface SearchAppsParams {
+  page?: number | undefined
+  page_size?: number | undefined
+  search?: string | undefined
+  sort_by?: 'created_at' | 'name' | undefined
+  sort_order?: 'asc' | 'desc' | undefined
+}
+
+/**
+ * @description Hook to fetch paginated search apps.
+ * @param params - Pagination, search, and sorting parameters
+ * @returns Query result with data array, total count, and loading state
+ */
+export function useSearchApps(params: SearchAppsParams = {}) {
+  const query = useQuery({
+    queryKey: queryKeys.search.apps(params as Record<string, unknown>),
+    queryFn: () => searchApi.listSearchApps(params),
+  })
+
+  return {
+    apps: query.data?.data ?? [] as SearchApp[],
+    total: query.data?.total ?? 0,
+    isLoading: query.isLoading,
+    error: query.error,
   }
 }

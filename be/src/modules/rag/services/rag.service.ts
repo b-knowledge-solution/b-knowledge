@@ -1,4 +1,5 @@
 import { ModelFactory } from '@/shared/models/factory.js';
+import { db } from '@/shared/db/knex.js';
 import { log } from '@/shared/services/logger.service.js';
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js';
 import { Dataset, Document, AccessControl, UserContext } from '@/shared/models/types.js';
@@ -47,6 +48,15 @@ export class RagService {
 
     async createDataset(data: any, user?: UserContext): Promise<Dataset> {
         try {
+            // Case-insensitive name uniqueness check
+            const existing = await db('datasets')
+                .whereRaw('LOWER(name) = LOWER(?)', [data.name])
+                .where('status', '!=', 'deleted')
+                .first()
+            if (existing) {
+                throw new Error('A dataset with this name already exists')
+            }
+
             const dataset = await ModelFactory.dataset.create({
                 name: data.name,
                 description: data.description || null,
@@ -81,6 +91,14 @@ export class RagService {
 
     async updateDataset(id: string, data: any, user?: UserContext): Promise<Dataset | undefined> {
         try {
+            // Embedding model lock: cannot change if dataset has chunks
+            if (data.embedding_model !== undefined) {
+                const current = await ModelFactory.dataset.findById(id)
+                if (current && data.embedding_model !== current.embedding_model && (current as any).chunk_count > 0) {
+                    throw new Error('Cannot change embedding model after documents have been parsed. Delete all chunks first.')
+                }
+            }
+
             const updateData: any = {};
             if (data.name !== undefined) updateData.name = data.name;
             if (data.description !== undefined) updateData.description = data.description;
@@ -114,6 +132,7 @@ export class RagService {
 
     async deleteDataset(id: string, user?: UserContext): Promise<void> {
         try {
+            // Soft-delete the dataset by setting status to 'deleted'
             await ModelFactory.dataset.update(id, { status: 'deleted' });
 
             if (user) {
@@ -126,6 +145,32 @@ export class RagService {
                     ipAddress: user.ip,
                 });
             }
+
+            // Clean stale references in chat_assistants.kb_ids
+            const affectedAssistants = await db('chat_assistants')
+                .whereRaw("kb_ids @> ?::jsonb", [JSON.stringify([id])])
+                .select('id', 'kb_ids');
+
+            for (const assistant of affectedAssistants) {
+                const updatedKbIds = (assistant.kb_ids as string[]).filter((kbId: string) => kbId !== id);
+                await db('chat_assistants')
+                    .where('id', assistant.id)
+                    .update({ kb_ids: JSON.stringify(updatedKbIds) });
+            }
+
+            // Clean stale references in search_apps.dataset_ids
+            const affectedApps = await db('search_apps')
+                .whereRaw("dataset_ids @> ?::jsonb", [JSON.stringify([id])])
+                .select('id', 'dataset_ids');
+
+            for (const app of affectedApps) {
+                const updatedIds = (app.dataset_ids as string[]).filter((dsId: string) => dsId !== id);
+                await db('search_apps')
+                    .where('id', app.id)
+                    .update({ dataset_ids: JSON.stringify(updatedIds) });
+            }
+
+            log.info(`Cleaned stale references: ${affectedAssistants.length} assistants, ${affectedApps.length} search apps`);
         } catch (error) {
             log.error('Failed to delete dataset', { error: String(error) });
             throw error;

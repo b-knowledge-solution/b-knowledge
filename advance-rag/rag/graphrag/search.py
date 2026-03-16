@@ -13,6 +13,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Knowledge graph search for GraphRAG retrieval.
+
+This module implements the KGSearch class that performs hybrid retrieval over
+a knowledge graph, combining entity retrieval by keywords and types, relation
+retrieval by text similarity, N-hop path expansion, and community report
+retrieval. Results are scored using pagerank times similarity and returned
+as a formatted chunk for downstream answer generation.
+"""
 import asyncio
 import json
 import logging
@@ -33,7 +41,27 @@ from common.doc_store.doc_store_base import OrderByExpr
 
 
 class KGSearch(Dealer):
+    """Knowledge graph search engine for GraphRAG retrieval.
+
+    Extends the base Dealer search class with knowledge-graph-specific
+    retrieval methods including entity lookup, relation lookup, N-hop
+    path expansion, and community report retrieval.
+    """
     async def _chat(self, llm_bdl, system, history, gen_conf):
+        """Send a chat request to the LLM with Redis caching.
+
+        Args:
+            llm_bdl: LLM bundle with model name and async_chat method.
+            system: System prompt content.
+            history: Chat history messages.
+            gen_conf: Generation configuration.
+
+        Returns:
+            The LLM response string.
+
+        Raises:
+            Exception: If the LLM returns an error response.
+        """
         response = get_llm_cache(llm_bdl.llm_name, system, history, gen_conf)
         if response:
             return response
@@ -44,6 +72,24 @@ class KGSearch(Dealer):
         return response
 
     async def query_rewrite(self, llm, question, idxnms, kb_ids):
+        """Rewrite a user query into answer-type keywords and entity mentions.
+
+        Uses the MiniRAG-style prompt with an entity-type pool to classify
+        the query and extract relevant entity mentions.
+
+        Args:
+            llm: LLM bundle for chat completions.
+            question: The user's original question.
+            idxnms: Index names for entity type retrieval.
+            kb_ids: Knowledge base identifiers.
+
+        Returns:
+            Tuple of (type_keywords, entities_from_query).
+
+        Raises:
+            Exception: If JSON parsing fails completely.
+        """
+        # Build the answer-type pool from stored entity type samples
         ty2ents = await get_entity_type2samples(idxnms, kb_ids)
         hint_prompt = PROMPTS["minirag_query2kwd"].format(query=question,
                                                           TYPE_POOL=json.dumps(ty2ents, ensure_ascii=False, indent=2))
@@ -54,6 +100,7 @@ class KGSearch(Dealer):
             entities_from_query = keywords_data.get("entities_from_query", [])[:5]
             return type_keywords, entities_from_query
         except json_repair.JSONDecodeError:
+            # Fallback: try to extract JSON from the response manually
             try:
                 result = result.replace(hint_prompt[:-1], '').replace('user', '').replace('model', '').strip()
                 result = '{' + result.split('{')[1].split('}')[0] + '}'
@@ -67,6 +114,15 @@ class KGSearch(Dealer):
                 raise e
 
     def _ent_info_from_(self, es_res, sim_thr=0.3):
+        """Extract entity information from document store search results.
+
+        Args:
+            es_res: Raw search results from the document store.
+            sim_thr: Minimum similarity score to include an entity.
+
+        Returns:
+            Dictionary mapping entity names to their info dicts.
+        """
         res = {}
         flds = ["content_with_weight", "_score", "entity_kwd", "rank_flt", "n_hop_with_weight"]
         es_res = self.dataStore.get_fields(es_res, flds)
@@ -87,6 +143,15 @@ class KGSearch(Dealer):
         return res
 
     def _relation_info_from_(self, es_res, sim_thr=0.3):
+        """Extract relationship information from document store search results.
+
+        Args:
+            es_res: Raw search results from the document store.
+            sim_thr: Minimum similarity score to include a relationship.
+
+        Returns:
+            Dictionary mapping (from, to) entity pairs to their info dicts.
+        """
         res = {}
         es_res = self.dataStore.get_fields(es_res, ["content_with_weight", "_score", "from_entity_kwd", "to_entity_kwd",
                                                    "weight_int"])
@@ -106,6 +171,20 @@ class KGSearch(Dealer):
         return res
 
     def get_relevant_ents_by_keywords(self, keywords, filters, idxnms, kb_ids, emb_mdl, sim_thr=0.3, N=56):
+        """Find relevant entities by keyword embedding similarity.
+
+        Args:
+            keywords: List of keyword strings to search for.
+            filters: Base filter conditions.
+            idxnms: Index names to search.
+            kb_ids: Knowledge base identifiers.
+            emb_mdl: Embedding model for vectorizing keywords.
+            sim_thr: Minimum similarity threshold.
+            N: Maximum number of results.
+
+        Returns:
+            Dictionary mapping entity names to their info dicts.
+        """
         if not keywords:
             return {}
         filters = deepcopy(filters)
@@ -117,6 +196,20 @@ class KGSearch(Dealer):
         return self._ent_info_from_(es_res, sim_thr)
 
     def get_relevant_relations_by_txt(self, txt, filters, idxnms, kb_ids, emb_mdl, sim_thr=0.3, N=56):
+        """Find relevant relationships by text embedding similarity.
+
+        Args:
+            txt: Query text to search for.
+            filters: Base filter conditions.
+            idxnms: Index names to search.
+            kb_ids: Knowledge base identifiers.
+            emb_mdl: Embedding model for vectorizing the text.
+            sim_thr: Minimum similarity threshold.
+            N: Maximum number of results.
+
+        Returns:
+            Dictionary mapping (from, to) entity pairs to their info dicts.
+        """
         if not txt:
             return {}
         filters = deepcopy(filters)
@@ -128,6 +221,18 @@ class KGSearch(Dealer):
         return self._relation_info_from_(es_res, sim_thr)
 
     def get_relevant_ents_by_types(self, types, filters, idxnms, kb_ids, N=56):
+        """Find relevant entities by entity type, sorted by rank.
+
+        Args:
+            types: List of entity type labels to filter by.
+            filters: Base filter conditions.
+            idxnms: Index names to search.
+            kb_ids: Knowledge base identifiers.
+            N: Maximum number of results.
+
+        Returns:
+            Dictionary mapping entity names to their info dicts.
+        """
         if not types:
             return {}
         filters = deepcopy(filters)
@@ -152,12 +257,34 @@ class KGSearch(Dealer):
                rel_sim_threshold: float = 0.3,
                   **kwargs
                ):
+        """Perform hybrid knowledge graph retrieval for a user question.
+
+        Combines entity retrieval, relation retrieval, N-hop expansion,
+        and community reports. Scores results using pagerank times similarity.
+
+        Args:
+            question: The user's question.
+            tenant_ids: Tenant identifier(s) for index routing.
+            kb_ids: Knowledge base identifiers.
+            emb_mdl: Embedding model for vector search.
+            llm: LLM bundle for query rewriting.
+            max_token: Maximum tokens for the result content.
+            ent_topn: Maximum entities to return.
+            rel_topn: Maximum relationships to return.
+            comm_topn: Maximum community reports to return.
+            ent_sim_threshold: Similarity threshold for entity retrieval.
+            rel_sim_threshold: Similarity threshold for relation retrieval.
+
+        Returns:
+            Dictionary containing the formatted retrieval result chunk.
+        """
         qst = question
         filters = self.get_filters({"kb_ids": kb_ids})
         if isinstance(tenant_ids, str):
             tenant_ids = tenant_ids.split(",")
         idxnms = [index_name(tid) for tid in tenant_ids]
         ty_kwds = []
+        # Step 1: Rewrite query to extract entity types and mentions
         try:
             ty_kwds, ents = await self.query_rewrite(llm, qst, [index_name(tid) for tid in tenant_ids], kb_ids)
             logging.info(f"Q: {qst}, Types: {ty_kwds}, Entities: {ents}")
@@ -166,9 +293,12 @@ class KGSearch(Dealer):
             ents = [qst]
             pass
 
+        # Step 2: Retrieve entities and relationships from multiple sources
         ents_from_query = self.get_relevant_ents_by_keywords(ents, filters, idxnms, kb_ids, emb_mdl, ent_sim_threshold)
         ents_from_types = self.get_relevant_ents_by_types(ty_kwds, filters, idxnms, kb_ids, 10000)
         rels_from_txt = self.get_relevant_relations_by_txt(qst, filters, idxnms, kb_ids, emb_mdl, rel_sim_threshold)
+
+        # Step 3: Expand via N-hop paths from retrieved entities
         nhop_pathes = defaultdict(dict)
         for _, ent in ents_from_query.items():
             nhops = ent.get("n_hop_ents", [])
@@ -191,12 +321,14 @@ class KGSearch(Dealer):
         logging.info("Retrieved entities from types({}): {}".format(ty_kwds, list(ents_from_types.keys())))
         logging.info("Retrieved N-hops: {}".format(list(nhop_pathes.keys())))
 
-        # P(E|Q) => P(E) * P(Q|E) => pagerank * sim
+        # Step 4: Score combination: P(E|Q) => pagerank * sim
+        # Boost entities that match both keyword search and type search
         for ent in ents_from_types.keys():
             if ent not in ents_from_query:
                 continue
             ents_from_query[ent]["sim"] *= 2
 
+        # Boost relations overlapping with N-hop paths or type-matched entities
         for (f, t) in rels_from_txt.keys():
             pair = tuple(sorted([f, t]))
             s = 0
@@ -221,11 +353,13 @@ class KGSearch(Dealer):
                 "pagerank": nhop_pathes[(f, t)]["pagerank"]
             }
 
+        # Sort by combined score and take top-N
         ents_from_query = sorted(ents_from_query.items(), key=lambda x: x[1]["sim"] * x[1]["pagerank"], reverse=True)[
                           :ent_topn]
         rels_from_txt = sorted(rels_from_txt.items(), key=lambda x: x[1]["sim"] * x[1]["pagerank"], reverse=True)[
                         :rel_topn]
 
+        # Step 5: Format results as CSV tables with token budget
         ents = []
         relas = []
         for n, ent in ents_from_query:
@@ -240,6 +374,7 @@ class KGSearch(Dealer):
                 break
 
         for (f, t), rel in rels_from_txt:
+            # Fetch relation description from store if not already available
             if not rel.get("description"):
                 for tid in tenant_ids:
                     rela = await get_relation(tid, kb_ids, f, t)
@@ -291,6 +426,19 @@ class KGSearch(Dealer):
             }
 
     def _community_retrieval_(self, entities, condition, kb_ids, idxnms, topn, max_token):
+        """Retrieve community reports related to the given entities.
+
+        Args:
+            entities: List of entity names to search for.
+            condition: Base filter conditions.
+            kb_ids: Knowledge base identifiers.
+            idxnms: Index names to search.
+            topn: Maximum number of community reports.
+            max_token: Remaining token budget.
+
+        Returns:
+            Formatted string with community reports, or empty string if none.
+        """
         ## Community retrieval
         fields = ["docnm_kwd", "content_with_weight"]
         odr = OrderByExpr()

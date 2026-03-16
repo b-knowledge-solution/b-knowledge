@@ -14,6 +14,15 @@
 #  limitations under the License.
 #
 
+"""Image and video file parser module for the RAG pipeline.
+
+Handles chunking of image files (JPEG, PNG, GIF, etc.) and video files
+(MP4, AVI, etc.). For images, uses OCR to extract text and optionally
+a computer vision LLM to describe the image content. For videos, uses
+a vision LLM to generate a text description. Supports Gemini-compatible
+video MIME types.
+"""
+
 import asyncio
 import io
 import re
@@ -35,6 +44,23 @@ VIDEO_EXTS = [".mp4", ".mov", ".avi", ".flv", ".mpeg", ".mpg", ".webm", ".wmv", 
 
 
 def chunk(filename, binary, tenant_id, lang, callback=None, **kwargs):
+    """Parse and chunk an image or video file.
+
+    For video files, uses a vision LLM to generate a description.
+    For images, first attempts OCR text extraction; if the result is
+    short, falls back to a CV LLM for richer description.
+
+    Args:
+        filename: Original filename including extension.
+        binary: Raw binary content of the file.
+        tenant_id: Tenant identifier for LLM model lookup.
+        lang: Language for text processing.
+        callback: Progress callback function.
+        **kwargs: Additional keyword arguments including parser_config.
+
+    Returns:
+        A list of document chunks, or empty list on failure.
+    """
     doc = {
         "docnm_kwd": filename,
         "title_tks": rag_tokenizer.tokenize(re.sub(r"\.[a-zA-Z]+$", "", filename)),

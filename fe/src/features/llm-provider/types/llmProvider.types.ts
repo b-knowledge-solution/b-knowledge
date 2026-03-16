@@ -26,6 +26,8 @@ export interface ModelProvider {
   api_base?: string | null
   /** Maximum token limit for this model */
   max_tokens?: number | null
+  /** Whether this chat model supports vision (image understanding) */
+  vision?: boolean
   /** Provider status — "active" or "deleted" */
   status: string
   /** Whether this is the default provider for its model type */
@@ -44,8 +46,8 @@ export interface ModelProvider {
 // Model Type Constants
 // ============================================================================
 
-/** All supported RAGFlow model types */
-export const MODEL_TYPES = ['chat', 'embedding', 'image2text', 'speech2text', 'rerank', 'tts'] as const
+/** All supported model types (vision is a flag on chat, not a separate type) */
+export const MODEL_TYPES = ['chat', 'embedding', 'speech2text', 'rerank', 'tts'] as const
 
 /** Union type for all supported model types */
 export type ModelType = typeof MODEL_TYPES[number]
@@ -65,6 +67,8 @@ export interface PresetModel {
   model_type: string
   /** Maximum token limit, or null if unlimited/unknown */
   max_tokens: number | null
+  /** Whether this model supports vision (only relevant for chat type) */
+  vision?: boolean
 }
 
 /**
@@ -96,6 +100,7 @@ export interface CreateProviderDTO {
   api_base?: string | null
   max_tokens?: number | null
   is_default?: boolean
+  vision?: boolean
 }
 
 /**
@@ -110,4 +115,6 @@ export interface UpdateProviderDTO {
   api_base?: string | null
   max_tokens?: number | null
   is_default?: boolean
+  vision?: boolean
 }
+

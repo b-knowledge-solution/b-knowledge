@@ -13,16 +13,36 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Utility functions for the deepdoc parser module.
+
+Provides helper functions used across multiple document parsers, such as
+text extraction from files with automatic encoding detection.
+"""
 
 from rag.nlp import find_codec
 
 
 def get_text(fnm: str, binary=None) -> str:
+    """Extract text content from a file or binary data.
+
+    Reads text either from raw binary data (with automatic codec detection)
+    or from a file path. This is used by parsers like TxtParser to obtain
+    the raw text content before chunking.
+
+    Args:
+        fnm: File path to read from when binary is not provided.
+        binary: Raw bytes of the file content. When provided, fnm is ignored.
+
+    Returns:
+        The decoded text content as a string.
+    """
     txt = ""
     if binary is not None:
+        # Detect the encoding of the binary data automatically
         encoding = find_codec(binary)
         txt = binary.decode(encoding, errors="ignore")
     else:
+        # Read from file path line by line
         with open(fnm, "r") as f:
             while True:
                 line = f.readline()

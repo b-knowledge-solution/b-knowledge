@@ -59,7 +59,7 @@ export function CTASection() {
           <Button
             variant="outline"
             size="lg"
-            className="border-white/30 text-white hover:bg-white/10 px-8 py-6 text-lg rounded-xl"
+            className="border-2 border-white text-white bg-transparent hover:bg-white/10 px-8 py-6 text-lg rounded-xl"
           >
             {t('landing.cta.requestDemo')}
           </Button>

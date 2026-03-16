@@ -1,3 +1,12 @@
+"""PaddleOCR-based PDF parser that delegates parsing to a PaddleOCR API server.
+
+Uses the PaddleOCR-VL (Vision-Language) algorithm to extract structured content
+from PDF documents via a remote API. Sends base64-encoded PDF data and receives
+parsed layout blocks with bounding boxes, which are converted into the section/table
+tuple format used by the RAG pipeline.
+
+Extends RAGFlowPdfParser to inherit image cropping and position extraction utilities.
+"""
 #  Copyright 2026 The InfiniFlow Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");

@@ -13,6 +13,18 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Base extractor for GraphRAG entity and relationship extraction.
+
+This module provides the Extractor base class used by both general-mode and
+light-mode graph extractors. It handles LLM chat with caching and retry logic,
+parsing raw extraction records into entity and relationship data structures,
+orchestrating concurrent chunk processing with error handling, merging duplicate
+entities and relationships via LLM-based summarization, and merging graph nodes
+during entity resolution.
+
+Subclasses (e.g., GraphExtractor) implement _process_single_content to define
+their specific extraction prompt and gleaning strategy.
+"""
 import asyncio
 import logging
 import os
@@ -43,13 +55,32 @@ from rag.llm.chat_model import Base as CompletionLLM
 from rag.prompts.generator import message_fit_in
 from common.exceptions import TaskCanceledException
 
+# Separator used to join multiple descriptions for the same entity/edge
 GRAPH_FIELD_SEP = "<SEP>"
+# Default entity types when none are specified
 DEFAULT_ENTITY_TYPES = ["organization", "person", "geo", "event", "category"]
+# Default number of additional extraction passes (gleanings)
 ENTITY_EXTRACTION_MAX_GLEANINGS = 2
+# Max concurrent chunk processing tasks (configurable via env)
 MAX_CONCURRENT_PROCESS_AND_EXTRACT_CHUNK = int(os.environ.get("MAX_CONCURRENT_PROCESS_AND_EXTRACT_CHUNK", 10))
 
 
 class Extractor:
+    """Base class for GraphRAG entity and relationship extractors.
+
+    Provides the full extraction pipeline: concurrent chunk processing,
+    entity/relationship record parsing, deduplication via LLM summarization,
+    and graph node merging for entity resolution.
+
+    Subclasses must implement _process_single_content to define the
+    specific extraction prompt and gleaning strategy.
+
+    Attributes:
+        _llm: The LLM client used for chat completions.
+        _language: Output language for descriptions and summaries.
+        _entity_types: List of entity type labels to extract.
+        callback: Progress callback function set during __call__.
+    """
     _llm: CompletionLLM
 
     def __init__(
@@ -58,17 +89,44 @@ class Extractor:
         language: str | None = "English",
         entity_types: list[str] | None = None,
     ):
+        """Initialize the base extractor.
+
+        Args:
+            llm_invoker: LLM client for chat completions.
+            language: Output language for descriptions and summaries.
+            entity_types: List of entity type labels to extract.
+        """
         self._llm = llm_invoker
         self._language = language
         self._entity_types = entity_types or DEFAULT_ENTITY_TYPES
 
     @timeout(60 * 20)
     def _chat(self, system, history, gen_conf={}, task_id=""):
+        """Send a chat request to the LLM with caching and retry logic.
+
+        Checks the Redis cache first. If no cached response, truncates the
+        system message to fit within the model context window, then retries
+        up to 3 times on failure.
+
+        Args:
+            system: System prompt content.
+            history: Chat history messages.
+            gen_conf: Generation configuration (temperature, etc.).
+            task_id: Task identifier for cancellation checking.
+
+        Returns:
+            The LLM response string.
+
+        Raises:
+            TaskCanceledException: If the task has been cancelled.
+        """
         hist = deepcopy(history)
         conf = deepcopy(gen_conf)
+        # Check cache first
         response = get_llm_cache(self._llm.llm_name, system, hist, conf)
         if response:
             return response
+        # Truncate system message to fit within model context
         _, system_msg = message_fit_in([{"role": "system", "content": system}], int(self._llm.max_length * 0.92))
         response = ""
         for attempt in range(3):
@@ -78,6 +136,7 @@ class Extractor:
                     raise TaskCanceledException(f"Task {task_id} was cancelled")
             try:
                 response = asyncio.run(self._llm.async_chat(system_msg[0]["content"], hist, conf))
+                # Strip any chain-of-thought reasoning wrapped in <think> tags
                 response = re.sub(r"^.*</think>", "", response[0], flags=re.DOTALL)
                 if response.find("**ERROR**") >= 0:
                     raise Exception(response)
@@ -91,27 +150,64 @@ class Extractor:
         return response
 
     def _entities_and_relations(self, chunk_key: str, records: list, tuple_delimiter: str):
+        """Parse extraction records into entity and relationship data structures.
+
+        Iterates through records, classifying each as either an entity or
+        relationship, and groups duplicates by entity name or edge pair.
+
+        Args:
+            chunk_key: Identifier of the source chunk.
+            records: List of raw record strings from LLM output.
+            tuple_delimiter: Delimiter separating fields within a record.
+
+        Returns:
+            Tuple of (entities_dict, relationships_dict) where entities_dict
+            maps entity_name to list of entity dicts, and relationships_dict
+            maps (src, tgt) to list of relationship dicts.
+        """
         maybe_nodes = defaultdict(list)
         maybe_edges = defaultdict(list)
         ent_types = [t.lower() for t in self._entity_types]
         for record in records:
             record_attributes = split_string_by_multi_markers(record, [tuple_delimiter])
 
+            # Try to parse as entity first
             if_entities = handle_single_entity_extraction(record_attributes, chunk_key)
             if if_entities is not None and if_entities.get("entity_type", "unknown").lower() in ent_types:
                 maybe_nodes[if_entities["entity_name"]].append(if_entities)
                 continue
 
+            # Try to parse as relationship
             if_relation = handle_single_relationship_extraction(record_attributes, chunk_key)
             if if_relation is not None:
                 maybe_edges[(if_relation["src_id"], if_relation["tgt_id"])].append(if_relation)
         return dict(maybe_nodes), dict(maybe_edges)
 
     async def __call__(self, doc_id: str, chunks: list[str], callback: Callable | None = None, task_id: str = ""):
+        """Run the full extraction pipeline on a document's chunks.
+
+        Processes all chunks concurrently, collects extracted entities and
+        relationships, then merges duplicates via LLM-based description
+        summarization.
+
+        Args:
+            doc_id: Document identifier used as chunk key prefix.
+            chunks: List of text chunks to extract from.
+            callback: Progress callback accepting keyword args prog and msg.
+            task_id: Task identifier for cancellation checking.
+
+        Returns:
+            Tuple of (all_entities_data, all_relationships_data) where each
+            is a list of merged entity/relationship dictionaries.
+
+        Raises:
+            TaskCanceledException: If the task is cancelled at any checkpoint.
+        """
         self.callback = callback
         start_ts = asyncio.get_running_loop().time()
 
         async def extract_all(doc_id, chunks, max_concurrency=MAX_CONCURRENT_PROCESS_AND_EXTRACT_CHUNK, task_id=""):
+            """Concurrently extract from all chunks with error counting."""
             out_results = []
             error_count = 0
             max_errors = int(os.environ.get("GRAPHRAG_MAX_ERRORS", 3))
@@ -119,6 +215,7 @@ class Extractor:
             limiter = asyncio.Semaphore(max_concurrency)
 
             async def worker(chunk_key_dp: tuple[str, str], idx: int, total: int, task_id=""):
+                """Process a single chunk with concurrency limiting."""
                 nonlocal error_count
                 async with limiter:
 
@@ -159,6 +256,7 @@ class Extractor:
 
             return out_results
 
+        # Check cancellation before starting extraction
         if task_id and has_canceled(task_id):
             raise TaskCanceledException(f"Task {task_id} was cancelled before entity extraction")
 
@@ -167,6 +265,7 @@ class Extractor:
         if task_id and has_canceled(task_id):
             raise TaskCanceledException(f"Task {task_id} was cancelled after entity extraction")
 
+        # Aggregate results from all chunks
         maybe_nodes = defaultdict(list)
         maybe_edges = defaultdict(list)
         sum_token_count = 0
@@ -186,6 +285,7 @@ class Extractor:
         if task_id and has_canceled(task_id):
             raise TaskCanceledException(f"Task {task_id} was cancelled before nodes merging")
 
+        # Merge duplicate entities via LLM summarization
         tasks = [
             asyncio.create_task(self._merge_nodes(en_nm, ents, all_entities_data, task_id))
             for en_nm, ents in maybe_nodes.items()
@@ -213,6 +313,7 @@ class Extractor:
         if task_id and has_canceled(task_id):
             raise TaskCanceledException(f"Task {task_id} was cancelled before relationships merging")
 
+        # Merge duplicate relationships via LLM summarization
         tasks = []
         for (src, tgt), rels in maybe_edges.items():
             tasks.append(
@@ -247,18 +348,32 @@ class Extractor:
         return all_entities_data, all_relationships_data
 
     async def _merge_nodes(self, entity_name: str, entities: list[dict], all_relationships_data, task_id=""):
+        """Merge multiple extraction records for the same entity into one.
+
+        Determines the most common entity type, concatenates descriptions,
+        and uses LLM summarization if there are many duplicate descriptions.
+
+        Args:
+            entity_name: The entity name to merge records for.
+            entities: List of entity dicts with the same name.
+            all_relationships_data: Shared list to append the merged entity to.
+            task_id: Task identifier for cancellation checking.
+        """
         if task_id and has_canceled(task_id):
             raise TaskCanceledException(f"Task {task_id} was cancelled during merge nodes")
 
         if not entities:
             return
+        # Pick the most frequently occurring entity type
         entity_type = sorted(
             Counter([dp["entity_type"] for dp in entities]).items(),
             key=lambda x: x[1],
             reverse=True,
         )[0][0]
+        # Concatenate all unique descriptions
         description = GRAPH_FIELD_SEP.join(sorted(set([dp["description"] for dp in entities])))
         already_source_ids = flat_uniq_list(entities, "source_id")
+        # Summarize if there are many descriptions
         description = await self._handle_entity_relation_summary(entity_name, description, task_id=task_id)
         node_data = dict(
             entity_type=entity_type,
@@ -269,6 +384,18 @@ class Extractor:
         all_relationships_data.append(node_data)
 
     async def _merge_edges(self, src_id: str, tgt_id: str, edges_data: list[dict], all_relationships_data=None, task_id=""):
+        """Merge multiple extraction records for the same relationship into one.
+
+        Sums weights, concatenates descriptions, and uses LLM summarization
+        for many duplicate descriptions.
+
+        Args:
+            src_id: Source entity name.
+            tgt_id: Target entity name.
+            edges_data: List of relationship dicts for this edge.
+            all_relationships_data: Shared list to append the merged relationship to.
+            task_id: Task identifier for cancellation checking.
+        """
         if not edges_data:
             return
         weight = sum([edge["weight"] for edge in edges_data])
@@ -280,11 +407,23 @@ class Extractor:
         all_relationships_data.append(edge_data)
 
     async def _merge_graph_nodes(self, graph: nx.Graph, nodes: list[str], change: GraphChange, task_id=""):
+        """Merge a list of duplicate nodes into the first node in the graph.
+
+        Used during entity resolution. The first node absorbs descriptions,
+        source_ids, and edges from all subsequent nodes, which are removed.
+
+        Args:
+            graph: The knowledge graph (modified in place).
+            nodes: List of node names to merge (first node is the target).
+            change: GraphChange tracker for recording modifications.
+            task_id: Task identifier for cancellation checking.
+        """
         if task_id and has_canceled(task_id):
             raise TaskCanceledException(f"Task {task_id} was cancelled during merge graph nodes")
 
         if len(nodes) <= 1:
             return
+        # First node survives; all others are merged into it
         change.added_updated_nodes.add(nodes[0])
         change.removed_nodes.update(nodes[1:])
         nodes_set = set(nodes)
@@ -298,12 +437,13 @@ class Extractor:
             node1_attrs = graph.nodes[node1]
             node0_attrs["description"] += f"{GRAPH_FIELD_SEP}{node1_attrs['description']}"
             node0_attrs["source_id"] = sorted(set(node0_attrs["source_id"] + node1_attrs["source_id"]))
+            # Reassign edges from the removed node to the surviving node
             for neighbor in graph.neighbors(node1):
                 change.removed_edges.add(get_from_to(node1, neighbor))
                 if neighbor not in nodes_set:
                     edge1_attrs = graph.get_edge_data(node1, neighbor)
                     if neighbor in node0_neighbors:
-                        # Merge two edges
+                        # Merge two edges pointing to the same neighbor
                         change.added_updated_edges.add(get_from_to(nodes[0], neighbor))
                         edge0_attrs = graph.get_edge_data(nodes[0], neighbor)
                         edge0_attrs["weight"] += edge1_attrs["weight"]
@@ -313,18 +453,34 @@ class Extractor:
                         edge0_attrs["description"] = await self._handle_entity_relation_summary(f"({nodes[0]}, {neighbor})", edge0_attrs["description"], task_id=task_id)
                         graph.add_edge(nodes[0], neighbor, **edge0_attrs)
                     else:
+                        # Move edge to the surviving node
                         graph.add_edge(nodes[0], neighbor, **edge1_attrs)
             graph.remove_node(node1)
+        # Summarize the combined description of the surviving node
         node0_attrs["description"] = await self._handle_entity_relation_summary(nodes[0], node0_attrs["description"], task_id=task_id)
         graph.nodes[nodes[0]].update(node0_attrs)
 
     async def _handle_entity_relation_summary(self, entity_or_relation_name: str, description: str, task_id="") -> str:
+        """Summarize an entity or relationship description using the LLM.
+
+        Only triggers summarization when there are more than 12 description
+        segments. Otherwise returns the truncated description as-is.
+
+        Args:
+            entity_or_relation_name: Name of the entity or relationship.
+            description: The concatenated description text.
+            task_id: Task identifier for cancellation checking.
+
+        Returns:
+            The (possibly summarized) description string.
+        """
         if task_id and has_canceled(task_id):
             raise TaskCanceledException(f"Task {task_id} was cancelled during summary handling")
 
         summary_max_tokens = 512
         use_description = truncate(description, summary_max_tokens)
         description_list = use_description.split(GRAPH_FIELD_SEP)
+        # Only summarize if there are many duplicate descriptions
         if len(description_list) <= 12:
             return use_description
         prompt_template = SUMMARIZE_DESCRIPTIONS_PROMPT

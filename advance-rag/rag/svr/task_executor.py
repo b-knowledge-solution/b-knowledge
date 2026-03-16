@@ -12,6 +12,21 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""Main task execution engine for the RAG document processing pipeline.
+
+Orchestrates the end-to-end document processing workflow:
+1. Consuming tasks from Redis message queues
+2. Parsing documents into text chunks (via parser plugins)
+3. Generating embeddings for each chunk
+4. Optionally extracting keywords, questions, metadata, and tags
+5. Running Raptor summarization or GraphRAG knowledge graph construction
+6. Indexing chunks into the document store (Elasticsearch/OpenSearch/Infinity)
+7. Reporting progress and heartbeat status via Redis
+
+Supports concurrent task execution with configurable semaphore limits
+for tasks, chunk building, embedding, and MinIO operations. Handles
+task cancellation, retry logic, and graceful shutdown via signals.
+"""
 
 import time
 
@@ -133,6 +148,12 @@ stop_event = threading.Event()
 
 
 def signal_handler(sig, frame):
+    """Handle SIGINT/SIGTERM for graceful shutdown.
+
+    Args:
+        sig: Signal number received.
+        frame: Current stack frame.
+    """
     logging.info("Received interrupt signal, shutting down...")
     stop_event.set()
     time.sleep(1)
@@ -140,6 +161,22 @@ def signal_handler(sig, frame):
 
 
 def set_progress(task_id, from_page=0, to_page=-1, prog=None, msg="Processing..."):
+    """Update task progress in the database and check for cancellation.
+
+    Formats a progress message with timestamp and optional page range,
+    writes it to the task record, and raises TaskCanceledException if
+    the task has been canceled.
+
+    Args:
+        task_id: Task identifier.
+        from_page: Start page number (0-based) for page range display.
+        to_page: End page number (-1 means no page range display).
+        prog: Progress value (0.0-1.0), or negative for error.
+        msg: Human-readable status message.
+
+    Raises:
+        TaskCanceledException: If the task has been canceled.
+    """
     try:
         if prog is not None and prog < 0:
             msg = "[ERROR]" + msg
@@ -174,6 +211,15 @@ def set_progress(task_id, from_page=0, to_page=-1, prog=None, msg="Processing...
 
 
 async def collect():
+    """Consume the next task message from Redis queues.
+
+    First processes any unacknowledged messages from previous runs,
+    then polls for new messages. Handles special task types like
+    'parse_init' (which splits into sub-tasks) and validates task state.
+
+    Returns:
+        Tuple of (redis_msg, task_dict), or (None, None) if no task available.
+    """
     global CONSUMER_NAME, DONE_TASKS, FAILED_TASKS
     global UNACKED_ITERATOR
 
@@ -257,11 +303,36 @@ async def collect():
 
 
 async def get_storage_binary(bucket, name):
+    """Fetch a file's binary content from object storage asynchronously.
+
+    Args:
+        bucket: Storage bucket name.
+        name: File path within the bucket.
+
+    Returns:
+        Raw bytes of the file content.
+    """
     return await thread_pool_exec(settings.STORAGE_IMPL.get, bucket, name)
 
 
 @timeout(60 * 80, 1)
 async def build_chunks(task, progress_callback):
+    """Parse a document into text chunks with optional keyword/question/tag generation.
+
+    Fetches the document from storage, runs the appropriate parser (naive, paper,
+    book, etc.), uploads chunk images to MinIO, and optionally generates keywords,
+    questions, metadata, and content tags using an LLM.
+
+    Args:
+        task: Task dict with document metadata, parser config, and tenant info.
+        progress_callback: Function to report progress updates.
+
+    Returns:
+        List of chunk dicts ready for embedding and indexing, or empty list on failure.
+
+    Raises:
+        TaskCanceledException: If the task is canceled during processing.
+    """
     if task["size"] > settings.DOC_MAXIMUM_SIZE:
         set_progress(task["id"], prog=-1, msg="File size exceeds( <= %dMb )" %
                                               (int(settings.DOC_MAXIMUM_SIZE / 1024 / 1024)))
@@ -538,6 +609,20 @@ async def build_chunks(task, progress_callback):
 
 
 def build_TOC(task, docs, progress_callback):
+    """Generate a table of contents from parsed document chunks using an LLM.
+
+    Sorts chunks by page number and position, feeds them to the LLM for
+    TOC extraction, then maps TOC entries back to chunk IDs. The resulting
+    TOC is stored as a special hidden chunk (available_int=0).
+
+    Args:
+        task: Task dict with tenant and parser configuration.
+        docs: List of chunk dicts sorted by document order.
+        progress_callback: Function to report progress updates.
+
+    Returns:
+        A TOC chunk dict to insert, or None if no TOC was generated.
+    """
     progress_callback(msg="Start to generate table of content ...")
     chat_model_config = get_model_config_by_type_and_name(task["tenant_id"], LLMType.CHAT, task["llm_id"])
     chat_mdl = LLMBundle(task["tenant_id"], chat_model_config, lang=task["language"])
@@ -585,12 +670,36 @@ def build_TOC(task, docs, progress_callback):
 
 
 def init_kb(row, vector_size: int):
+    """Initialize the knowledge base index in the document store.
+
+    Args:
+        row: Task dict containing tenant_id, kb_id, and parser_id.
+        vector_size: Embedding vector dimension size.
+
+    Returns:
+        Index creation result from the document store connector.
+    """
     idxnm = search.index_name(row["tenant_id"])
     parser_id = row.get("parser_id", None)
     return settings.docStoreConn.create_idx(idxnm, row.get("kb_id", ""), vector_size, parser_id)
 
 
 async def embedding(docs, mdl, parser_config=None, callback=None):
+    """Generate embeddings for document chunks and blend with title embeddings.
+
+    Encodes chunk content and document titles separately, then blends them
+    using a configurable weight (filename_embd_weight). Processes in batches
+    of EMBEDDING_BATCH_SIZE with concurrency limiting.
+
+    Args:
+        docs: List of chunk dicts to embed.
+        mdl: Embedding model (LLMBundle) instance.
+        parser_config: Parser configuration with embedding weight settings.
+        callback: Progress callback function.
+
+    Returns:
+        Tuple of (token_count, vector_size) consumed during embedding.
+    """
     if parser_config is None:
         parser_config = {}
     tts, cnts = [], []
@@ -645,6 +754,15 @@ async def embedding(docs, mdl, parser_config=None, callback=None):
 
 
 async def run_dataflow(task: dict):
+    """Execute a dataflow pipeline for document processing.
+
+    Loads the pipeline DSL from UserCanvasService or PipelineOperationLog,
+    runs the pipeline to produce chunks, generates embeddings if not already
+    present, and indexes the results into the document store.
+
+    Args:
+        task: Task dict with dataflow_id, doc_id, tenant_id, and kb_id.
+    """
     from db.services.canvas_service import UserCanvasService
     from rag.flow.pipeline import Pipeline
 
@@ -884,6 +1002,12 @@ async def run_raptor_for_kb(row, kb_parser_config, chat_mdl, embd_mdl, vector_si
 
 
 async def delete_image(kb_id, chunk_id):
+    """Delete a chunk's associated image from object storage.
+
+    Args:
+        kb_id: Knowledge base ID (used as bucket).
+        chunk_id: Chunk ID (used as object key).
+    """
     try:
         async with minio_limiter:
             settings.STORAGE_IMPL.delete(kb_id, chunk_id)
@@ -972,6 +1096,19 @@ async def insert_chunks(task_id, task_tenant_id, task_dataset_id, chunks, progre
 
 @timeout(60 * 60 * 3, 1)
 async def do_handle_task(task):
+    """Main task dispatch handler that routes to the appropriate processing pipeline.
+
+    Binds the embedding model, initializes the KB index, then dispatches to
+    one of: dataflow pipeline, Raptor summarization, GraphRAG construction,
+    or standard document chunking + embedding + indexing.
+
+    Args:
+        task: Task dict with all metadata needed for processing.
+
+    Raises:
+        TaskCanceledException: If the task is canceled during processing.
+        Exception: On embedding model binding failure or other fatal errors.
+    """
     task_type = task.get("task_type", "")
 
     if task_type == "dataflow" and task.get("doc_id", "") == CANVAS_DEBUG_DOC_ID:
@@ -1224,6 +1361,11 @@ async def do_handle_task(task):
 
 
 async def handle_task():
+    """Top-level task handler with error handling, logging, and message acknowledgement.
+
+    Collects a task from Redis, processes it via do_handle_task, tracks
+    success/failure counts, and acknowledges the Redis message on completion.
+    """
     global DONE_TASKS, FAILED_TASKS
     redis_msg, task = await collect()
     if not task:
@@ -1273,6 +1415,11 @@ async def handle_task():
 
 
 async def get_server_ip() -> str:
+    """Detect the server's IP address using a UDP socket connection.
+
+    Returns:
+        IP address string, or 'Unknown' on failure.
+    """
     # get ip by udp
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
@@ -1362,6 +1509,7 @@ async def report_status():
 
 
 async def task_manager():
+    """Wrapper that runs handle_task and releases the task semaphore on completion."""
     try:
         await handle_task()
     finally:
@@ -1369,6 +1517,12 @@ async def task_manager():
 
 
 async def main():
+    """Main entry point for the task executor process.
+
+    Initializes settings, starts the heartbeat reporter, and runs
+    the task consumption loop with configurable concurrency limits.
+    Stagger startup based on worker number to prevent connection storms.
+    """
     # Stagger executor startup to prevent connection storm to Infinity
     # Extract worker number from CONSUMER_NAME (e.g., "task_executor_abc123_5" -> 5)
     try:

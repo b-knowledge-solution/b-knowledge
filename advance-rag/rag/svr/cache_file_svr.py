@@ -13,6 +13,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""File caching service that pre-loads documents from object storage into Redis.
+
+Scans for documents with active processing tasks and caches their binary
+content in Redis to reduce latency during chunk building. Each cached
+file is stored with a 12-minute TTL. Runs as a continuous background
+loop, polling every second for new files to cache.
+"""
 import logging
 import time
 import traceback
@@ -24,6 +31,15 @@ from common import settings
 
 
 def collect():
+    """Fetch the list of documents currently being processed.
+
+    Queries TaskService for ongoing document locations (knowledge base ID
+    and file path pairs).
+
+    Returns:
+        List of (kb_id, location) tuples for documents being processed,
+        or None if no documents are in progress.
+    """
     doc_locations = TaskService.get_ongoing_doc_name()
     logging.debug(doc_locations)
     if len(doc_locations) == 0:
@@ -33,6 +49,12 @@ def collect():
 
 
 def main():
+    """Cache each in-progress document's binary content into Redis.
+
+    For each document with an active task, checks if it's already cached
+    in Redis. If not, fetches the file from object storage and stores
+    it in Redis with a 12-minute expiration.
+    """
     locations = collect()
     if not locations:
         return
@@ -41,10 +63,13 @@ def main():
         try:
             if REDIS_CONN.is_alive():
                 try:
+                    # Use kb_id/location as the cache key
                     key = "{}/{}".format(kb_id, loc)
                     if REDIS_CONN.exist(key):
                         continue
+                    # Fetch file binary from object storage (MinIO/S3/etc.)
                     file_bin = settings.STORAGE_IMPL.get(kb_id, loc)
+                    # Cache with 12-minute TTL using atomic transaction
                     REDIS_CONN.transaction(key, file_bin, 12 * 60)
                     logging.info("CACHE: {}".format(loc))
                 except Exception as e:
@@ -56,6 +81,7 @@ def main():
 
 
 if __name__ == "__main__":
+    # Run the caching loop continuously, closing DB connections after each cycle
     while True:
         main()
         close_connection()

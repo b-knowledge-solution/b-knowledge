@@ -1,12 +1,13 @@
 /**
- * Full project setup script for new team members.
+ * Software setup script for new team members.
  *
- * @description Runs all setup steps in order:
- *   1. Check prerequisites (Node.js, Python, Docker)
- *   2. Install npm dependencies (workspaces)
- *   3. Set up centralized Python venv with all modules
- *   4. Start Docker base infrastructure (PostgreSQL, Valkey, OpenSearch, RustFS)
- *   5. Copy .env.example to .env if not present
+ * @description Runs software setup steps in order:
+ *   1. Check prerequisites (Node.js, npm, Python)
+ *   2. Copy .env.example to .env if not present
+ *   3. Install npm dependencies (workspaces)
+ *   4. Set up centralized Python venv with all modules
+ *
+ * For Docker infrastructure, run: npm run setup:infra
  */
 
 import { execSync, spawnSync } from 'child_process'
@@ -33,14 +34,17 @@ function section(title) {
 
 /**
  * Checks if a command is available in the system PATH.
+ * On Windows, uses `cmd /c where` to ensure .cmd files are found.
  *
  * @param {string} cmd - The command to check
  * @returns {boolean} True if the command exists
  */
 function commandExists(cmd) {
-  const result = spawnSync(process.platform === 'win32' ? 'where' : 'which', [cmd], {
-    stdio: 'pipe',
-  })
+  const isWin = process.platform === 'win32'
+  // Use cmd /c where on Windows to reliably find .cmd/.bat files like npm
+  const result = isWin
+    ? spawnSync('cmd', ['/c', 'where', cmd], { stdio: 'pipe' })
+    : spawnSync('which', [cmd], { stdio: 'pipe' })
   return result.status === 0
 }
 
@@ -53,14 +57,15 @@ function commandExists(cmd) {
  */
 function getVersion(cmd, args = ['--version']) {
   try {
-    return spawnSync(cmd, args, { stdio: 'pipe' }).stdout.toString().trim().split('\n')[0]
+    // Use shell: true on Windows so .cmd files (like npm) execute correctly
+    return spawnSync(cmd, args, { stdio: 'pipe', shell: true }).stdout.toString().trim().split('\n')[0]
   } catch {
     return 'not found'
   }
 }
 
 // ==========================================================================
-// Step 1 — Check prerequisites
+// Step 1 — Check prerequisites (software only, no Docker)
 // ==========================================================================
 section('Step 1: Checking prerequisites')
 
@@ -68,7 +73,6 @@ const prerequisites = [
   { cmd: 'node', label: 'Node.js' },
   { cmd: 'npm', label: 'npm' },
   { cmd: 'python', label: 'Python' },
-  { cmd: 'docker', label: 'Docker' },
 ]
 
 let missingPrereqs = false
@@ -79,6 +83,43 @@ for (const { cmd, label } of prerequisites) {
     console.log(`  ${red}✗ ${label}: not found${reset}`)
     missingPrereqs = true
   }
+}
+
+// Check C/C++ build tools (needed for advance-rag native extensions)
+const isWin = process.platform === 'win32'
+const isMac = process.platform === 'darwin'
+
+let hasBuildTools = false
+let buildToolsName = ''
+
+if (isWin) {
+  buildToolsName = 'Visual C++ Build Tools'
+  // Check via vswhere for MSVC
+  const vswherePaths = [
+    'C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\vswhere.exe',
+    'C:\\Program Files\\Microsoft Visual Studio\\Installer\\vswhere.exe',
+  ]
+  for (const vswhere of vswherePaths) {
+    if (existsSync(vswhere)) {
+      try {
+        const result = spawnSync(vswhere, ['-products', '*', '-requires', 'Microsoft.VisualCpp.Tools.HostX64.TargetX64', '-property', 'installationPath'], { stdio: 'pipe', encoding: 'utf-8' })
+        if (result.stdout && result.stdout.trim().length > 0) { hasBuildTools = true; break }
+      } catch { /* ignore */ }
+    }
+  }
+  if (!hasBuildTools) hasBuildTools = commandExists('cl')
+} else if (isMac) {
+  buildToolsName = 'Xcode Command Line Tools'
+  hasBuildTools = spawnSync('xcode-select', ['-p'], { stdio: 'pipe' }).status === 0
+} else {
+  buildToolsName = 'GCC (build-essential)'
+  hasBuildTools = commandExists('gcc')
+}
+
+if (hasBuildTools) {
+  console.log(`  ✓ ${buildToolsName}: found`)
+} else {
+  console.log(`  ${yellow}⚠ ${buildToolsName}: not found (will attempt auto-install during Python setup)${reset}`)
 }
 
 if (missingPrereqs) {
@@ -118,41 +159,32 @@ execSync('npm install', { cwd: rootDir, stdio: 'inherit' })
 // ==========================================================================
 section('Step 4: Setting up Python virtual environment')
 
-execSync('node scripts/setup-python.js', { cwd: rootDir, stdio: 'inherit' })
-
-// ==========================================================================
-// Step 5 — Start Docker base infrastructure
-// ==========================================================================
-section('Step 5: Starting Docker base infrastructure')
-
-if (!commandExists('docker')) {
-  console.log(`${yellow}  Docker not found — skipping infrastructure setup.${reset}`)
-  console.log('  You can start it later with: npm run docker:base')
-} else {
-  /** Check if Docker daemon is running */
-  const dockerCheck = spawnSync('docker', ['info'], { stdio: 'pipe' })
-  if (dockerCheck.status !== 0) {
-    console.log(`${yellow}  Docker daemon is not running — skipping infrastructure setup.${reset}`)
-    console.log('  Start Docker Desktop, then run: npm run docker:base')
-  } else {
-    console.log('  Starting PostgreSQL, Valkey, OpenSearch, RustFS...')
-    execSync('docker compose -p b-knowledge -f docker-compose-base.yml up -d', {
-      cwd: dockerDir,
-      stdio: 'inherit',
-    })
-  }
+let pythonSetupFailed = false
+try {
+  execSync('node scripts/setup-python.js', { cwd: rootDir, stdio: 'inherit' })
+} catch {
+  pythonSetupFailed = true
 }
 
 // ==========================================================================
 // Done
 // ==========================================================================
-section('Setup complete!')
+if (pythonSetupFailed) {
+  section('Software setup completed with warnings')
+  console.log(`  ${yellow}Python setup had errors (see above).${reset}`)
+  console.log(`  Restart your terminal and run: ${green}npm run setup:python${reset}\n`)
+} else {
+  section('Software setup complete!')
+}
 
-console.log(`  Start development:   ${green}npm run dev${reset}`)
-console.log(`  Backend only:        ${green}npm run dev:be${reset}`)
-console.log(`  Frontend only:       ${green}npm run dev:fe${reset}`)
-console.log(`  Worker only:         ${green}npm run dev:worker${reset}`)
-console.log(`  Converter only:      ${green}npm run dev:converter${reset}`)
-console.log(`  Docker infra:        ${green}npm run docker:base${reset}`)
-console.log(`  Docker stop:         ${green}npm run docker:down${reset}`)
+console.log(`  Start development:     ${green}npm run dev${reset}`)
+console.log(`  Backend only:          ${green}npm run dev:be${reset}`)
+console.log(`  Frontend only:         ${green}npm run dev:fe${reset}`)
+console.log(`  Worker only:           ${green}npm run dev:worker${reset}`)
+console.log(`  Converter only:        ${green}npm run dev:converter${reset}`)
+console.log('')
+console.log(`  ${yellow}Docker infrastructure:${reset}`)
+console.log(`  Setup infra (first):   ${green}npm run setup:infra${reset}`)
+console.log(`  Start infra:           ${green}npm run docker:base${reset}`)
+console.log(`  Stop infra:            ${green}npm run docker:down${reset}`)
 console.log('')

@@ -4,7 +4,7 @@
  * Renders a modal form with factory preset selection, model type filtering,
  * pre-defined model dropdowns, API key (masked), API base URL with
  * factory-specific placeholders, max tokens, default flag, and a vision
- * checkbox that auto-manages an image2text sibling provider.
+ * checkbox that sets the `vision` boolean on chat providers.
  *
  * @module features/llm-provider/components/ProviderFormDialog
  */
@@ -21,11 +21,6 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import {
-  createProvider,
-  updateProvider,
-  deleteProvider,
-} from '../api/llmProviderApi'
 import { MODEL_TYPES } from '../types/llmProvider.types'
 import type {
   ModelProvider,
@@ -74,33 +69,6 @@ interface ProviderFormDialogProps {
   provider?: ModelProvider | null
   /** Factory presets loaded from the API */
   presets?: FactoryPreset[]
-  /** All current providers — used to look up vision siblings */
-  allProviders?: ModelProvider[]
-}
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-/**
- * Find an image2text sibling provider that shares the same factory and model name.
- *
- * @param factoryName - Factory name to match
- * @param modelName - Model name to match
- * @param allProviders - Full list of active providers
- * @returns The sibling provider or undefined
- */
-function findVisionSibling(
-  factoryName: string,
-  modelName: string,
-  allProviders: ModelProvider[]
-): ModelProvider | undefined {
-  return allProviders.find(
-    (p) =>
-      p.model_type === 'image2text' &&
-      p.factory_name === factoryName &&
-      p.model_name === modelName
-  )
 }
 
 // ============================================================================
@@ -110,7 +78,7 @@ function findVisionSibling(
 /**
  * Modal dialog for creating or editing an LLM provider.
  * When model_type is "chat", an additional checkbox lets the user declare
- * vision support, which auto-manages a paired image2text provider record.
+ * vision support via the `vision` boolean field.
  *
  * @param props - Component props
  * @returns React element
@@ -121,7 +89,6 @@ export function ProviderFormDialog({
   onSubmit,
   provider,
   presets = [],
-  allProviders = [],
 }: ProviderFormDialogProps) {
   const { t } = useTranslation()
 
@@ -137,7 +104,7 @@ export function ProviderFormDialog({
   const [maxTokens, setMaxTokens] = useState('')
   const [isDefault, setIsDefault] = useState(false)
 
-  // Vision (image2text) support checkbox — only relevant when modelType is "chat"
+  // Vision support checkbox — only relevant when modelType is "chat"
   const [supportsVision, setSupportsVision] = useState(false)
 
   // Password visibility toggle
@@ -177,13 +144,8 @@ export function ProviderFormDialog({
       setMaxTokens(provider.max_tokens != null ? String(provider.max_tokens) : '')
       setIsDefault(provider.is_default)
 
-      // Check if a vision sibling exists for this chat provider
-      if (provider.model_type === 'chat') {
-        const sibling = findVisionSibling(provider.factory_name, provider.model_name, allProviders)
-        setSupportsVision(!!sibling)
-      } else {
-        setSupportsVision(false)
-      }
+      // Read vision flag directly from the provider record
+      setSupportsVision(provider.vision === true)
     } else {
       // Reset to defaults for create mode
       setFactoryName('')
@@ -196,7 +158,7 @@ export function ProviderFormDialog({
       setSupportsVision(false)
     }
     setShowKey(false)
-  }, [provider, open, allProviders])
+  }, [provider, open])
 
   /**
    * Handle factory selection change.
@@ -243,8 +205,8 @@ export function ProviderFormDialog({
   }
 
   /**
-   * Handle form submission — build DTO, delegate to parent, and manage
-   * the image2text sibling when vision is toggled.
+   * Handle form submission — build DTO and delegate to parent.
+   * Vision flag is included directly in the payload.
    */
   const handleSubmit = async () => {
     // Build the payload; only include api_key when the user actually typed one
@@ -255,6 +217,8 @@ export function ProviderFormDialog({
       api_base: apiBase || null,
       max_tokens: maxTokens ? Number(maxTokens) : null,
       is_default: isDefault,
+      // Include vision flag for chat models
+      vision: modelType === 'chat' ? supportsVision : false,
     }
 
     // Only send api_key when user has entered a value (avoids overwriting with blank)
@@ -264,45 +228,7 @@ export function ProviderFormDialog({
 
     setSaving(true)
     try {
-      // Submit the primary provider record
       await onSubmit(data)
-
-      // -- Manage image2text sibling for chat providers ----------------------
-      if (modelType === 'chat') {
-        const existingSibling = findVisionSibling(factoryName, modelName, allProviders)
-
-        if (supportsVision && !existingSibling) {
-          // Create a new image2text provider with the same credentials
-          const siblingData: CreateProviderDTO = {
-            factory_name: factoryName,
-            model_type: 'image2text',
-            model_name: modelName,
-            api_base: apiBase || null,
-            max_tokens: maxTokens ? Number(maxTokens) : null,
-            is_default: false,
-          }
-          if (apiKey) {
-            siblingData.api_key = apiKey
-          }
-          await createProvider(siblingData)
-        } else if (supportsVision && existingSibling) {
-          // Update the existing image2text sibling to keep credentials in sync
-          const siblingUpdate: UpdateProviderDTO = {
-            factory_name: factoryName,
-            model_name: modelName,
-            api_base: apiBase || null,
-            max_tokens: maxTokens ? Number(maxTokens) : null,
-          }
-          if (apiKey) {
-            siblingUpdate.api_key = apiKey
-          }
-          await updateProvider(existingSibling.id, siblingUpdate)
-        } else if (!supportsVision && existingSibling) {
-          // Vision unchecked but sibling exists — remove it
-          await deleteProvider(existingSibling.id)
-        }
-      }
-
       onClose()
     } finally {
       setSaving(false)
@@ -353,7 +279,7 @@ export function ProviderFormDialog({
               className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               {MODEL_TYPES.map((mt) => (
-                <option key={mt} value={mt}>{t(`llmProviders.${mt}`)}</option>
+                <option key={mt} value={mt}>{t(`llmProviders.modelTypes.${mt}`)}</option>
               ))}
             </select>
           </div>
@@ -405,7 +331,7 @@ export function ProviderFormDialog({
                 type={showKey ? 'text' : 'password'}
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder={isEdit ? '***' : t('llmProviders.apiKeyPlaceholder')}
+                placeholder={isEdit ? t('llmProviders.apiKeyMaskedPlaceholder') : t('llmProviders.apiKeyPlaceholder')}
                 className="pr-10"
               />
               {/* Toggle password visibility */}
@@ -440,7 +366,7 @@ export function ProviderFormDialog({
               type="number"
               value={maxTokens}
               onChange={(e) => setMaxTokens(e.target.value)}
-              placeholder="e.g., 4096"
+              placeholder={t('llmProviders.maxTokensPlaceholder')}
               min={0}
             />
           </div>

@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import type { SearchResult } from '../types/search.types'
 import ImageLightbox from './ImageLightbox'
+import { SearchHighlight } from './SearchHighlight'
 
 // ============================================================================
 // Props
@@ -53,38 +54,6 @@ function getFileIcon(fileType?: string) {
   }
 }
 
-/**
- * Highlight matching keywords in text.
- * @param text - Source text
- * @param query - Keywords to highlight
- * @returns JSX with highlighted spans
- */
-function highlightText(text: string, query?: string): React.ReactNode {
-  if (!query?.trim()) return text
-
-  try {
-    const words = query.split(/\s+/).filter(Boolean).map(
-      (w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
-    )
-    const regex = new RegExp(`(${words.join('|')})`, 'gi')
-    const parts = text.split(regex)
-
-    return parts.map((part, i) =>
-      regex.test(part) ? (
-        <mark
-          key={i}
-          className="bg-yellow-200 dark:bg-yellow-900/50 text-foreground rounded-sm px-0.5"
-        >
-          {part}
-        </mark>
-      ) : (
-        part
-      ),
-    )
-  } catch {
-    return text
-  }
-}
 
 // ============================================================================
 // Component
@@ -177,9 +146,12 @@ function SearchResultCard({ result, query, onClick, className }: SearchResultCar
           </div>
         )}
 
-        {/* Snippet */}
+        {/* Snippet with search term highlighting */}
         <p className="text-sm text-muted-foreground mt-2 line-clamp-3 leading-relaxed">
-          {highlightText(result.content || result.content_with_weight, query)}
+          <SearchHighlight
+            text={result.content || result.content_with_weight}
+            query={query || ''}
+          />
         </p>
       </button>
 

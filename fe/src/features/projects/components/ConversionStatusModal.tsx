@@ -47,31 +47,32 @@ interface ConversionStatusModalProps {
 // ============================================================================
 
 const StatusBadge = ({ status }: { status: ConversionJobStatus }) => {
+  const { t } = useTranslation();
   const map: Record<ConversionJobStatus, { color: string; icon: typeof CheckCircle2; label: string }> = {
     pending: {
       color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
       icon: Timer,
-      label: 'Pending',
+      label: t('converter.status.pending'),
     },
     waiting: {
       color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
       icon: Clock,
-      label: 'Waiting',
+      label: t('converter.status.waiting'),
     },
     converting: {
       color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
       icon: Loader2,
-      label: 'Converting',
+      label: t('converter.status.converting'),
     },
     finished: {
       color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
       icon: CheckCircle2,
-      label: 'Finished',
+      label: t('converter.status.finished'),
     },
     failed: {
       color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
       icon: XCircle,
-      label: 'Failed',
+      label: t('converter.status.failed'),
     },
   };
 
@@ -90,12 +91,13 @@ const StatusBadge = ({ status }: { status: ConversionJobStatus }) => {
 // ============================================================================
 
 const MiniStats = ({ stats }: { stats: QueueStats }) => {
+  const { t } = useTranslation();
   const items = [
-    { label: 'Pending', value: stats.pending, color: 'text-yellow-600 dark:text-yellow-400' },
-    { label: 'Waiting', value: stats.waiting, color: 'text-orange-600 dark:text-orange-400' },
-    { label: 'Converting', value: stats.converting, color: 'text-blue-600 dark:text-blue-400' },
-    { label: 'Finished', value: stats.finished, color: 'text-green-600 dark:text-green-400' },
-    { label: 'Failed', value: stats.failed, color: 'text-red-600 dark:text-red-400' },
+    { label: t('converter.status.pending'), value: stats.pending, color: 'text-yellow-600 dark:text-yellow-400' },
+    { label: t('converter.status.waiting'), value: stats.waiting, color: 'text-orange-600 dark:text-orange-400' },
+    { label: t('converter.status.converting'), value: stats.converting, color: 'text-blue-600 dark:text-blue-400' },
+    { label: t('converter.status.finished'), value: stats.finished, color: 'text-green-600 dark:text-green-400' },
+    { label: t('converter.status.failed'), value: stats.failed, color: 'text-red-600 dark:text-red-400' },
   ];
 
   return (
@@ -200,7 +202,7 @@ const ConversionStatusModal = ({ open, onClose, projectId }: ConversionStatusMod
               onClick={() => fetchData(false)}
               disabled={loading}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              title="Refresh"
+              title={t('common.refresh')}
             >
               <RefreshCw className={`w-4 h-4 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -242,10 +244,10 @@ const ConversionStatusModal = ({ open, onClose, projectId }: ConversionStatusMod
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 dark:bg-gray-900/30 text-left sticky top-0">
-                  <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Version</th>
-                  <th className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
-                  <th className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden sm:table-cell">Files</th>
-                  <th className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">Time</th>
+                  <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('converter.projectModal.version')}</th>
+                  <th className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('common.status')}</th>
+                  <th className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden sm:table-cell">{t('converter.projectModal.files')}</th>
+                  <th className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">{t('converter.projectModal.time')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -265,7 +267,7 @@ const ConversionStatusModal = ({ open, onClose, projectId }: ConversionStatusMod
                     <td className="px-4 py-3 hidden sm:table-cell">
                       <span className="text-xs text-gray-600 dark:text-gray-300">
                         {job.finishedCount + job.failedCount}/{job.fileCount}
-                        {job.failedCount > 0 && <span className="text-red-500 ml-1">({job.failedCount} failed)</span>}
+                        {job.failedCount > 0 && <span className="text-red-500 ml-1">{t('converter.projectModal.failedCount', { count: job.failedCount })}</span>}
                       </span>
                     </td>
                     <td className="px-4 py-3 hidden md:table-cell">

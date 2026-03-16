@@ -13,7 +13,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Chinese surname lookup table for named entity recognition.
 
+Provides a comprehensive set of Chinese surnames (single-character and
+compound surnames from the Hundred Family Surnames / 百家姓) used by
+the NLP pipeline to identify personal names during tokenization and
+term weighting.
+"""
+
+# Complete set of Chinese surnames including single-character surnames
+# and compound surnames (e.g., 司马, 欧阳, 诸葛)
 m = set(["赵", "钱", "孙", "李",
          "周", "吴", "郑", "王",
          "冯", "陈", "褚", "卫",
@@ -141,4 +150,13 @@ m = set(["赵", "钱", "孙", "李",
          "第五", "言", "福"])
 
 
-def isit(n): return n.strip() in m
+def isit(n):
+    """Check whether a given string is a recognized Chinese surname.
+
+    Args:
+        n: String to check (will be stripped of whitespace).
+
+    Returns:
+        True if the string matches a known Chinese surname.
+    """
+    return n.strip() in m

@@ -13,6 +13,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""
+Canvas Service Module
+
+Manages agent canvas (workflow) templates and user-created canvases. Canvases
+represent visual workflow definitions (agents and dataflow pipelines) that
+define document processing logic. This module provides CRUD operations,
+access control checks, and tenant-scoped listing with search and pagination.
+"""
 import logging
 from db import CanvasCategory, TenantPermission
 from db.db_models import DB, CanvasTemplate, User, UserCanvas
@@ -21,22 +29,55 @@ from peewee import fn
 
 
 class CanvasTemplateService(CommonService):
+    """Service for managing pre-built canvas templates.
+
+    Templates are system-defined workflow blueprints that users can clone
+    to create their own canvases.
+
+    Attributes:
+        model: The CanvasTemplate Peewee model.
+    """
     model = CanvasTemplate
 
 class DataFlowTemplateService(CommonService):
-    """
-    Alias of CanvasTemplateService
+    """Alias of CanvasTemplateService for dataflow-specific template operations.
+
+    Attributes:
+        model: The CanvasTemplate Peewee model.
     """
     model = CanvasTemplate
 
 
 class UserCanvasService(CommonService):
+    """Service for managing user-created canvases (agents and dataflow pipelines).
+
+    Supports listing with pagination, access control verification, and
+    tenant-scoped queries with keyword search.
+
+    Attributes:
+        model: The UserCanvas Peewee model.
+    """
     model = UserCanvas
 
     @classmethod
     @DB.connection_context()
     def get_list(cls, tenant_id,
                  page_number, items_per_page, orderby, desc, id, title, canvas_category=CanvasCategory.Agent):
+        """List canvases for a tenant with filtering, ordering, and pagination.
+
+        Args:
+            tenant_id (str): The tenant/user ID to filter by.
+            page_number (int): Page number for pagination.
+            items_per_page (int): Number of items per page.
+            orderby (str): Field name to sort by.
+            desc (bool): If True, sort descending; otherwise ascending.
+            id (str, optional): Filter by specific canvas ID.
+            title (str, optional): Filter by exact title match.
+            canvas_category (CanvasCategory): Category filter (Agent or DataFlow).
+
+        Returns:
+            list[dict]: List of canvas records as dictionaries.
+        """
         agents = cls.model.select()
         if id:
             agents = agents.where(cls.model.id == id)
@@ -56,7 +97,18 @@ class UserCanvasService(CommonService):
     @classmethod
     @DB.connection_context()
     def get_all_agents_by_tenant_ids(cls, tenant_ids, user_id):
-        # will get all permitted agents, be cautious
+        """Get all permitted canvases across multiple tenants.
+
+        Returns team-visible canvases from specified tenants plus all canvases
+        owned by the user. Results are batched to avoid deep pagination issues.
+
+        Args:
+            tenant_ids (list[str]): List of tenant IDs for team-visible canvases.
+            user_id (str): The current user's ID for owned canvases.
+
+        Returns:
+            list[dict]: List of canvas records as dictionaries.
+        """
         fields = [
             cls.model.id,
             cls.model.avatar,
@@ -65,15 +117,15 @@ class UserCanvasService(CommonService):
             cls.model.canvas_type,
             cls.model.canvas_category
         ]
-        # find team agents and owned agents
+        # Find team canvases and owned canvases
         agents = cls.model.select(*fields).where(
             (cls.model.user_id.in_(tenant_ids) & (cls.model.permission == TenantPermission.TEAM.value)) | (
                 cls.model.user_id == user_id
             )
         )
-        # sort by create_time, asc
+        # Sort by creation time ascending
         agents.order_by(cls.model.create_time.asc())
-        # maybe cause slow query by deep paginate, optimize later
+        # Batch retrieval to avoid deep pagination performance issues
         offset, limit = 0, 50
         res = []
         while True:
@@ -88,6 +140,14 @@ class UserCanvasService(CommonService):
     @classmethod
     @DB.connection_context()
     def get_by_canvas_id(cls, pid):
+        """Get detailed canvas information by ID, including owner details.
+
+        Args:
+            pid (str): The canvas ID to look up.
+
+        Returns:
+            tuple: A tuple of (success: bool, canvas_dict: dict | None).
+        """
         try:
 
             fields = [
@@ -109,7 +169,6 @@ class UserCanvasService(CommonService):
             agents = cls.model.select(*fields) \
             .join(User, on=(cls.model.user_id == User.id)) \
             .where(cls.model.id == pid)
-            # obj = cls.model.query(id=pid)[0]
             return True, agents.dicts()[0]
         except Exception as e:
             logging.exception(e)
@@ -118,6 +177,14 @@ class UserCanvasService(CommonService):
     @classmethod
     @DB.connection_context()
     def get_basic_info_by_canvas_ids(cls, canvas_id):
+        """Get basic canvas info for multiple canvas IDs.
+
+        Args:
+            canvas_id (list[str]): List of canvas IDs to look up.
+
+        Returns:
+            peewee.ModelSelect: Query result with basic canvas fields.
+        """
         fields = [
             cls.model.id,
             cls.model.avatar,
@@ -134,6 +201,24 @@ class UserCanvasService(CommonService):
                           page_number, items_per_page,
                           orderby, desc, keywords, canvas_category=None
                           ):
+        """List canvases across tenants with search, filtering, and pagination.
+
+        Returns canvases visible to the user: team-visible canvases from joined
+        tenants plus the user's own canvases.
+
+        Args:
+            joined_tenant_ids (list[str]): Tenant IDs the user has joined.
+            user_id (str): The current user's ID.
+            page_number (int): Page number for pagination.
+            items_per_page (int): Number of items per page.
+            orderby (str): Field name to sort by.
+            desc (bool): If True, sort descending.
+            keywords (str): Search string for title filtering.
+            canvas_category (str, optional): Filter by canvas category.
+
+        Returns:
+            tuple: A tuple of (canvas_list: list[dict], total_count: int).
+        """
         fields = [
             cls.model.id,
             cls.model.avatar,
@@ -170,6 +255,18 @@ class UserCanvasService(CommonService):
     @classmethod
     @DB.connection_context()
     def accessible(cls, canvas_id, tenant_id):
+        """Check if a canvas is accessible by a given tenant/user.
+
+        A canvas is accessible if the user owns it or belongs to a tenant
+        that owns it.
+
+        Args:
+            canvas_id (str): The canvas ID to check.
+            tenant_id (str): The user/tenant ID requesting access.
+
+        Returns:
+            bool: True if the canvas is accessible, False otherwise.
+        """
         from db.services.user_service import UserTenantService
         e, c = UserCanvasService.get_by_canvas_id(canvas_id)
         if not e:

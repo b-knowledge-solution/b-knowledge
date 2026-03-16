@@ -15,6 +15,7 @@
     "dev:worker": "node scripts/wait-for-backend.js && node scripts/run-worker.js",
     "dev:converter": "node scripts/wait-for-backend.js && node scripts/run-converter.js",
     "setup": "node scripts/setup.js",
+    "setup:infra": "node scripts/setup-infra.js",
     "setup:python": "node scripts/setup-python.js",
     "setup:worker": "node scripts/setup-worker.js",
     "setup:converter": "node scripts/setup-converter.js",
@@ -38,5 +39,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.59.0"
   }
 }

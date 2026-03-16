@@ -9,6 +9,7 @@ import {
 } from 'react-pdf-highlighter';
 import { Spinner } from '@/components/ui/spinner';
 import { AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 // react-pdf-highlighter uses class components incompatible with React 18 strict types
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -40,6 +41,7 @@ const PdfPreview = ({
   url,
   className,
 }: PdfPreviewProps) => {
+  const { t } = useTranslation();
   const ref = useRef<(highlight: IHighlight) => void>(() => {});
 
   useEffect(() => {
@@ -75,7 +77,7 @@ const PdfPreview = ({
         errorMessage={
           <div className="flex flex-col items-center justify-center h-full text-red-500 p-8">
             <AlertCircle className="w-12 h-12 mb-2" />
-            <p>Failed to load PDF</p>
+            <p>{t('preview.failedToLoadPdf')}</p>
           </div>
         }
       >

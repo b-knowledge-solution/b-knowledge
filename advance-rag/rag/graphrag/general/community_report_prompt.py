@@ -1,8 +1,21 @@
 # Copyright (c) 2024 Microsoft Corporation.
 # Licensed under the MIT License
-"""
+"""Community report generation prompt template for GraphRAG.
+
+This module defines the LLM prompt used to generate structured community reports
+from entity and relationship data discovered via Leiden community detection.
+The prompt instructs the LLM to produce a JSON report containing a title, summary,
+impact severity rating, and detailed findings with grounded evidence references.
+
+These reports are stored in the document store and used during retrieval to provide
+high-level summaries of topical clusters in the knowledge graph.
+
 Reference:
  - [GraphRAG](https://github.com/microsoft/graphrag/blob/main/graphrag/prompts/index/community_report.py)
+
+Template variables:
+    - ``{entity_df}``: CSV-formatted entity table (id, entity, description).
+    - ``{relation_df}``: CSV-formatted relationship table (id, source, target, description).
 """
 
 COMMUNITY_REPORT_PROMPT = """

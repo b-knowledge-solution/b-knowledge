@@ -1,6 +1,17 @@
 # Copyright (c) 2024 Microsoft Corporation.
 # Licensed under the MIT License
-"""
+"""Graph entity and relationship extraction prompt templates (general mode).
+
+This module defines the LLM prompts used by the general-mode GraphExtractor to
+identify entities and relationships from text chunks. It includes:
+
+- ``GRAPH_EXTRACTION_PROMPT``: The main few-shot prompt that instructs the LLM
+  to extract typed entities and weighted relationships from a text passage.
+- ``CONTINUE_PROMPT``: Follow-up prompt to extract additional missed entities.
+- ``LOOP_PROMPT``: Decision prompt asking the LLM whether more entities remain.
+- ``SUMMARIZE_DESCRIPTIONS_PROMPT``: Prompt to merge multiple entity/relationship
+  descriptions into a single coherent summary.
+
 Reference:
  - [GraphRAG](https://github.com/microsoft/graphrag/blob/main/graphrag/prompts/index/extract_graph.py)
 """
@@ -37,7 +48,7 @@ Entity_types: [person, technology, mission, organization, location]
 Text:
 while Alex clenched his jaw, the buzz of frustration dull against the backdrop of Taylor's authoritarian certainty. It was this competitive undercurrent that kept him alert, the sense that his and Jordan's shared commitment to discovery was an unspoken rebellion against Cruz's narrowing vision of control and order.
 
-Then Taylor did something unexpected. They paused beside Jordan and, for a moment, observed the device with something akin to reverence. “If this tech can be understood..." Taylor said, their voice quieter, "It could change the game for us. For all of us.”
+Then Taylor did something unexpected. They paused beside Jordan and, for a moment, observed the device with something akin to reverence. "If this tech can be understood..." Taylor said, their voice quieter, "It could change the game for us. For all of us."
 
 The underlying dismissal earlier seemed to falter, replaced by a glimpse of reluctant respect for the gravity of what lay in their hands. Jordan looked up, and for a fleeting heartbeat, their eyes locked with Taylor's, a wordless clash of wills softening into an uneasy truce.
 

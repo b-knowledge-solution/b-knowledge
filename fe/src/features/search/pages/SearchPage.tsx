@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/features/auth'
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
+import type { ChatChunk, ChatReference } from '@/features/chat/types/chat.types'
 import SearchBar from '../components/SearchBar'
 import SearchResults from '../components/SearchResults'
 import SearchFilters from '../components/SearchFilters'
@@ -61,6 +62,55 @@ function DatasetSearchPage() {
 
   // Whether user has performed a search (show results layout vs landing)
   const hasSearched = !!searchStream.lastQuery
+
+  /**
+   * Build ChatReference from search stream chunks for CitationInline.
+   * Maps SearchResult[] to ChatChunk[] and doc_aggs format.
+   */
+  const buildReference = (): ChatReference | undefined => {
+    if (!searchStream.chunks.length) return undefined
+    const chatChunks: ChatChunk[] = searchStream.chunks.map((c) => ({
+      chunk_id: c.chunk_id,
+      content_with_weight: c.content_with_weight || c.content,
+      doc_id: c.doc_id,
+      docnm_kwd: c.doc_name,
+      page_num_int: c.page_num,
+      position_int: c.position,
+      positions: c.positions,
+      score: c.score,
+    }))
+    return {
+      chunks: chatChunks,
+      doc_aggs: searchStream.docAggs.map((d) => ({
+        doc_id: d.doc_id,
+        doc_name: d.doc_name,
+        count: d.count,
+      })),
+    }
+  }
+
+  /**
+   * Handle citation click from CitationInline - open document preview.
+   * @param chunk - The clicked ChatChunk from the citation
+   */
+  const handleCitationClick = (chunk: ChatChunk) => {
+    // Map ChatChunk back to a SearchResult for the preview drawer
+    // Find matching chunk from stream results for dataset_id
+    const matchingChunk = searchStream.chunks.find((c) => c.doc_id === chunk.doc_id)
+    const searchResult: SearchResult = {
+      chunk_id: chunk.chunk_id,
+      content: chunk.content_with_weight,
+      content_with_weight: chunk.content_with_weight,
+      doc_id: chunk.doc_id,
+      doc_name: chunk.docnm_kwd,
+      page_num: chunk.page_num_int,
+      position: chunk.position_int,
+      score: chunk.score || 0,
+      dataset_id: matchingChunk?.dataset_id || '',
+      ...(chunk.positions ? { positions: chunk.positions } : {}),
+    }
+    setPreviewDoc({ open: true, result: searchResult })
+  }
 
   // Show first-visit guide
   useEffect(() => {
@@ -236,6 +286,8 @@ function DatasetSearchPage() {
                   page={page}
                   pageSize={pageSize}
                   onPageChange={handlePageChange}
+                  reference={buildReference()}
+                  onCitationClick={handleCitationClick}
                 />
               </div>
             </div>

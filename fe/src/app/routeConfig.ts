@@ -51,7 +51,7 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
   '/data-studio/glossary': {
     titleKey: 'glossary.title',
   },
-  '/datasets': {
+  '/data-studio/datasets': {
     titleKey: 'datasets.title',
     fullBleed: true,
   },
@@ -69,11 +69,11 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     guidelineFeatureId: 'teams',
     fullBleed: true,
   },
-  '/admin/chat-dialogs': {
+  '/data-studio/chat-assistants': {
     titleKey: 'chatAdmin.title',
     fullBleed: true,
   },
-  '/admin/search-apps': {
+  '/data-studio/search-apps': {
     titleKey: 'searchAdmin.title',
     fullBleed: true,
   },
@@ -112,11 +112,11 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     titleKey: 'llmProviders.title',
     fullBleed: true,
   },
-  '/datasets/:id/settings': {
+  '/data-studio/datasets/:id/settings': {
     titleKey: 'datasetSettings.title',
     fullBleed: true,
   },
-  '/datasets/:id/chunks': {
+  '/data-studio/datasets/:id/chunks': {
     titleKey: 'datasetSettings.chunks.title',
     fullBleed: true,
   },
@@ -139,8 +139,8 @@ export function getRouteMetadata(pathname: string): RouteMetadata {
   }
 
   // Dynamic route prefix match
-  if (pathname.startsWith('/datasets/')) {
-    return ROUTE_CONFIG['/datasets']!;
+  if (pathname.startsWith('/data-studio/datasets/')) {
+    return ROUTE_CONFIG['/data-studio/datasets']!;
   }
   if (pathname.startsWith('/data-studio/projects/')) {
     return ROUTE_CONFIG['/data-studio/projects']!;

@@ -14,6 +14,18 @@
 #  limitations under the License.
 #
 
+"""OpenSearch/Elasticsearch connection adapter for memory message storage.
+
+This module implements the ESConnection singleton class that provides CRUD
+operations for memory messages stored in OpenSearch. It handles field mapping
+between the application's message model and OpenSearch document fields,
+constructs complex boolean and KNN queries, and manages retry logic for
+transient connection failures.
+
+The class extends ESConnectionBase and is decorated as a singleton so only
+one connection instance exists per process.
+"""
+
 import re
 import json
 import time
@@ -29,14 +41,32 @@ from common.float_utils import get_float
 from common.constants import PAGERANK_FLD, TAG_FLD
 from rag.nlp.rag_tokenizer import tokenize, fine_grained_tokenize
 
+# Maximum number of retry attempts for OpenSearch operations
 ATTEMPT_TIME = 2
 
 
 @singleton
 class ESConnection(ESConnectionBase):
+    """Singleton OpenSearch connection for memory message CRUD operations.
+
+    Provides methods to search, get, insert, update, and delete memory messages
+    in OpenSearch indices. Handles field name mapping between the application
+    layer (e.g. "message_type") and OpenSearch storage fields (e.g. "message_type_kwd"),
+    as well as tokenization of content fields for full-text search.
+    """
 
     @staticmethod
     def convert_field_name(field_name: str, use_tokenized_content=False) -> str:
+        """Convert an application-level field name to its OpenSearch storage field name.
+
+        Args:
+            field_name: The application field name (e.g. "message_type", "status", "content").
+            use_tokenized_content: If True and field_name is "content", returns the
+                fine-grained tokenized field instead of the standard one.
+
+        Returns:
+            The corresponding OpenSearch field name.
+        """
         match field_name:
             case "message_type":
                 return "message_type_kwd"
@@ -51,11 +81,18 @@ class ESConnection(ESConnectionBase):
 
     @staticmethod
     def map_message_to_es_fields(message: dict) -> dict:
-        """
-        Map message dictionary fields to OpenSearch document fields.
+        """Map a message dictionary to OpenSearch document fields for indexing.
 
-        :param message: A dictionary containing message details.
-        :return: A dictionary formatted for OpenSearch indexing.
+        Converts application-level message keys to their OpenSearch equivalents,
+        tokenizes content for full-text search, and formats the embedding vector
+        with a dimension-prefixed field name.
+
+        Args:
+            message: A dictionary containing message details with keys like
+                "message_id", "message_type", "content", "content_embed", etc.
+
+        Returns:
+            A dictionary formatted for OpenSearch bulk indexing.
         """
         storage_doc = {
             "id": message.get("id"),
@@ -72,19 +109,27 @@ class ESConnection(ESConnectionBase):
             "status_int": 1 if message["status"] else 0,
             "zone_id": message.get("zone_id", 0),
             "content_ltks": message["content"],
+            # Generate fine-grained tokens for improved search recall
             "tokenized_content_ltks": fine_grained_tokenize(tokenize(message["content"])),
+            # Embedding vector field named by dimension size (e.g. q_768_vec)
             f"q_{len(message['content_embed'])}_vec": message["content_embed"],
         }
         return storage_doc
 
     @staticmethod
     def get_message_from_es_doc(doc: dict) -> dict:
-        """
-        Convert an OpenSearch document back to a message dictionary.
+        """Convert an OpenSearch document back to an application-level message dictionary.
 
-        :param doc: A dictionary representing the OpenSearch document.
-        :return: A dictionary formatted as a message.
+        Reverses the field mapping performed by map_message_to_es_fields, detecting
+        the vector field dynamically by regex pattern.
+
+        Args:
+            doc: A dictionary representing the OpenSearch document source.
+
+        Returns:
+            A dictionary formatted as an application-level message.
         """
+        # Detect the embedding vector field by its naming pattern (q_{dim}_vec)
         embd_field_name = next((key for key in doc.keys() if re.match(r"q_\d+_vec", key)), None)
         message = {
             "message_id": doc["message_id"],
@@ -124,27 +169,54 @@ class ESConnection(ESConnectionBase):
             rank_feature: dict | None = None,
             hide_forgotten: bool = True
     ):
+        """Search memory messages in OpenSearch using boolean, full-text, and/or KNN queries.
+
+        Constructs a composite query from conditions, text match expressions, and
+        dense vector (KNN) expressions. Supports hybrid search with weighted fusion,
+        aggregations, rank features, sorting, and pagination.
+
+        Args:
+            select_fields: Fields to include in the response.
+            highlight_fields: Fields to apply search highlighting to.
+            condition: Filter conditions as key-value pairs (field -> value).
+            match_expressions: List of match expressions (text, dense, fusion).
+            order_by: Ordering specification for results.
+            offset: Number of results to skip (pagination).
+            limit: Maximum number of results to return.
+            index_names: Index name(s) to search across.
+            memory_ids: List of memory IDs to scope the search to.
+            agg_fields: Optional fields to compute term aggregations on.
+            rank_feature: Optional rank feature boosting configuration.
+            hide_forgotten: If True, excludes messages with a forget_at timestamp.
+
+        Returns:
+            A tuple of (response_dict, total_count) or (None, 0) if no indices exist.
+
+        Raises:
+            Exception: On non-retryable OpenSearch errors or repeated timeouts.
         """
-        Refers to https://opensearch.org/docs/latest/query-dsl/
-        """
+        # Refers to https://opensearch.org/docs/latest/query-dsl/
         use_knn = False
         if isinstance(index_names, str):
             index_names = index_names.split(",")
         assert isinstance(index_names, list) and len(index_names) > 0
         assert "_id" not in condition
 
+        # Only search indices that actually exist
         exist_index_list = [idx for idx in index_names if self.index_exist(idx)]
         if not exist_index_list:
             return None, 0
 
         bool_query = Q("bool", must=[], must_not=[])
         if hide_forgotten:
-            # filter not forget
+            # Exclude messages that have been marked as forgotten
             bool_query.must_not.append(Q("exists", field="forget_at"))
 
+        # Add memory_id filter to scope the search
         condition["memory_id"] = memory_ids
         for k, v in condition.items():
             field_name = self.convert_field_name(k)
+            # Session ID uses wildcard matching for partial matches
             if field_name == "session_id" and v:
                 bool_query.filter.append(Q("query_string", **{"query": f"*{v}*", "fields": ["session_id"], "analyze_wildcard": True}))
                 continue
@@ -159,6 +231,7 @@ class ESConnection(ESConnectionBase):
                     f"Condition `{str(k)}={str(v)}` value type is {str(type(v))}, expected to be int, str or list.")
         s = Search()
         vector_similarity_weight = 0.5
+        # Extract fusion weights if a weighted_sum fusion expression is present
         for m in match_expressions:
             if isinstance(m, FusionExpr) and m.method == "weighted_sum" and "weights" in m.fusion_params:
                 assert len(match_expressions) == 3 and isinstance(match_expressions[0], MatchTextExpr) and isinstance(match_expressions[1],
@@ -171,6 +244,7 @@ class ESConnection(ESConnectionBase):
         knn_query = {}
         for m in match_expressions:
             if isinstance(m, MatchTextExpr):
+                # Build full-text query string across content fields
                 minimum_should_match = m.extra_options.get("minimum_should_match", 0.0)
                 if isinstance(minimum_should_match, float):
                     minimum_should_match = str(int(minimum_should_match * 100)) + "%"
@@ -178,9 +252,11 @@ class ESConnection(ESConnectionBase):
                                    type="best_fields", query=m.matching_text,
                                    minimum_should_match=minimum_should_match,
                                    boost=1))
+                # Adjust text score weight relative to vector similarity
                 bool_query.boost = 1.0 - vector_similarity_weight
 
             elif isinstance(m, MatchDenseExpr):
+                # Build KNN vector search query with filter passthrough
                 assert (bool_query is not None)
                 similarity = 0.0
                 if "similarity" in m.extra_options:
@@ -194,6 +270,7 @@ class ESConnection(ESConnectionBase):
                     "boost": similarity,
                 }
 
+        # Apply rank feature boosting (e.g. PageRank, tag scores)
         if bool_query and rank_feature:
             for fld, sc in rank_feature.items():
                 if fld != PAGERANK_FLD:
@@ -205,6 +282,7 @@ class ESConnection(ESConnectionBase):
         for field in highlight_fields:
             s = s.highlight(field)
 
+        # Apply sorting with proper unmapped_type for missing fields
         if order_by:
             orders = list()
             for field, order in order_by.fields:
@@ -216,6 +294,7 @@ class ESConnection(ESConnectionBase):
                 orders.append({field: order_info})
             s = s.sort(*orders)
 
+        # Add term aggregation buckets for requested fields
         if agg_fields:
             for fld in agg_fields:
                 s.aggs.bucket(f'aggs_{fld}', 'terms', field=fld, size=1000000)
@@ -231,6 +310,7 @@ class ESConnection(ESConnectionBase):
 
         self.logger.debug(f"ESConnection.search {str(index_names)} query: " + json.dumps(q))
 
+        # Retry loop for transient connection failures
         for i in range(ATTEMPT_TIME):
             try:
                 res = self.es.search(index=exist_index_list,
@@ -257,13 +337,31 @@ class ESConnection(ESConnectionBase):
         raise Exception("ESConnection.search timeout.")
 
     def get_forgotten_messages(self, select_fields: list[str], index_name: str, memory_id: str, limit: int=512):
+        """Retrieve messages that have been marked as forgotten (have a forget_at timestamp).
+
+        Returns forgotten messages ordered from oldest to newest, which is useful
+        for FIFO eviction strategies when memory capacity is exceeded.
+
+        Args:
+            select_fields: Fields to include in the returned documents.
+            index_name: The OpenSearch index name to search.
+            memory_id: The memory ID to filter by.
+            limit: Maximum number of forgotten messages to return.
+
+        Returns:
+            The OpenSearch response dict, or None if the index is not found.
+
+        Raises:
+            Exception: On non-retryable OpenSearch errors or repeated timeouts.
+        """
         bool_query = Q("bool", must=[])
+        # Only select documents that have a forget_at field set
         bool_query.must.append(Q("exists", field="forget_at"))
         bool_query.filter.append(Q("term", memory_id=memory_id))
-        # from old to new
+        # Sort from old to new so oldest forgotten messages are evicted first
         order_by = OrderByExpr()
         order_by.asc("forget_at")
-        # build search
+        # Build search query
         s = Search()
         s = s.query(bool_query)
         orders = list()
@@ -277,7 +375,7 @@ class ESConnection(ESConnectionBase):
         s = s.sort(*orders)
         s = s[:limit]
         q = s.to_dict()
-        # search
+        # Execute search with retry logic
         for i in range(ATTEMPT_TIME):
             try:
                 res = self.es.search(index=index_name, body=q, timeout=600, track_total_hits=True, _source=True)
@@ -300,15 +398,34 @@ class ESConnection(ESConnectionBase):
         raise Exception("ESConnection.search timeout.")
 
     def get_missing_field_message(self, select_fields: list[str], index_name: str, memory_id: str, field_name: str, limit: int=512):
+        """Retrieve messages that are missing a specific field (e.g. missing embeddings).
+
+        Used to find messages that need backfill processing, such as documents
+        that were indexed before a new field was added.
+
+        Args:
+            select_fields: Fields to include in the returned documents.
+            index_name: The OpenSearch index name to search.
+            memory_id: The memory ID to filter by.
+            field_name: The field name that must be absent from matching documents.
+            limit: Maximum number of messages to return.
+
+        Returns:
+            The OpenSearch response dict, or None if the index is not found.
+
+        Raises:
+            Exception: On non-retryable OpenSearch errors or repeated timeouts.
+        """
         if not self.index_exist(index_name):
             return None
         bool_query = Q("bool", must=[])
         bool_query.must.append(Q("term", memory_id=memory_id))
+        # Exclude documents that have the specified field
         bool_query.must_not.append(Q("exists", field=field_name))
-        # from old to new
+        # Sort from old to new for consistent processing order
         order_by = OrderByExpr()
         order_by.asc("valid_at")
-        # build search
+        # Build search query
         s = Search()
         s = s.query(bool_query)
         orders = list()
@@ -322,7 +439,7 @@ class ESConnection(ESConnectionBase):
         s = s.sort(*orders)
         s = s[:limit]
         q = s.to_dict()
-        # search
+        # Execute search with retry logic
         for i in range(ATTEMPT_TIME):
             try:
                 res = self.es.search(index=index_name, body=q, timeout=600, track_total_hits=True, _source=True)
@@ -345,6 +462,19 @@ class ESConnection(ESConnectionBase):
         raise Exception("ESConnection.search timeout.")
 
     def get(self, doc_id: str, index_name: str, memory_ids: list[str]) -> dict | None:
+        """Retrieve a single message document by its ID.
+
+        Args:
+            doc_id: The document ID to retrieve.
+            index_name: The OpenSearch index name.
+            memory_ids: List of memory IDs (unused for direct get, kept for API consistency).
+
+        Returns:
+            The message dictionary if found, or None if not found.
+
+        Raises:
+            Exception: On non-retryable OpenSearch errors or repeated timeouts.
+        """
         for i in range(ATTEMPT_TIME):
             try:
                 res = self.es.get(index=index_name,
@@ -363,6 +493,19 @@ class ESConnection(ESConnectionBase):
         raise Exception("ESConnection.get timeout.")
 
     def insert(self, documents: list[dict], index_name: str, memory_id: str = None) -> list[str]:
+        """Bulk insert message documents into an OpenSearch index.
+
+        Maps each document to OpenSearch fields, then performs a bulk index
+        operation. Returns a list of error strings for any failed documents.
+
+        Args:
+            documents: List of message dictionaries to insert.
+            index_name: The target OpenSearch index name.
+            memory_id: The memory ID to associate with all documents.
+
+        Returns:
+            A list of error description strings. Empty list means all succeeded.
+        """
         # Refers to https://opensearch.org/docs/latest/api-reference/document-apis/bulk/
         operations = []
         for d in documents:
@@ -371,6 +514,7 @@ class ESConnection(ESConnectionBase):
             d_copy_raw = copy.deepcopy(d)
             d_copy = self.map_message_to_es_fields(d_copy_raw)
             d_copy["memory_id"] = memory_id
+            # Extract the id to use as the OpenSearch document _id
             meta_id = d_copy.pop("id", "")
             operations.append(
                 {"index": {"_index": index_name, "_id": meta_id}})
@@ -381,9 +525,11 @@ class ESConnection(ESConnectionBase):
                 res = []
                 r = self.es.bulk(index=index_name, body=operations,
                                  refresh=False, timeout="60s")
+                # Check if bulk operation reported no errors
                 if re.search(r"False", str(r["errors"]), re.IGNORECASE):
                     return res
 
+                # Collect error details from individual item responses
                 for item in r["items"]:
                     for action in ["create", "delete", "index", "update"]:
                         if action in item and "error" in item[action]:
@@ -401,17 +547,37 @@ class ESConnection(ESConnectionBase):
         return res
 
     def update(self, condition: dict, new_value: dict, index_name: str, memory_id: str) -> bool:
+        """Update message documents matching the given condition.
+
+        Supports two modes:
+        1. Single document update: when condition contains an "id" string.
+        2. Bulk update by query: when condition specifies filter criteria.
+
+        Handles special update operations like "remove" (delete a field) and
+        "add" (append to a list field).
+
+        Args:
+            condition: Filter criteria to identify documents to update.
+            new_value: Dictionary of field-value pairs to update.
+            index_name: The OpenSearch index name.
+            memory_id: The memory ID scope for the update.
+
+        Returns:
+            True if the update succeeded, False otherwise.
+        """
         doc = copy.deepcopy(new_value)
         update_dict = {self.convert_field_name(k): v for k, v in doc.items()}
+        # Re-tokenize content when it changes for search index consistency
         if "content_ltks" in update_dict:
             update_dict["tokenized_content_ltks"] = fine_grained_tokenize(tokenize(update_dict["content_ltks"]))
         update_dict.pop("id", None)
         condition_dict = {self.convert_field_name(k): v for k, v in condition.items()}
         condition_dict["memory_id"] = memory_id
         if "id" in condition_dict and isinstance(condition_dict["id"], str):
-            # update specific single document
+            # Single document update by specific document ID
             message_id = condition_dict["id"]
             for i in range(ATTEMPT_TIME):
+                # Remove feature fields before update to avoid conflicts
                 for k in update_dict.keys():
                     if "feas" != k.split("_")[-1]:
                         continue
@@ -429,7 +595,7 @@ class ESConnection(ESConnectionBase):
                     break
             return False
 
-        # update unspecific maybe-multiple documents
+        # Bulk update using UpdateByQuery for multiple matching documents
         bool_query = Q("bool")
         for k, v in condition_dict.items():
             if not isinstance(k, str) or not v:
@@ -444,10 +610,12 @@ class ESConnection(ESConnectionBase):
             else:
                 raise Exception(
                     f"Condition `{str(k)}={str(v)}` value type is {str(type(v))}, expected to be int, str or list.")
+        # Build Painless scripts for each field update operation
         scripts = []
         params = {}
         for k, v in update_dict.items():
             if k == "remove":
+                # Remove a field or a value from a list field
                 if isinstance(v, str):
                     scripts.append(f"ctx._source.remove('{v}');")
                 if isinstance(v, dict):
@@ -456,6 +624,7 @@ class ESConnection(ESConnectionBase):
                         params[f"p_{kk}"] = vv
                 continue
             if k == "add":
+                # Append a value to a list field
                 if isinstance(v, dict):
                     for kk, vv in v.items():
                         scripts.append(f"ctx._source.{kk}.add(params.pp_{kk});")
@@ -497,6 +666,20 @@ class ESConnection(ESConnectionBase):
         return False
 
     def delete(self, condition: dict, index_name: str, memory_id: str) -> int:
+        """Delete message documents matching the given condition.
+
+        Supports deletion by document IDs, by filter criteria, or all documents
+        (when an empty ID list is provided).
+
+        Args:
+            condition: Filter criteria for deletion. Supports "id" (single or list),
+                "exists" checks, "must_not" exclusions, and standard field filters.
+            index_name: The OpenSearch index name.
+            memory_id: The memory ID scope for deletion.
+
+        Returns:
+            The number of documents deleted.
+        """
         assert "_id" not in condition
         condition_dict = {self.convert_field_name(k): v for k, v in condition.items()}
         condition_dict["memory_id"] = memory_id
@@ -504,11 +687,13 @@ class ESConnection(ESConnectionBase):
             message_ids = condition_dict["id"]
             if not isinstance(message_ids, list):
                 message_ids = [message_ids]
+            # Empty ID list means delete all documents in the memory scope
             if not message_ids:  # when message_ids is empty, delete all
                 qry = Q("match_all")
             else:
                 qry = Q("ids", values=message_ids)
         else:
+            # Build a boolean query from filter conditions
             qry = Q("bool")
             for k, v in condition_dict.items():
                 if k == "exists":
@@ -550,6 +735,18 @@ class ESConnection(ESConnectionBase):
     """
 
     def get_fields(self, res, fields: list[str]) -> dict[str, dict]:
+        """Extract specified fields from OpenSearch search results.
+
+        Converts each hit from OpenSearch document format to application message
+        format, then filters to only the requested fields.
+
+        Args:
+            res: The raw OpenSearch search response.
+            fields: List of application-level field names to extract.
+
+        Returns:
+            A dict mapping document IDs to dicts of their requested field values.
+        """
         res_fields = {}
         if not fields:
             return {}
@@ -562,6 +759,7 @@ class ESConnection(ESConnectionBase):
                 if isinstance(v, list):
                     m[n] = v
                     continue
+                # Preserve numeric and boolean types for specific fields
                 if n in ["message_id", "source_id", "valid_at", "invalid_at", "forget_at", "status"] and isinstance(v, (int, float, bool)):
                     m[n] = v
                     continue

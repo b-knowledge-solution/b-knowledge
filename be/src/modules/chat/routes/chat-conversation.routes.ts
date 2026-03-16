@@ -16,6 +16,7 @@ import {
   feedbackSchema,
   conversationIdParamSchema,
   deleteMessageParamsSchema,
+  renameConversationSchema,
   ttsSchema,
 } from '../schemas/chat-conversation.schemas.js'
 
@@ -55,6 +56,18 @@ router.get(
   '/conversations',
   requireAuth,
   controller.listConversations.bind(controller)
+)
+
+/**
+ * @route PATCH /api/chat/conversations/:id
+ * @description Rename a conversation.
+ * @access Private
+ */
+router.patch(
+  '/conversations/:id',
+  requireAuth,
+  validate({ body: renameConversationSchema, params: conversationIdParamSchema }),
+  controller.renameConversation.bind(controller)
 )
 
 /**

@@ -13,6 +13,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Peewee ORM model definitions for the RAG system database.
+
+Defines all database tables as Peewee Model classes including tenants,
+users, knowledgebases, documents, files, tasks, LLM configurations,
+connectors, and canvas workflows. Uses a shared PostgreSQL database
+with the Node.js backend via the DataBaseModel base class.
+"""
 import hashlib
 import inspect
 import logging
@@ -824,6 +831,7 @@ class TenantLLM(DataBaseModel):
     api_base = CharField(max_length=255, null=True, help_text="API Base")
     max_tokens = IntegerField(default=8192, help_text="Max context token num", index=True)
     used_tokens = IntegerField(default=0, help_text="Used token num", index=True)
+    vision = BooleanField(null=True, help_text="Whether this chat model supports vision", default=False)
     status = CharField(max_length=1, null=False, help_text="is it validate(0: wasted, 1: validate)", default="1", index=True)
 
     def __str__(self):

@@ -1,3 +1,11 @@
+"""Resume parsing step one: raw JSON extraction and field normalization.
+
+Extracts structured fields from raw resume JSON content stored in a DataFrame.
+Handles nested JSON objects for contact info, basic info, education, work experience,
+projects, certificates, languages, and skills. Normalizes values such as degree codes,
+region IDs, industry IDs, gender codes, and boolean flags into human-readable Chinese
+text. Produces a flat dictionary keyed by the FIELDS schema.
+"""
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -17,6 +25,7 @@
 import json
 from deepdoc.parser.resume.entities import degrees, regions, industries
 
+# Schema definition for resume fields: name and type pairs used to structure the output
 FIELDS = [
 "address STRING",
 "annual_salary int",
@@ -72,7 +81,21 @@ FIELDS = [
 ]
 
 def refactor(df):
+    """Extract and normalize resume fields from a DataFrame with raw JSON content.
+
+    Parses nested JSON in 'resume_content' column, extracts all structured fields
+    (education, work, contact, etc.), normalizes coded values (degrees, regions,
+    industries, gender, boolean flags), and returns a flat dictionary.
+
+    Args:
+        df: A pandas DataFrame with at least 'resume_content', 'tob_resume_id',
+            and 'updated_at' columns.
+
+    Returns:
+        A dict mapping field names (from FIELDS schema) to extracted values.
+    """
     def deal_obj(obj, k, kk):
+        """Safely extract a nested value from obj[k][kk]."""
         if not isinstance(obj, type({})):
             return ""
         obj = obj.get(k, {})

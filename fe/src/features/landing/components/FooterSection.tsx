@@ -1,19 +1,30 @@
 /**
  * @fileoverview Footer section for the landing page.
- * @description Simple footer with copyright and links.
+ * @description Simple footer with copyright, links, and language switcher.
  * @module features/landing/components/FooterSection
  */
 
 import { useTranslation } from 'react-i18next'
+import { SUPPORTED_LANGUAGES, type LanguageCode } from '@/i18n'
+import { useSettings } from '@/app/contexts/SettingsContext'
 import logo from '@/assets/logo-dark.png'
 
 /**
- * @description Landing page footer with branding and links.
+ * @description Landing page footer with branding, links, and language switcher.
  * @returns JSX footer element
  */
 export function FooterSection() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const { setLanguage } = useSettings()
   const year = new Date().getFullYear()
+
+  /**
+   * @description Change the application language via SettingsContext (which syncs with i18n and localStorage).
+   * @param code - ISO 639-1 language code
+   */
+  const handleLanguageChange = (code: string) => {
+    setLanguage(code as LanguageCode)
+  }
 
   return (
     <footer className="bg-slate-900 dark:bg-slate-950 text-slate-400 py-12">
@@ -58,9 +69,28 @@ export function FooterSection() {
           </div>
         </div>
 
-        {/* Bottom bar */}
-        <div className="border-t border-slate-800 pt-8 text-sm text-center">
-          <p>&copy; {year} B-Knowledge. {t('landing.footer.rights')}</p>
+        {/* Bottom bar with language switcher */}
+        <div className="border-t border-slate-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          {/* Copyright */}
+          <p className="text-sm">&copy; {year} B-Knowledge. {t('landing.footer.rights')}</p>
+
+          {/* Language switcher */}
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-slate-500 mr-2">{t('landing.footer.language')}:</span>
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <button
+                key={lang.code}
+                onClick={() => handleLanguageChange(lang.code)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                  i18n.language === lang.code
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                {lang.flag} {lang.nativeName}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </footer>

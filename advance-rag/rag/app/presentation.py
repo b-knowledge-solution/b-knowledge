@@ -14,6 +14,14 @@
 #  limitations under the License.
 #
 
+"""Presentation (PPT/PPTX/PDF) parser module for the RAG pipeline.
+
+Treats each slide/page as a separate chunk with its thumbnail image.
+Supports PowerPoint files (PPT, PPTX) via python-pptx with tika fallback,
+and PDF files with various layout recognition engines. Each page is stored
+as an individual chunk with page number and position metadata.
+"""
+
 import copy
 import logging
 import re
@@ -32,6 +40,12 @@ from rag.utils.lazy_image import ensure_pil_image, is_image_like
 
 
 class Pdf(PdfParser):
+    """PDF parser for presentation/slide-per-page mode.
+
+    Parses PDFs page by page, reassembling text and tables/figures
+    in reading order within each page. Returns page text paired
+    with the page image for thumbnail storage.
+    """
     def __init__(self):
         super().__init__()
 
@@ -115,6 +129,11 @@ class Pdf(PdfParser):
 
 
 class PlainPdf(PlainParser):
+    """Plain text PDF parser for presentation mode.
+
+    Extracts text from each PDF page without layout analysis,
+    returning page text without images.
+    """
     def __call__(self, filename, binary=None, from_page=0, to_page=100000, callback=None, **kwargs):
         self.pdf = pdf2_read(filename if not binary else BytesIO(binary))
         page_txt = []

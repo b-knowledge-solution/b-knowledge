@@ -13,6 +13,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Industry classification lookup for resume parsing.
+
+Provides a hierarchical industry taxonomy mapping numeric IDs to Chinese
+industry names. Each entry includes a 'name' and 'parent' ID, forming a
+tree structure. Used to resolve industry codes found in resume data into
+full industry name chains (e.g., "手机游戏" -> "网络游戏" -> "互联网").
+"""
 
 TBL = {
     "1": {"name": "IT/通信/电子", "parent": "0"},
@@ -696,12 +703,25 @@ TBL = {
 
 
 def get_names(id):
+    """Recursively resolve an industry ID to its full name chain.
+
+    Walks up the parent hierarchy from the given ID to the root,
+    collecting industry names at each level.
+
+    Args:
+        id: Numeric industry ID (as string or int).
+
+    Returns:
+        A list of industry name strings from most specific to most general.
+        Empty list if the ID is not found.
+    """
     id = str(id)
     nms = []
     d = TBL.get(id)
     if not d:
         return []
     nms.append(d["name"])
+    # Recursively get parent industry names
     p = get_names(d["parent"])
     if p:
         nms.extend(p)

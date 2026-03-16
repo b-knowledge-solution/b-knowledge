@@ -13,6 +13,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Knowledgebase service for managing knowledge base entities.
+
+Provides CRUD operations, permission checks, and statistics queries
+for knowledgebases. Handles tenant-scoped access control, document
+count aggregation, and chunk/token statistics via the document store.
+"""
 from datetime import datetime
 
 from peewee import fn, JOIN

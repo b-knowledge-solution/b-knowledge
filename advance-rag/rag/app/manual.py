@@ -14,6 +14,14 @@
 #  limitations under the License.
 #
 
+"""Technical manual and documentation parser module for the RAG pipeline.
+
+Handles parsing of technical manuals, product documentation, and similar
+structured documents in PDF and DOCX formats. Uses section-based chunking
+with title frequency analysis to identify section boundaries. Supports
+vision-based figure parsing for extracting content from embedded images.
+"""
+
 import logging
 import copy
 import re
@@ -31,6 +39,12 @@ from common.parser_config_utils import normalize_layout_recognizer
 
 
 class Pdf(PdfParser):
+    """PDF parser specialized for technical manuals.
+
+    Extends PdfParser with MANUAL parser type for model selection.
+    Performs OCR, layout analysis, table extraction, and text merging
+    with position tracking for each text block.
+    """
     def __init__(self):
         self.model_speciess = ParserType.MANUAL.value
         super().__init__()
@@ -68,6 +82,12 @@ class Pdf(PdfParser):
 
 
 class Docx(DocxParser):
+    """DOCX parser specialized for technical manuals.
+
+    Parses Word documents by detecting heading levels and building
+    a hierarchical question-answer structure. Extracts inline images
+    and concatenates them with surrounding text.
+    """
     def __init__(self):
         pass
 

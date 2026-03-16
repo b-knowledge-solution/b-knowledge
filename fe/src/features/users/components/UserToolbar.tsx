@@ -3,7 +3,8 @@
  * @module features/users/components/UserToolbar
  */
 import { useTranslation } from 'react-i18next'
-import { Search, Filter, X } from 'lucide-react'
+import { Search, Filter, X, UserPlus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import type { RoleFilter } from '../api/userQueries'
 
 interface UserToolbarProps {
@@ -21,6 +22,8 @@ interface UserToolbarProps {
     onDepartmentFilterChange: (d: string) => void
     /** Available department names */
     departments: string[]
+    /** Handler to open the Create User dialog */
+    onCreateUser?: () => void
 }
 
 /**
@@ -36,6 +39,7 @@ export function UserToolbar({
     departmentFilter,
     onDepartmentFilterChange,
     departments,
+    onCreateUser,
 }: UserToolbarProps) {
     const { t } = useTranslation()
 
@@ -95,6 +99,17 @@ export function UserToolbar({
                     <Filter className="absolute right-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 </div>
             </div>
+            {/* Create User button (admin action) */}
+            {onCreateUser && (
+                <Button
+                    size="sm"
+                    onClick={onCreateUser}
+                    className="flex items-center gap-1.5 shrink-0"
+                >
+                    <UserPlus className="w-4 h-4" />
+                    {t('userManagement.createUser', 'Create User')}
+                </Button>
+            )}
         </div>
     )
 }

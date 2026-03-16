@@ -42,6 +42,8 @@ export interface User {
     updated_at: Date;
     /** Base64 encoded avatar image or URL */
     avatar?: string | undefined;
+    /** Bcrypt-hashed password for local account login. Azure AD users have null. */
+    password_hash?: string | null;
 }
 
 /**
@@ -136,24 +138,24 @@ export interface ChatMessage {
 }
 
 /**
- * ChatDialog interface representing a RAGFlow dialog (chat assistant) configuration.
+ * ChatAssistant interface representing a chat assistant configuration.
  */
-export interface ChatDialog {
-    /** Unique UUID for the dialog */
+export interface ChatAssistant {
+    /** Unique UUID for the assistant */
     id: string;
-    /** Display name of the dialog */
+    /** Display name of the assistant */
     name: string;
-    /** Description of the dialog purpose */
+    /** Description of the assistant purpose */
     description?: string | null;
     /** Icon identifier or URL */
     icon?: string | null;
-    /** Array of knowledge base IDs linked to this dialog */
+    /** Array of knowledge base IDs linked to this assistant */
     kb_ids: string[];
     /** LLM model identifier to use */
     llm_id?: string | null;
     /** Prompt configuration (system prompt, temperature, etc.) */
     prompt_config: Record<string, unknown>;
-    /** Whether the dialog is publicly accessible to all users */
+    /** Whether the assistant is publicly accessible to all users */
     is_public: boolean;
     /** User ID who created this record */
     created_by?: string | null;
@@ -166,14 +168,14 @@ export interface ChatDialog {
 }
 
 /**
- * ChatDialogAccess interface representing an RBAC access entry for a chat dialog.
- * Links a dialog to a user or team that has been granted access.
+ * ChatAssistantAccess interface representing an RBAC access entry for a chat assistant.
+ * Links an assistant to a user or team that has been granted access.
  */
-export interface ChatDialogAccess {
+export interface ChatAssistantAccess {
     /** Unique UUID for the access entry */
     id: string;
-    /** UUID of the dialog this access entry belongs to */
-    dialog_id: string;
+    /** UUID of the assistant this access entry belongs to */
+    assistant_id: string;
     /** Type of entity granted access ('user' or 'team') */
     entity_type: 'user' | 'team';
     /** UUID of the user or team granted access */
@@ -227,6 +229,29 @@ export interface SearchAppAccess {
     created_by?: string | null;
     /** Timestamp of record creation */
     created_at: Date;
+}
+
+/**
+ * SearchEmbedToken interface representing an API token for embedded search widget access.
+ * Links a token to a search app for unauthenticated public access.
+ */
+export interface SearchEmbedToken {
+    /** Unique UUID for the token record */
+    id: string;
+    /** UUID of the search app this token grants access to */
+    app_id: string;
+    /** Unique 64-char hex token string */
+    token: string;
+    /** Human-readable label for the token */
+    name: string;
+    /** Whether the token is currently active */
+    is_active: boolean;
+    /** User ID who created this token */
+    created_by?: string | null;
+    /** Timestamp of record creation */
+    created_at: Date;
+    /** Optional expiration timestamp */
+    expires_at?: Date | null;
 }
 
 /**
@@ -626,20 +651,24 @@ export interface Document {
  * - `chat`        – Conversational LLM (e.g. GPT-4o, Claude)
  * - `embedding`   – Text embedding model (e.g. text-embedding-3-large)
  * - `speech2text` – Speech-to-text / ASR (e.g. Whisper)
- * - `image2text`  – Vision / image understanding model
  * - `rerank`      – Re-ranking model for search results
  * - `tts`         – Text-to-speech model
  * - `ocr`         – Optical character recognition model
+ *
+ * Vision support: chat models with `vision = true` can also be used as VLM
+ * (image-to-text) models by the Python worker.
  */
 export interface ModelProvider {
     id: string;
     factory_name: string;
-    /** One of: chat, embedding, speech2text, image2text, rerank, tts, ocr */
+    /** One of: chat, embedding, speech2text, rerank, tts, ocr */
     model_type: string;
     model_name: string;
     api_key?: string | null;
     api_base?: string | null;
     max_tokens?: number | null;
+    /** Whether this chat model supports vision (image understanding) */
+    vision?: boolean;
     status: string;
     is_default: boolean;
     created_by?: string | null;
@@ -669,6 +698,8 @@ export interface TenantLlm {
     api_base: string;
     /** Maximum tokens allowed */
     max_tokens: number;
+    /** Whether this chat model supports vision (image understanding) */
+    vision?: boolean;
 }
 
 export interface BulkImportGlossaryResult {
@@ -967,6 +998,33 @@ export interface ProjectEntityPermission {
 }
 
 // ---------------------------------------------------------------------------
+// Chat embed token types
+// ---------------------------------------------------------------------------
+
+/**
+ * ChatEmbedToken interface representing a record in the 'chat_embed_tokens' table.
+ * Tokens grant public access to a chat dialog via embed endpoints.
+ */
+export interface ChatEmbedToken {
+    /** Unique UUID for the token record */
+    id: string;
+    /** UUID of the dialog this token grants access to */
+    dialog_id: string;
+    /** 64-character hex token string (unique) */
+    token: string;
+    /** Human-readable name for the token */
+    name: string;
+    /** Whether the token is currently active */
+    is_active: boolean;
+    /** User ID who created the token */
+    created_by?: string | null;
+    /** Timestamp of token creation */
+    created_at: Date;
+    /** Timestamp when the token expires (null = never) */
+    expires_at?: Date | null;
+}
+
+// ---------------------------------------------------------------------------
 // RAG Peewee-schema row types (shared with Python task executors)
 // ---------------------------------------------------------------------------
 
@@ -1116,6 +1174,37 @@ export interface ConverterJob {
 }
 
 // ---------------------------------------------------------------------------
+// Prompt variable types
+// ---------------------------------------------------------------------------
+
+/**
+ * PromptVariable defines a user-replaceable placeholder in a dialog's system prompt.
+ * Variables use `{variable_name}` syntax in the prompt template.
+ */
+export interface PromptVariable {
+  /** Variable key (must match /^[a-zA-Z_][a-zA-Z0-9_]*$/) */
+  key: string
+  /** Human-readable description of the variable */
+  description?: string
+  /** Whether the variable can be omitted at chat time */
+  optional: boolean
+  /** Default value used when the variable is not provided */
+  default_value?: string
+}
+
+/**
+ * MetadataFilterCondition defines a single metadata filter for RAG search.
+ */
+export interface MetadataFilterCondition {
+  /** Field name in the OpenSearch document metadata */
+  name: string
+  /** Comparison operator */
+  comparison_operator: 'is' | 'is_not' | 'contains' | 'gt' | 'lt' | 'range'
+  /** Value to compare against (string, number, or [min, max] for range) */
+  value: string | number | [number, number]
+}
+
+// ---------------------------------------------------------------------------
 // Shared service interfaces
 // ---------------------------------------------------------------------------
 
@@ -1150,7 +1239,9 @@ export interface ChunkResult {
     text: string;
     doc_id?: string;
     doc_name?: string;
-    page_num?: number[];
+    /** Page number where the chunk was extracted from */
+    page_num?: number;
+    /** Position coordinates: [[page, x1, x2, y1, y2], ...] for PDF highlighting */
     positions?: number[][];
     score?: number;
     method?: string;
@@ -1166,6 +1257,15 @@ export interface SearchRequest {
     method?: 'hybrid' | 'semantic' | 'full_text';
     top_k?: number;
     similarity_threshold?: number;
+    /** Optional metadata filter for OpenSearch bool query conditions */
+    metadata_filter?: {
+        logic: 'and' | 'or';
+        conditions: Array<{
+            name: string;
+            comparison_operator: 'is' | 'is_not' | 'contains' | 'gt' | 'lt' | 'range';
+            value: string | number | (string | number)[];
+        }>;
+    };
 }
 
 // ---------------------------------------------------------------------------

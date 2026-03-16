@@ -13,7 +13,12 @@ logger = logging.getLogger(__name__)
 
 
 def ensure_system_tenant():
-    """Create the system tenant row if it doesn't exist."""
+    """Create the system tenant row in the database if it does not already exist.
+
+    Uses the SYSTEM_TENANT_ID from config and populates default model IDs
+    from environment variables. The tenant is initialized with all supported
+    parser types and a high credit limit (9999999).
+    """
     from db.db_models import Tenant, DB
 
     with DB.connection_context():

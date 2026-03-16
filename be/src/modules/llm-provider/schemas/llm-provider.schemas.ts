@@ -5,14 +5,15 @@
 import { z } from 'zod';
 
 /**
- * All RAGFlow-supported model types.
+ * All supported model types.
+ * Vision support is handled via the `vision` boolean flag on chat models,
+ * not as a separate model type.
  * @see https://ragflow.io/docs/references/model-providers
  */
 export const MODEL_TYPES = [
   'chat',
   'embedding',
   'speech2text',
-  'image2text',
   'rerank',
   'tts',
 ] as const;
@@ -38,6 +39,7 @@ export const createProviderSchema = z.object({
   api_base: z.string().url().nullable().optional(),
   max_tokens: z.number().int().min(1).nullable().optional(),
   is_default: z.boolean().optional(),
+  vision: z.boolean().optional(),
 });
 
 /** PUT /api/llm-providers/:id – body */

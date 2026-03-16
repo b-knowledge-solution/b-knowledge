@@ -86,6 +86,14 @@ const BuiltInParserFields = ({
   onParserConfigChange,
 }: BuiltInParserFieldsProps) => {
   const { t } = useTranslation()
+  const chunkMethodOptions = CHUNK_METHOD_OPTIONS.map((option) => ({
+    ...option,
+    label: t(`projectManagement.categories.datasetConfig.chunkMethods.${option.value}`),
+  }))
+  const pdfParserOptions = PDF_PARSER_OPTIONS.map((option) => ({
+    ...option,
+    label: t(`projectManagement.categories.datasetConfig.pdfParsers.${option.value}`),
+  }))
 
   /**
    * Shortcut to update a parser config field.
@@ -106,9 +114,9 @@ const BuiltInParserFields = ({
         <Select
           value={chunkMethod}
           onChange={onChunkMethodChange}
-          options={CHUNK_METHOD_OPTIONS}
+          options={chunkMethodOptions}
           allowClear
-          placeholder="Inherit from category"
+          placeholder={t('projectManagement.categories.datasetConfig.inheritFromCategory')}
           className="w-full"
         />
       </div>
@@ -121,9 +129,9 @@ const BuiltInParserFields = ({
         <Select
           value={parserConfig.layout_recognize}
           onChange={(v: string) => updateField('layout_recognize', v)}
-          options={PDF_PARSER_OPTIONS}
+          options={pdfParserOptions}
           allowClear
-          placeholder="Inherit from category"
+          placeholder={t('projectManagement.categories.datasetConfig.inheritFromCategory')}
           className="w-full"
         />
       </div>
@@ -137,7 +145,7 @@ const BuiltInParserFields = ({
           min={1}
           max={2048}
           style={{ width: '100%' }}
-          placeholder="Inherit from category"
+          placeholder={t('projectManagement.categories.datasetConfig.inheritFromCategory')}
           value={parserConfig.chunk_token_num}
           onChange={(v: number | null) => updateField('chunk_token_num', v ?? undefined)}
         />

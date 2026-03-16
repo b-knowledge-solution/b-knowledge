@@ -452,9 +452,9 @@ export const PromptBuilderModal = ({ open, onClose, onApply }: PromptBuilderModa
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="en">English (EN)</SelectItem>
-                                    <SelectItem value="ja">日本語 (JA)</SelectItem>
-                                    <SelectItem value="vi">Tiếng Việt (VI)</SelectItem>
+                                    <SelectItem value="en">{t('settings.languageEn')} (EN)</SelectItem>
+                                    <SelectItem value="ja">{t('settings.languageJa')} (JA)</SelectItem>
+                                    <SelectItem value="vi">{t('settings.languageVi')} (VI)</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

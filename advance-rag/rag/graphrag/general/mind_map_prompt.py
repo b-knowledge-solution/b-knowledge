@@ -13,19 +13,29 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Mind map extraction prompt template for GraphRAG.
+
+This module defines the LLM prompt used by the MindMapExtractor to convert
+a piece of text into a hierarchical mind map structure. The prompt instructs
+the LLM to produce a markdown-formatted outline with at least 4 levels of
+depth, which is then parsed into a tree data structure for visualization.
+
+Template variables:
+    - ``{input_text}``: The source text to be summarized into a mind map.
+"""
 
 MIND_MAP_EXTRACTION_PROMPT = """
 - Role: You're a talent text processor to summarize a piece of text into a mind map.
 
 - Step of task:
-  1. Generate a title for user's 'TEXT'。
+  1. Generate a title for user's 'TEXT'.
   2. Classify the 'TEXT' into sections of a mind map.
-  3. If the subject matter is really complex, split them into sub-sections and sub-subsections. 
+  3. If the subject matter is really complex, split them into sub-sections and sub-subsections.
   4. Add a shot content summary of the bottom level section.
 
 - Output requirement:
   - Generate at least 4 levels.
-  - Always try to maximize the number of sub-sections. 
+  - Always try to maximize the number of sub-sections.
   - In language of 'Text'
   - MUST IN FORMAT OF MARKDOWN
 

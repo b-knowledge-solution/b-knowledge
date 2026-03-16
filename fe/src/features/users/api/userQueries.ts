@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { userApi } from './userApi'
 import type { User } from '@/features/auth'
-import type { IpHistoryMap } from '../types/user.types'
+import type { IpHistoryMap, CreateUserDto, UpdateUserDto } from '../types/user.types'
 import { queryKeys } from '@/lib/queryKeys'
 
 // ============================================================================
@@ -191,6 +191,7 @@ export const useUserManagement = (): UseUserManagementReturn => {
         meta: { successMessage: t('userManagement.permissionsUpdateSuccess') },
     })
 
+
     return {
         users,
         isLoading: usersQuery.isLoading,
@@ -214,6 +215,51 @@ export const useUserManagement = (): UseUserManagementReturn => {
         isUpdatingPermissions: updatePermissionsMutation.isPending,
         setUsers: setLocalUsers as React.Dispatch<React.SetStateAction<User[]>>,
     }
+}
+
+// ── Standalone CRUD mutation hooks ───────────────────────────────────────────
+
+/**
+ * @description Hook to create a new local user.
+ * Invalidates the user list cache on success.
+ */
+export function useCreateUser() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: (data: CreateUserDto) => userApi.createUser(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.users.list() })
+        },
+    })
+}
+
+/**
+ * @description Hook to update an existing user's profile.
+ * Invalidates the user list cache on success.
+ */
+export function useUpdateUser() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: ({ userId, data }: { userId: string; data: UpdateUserDto }) =>
+            userApi.updateUser(userId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.users.list() })
+        },
+    })
+}
+
+/**
+ * @description Hook to delete a user.
+ * Invalidates the user list cache on success.
+ */
+export function useDeleteUser() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: (userId: string) => userApi.deleteUser(userId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.users.list() })
+        },
+    })
 }
 
 // ============================================================================

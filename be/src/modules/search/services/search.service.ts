@@ -291,6 +291,10 @@ export class SearchService {
         datasetId,
         { query, top_k: topK, method, similarity_threshold: similarityThreshold },
       )
+      // Warn if a dataset returned no results (may have been deleted)
+      if (result.chunks.length === 0) {
+        log.warn(`Dataset ${datasetId} returned no results — it may have been deleted`)
+      }
       allChunks.push(...result.chunks)
     }
 
@@ -330,6 +334,10 @@ export class SearchService {
         datasetId,
         { query, top_k: topK, method, similarity_threshold: similarityThreshold },
       )
+      // Warn if a dataset returned no results (may have been deleted)
+      if (result.chunks.length === 0) {
+        log.warn(`Dataset ${datasetId} returned no results — it may have been deleted`)
+      }
       allChunks.push(...result.chunks)
     }
 

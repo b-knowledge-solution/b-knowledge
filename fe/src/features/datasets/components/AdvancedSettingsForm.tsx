@@ -107,7 +107,7 @@ const AdvancedSettingsForm: React.FC<AdvancedSettingsFormProps> = ({
                       .filter(Boolean),
                   }))
                 }
-                placeholder="person, organization, location"
+                placeholder={t('datasetSettings.advanced.entityTypesPlaceholder')}
               />
             </div>
           </div>

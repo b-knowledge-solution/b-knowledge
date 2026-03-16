@@ -4,6 +4,7 @@
  */
 import { Request, Response } from 'express'
 import { userService } from '@/modules/users/services/user.service.js'
+import { authService } from '@/modules/auth/auth.service.js'
 import { log } from '@/shared/services/logger.service.js'
 import { getClientIp } from '@/shared/utils/ip.js'
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js'
@@ -174,20 +175,37 @@ export class UserController {
   }
 
   /**
-   * Create a new user (admin only).
-   * @param req - Express request object.
+   * Create a new local user (admin only).
+   * @param req - Express request object (body: CreateUserDto).
    * @param res - Express response object.
    * @returns Promise<void>
    */
   async createUser(req: Request, res: Response): Promise<void> {
     try {
-      // Capture user context for audit
-      const user = req.user ? { id: req.user.id, email: req.user.email, ip: getClientIp(req) } : undefined
-      // Create user via service
-      const newUser = await userService.createUser(req.body, user)
-      res.status(201).json(newUser)
-    } catch (error) {
-      // Log error and return 500 status
+      // Capture actor context for audit
+      const actor = req.user ? { id: req.user.id, email: req.user.email, ip: getClientIp(req) } : undefined
+
+      // Extract and strip password from body before passing to service (security)
+      const { password, ...userFields } = req.body
+
+      // Hash password with bcrypt if provided
+      let password_hash: string | undefined
+      if (password) {
+        password_hash = await authService.hashPassword(password)
+      }
+
+      // Create user via service with hashed password
+      const newUser = await userService.createUser({ ...userFields, password_hash }, actor)
+
+      // Strip password_hash from response
+      const { password_hash: _hash, ...safeUser } = newUser as any
+      res.status(201).json(safeUser)
+    } catch (error: any) {
+      // Handle duplicate email conflict
+      if (error.message?.includes('duplicate') || error.code === '23505') {
+        res.status(409).json({ error: 'A user with this email already exists' })
+        return
+      }
       log.error('Failed to create user', { error: String(error) })
       res.status(500).json({ error: 'Failed to create user' })
     }

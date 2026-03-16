@@ -20,6 +20,8 @@ export class AuthController {
     async getAuthConfig(req: Request, res: Response): Promise<void> {
         res.json({
             enableRootLogin: config.enableRootLogin,
+            // Alias for UI: local login (by DB password) is enabled when root login is enabled
+            enableLocalLogin: config.enableRootLogin,
             azureAd: {
                 clientId: config.azureAd.clientId,
                 tenantId: config.azureAd.tenantId,
@@ -216,21 +218,48 @@ export class AuthController {
                 return
             }
         } else if (config.testPassword) {
-            // For test users (from seed data), check against TEST_PASSWORD
-            // This allows test users to re-authenticate using the same test password
+            // For test users (from seed data), check against TEST_PASSWORD first
             const testPass = config.testPassword
 
             // Constant-time comparison to prevent timing attacks
-            const passwordMatch = crypto.timingSafeEqual(
+            const testPasswordMatch = crypto.timingSafeEqual(
                 Buffer.from(password.padEnd(256, '\0')),
                 Buffer.from(testPass.padEnd(256, '\0'))
             )
 
-            if (!passwordMatch) {
-                log.warn('Failed test user re-authentication attempt', { userId: user.id })
-                res.status(401).json({ error: 'Invalid password' })
-                return
+            if (!testPasswordMatch) {
+                // If test password doesn't match, try bcrypt for local accounts
+                const { ModelFactory } = await import('@/shared/models/factory.js')
+                const dbUser = await ModelFactory.user.findById(user.id).catch(() => null)
+
+                if (dbUser?.password_hash) {
+                    // Verify with bcrypt for local account users
+                    const isValid = await authService.verifyPassword(password, dbUser.password_hash)
+                    if (!isValid) {
+                        log.warn('Failed local user re-authentication attempt', { userId: user.id })
+                        res.status(401).json({ error: 'Invalid password' })
+                        return
+                    }
+                } else {
+                    log.warn('Failed test user re-authentication attempt', { userId: user.id })
+                    res.status(401).json({ error: 'Invalid password' })
+                    return
+                }
             }
+        } else {
+            // For local DB users without TEST_PASSWORD, check bcrypt hash
+            const { ModelFactory } = await import('@/shared/models/factory.js')
+            const dbUser = await ModelFactory.user.findById(user.id).catch(() => null)
+
+            if (dbUser?.password_hash) {
+                const isValid = await authService.verifyPassword(password, dbUser.password_hash)
+                if (!isValid) {
+                    log.warn('Failed local user re-authentication attempt', { userId: user.id })
+                    res.status(401).json({ error: 'Invalid password' })
+                    return
+                }
+            }
+            // If no password_hash, allow pass-through (Azure AD users cannot reauth with password)
         }
 
         // For other users, assume session is enough or extend logic

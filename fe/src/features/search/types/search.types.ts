@@ -126,17 +126,89 @@ export interface SearchApp {
 }
 
 /**
+ * @description LLM settings for search summary generation.
+ */
+export interface SearchLlmSetting {
+  /** Temperature for LLM generation (0-2) */
+  temperature?: number | undefined
+  /** Top-p sampling parameter (0-1) */
+  top_p?: number | undefined
+  /** Maximum tokens for LLM response */
+  max_tokens?: number | undefined
+}
+
+/**
  * @description Search configuration for a search app.
  */
 export interface SearchAppConfig {
   /** Minimum similarity threshold (0-1) */
-  similarity_threshold?: number
+  similarity_threshold?: number | undefined
   /** Maximum number of results */
-  top_k?: number
+  top_k?: number | undefined
   /** Search method: hybrid, semantic, or full-text */
-  search_method?: 'hybrid' | 'semantic' | 'fulltext'
+  search_method?: 'hybrid' | 'semantic' | 'fulltext' | undefined
   /** Weight for vector similarity vs keyword (0-1) */
-  vector_similarity_weight?: number
+  vector_similarity_weight?: number | undefined
+  /** Rerank model identifier */
+  rerank_id?: string | undefined
+  /** LLM model identifier for summary generation */
+  llm_id?: string | undefined
+  /** LLM generation settings */
+  llm_setting?: SearchLlmSetting | undefined
+  /** Comma-separated language codes for cross-language search */
+  cross_languages?: string | undefined
+  /** Enable keyword extraction from query */
+  keyword?: boolean | undefined
+  /** Highlight matching terms in results */
+  highlight?: boolean | undefined
+  /** Enable knowledge graph retrieval */
+  use_kg?: boolean | undefined
+  /** Enable web search augmentation */
+  web_search?: boolean | undefined
+  /** Tavily API key for web search */
+  tavily_api_key?: string | undefined
+  /** Enable AI summary generation */
+  enable_summary?: boolean | undefined
+  /** Enable related question suggestions */
+  enable_related_questions?: boolean | undefined
+  /** Enable mind map generation */
+  enable_mindmap?: boolean | undefined
+}
+
+/**
+ * @description A single retrieval test result chunk.
+ */
+export interface RetrievalTestChunk {
+  /** Chunk unique identifier */
+  chunk_id: string
+  /** Chunk text content */
+  content: string
+  /** Parent document identifier */
+  doc_id: string
+  /** Document file name */
+  doc_name: string
+  /** Page number in the document */
+  page_num: number
+  /** Relevance score (0-1) */
+  score: number
+  /** Dataset identifier */
+  dataset_id?: string
+}
+
+/**
+ * @description Response from the retrieval test endpoint.
+ */
+export interface RetrievalTestResponse {
+  /** Retrieved chunks */
+  chunks: RetrievalTestChunk[]
+  /** Total number of matching chunks */
+  total: number
+  /** Current page number */
+  page: number
+  /** Page size */
+  page_size: number
+  /** Document aggregation counts */
+  doc_aggs?: Array<{ doc_id: string; doc_name: string; count: number }>
 }
 
 /**
@@ -147,7 +219,7 @@ export interface CreateSearchAppPayload {
   description?: string | undefined
   dataset_ids: string[]
   is_public?: boolean | undefined
-  search_config?: Partial<SearchAppConfig> | undefined
+  search_config?: SearchAppConfig | undefined
 }
 
 /**

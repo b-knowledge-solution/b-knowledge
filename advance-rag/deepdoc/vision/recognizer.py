@@ -1,3 +1,16 @@
+"""Base object detection recognizer for layout and table structure analysis.
+
+Provides the Recognizer class that wraps ONNX Runtime inference for object detection
+models (DETR-style and YOLO-style). Handles preprocessing (resize, normalize, pad),
+postprocessing (NMS, score filtering, coordinate scaling), and provides extensive
+utility methods for spatial analysis of detected bounding boxes.
+
+Key utilities include:
+- Sorting boxes by Y-first, X-first, column-first, or row-first ordering
+- Overlap area computation between bounding boxes
+- Finding overlapping boxes with configurable thresholds
+- Layout cleanup (removing duplicate/overlapping detections)
+"""
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -29,7 +42,21 @@ from . import operators
 from .ocr import load_model
 
 class Recognizer:
+    """Base ONNX-based object detection recognizer.
+
+    Supports both DETR-style models (with scale_factor input) and YOLO-style
+    models (single image input with xywh output format). Provides preprocessing,
+    inference, and postprocessing for batch image detection.
+    """
+
     def __init__(self, label_list, task_name, model_dir=None):
+        """Initialize the recognizer with an ONNX model.
+
+        Args:
+            label_list: List of class label strings for detection outputs.
+            task_name: Model filename prefix (e.g., 'layout', 'tsr').
+            model_dir: Directory containing model files. Falls back to default.
+        """
         """
         If you have trouble downloading HuggingFace models, -_^ this might help!!
 

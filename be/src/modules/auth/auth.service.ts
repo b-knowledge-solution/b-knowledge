@@ -2,6 +2,7 @@
 import { config } from "@/shared/config/index.js";
 import { log } from "@/shared/services/logger.service.js";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import { ModelFactory } from "@/shared/models/factory.js";
 
 export interface AzureAdUser {
@@ -284,10 +285,10 @@ export class AuthService {
    * @param password - Password.
    * @param ipAddress - Client IP address.
    * @returns Promise<any> - User object if successful.
-   * @description Supports root-user login and test user login with TEST_PASSWORD.
+   * @description Supports root-user login, test user login, and local DB users with bcrypt passwords.
    */
   async login(username: string, password: string, ipAddress?: string): Promise<any> {
-    // Check against configured root credentials
+    // ── Path 1: Root user (from environment config) ──────────────────────────
     if (config.enableRootLogin && username === config.rootUser && password === config.rootPassword) {
       const user = {
         id: 'root-user',
@@ -336,8 +337,7 @@ export class AuthService {
       return { user };
     }
 
-    // Check for test user login with TEST_PASSWORD
-    // This allows sample users to login using the TEST_PASSWORD env variable
+    // ── Path 2: Test user login with TEST_PASSWORD (dev/seed convenience) ────
     if (config.enableRootLogin && config.testPassword && password === config.testPassword) {
       // Look up user by email in database
       const dbUser = await ModelFactory.user.findByEmail(username);
@@ -380,6 +380,57 @@ export class AuthService {
       }
     }
 
+    // ── Path 3: Local DB user with bcrypt password_hash ──────────────────────
+    if (config.enableRootLogin) {
+      // Look up user by email address
+      const localUser = await ModelFactory.user.findByEmail(username);
+
+      if (localUser && localUser.password_hash) {
+        // Verify plain-text password against stored bcrypt hash
+        const isValid = await bcrypt.compare(password, localUser.password_hash);
+
+        if (isValid) {
+          log.info('Local account login successful', { email: username, userId: localUser.id });
+
+          // Record IP history for local users
+          if (ipAddress) {
+            try {
+              const existingHistory = await ModelFactory.userIpHistory.findByUserAndIp(localUser.id, ipAddress);
+              if (existingHistory) {
+                await ModelFactory.userIpHistory.update(existingHistory.id, { last_accessed_at: new Date() });
+              } else {
+                await ModelFactory.userIpHistory.create({
+                  user_id: localUser.id,
+                  ip_address: ipAddress,
+                  last_accessed_at: new Date()
+                });
+              }
+            } catch (error) {
+              log.warn('Failed to save IP history for local user', { error: String(error) });
+            }
+          }
+
+          // Parse permissions array
+          const permissions = typeof localUser.permissions === 'string'
+            ? JSON.parse(localUser.permissions)
+            : (localUser.permissions ?? []);
+
+          return {
+            user: {
+              id: localUser.id,
+              email: localUser.email,
+              role: localUser.role,
+              displayName: localUser.display_name,
+              department: localUser.department,
+              job_title: localUser.job_title,
+              mobile_phone: localUser.mobile_phone,
+              permissions
+            }
+          };
+        }
+      }
+    }
+
     // Log failed login attempt
     log.warn('Failed login attempt', {
       username,
@@ -389,6 +440,28 @@ export class AuthService {
     });
 
     throw new Error('Invalid credentials');
+  }
+
+  /**
+   * Hash a plain-text password using bcrypt.
+   * @param password - Plain-text password to hash.
+   * @returns Promise<string> - The bcrypt hash.
+   * @description Uses bcrypt with 12 salt rounds for secure password storage.
+   */
+  async hashPassword(password: string): Promise<string> {
+    // 12 rounds provides a good balance of security and performance
+    return bcrypt.hash(password, 12);
+  }
+
+  /**
+   * Verify a plain-text password against a bcrypt hash.
+   * @param password - Plain-text password to verify.
+   * @param hash - Stored bcrypt hash.
+   * @returns Promise<boolean> - True if password matches the hash.
+   * @description Used for re-authentication and local login verification.
+   */
+  async verifyPassword(password: string, hash: string): Promise<boolean> {
+    return bcrypt.compare(password, hash);
   }
 }
 

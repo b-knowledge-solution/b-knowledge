@@ -6,7 +6,7 @@
 
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Copy, Check, ThumbsUp, ThumbsDown, Bot, User, Volume2, Square, FileText } from 'lucide-react'
+import { Copy, Check, ThumbsUp, ThumbsDown, Bot, User, Volume2, Square, FileText, RefreshCw } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -27,6 +27,8 @@ interface ChatMessageProps {
   onChunkCitationClick?: ((chunk: ChatChunk) => void) | undefined
   /** Whether this is the last message (for animation) */
   isLast?: boolean | undefined
+  /** Callback to regenerate this assistant message (only shown on last assistant message) */
+  onRegenerate?: (() => void) | undefined
 }
 
 // ============================================================================
@@ -41,7 +43,7 @@ interface ChatMessageProps {
  * @param {ChatMessageProps} props - Component properties
  * @returns {JSX.Element} The rendered chat message
  */
-function ChatMessage({ message, onCitationClick, onChunkCitationClick, isLast }: ChatMessageProps) {
+function ChatMessage({ message, onCitationClick, onChunkCitationClick, isLast, onRegenerate }: ChatMessageProps) {
   const { t } = useTranslation()
   const { speak, stop, isPlaying, isLoading } = useTts()
   const [copied, setCopied] = useState(false)
@@ -207,6 +209,19 @@ function ChatMessage({ message, onCitationClick, onChunkCitationClick, isLast }:
                 <ThumbsDown className="h-3 w-3" />
               </Button>
             </>
+          )}
+
+          {/* Regenerate button (last assistant message only) */}
+          {onRegenerate && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 hover:text-primary"
+              onClick={onRegenerate}
+              title={t('chat.regenerate')}
+            >
+              <RefreshCw className="h-3 w-3" />
+            </Button>
           )}
         </div>
       </div>

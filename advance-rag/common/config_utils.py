@@ -13,6 +13,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""
+YAML-based configuration loading and management.
+
+Reads the main service configuration (``service_conf.yaml``) from the
+``conf/`` directory, with optional local overrides (``local.service_conf.yaml``).
+Provides helpers to read, write, and query individual config keys, decrypt
+database passwords, and display redacted config summaries for logging.
+"""
 
 import os
 import copy
@@ -32,6 +40,18 @@ from ruamel.yaml import YAML
 
 
 def load_yaml_conf(conf_path):
+    """Load a YAML configuration file and return its contents as a dict.
+
+    Args:
+        conf_path: Absolute or relative path to the YAML file. Relative paths
+            are resolved against the project base directory.
+
+    Returns:
+        Parsed YAML content (usually a dict).
+
+    Raises:
+        EnvironmentError: If the file cannot be read or parsed.
+    """
     if not os.path.isabs(conf_path):
         conf_path = os.path.join(get_project_base_directory(), conf_path)
     try:
@@ -43,6 +63,15 @@ def load_yaml_conf(conf_path):
 
 
 def rewrite_yaml_conf(conf_path, config):
+    """Write *config* dict back to a YAML file, overwriting its contents.
+
+    Args:
+        conf_path: Absolute or relative path to the YAML file.
+        config: Dict to serialize as YAML.
+
+    Raises:
+        EnvironmentError: If the file cannot be written.
+    """
     if not os.path.isabs(conf_path):
         conf_path = os.path.join(get_project_base_directory(), conf_path)
     try:
@@ -54,15 +83,37 @@ def rewrite_yaml_conf(conf_path, config):
 
 
 def conf_realpath(conf_name):
+    """Return the absolute path to a config file inside ``conf/``.
+
+    Args:
+        conf_name: Filename (e.g. ``"service_conf.yaml"``).
+
+    Returns:
+        Absolute path string.
+    """
     conf_path = f"conf/{conf_name}"
     return os.path.join(get_project_base_directory(), conf_path)
 
 
 def read_config(conf_name=SERVICE_CONF):
+    """Read and merge the global and local YAML config files.
+
+    The local config (``local.<conf_name>``) overrides keys in the global
+    config. Both files are expected to contain dicts.
+
+    Args:
+        conf_name: Config filename (default ``service_conf.yaml``).
+
+    Returns:
+        Merged configuration dict.
+
+    Raises:
+        ValueError: If either config file does not contain a dict.
+    """
     local_config = {}
     local_path = conf_realpath(f'local.{conf_name}')
 
-    # load local config file
+    # load local config file (overrides)
     if os.path.exists(local_path):
         local_config = load_yaml_conf(local_path)
         if not isinstance(local_config, dict):
@@ -74,14 +125,21 @@ def read_config(conf_name=SERVICE_CONF):
     if not isinstance(global_config, dict):
         raise ValueError(f'Invalid config file: "{global_config_path}".')
 
+    # Local overrides global
     global_config.update(local_config)
     return global_config
 
 
+# Module-level config singleton, loaded once at import time
 CONFIGS = read_config()
 
 
 def show_configs():
+    """Log the current configuration with sensitive values redacted.
+
+    Passwords, access keys, secret keys, SAS tokens, and OAuth client
+    secrets are replaced with asterisks before logging.
+    """
     msg = f"Current configs, from {conf_realpath(SERVICE_CONF)}:"
     for k, v in CONFIGS.items():
         if isinstance(v, dict):
@@ -115,6 +173,19 @@ def show_configs():
 
 
 def get_base_config(key, default=None):
+    """Retrieve a top-level config value by *key*.
+
+    Falls back to the matching upper-case environment variable when no
+    explicit *default* is provided, then to the YAML config.
+
+    Args:
+        key: Config key to look up.
+        default: Fallback value if the key is not in CONFIGS. If None,
+            checks ``os.environ[KEY.upper()]`` first.
+
+    Returns:
+        The config value, or *default*.
+    """
     if key is None:
         return None
     if default is None:
@@ -123,6 +194,20 @@ def get_base_config(key, default=None):
 
 
 def decrypt_database_password(password):
+    """Decrypt an encrypted database password using the configured module.
+
+    Only decrypts if ``encrypt_password`` is truthy in the config and a
+    ``private_key`` is available.
+
+    Args:
+        password: The (possibly encrypted) password string.
+
+    Returns:
+        Decrypted password string, or the original if encryption is not enabled.
+
+    Raises:
+        ValueError: If encryption is enabled but no private key is configured.
+    """
     encrypt_password = get_base_config("encrypt_password", False)
     encrypt_module = get_base_config("encrypt_module", False)
     private_key = get_base_config("private_key", None)
@@ -133,6 +218,7 @@ def decrypt_database_password(password):
     if not private_key:
         raise ValueError("No private key")
 
+    # Dynamically load the decryption function from "module#function" notation
     module_fun = encrypt_module.split("#")
     pwdecrypt_fun = getattr(
         importlib.import_module(
@@ -143,6 +229,19 @@ def decrypt_database_password(password):
 
 
 def decrypt_database_config(database=None, passwd_key="password", name="database"):
+    """Load and decrypt a database configuration block.
+
+    For database-type configs, environment variables (``DB_HOST``, ``DB_PORT``,
+    ``DB_NAME``, ``DB_USER``, ``DB_PASSWORD``) take precedence over YAML values.
+
+    Args:
+        database: Pre-loaded config dict, or None to load from YAML.
+        passwd_key: Key within the config dict that holds the password.
+        name: Config section name (e.g. ``"database"``, ``"mysql"``).
+
+    Returns:
+        Database config dict with the password decrypted.
+    """
     if not database:
         database = get_base_config(name, {})
 
@@ -164,6 +263,15 @@ def decrypt_database_config(database=None, passwd_key="password", name="database
 
 
 def update_config(key, value, conf_name=SERVICE_CONF):
+    """Atomically update a single key in the YAML config file.
+
+    Uses a file lock to prevent concurrent writes from corrupting the file.
+
+    Args:
+        key: Config key to update.
+        value: New value to set.
+        conf_name: Config filename (default ``service_conf.yaml``).
+    """
     conf_path = conf_realpath(conf_name=conf_name)
     if not os.path.isabs(conf_path):
         conf_path = os.path.join(get_project_base_directory(), conf_path)

@@ -13,6 +13,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""RAG search dealer for hybrid retrieval (text + vector).
+
+Orchestrates the full retrieval pipeline: fulltext query construction,
+embedding-based dense retrieval, hybrid scoring with configurable
+text/vector weights, reranking (heuristic or model-based), citation
+insertion, tag-based ranking features, and TOC-guided retrieval.
+Interfaces with the document store (OpenSearch/Infinity) and embedding
+models to return ranked, paginated search results.
+"""
 import json
 import logging
 import re
@@ -30,16 +39,54 @@ from common import settings
 
 from common.misc_utils import thread_pool_exec
 
-def index_name(uid): return f"ragflow_{uid}"
+def index_name(uid):
+    """Convert a tenant/user ID to an OpenSearch index name.
+
+    Args:
+        uid: Tenant or user UUID string.
+
+    Returns:
+        Index name string prefixed with 'ragflow_'.
+    """
+    return f"ragflow_{uid}"
 
 
 class Dealer:
+    """Main search dealer that coordinates hybrid retrieval and reranking.
+
+    Combines fulltext search (via FulltextQueryer) with dense vector
+    search to perform hybrid retrieval. Supports heuristic and
+    model-based reranking, citation insertion, tag-based rank features,
+    and TOC-guided retrieval.
+
+    Attributes:
+        qryr: FulltextQueryer instance for building text queries.
+        dataStore: Document store connection (OpenSearch/Infinity).
+    """
+
     def __init__(self, dataStore: DocStoreConnection):
+        """Initialize the search dealer.
+
+        Args:
+            dataStore: Document store connection for search operations.
+        """
         self.qryr = query.FulltextQueryer()
         self.dataStore = dataStore
 
     @dataclass
     class SearchResult:
+        """Container for search results from the document store.
+
+        Attributes:
+            total: Total number of matching documents.
+            ids: List of matching chunk IDs.
+            query_vector: Query embedding vector (if vector search was used).
+            field: Dict mapping chunk IDs to their field values.
+            highlight: Dict mapping chunk IDs to highlighted content.
+            aggregation: Aggregation results (e.g., doc name counts).
+            keywords: Extracted query keywords.
+            group_docs: Grouped document lists (for grouped results).
+        """
         total: int
         ids: list[str]
         query_vector: list[float] | None = None
@@ -60,6 +107,17 @@ class Dealer:
         return MatchDenseExpr(vector_column_name, embedding_data, 'float', 'cosine', topk, {"similarity": similarity})
 
     def get_filters(self, req):
+        """Extract filter conditions from a search request.
+
+        Maps request keys (kb_ids, doc_ids) to document store field
+        names and includes optional filter fields like knowledge_graph_kwd.
+
+        Args:
+            req: Search request dictionary.
+
+        Returns:
+            Dict of field-name to value filter conditions.
+        """
         condition = dict()
         for key, field in {"kb_ids": "kb_id", "doc_ids": "doc_id"}.items():
             if key in req and req[key] is not None:
@@ -77,6 +135,24 @@ class Dealer:
                highlight: bool | list | None = None,
                rank_feature: dict | None = None
                ):
+        """Execute a hybrid search combining fulltext and vector similarity.
+
+        Builds fulltext match expression from the question, optionally
+        combines with dense vector search using weighted fusion, and
+        returns aggregated results with highlights and keywords.
+
+        Args:
+            req: Search request dict with keys like 'question', 'page',
+                'size', 'topk', 'similarity', 'kb_ids', 'doc_ids', etc.
+            idx_names: Index name(s) to search in.
+            kb_ids: Knowledge base IDs to filter by.
+            emb_mdl: Optional embedding model for vector search.
+            highlight: Whether/which fields to highlight.
+            rank_feature: Optional rank feature weights for scoring.
+
+        Returns:
+            SearchResult with total count, IDs, highlights, and keywords.
+        """
         if highlight is None:
             highlight = False
 
@@ -172,10 +248,38 @@ class Dealer:
 
     @staticmethod
     def trans2floats(txt):
+        """Convert a tab-separated string of numbers to a list of floats.
+
+        Args:
+            txt: Tab-separated numeric string.
+
+        Returns:
+            List of float values.
+        """
         return [get_float(t) for t in txt.split("\t")]
 
     def insert_citations(self, answer, chunks, chunk_v,
                          embd_mdl, tkweight=0.1, vtweight=0.9):
+        """Insert citation references into an LLM-generated answer.
+
+        Splits the answer into sentences, computes hybrid similarity
+        between each sentence and the source chunks, and inserts
+        [ID:N] citation markers after sentences that match chunks
+        above a similarity threshold.
+
+        Args:
+            answer: LLM-generated answer text.
+            chunks: List of source chunk text strings.
+            chunk_v: List of chunk embedding vectors.
+            embd_mdl: Embedding model for encoding answer sentences.
+            tkweight: Weight for token-based similarity (default 0.1).
+            vtweight: Weight for vector similarity (default 0.9).
+
+        Returns:
+            Tuple of (cited_answer, cited_chunk_ids) where cited_answer
+            has [ID:N] markers inserted and cited_chunk_ids is a set
+            of referenced chunk index strings.
+        """
         assert len(chunks) == len(chunk_v)
         if not chunks:
             return answer, set([])
@@ -267,6 +371,18 @@ class Dealer:
         return res, seted
 
     def _rank_feature_scores(self, query_rfea, search_res):
+        """Compute rank feature scores from tag features and pagerank.
+
+        Calculates cosine similarity between query tag features and
+        each chunk's tag features, then adds pagerank scores.
+
+        Args:
+            query_rfea: Dict of query tag features {tag: score}.
+            search_res: SearchResult containing chunk fields.
+
+        Returns:
+            Numpy array of combined tag + pagerank scores per chunk.
+        """
         ## For rank feature(tag_fea) scores.
         rank_fea = []
         pageranks = []
@@ -297,6 +413,22 @@ class Dealer:
                vtweight=0.7, cfield="content_ltks",
                rank_feature: dict | None = None
                ):
+        """Re-rank search results using heuristic hybrid similarity.
+
+        Computes hybrid token + vector similarity between the query
+        and each result chunk, adding rank feature scores.
+
+        Args:
+            sres: SearchResult from initial search.
+            query: Original query text.
+            tkweight: Token similarity weight (default 0.3).
+            vtweight: Vector similarity weight (default 0.7).
+            cfield: Content field name for token extraction.
+            rank_feature: Optional tag-based rank feature weights.
+
+        Returns:
+            Tuple of (combined_scores, token_scores, vector_scores).
+        """
         _, keywords = self.qryr.question(query)
         vector_size = len(sres.query_vector)
         vector_column = f"q_{vector_size}_vec"
@@ -335,6 +467,23 @@ class Dealer:
     def rerank_by_model(self, rerank_mdl, sres, query, tkweight=0.3,
                         vtweight=0.7, cfield="content_ltks",
                         rank_feature: dict | None = None):
+        """Re-rank search results using a dedicated reranking model.
+
+        Uses the rerank model's similarity scoring instead of vector
+        cosine similarity, combined with token similarity and rank features.
+
+        Args:
+            rerank_mdl: Reranking model with a similarity() method.
+            sres: SearchResult from initial search.
+            query: Original query text.
+            tkweight: Token similarity weight (default 0.3).
+            vtweight: Rerank model similarity weight (default 0.7).
+            cfield: Content field name for token extraction.
+            rank_feature: Optional tag-based rank feature weights.
+
+        Returns:
+            Tuple of (combined_scores, token_scores, vector_scores).
+        """
         _, keywords = self.qryr.question(query)
 
         for i in sres.ids:
@@ -356,6 +505,20 @@ class Dealer:
         return tkweight * np.array(tksim) + vtweight * vtsim + rank_fea, tksim, vtsim
 
     def hybrid_similarity(self, ans_embd, ins_embd, ans, inst):
+        """Compute hybrid similarity between answer and instruction texts.
+
+        Convenience wrapper that tokenizes text inputs before delegating
+        to the queryer's hybrid_similarity method.
+
+        Args:
+            ans_embd: Answer embedding vector.
+            ins_embd: Instruction embedding vectors.
+            ans: Answer text string.
+            inst: Instruction text string.
+
+        Returns:
+            Tuple of (combined_scores, token_scores, vector_scores).
+        """
         return self.qryr.hybrid_similarity(ans_embd,
                                            ins_embd,
                                            rag_tokenizer.tokenize(ans).split(),
@@ -514,6 +677,16 @@ class Dealer:
         return ranks
 
     def sql_retrieval(self, sql, fetch_size=128, format="json"):
+        """Execute a raw SQL query against the document store.
+
+        Args:
+            sql: SQL query string.
+            fetch_size: Number of rows to fetch per batch.
+            format: Output format (default "json").
+
+        Returns:
+            Query results in the specified format.
+        """
         tbl = self.dataStore.sql(sql, fetch_size, format)
         return tbl
 
@@ -522,6 +695,23 @@ class Dealer:
                    offset=0,
                    fields=["docnm_kwd", "content_with_weight", "img_id"],
                    sort_by_position: bool = False):
+        """Retrieve all chunks belonging to a specific document.
+
+        Fetches chunks in batches of 128, optionally sorted by page
+        position. Used for document preview and content listing.
+
+        Args:
+            doc_id: Document ID to retrieve chunks for.
+            tenant_id: Tenant ID for index resolution.
+            kb_ids: Knowledge base IDs to search within.
+            max_count: Maximum chunks to return (default 1024).
+            offset: Starting offset for pagination.
+            fields: Fields to include in results.
+            sort_by_position: If True, sort by page_num, position, top.
+
+        Returns:
+            List of chunk dicts with 'id' field added.
+        """
         condition = {"doc_id": doc_id}
 
         fields_set = set(fields or [])
@@ -556,18 +746,57 @@ class Dealer:
         return res
 
     def all_tags(self, tenant_id: str, kb_ids: list[str], S=1000):
+        """Retrieve all unique tags from a knowledge base index.
+
+        Args:
+            tenant_id: Tenant ID for index resolution.
+            kb_ids: Knowledge base IDs to aggregate tags from.
+            S: Smoothing parameter (unused in this method).
+
+        Returns:
+            List of (tag, count) tuples from aggregation, or empty list
+            if the index does not exist.
+        """
         if not self.dataStore.index_exist(index_name(tenant_id), kb_ids[0]):
             return []
         res = self.dataStore.search([], [], {}, [], OrderByExpr(), 0, 0, index_name(tenant_id), kb_ids, ["tag_kwd"])
         return self.dataStore.get_aggregation(res, "tag_kwd")
 
     def all_tags_in_portion(self, tenant_id: str, kb_ids: list[str], S=1000):
+        """Retrieve tags with their proportional frequencies (Laplace-smoothed).
+
+        Args:
+            tenant_id: Tenant ID for index resolution.
+            kb_ids: Knowledge base IDs to aggregate tags from.
+            S: Smoothing constant for Laplace smoothing (default 1000).
+
+        Returns:
+            Dict mapping tag names to smoothed proportion values.
+        """
         res = self.dataStore.search([], [], {}, [], OrderByExpr(), 0, 0, index_name(tenant_id), kb_ids, ["tag_kwd"])
         res = self.dataStore.get_aggregation(res, "tag_kwd")
         total = np.sum([c for _, c in res])
         return {t: (c + 1) / (total + S) for t, c in res}
 
     def tag_content(self, tenant_id: str, kb_ids: list[str], doc, all_tags, topn_tags=3, keywords_topn=30, S=1000):
+        """Auto-tag a document chunk based on similar chunks' tags.
+
+        Searches for similar chunks, aggregates their tags, and assigns
+        the top-N most discriminative tags (normalized by corpus-wide
+        tag frequencies) to the document.
+
+        Args:
+            tenant_id: Tenant ID for index resolution.
+            kb_ids: Knowledge base IDs.
+            doc: Document dict with title_tks, content_ltks, important_kwd.
+            all_tags: Dict of corpus-wide tag proportions from all_tags_in_portion.
+            topn_tags: Number of top tags to assign (default 3).
+            keywords_topn: Number of keywords to extract for matching.
+            S: Smoothing constant for tag scoring.
+
+        Returns:
+            True if tags were assigned, False if no matching tags found.
+        """
         idx_nm = index_name(tenant_id)
         match_txt = self.qryr.paragraph(doc["title_tks"] + " " + doc["content_ltks"], doc.get("important_kwd", []),
                                         keywords_topn)
@@ -582,6 +811,22 @@ class Dealer:
         return True
 
     def tag_query(self, question: str, tenant_ids: str | list[str], kb_ids: list[str], all_tags, topn_tags=3, S=1000):
+        """Compute tag-based rank features for a query.
+
+        Searches for chunks matching the query, aggregates their tags,
+        and returns the most discriminative tags as rank feature weights.
+
+        Args:
+            question: Query text.
+            tenant_ids: Tenant ID(s) for index resolution.
+            kb_ids: Knowledge base IDs.
+            all_tags: Dict of corpus-wide tag proportions.
+            topn_tags: Number of top tags to return (default 3).
+            S: Smoothing constant for tag scoring.
+
+        Returns:
+            Dict mapping tag names to rank feature scores.
+        """
         if isinstance(tenant_ids, str):
             idx_nms = index_name(tenant_ids)
         else:
@@ -597,6 +842,22 @@ class Dealer:
         return {a.replace(".", "_"): max(1, c) for a, c in tag_fea}
 
     async def retrieval_by_toc(self, query: str, chunks: list[dict], tenant_ids: list[str], chat_mdl, topn: int = 6):
+        """Enhance retrieval using table-of-contents (TOC) guidance.
+
+        Finds the most relevant document, retrieves its TOC, uses an
+        LLM to identify relevant TOC entries, then fetches/boosts
+        chunks corresponding to those entries.
+
+        Args:
+            query: User query text.
+            chunks: Initial retrieval results (list of chunk dicts).
+            tenant_ids: Tenant IDs for index resolution.
+            chat_mdl: Chat model for TOC relevance analysis.
+            topn: Maximum number of chunks to return (default 6).
+
+        Returns:
+            Reranked list of chunks, sorted by similarity descending.
+        """
         from rag.prompts.generator import relevant_chunks_with_toc # moved from the top of the file to avoid circular import
         if not chunks:
             return []
@@ -661,6 +922,20 @@ class Dealer:
         return sorted(chunks, key=lambda x: x["similarity"] * -1)[:topn]
 
     def retrieval_by_children(self, chunks: list[dict], tenant_ids: list[str]):
+        """Merge child chunks back into their parent (mom) chunks.
+
+        Groups chunks by mom_id, fetches each parent chunk's full
+        content, and replaces the child chunks with merged parent
+        entries. Used for hierarchical chunking strategies.
+
+        Args:
+            chunks: List of chunk dicts, some with 'mom_id' fields.
+            tenant_ids: Tenant IDs for index resolution.
+
+        Returns:
+            Merged and sorted list of chunks (parents + non-child chunks),
+            sorted by similarity descending.
+        """
         if not chunks:
             return []
         idx_nms = [index_name(tid) for tid in tenant_ids]

@@ -122,6 +122,35 @@ export class ChatConversationController {
   }
 
   /**
+   * Rename a conversation.
+   * @param req - Express request with :id param and { name } in body
+   * @param res - Express response
+   */
+  async renameConversation(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' })
+        return
+      }
+
+      const { id } = req.params
+      const { name } = req.body
+
+      // Rename conversation in local DB
+      const updated = await chatConversationService.renameConversation(id!, name, userId)
+      if (!updated) {
+        res.status(404).json({ error: 'Conversation not found' })
+        return
+      }
+      res.json(updated)
+    } catch (error) {
+      log.error('Error renaming conversation', { error: (error as Error).message })
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+
+  /**
    * Delete a specific message from a conversation.
    * @param req - Express request with :id and :msgId params
    * @param res - Express response
@@ -163,10 +192,15 @@ export class ChatConversationController {
       }
 
       const { id } = req.params
-      const { content, dialog_id } = req.body
+      const { content, dialog_id, variables, metadata_condition, doc_ids, llm_id, temperature, max_tokens, file_ids } = req.body
+
+      // Build per-message overrides from request body
+      const overrides = (variables || metadata_condition || doc_ids || llm_id || temperature !== undefined || max_tokens !== undefined || file_ids)
+        ? { variables, metadata_condition, doc_ids, llm_id, temperature, max_tokens, file_ids }
+        : undefined
 
       // Delegate to service which handles RAG retrieval, LLM streaming, and local storage
-      await chatConversationService.streamChat(id!, content, dialog_id, userId, res)
+      await chatConversationService.streamChat(id!, content, dialog_id, userId, res, overrides)
     } catch (error) {
       log.error('Error in stream chat', { error: (error as Error).message })
       // Only send error if headers haven't been sent yet

@@ -13,6 +13,19 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""
+Base class for Elasticsearch / OpenSearch document store connections.
+
+Implements the ``DocStoreConnection`` interface for OpenSearch-compatible
+backends.  Provides concrete implementations for index lifecycle (create,
+delete, check existence), single-document retrieval, cluster stats, SQL
+execution, and search-result accessors (total count, doc IDs, highlights,
+aggregations).
+
+Subclasses (e.g. ``rag.utils.es_conn.ESConnection``) implement the
+remaining abstract methods: ``search``, ``insert``, ``update``, ``delete``,
+and ``get_fields``.
+"""
 
 import logging
 import re
@@ -30,10 +43,20 @@ from common.doc_store.doc_store_base import DocStoreConnection, OrderByExpr, Mat
 from rag.nlp import is_english, rag_tokenizer
 from common import settings
 
+# Number of retry attempts for transient failures
 ATTEMPT_TIME = 2
 
 
 class ESConnectionBase(DocStoreConnection):
+    """Base implementation of ``DocStoreConnection`` for OpenSearch.
+
+    Loads the index mapping from a JSON file at initialisation time and
+    uses the ``ES_CONN`` singleton connection pool for all operations.
+
+    Args:
+        mapping_file_name: Filename of the index mapping JSON in ``conf/``.
+        logger_name: Logger name for this connection instance.
+    """
     def __init__(self, mapping_file_name: str="mapping.json", logger_name: str='ragflow.es_conn'):
         from common.doc_store.es_conn_pool import ES_CONN
 
@@ -52,6 +75,11 @@ class ESConnectionBase(DocStoreConnection):
         self.logger.info(f"OpenSearch {settings.VECTORDB['hosts']} is healthy.")
 
     def _connect(self):
+        """Verify or refresh the OpenSearch connection.
+
+        Returns:
+            True if the connection is alive.
+        """
         from common.doc_store.es_conn_pool import ES_CONN
 
         if self.es.ping():
@@ -67,12 +95,19 @@ class ESConnectionBase(DocStoreConnection):
         return "opensearch"
 
     def health(self) -> dict:
+        """Return the cluster health status dict with an added ``type`` key."""
         health_dict = dict(self.es.cluster.health())
         health_dict["type"] = "opensearch"
         return health_dict
 
     def get_cluster_stats(self):
         """
+        Retrieve and summarise cluster statistics.
+
+        Returns a dict with cluster name, status, index/shard counts,
+        document counts, store size, node info, JVM heap usage, etc.
+        Returns None on failure.
+
         curl -XGET "http://{es_host}/_cluster/stats" -H "kbn-xsrf: reporting" to view raw stats.
         """
         raw_stats = self.es.cluster.stats()
@@ -118,6 +153,17 @@ class ESConnectionBase(DocStoreConnection):
     """
 
     def create_idx(self, index_name: str, dataset_id: str, vector_size: int, parser_id: str = None):
+        """Create an OpenSearch index with the configured mapping and KNN vector field.
+
+        Args:
+            index_name: Index name to create.
+            dataset_id: Dataset identifier (unused for OpenSearch, kept for interface compatibility).
+            vector_size: Dimensionality of the embedding vector field.
+            parser_id: Parser identifier (unused for OpenSearch, used by Infinity).
+
+        Returns:
+            True if already exists, or the create-index API response.
+        """
         # parser_id is used by Infinity but not needed for OpenSearch (kept for interface compatibility)
         if self.index_exist(index_name, dataset_id):
             return True
@@ -165,6 +211,15 @@ class ESConnectionBase(DocStoreConnection):
             self.logger.exception(f"Error creating document metadata index {index_name}: {e}")
 
     def delete_idx(self, index_name: str, dataset_id: str):
+        """Delete an OpenSearch index.
+
+        For non-empty dataset_id, deletion is skipped because all datasets
+        under a tenant share a single index.
+
+        Args:
+            index_name: Index name to delete.
+            dataset_id: Dataset identifier. If non-empty, deletion is skipped.
+        """
         if len(dataset_id) > 0:
             # The index need to be alive after any kb deletion since all kb under this tenant are in one index.
             return
@@ -176,6 +231,15 @@ class ESConnectionBase(DocStoreConnection):
             self.logger.exception("ESConnection.deleteIdx error %s" % index_name)
 
     def index_exist(self, index_name: str, dataset_id: str = None) -> bool:
+        """Check whether an OpenSearch index exists, with retry on timeout.
+
+        Args:
+            index_name: Index name to check.
+            dataset_id: Unused (kept for interface compatibility).
+
+        Returns:
+            True if the index exists, False otherwise.
+        """
         s = Index(index_name, self.es)
         for i in range(ATTEMPT_TIME):
             try:
@@ -195,6 +259,19 @@ class ESConnectionBase(DocStoreConnection):
     """
 
     def get(self, doc_id: str, index_name: str, dataset_ids: list[str]) -> dict | None:
+        """Retrieve a single document by ID from an OpenSearch index.
+
+        Args:
+            doc_id: Document ID to retrieve.
+            index_name: Index to search in.
+            dataset_ids: Unused (kept for interface compatibility).
+
+        Returns:
+            Document dict with an added ``id`` field, or None if not found.
+
+        Raises:
+            Exception: On timeout or other retrieval errors.
+        """
         for i in range(ATTEMPT_TIME):
             try:
                 res = self.es.get(index=index_name,
@@ -245,14 +322,38 @@ class ESConnectionBase(DocStoreConnection):
     """
 
     def get_total(self, res):
+        """Extract the total hit count from an OpenSearch search response.
+
+        Args:
+            res: OpenSearch search response dict.
+
+        Returns:
+            Total hit count as int.
+        """
         if isinstance(res["hits"]["total"], type({})):
             return res["hits"]["total"]["value"]
         return res["hits"]["total"]
 
     def get_doc_ids(self, res):
+        """Extract document IDs from search result hits.
+
+        Args:
+            res: OpenSearch search response dict.
+
+        Returns:
+            List of document ID strings.
+        """
         return [d["_id"] for d in res["hits"]["hits"]]
 
     def _get_source(self, res):
+        """Extract source documents from hits, injecting ``id`` and ``_score`` fields.
+
+        Args:
+            res: OpenSearch search response dict.
+
+        Returns:
+            List of source document dicts.
+        """
         rr = []
         for d in res["hits"]["hits"]:
             d["_source"]["id"] = d["_id"]
@@ -265,6 +366,20 @@ class ESConnectionBase(DocStoreConnection):
         raise NotImplementedError("Not implemented")
 
     def get_highlight(self, res, keywords: list[str], field_name: str):
+        """Extract highlighted text snippets from search results.
+
+        For English text, wraps keyword occurrences in ``<em>`` tags within
+        sentence boundaries.  For non-English text, uses OpenSearch's native
+        highlights directly.
+
+        Args:
+            res: OpenSearch search response dict.
+            keywords: List of query keywords to highlight.
+            field_name: Source field containing the text to highlight.
+
+        Returns:
+            Dict mapping document IDs to highlighted text strings.
+        """
         ans = {}
         for d in res["hits"]["hits"]:
             highlights = d.get("highlight")
@@ -290,6 +405,15 @@ class ESConnectionBase(DocStoreConnection):
         return ans
 
     def get_aggregation(self, res, field_name: str):
+        """Extract aggregation buckets from a search response.
+
+        Args:
+            res: OpenSearch search response dict.
+            field_name: Aggregation field name (prefixed with ``aggs_`` in the response).
+
+        Returns:
+            List of ``(key, doc_count)`` tuples.
+        """
         agg_field = "aggs_" + field_name
         if "aggregations" not in res or agg_field not in res["aggregations"]:
             return list()
@@ -301,9 +425,26 @@ class ESConnectionBase(DocStoreConnection):
     """
 
     def sql(self, sql: str, fetch_size: int, format: str):
+        """Execute a SQL query via the OpenSearch SQL plugin.
+
+        Transforms tokenized field references (``*_tks``) into MATCH
+        expressions before execution.
+
+        Args:
+            sql: SQL query string.
+            fetch_size: Maximum number of rows to return.
+            format: Response format (e.g. ``"json"``, ``"csv"``).
+
+        Returns:
+            Query result from OpenSearch SQL plugin, or None on timeout.
+
+        Raises:
+            Exception: On SQL execution errors.
+        """
         self.logger.debug(f"ESConnection.sql get sql: {sql}")
         sql = re.sub(r"[ `]+", " ", sql)
         sql = sql.replace("%", "")
+        # Transform token-field equality/LIKE conditions into MATCH expressions
         replaces = []
         for r in re.finditer(r" ([a-z_]+_l?tks)( like | ?= ?)'([^']+)'", sql):
             fld, v = r.group(1), r.group(3)

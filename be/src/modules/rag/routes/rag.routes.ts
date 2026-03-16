@@ -7,6 +7,7 @@ import {
   createDatasetSchema, updateDatasetSchema, searchChunksSchema, uuidParamSchema, datasetAccessSchema,
   createVersionSchema, updateVersionSchema, versionParamSchema, bulkDeleteFilesSchema,
   updateDatasetSettingsSchema, createChunkSchema, updateChunkSchema, chunkParamSchema, retrievalTestSchema,
+  docParamSchema, toggleDocumentSchema,
 } from '../schemas/rag.schemas.js';
 
 const router = Router();
@@ -58,6 +59,7 @@ router.post('/datasets/:id/documents/:docId/parse', requirePermission('manage_da
 router.get('/datasets/:id/documents/:docId/download', requireAuth, controller.downloadDocument.bind(controller));
 router.get('/datasets/:id/documents/:docId/status', requireAuth, controller.streamDocumentProgress.bind(controller));
 router.delete('/datasets/:id/documents/:docId', requirePermission('manage_datasets'), controller.deleteDocument.bind(controller));
+router.patch('/datasets/:id/documents/:docId/toggle', requirePermission('manage_datasets'), validate({ params: docParamSchema, body: toggleDocumentSchema }), controller.toggleDocumentAvailability.bind(controller));
 
 // Search + Chunks
 router.post('/datasets/:id/search', requireAuth, validate({ params: uuidParamSchema, body: searchChunksSchema }), controller.searchChunks.bind(controller));

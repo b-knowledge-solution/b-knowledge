@@ -13,6 +13,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""AWS S3 storage connector using the boto3 SDK.
+
+Provides a singleton storage client for Amazon S3, implementing the
+standard storage interface. Supports default bucket mode with prefix
+paths, custom endpoint URLs, session tokens, and configurable
+signature versions and addressing styles.
+
+The boto3 client is wrapped in a single-element list to work around
+singleton initialization edge cases.
+"""
 
 import logging
 import boto3
@@ -26,6 +36,25 @@ from common import settings
 
 @singleton
 class RAGFlowS3:
+    """AWS S3 client implementing the unified storage interface.
+
+    Uses boto3 with flexible credential and endpoint configuration.
+    Supports single-bucket mode with prefix paths for key namespacing.
+
+    Attributes:
+        conn: List containing the boto3 S3 client (single-element list).
+        s3_config: S3 configuration dict from settings.
+        access_key: AWS access key ID.
+        secret_key: AWS secret access key.
+        session_token: AWS session token (for temporary credentials).
+        region_name: AWS region name.
+        endpoint_url: Custom S3-compatible endpoint URL.
+        signature_version: S3 signature version.
+        addressing_style: S3 addressing style ('path' or 'virtual').
+        bucket: Default bucket name (None for multi-bucket mode).
+        prefix_path: Optional key prefix for all operations.
+    """
+
     def __init__(self):
         self.conn = None
         self.s3_config = settings.S3
@@ -42,6 +71,14 @@ class RAGFlowS3:
 
     @staticmethod
     def use_default_bucket(method):
+        """Decorator that redirects bucket to the configured default bucket.
+
+        Args:
+            method: The decorated method.
+
+        Returns:
+            Wrapped method with bucket redirection.
+        """
         def wrapper(self, bucket, *args, **kwargs):
             # If there is a default bucket, use the default bucket
             actual_bucket = self.bucket if self.bucket else bucket
@@ -51,9 +88,20 @@ class RAGFlowS3:
 
     @staticmethod
     def use_prefix_path(method):
+        """Decorator that prepends prefix_path and bucket to the file name.
+
+        When prefix_path is configured, the upstream bucket is used as
+        a sub-prefix, making the full key: prefix_path/bucket/fnm.
+
+        Args:
+            method: The decorated method.
+
+        Returns:
+            Wrapped method with path prefix applied.
+        """
         def wrapper(self, bucket, fnm, *args, **kwargs):
             # If the prefix path is set, use the prefix path.
-            # The bucket passed from the upstream call is 
+            # The bucket passed from the upstream call is
             # used as the file prefix. This is especially useful when you're using the default bucket
             if self.prefix_path:
                 fnm = f"{self.prefix_path}/{bucket}/{fnm}"
@@ -62,6 +110,7 @@ class RAGFlowS3:
         return wrapper
 
     def __open__(self):
+        """Initialize the boto3 S3 client with configured credentials and endpoint."""
         try:
             if self.conn:
                 self.__close__()
@@ -98,11 +147,20 @@ class RAGFlowS3:
             logging.exception(f"Fail to connect at region {self.region_name} or endpoint {self.endpoint_url}")
 
     def __close__(self):
+        """Release the boto3 client."""
         del self.conn[0]
         self.conn = None
 
     @use_default_bucket
     def bucket_exists(self, bucket, *args, **kwargs):
+        """Check whether a bucket exists.
+
+        Args:
+            bucket: Bucket name to check.
+
+        Returns:
+            True if the bucket exists, False otherwise.
+        """
         try:
             logging.debug(f"head_bucket bucketname {bucket}")
             self.conn[0].head_bucket(Bucket=bucket)
@@ -113,6 +171,11 @@ class RAGFlowS3:
         return exists
 
     def health(self):
+        """Verify S3 connectivity by uploading a small test object.
+
+        Returns:
+            Upload result if healthy.
+        """
         bucket = self.bucket
         fnm = "txtxtxtxt1"
         fnm, binary = f"{self.prefix_path}/{fnm}" if self.prefix_path else fnm, b"_t@@@1"
@@ -124,14 +187,43 @@ class RAGFlowS3:
         return r
 
     def get_properties(self, bucket, key):
+        """Get object properties (stub, returns empty dict).
+
+        Args:
+            bucket: Bucket name.
+            key: Object key.
+
+        Returns:
+            Empty dict (not implemented).
+        """
         return {}
 
     def list(self, bucket, dir, recursive=True):
+        """List objects in a bucket (stub, returns empty list).
+
+        Args:
+            bucket: Bucket name.
+            dir: Directory prefix.
+            recursive: Whether to list recursively.
+
+        Returns:
+            Empty list (not implemented).
+        """
         return []
 
     @use_prefix_path
     @use_default_bucket
     def put(self, bucket, fnm, binary, *args, **kwargs):
+        """Upload binary data to S3.
+
+        Args:
+            bucket: Bucket name.
+            fnm: Object key.
+            binary: Raw bytes to upload.
+
+        Returns:
+            Upload result on success, or None on failure.
+        """
         logging.debug(f"bucket name {bucket}; filename :{fnm}:")
         for _ in range(1):
             try:
@@ -149,6 +241,12 @@ class RAGFlowS3:
     @use_prefix_path
     @use_default_bucket
     def rm(self, bucket, fnm, *args, **kwargs):
+        """Delete an object from S3.
+
+        Args:
+            bucket: Bucket name.
+            fnm: Object key.
+        """
         try:
             self.conn[0].delete_object(Bucket=bucket, Key=fnm)
         except Exception:
@@ -157,6 +255,15 @@ class RAGFlowS3:
     @use_prefix_path
     @use_default_bucket
     def get(self, bucket, fnm, *args, **kwargs):
+        """Download an object's content as bytes from S3.
+
+        Args:
+            bucket: Bucket name.
+            fnm: Object key.
+
+        Returns:
+            Raw bytes of the object, or None on failure.
+        """
         for _ in range(1):
             try:
                 r = self.conn[0].get_object(Bucket=bucket, Key=fnm)
@@ -171,6 +278,15 @@ class RAGFlowS3:
     @use_prefix_path
     @use_default_bucket
     def obj_exist(self, bucket, fnm, *args, **kwargs):
+        """Check whether an object exists in S3.
+
+        Args:
+            bucket: Bucket name.
+            fnm: Object key.
+
+        Returns:
+            True if the object exists, False otherwise.
+        """
         try:
             if self.conn[0].head_object(Bucket=bucket, Key=fnm):
                 return True
@@ -183,6 +299,18 @@ class RAGFlowS3:
     @use_prefix_path
     @use_default_bucket
     def get_presigned_url(self, bucket, fnm, expires, *args, **kwargs):
+        """Generate a presigned URL for temporary object access.
+
+        Retries up to 10 times on failure.
+
+        Args:
+            bucket: Bucket name.
+            fnm: Object key.
+            expires: Expiration time in seconds.
+
+        Returns:
+            Presigned URL string, or None after exhausting retries.
+        """
         for _ in range(10):
             try:
                 r = self.conn[0].generate_presigned_url('get_object',
@@ -199,6 +327,11 @@ class RAGFlowS3:
 
     @use_default_bucket
     def rm_bucket(self, bucket, *args, **kwargs):
+        """Remove a bucket and all its objects.
+
+        Args:
+            bucket: Bucket name to remove.
+        """
         for conn in self.conn:
             try:
                 if not conn.bucket_exists(bucket):

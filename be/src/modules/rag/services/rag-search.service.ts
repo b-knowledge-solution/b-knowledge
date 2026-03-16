@@ -62,6 +62,9 @@ export class RagSearchService {
                             { term: { kb_id: datasetId } },
                             { match: { content_with_weight: { query, minimum_should_match: '30%' } } },
                         ],
+                        filter: [
+                            { term: { available_int: 1 } },
+                        ],
                     },
                 },
                 size: topK,
@@ -95,6 +98,9 @@ export class RagSearchService {
                     bool: {
                         must: [
                             { term: { kb_id: datasetId } },
+                        ],
+                        filter: [
+                            { term: { available_int: 1 } },
                         ],
                         should: [
                             {
@@ -313,6 +319,44 @@ export class RagSearchService {
             id: chunkId,
             refresh: 'true',
         })
+    }
+
+    /**
+     * Toggle availability of all chunks belonging to a document.
+     * Updates the available_int field in OpenSearch for all chunks with the given doc_id.
+     * @param datasetId - UUID of the dataset (kb_id) the document belongs to
+     * @param docId - The document ID whose chunks should be toggled
+     * @param available - True to enable, false to disable
+     * @returns Number of chunks updated
+     */
+    async toggleDocumentAvailability(
+        datasetId: string,
+        docId: string,
+        available: boolean,
+    ): Promise<number> {
+        const client = getClient()
+        const res = await client.updateByQuery({
+            index: getIndexName(),
+            body: {
+                query: {
+                    bool: {
+                        must: [
+                            { term: { kb_id: datasetId } },
+                            { term: { doc_id: docId } },
+                        ],
+                    },
+                },
+                script: {
+                    source: `ctx._source.available_int = params.available`,
+                    params: { available: available ? 1 : 0 },
+                },
+            },
+            refresh: true,
+        })
+
+        const updated = (res.body as Record<string, unknown>).updated as number ?? 0
+        log.info('Toggled document availability', { datasetId, docId, available, chunksUpdated: updated })
+        return updated
     }
 
     /**

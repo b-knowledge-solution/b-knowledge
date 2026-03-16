@@ -12,6 +12,9 @@ import {
   GraduationCap,
   ClipboardCheck,
   Hospital,
+  FileCode,
+  ShieldCheck,
+  FlaskConical,
 } from 'lucide-react'
 
 /** @description Use case items */
@@ -22,6 +25,9 @@ const USE_CASES = [
   { icon: <GraduationCap className="w-6 h-6" />, titleKey: 'landing.useCases.training.title', descKey: 'landing.useCases.training.desc' },
   { icon: <ClipboardCheck className="w-6 h-6" />, titleKey: 'landing.useCases.compliance.title', descKey: 'landing.useCases.compliance.desc' },
   { icon: <Hospital className="w-6 h-6" />, titleKey: 'landing.useCases.operations.title', descKey: 'landing.useCases.operations.desc' },
+  { icon: <FileCode className="w-6 h-6" />, titleKey: 'landing.useCases.sdlcDocs.title', descKey: 'landing.useCases.sdlcDocs.desc' },
+  { icon: <ShieldCheck className="w-6 h-6" />, titleKey: 'landing.useCases.medDeviceQms.title', descKey: 'landing.useCases.medDeviceQms.desc' },
+  { icon: <FlaskConical className="w-6 h-6" />, titleKey: 'landing.useCases.researchData.title', descKey: 'landing.useCases.researchData.desc' },
 ]
 
 /**

@@ -125,6 +125,34 @@ export class RagController {
         }
     }
 
+    /**
+     * PATCH /datasets/:id/documents/:docId/toggle — toggle document chunk availability.
+     * Sets available_int to 0 (disabled) or 1 (enabled) for all chunks of the document.
+     * @param req - Express request with dataset ID, docId params, and body { available: boolean }
+     * @param res - Express response with number of updated chunks
+     */
+    async toggleDocumentAvailability(req: Request, res: Response): Promise<void> {
+        const { id: datasetId, docId } = req.params;
+        if (!datasetId || !docId) {
+            res.status(400).json({ error: 'Dataset ID and document ID are required' });
+            return;
+        }
+
+        const { available } = req.body;
+        if (typeof available !== 'boolean') {
+            res.status(400).json({ error: 'available (boolean) is required in request body' });
+            return;
+        }
+
+        try {
+            const updated = await ragSearchService.toggleDocumentAvailability(datasetId, docId, available);
+            res.json({ doc_id: docId, available, chunks_updated: updated });
+        } catch (error) {
+            log.error('Failed to toggle document availability', { datasetId, docId, error: String(error) });
+            res.status(500).json({ error: 'Failed to toggle document availability' });
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Dataset RBAC Access Control
     // -------------------------------------------------------------------------

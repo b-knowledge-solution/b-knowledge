@@ -1,3 +1,13 @@
+"""Vision-based figure/image parser for enhancing document extraction with LLM descriptions.
+
+Provides wrapper functions and a VisionFigureParser class that use vision language
+models (IMAGE2TEXT) to generate textual descriptions of figures and images found in
+PDF, DOCX, and Excel documents. Descriptions are generated concurrently using a
+thread pool for performance.
+
+The module supports optional contextual prompts (surrounding text above/below figures)
+to produce more accurate and contextually relevant descriptions.
+"""
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -27,8 +37,18 @@ from rag.prompts.generator import vision_llm_figure_describe_prompt, vision_llm_
 from rag.nlp import append_context2table_image4pdf
 from rag.utils.lazy_image import ensure_pil_image, open_image_for_processing, is_image_like
 
-# need to delete before pr
 def vision_figure_parser_figure_data_wrapper(figures_data_without_positions):
+    """Convert raw figure data tuples into the format expected by VisionFigureParser.
+
+    Wraps each (description, image) pair with dummy position coordinates so that
+    figures without explicit positions can still be processed.
+
+    Args:
+        figures_data_without_positions: List of (description, image_data) tuples.
+
+    Returns:
+        List of ((PIL.Image, [description]), [(0,0,0,0,0)]) tuples.
+    """
     if not figures_data_without_positions:
         return []
     res = []
@@ -44,7 +64,18 @@ def vision_figure_parser_figure_data_wrapper(figures_data_without_positions):
         )
     return res
 
-def vision_figure_parser_docx_wrapper(sections, tbls, callback=None,**kwargs):
+def vision_figure_parser_docx_wrapper(sections, tbls, callback=None, **kwargs):
+    """Enhance DOCX figure extraction using a vision language model.
+
+    Args:
+        sections: List of figure sections extracted from the DOCX.
+        tbls: Existing table/figure results to extend.
+        callback: Progress callback function (progress_float, message_str).
+        **kwargs: Must include 'tenant_id' for model lookup.
+
+    Returns:
+        The extended tbls list with vision-enhanced figure descriptions.
+    """
     if not sections:
         return tbls
     try:
@@ -63,7 +94,17 @@ def vision_figure_parser_docx_wrapper(sections, tbls, callback=None,**kwargs):
             callback(0.8, f"Visual model error: {e}. Skipping figure parsing enhancement.")
     return tbls
 
-def vision_figure_parser_figure_xlsx_wrapper(images,callback=None, **kwargs):
+def vision_figure_parser_figure_xlsx_wrapper(images, callback=None, **kwargs):
+    """Enhance Excel embedded image extraction using a vision language model.
+
+    Args:
+        images: List of image dicts with 'image' (PIL.Image) and 'image_description' keys.
+        callback: Progress callback function (progress_float, message_str).
+        **kwargs: Must include 'tenant_id' for model lookup.
+
+    Returns:
+        List of vision-enhanced figure tuples.
+    """
     tbls = []
     if not images:
         return []
@@ -91,6 +132,19 @@ def vision_figure_parser_figure_xlsx_wrapper(images,callback=None, **kwargs):
     return tbls
 
 def vision_figure_parser_pdf_wrapper(tbls, callback=None, **kwargs):
+    """Enhance PDF figure extraction using a vision language model with optional context.
+
+    Identifies figure items in the table results, optionally gathers surrounding text
+    context, and generates vision-based descriptions for each figure.
+
+    Args:
+        tbls: List of table/figure result tuples from PDF parsing.
+        callback: Progress callback function (progress_float, message_str).
+        **kwargs: Must include 'tenant_id'; optionally 'sections' and 'parser_config'.
+
+    Returns:
+        The updated tbls list with original figures replaced by vision-enhanced versions.
+    """
     if not tbls:
         return []
     sections = kwargs.get("sections")
@@ -133,6 +187,18 @@ def vision_figure_parser_pdf_wrapper(tbls, callback=None, **kwargs):
 
 
 def vision_figure_parser_docx_wrapper_naive(chunks, idx_lst, callback=None, **kwargs):
+    """Enhance specific DOCX chunks (by index) with vision-based figure descriptions.
+
+    A simpler variant that operates on pre-chunked data, processing specific chunk
+    indices that contain images. Each image is described using the vision model
+    with optional context from surrounding text.
+
+    Args:
+        chunks: List of chunk dicts, each potentially containing an 'image' key.
+        idx_lst: List of chunk indices to process for figure enhancement.
+        callback: Progress callback function (progress_float, message_str).
+        **kwargs: Must include 'tenant_id' for model lookup.
+    """
     if not chunks:
         return []
     try:
@@ -187,10 +253,28 @@ def vision_figure_parser_docx_wrapper_naive(chunks, idx_lst, callback=None, **kw
                 idx, description = future.result()
                 chunks[idx]['text'] += description
     
-shared_executor = ThreadPoolExecutor(max_workers=10)    
+# Shared thread pool for concurrent vision model inference across parser instances
+shared_executor = ThreadPoolExecutor(max_workers=10)
+
 
 class VisionFigureParser:
+    """Generates textual descriptions of document figures using a vision language model.
+
+    Takes a collection of figure images with their existing descriptions and positions,
+    invokes a vision LLM to produce rich textual descriptions, and reassembles the
+    results with position data intact.
+    """
+
     def __init__(self, vision_model, figures_data, *args, **kwargs):
+        """Initialize the vision figure parser.
+
+        Args:
+            vision_model: An LLMBundle instance configured for IMAGE2TEXT.
+            figures_data: List of figure tuples, each either:
+                - ((image, [descriptions]), [(page, x0, x1, top, bottom)]) with positions
+                - (image, [descriptions]) without positions
+            **kwargs: Optional 'figure_contexts' list and 'context_size' int.
+        """
         self.vision_model = vision_model
         self.figure_contexts = kwargs.get("figure_contexts") or []
         self.context_size = max(0, int(kwargs.get("context_size", 0) or 0))
@@ -199,6 +283,11 @@ class VisionFigureParser:
         assert not self.positions or (len(self.figures) == len(self.positions))
 
     def _extract_figures_info(self, figures_data):
+        """Parse figure data tuples into separate lists of images, descriptions, and positions.
+
+        Args:
+            figures_data: List of figure tuples in either positioned or unpositioned format.
+        """
         self.figures = []
         self.descriptions = []
         self.positions = []
@@ -219,6 +308,11 @@ class VisionFigureParser:
                 self.descriptions.append(item[1])
 
     def _assemble(self):
+        """Reassemble figures, descriptions, and positions into output tuples.
+
+        Returns:
+            List of assembled tuples ready for downstream processing.
+        """
         self.assembled = []
         self.has_positions = len(self.positions) != 0
         for i in range(len(self.figures)):
@@ -236,6 +330,17 @@ class VisionFigureParser:
         return self.assembled
 
     def __call__(self, **kwargs):
+        """Run vision model inference on all figures concurrently.
+
+        Submits each figure to the shared thread pool for vision LLM processing,
+        collects results, updates descriptions, and assembles final output.
+
+        Args:
+            **kwargs: Optional 'callback' for progress reporting.
+
+        Returns:
+            List of assembled figure tuples with vision-enhanced descriptions.
+        """
         callback = kwargs.get("callback", lambda prog, msg: None)
 
         @timeout(30, 3)

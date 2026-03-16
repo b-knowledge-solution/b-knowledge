@@ -13,6 +13,20 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""GraphRAG pipeline orchestrator for knowledge graph construction.
+
+This module provides the top-level functions that orchestrate the full GraphRAG
+pipeline: subgraph generation from document chunks, merging subgraphs into a
+global knowledge graph, entity resolution, and community report extraction.
+
+Key functions:
+- run_graphrag: Single-document pipeline.
+- run_graphrag_for_kb: Multi-document batch pipeline for a knowledge base.
+- generate_subgraph: Extract entities/relationships and build a document subgraph.
+- merge_subgraph: Merge a document subgraph into the global graph.
+- resolve_entities: Run LLM-based entity resolution.
+- extract_community: Run Leiden community detection and generate reports.
+"""
 import asyncio
 import json
 import logging
@@ -54,30 +68,37 @@ async def run_graphrag(
     embedding_model,
     callback,
 ):
+    """Run the full GraphRAG pipeline for a single document.
+
+    Args:
+        row: Task row dict with tenant_id, kb_id, doc_id, kb_parser_config, id.
+        language: Language for entity extraction.
+        with_resolution: Whether to run entity resolution.
+        with_community: Whether to extract community reports.
+        chat_model: LLM model bundle.
+        embedding_model: Embedding model bundle.
+        callback: Progress callback.
+    """
     enable_timeout_assertion = os.environ.get("ENABLE_TIMEOUT_ASSERTION")
     start = asyncio.get_running_loop().time()
     tenant_id, kb_id, doc_id = row["tenant_id"], str(row["kb_id"]), row["doc_id"]
+    # Load all chunks for this document
     chunks = []
     for d in settings.retriever.chunk_list(doc_id, tenant_id, [kb_id], max_count=10000, fields=["content_with_weight", "doc_id"], sort_by_position=True):
         chunks.append(d["content_with_weight"])
 
     timeout_sec = max(120, len(chunks) * 60 * 10) if enable_timeout_assertion else 10000000000
 
+    # Select extractor based on parser config (light mode by default)
     try:
         subgraph = await asyncio.wait_for(
             generate_subgraph(
                 LightKGExt if "method" not in row["kb_parser_config"].get("graphrag", {})
                     or row["kb_parser_config"]["graphrag"]["method"] != "general"
                 else GeneralKGExt,
-                tenant_id,
-                kb_id,
-                doc_id,
-                chunks,
-                language,
+                tenant_id, kb_id, doc_id, chunks, language,
                 row["kb_parser_config"]["graphrag"].get("entity_types", []),
-                chat_model,
-                embedding_model,
-                callback,
+                chat_model, embedding_model, callback,
             ),
             timeout=timeout_sec,
         )
@@ -88,20 +109,14 @@ async def run_graphrag(
     if not subgraph:
         return
 
+    # Acquire distributed lock for graph modifications
     graphrag_task_lock = RedisDistributedLock(f"graphrag_task_{kb_id}", lock_value=doc_id, timeout=1200)
     await graphrag_task_lock.spin_acquire()
     callback(msg=f"run_graphrag {doc_id} graphrag_task_lock acquired")
 
     try:
         subgraph_nodes = set(subgraph.nodes())
-        new_graph = await merge_subgraph(
-            tenant_id,
-            kb_id,
-            doc_id,
-            subgraph,
-            embedding_model,
-            callback,
-        )
+        new_graph = await merge_subgraph(tenant_id, kb_id, doc_id, subgraph, embedding_model, callback)
         assert new_graph is not None
 
         if not with_resolution and not with_community:
@@ -110,30 +125,13 @@ async def run_graphrag(
         if with_resolution:
             await graphrag_task_lock.spin_acquire()
             callback(msg=f"run_graphrag {doc_id} graphrag_task_lock acquired")
-            await resolve_entities(
-                new_graph,
-                subgraph_nodes,
-                tenant_id,
-                kb_id,
-                doc_id,
-                chat_model,
-                embedding_model,
-                callback,
-                task_id=row["id"],
-            )
+            await resolve_entities(new_graph, subgraph_nodes, tenant_id, kb_id, doc_id,
+                chat_model, embedding_model, callback, task_id=row["id"])
         if with_community:
             await graphrag_task_lock.spin_acquire()
             callback(msg=f"run_graphrag {doc_id} graphrag_task_lock acquired")
-            await extract_community(
-                new_graph,
-                tenant_id,
-                kb_id,
-                doc_id,
-                chat_model,
-                embedding_model,
-                callback,
-                task_id=row["id"],
-            )
+            await extract_community(new_graph, tenant_id, kb_id, doc_id,
+                chat_model, embedding_model, callback, task_id=row["id"])
     finally:
         graphrag_task_lock.release()
     now = asyncio.get_running_loop().time()
@@ -142,18 +140,27 @@ async def run_graphrag(
 
 
 async def run_graphrag_for_kb(
-    row: dict,
-    doc_ids: list[str],
-    language: str,
-    kb_parser_config: dict,
-    chat_model,
-    embedding_model,
-    callback,
-    *,
-    with_resolution: bool = True,
-    with_community: bool = True,
-    max_parallel_docs: int = 4,
+    row: dict, doc_ids: list[str], language: str, kb_parser_config: dict,
+    chat_model, embedding_model, callback, *,
+    with_resolution: bool = True, with_community: bool = True, max_parallel_docs: int = 4,
 ) -> dict:
+    """Run the GraphRAG pipeline for multiple documents in a knowledge base.
+
+    Args:
+        row: Task row dict with tenant_id, kb_id, id.
+        doc_ids: Document IDs to process (empty = all docs in KB).
+        language: Language for entity extraction.
+        kb_parser_config: Parser config with graphrag settings.
+        chat_model: LLM model bundle.
+        embedding_model: Embedding model bundle.
+        callback: Progress callback.
+        with_resolution: Whether to run entity resolution.
+        with_community: Whether to extract community reports.
+        max_parallel_docs: Max concurrent document processing.
+
+    Returns:
+        Dict with ok_docs, failed_docs, total_docs, total_chunks, seconds.
+    """
     tenant_id, kb_id = row["tenant_id"], row["kb_id"]
     enable_timeout_assertion = os.environ.get("ENABLE_TIMEOUT_ASSERTION")
     start = asyncio.get_running_loop().time()
@@ -161,17 +168,8 @@ async def run_graphrag_for_kb(
 
     if not doc_ids:
         logging.info(f"Fetching all docs for {kb_id}")
-        docs, _ = DocumentService.get_by_kb_id(
-            kb_id=kb_id,
-            page_number=0,
-            items_per_page=0,
-            orderby="create_time",
-            desc=False,
-            keywords="",
-            run_status=[],
-            types=[],
-            suffix=[],
-        )
+        docs, _ = DocumentService.get_by_kb_id(kb_id=kb_id, page_number=0, items_per_page=0,
+            orderby="create_time", desc=False, keywords="", run_status=[], types=[], suffix=[])
         doc_ids = [doc["id"] for doc in docs]
 
     doc_ids = list(dict.fromkeys(doc_ids))
@@ -180,23 +178,13 @@ async def run_graphrag_for_kb(
         return {"ok_docs": [], "failed_docs": [], "total_docs": 0, "total_chunks": 0, "seconds": 0.0}
 
     def load_doc_chunks(doc_id: str) -> list[str]:
+        """Load and merge chunks for a document into ~4096 token blocks."""
         from common.token_utils import num_tokens_from_string
-
         chunks = []
         current_chunk = ""
-
-        # DEBUG: Obtener todos los chunks primero
-        raw_chunks = list(settings.retriever.chunk_list(
-            doc_id,
-            tenant_id,
-            [kb_id],
-            max_count=10000,  # FIX: Aumentar límite para procesar todos los chunks
-            fields=fields_for_chunks,
-            sort_by_position=True,
-        ))
-
+        raw_chunks = list(settings.retriever.chunk_list(doc_id, tenant_id, [kb_id],
+            max_count=10000, fields=fields_for_chunks, sort_by_position=True))
         callback(msg=f"[DEBUG] chunk_list() returned {len(raw_chunks)} raw chunks for doc {doc_id}")
-
         for d in raw_chunks:
             content = d["content_with_weight"]
             if num_tokens_from_string(current_chunk + content) < 4096:
@@ -205,10 +193,8 @@ async def run_graphrag_for_kb(
                 if current_chunk:
                     chunks.append(current_chunk)
                 current_chunk = content
-
         if current_chunk:
             chunks.append(current_chunk)
-
         return chunks
 
     all_doc_chunks: dict[str, list[str]] = {}
@@ -223,46 +209,30 @@ async def run_graphrag_for_kb(
         return {"ok_docs": [], "failed_docs": doc_ids, "total_docs": len(doc_ids), "total_chunks": 0, "seconds": 0.0}
 
     semaphore = asyncio.Semaphore(max_parallel_docs)
-
     subgraphs: dict[str, object] = {}
-    failed_docs: list[tuple[str, str]] = []  # (doc_id, error)
+    failed_docs: list[tuple[str, str]] = []
 
     async def build_one(doc_id: str):
+        """Build a subgraph for one document with concurrency limiting."""
         if has_canceled(row["id"]):
-            callback(msg=f"Task {row['id']} cancelled, stopping execution.")
+            callback(msg=f"Task {row['id']} cancelled, stopping.")
             raise TaskCanceledException(f"Task {row['id']} was cancelled")
-
         chunks = all_doc_chunks.get(doc_id, [])
         if not chunks:
             callback(msg=f"[GraphRAG] doc:{doc_id} has no available chunks, skip generation.")
             return
-
         kg_extractor = LightKGExt if ("method" not in kb_parser_config.get("graphrag", {}) or kb_parser_config["graphrag"]["method"] != "general") else GeneralKGExt
-
         deadline = max(120, len(chunks) * 60 * 10) if enable_timeout_assertion else 10000000000
-
         async with semaphore:
             try:
                 msg = f"[GraphRAG] build_subgraph doc:{doc_id}"
                 callback(msg=f"{msg} start (chunks={len(chunks)}, timeout={deadline}s)")
-
                 try:
                     sg = await asyncio.wait_for(
-                        generate_subgraph(
-                            kg_extractor,
-                            tenant_id,
-                            kb_id,
-                            doc_id,
-                            chunks,
-                            language,
+                        generate_subgraph(kg_extractor, tenant_id, kb_id, doc_id, chunks, language,
                             kb_parser_config.get("graphrag", {}).get("entity_types", []),
-                            chat_model,
-                            embedding_model,
-                            callback,
-                            task_id=row["id"]
-                        ),
-                        timeout=deadline,
-                    )
+                            chat_model, embedding_model, callback, task_id=row["id"]),
+                        timeout=deadline)
                 except asyncio.TimeoutError:
                     failed_docs.append((doc_id, "timeout"))
                     callback(msg=f"{msg} FAILED: timeout")
@@ -314,22 +284,12 @@ async def run_graphrag_for_kb(
     try:
         union_nodes: set = set()
         final_graph = None
-
         for doc_id in ok_docs:
             sg = subgraphs[doc_id]
             union_nodes.update(set(sg.nodes()))
-
-            new_graph = await merge_subgraph(
-                tenant_id,
-                kb_id,
-                doc_id,
-                sg,
-                embedding_model,
-                callback,
-            )
+            new_graph = await merge_subgraph(tenant_id, kb_id, doc_id, sg, embedding_model, callback)
             if new_graph is not None:
                 final_graph = new_graph
-
         if final_graph is None:
             callback(msg=f"[GraphRAG] kb:{kb_id} merge finished (no in-memory graph returned).")
         else:
@@ -353,58 +313,42 @@ async def run_graphrag_for_kb(
         subgraph_nodes = set()
         for sg in subgraphs.values():
             subgraph_nodes.update(set(sg.nodes()))
-
         if with_resolution:
-            await resolve_entities(
-                final_graph,
-                subgraph_nodes,
-                tenant_id,
-                kb_id,
-                None,
-                chat_model,
-                embedding_model,
-                callback,
-                task_id=row["id"],
-            )
-
+            await resolve_entities(final_graph, subgraph_nodes, tenant_id, kb_id, None,
+                chat_model, embedding_model, callback, task_id=row["id"])
         if with_community:
-            await extract_community(
-                final_graph,
-                tenant_id,
-                kb_id,
-                None,
-                chat_model,
-                embedding_model,
-                callback,
-                task_id=row["id"],
-            )
+            await extract_community(final_graph, tenant_id, kb_id, None,
+                chat_model, embedding_model, callback, task_id=row["id"])
     finally:
         kb_lock.release()
 
     now = asyncio.get_running_loop().time()
     callback(msg=f"[GraphRAG] GraphRAG for KB {kb_id} done in {now - start:.2f} seconds. ok={len(ok_docs)} failed={len(failed_docs)} total_docs={len(doc_ids)} total_chunks={total_chunks}")
-    return {
-        "ok_docs": ok_docs,
-        "failed_docs": failed_docs,  # [(doc_id, error), ...]
-        "total_docs": len(doc_ids),
-        "total_chunks": total_chunks,
-        "seconds": now - start,
-    }
+    return {"ok_docs": ok_docs, "failed_docs": failed_docs, "total_docs": len(doc_ids), "total_chunks": total_chunks, "seconds": now - start}
 
 
 async def generate_subgraph(
-    extractor: Extractor,
-    tenant_id: str,
-    kb_id: str,
-    doc_id: str,
-    chunks: list[str],
-    language,
-    entity_types,
-    llm_bdl,
-    embed_bdl,
-    callback,
-    task_id: str = "",
+    extractor: Extractor, tenant_id: str, kb_id: str, doc_id: str,
+    chunks: list[str], language, entity_types, llm_bdl, embed_bdl, callback, task_id: str = "",
 ):
+    """Generate a knowledge subgraph from a document's text chunks.
+
+    Args:
+        extractor: Extractor class to instantiate.
+        tenant_id: Tenant identifier.
+        kb_id: Knowledge base identifier.
+        doc_id: Document identifier.
+        chunks: Text chunks from the document.
+        language: Language for extraction.
+        entity_types: Entity type labels.
+        llm_bdl: LLM model bundle.
+        embed_bdl: Embedding model bundle.
+        callback: Progress callback.
+        task_id: Task identifier for cancellation.
+
+    Returns:
+        NetworkX Graph subgraph, or None if document already in graph.
+    """
     if task_id and has_canceled(task_id):
         callback(msg=f"Task {task_id} cancelled during subgraph generation for doc {doc_id}.")
         raise TaskCanceledException(f"Task {task_id} was cancelled")
@@ -414,11 +358,7 @@ async def generate_subgraph(
         callback(msg=f"Graph already contains {doc_id}")
         return None
     start = asyncio.get_running_loop().time()
-    ext = extractor(
-        llm_bdl,
-        language=language,
-        entity_types=entity_types,
-    )
+    ext = extractor(llm_bdl, language=language, entity_types=entity_types)
     ents, rels = await ext(doc_id, chunks, callback, task_id=task_id)
     subgraph = nx.Graph()
 
@@ -426,7 +366,6 @@ async def generate_subgraph(
         if task_id and has_canceled(task_id):
             callback(msg=f"Task {task_id} cancelled during entity processing for doc {doc_id}.")
             raise TaskCanceledException(f"Task {task_id} was cancelled")
-
         assert "description" in ent, f"entity {ent} does not have description"
         ent["source_id"] = [doc_id]
         subgraph.add_node(ent["entity_name"], **ent)
@@ -436,17 +375,12 @@ async def generate_subgraph(
         if task_id and has_canceled(task_id):
             callback(msg=f"Task {task_id} cancelled during relationship processing for doc {doc_id}.")
             raise TaskCanceledException(f"Task {task_id} was cancelled")
-
         assert "description" in rel, f"relation {rel} does not have description"
         if not subgraph.has_node(rel["src_id"]) or not subgraph.has_node(rel["tgt_id"]):
             ignored_rels += 1
             continue
         rel["source_id"] = [doc_id]
-        subgraph.add_edge(
-            rel["src_id"],
-            rel["tgt_id"],
-            **rel,
-        )
+        subgraph.add_edge(rel["src_id"], rel["tgt_id"], **rel)
     if ignored_rels:
         callback(msg=f"ignored {ignored_rels} relations due to missing entities.")
     tidy_graph(subgraph, callback, check_attribute=False)
@@ -454,11 +388,8 @@ async def generate_subgraph(
     subgraph.graph["source_id"] = [doc_id]
     chunk = {
         "content_with_weight": json.dumps(nx.node_link_data(subgraph, edges="edges"), ensure_ascii=False),
-        "knowledge_graph_kwd": "subgraph",
-        "kb_id": kb_id,
-        "source_id": [doc_id],
-        "available_int": 0,
-        "removed_kwd": "N",
+        "knowledge_graph_kwd": "subgraph", "kb_id": kb_id,
+        "source_id": [doc_id], "available_int": 0, "removed_kwd": "N",
     }
     cid = chunk_id(chunk)
     await thread_pool_exec(settings.docStoreConn.delete,{"knowledge_graph_kwd": "subgraph", "source_id": doc_id},search.index_name(tenant_id),kb_id,)
@@ -469,14 +400,20 @@ async def generate_subgraph(
 
 
 @timeout(60 * 3)
-async def merge_subgraph(
-    tenant_id: str,
-    kb_id: str,
-    doc_id: str,
-    subgraph: nx.Graph,
-    embedding_model,
-    callback,
-):
+async def merge_subgraph(tenant_id: str, kb_id: str, doc_id: str, subgraph: nx.Graph, embedding_model, callback):
+    """Merge a document subgraph into the global knowledge graph.
+
+    Args:
+        tenant_id: Tenant identifier.
+        kb_id: Knowledge base identifier.
+        doc_id: Document identifier.
+        subgraph: The document subgraph to merge.
+        embedding_model: Embedding model for chunk vectorization.
+        callback: Progress callback.
+
+    Returns:
+        The merged global graph.
+    """
     start = asyncio.get_running_loop().time()
     change = GraphChange()
     old_graph = await get_graph(tenant_id, kb_id, subgraph.graph["source_id"])
@@ -499,26 +436,27 @@ async def merge_subgraph(
 
 
 @timeout(60 * 30, 1)
-async def resolve_entities(
-    graph,
-    subgraph_nodes: set[str],
-    tenant_id: str,
-    kb_id: str,
-    doc_id: str,
-    llm_bdl,
-    embed_bdl,
-    callback,
-    task_id: str = "",
-):
-    # Check if task has been canceled before resolution
+async def resolve_entities(graph, subgraph_nodes: set[str], tenant_id: str, kb_id: str,
+    doc_id: str, llm_bdl, embed_bdl, callback, task_id: str = ""):
+    """Run entity resolution on the global knowledge graph.
+
+    Args:
+        graph: The global knowledge graph.
+        subgraph_nodes: Newly added node names to focus resolution on.
+        tenant_id: Tenant identifier.
+        kb_id: Knowledge base identifier.
+        doc_id: Document identifier.
+        llm_bdl: LLM model bundle.
+        embed_bdl: Embedding model bundle.
+        callback: Progress callback.
+        task_id: Task identifier for cancellation.
+    """
     if task_id and has_canceled(task_id):
         callback(msg=f"Task {task_id} cancelled during entity resolution.")
         raise TaskCanceledException(f"Task {task_id} was cancelled")
 
     start = asyncio.get_running_loop().time()
-    er = EntityResolution(
-        llm_bdl,
-    )
+    er = EntityResolution(llm_bdl)
     reso = await er(graph, subgraph_nodes, callback=callback, task_id=task_id)
     graph = reso.graph
     change = reso.change
@@ -535,24 +473,29 @@ async def resolve_entities(
 
 
 @timeout(60 * 30, 1)
-async def extract_community(
-    graph,
-    tenant_id: str,
-    kb_id: str,
-    doc_id: str,
-    llm_bdl,
-    embed_bdl,
-    callback,
-    task_id: str = "",
-):
+async def extract_community(graph, tenant_id: str, kb_id: str, doc_id: str,
+    llm_bdl, embed_bdl, callback, task_id: str = ""):
+    """Extract community reports from the knowledge graph.
+
+    Args:
+        graph: The global knowledge graph.
+        tenant_id: Tenant identifier.
+        kb_id: Knowledge base identifier.
+        doc_id: Document identifier.
+        llm_bdl: LLM model bundle.
+        embed_bdl: Embedding model bundle.
+        callback: Progress callback.
+        task_id: Task identifier for cancellation.
+
+    Returns:
+        Tuple of (community_structure, community_reports).
+    """
     if task_id and has_canceled(task_id):
         callback(msg=f"Task {task_id} cancelled before community extraction.")
         raise TaskCanceledException(f"Task {task_id} was cancelled")
 
     start = asyncio.get_running_loop().time()
-    ext = CommunityReportsExtractor(
-        llm_bdl,
-    )
+    ext = CommunityReportsExtractor(llm_bdl)
     cr = await ext(graph, callback=callback, task_id=task_id)
 
     if task_id and has_canceled(task_id):
@@ -570,25 +513,18 @@ async def extract_community(
         callback(msg=f"Task {task_id} cancelled during community indexing.")
         raise TaskCanceledException(f"Task {task_id} was cancelled")
 
+    # Convert community reports into indexable chunks
     chunks = []
     for stru, rep in zip(community_structure, community_reports):
-        obj = {
-            "report": rep,
-            "evidences": "\n".join([f.get("explanation", "") for f in stru["findings"]]),
-        }
+        obj = {"report": rep, "evidences": "\n".join([f.get("explanation", "") for f in stru["findings"]])}
         chunk = {
-            "id": get_uuid(),
-            "docnm_kwd": stru["title"],
+            "id": get_uuid(), "docnm_kwd": stru["title"],
             "title_tks": rag_tokenizer.tokenize(stru["title"]),
             "content_with_weight": json.dumps(obj, ensure_ascii=False),
             "content_ltks": rag_tokenizer.tokenize(obj["report"] + " " + obj["evidences"]),
-            "knowledge_graph_kwd": "community_report",
-            "weight_flt": stru["weight"],
-            "entities_kwd": stru["entities"],
-            "important_kwd": stru["entities"],
-            "kb_id": kb_id,
-            "source_id": list(doc_ids),
-            "available_int": 0,
+            "knowledge_graph_kwd": "community_report", "weight_flt": stru["weight"],
+            "entities_kwd": stru["entities"], "important_kwd": stru["entities"],
+            "kb_id": kb_id, "source_id": list(doc_ids), "available_int": 0,
         }
         chunk["content_sm_ltks"] = rag_tokenizer.fine_grained_tokenize(chunk["content_ltks"])
         chunks.append(chunk)

@@ -13,6 +13,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""File format detection, embedded file extraction, and HTTP utilities.
+
+Provides functions for:
+- Detecting file types from magic bytes (ZIP/OOXML, PDF, OLE)
+- Extracting embedded files from DOCX, XLSX, PPTX, DOC, PPT, XLS containers
+- Extracting hyperlinks from DOCX and PDF documents
+- Fetching HTML content from URLs with retry logic and session reuse
+
+Used during document ingestion to discover and process nested documents
+and linked resources.
+"""
 
 import io
 import hashlib
@@ -27,22 +38,36 @@ import olefile
 
 
 def _is_zip(h: bytes) -> bool:
+    """Check if bytes start with a ZIP magic number (PK signature)."""
     return h.startswith(b"PK\x03\x04") or h.startswith(b"PK\x05\x06") or h.startswith(b"PK\x07\x08")
 
 
 def _is_pdf(h: bytes) -> bool:
+    """Check if bytes start with the PDF magic number (%PDF-)."""
     return h.startswith(b"%PDF-")
 
 
 def _is_ole(h: bytes) -> bool:
+    """Check if bytes start with the OLE2 Compound Document magic number."""
     return h.startswith(b"\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1")
 
 
 def _sha10(b: bytes) -> str:
+    """Compute a short 10-character SHA-256 hash of the given bytes."""
     return hashlib.sha256(b).hexdigest()[:10]
 
 
 def _guess_ext(b: bytes) -> str:
+    """Guess the file extension from binary content using magic bytes.
+
+    For ZIP files, inspects internal structure to distinguish DOCX, PPTX, XLSX.
+
+    Args:
+        b: Raw file bytes.
+
+    Returns:
+        File extension string (e.g., '.docx', '.pdf', '.bin').
+    """
     h = b[:8]
     if _is_zip(h):
         try:
@@ -66,6 +91,18 @@ def _guess_ext(b: bytes) -> str:
 
 # Try to extract the real embedded payload from OLE's Ole10Native
 def _extract_ole10native_payload(data: bytes) -> bytes:
+    """Extract the embedded file payload from an OLE Ole10Native stream.
+
+    Parses the Ole10Native binary format to skip past the header fields
+    (filename, source path, temp path) and extract the actual embedded
+    file content.
+
+    Args:
+        data: Raw bytes of the Ole10Native stream.
+
+    Returns:
+        Extracted payload bytes, or the original data if parsing fails.
+    """
     try:
         pos = 0
         if len(data) < 4:

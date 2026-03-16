@@ -13,6 +13,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Word document (.docx) parser for the RAG pipeline.
+
+Extracts text paragraphs and table content from DOCX files. Tables are
+converted into a linearized text format with header-value pairs for
+downstream chunking and embedding.
+"""
 
 from docx import Document
 import re
@@ -23,16 +29,49 @@ from io import BytesIO
 
 
 class RAGFlowDocxParser:
+    """Parser for Microsoft Word (.docx) documents.
+
+    Extracts paragraphs (with page break tracking) and tables from DOCX files.
+    Tables are converted to a text format where each row is represented as
+    semicolon-separated "header: value" pairs.
+    """
 
     def __extract_table_content(self, tb):
+        """Extract and format content from a DOCX table element.
+
+        Args:
+            tb: A python-docx Table object.
+
+        Returns:
+            A list of formatted text strings representing the table content.
+        """
         df = []
         for row in tb.rows:
             df.append([c.text for c in row.cells])
         return self.__compose_table_content(pd.DataFrame(df))
 
     def __compose_table_content(self, df):
+        """Convert a DataFrame table into linearized text with header-value pairs.
+
+        Analyzes the table structure to identify header rows and data rows,
+        then formats each data row as "header1: value1; header2: value2; ...".
+        Uses block type classification (date, number, text, etc.) to determine
+        which rows are headers vs data.
+
+        Args:
+            df: A pandas DataFrame representing the table.
+
+        Returns:
+            A list of text strings, each representing one or more table rows.
+        """
 
         def blockType(b):
+            """Classify a cell value into a block type for table analysis.
+
+            Returns a type code: Dt (date), Nu (number), Ca (catalog),
+            En (english), NE (number+english), Sg (single char), Tx (text),
+            Lx (long text), Nr (person name), Ot (other).
+            """
             pattern = [
                 ("^(20|19)[0-9]{2}[年/-][0-9]{1,2}[月/-][0-9]{1,2}日*$", "Dt"),
                 (r"^(20|19)[0-9]{2}年$", "Dt"),
@@ -64,12 +103,14 @@ class RAGFlowDocxParser:
 
         if len(df) < 2:
             return []
+        # Determine the dominant cell type in the table (excluding header)
         max_type = Counter([blockType(str(df.iloc[i, j])) for i in range(
             1, len(df)) for j in range(len(df.iloc[i, :]))])
         max_type = max(max_type.items(), key=lambda x: x[1])[0]
 
         colnm = len(df.iloc[0, :])
         hdrows = [0]  # header is not necessarily appear in the first line
+        # If dominant type is numeric, find additional header rows
         if max_type == "Nu":
             for r in range(1, len(df)):
                 tys = Counter([blockType(str(df.iloc[r, j]))
@@ -78,10 +119,12 @@ class RAGFlowDocxParser:
                 if tys != max_type:
                     hdrows.append(r)
 
+        # Build formatted output lines with header-value pairs
         lines = []
         for i in range(1, len(df)):
             if i in hdrows:
                 continue
+            # Find the closest header row(s) above this data row
             hr = [r - i for r in hdrows]
             hr = [r for r in hr if r < 0]
             t = len(hr) - 1
@@ -90,6 +133,7 @@ class RAGFlowDocxParser:
                     hr = hr[t:]
                     break
                 t -= 1
+            # Build header text for each column
             headers = []
             for j in range(len(df.iloc[i, :])):
                 t = []
@@ -102,6 +146,7 @@ class RAGFlowDocxParser:
                 if t:
                     t += ": "
                 headers.append(t)
+            # Combine header and value for each non-empty cell
             cells = []
             for j in range(len(df.iloc[i, :])):
                 if not str(df.iloc[i, j]):
@@ -109,11 +154,28 @@ class RAGFlowDocxParser:
                 cells.append(headers[j] + str(df.iloc[i, j]))
             lines.append(";".join(cells))
 
+        # For wide tables (>3 cols), return each row separately;
+        # for narrow tables, join all rows into a single string
         if colnm > 3:
             return lines
         return ["\n".join(lines)]
 
     def __call__(self, fnm, from_page=0, to_page=100000000):
+        """Parse a DOCX file and extract paragraphs and tables.
+
+        Tracks page breaks via Word's lastRenderedPageBreak XML elements
+        to support page-range filtering.
+
+        Args:
+            fnm: File path (string) or binary content (bytes) of the .docx file.
+            from_page: Starting page number (0-based, inclusive).
+            to_page: Ending page number (0-based, exclusive).
+
+        Returns:
+            A tuple of (sections, tables):
+            - sections: list of (text, style_name) tuples for each paragraph
+            - tables: list of formatted table content lists
+        """
         self.doc = Document(fnm) if isinstance(
             fnm, str) else Document(BytesIO(fnm))
         pn = 0 # parsed page

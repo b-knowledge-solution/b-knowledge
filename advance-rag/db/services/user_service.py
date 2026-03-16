@@ -13,6 +13,19 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""
+User, Tenant, and User-Tenant Relationship Service Module
+
+Manages user authentication, tenant organizations, and user-tenant membership.
+This module provides three service classes:
+
+- UserService: User account CRUD, authentication (password hashing/verification),
+  access token validation with guards against empty/short/invalidated tokens
+- TenantService: Tenant information retrieval, credit management, and storage
+  gateway selection
+- UserTenantService: Many-to-many user-tenant relationships including role
+  management, membership listing, and access control
+"""
 import hashlib
 from datetime import datetime
 import logging
@@ -44,6 +57,22 @@ class UserService(CommonService):
     @classmethod
     @DB.connection_context()
     def query(cls, cols=None, reverse=None, order_by=None, **kwargs):
+        """Execute a user query with access token validation guards.
+
+        Overrides the parent query() to add security checks for access_token
+        queries. Rejects empty, short (< 32 chars), and invalidated tokens
+        to prevent unauthorized access.
+
+        Args:
+            cols (list, optional): Columns to select.
+            reverse (bool, optional): Sort direction.
+            order_by (str, optional): Sort field.
+            **kwargs: Filter conditions. Special handling for 'access_token'.
+
+        Returns:
+            peewee.ModelSelect: Query result, or an empty result set for
+                               invalid access tokens.
+        """
         if 'access_token' in kwargs:
             access_token = kwargs['access_token']
 
@@ -71,10 +100,10 @@ class UserService(CommonService):
         """Retrieve a user by their ID.
 
         Args:
-            user_id: The unique identifier of the user.
+            user_id (str): The unique identifier of the user.
 
         Returns:
-            User object if found, None otherwise.
+            User | None: User object if found, None otherwise.
         """
         try:
             user = cls.model.select().where(cls.model.id == user_id).get()
@@ -87,12 +116,15 @@ class UserService(CommonService):
     def query_user(cls, email, password):
         """Authenticate a user with email and password.
 
+        Looks up the user by email (must be valid/active), then verifies
+        the password against the stored hash.
+
         Args:
-            email: User's email address.
-            password: User's password in plain text.
+            email (str): User's email address.
+            password (str): User's password in plain text.
 
         Returns:
-            User object if authentication successful, None otherwise.
+            User | None: User object if authentication successful, None otherwise.
         """
         user = cls.model.select().where((cls.model.email == email),
                                         (cls.model.status == StatusEnum.VALID.value)).first()
@@ -104,12 +136,31 @@ class UserService(CommonService):
     @classmethod
     @DB.connection_context()
     def query_user_by_email(cls, email):
+        """Find all users with a given email address.
+
+        Args:
+            email (str): The email address to search for.
+
+        Returns:
+            list[User]: List of matching user objects.
+        """
         users = cls.model.select().where((cls.model.email == email))
         return list(users)
 
     @classmethod
     @DB.connection_context()
     def save(cls, **kwargs):
+        """Create a new user with auto-generated ID and hashed password.
+
+        Generates a UUID if no ID is provided, hashes the password using
+        Werkzeug's generate_password_hash, and sets creation timestamps.
+
+        Args:
+            **kwargs: User field values. 'password' will be hashed.
+
+        Returns:
+            int: The save result (1 on success).
+        """
         if "id" not in kwargs:
             kwargs["id"] = get_uuid()
         if "password" in kwargs:
@@ -129,6 +180,12 @@ class UserService(CommonService):
     @classmethod
     @DB.connection_context()
     def delete_user(cls, user_ids, update_user_dict):
+        """Soft-delete users by setting their status to 0 (invalid).
+
+        Args:
+            user_ids (list[str]): List of user IDs to deactivate.
+            update_user_dict: Unused parameter (kept for API compatibility).
+        """
         with DB.atomic():
             cls.model.update({"status": 0}).where(
                 cls.model.id.in_(user_ids)).execute()
@@ -136,6 +193,14 @@ class UserService(CommonService):
     @classmethod
     @DB.connection_context()
     def update_user(cls, user_id, user_dict):
+        """Update a user's profile fields.
+
+        Automatically sets update_time and update_date.
+
+        Args:
+            user_id (str): The user ID to update.
+            user_dict (dict): Dictionary of field values to update.
+        """
         with DB.atomic():
             if user_dict:
                 user_dict["update_time"] = current_timestamp()
@@ -146,6 +211,12 @@ class UserService(CommonService):
     @classmethod
     @DB.connection_context()
     def update_user_password(cls, user_id, new_password):
+        """Update a user's password with proper hashing.
+
+        Args:
+            user_id (str): The user ID whose password to update.
+            new_password (str): The new plain-text password to hash and store.
+        """
         with DB.atomic():
             update_dict = {
                 "password": generate_password_hash(str(new_password)),
@@ -157,6 +228,14 @@ class UserService(CommonService):
     @classmethod
     @DB.connection_context()
     def is_admin(cls, user_id):
+        """Check if a user is a superuser/admin.
+
+        Args:
+            user_id (str): The user ID to check.
+
+        Returns:
+            bool: True if the user has superuser privileges.
+        """
         return cls.model.select().where(
             cls.model.id == user_id,
             cls.model.is_superuser == 1).count() > 0
@@ -164,6 +243,11 @@ class UserService(CommonService):
     @classmethod
     @DB.connection_context()
     def get_all_users(cls):
+        """Retrieve all users ordered by email.
+
+        Returns:
+            list[User]: List of all user objects.
+        """
         users = cls.model.select().order_by(cls.model.email)
         return list(users)
 
@@ -171,8 +255,8 @@ class UserService(CommonService):
 class TenantService(CommonService):
     """Service class for managing tenant-related database operations.
 
-    This class extends CommonService to provide functionality for tenant management,
-    including tenant information retrieval and credit management.
+    Handles tenant information retrieval, credit management, storage gateway
+    selection, and finding tenants with missing model ID references.
 
     Attributes:
         model: The Tenant model class for database operations.
@@ -182,6 +266,17 @@ class TenantService(CommonService):
     @classmethod
     @DB.connection_context()
     def get_info_by(cls, user_id):
+        """Get tenant info for a user who is an OWNER of the tenant.
+
+        Joins Tenant with UserTenant to find tenants where the user is
+        the owner, returning model configuration and role information.
+
+        Args:
+            user_id (str): The user ID to look up.
+
+        Returns:
+            list[dict]: List of tenant info dictionaries.
+        """
         fields = [
             cls.model.id.alias("tenant_id"),
             cls.model.name,
@@ -200,6 +295,14 @@ class TenantService(CommonService):
     @classmethod
     @DB.connection_context()
     def get_joined_tenants_by_user_id(cls, user_id):
+        """Get tenants that a user has joined as a NORMAL member (not owner).
+
+        Args:
+            user_id (str): The user ID to look up.
+
+        Returns:
+            list[dict]: List of tenant info dictionaries.
+        """
         fields = [
             cls.model.id.alias("tenant_id"),
             cls.model.name,
@@ -215,6 +318,15 @@ class TenantService(CommonService):
     @classmethod
     @DB.connection_context()
     def decrease(cls, user_id, num):
+        """Decrease a tenant's credit balance.
+
+        Args:
+            user_id (str): The tenant ID whose credits to decrease.
+            num (int): The amount to subtract from the credit balance.
+
+        Raises:
+            LookupError: If the tenant is not found.
+        """
         num = cls.model.update(credit=cls.model.credit - num).where(
             cls.model.id == user_id).execute()
         if num == 0:
@@ -223,12 +335,31 @@ class TenantService(CommonService):
     @classmethod
     @DB.connection_context()
     def user_gateway(cls, tenant_id):
+        """Determine the S3 storage gateway index for a tenant.
+
+        Uses SHA-256 hashing of the tenant ID to deterministically select
+        one of the available S3 endpoints for load distribution.
+
+        Args:
+            tenant_id (str): The tenant ID.
+
+        Returns:
+            int: The index into the S3 endpoints array.
+        """
         hash_obj = hashlib.sha256(tenant_id.encode("utf-8"))
         return int(hash_obj.hexdigest(), 16)%len(settings.S3)
 
     @classmethod
     @DB.connection_context()
     def get_null_tenant_model_id_rows(cls):
+        """Find tenants with any NULL tenant_model_id reference.
+
+        Used during initialization to backfill missing foreign key references
+        to the tenant_llm table.
+
+        Returns:
+            list[Tenant]: List of tenant objects with at least one NULL model ID.
+        """
         objs = cls.model.select().orwhere(cls.model.tenant_llm_id.is_null(), cls.model.tenant_embd_id.is_null(), cls.model.tenant_asr_id.is_null(), cls.model.tenant_tts_id.is_null(), cls.model.tenant_rerank_id.is_null(), cls.model.tenant_img2txt_id.is_null())
         return list(objs)
 
@@ -247,6 +378,14 @@ class UserTenantService(CommonService):
     @classmethod
     @DB.connection_context()
     def filter_by_id(cls, user_tenant_id):
+        """Get a valid user-tenant relationship by its ID.
+
+        Args:
+            user_tenant_id (str): The user-tenant relationship ID.
+
+        Returns:
+            UserTenant | None: The relationship record if found and valid.
+        """
         try:
             user_tenant = cls.model.select().where((cls.model.id == user_tenant_id) & (cls.model.status == StatusEnum.VALID.value)).get()
             return user_tenant
@@ -256,6 +395,14 @@ class UserTenantService(CommonService):
     @classmethod
     @DB.connection_context()
     def save(cls, **kwargs):
+        """Create a new user-tenant relationship with auto-generated ID.
+
+        Args:
+            **kwargs: Relationship field values (tenant_id, user_id, role, etc.).
+
+        Returns:
+            int: The save result (1 on success).
+        """
         if "id" not in kwargs:
             kwargs["id"] = get_uuid()
         obj = cls.model(**kwargs).save(force_insert=True)
@@ -264,6 +411,17 @@ class UserTenantService(CommonService):
     @classmethod
     @DB.connection_context()
     def get_by_tenant_id(cls, tenant_id):
+        """Get all non-owner members of a tenant with user details.
+
+        Joins UserTenant with User to provide full member information.
+        Excludes OWNER role entries.
+
+        Args:
+            tenant_id (str): The tenant ID.
+
+        Returns:
+            list[dict]: List of member info dictionaries.
+        """
         fields = [
             cls.model.id,
             cls.model.user_id,
@@ -286,6 +444,14 @@ class UserTenantService(CommonService):
     @classmethod
     @DB.connection_context()
     def get_tenants_by_user_id(cls, user_id):
+        """Get all tenants a user belongs to, with tenant owner info.
+
+        Args:
+            user_id (str): The user ID.
+
+        Returns:
+            list[dict]: List of tenant membership dictionaries.
+        """
         fields = [
             cls.model.tenant_id,
             cls.model.role,
@@ -301,6 +467,15 @@ class UserTenantService(CommonService):
     @classmethod
     @DB.connection_context()
     def get_user_tenant_relation_by_user_id(cls, user_id):
+        """Get all tenant relationships for a user.
+
+        Args:
+            user_id (str): The user ID.
+
+        Returns:
+            list[dict]: List of relationship dictionaries with id, user_id,
+                       tenant_id, and role.
+        """
         fields = [
             cls.model.id,
             cls.model.user_id,
@@ -312,12 +487,29 @@ class UserTenantService(CommonService):
     @classmethod
     @DB.connection_context()
     def get_num_members(cls, user_id: str):
+        """Count the total number of members in a user's tenant.
+
+        Args:
+            user_id (str): The tenant owner's user ID (used as tenant_id).
+
+        Returns:
+            int: The number of members in the tenant.
+        """
         cnt_members = cls.model.select(peewee.fn.COUNT(cls.model.id)).where(cls.model.tenant_id == user_id).scalar()
         return cnt_members
 
     @classmethod
     @DB.connection_context()
     def filter_by_tenant_and_user_id(cls, tenant_id, user_id):
+        """Find a specific user-tenant relationship.
+
+        Args:
+            tenant_id (str): The tenant ID.
+            user_id (str): The user ID.
+
+        Returns:
+            UserTenant | None: The relationship record if found and valid.
+        """
         try:
             user_tenant = cls.model.select().where(
                 (cls.model.tenant_id == tenant_id) & (cls.model.status == StatusEnum.VALID.value) &

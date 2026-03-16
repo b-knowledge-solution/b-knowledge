@@ -13,6 +13,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Tree-Structured Query Decomposition and Retrieval (TSQDR) module.
+
+Implements an advanced RAG strategy that recursively decomposes complex
+questions into simpler sub-queries, retrieves information for each,
+and checks sufficiency before generating follow-up queries. Supports
+multiple retrieval sources: knowledge base, web search (Tavily API),
+and knowledge graph. Uses LLM-based sufficiency checking and query
+planning for deep, iterative research.
+"""
+
 import asyncio
 import logging
 from functools import partial
@@ -24,6 +34,18 @@ from timeit import default_timer as timer
 
 
 class TreeStructuredQueryDecompositionRetrieval:
+    """Advanced retrieval strategy using recursive query decomposition.
+
+    Decomposes complex questions into sub-queries, retrieves from
+    multiple sources (KB, web, knowledge graph), checks information
+    sufficiency, and recursively searches for missing information.
+
+    Attributes:
+        chat_mdl: LLM model for sufficiency checking and query generation.
+        prompt_config: Configuration dict with API keys and feature flags.
+        _kb_retrieve: Partial function for knowledge base retrieval.
+        _kg_retrieve: Partial function for knowledge graph retrieval.
+    """
     def __init__(self,
                  chat_mdl: LLMBundle,
                  prompt_config: dict,
@@ -86,6 +108,17 @@ class TreeStructuredQueryDecompositionRetrieval:
                         chunk_info["doc_aggs"].append(d)
 
     async def research(self, chunk_info, question, query, depth=3, callback=None):
+        """Public entry point for deep research with progress markers.
+
+        Wraps _research with START/END markers for the callback.
+
+        Args:
+            chunk_info: Mutable dict to accumulate retrieved chunks.
+            question: The original user question.
+            query: The search query (may differ from question).
+            depth: Maximum recursion depth for sub-queries.
+            callback: Async callback for progress reporting.
+        """
         if callback:
             await callback("<START_DEEP_RESEARCH>")
         await self._research(chunk_info, question, query, depth, callback)
@@ -93,6 +126,21 @@ class TreeStructuredQueryDecompositionRetrieval:
             await callback("<END_DEEP_RESEARCH>")
 
     async def _research(self, chunk_info, question, query, depth=3, callback=None):
+        """Recursive research implementation.
+
+        Retrieves information, checks sufficiency, and if insufficient,
+        generates sub-queries and recursively researches each one.
+
+        Args:
+            chunk_info: Mutable dict to accumulate retrieved chunks.
+            question: The question being researched.
+            query: The search query for this iteration.
+            depth: Remaining recursion depth.
+            callback: Async callback for progress reporting.
+
+        Returns:
+            Concatenated retrieval results as a string.
+        """
         if depth == 0:
             #if callback:
             #    await callback("Reach the max search depth.")

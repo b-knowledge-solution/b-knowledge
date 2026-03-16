@@ -1,6 +1,6 @@
 ---
-name: b-knowledge-advance-rag
-description: RAG pipeline development skill — enforces B-Knowledge advance-rag architecture for parsers, flow components, and services
+name: advance-rag
+description: RAG pipeline development skill — enforces B-Knowledge advance-rag architecture for parsers, flow components, and services. Use this whenever working in advance-rag/, adding document parsers, modifying the RAG pipeline, creating flow components, or extending the task executor.
 ---
 
 # B-Knowledge Advance-RAG Development Skill
@@ -10,54 +10,50 @@ Use this skill when modifying or extending the `advance-rag/` Python workspace.
 ## Stack
 
 - Python 3.10+, async/await, Peewee ORM, Pydantic 2
+- FastAPI + Uvicorn (port 9380)
 - loguru for logging, type hints throughout
 - Pipeline: Parser → Splitter → Extractor → Tokenizer → Vector DB
 - Storage: MinIO/S3/GCS/Azure via factory pattern
+- Progress: Redis pub/sub for SSE streaming to frontend
+- Config: `config.py` reads environment variables — never hardcode values
 
 ## Architecture
 
 ```
 advance-rag/
+├── config.py                  # Env-driven config (DB_HOST, REDIS_HOST, S3_HOST, etc.)
+├── executor_wrapper.py        # Entry point: wraps task_executor with Redis progress pub/sub
+├── system_tenant.py           # System tenant initialization (fixed UUID)
+├── api/                       # FastAPI endpoints (port 9380)
+│   └── main.py                # FastAPI app definition
 ├── common/                    # Shared utilities (encoding, crypto, file, string, etc.)
-│   └── doc_store/             # Vector DB connections (ES, Infinity, OceanBase)
-├── config.py                  # Runtime config loader
+│   └── doc_store/             # Vector DB connections (ES, OpenSearch, Infinity)
 ├── db/
 │   ├── db_models.py           # Peewee ORM model definitions
 │   ├── db_utils.py            # DB connection utilities
 │   ├── services/              # Business logic layer (one file per domain)
-│   │   ├── document_service.py
-│   │   ├── file_service.py
-│   │   ├── knowledgebase_service.py
-│   │   ├── task_service.py
-│   │   └── ...
 │   └── joint_services/        # Cross-domain service compositions
 ├── deepdoc/
 │   ├── parser/                # Document format parsers (PDF, DOCX, Excel, etc.)
-│   │   ├── pdf_parser.py
-│   │   ├── docx_parser.py
-│   │   ├── excel_parser.py
-│   │   └── ...
-│   └── vision/                # OCR and layout recognition (PaddleOCR, ONNX)
+│   └── vision/                # OCR and layout recognition (ONNX models)
 ├── rag/
-│   ├── app/                   # Document-type-specific processors
-│   │   ├── naive.py           # Simple text extraction
-│   │   ├── book.py            # Book parsing
-│   │   ├── paper.py           # Academic paper parsing
-│   │   └── ...
-│   ├── flow/                  # Pipeline flow components (async)
+│   ├── app/                   # Document-type-specific processors (chunk functions)
+│   ├── flow/                  # Pipeline flow components (async, extend ProcessBase)
 │   │   ├── base.py            # ProcessBase — async foundation class
 │   │   ├── parser/            # Parser component
 │   │   ├── splitter/          # Text chunking component
 │   │   ├── extractor/         # Metadata/TOC extraction via LLM
-│   │   ├── tokenizer/         # Token counting component
-│   │   └── ...
+│   │   └── tokenizer/         # Token counting component
 │   ├── graphrag/              # Graph-based RAG (entity extraction, community detection)
+│   │   ├── general/           # Full graph extraction
+│   │   └── light/             # Lightweight graph extraction
 │   ├── nlp/                   # NLP utilities (tokenization, query processing, search)
-│   ├── utils/                 # Storage factory, cloud connections, helpers
+│   ├── prompts/               # 50+ LLM prompt templates (.md files)
+│   ├── svr/task_executor.py   # Main task execution engine
+│   ├── utils/                 # Storage factory, cloud connections
 │   └── settings.py            # Global RAG settings
 ├── memory/                    # Long-term memory systems
-├── executor_wrapper.py        # Entry point: wraps task_executor with Redis progress pub/sub
-└── pyproject.toml             # Dependencies
+└── pyproject.toml             # 108 dependencies
 ```
 
 ---
@@ -65,7 +61,7 @@ advance-rag/
 ## Conventions
 
 ### Code Style
-- Type hints on all function signatures and return types (Python 3.10+ style: `dict[str, Any]`, `list[str]`)
+- Type hints on all function signatures and return types (Python 3.10+ style: `dict[str, Any]`, `list[str]`, `T | None`)
 - Docstrings on all public functions and classes
 - `loguru` logger — never stdlib `logging`
 - `async`/`await` for all I/O-bound operations
@@ -76,7 +72,8 @@ advance-rag/
 - Every package has `__init__.py` with public exports
 - Service methods are instance methods or `@staticmethod`
 - Flow components inherit from `ProcessBase`
-- Storage backends accessed via factory
+- Storage backends accessed via factory (`get_storage()`)
+- Config values accessed via `config.py` module, never `os.environ` directly
 
 ---
 
@@ -210,20 +207,13 @@ class MyProcessor(ProcessBase):
 
         results = []
         for chunk in input_data:
-            # Apply processing logic
             processed = self._transform(chunk, params)
             results.append(processed)
 
         return results
 
     def _transform(self, chunk: dict, params: MyProcessorParam) -> dict:
-        """
-        Transform a single chunk.
-        @param chunk: Input chunk dictionary.
-        @param params: Processing parameters.
-        @returns: Transformed chunk.
-        """
-        # Implementation
+        """Transform a single chunk."""
         return chunk
 ```
 
@@ -268,6 +258,28 @@ class DomainModel(peewee.Model):
         table_name = "domain"
 ```
 
+### Redis Progress Pub/Sub
+
+The executor_wrapper publishes progress events for SSE streaming to frontend:
+
+```python
+import redis
+import json
+
+def publish_progress(redis_client: redis.Redis, task_id: str, progress: float, message: str = ""):
+    """
+    Publish task progress via Redis pub/sub.
+    @param redis_client: Redis connection.
+    @param task_id: Task identifier.
+    @param progress: Progress value (0.0 to 1.0).
+    @param message: Optional status message.
+    """
+    redis_client.publish(
+        f"task:progress:{task_id}",
+        json.dumps({"progress": progress, "message": message})
+    )
+```
+
 ---
 
 ## Adding a New Parser
@@ -292,6 +304,15 @@ class DomainModel(peewee.Model):
 
 ---
 
+## Gotchas
+
+- **Derived from RAGFlow:** Patterns follow RAGFlow conventions, not the Node.js backend
+- **Peewee ORM (not Knex):** Database models use Peewee, completely separate from the BE Knex models
+- **Pre-cached models in Docker:** deepdoc, NLTK, Tika, tiktoken are copied during build — don't assume network access at runtime
+- **System dependencies:** Requires `poppler-utils` (PDF), `tesseract-ocr` (OCR), JRE (Tika for .doc)
+- **Single tenant mode:** Fixed `SYSTEM_TENANT_ID` for all operations
+- **Shared DB:** Same PostgreSQL as Node.js backend, but different ORM and model definitions
+
 ## Checklist for Changes
 
 1. [ ] Type hints on all functions (use `dict[str, Any]`, `list[str]`, `T | None` syntax)
@@ -302,18 +323,22 @@ class DomainModel(peewee.Model):
 6. [ ] `async`/`await` for I/O-bound operations
 7. [ ] Follow existing parser/flow/service patterns
 8. [ ] Storage via factory (`get_storage()`), never direct instantiation
-9. [ ] Update `pyproject.toml` if new dependencies added
-10. [ ] Test with representative data
+9. [ ] Config via `config.py`, never `os.environ` directly
+10. [ ] Update `pyproject.toml` if new dependencies added
+11. [ ] Test with representative data
 
 ## Key Files Reference
 
-- `advance-rag/executor_wrapper.py` — Task execution entry point
-- `advance-rag/config.py` — Runtime configuration
-- `advance-rag/conf/service_conf.yaml` — Default service config
+- `advance-rag/executor_wrapper.py` — Task execution entry point with progress hooks
+- `advance-rag/config.py` — Runtime configuration (env-driven)
+- `advance-rag/system_tenant.py` — System tenant initialization
+- `advance-rag/api/main.py` — FastAPI application
 - `advance-rag/db/db_models.py` — All Peewee model definitions
 - `advance-rag/db/services/` — Business logic services
 - `advance-rag/rag/flow/base.py` — ProcessBase async foundation
-- `advance-rag/rag/app/` — Document type parsers
+- `advance-rag/rag/app/` — Document type parsers (chunk functions)
+- `advance-rag/rag/svr/task_executor.py` — Main task execution engine
+- `advance-rag/rag/prompts/` — LLM prompt templates
 - `advance-rag/rag/utils/storage_factory.py` — Cloud storage factory
 - `advance-rag/deepdoc/parser/` — Format-specific document parsers
 - `advance-rag/common/` — Shared utility modules

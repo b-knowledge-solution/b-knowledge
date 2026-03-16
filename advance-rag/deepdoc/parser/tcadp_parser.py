@@ -1,3 +1,13 @@
+"""Tencent Cloud ADP (Automated Document Processing) parser for PDF documents.
+
+Uses the Tencent Cloud LKEAP API (ReconstructDocumentSSE) to parse PDF documents
+via a cloud-based document understanding service. The API returns parsed results
+as a downloadable ZIP archive containing JSON and Markdown files, which are then
+converted into the section/table tuple format used by the RAG pipeline.
+
+Supports SSE (Server-Sent Events) streaming for progress tracking, retry with
+exponential backoff, and configurable table/image rendering options.
+"""
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -37,9 +47,20 @@ from deepdoc.parser.pdf_parser import RAGFlowPdfParser
 
 
 class TencentCloudAPIClient:
-    """Tencent Cloud API client using official SDK"""
+    """Tencent Cloud API client using the official SDK for document parsing.
+
+    Wraps the LKEAP (Large Knowledge Engine AI Platform) API to submit documents
+    for parsing via SSE streaming and download result archives.
+    """
 
     def __init__(self, secret_id, secret_key, region):
+        """Initialize the Tencent Cloud API client.
+
+        Args:
+            secret_id: Tencent Cloud SecretId for authentication.
+            secret_key: Tencent Cloud SecretKey for authentication.
+            region: API region (e.g., 'ap-guangzhou').
+        """
         # Lazy import: tencentcloud-sdk-python is only needed when TCADP parser is used
         from tencentcloud.common import credential
         from tencentcloud.common.profile.client_profile import ClientProfile
@@ -201,8 +222,30 @@ class TencentCloudAPIClient:
 
 
 class TCADPParser(RAGFlowPdfParser):
+    """PDF parser using Tencent Cloud Automated Document Processing (ADP) service.
+
+    Sends PDFs to Tencent Cloud's document parsing API as base64 data, receives
+    parsed results as a downloadable ZIP archive, and converts them into the
+    section/table tuple format used by the RAG pipeline.
+    """
+
     def __init__(self, secret_id: str = None, secret_key: str = None, region: str = "ap-guangzhou",
                  table_result_type: str = None, markdown_image_response_type: str = None):
+        """Initialize the TCADP parser with API credentials.
+
+        Reads configuration from service_conf.yaml first, then falls back to
+        provided parameters. Validates that API keys are available.
+
+        Args:
+            secret_id: Tencent Cloud SecretId (optional if in config).
+            secret_key: Tencent Cloud SecretKey (optional if in config).
+            region: API region, defaults to 'ap-guangzhou'.
+            table_result_type: Table result format ('1' for Markdown).
+            markdown_image_response_type: Image handling in Markdown output.
+
+        Raises:
+            ValueError: If API keys are not available from any source.
+        """
         super().__init__()
 
         # First initialize logger

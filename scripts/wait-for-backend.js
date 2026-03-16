@@ -3,6 +3,8 @@
  * Used by `npm run dev:worker` to ensure BE migrations complete before the worker starts.
  *
  * @description Waits for backend /health endpoint, retrying every 3s up to 90s.
+ *              Uses natural return instead of process.exit() to avoid libuv
+ *              UV_HANDLE_CLOSING assertion failures on Windows.
  */
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001'
@@ -21,7 +23,8 @@ async function waitForBackend() {
       const res = await fetch(url, { signal: AbortSignal.timeout(2000) })
       if (res.ok) {
         console.log(`[wait-for-backend] Backend is ready (${Date.now() - start}ms)`)
-        process.exit(0)
+        // Return naturally instead of process.exit(0) to let event loop drain cleanly
+        return
       }
     } catch {
       // Backend not up yet — retry
@@ -31,7 +34,7 @@ async function waitForBackend() {
   }
 
   console.error(`[wait-for-backend] Backend not ready after ${MAX_WAIT_MS / 1000}s — starting worker anyway`)
-  process.exit(0)
+  // Return naturally instead of process.exit(0) to avoid Windows libuv crash
 }
 
 waitForBackend()

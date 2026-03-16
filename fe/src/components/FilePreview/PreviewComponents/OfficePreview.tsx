@@ -11,6 +11,7 @@ import { AlertTriangle, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-re
 import * as mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
+import { useTranslation } from 'react-i18next';
 
 /**
  * @description Props for OfficePreview component.
@@ -317,6 +318,7 @@ export const OfficePreview: React.FC<OfficePreviewProps> = ({ url }) => {
 
 // PowerPoint Viewer Component (Private Sub-component)
 const PptxViewer: React.FC<{ slides: SlideData[] }> = ({ slides }) => {
+    const { t } = useTranslation();
     const [currentSlide, setCurrentSlide] = useState(0);
 
     const nextSlide = () => {
@@ -337,7 +339,7 @@ const PptxViewer: React.FC<{ slides: SlideData[] }> = ({ slides }) => {
         return (
             <div className="flex items-center justify-center h-full text-red-500">
                 <AlertCircle className="w-12 h-12 mb-2" />
-                <p>Invalid slide index</p>
+                <p>{t('preview.invalidSlideIndex')}</p>
             </div>
         );
     }
@@ -397,7 +399,7 @@ const PptxViewer: React.FC<{ slides: SlideData[] }> = ({ slides }) => {
                     {!slide.imageUrls && !slide.formattedTexts && !slide.textContent && (
                         <div className="flex items-center justify-center h-64 text-gray-400">
                             <AlertTriangle className="w-12 h-12 mr-2" />
-                            <p>No content extracted for this slide</p>
+                            <p>{t('preview.noSlideContent')}</p>
                         </div>
                     )}
                 </div>
@@ -412,12 +414,12 @@ const PptxViewer: React.FC<{ slides: SlideData[] }> = ({ slides }) => {
                         className="flex items-center gap-2 px-4 py-2 rounded bg-primary-600 text-white disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-primary-700 transition-colors"
                     >
                         <ChevronLeft className="w-5 h-5" />
-                        Previous
+                        {t('common.previous')}
                     </button>
 
                     <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Slide {currentSlide + 1} of {slides.length}
+                            {t('preview.slideOf', { current: currentSlide + 1, total: slides.length })}
                         </span>
 
                         {/* Slide thumbnails */}

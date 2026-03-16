@@ -13,6 +13,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""
+Numeric conversion and normalisation helpers.
+
+Provides safe float conversion (defaulting to negative infinity on failure)
+and a normaliser for overlapped-percentage values used in chunking configuration.
+"""
 
 
 def get_float(v):
@@ -48,11 +54,25 @@ def get_float(v):
 
 
 def normalize_overlapped_percent(overlapped_percent):
+    """Normalise an overlap percentage into an integer in the range [0, 90].
+
+    Handles inputs given as a decimal fraction (0 < x < 1) by multiplying
+    by 100.  Non-numeric inputs are treated as 0.
+
+    Args:
+        overlapped_percent: Raw overlap value -- may be a float, int, string,
+            or None.
+
+    Returns:
+        An integer between 0 and 90 (inclusive).
+    """
     try:
         value = float(overlapped_percent)
     except (TypeError, ValueError):
         return 0
+    # Treat values between 0 and 1 exclusive as fractional percentages
     if 0 < value < 1:
         value *= 100
     value = int(value)
+    # Clamp to [0, 90]
     return max(0, min(value, 90))

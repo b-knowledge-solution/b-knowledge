@@ -19,7 +19,7 @@ const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onEdit, onDelete, on
   const navigate = useNavigate();
 
   const handleClick = () => {
-    navigate(`/datasets/${dataset.id}`);
+    navigate(`/data-studio/datasets/${dataset.id}`);
   };
 
   const statusColor = dataset.status === 'active'

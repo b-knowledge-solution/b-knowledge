@@ -1,3 +1,12 @@
+"""Corporation/company lookup, normalization, and quality tagging for resume parsing.
+
+Provides functions to normalize company names (remove region prefixes, legal suffixes,
+common noise words), check if a company is in the 'good companies' list, retrieve
+company quality tags (industry/comprehensive rankings), and look up Baike (encyclopedia)
+article lengths as a proxy for company notability.
+
+Data is loaded from CSV/JSON resource files at module initialization time.
+"""
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -37,6 +46,15 @@ CORP_TAG = json.load(open(os.path.join(current_file_path, "res/corp_tag.json"), 
 
 
 def baike(cid, default_v=0):
+    """Look up a company's Baike (encyclopedia) article length by corporation ID.
+
+    Args:
+        cid: Corporation ID string.
+        default_v: Default value if not found.
+
+    Returns:
+        The article length as a float, or default_v if not found.
+    """
     global GOODS
     try:
         return GOODS.loc[str(cid), "len"]
@@ -46,6 +64,19 @@ def baike(cid, default_v=0):
 
 
 def corpNorm(nm, add_region=True):
+    """Normalize a corporation name by removing noise, regions, and legal suffixes.
+
+    Converts to simplified Chinese, removes punctuation, strips common suffixes
+    (Ltd, Inc, Corp, etc.), removes region names and high-frequency tokens,
+    and optionally appends the detected region in parentheses.
+
+    Args:
+        nm: Raw corporation name string.
+        add_region: Whether to append the detected region suffix.
+
+    Returns:
+        The normalized corporation name string.
+    """
     global CORP_TKS
     if not nm or not isinstance(nm, str):
         return ""
@@ -85,6 +116,14 @@ def corpNorm(nm, add_region=True):
 
 
 def rmNoise(n):
+    """Remove parenthetical content and punctuation from a company name.
+
+    Args:
+        n: Company name string.
+
+    Returns:
+        The cleaned name string.
+    """
     n = re.sub(r"[\(（][^()（）]+[)）]", "", n)
     n = re.sub(r"[,. &（）()]+", "", n)
     return n
@@ -99,6 +138,14 @@ CORP_TAG = {corpNorm(rmNoise(c), False): v for c, v in CORP_TAG.items()}
 
 
 def is_good(nm):
+    """Check if a corporation is in the 'good companies' list.
+
+    Args:
+        nm: Corporation name string.
+
+    Returns:
+        True if the company is considered a 'good company', False otherwise.
+    """
     global GOOD_CORP
     if nm.find("外派") >= 0:
         return False
@@ -114,6 +161,14 @@ def is_good(nm):
 
 
 def corp_tag(nm):
+    """Look up quality tags for a corporation (e.g., industry leader, comprehensive).
+
+    Args:
+        nm: Corporation name string.
+
+    Returns:
+        A list of tag strings, or empty list if no tags found.
+    """
     global CORP_TAG
     nm = rmNoise(nm)
     nm = corpNorm(nm, False)

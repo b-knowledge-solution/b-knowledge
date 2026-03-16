@@ -1,3 +1,14 @@
+"""Post-processing modules for OCR text detection and recognition model outputs.
+
+Provides:
+- DBPostProcess: Converts probability maps from DB (Differentiable Binarization)
+  text detection models into text bounding boxes via thresholding, contour finding,
+  polygon expansion (unclipping), and minimum bounding rectangle extraction.
+- BaseRecLabelDecode / CTCLabelDecode: Decodes CTC (Connectionist Temporal
+  Classification) model output indices into text strings using a character
+  dictionary, with support for duplicate removal and Arabic text reversal.
+- build_post_process: Factory function to create post-processing instances by name.
+"""
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -23,6 +34,19 @@ import pyclipper
 
 
 def build_post_process(config, global_config=None):
+    """Factory function to create a post-processing instance by name.
+
+    Args:
+        config: Dict with 'name' key specifying the post-processor class,
+            plus any class-specific parameters.
+        global_config: Optional dict of global parameters to merge.
+
+    Returns:
+        An instance of the specified post-processor class.
+
+    Raises:
+        ValueError: If the specified post-processor name is not supported.
+    """
     support_dict = {'DBPostProcess': DBPostProcess, 'CTCLabelDecode': CTCLabelDecode}
 
     config = copy.deepcopy(config)

@@ -13,3 +13,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+
+"""RAG module settings placeholder.
+
+This module currently serves as a namespace placeholder for RAG-specific
+settings. Global configuration is managed by common/settings.py and
+config.py at the project root level.
+"""

@@ -90,7 +90,7 @@ const SyncSchedulePanel = ({ schedule, onSave, saving }: SyncSchedulePanelProps)
           <Input
             value={customCron}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomCron(e.target.value)}
-            placeholder="0 */12 * * *"
+            placeholder={t('projectManagement.sync.schedule.cronPlaceholder')}
             className="font-mono"
           />
         </div>

@@ -1,3 +1,10 @@
+"""School/university lookup and ranking module for resume parsing.
+
+Loads school data from CSV files (names, aliases, types, rankings) and provides
+functions to look up schools by name (Chinese or English), check if a school
+is in the 'good schools' list, and split mixed Chinese/English text tokens.
+School rankings are loaded from a separate CSV and merged into the main table.
+"""
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -30,6 +37,11 @@ GOOD_SCH = set([re.sub(r"[,. &（）()]+", "", c) for c in GOOD_SCH])
 
 
 def loadRank(fnm):
+    """Load school rankings from a CSV file and merge into the global TBL.
+
+    Args:
+        fnm: Path to the CSV file with 'name,rank' rows.
+    """
     global TBL
     TBL["rank"] = 1000000
     with open(fnm, "r", encoding="utf-8") as f:
@@ -50,6 +62,14 @@ loadRank(os.path.join(current_file_path, "res/school.rank.csv"))
 
 
 def split(txt):
+    """Split text into tokens, merging consecutive English words.
+
+    Args:
+        txt: Input text string.
+
+    Returns:
+        List of token strings with adjacent English tokens joined by spaces.
+    """
     tks = []
     for t in re.sub(r"[ \t]+", " ", txt).split():
         if (
@@ -65,6 +85,17 @@ def split(txt):
 
 
 def select(nm):
+    """Look up a school by name (Chinese, English, or alias).
+
+    Normalizes the input by removing parenthetical content, common prefixes,
+    and punctuation before matching against the school database.
+
+    Args:
+        nm: School name string or list (first element used).
+
+    Returns:
+        A dict with school attributes (type, is_abroad, rank, etc.), or None.
+    """
     global TBL
     if not nm:
         return
@@ -85,6 +116,14 @@ def select(nm):
 
 
 def is_good(nm):
+    """Check if a school name is in the 'good schools' list.
+
+    Args:
+        nm: School name string.
+
+    Returns:
+        True if the school is considered a 'good school', False otherwise.
+    """
     global GOOD_SCH
     nm = re.sub(r"[(（][^()（）]+[)）]", "", nm.lower())
     nm = re.sub(r"[''`‘’“”,. &（）();；]+", "", nm)

@@ -13,6 +13,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Retrieval benchmarking tool for evaluating RAG search quality.
+
+Provides automated evaluation of retrieval performance using standard
+IR datasets (MS MARCO v1.1, TriviaQA, MIRACL). Indexes documents,
+runs retrieval queries, and computes NDCG@10, MAP@5, and MRR@10
+metrics using the ranx evaluation library.
+"""
+
 import asyncio
 import json
 import os
@@ -38,6 +46,19 @@ max_docs = sys.maxsize
 
 
 class Benchmark:
+    """Benchmark runner for evaluating retrieval quality.
+
+    Indexes documents from standard datasets, runs retrieval queries
+    using the configured embedding model and search engine, and
+    computes standard IR evaluation metrics.
+
+    Attributes:
+        kb_id: Knowledge base ID for model configuration.
+        kb: Knowledge base object with search settings.
+        embd_mdl: Embedding model bundle for vector encoding.
+        tenant_id: Tenant identifier for index namespacing.
+        index_name: Search engine index name.
+    """
     def __init__(self, kb_id):
         self.kb_id = kb_id
         e, self.kb = KnowledgebaseService.get_by_id(kb_id)

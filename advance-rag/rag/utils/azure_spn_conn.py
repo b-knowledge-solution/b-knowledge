@@ -13,6 +13,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Azure Data Lake Storage connector using Service Principal (SPN) authentication.
+
+Provides a singleton storage client for Azure Data Lake Storage Gen2,
+authenticating via Azure AD client credentials (tenant ID, client ID,
+client secret). Implements the standard storage interface used by the
+RAG pipeline storage factory.
+"""
 
 import logging
 import os
@@ -25,6 +32,21 @@ from common import settings
 
 @singleton
 class RAGFlowAzureSpnBlob:
+    """Azure Data Lake Storage Gen2 client authenticated via Service Principal.
+
+    Uses Azure AD client credentials to obtain tokens for accessing
+    Azure Data Lake file systems. Targets the Azure China authority
+    by default.
+
+    Attributes:
+        conn: The Azure FileSystemClient instance.
+        account_url: Azure storage account URL.
+        client_id: Azure AD application (client) ID.
+        secret: Azure AD client secret.
+        tenant_id: Azure AD tenant ID.
+        container_name: Name of the Data Lake file system (container).
+    """
+
     def __init__(self):
         self.conn = None
         self.account_url = os.getenv('ACCOUNT_URL', settings.AZURE["account_url"])
@@ -35,6 +57,11 @@ class RAGFlowAzureSpnBlob:
         self.__open__()
 
     def __open__(self):
+        """Establish a connection to Azure Data Lake using client credentials.
+
+        Creates a ClientSecretCredential for Azure China authority and
+        initializes a FileSystemClient for the configured container.
+        """
         try:
             if self.conn:
                 self.__close__()
@@ -42,6 +69,7 @@ class RAGFlowAzureSpnBlob:
             pass
 
         try:
+            # Authenticate using Azure AD service principal credentials
             credentials = ClientSecretCredential(tenant_id=self.tenant_id, client_id=self.client_id,
                                                  client_secret=self.secret, authority=AzureAuthorityHosts.AZURE_CHINA)
             self.conn = FileSystemClient(account_url=self.account_url, file_system_name=self.container_name,
@@ -50,16 +78,34 @@ class RAGFlowAzureSpnBlob:
             logging.exception("Fail to connect %s" % self.account_url)
 
     def __close__(self):
+        """Release the current Data Lake connection."""
         del self.conn
         self.conn = None
 
     def health(self):
+        """Verify connectivity by creating and flushing a small test file.
+
+        Returns:
+            Flush result if healthy, or raises on failure.
+        """
         _bucket, fnm, binary = "txtxtxtxt1", "txtxtxtxt1", b"_t@@@1"
         f = self.conn.create_file(fnm)
         f.append_data(binary, offset=0, length=len(binary))
         return f.flush_data(len(binary))
 
     def put(self, bucket, fnm, binary):
+        """Upload binary data as a file to the Data Lake.
+
+        Creates the file, appends data, and flushes it. Retries up to 3 times.
+
+        Args:
+            bucket: Logical bucket name (unused, kept for interface compatibility).
+            fnm: File path / name in the Data Lake.
+            binary: Raw bytes to upload.
+
+        Returns:
+            Flush result on success, or None after exhausting retries.
+        """
         for _ in range(3):
             try:
                 f = self.conn.create_file(fnm)
@@ -73,12 +119,27 @@ class RAGFlowAzureSpnBlob:
         return None
 
     def rm(self, bucket, fnm):
+        """Delete a file from the Data Lake.
+
+        Args:
+            bucket: Logical bucket name (unused, kept for interface compatibility).
+            fnm: File path to delete.
+        """
         try:
             self.conn.delete_file(fnm)
         except Exception:
             logging.exception(f"Fail rm {bucket}/{fnm}")
 
     def get(self, bucket, fnm):
+        """Download a file's content as bytes from the Data Lake.
+
+        Args:
+            bucket: Logical bucket name (unused, kept for interface compatibility).
+            fnm: File path to download.
+
+        Returns:
+            Raw bytes of the file content, or None on failure.
+        """
         for _ in range(1):
             try:
                 client = self.conn.get_file_client(fnm)
@@ -91,6 +152,15 @@ class RAGFlowAzureSpnBlob:
         return None
 
     def obj_exist(self, bucket, fnm):
+        """Check whether a file exists in the Data Lake.
+
+        Args:
+            bucket: Logical bucket name (unused, kept for interface compatibility).
+            fnm: File path to check.
+
+        Returns:
+            True if the file exists, False otherwise.
+        """
         try:
             client = self.conn.get_file_client(fnm)
             return client.exists()
@@ -99,6 +169,18 @@ class RAGFlowAzureSpnBlob:
         return False
 
     def get_presigned_url(self, bucket, fnm, expires):
+        """Generate a presigned URL for temporary file access.
+
+        Retries up to 10 times on failure.
+
+        Args:
+            bucket: Bucket name.
+            fnm: File path.
+            expires: Expiration time for the URL.
+
+        Returns:
+            Presigned URL string, or None after exhausting retries.
+        """
         for _ in range(10):
             try:
                 return self.conn.get_presigned_url("GET", bucket, fnm, expires)

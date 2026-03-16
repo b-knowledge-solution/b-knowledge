@@ -61,6 +61,7 @@ export class TenantLlmModel extends BaseModel<TenantLlm> {
       api_key: provider.api_key || "",
       api_base: provider.api_base || "",
       max_tokens: provider.max_tokens || 0,
+      vision: provider.vision || false,
     };
 
     if (existing) {

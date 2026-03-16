@@ -13,6 +13,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""
+Common Service Module
+
+Provides the base service class (CommonService) that all domain-specific service
+classes inherit from. It encapsulates standard CRUD operations, batch processing,
+and query utilities built on the Peewee ORM with automatic connection management
+and retry logic for transient database errors.
+
+All database operations are wrapped with @DB.connection_context() to ensure
+connections are properly acquired and released from the pool.
+"""
 from datetime import datetime
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import peewee
@@ -23,6 +34,17 @@ from common.misc_utils import get_uuid
 from common.time_utils import current_timestamp, datetime_format
 
 def retry_db_operation(func):
+    """Decorator that retries a function up to 3 times on transient DB errors.
+
+    Uses exponential backoff (1-5 seconds) and only retries on InterfaceError
+    or OperationalError, which typically indicate lost connections.
+
+    Args:
+        func: The function to wrap with retry logic.
+
+    Returns:
+        A wrapped function with automatic retry behavior.
+    """
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=5),
@@ -102,9 +124,6 @@ class CommonService:
     @DB.connection_context()
     def get(cls, **kwargs):
         """Get a single record matching the given criteria.
-
-        This method retrieves a single record from the database that matches
-        the specified filter conditions.
 
         Args:
             **kwargs: Filter conditions as keyword arguments.
@@ -228,12 +247,18 @@ class CommonService:
     @DB.connection_context()
     @retry_db_operation
     def update_by_id(cls, pid, data):
-        # Update a single record by ID
-        # Args:
-        #     pid: Record ID
-        #     data: Updated field values
-        # Returns:
-        #     Number of records updated
+        """Update a single record by its primary key ID.
+
+        Automatically sets the update_time and update_date fields. Wrapped
+        with retry_db_operation for resilience against transient DB errors.
+
+        Args:
+            pid: The primary key ID of the record to update.
+            data (dict): Dictionary of field values to update.
+
+        Returns:
+            int: Number of records updated (0 or 1).
+        """
         data["update_time"] = current_timestamp()
         data["update_date"] = datetime_format(datetime.now())
         num = cls.model.update(data).where(cls.model.id == pid).execute()
@@ -242,11 +267,15 @@ class CommonService:
     @classmethod
     @DB.connection_context()
     def get_by_id(cls, pid):
-        # Get a record by ID
-        # Args:
-        #     pid: Record ID
-        # Returns:
-        #     Tuple of (success, record)
+        """Get a record by its primary key ID.
+
+        Args:
+            pid: The primary key ID to look up.
+
+        Returns:
+            tuple: A tuple of (found: bool, record: Model | None).
+                   Returns (True, record) if found, (False, None) otherwise.
+        """
         try:
             obj = cls.model.get_or_none(cls.model.id == pid)
             if obj:
@@ -258,12 +287,15 @@ class CommonService:
     @classmethod
     @DB.connection_context()
     def get_by_ids(cls, pids, cols=None):
-        # Get multiple records by their IDs
-        # Args:
-        #     pids: List of record IDs
-        #     cols: List of columns to select
-        # Returns:
-        #     Query of matching records
+        """Get multiple records by their primary key IDs.
+
+        Args:
+            pids (list): List of primary key IDs to look up.
+            cols (list, optional): List of columns to select. If None, selects all columns.
+
+        Returns:
+            peewee.ModelSelect: Query result containing matching records.
+        """
         if cols:
             objs = cls.model.select(*cols)
         else:
@@ -273,21 +305,29 @@ class CommonService:
     @classmethod
     @DB.connection_context()
     def delete_by_id(cls, pid):
-        # Delete a record by ID
-        # Args:
-        #     pid: Record ID
-        # Returns:
-        #     Number of records deleted
+        """Delete a single record by its primary key ID.
+
+        Args:
+            pid: The primary key ID of the record to delete.
+
+        Returns:
+            int: Number of records deleted (0 or 1).
+        """
         return cls.model.delete().where(cls.model.id == pid).execute()
-    
+
     @classmethod
     @DB.connection_context()
     def delete_by_ids(cls, pids):
-        # Delete multiple records by their IDs
-        # Args:
-        #     pids: List of record IDs
-        # Returns:
-        #     Number of records deleted
+        """Delete multiple records by their primary key IDs.
+
+        Executes within an atomic transaction for consistency.
+
+        Args:
+            pids (list): List of primary key IDs to delete.
+
+        Returns:
+            int: Number of records deleted.
+        """
         with DB.atomic():
             res = cls.model.delete().where(cls.model.id.in_(pids)).execute()
             return res
@@ -295,11 +335,16 @@ class CommonService:
     @classmethod
     @DB.connection_context()
     def filter_delete(cls, filters):
-        # Delete records matching given filters
-        # Args:
-        #     filters: List of filter conditions
-        # Returns:
-        #     Number of records deleted
+        """Delete records matching the given filter conditions.
+
+        Executes within an atomic transaction for consistency.
+
+        Args:
+            filters (list): List of Peewee filter expressions.
+
+        Returns:
+            int: Number of records deleted.
+        """
         with DB.atomic():
             num = cls.model.delete().where(*filters).execute()
             return num
@@ -307,23 +352,34 @@ class CommonService:
     @classmethod
     @DB.connection_context()
     def filter_update(cls, filters, update_data):
-        # Update records matching given filters
-        # Args:
-        #     filters: List of filter conditions
-        #     update_data: Updated field values
-        # Returns:
-        #     Number of records updated
+        """Update records matching the given filter conditions.
+
+        Executes within an atomic transaction for consistency.
+
+        Args:
+            filters (list): List of Peewee filter expressions.
+            update_data (dict): Dictionary of field values to update.
+
+        Returns:
+            int: Number of records updated.
+        """
         with DB.atomic():
             return cls.model.update(update_data).where(*filters).execute()
 
     @staticmethod
     def cut_list(tar_list, n):
-        # Split a list into chunks of size n
-        # Args:
-        #     tar_list: List to split
-        #     n: Chunk size
-        # Returns:
-        #     List of tuples containing chunks
+        """Split a list into chunks of a given size.
+
+        Used to break large IN-clause value lists into smaller batches
+        to avoid database query size limits.
+
+        Args:
+            tar_list (list): The list to split.
+            n (int): Maximum size of each chunk.
+
+        Returns:
+            list[tuple]: List of tuples, each containing up to n elements.
+        """
         length = len(tar_list)
         arr = range(length)
         result = [tuple(tar_list[x : (x + n)]) for x in arr[::n]]
@@ -332,14 +388,20 @@ class CommonService:
     @classmethod
     @DB.connection_context()
     def filter_scope_list(cls, in_key, in_filters_list, filters=None, cols=None):
-        # Get records matching IN clause filters with optional column selection
-        # Args:
-        #     in_key: Field name for IN clause
-        #     in_filters_list: List of values for IN clause
-        #     filters: Additional filter conditions
-        #     cols: List of columns to select
-        # Returns:
-        #     List of matching records
+        """Get records matching an IN clause with optional additional filters.
+
+        Splits the IN-clause values into batches of 20 to avoid query size
+        limits, then collects and returns all matching records.
+
+        Args:
+            in_key (str): The model attribute name to use for the IN clause.
+            in_filters_list (list): List of values for the IN clause.
+            filters (list, optional): Additional Peewee filter expressions.
+            cols (list, optional): List of columns to select. If None, selects all.
+
+        Returns:
+            list: List of matching model instances.
+        """
         in_filters_tuple_list = cls.cut_list(in_filters_list, 20)
         if not filters:
             filters = []

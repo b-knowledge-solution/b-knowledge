@@ -1,16 +1,17 @@
 /**
  * @fileoverview API functions for the dataset chat feature.
  * Communicates with the backend chat and RAG endpoints.
- * @module features/ai/api/chatApi
+ * @module features/chat/api/chatApi
  */
 
 import { api } from '@/lib/api'
 import type {
-  ChatDialog,
-  ChatDialogAccessEntry,
+  ChatAssistant,
+  ChatAssistantAccessEntry,
   Conversation,
-  CreateDialogPayload,
+  CreateAssistantPayload,
   CreateConversationPayload,
+  SendMessageOptions,
 } from '../types/chat.types'
 
 /** Base URL for chat-related API endpoints */
@@ -20,52 +21,66 @@ const BASE_URL = '/api/chat'
 const RAG_URL = '/api/rag'
 
 // ============================================================================
-// Dialog CRUD
+// Assistant CRUD
 // ============================================================================
 
 export const chatApi = {
   /**
-   * List all dialogs (chat assistants) for the current user.
-   * @returns Array of chat dialogs
+   * List assistants with optional server-side pagination and search.
+   * @param params - Optional pagination and filter parameters
+   * @returns Paginated response with data array and total count
    */
-  listDialogs: async (): Promise<ChatDialog[]> => {
-    return api.get<ChatDialog[]>(`${BASE_URL}/dialogs`)
+  listAssistants: async (params?: {
+    page?: number | undefined
+    page_size?: number | undefined
+    search?: string | undefined
+    sort_by?: 'created_at' | 'name' | undefined
+    sort_order?: 'asc' | 'desc' | undefined
+  }): Promise<{ data: ChatAssistant[]; total: number }> => {
+    const searchParams = new URLSearchParams()
+    if (params?.page) searchParams.set('page', String(params.page))
+    if (params?.page_size) searchParams.set('page_size', String(params.page_size))
+    if (params?.search) searchParams.set('search', params.search)
+    if (params?.sort_by) searchParams.set('sort_by', params.sort_by)
+    if (params?.sort_order) searchParams.set('sort_order', params.sort_order)
+    const qs = searchParams.toString()
+    return api.get<{ data: ChatAssistant[]; total: number }>(`${BASE_URL}/assistants${qs ? `?${qs}` : ''}`)
   },
 
   /**
-   * Get a single dialog by ID.
-   * @param id - Dialog identifier
-   * @returns The chat dialog
+   * Get a single assistant by ID.
+   * @param id - Assistant identifier
+   * @returns The chat assistant
    */
-  getDialog: async (id: string): Promise<ChatDialog> => {
-    return api.get<ChatDialog>(`${BASE_URL}/dialogs/${id}`)
+  getAssistant: async (id: string): Promise<ChatAssistant> => {
+    return api.get<ChatAssistant>(`${BASE_URL}/assistants/${id}`)
   },
 
   /**
-   * Create a new dialog.
-   * @param data - Dialog creation payload
-   * @returns The created dialog
+   * Create a new assistant.
+   * @param data - Assistant creation payload
+   * @returns The created assistant
    */
-  createDialog: async (data: CreateDialogPayload): Promise<ChatDialog> => {
-    return api.post<ChatDialog>(`${BASE_URL}/dialogs`, data)
+  createAssistant: async (data: CreateAssistantPayload): Promise<ChatAssistant> => {
+    return api.post<ChatAssistant>(`${BASE_URL}/assistants`, data)
   },
 
   /**
-   * Update an existing dialog.
-   * @param id - Dialog identifier
-   * @param data - Partial dialog data to update
-   * @returns The updated dialog
+   * Update an existing assistant.
+   * @param id - Assistant identifier
+   * @param data - Partial assistant data to update
+   * @returns The updated assistant
    */
-  updateDialog: async (id: string, data: Partial<CreateDialogPayload>): Promise<ChatDialog> => {
-    return api.put<ChatDialog>(`${BASE_URL}/dialogs/${id}`, data)
+  updateAssistant: async (id: string, data: Partial<CreateAssistantPayload>): Promise<ChatAssistant> => {
+    return api.put<ChatAssistant>(`${BASE_URL}/assistants/${id}`, data)
   },
 
   /**
-   * Delete a dialog by ID.
-   * @param id - Dialog identifier
+   * Delete an assistant by ID.
+   * @param id - Assistant identifier
    */
-  deleteDialog: async (id: string): Promise<void> => {
-    return api.delete<void>(`${BASE_URL}/dialogs/${id}`)
+  deleteAssistant: async (id: string): Promise<void> => {
+    return api.delete<void>(`${BASE_URL}/assistants/${id}`)
   },
 
   // ============================================================================
@@ -73,12 +88,12 @@ export const chatApi = {
   // ============================================================================
 
   /**
-   * List conversations for a given dialog.
-   * @param dialogId - Parent dialog identifier
+   * List conversations for a given assistant.
+   * @param assistantId - Parent assistant identifier
    * @returns Array of conversations
    */
-  listConversations: async (dialogId: string): Promise<Conversation[]> => {
-    return api.get<Conversation[]>(`${BASE_URL}/dialogs/${dialogId}/conversations`)
+  listConversations: async (assistantId: string): Promise<Conversation[]> => {
+    return api.get<Conversation[]>(`${BASE_URL}/assistants/${assistantId}/conversations`)
   },
 
   /**
@@ -91,7 +106,7 @@ export const chatApi = {
   },
 
   /**
-   * Create a new conversation under a dialog.
+   * Create a new conversation under an assistant.
    * @param data - Conversation creation payload
    * @returns The created conversation
    */
@@ -108,6 +123,16 @@ export const chatApi = {
   },
 
   /**
+   * Rename a conversation.
+   * @param conversationId - Conversation identifier
+   * @param name - New display name
+   * @returns The updated conversation
+   */
+  renameConversation: async (conversationId: string, name: string): Promise<Conversation> => {
+    return api.put<Conversation>(`${BASE_URL}/conversations/${conversationId}`, { name })
+  },
+
+  /**
    * Delete multiple conversations.
    * @param ids - Array of conversation identifiers
    */
@@ -119,6 +144,20 @@ export const chatApi = {
   },
 
   // ============================================================================
+  // Message Operations
+  // ============================================================================
+
+  /**
+   * Delete a specific message from a conversation.
+   * Used during message regeneration to remove the old assistant response.
+   * @param conversationId - Parent conversation identifier
+   * @param messageId - Message identifier to delete
+   */
+  deleteMessage: async (conversationId: string, messageId: string): Promise<void> => {
+    return api.delete<void>(`${BASE_URL}/conversations/${conversationId}/messages/${messageId}`)
+  },
+
+  // ============================================================================
   // Chat Completion (Streaming)
   // ============================================================================
 
@@ -127,16 +166,44 @@ export const chatApi = {
    * Returns the raw Response for the caller to consume as a ReadableStream.
    * @param conversationId - Conversation to send the message in
    * @param content - User message text
-   * @param dialogId - Dialog configuration to use
+   * @param assistantId - Assistant configuration to use
+   * @param options - Optional variables, reasoning, and internet search flags
    * @returns Raw fetch Response with SSE body
    */
   sendMessage: async (
     conversationId: string,
     content: string,
-    dialogId: string,
+    assistantId: string,
+    options?: SendMessageOptions,
   ): Promise<Response> => {
     const apiBase = import.meta.env.VITE_API_BASE_URL || ''
     const url = `${apiBase}${BASE_URL}/conversations/${conversationId}/completion`
+
+    // Build request body with optional fields
+    const body: Record<string, unknown> = {
+      content,
+      dialog_id: assistantId,
+    }
+
+    // Include custom variable values when provided
+    if (options?.variables && Object.keys(options.variables).length > 0) {
+      body.variables = options.variables
+    }
+
+    // Include reasoning flag when enabled
+    if (options?.reasoning) {
+      body.reasoning = true
+    }
+
+    // Include internet search flag when enabled
+    if (options?.useInternet) {
+      body.use_internet = true
+    }
+
+    // Include file attachment IDs when provided
+    if (options?.file_ids && options.file_ids.length > 0) {
+      body.file_ids = options.file_ids
+    }
 
     // Use raw fetch for streaming support
     const response = await fetch(url, {
@@ -146,41 +213,72 @@ export const chatApi = {
         'Content-Type': 'application/json',
         'Accept': 'text/event-stream',
       },
-      body: JSON.stringify({ content, dialog_id: dialogId }),
+      body: JSON.stringify(body),
     })
 
     return response
   },
 
   // ============================================================================
-  // Dialog Access Control
+  // File Uploads
   // ============================================================================
 
   /**
-   * Get access entries (users and teams) for a dialog.
-   * @param dialogId - Dialog identifier
+   * Upload files to a chat conversation.
+   * @param conversationId - Conversation to attach files to
+   * @param formData - FormData with 'files' field
+   * @returns Array of uploaded file metadata
+   */
+  uploadChatFiles: async (
+    conversationId: string,
+    formData: FormData,
+  ): Promise<{ id: string; original_name: string; mime_type: string; size: number }[]> => {
+    const apiBase = import.meta.env.VITE_API_BASE_URL || ''
+    const url = `${apiBase}${BASE_URL}/conversations/${conversationId}/files`
+
+    const response = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}))
+      throw new Error(errData.error || `Upload failed: ${response.status}`)
+    }
+
+    return response.json()
+  },
+
+  // ============================================================================
+  // Assistant Access Control
+  // ============================================================================
+
+  /**
+   * Get access entries (users and teams) for an assistant.
+   * @param assistantId - Assistant identifier
    * @returns Array of access entries
    */
-  getDialogAccess: async (dialogId: string): Promise<ChatDialogAccessEntry[]> => {
-    return api.get<ChatDialogAccessEntry[]>(`${BASE_URL}/dialogs/${dialogId}/access`)
+  getAssistantAccess: async (assistantId: string): Promise<ChatAssistantAccessEntry[]> => {
+    return api.get<ChatAssistantAccessEntry[]>(`${BASE_URL}/assistants/${assistantId}/access`)
   },
 
   /**
-   * Set access entries (users and teams) for a dialog.
-   * @param dialogId - Dialog identifier
+   * Set access entries (users and teams) for an assistant.
+   * @param assistantId - Assistant identifier
    * @param entries - Array of access entries to assign
    * @returns Updated access entries
    */
-  setDialogAccess: async (dialogId: string, entries: ChatDialogAccessEntry[]): Promise<ChatDialogAccessEntry[]> => {
-    return api.put<ChatDialogAccessEntry[]>(`${BASE_URL}/dialogs/${dialogId}/access`, { entries })
+  setAssistantAccess: async (assistantId: string, entries: ChatAssistantAccessEntry[]): Promise<ChatAssistantAccessEntry[]> => {
+    return api.put<ChatAssistantAccessEntry[]>(`${BASE_URL}/assistants/${assistantId}/access`, { entries })
   },
 
   // ============================================================================
-  // Knowledge Base (for dialog config)
+  // Knowledge Base (for assistant config)
   // ============================================================================
 
   /**
-   * List available datasets/knowledge bases for dialog configuration.
+   * List available datasets/knowledge bases for assistant configuration.
    * @returns Array of datasets
    */
   listDatasets: async (): Promise<{ id: string; name: string }[]> => {

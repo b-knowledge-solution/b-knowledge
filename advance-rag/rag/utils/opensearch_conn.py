@@ -13,6 +13,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""OpenSearch document store connector with full CRUD, search, and SQL support.
+
+Provides a singleton OpenSearch client implementing the DocStoreConnection
+interface. Handles index creation/deletion, hybrid text+KNN vector search,
+bulk document insertion, update-by-query with Painless scripts, delete-by-query,
+SQL passthrough, and search result extraction (highlights, aggregations, fields).
+
+This is the primary document engine connector used by b-knowledge when
+DOC_ENGINE=opensearch. Loads index mappings from conf/os_mapping.json.
+"""
 
 import logging
 import re
@@ -39,6 +49,17 @@ logger = logging.getLogger('ragflow.opensearch_conn')
 
 @singleton
 class OSConnection(DocStoreConnection):
+    """Singleton OpenSearch connection implementing the full DocStoreConnection interface.
+
+    On initialization, connects to the configured OpenSearch cluster, verifies
+    version compatibility (>= 2.x), and loads index mapping from os_mapping.json.
+
+    Attributes:
+        info: Cluster info dict returned by OpenSearch.
+        os: OpenSearch client instance.
+        mapping: Index mapping loaded from conf/os_mapping.json.
+    """
+
     def __init__(self):
         self.info = {}
         logger.info(f"Use OpenSearch {settings.OS['hosts']} as the doc engine.")
@@ -81,9 +102,19 @@ class OSConnection(DocStoreConnection):
     """
 
     def db_type(self) -> str:
+        """Return the database type identifier.
+
+        Returns:
+            The string 'opensearch'.
+        """
         return "opensearch"
 
     def health(self) -> dict:
+        """Check cluster health and return status with type annotation.
+
+        Returns:
+            Dict with OpenSearch cluster health info and 'type' key set to 'opensearch'.
+        """
         health_dict = dict(self.os.cluster.health())
         health_dict["type"] = "opensearch"
         return health_dict
@@ -93,6 +124,17 @@ class OSConnection(DocStoreConnection):
     """
 
     def create_idx(self, indexName: str, knowledgebaseId: str, vectorSize: int, parser_id: str = None):
+        """Create an OpenSearch index with the pre-loaded mapping.
+
+        Args:
+            indexName: Name for the new index.
+            knowledgebaseId: Knowledge base ID (unused; index is shared across KBs).
+            vectorSize: Vector dimension size (unused; mapping defines it).
+            parser_id: Parser type identifier (unused for OpenSearch).
+
+        Returns:
+            Index creation result, or True if already exists.
+        """
         if self.index_exist(indexName, knowledgebaseId):
             return True
         try:
@@ -103,6 +145,15 @@ class OSConnection(DocStoreConnection):
             logger.exception("OSConnection.createIndex error %s" % (indexName))
 
     def delete_idx(self, indexName: str, knowledgebaseId: str):
+        """Delete an OpenSearch index.
+
+        Only deletes the index when knowledgebaseId is empty (tenant-level deletion),
+        because all knowledge bases under a tenant share one index.
+
+        Args:
+            indexName: Index name to delete.
+            knowledgebaseId: If non-empty, deletion is skipped (KB-level only).
+        """
         if len(knowledgebaseId) > 0:
             # The index need to be alive after any kb deletion since all kb under this tenant are in one index.
             return
@@ -114,6 +165,15 @@ class OSConnection(DocStoreConnection):
             logger.exception("OSConnection.deleteIdx error %s" % (indexName))
 
     def index_exist(self, indexName: str, knowledgebaseId: str = None) -> bool:
+        """Check whether an OpenSearch index exists.
+
+        Args:
+            indexName: Index name to check.
+            knowledgebaseId: Unused (kept for interface compatibility).
+
+        Returns:
+            True if the index exists, False otherwise.
+        """
         s = Index(indexName, self.os)
         for i in range(ATTEMPT_TIME):
             try:
@@ -267,6 +327,19 @@ class OSConnection(DocStoreConnection):
         raise Exception("OSConnection.search timeout.")
 
     def get(self, chunkId: str, indexName: str, knowledgebaseIds: list[str]) -> dict | None:
+        """Retrieve a single chunk document by its ID.
+
+        Args:
+            chunkId: The chunk document ID.
+            indexName: Index to search in.
+            knowledgebaseIds: Knowledge base IDs (unused for OpenSearch get-by-id).
+
+        Returns:
+            Chunk document dict with 'id' field added, or None if not found.
+
+        Raises:
+            Exception: On timeout after all retry attempts.
+        """
         for i in range(ATTEMPT_TIME):
             try:
                 res = self.os.get(index=(indexName),
@@ -468,14 +541,38 @@ class OSConnection(DocStoreConnection):
     """
 
     def get_total(self, res):
+        """Extract total hit count from a search response.
+
+        Args:
+            res: Raw OpenSearch search response.
+
+        Returns:
+            Total number of matching documents.
+        """
         if isinstance(res["hits"]["total"], type({})):
             return res["hits"]["total"]["value"]
         return res["hits"]["total"]
 
     def get_doc_ids(self, res):
+        """Extract document IDs from a search response.
+
+        Args:
+            res: Raw OpenSearch search response.
+
+        Returns:
+            List of document ID strings.
+        """
         return [d["_id"] for d in res["hits"]["hits"]]
 
     def __getSource(self, res):
+        """Extract _source documents from search hits, enriching with id and score.
+
+        Args:
+            res: Raw OpenSearch search response.
+
+        Returns:
+            List of source dicts with 'id' and '_score' fields added.
+        """
         rr = []
         for d in res["hits"]["hits"]:
             d["_source"]["id"] = d["_id"]
@@ -503,6 +600,20 @@ class OSConnection(DocStoreConnection):
         return res_fields
 
     def get_highlight(self, res, keywords: list[str], fieldnm: str):
+        """Extract highlighted text snippets from search results.
+
+        For English text, manually wraps keywords in <em> tags within
+        sentence boundaries. For non-English text, uses OpenSearch's
+        built-in highlighting.
+
+        Args:
+            res: Raw OpenSearch search response.
+            keywords: List of keywords to highlight.
+            fieldnm: Source field name to fall back to for English highlighting.
+
+        Returns:
+            Dict mapping document IDs to highlighted text strings.
+        """
         ans = {}
         for d in res["hits"]["hits"]:
             hlts = d.get("highlight")
@@ -528,6 +639,15 @@ class OSConnection(DocStoreConnection):
         return ans
 
     def get_aggregation(self, res, fieldnm: str):
+        """Extract aggregation results (term buckets) from a search response.
+
+        Args:
+            res: Raw OpenSearch search response.
+            fieldnm: Name of the aggregated field.
+
+        Returns:
+            List of (key, doc_count) tuples from the aggregation buckets.
+        """
         agg_field = "aggs_" + fieldnm
         if "aggregations" not in res or agg_field not in res["aggregations"]:
             return list()

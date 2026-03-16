@@ -102,7 +102,7 @@ export const queryKeys = {
       [...queryKeys.search.all, 'results', datasetId, query, filters] as const,
     allResults: (query: string, filters?: Record<string, unknown>) =>
       [...queryKeys.search.all, 'all-results', query, filters] as const,
-    apps: () => [...queryKeys.search.all, 'apps'] as const,
+    apps: (params?: Record<string, unknown>) => [...queryKeys.search.all, 'apps', params] as const,
     appAccess: (appId: string) => [...queryKeys.search.all, 'apps', appId, 'access'] as const,
     relatedQuestions: (appId: string, query: string) =>
       [...queryKeys.search.all, 'related-questions', appId, query] as const,
@@ -168,7 +168,7 @@ export const queryKeys = {
   // --------------------------------------------------------------------------
   chat: {
     all: ['chat'] as const,
-    dialogs: () => [...queryKeys.chat.all, 'dialogs'] as const,
+    dialogs: (params?: Record<string, unknown>) => [...queryKeys.chat.all, 'dialogs', params] as const,
     dialog: (id: string) => [...queryKeys.chat.all, 'dialogs', id] as const,
     dialogAccess: (dialogId: string) =>
       [...queryKeys.chat.all, 'dialogs', dialogId, 'access'] as const,
@@ -176,6 +176,8 @@ export const queryKeys = {
       [...queryKeys.chat.all, 'dialogs', dialogId, 'conversations'] as const,
     conversation: (conversationId: string) =>
       [...queryKeys.chat.all, 'conversations', conversationId] as const,
+    embedTokens: (dialogId: string) =>
+      [...queryKeys.chat.all, 'dialogs', dialogId, 'embed-tokens'] as const,
   },
 
   // --------------------------------------------------------------------------

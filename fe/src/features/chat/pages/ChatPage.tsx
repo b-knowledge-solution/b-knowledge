@@ -1,26 +1,39 @@
 /**
  * @fileoverview Dataset Chat page - main chat interface.
- * Composes ChatSidebar, ChatMessageList, ChatInput, and ChatReferencePanel.
- * @module features/ai/pages/DatasetChatPage
+ * Composes ChatSidebar, ChatMessageList, ChatInput, ChatReferencePanel, and ChatDocumentPreviewDrawer.
+ * Shows a variable form when the assistant has required variables without defaults.
+ * @module features/chat/pages/ChatPage
  */
 
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Settings2, PanelRightOpen, PanelRightClose } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Spinner } from '@/components/ui/spinner'
-import { cn } from '@/lib/utils'
+import { PanelRightOpen, PanelRightClose } from 'lucide-react'
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
 import ChatSidebar from '../components/ChatSidebar'
 import ChatMessageList from '../components/ChatMessageList'
 import ChatInput from '../components/ChatInput'
+import ChatFileUpload from '../components/ChatFileUpload'
 import ChatReferencePanel from '../components/ChatReferencePanel'
-import ChatDialogConfig from '../components/ChatDialogConfig'
-import { useChatDialogs } from '../api/chatQueries'
-import { useChatConversations } from '../api/chatQueries'
+import ChatDocumentPreviewDrawer from '../components/ChatDocumentPreviewDrawer'
+import { useChatAssistants } from '../api/chatQueries'
+import { useChatConversations, useRenameConversation } from '../api/chatQueries'
 import { useChatStream } from '../hooks/useChatStream'
-import { chatApi } from '../api/chatApi'
-import type { ChatReference, ChatChunk, CreateDialogPayload } from '../types/chat.types'
+import { useChatFiles } from '../hooks/useChatFiles'
+import type { ChatReference, ChatChunk, PromptVariable, SendMessageOptions } from '../types/chat.types'
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+/**
+ * Determine which variables require user input (required, no default).
+ * @param variables - Variable definitions from the assistant
+ * @returns Array of variables that the user must fill
+ */
+function getRequiredVariables(variables?: PromptVariable[]): PromptVariable[] {
+  if (!variables) return []
+  return variables.filter((v) => !v.optional && !v.default_value)
+}
 
 // ============================================================================
 // Component
@@ -29,6 +42,8 @@ import type { ChatReference, ChatChunk, CreateDialogPayload } from '../types/cha
 /**
  * @description Main dataset chat page with three-panel layout:
  * left sidebar (conversations), center (chat), right panel (references).
+ * When an assistant has required variables without defaults, a small form is shown
+ * above the chat input before the first message can be sent.
  *
  * @returns {JSX.Element} The rendered dataset chat page
  */
@@ -41,17 +56,27 @@ function DatasetChatPage() {
   const [showReferences, setShowReferences] = useState(false)
   const [activeReference, setActiveReference] = useState<ChatReference | null>(null)
 
-  // Dialog config modal
-  const [showDialogConfig, setShowDialogConfig] = useState(false)
-  const [availableDatasets, setAvailableDatasets] = useState<{ id: string; name: string }[]>([])
+  // Document preview drawer state
+  const [showDocPreview, setShowDocPreview] = useState(false)
+  const [previewChunk, setPreviewChunk] = useState<ChatChunk | null>(null)
+
+  // Variable values state (user-provided values for required variables)
+  const [variableValues, setVariableValues] = useState<Record<string, string>>({})
 
   // Hooks
-  const dialogs = useChatDialogs()
-  const conversations = useChatConversations(dialogs.activeDialog?.id || null)
+  const assistants = useChatAssistants()
+  const conversations = useChatConversations(assistants.activeAssistant?.id || null)
   const stream = useChatStream(
     conversations.activeConversation?.id || null,
-    dialogs.activeDialog?.id || null,
+    assistants.activeAssistant?.id || null,
   )
+  const chatFiles = useChatFiles(conversations.activeConversation?.id || null)
+  const renameMutation = useRenameConversation()
+
+  // Compute required variables from the active assistant
+  const assistantVariables = assistants.activeAssistant?.prompt_config?.variables
+  const requiredVars = getRequiredVariables(assistantVariables)
+  const hasRequiredVars = requiredVars.length > 0
 
   // Show first-visit guide
   useEffect(() => {
@@ -72,16 +97,65 @@ function DatasetChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversations.activeConversation?.id])
 
+  // Reset variable values when assistant changes
+  useEffect(() => {
+    setVariableValues({})
+  }, [assistants.activeAssistant?.id])
+
+  /**
+   * Check if all required variables have been filled.
+   * @returns True if all required variables have non-empty values
+   */
+  const areVariablesFilled = (): boolean => {
+    if (!hasRequiredVars) return true
+    return requiredVars.every((v) => {
+      const val = variableValues[v.key]
+      return val !== undefined && val.trim().length > 0
+    })
+  }
+
   /**
    * Handle sending a message: auto-create conversation if none active.
+   * Passes variable values and toggle options to sendMessage.
    */
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = async (
+    content: string,
+    options?: { reasoning?: boolean; useInternet?: boolean; file_ids?: string[] },
+  ) => {
     // Create conversation if none exists
     if (!conversations.activeConversation) {
       const conv = await conversations.createConversation(content.slice(0, 50))
       if (!conv) return
     }
-    stream.sendMessage(content)
+
+    // Build send options including variables
+    const sendOptions: SendMessageOptions = {
+      ...options,
+    }
+
+    // Include variable values (merge user-provided with defaults)
+    if (assistantVariables && assistantVariables.length > 0) {
+      const vars: Record<string, string> = {}
+      for (const v of assistantVariables) {
+        const userVal = variableValues[v.key]
+        if (userVal !== undefined && userVal.trim().length > 0) {
+          vars[v.key] = userVal
+        }
+      }
+      if (Object.keys(vars).length > 0) {
+        sendOptions.variables = vars
+      }
+    }
+
+    // Include file attachment IDs
+    if (chatFiles.fileIds.length > 0) {
+      sendOptions.file_ids = chatFiles.fileIds
+    }
+
+    stream.sendMessage(content, sendOptions)
+
+    // Clear files after sending
+    chatFiles.clearFiles()
   }
 
   /**
@@ -93,54 +167,61 @@ function DatasetChatPage() {
   }
 
   /**
-   * Handle inline chunk citation click: open reference panel and highlight the chunk's document.
+   * Handle inline chunk citation click: open document preview drawer.
    */
   const handleChunkCitationClick = (chunk: ChatChunk) => {
-    // Build a reference with just this chunk for focused preview
-    const reference: ChatReference = {
-      chunks: [chunk],
-      doc_aggs: [{ doc_id: chunk.doc_id, doc_name: chunk.docnm_kwd, count: 1 }],
-    }
-    setActiveReference(reference)
-    setShowReferences(true)
+    setPreviewChunk(chunk)
+    setShowDocPreview(true)
   }
 
   /**
-   * Handle dialog config open: fetch datasets list.
+   * Handle document click from reference panel: open document preview drawer.
    */
-  const handleOpenConfig = async () => {
-    try {
-      const ds = await chatApi.listDatasets()
-      setAvailableDatasets(ds)
-    } catch {
-      // Proceed with empty list
+  const handleDocumentClick = (docId: string) => {
+    const ref = activeReference || stream.references
+    const chunk = ref?.chunks.find((c) => c.doc_id === docId)
+    if (chunk) {
+      setPreviewChunk(chunk)
+      setShowDocPreview(true)
     }
-    setShowDialogConfig(true)
   }
 
   /**
-   * Handle dialog config save.
+   * Handle regenerating the last assistant message.
    */
-  const handleSaveDialog = (data: CreateDialogPayload) => {
-    if (dialogs.activeDialog) {
-      chatApi.updateDialog(dialogs.activeDialog.id, data).then(() => dialogs.refresh())
-    } else {
-      dialogs.createDialog(data)
-    }
+  const handleRegenerate = () => {
+    stream.regenerateLastMessage()
   }
 
-  // Loading state while dialogs are fetched
-  if (dialogs.loading) {
+  /**
+   * Handle renaming a conversation from the sidebar.
+   */
+  const handleRenameConversation = (id: string, newName: string) => {
+    renameMutation.mutate(
+      { conversationId: id, name: newName },
+      {
+        onSuccess: () => {
+          conversations.refresh()
+        },
+      },
+    )
+  }
+
+  // Loading state while assistants are fetched
+  if (assistants.loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <Spinner label={t('common.loading')} />
+        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-blue-600" />
+          {t('common.loading')}
+        </div>
       </div>
     )
   }
 
   return (
     <>
-      <div className="flex h-full w-full overflow-hidden bg-background">
+      <div className="flex h-full w-full overflow-hidden bg-white dark:bg-slate-900">
         {/* Left sidebar: conversation list */}
         <ChatSidebar
           className="w-72 shrink-0 hidden md:flex"
@@ -150,41 +231,29 @@ function DatasetChatPage() {
           onSelect={conversations.setActiveConversationId}
           onCreate={() => { conversations.createConversation() }}
           onDelete={conversations.deleteConversation}
+          onRename={handleRenameConversation}
           search={conversations.search}
           onSearchChange={conversations.setSearch}
         />
 
         {/* Center: chat area */}
-        <div className="flex-1 flex flex-col min-w-0 chat-area-bg">
+        <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-900">
           {/* Chat header */}
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40 bg-background/80 backdrop-blur-sm">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
             <div className="flex items-center gap-2 min-w-0">
-              <h2 className="text-sm font-semibold truncate text-foreground/90">
+              <h2 className="text-sm font-semibold truncate text-slate-800 dark:text-slate-200">
                 {conversations.activeConversation?.name || t('chat.newConversation')}
               </h2>
-              {dialogs.activeDialog && (
-                <span className="text-xs text-muted-foreground truncate hidden sm:inline">
-                  {dialogs.activeDialog.name}
+              {assistants.activeAssistant && (
+                <span className="text-xs text-slate-500 dark:text-slate-400 truncate hidden sm:inline">
+                  {assistants.activeAssistant.name}
                 </span>
               )}
             </div>
             <div className="flex items-center gap-1">
-              {/* Config button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 hover:bg-muted/60 transition-colors"
-                onClick={handleOpenConfig}
-                title={t('chat.dialogSettings')}
-              >
-                <Settings2 className="h-4 w-4" />
-              </Button>
-
               {/* Toggle reference panel */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 hover:bg-muted/60 transition-colors"
+              <button
+                className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                 onClick={() => setShowReferences(!showReferences)}
                 title={t('chat.toggleReferences')}
               >
@@ -193,7 +262,7 @@ function DatasetChatPage() {
                 ) : (
                   <PanelRightOpen className="h-4 w-4" />
                 )}
-              </Button>
+              </button>
             </div>
           </div>
 
@@ -205,35 +274,78 @@ function DatasetChatPage() {
             onCitationClick={handleCitationClick}
             onChunkCitationClick={handleChunkCitationClick}
             onSuggestedPrompt={handleSendMessage}
+            onRegenerate={handleRegenerate}
             className="flex-1"
           />
 
-          {/* Chat input */}
+          {/* Variable form - shown when assistant has required variables without defaults */}
+          {hasRequiredVars && stream.messages.length === 0 && (
+            <div className="px-4 py-3 border-t border-slate-200/60 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/50">
+              <div className="max-w-3xl mx-auto space-y-3">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  {t('chat.fillVariables')}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {requiredVars.map((v) => (
+                    <div key={v.key} className="space-y-1">
+                      <label className="text-xs text-slate-600 dark:text-slate-400">
+                        {v.description || v.key}
+                        <span className="text-red-500 ml-0.5">*</span>
+                      </label>
+                      <input
+                        value={variableValues[v.key] ?? ''}
+                        onChange={(e) =>
+                          setVariableValues((prev) => ({ ...prev, [v.key]: e.target.value }))
+                        }
+                        placeholder={v.default_value || v.key}
+                        className="w-full h-8 px-2.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* File attachment preview strip */}
+          <ChatFileUpload
+            files={chatFiles.files}
+            isUploading={chatFiles.isUploading}
+            uploadError={chatFiles.uploadError}
+            onRemove={chatFiles.removeFile}
+          />
+
+          {/* Chat input with reasoning and internet search toggles */}
           <ChatInput
             onSend={handleSendMessage}
             onStop={stream.stopStream}
             isStreaming={stream.isStreaming}
-            disabled={!dialogs.activeDialog}
+            disabled={!assistants.activeAssistant || (hasRequiredVars && !areVariablesFilled())}
+            showReasoningToggle={true}
+            showInternetToggle={true}
+            showFileUpload={true}
+            onFilesSelected={(files) => chatFiles.uploadFiles(files)}
+            fileIds={chatFiles.fileIds}
           />
         </div>
 
         {/* Right panel: document references */}
         {showReferences && (
           <ChatReferencePanel
-            className={cn('w-80 shrink-0 hidden lg:flex')}
+            className="w-80 shrink-0 hidden lg:flex"
             reference={activeReference || stream.references}
             onClose={() => setShowReferences(false)}
+            onDocumentClick={handleDocumentClick}
           />
         )}
       </div>
 
-      {/* Dialog config modal */}
-      <ChatDialogConfig
-        open={showDialogConfig}
-        onClose={() => setShowDialogConfig(false)}
-        onSave={handleSaveDialog}
-        dialog={dialogs.activeDialog}
-        datasets={availableDatasets}
+      {/* Document preview drawer */}
+      <ChatDocumentPreviewDrawer
+        open={showDocPreview}
+        onClose={() => setShowDocPreview(false)}
+        chunk={previewChunk}
+        datasetId={assistants.activeAssistant?.kb_ids[0]}
       />
 
       {/* First visit guide */}

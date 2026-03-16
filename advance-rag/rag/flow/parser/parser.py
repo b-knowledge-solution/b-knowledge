@@ -12,6 +12,17 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""Parser component for the RAG processing flow pipeline.
+
+The central document parsing component that handles all supported file
+types: PDF, Word (DOC/DOCX), spreadsheets (XLS/XLSX/CSV), slides
+(PPT/PPTX), images, audio, video, email, and text/markdown files.
+Delegates to format-specific parsing methods and supports multiple
+layout recognition engines (DeepDOC, MinerU, TCADP, PaddleOCR, VLM).
+Outputs structured JSON, markdown, text, or HTML depending on
+configuration.
+"""
+
 import asyncio
 import io
 import json
@@ -47,6 +58,16 @@ from rag.utils.base64_image import image2id
 from common.misc_utils import thread_pool_exec
 
 class ParserParam(ProcessParamBase):
+    """Parameter class for the Parser component.
+
+    Defines allowed output formats and parsing configurations for each
+    supported file type (PDF, spreadsheet, word, slides, image, email,
+    audio, video, text/markdown).
+
+    Attributes:
+        allowed_output_format: Dict mapping file types to allowed output formats.
+        setups: Dict mapping file types to their parsing configuration.
+    """
     def __init__(self):
         super().__init__()
         self.allowed_output_format = {
@@ -223,6 +244,13 @@ class ParserParam(ProcessParamBase):
 
 
 class Parser(ProcessBase):
+    """Multi-format document parser pipeline component.
+
+    Routes documents to format-specific parsing methods based on file
+    extension. Supports PDF, Word, spreadsheet, slides, image, audio,
+    video, email, and text/markdown formats with configurable parsing
+    engines and output formats.
+    """
     component_name = "Parser"
 
     @staticmethod

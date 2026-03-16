@@ -13,6 +13,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Elasticsearch document store connector for CRUD and search operations.
+
+Extends the ESConnectionBase with concrete implementations of search, insert,
+update, and delete operations using the OpenSearch Python DSL. Supports
+hybrid text + vector (KNN) search with weighted fusion, search-after pagination
+for large result sets beyond the MAX_RESULT_WINDOW limit, bulk indexing,
+and update-by-query with Painless scripts.
+
+This is the Elasticsearch-flavored connector (as opposed to opensearch_conn.py).
+Both implement the same DocStoreConnection interface but differ in DSL details.
+"""
 
 import re
 import json
@@ -27,18 +38,34 @@ from common.doc_store.es_conn_base import ESConnectionBase
 from common.float_utils import get_float
 from common.constants import PAGERANK_FLD, TAG_FLD
 
+# Number of retry attempts for transient failures (timeouts, connection errors)
 ATTEMPT_TIME = 2
+# Elasticsearch's default maximum window for from+size pagination
 MAX_RESULT_WINDOW = 10000
+# Batch size for search_after cursor-based pagination
 SEARCH_AFTER_BATCH_SIZE = 1000
 
 
 @singleton
 class ESConnection(ESConnectionBase):
-    """
-    CRUD operations
+    """Singleton Elasticsearch connection implementing CRUD and search operations.
+
+    Extends ESConnectionBase with concrete query building, bulk indexing,
+    update-by-query, and delete-by-query logic. Supports hybrid search
+    combining text matching, vector KNN, and rank features.
     """
 
     def _es_search_once(self, index_names: list[str], query: dict, track_total_hits: bool):
+        """Execute a single Elasticsearch search request.
+
+        Args:
+            index_names: List of index names to search across.
+            query: Elasticsearch query DSL body.
+            track_total_hits: Whether to track exact total hit count.
+
+        Returns:
+            Raw Elasticsearch search response dict.
+        """
         return self.es.search(
             index=index_names,
             body=query,
@@ -48,6 +75,21 @@ class ESConnection(ESConnectionBase):
         )
 
     def _search_with_search_after(self, index_names: list[str], query: dict, offset: int, limit: int):
+        """Paginate through large result sets using search_after cursors.
+
+        Used when offset + limit exceeds MAX_RESULT_WINDOW (10000). Iterates
+        in batches of SEARCH_AFTER_BATCH_SIZE, first skipping to the offset
+        position, then collecting the requested number of hits.
+
+        Args:
+            index_names: List of index names to search across.
+            query: Base query DSL (from/size will be managed internally).
+            offset: Number of results to skip.
+            limit: Number of results to return.
+
+        Returns:
+            Elasticsearch response dict with collected hits spliced in.
+        """
         q_base = copy.deepcopy(query)
         q_base.pop("from", None)
         q_base.pop("size", None)
@@ -59,6 +101,7 @@ class ESConnection(ESConnectionBase):
         remaining_take = max(0, limit)
         with_aggs = True
 
+        # Phase 1: Skip to the offset position by iterating through results
         while remaining_skip > 0:
             batch = min(SEARCH_AFTER_BATCH_SIZE, remaining_skip)
             q_iter = copy.deepcopy(q_base)
@@ -82,6 +125,7 @@ class ESConnection(ESConnectionBase):
             if len(hits) < batch:
                 break
 
+        # Phase 2: Collect the requested number of results
         while remaining_skip <= 0 and remaining_take > 0:
             batch = min(SEARCH_AFTER_BATCH_SIZE, remaining_take)
             q_iter = copy.deepcopy(q_base)
@@ -106,6 +150,7 @@ class ESConnection(ESConnectionBase):
             if len(hits) < batch:
                 break
 
+        # If no results were fetched at all, get at least the total count
         if template_res is None:
             q_count = copy.deepcopy(q_base)
             q_count["size"] = 0
@@ -126,8 +171,30 @@ class ESConnection(ESConnectionBase):
             agg_fields: list[str] | None = None,
             rank_feature: dict | None = None
     ):
-        """
-        Refers to https://opensearch.org/docs/latest/query-dsl/
+        """Execute a hybrid search combining text, vector, and rank features.
+
+        Builds a bool query from conditions, applies text matching and/or
+        KNN vector search, adds rank_feature boosting, and handles pagination
+        via standard from/size or search_after for large offsets.
+
+        Args:
+            select_fields: Fields to include in the response.
+            highlight_fields: Fields to highlight in results.
+            condition: Filter conditions as field-value pairs.
+            match_expressions: List of text, dense, and fusion match expressions.
+            order_by: Sort order specification.
+            offset: Number of results to skip.
+            limit: Maximum number of results to return.
+            index_names: Index name(s) to search.
+            knowledgebase_ids: Knowledge base IDs to filter by.
+            agg_fields: Fields to aggregate on.
+            rank_feature: Dict of rank feature fields and their boost scores.
+
+        Returns:
+            Raw Elasticsearch search response dict.
+
+        Raises:
+            Exception: On timeout after all retry attempts.
         """
         use_knn = False
         if isinstance(index_names, str):
@@ -135,6 +202,7 @@ class ESConnection(ESConnectionBase):
         assert isinstance(index_names, list) and len(index_names) > 0
         assert "_id" not in condition
 
+        # Build the bool query from filter conditions
         bool_query = Q("bool", must=[])
         condition["kb_id"] = knowledgebase_ids
         for k, v in condition.items():
@@ -156,6 +224,7 @@ class ESConnection(ESConnectionBase):
                     f"Condition `{str(k)}={str(v)}` value type is {str(type(v))}, expected to be int, str or list.")
 
         s = Search()
+        # Extract vector similarity weight from fusion expression if present
         vector_similarity_weight = 0.5
         for m in match_expressions:
             if isinstance(m, FusionExpr) and m.method == "weighted_sum" and "weights" in m.fusion_params:
@@ -193,6 +262,7 @@ class ESConnection(ESConnectionBase):
                     "boost": similarity,
                 }
 
+        # Add rank_feature boosting for pagerank and tag-based scoring
         if bool_query and rank_feature:
             for fld, sc in rank_feature.items():
                 if fld != PAGERANK_FLD:
@@ -204,6 +274,7 @@ class ESConnection(ESConnectionBase):
         for field in highlight_fields:
             s = s.highlight(field)
 
+        # Build sort order
         if order_by:
             orders = list()
             for field, order in order_by.fields:
@@ -221,6 +292,7 @@ class ESConnection(ESConnectionBase):
             for fld in agg_fields:
                 s.aggs.bucket(f'aggs_{fld}', 'terms', field=fld, size=1000000)
 
+        # Determine whether to use search_after pagination for large offsets
         has_dense = any(isinstance(m, MatchDenseExpr) for m in match_expressions)
         has_explicit_sort = bool(order_by and order_by.fields)
         use_search_after = (
@@ -241,6 +313,7 @@ class ESConnection(ESConnectionBase):
 
         self.logger.debug(f"ESConnection.search {str(index_names)} query: " + json.dumps(q))
 
+        # Execute with retry logic
         for i in range(ATTEMPT_TIME):
             try:
                 if use_search_after:
@@ -267,6 +340,20 @@ class ESConnection(ESConnectionBase):
         raise Exception("ESConnection.search timeout.")
 
     def insert(self, documents: list[dict], index_name: str, knowledgebase_id: str = None) -> list[str]:
+        """Bulk-insert documents into the Elasticsearch index.
+
+        Uses the bulk API for efficient batch indexing. Each document must
+        have an 'id' field which becomes the Elasticsearch _id. Retries
+        on connection timeout.
+
+        Args:
+            documents: List of document dicts, each must contain an 'id' field.
+            index_name: Target index name.
+            knowledgebase_id: Knowledge base ID to tag each document with.
+
+        Returns:
+            List of error strings (empty list on full success).
+        """
         # Refers to https://opensearch.org/docs/latest/api-reference/document-apis/bulk/
         operations = []
         for d in documents:
@@ -288,6 +375,7 @@ class ESConnection(ESConnectionBase):
                 if re.search(r"False", str(r["errors"]), re.IGNORECASE):
                     return res
 
+                # Collect any per-document errors from the bulk response
                 for item in r["items"]:
                     for action in ["create", "delete", "index", "update"]:
                         if action in item and "error" in item[action]:
@@ -305,6 +393,25 @@ class ESConnection(ESConnectionBase):
         return res
 
     def update(self, condition: dict, new_value: dict, index_name: str, knowledgebase_id: str) -> bool:
+        """Update documents matching a condition with new values.
+
+        Supports two modes:
+        - Single-document update when condition contains a string 'id'
+        - Multi-document update-by-query using Painless scripts
+
+        Special keys in new_value:
+        - 'remove': Remove a field or element from an array
+        - 'add': Add an element to an array field
+
+        Args:
+            condition: Filter conditions (field-value pairs).
+            new_value: New field values or special operations.
+            index_name: Target index name.
+            knowledgebase_id: Knowledge base ID filter.
+
+        Returns:
+            True on success, False on failure.
+        """
         doc = copy.deepcopy(new_value)
         doc.pop("id", None)
         condition["kb_id"] = knowledgebase_id
@@ -312,6 +419,7 @@ class ESConnection(ESConnectionBase):
             # update specific single document
             chunk_id = condition["id"]
             for i in range(ATTEMPT_TIME):
+                # Remove feature fields before updating to avoid type conflicts
                 for k in doc.keys():
                     if "feas" != k.split("_")[-1]:
                         continue
@@ -331,7 +439,7 @@ class ESConnection(ESConnectionBase):
                     break
             return False
 
-        # update unspecific maybe-multiple documents
+        # update unspecific maybe-multiple documents using update-by-query
         bool_query = Q("bool")
         for k, v in condition.items():
             if not isinstance(k, str) or not v:
@@ -346,6 +454,7 @@ class ESConnection(ESConnectionBase):
             else:
                 raise Exception(
                     f"Condition `{str(k)}={str(v)}` value type is {str(type(v))}, expected to be int, str or list.")
+        # Build Painless script from new_value entries
         scripts = []
         params = {}
         for k, v in new_value.items():
@@ -400,6 +509,20 @@ class ESConnection(ESConnectionBase):
         return False
 
     def delete(self, condition: dict, index_name: str, knowledgebase_id: str) -> int:
+        """Delete documents matching the given conditions.
+
+        Supports filtering by chunk IDs, field values, existence checks,
+        and must_not conditions. Falls back to match_all if no filters
+        are specified.
+
+        Args:
+            condition: Filter conditions for selecting documents to delete.
+            index_name: Target index name.
+            knowledgebase_id: Knowledge base ID filter.
+
+        Returns:
+            Number of documents deleted.
+        """
         assert "_id" not in condition
         condition["kb_id"] = knowledgebase_id
 
@@ -463,6 +586,15 @@ class ESConnection(ESConnectionBase):
     """
 
     def get_fields(self, res, fields: list[str]) -> dict[str, dict]:
+        """Extract specified fields from search results into a dict keyed by document ID.
+
+        Args:
+            res: Raw Elasticsearch search response.
+            fields: List of field names to extract from each hit.
+
+        Returns:
+            Dict mapping document IDs to dicts of their extracted field values.
+        """
         res_fields = {}
         if not fields:
             return {}

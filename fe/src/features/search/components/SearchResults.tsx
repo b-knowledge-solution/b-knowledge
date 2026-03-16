@@ -4,13 +4,14 @@
  */
 
 import { useTranslation } from 'react-i18next'
-import { Sparkles, SearchX, Square, ChevronLeft, ChevronRight } from 'lucide-react'
-import { MarkdownRenderer } from '@/components/MarkdownRenderer'
+import { Sparkles, SearchX, Square } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Pagination } from '@/components/ui/pagination'
 import { cn } from '@/lib/utils'
 import CitationInline from '@/components/CitationInline'
+import type { ChatChunk, ChatReference } from '@/features/chat/types/chat.types'
 import SearchResultCard from './SearchResultCard'
 import RelatedSearchQuestions from './RelatedSearchQuestions'
 import DocumentFilterPopover from './DocumentFilterPopover'
@@ -63,6 +64,10 @@ interface SearchResultsProps {
   selectedDocIds?: string[] | undefined
   /** Callback when document filter selection changes */
   onDocFilterChange?: ((ids: string[]) => void) | undefined
+  /** Reference data for citation popover display */
+  reference?: ChatReference | undefined
+  /** Callback when a citation badge is clicked to open document preview */
+  onCitationClick?: ((chunk: ChatChunk) => void) | undefined
 }
 
 // ============================================================================
@@ -98,6 +103,8 @@ function SearchResults({
   onPageSizeChange: _onPageSizeChange,
   selectedDocIds,
   onDocFilterChange,
+  reference,
+  onCitationClick,
 }: SearchResultsProps) {
   const { t } = useTranslation()
 
@@ -196,13 +203,21 @@ function SearchResults({
           {/* Render answer with citation support */}
           {showStreamingState ? (
             <div className="text-sm">
-              <CitationInline content={displayAnswer} />
+              <CitationInline
+                content={displayAnswer}
+                reference={reference}
+                onCitationClick={onCitationClick}
+              />
               {isStreamingAnswer && (
                 <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse ml-0.5 align-text-bottom" />
               )}
             </div>
           ) : (
-            <MarkdownRenderer className="text-sm">{displayAnswer}</MarkdownRenderer>
+            <CitationInline
+              content={displayAnswer}
+              reference={reference}
+              onCitationClick={onCitationClick}
+            />
           )}
         </div>
       )}
@@ -243,26 +258,12 @@ function SearchResults({
 
       {/* Pagination controls */}
       {onPageChange && totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 pt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={currentPage <= 1}
-            onClick={() => onPageChange(currentPage - 1)}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            {currentPage} / {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={currentPage >= totalPages}
-            onClick={() => onPageChange(currentPage + 1)}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+        <div className="flex justify-center pt-2">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={onPageChange}
+          />
         </div>
       )}
 

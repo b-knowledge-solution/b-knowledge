@@ -1,3 +1,13 @@
+"""PDF parser module for RAGFlow document processing pipeline.
+
+Provides comprehensive PDF parsing capabilities including OCR-based text extraction,
+layout recognition (titles, tables, figures, equations), table structure analysis,
+and page image cropping. Uses an XGBoost model to determine optimal text column
+layouts and supports multi-GPU parallel processing for OCR tasks.
+
+This is the primary parser used by the RAG pipeline to convert PDF documents into
+structured text sections and table data suitable for chunking and embedding.
+"""
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -47,12 +57,23 @@ from common import settings
 
 from common.misc_utils import thread_pool_exec
 
+# Global lock for pdfplumber thread safety - stored in sys.modules as a singleton
 LOCK_KEY_pdfplumber = "global_shared_lock_pdfplumber"
 if LOCK_KEY_pdfplumber not in sys.modules:
     sys.modules[LOCK_KEY_pdfplumber] = threading.Lock()
 
 
 class RAGFlowPdfParser:
+    """Main PDF parser that combines OCR, layout recognition, and table structure analysis.
+
+    Orchestrates the full PDF parsing pipeline: renders pages to images, runs OCR
+    for text detection/recognition, identifies document layout regions (text, titles,
+    tables, figures, equations), extracts table structures, and produces structured
+    sections with position tags for downstream chunking.
+
+    Supports both ONNX and Ascend hardware backends for layout recognition,
+    and multi-GPU parallelism for OCR processing.
+    """
     def __init__(self, **kwargs):
         """
         If you have trouble downloading HuggingFace models, -_^ this might help!!

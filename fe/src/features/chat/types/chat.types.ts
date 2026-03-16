@@ -1,6 +1,6 @@
 /**
  * @fileoverview Type definitions for the dataset chat feature.
- * @module features/ai/types/chat.types
+ * @module features/chat/types/chat.types
  */
 
 // ============================================================================
@@ -74,6 +74,25 @@ export interface DocAggregate {
 }
 
 // ============================================================================
+// Prompt Variable Types
+// ============================================================================
+
+/**
+ * @description A custom prompt variable defined by admin for template substitution.
+ * Variables use {key} placeholders in the system prompt.
+ */
+export interface PromptVariable {
+  /** Variable key in code format (e.g. "language", "audience") */
+  key: string
+  /** Human-readable description of the variable */
+  description?: string | undefined
+  /** Whether this variable is optional (user does not need to fill it) */
+  optional: boolean
+  /** Default value used when user does not provide one */
+  default_value?: string | undefined
+}
+
+// ============================================================================
 // Conversation Types
 // ============================================================================
 
@@ -96,11 +115,11 @@ export interface Conversation {
 }
 
 // ============================================================================
-// Dialog (Chat Assistant) Types
+// Chat Assistant Types
 // ============================================================================
 
 /**
- * @description Prompt configuration for a dialog.
+ * @description Prompt configuration for an assistant.
  */
 export interface PromptConfig {
   /** System-level instruction */
@@ -115,25 +134,27 @@ export interface PromptConfig {
   temperature?: number | undefined
   /** Maximum tokens for the response */
   max_tokens?: number | undefined
+  /** Custom prompt variables for template substitution */
+  variables?: PromptVariable[] | undefined
 }
 
 /**
- * @description A chat dialog (assistant configuration).
+ * @description A chat assistant configuration.
  */
-export interface ChatDialog {
-  /** Dialog unique identifier */
+export interface ChatAssistant {
+  /** Assistant unique identifier */
   id: string
   /** Display name */
   name: string
   /** Optional description */
   description?: string | undefined
-  /** Knowledge base IDs linked to this dialog */
+  /** Knowledge base IDs linked to this assistant */
   kb_ids: string[]
   /** LLM model identifier */
   llm_id?: string | undefined
-  /** Whether the dialog is publicly accessible to all users */
+  /** Whether the assistant is publicly accessible to all users */
   is_public?: boolean | undefined
-  /** Display name of the user who created this dialog */
+  /** Display name of the user who created this assistant */
   created_by?: string | undefined
   /** Prompt and retrieval configuration */
   prompt_config: PromptConfig
@@ -148,26 +169,26 @@ export interface ChatDialog {
 // ============================================================================
 
 /**
- * @description Payload for creating a new dialog.
+ * @description Payload for creating a new assistant.
  */
-export interface CreateDialogPayload {
+export interface CreateAssistantPayload {
   name: string
   description?: string | undefined
   kb_ids: string[]
   llm_id?: string | undefined
-  /** Whether the dialog is publicly accessible to all users */
+  /** Whether the assistant is publicly accessible to all users */
   is_public?: boolean | undefined
   prompt_config?: Partial<PromptConfig> | undefined
 }
 
 // ============================================================================
-// Dialog Access Control Types
+// Assistant Access Control Types
 // ============================================================================
 
 /**
- * @description An access entry linking a user or team to a dialog.
+ * @description An access entry linking a user or team to an assistant.
  */
-export interface ChatDialogAccessEntry {
+export interface ChatAssistantAccessEntry {
   /** Type of entity granted access */
   entity_type: 'user' | 'team'
   /** Unique identifier of the user or team */
@@ -185,6 +206,20 @@ export interface CreateConversationPayload {
 }
 
 /**
+ * @description Options for sending a chat message.
+ */
+export interface SendMessageOptions {
+  /** Custom variable values for template substitution */
+  variables?: Record<string, string> | undefined
+  /** Enable deep thinking / reasoning mode */
+  reasoning?: boolean | undefined
+  /** Enable internet search via web search API */
+  useInternet?: boolean | undefined
+  /** File attachment IDs from chat file uploads */
+  file_ids?: string[] | undefined
+}
+
+/**
  * @description Payload for sending a chat message.
  */
 export interface SendMessagePayload {
@@ -194,4 +229,10 @@ export interface SendMessagePayload {
   conversation_id: string
   /** Dialog identifier */
   dialog_id: string
+  /** Custom variable values for template substitution */
+  variables?: Record<string, string> | undefined
+  /** Enable deep thinking / reasoning mode */
+  reasoning?: boolean | undefined
+  /** Enable internet search via web search API */
+  use_internet?: boolean | undefined
 }

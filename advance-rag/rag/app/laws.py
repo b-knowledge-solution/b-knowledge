@@ -14,6 +14,15 @@
 #  limitations under the License.
 #
 
+"""Legal document parser module for the RAG pipeline.
+
+Specialized parser for laws, regulations, and legal documents in PDF,
+DOCX, TXT, HTML, and DOC formats. Uses tree-structured merging to
+preserve the hierarchical structure of legal articles and sections.
+Removes table-of-contents sections and detects bullet/numbering patterns
+for proper structural parsing.
+"""
+
 import logging
 import re
 from io import BytesIO
@@ -29,6 +38,12 @@ from common.parser_config_utils import normalize_layout_recognizer
 
 
 class Docx(DocxParser):
+    """DOCX parser specialized for legal documents.
+
+    Parses Word documents by detecting heading levels and building
+    a tree structure that preserves the hierarchical organization
+    of legal articles and sections.
+    """
     def __init__(self):
         pass
 
@@ -94,6 +109,11 @@ class Docx(DocxParser):
 
 
 class Pdf(PdfParser):
+    """PDF parser specialized for legal documents.
+
+    Uses the LAWS parser type for model selection and performs
+    OCR with layout analysis optimized for legal document formats.
+    """
     def __init__(self):
         self.model_speciess = ParserType.LAWS.value
         super().__init__()

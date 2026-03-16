@@ -12,12 +12,30 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""Pydantic schema for validating Tokenizer component upstream inputs.
+
+Defines the expected data shape for the Tokenizer component, which receives
+split chunks or raw content from the Splitter or Parser. Includes validation
+to ensure appropriate payload fields are present for the given output format.
+"""
+
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class TokenizerFromUpstream(BaseModel):
+    """Schema for data flowing into the Tokenizer from upstream components.
+
+    Validates that the required payload fields are present based on
+    the output_format. For markdown/text/html, requires the respective
+    content field; otherwise requires JSON or chunks.
+
+    Attributes:
+        name: Original filename of the document.
+        chunks: Pre-split chunk dicts from upstream.
+        output_format: Format indicator for the payload data.
+    """
     created_time: float | None = Field(default=None, alias="_created_time")
     elapsed_time: float | None = Field(default=None, alias="_elapsed_time")
 

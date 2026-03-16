@@ -18,11 +18,56 @@ import type { LangfuseParent } from '@/shared/services/langfuse.service.js'
 import { config } from '@/shared/config/index.js'
 
 /**
- * Message in the OpenAI chat completion format.
+ * A text content part for multimodal messages.
  */
-export interface LlmMessage {
-  role: 'system' | 'user' | 'assistant'
-  content: string
+export interface LlmTextPart {
+  type: 'text'
+  text: string
+}
+
+/**
+ * An image content part for multimodal messages (vision).
+ */
+export interface LlmImagePart {
+  type: 'image_url'
+  image_url: { url: string; detail?: 'low' | 'high' | 'auto' }
+}
+
+/** Union of content parts that can appear in a multimodal user message. */
+export type LlmContentPart = LlmTextPart | LlmImagePart
+
+/**
+ * Message in the OpenAI chat completion format.
+ * User messages support both plain text and multimodal content arrays.
+ */
+export type LlmMessage =
+  | { role: 'system'; content: string }
+  | { role: 'assistant'; content: string }
+  | { role: 'user'; content: string | LlmContentPart[] }
+
+/**
+ * Build a multimodal user message containing text and image URLs.
+ * @description Constructs an LlmMessage with content parts for vision-capable models.
+ * If no image URLs are provided, returns a plain text user message.
+ * @param text - The text portion of the message
+ * @param imageUrls - Array of image URLs to include
+ * @returns A user LlmMessage with multimodal content
+ */
+export function buildMultimodalUserMessage(text: string, imageUrls: string[]): LlmMessage {
+  // Return plain text message when no images are provided
+  if (imageUrls.length === 0) {
+    return { role: 'user', content: text }
+  }
+
+  const parts: LlmContentPart[] = [
+    { type: 'text', text },
+    ...imageUrls.map((url): LlmImagePart => ({
+      type: 'image_url',
+      image_url: { url, detail: 'auto' },
+    })),
+  ]
+
+  return { role: 'user', content: parts }
 }
 
 /**
@@ -121,7 +166,7 @@ export class LlmClientService {
 
     const response = await client.chat.completions.create({
       model,
-      messages,
+      messages: messages as OpenAI.ChatCompletionMessageParam[],
       temperature: options.temperature ?? 0.7,
       max_tokens: options.max_tokens ?? provider.max_tokens ?? 4096,
       ...(options.top_p != null ? { top_p: options.top_p } : {}),
@@ -190,7 +235,7 @@ export class LlmClientService {
 
     const stream = await client.chat.completions.create({
       model,
-      messages,
+      messages: messages as OpenAI.ChatCompletionMessageParam[],
       temperature: options.temperature ?? 0.7,
       max_tokens: options.max_tokens ?? provider.max_tokens ?? 4096,
       ...(options.top_p != null ? { top_p: options.top_p } : {}),

@@ -13,6 +13,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Redis/Valkey connection manager and message queue client.
+
+Provides singleton RedisDB and RedisDistributedLock classes for all Redis
+operations in the RAG pipeline. Handles key-value storage, sorted sets,
+stream-based message queues (XADD/XREADGROUP), distributed locking,
+auto-increment ID generation, and Lua-script-based atomic operations
+(conditional delete, token bucket rate limiting).
+
+The module-level REDIS_CONN singleton is imported throughout the codebase
+for direct Redis access.
+"""
 
 import asyncio
 import logging
@@ -35,6 +46,19 @@ except Exception:
 
 
 class RedisMsg:
+    """Wrapper for a Redis Stream message with acknowledgement support.
+
+    Encapsulates a message consumed from a Redis stream consumer group,
+    providing methods to acknowledge processing and access the parsed payload.
+
+    Attributes:
+        __consumer: Redis client for sending XACK.
+        __queue_name: Stream key name.
+        __group_name: Consumer group name.
+        __msg_id: Redis stream message ID.
+        __message: Parsed JSON message payload.
+    """
+
     def __init__(self, consumer, queue_name, group_name, msg_id, message):
         self.__consumer = consumer
         self.__queue_name = queue_name
@@ -43,6 +67,11 @@ class RedisMsg:
         self.__message = json.loads(message["message"])
 
     def ack(self):
+        """Acknowledge the message as processed in the consumer group.
+
+        Returns:
+            True on success, False on failure.
+        """
         try:
             self.__consumer.xack(self.__queue_name, self.__group_name, self.__msg_id)
             return True
@@ -51,14 +80,27 @@ class RedisMsg:
         return False
 
     def get_message(self):
+        """Return the parsed message payload dict."""
         return self.__message
 
     def get_msg_id(self):
+        """Return the Redis stream message ID."""
         return self.__msg_id
 
 
 @singleton
 class RedisDB:
+    """Singleton Redis client providing key-value, sorted set, stream, and scripting operations.
+
+    Manages a persistent Redis connection with automatic reconnection on failures.
+    Registers Lua scripts for atomic operations (conditional delete, token bucket
+    rate limiting) on initialization.
+
+    Attributes:
+        REDIS: The underlying StrictRedis client instance.
+        config: Redis configuration dict (host, port, password, db).
+    """
+
     lua_delete_if_equal = None
     lua_token_bucket = None
     LUA_DELETE_IF_EQUAL_SCRIPT = """
@@ -538,6 +580,19 @@ REDIS_CONN = RedisDB()
 
 
 class RedisDistributedLock:
+    """Redis-backed distributed lock using the Redlock algorithm.
+
+    Provides mutual exclusion across multiple processes/workers by
+    leveraging Redis's atomic SET NX and Lua-based conditional delete.
+    Supports both synchronous and async (spin-wait) acquisition.
+
+    Attributes:
+        lock_key: Redis key name for the lock.
+        lock_value: Unique token identifying this lock holder.
+        timeout: Lock expiration time in seconds.
+        lock: Underlying valkey Lock instance.
+    """
+
     def __init__(self, lock_key, lock_value=None, timeout=10, blocking_timeout=1):
         self.lock_key = lock_key
         if lock_value:
@@ -548,10 +603,16 @@ class RedisDistributedLock:
         self.lock = Lock(REDIS_CONN.REDIS, lock_key, timeout=timeout, blocking_timeout=blocking_timeout)
 
     def acquire(self):
+        """Attempt to acquire the lock (non-blocking, single attempt).
+
+        Returns:
+            True if the lock was acquired, False otherwise.
+        """
         REDIS_CONN.delete_if_equal(self.lock_key, self.lock_value)
         return self.lock.acquire(token=self.lock_value)
 
     async def spin_acquire(self):
+        """Acquire the lock with async spin-wait, retrying every 10 seconds."""
         REDIS_CONN.delete_if_equal(self.lock_key, self.lock_value)
         while True:
             if self.lock.acquire(token=self.lock_value):
@@ -559,4 +620,5 @@ class RedisDistributedLock:
             await asyncio.sleep(10)
 
     def release(self):
+        """Release the lock by deleting the key if it holds our token."""
         REDIS_CONN.delete_if_equal(self.lock_key, self.lock_value)

@@ -11,6 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Centralised HTTP client wrappers (async and sync) built on httpx.
+
+Provides ``async_request`` and ``sync_request`` with sensible defaults for
+timeouts, retries with exponential back-off, redirect handling, user-agent
+injection, and sensitive-URL redaction in log output. All tunables can be
+overridden per-call or globally via environment variables.
+"""
 import asyncio
 import logging
 import os
@@ -23,7 +31,10 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
 # Default knobs; keep conservative to avoid unexpected behavioural changes.
+# All configurable via environment variables prefixed with HTTP_CLIENT_.
+# ---------------------------------------------------------------------------
 DEFAULT_TIMEOUT = float(os.environ.get("HTTP_CLIENT_TIMEOUT", "15"))
 # Align with requests default: follow redirects with a max of 30 unless overridden.
 DEFAULT_FOLLOW_REDIRECTS = bool(
@@ -39,6 +50,15 @@ DEFAULT_USER_AGENT = os.environ.get("HTTP_CLIENT_USER_AGENT", "ragflow-http-clie
 def _clean_headers(
     headers: Optional[Dict[str, str]], auth_token: Optional[str] = None
 ) -> Optional[Dict[str, str]]:
+    """Merge default headers (User-Agent, Authorization) with caller-supplied headers.
+
+    Args:
+        headers: Caller-provided headers dict (may be None).
+        auth_token: Optional bearer / API-key token to inject as Authorization header.
+
+    Returns:
+        Merged headers dict, or None if empty.
+    """
     merged_headers: Dict[str, str] = {}
     if DEFAULT_USER_AGENT:
         merged_headers["User-Agent"] = DEFAULT_USER_AGENT
@@ -51,6 +71,15 @@ def _clean_headers(
 
 
 def _get_delay(backoff_factor: float, attempt: int) -> float:
+    """Calculate exponential back-off delay for a given retry attempt.
+
+    Args:
+        backoff_factor: Base multiplier for the delay.
+        attempt: Zero-based attempt index.
+
+    Returns:
+        Delay in seconds.
+    """
     return backoff_factor * (2**attempt)
 
 
@@ -88,7 +117,14 @@ def _redact_sensitive_url_params(url: str) -> str:
         return "<redacted-url>"
 
 def _is_sensitive_url(url: str) -> bool:
-    """Return True if URL is one of the configured OAuth endpoints."""
+    """Return True if URL is one of the configured OAuth endpoints.
+
+    Args:
+        url: The URL to check.
+
+    Returns:
+        True if the URL matches a known OAuth endpoint, False otherwise.
+    """
     # Collect known sensitive endpoint URLs from settings
     oauth_urls = set()
     # GitHub OAuth endpoints
@@ -130,7 +166,27 @@ async def async_request(
     proxy: Any = None,
     **kwargs: Any,
 ) -> httpx.Response:
-    """Lightweight async HTTP wrapper using httpx.AsyncClient with safe defaults."""
+    """Lightweight async HTTP wrapper using httpx.AsyncClient with safe defaults.
+
+    Args:
+        method: HTTP method (GET, POST, PUT, DELETE, etc.).
+        url: Target URL.
+        request_timeout: Per-request timeout override.
+        follow_redirects: Whether to follow HTTP redirects.
+        max_redirects: Maximum number of redirects to follow.
+        headers: Extra request headers.
+        auth_token: Authorization header value (e.g. "Bearer ...").
+        retries: Number of retry attempts on network errors.
+        backoff_factor: Multiplier for exponential back-off between retries.
+        proxy: HTTP(S) proxy URL.
+        **kwargs: Additional keyword arguments forwarded to ``httpx.AsyncClient.request``.
+
+    Returns:
+        The httpx Response object.
+
+    Raises:
+        httpx.RequestError: When all retry attempts are exhausted.
+    """
     timeout = request_timeout if request_timeout is not None else DEFAULT_TIMEOUT
     follow_redirects = (
         DEFAULT_FOLLOW_REDIRECTS if follow_redirects is None else follow_redirects
@@ -192,7 +248,27 @@ def sync_request(
     proxy: Any = None,
     **kwargs: Any,
 ) -> httpx.Response:
-    """Synchronous counterpart to async_request, for CLI/tests or sync contexts."""
+    """Synchronous counterpart to async_request, for CLI/tests or sync contexts.
+
+    Args:
+        method: HTTP method (GET, POST, PUT, DELETE, etc.).
+        url: Target URL.
+        timeout: Per-request timeout override.
+        follow_redirects: Whether to follow HTTP redirects.
+        max_redirects: Maximum number of redirects to follow.
+        headers: Extra request headers.
+        auth_token: Authorization header value (e.g. "Bearer ...").
+        retries: Number of retry attempts on network errors.
+        backoff_factor: Multiplier for exponential back-off between retries.
+        proxy: HTTP(S) proxy URL.
+        **kwargs: Additional keyword arguments forwarded to ``httpx.Client.request``.
+
+    Returns:
+        The httpx Response object.
+
+    Raises:
+        httpx.RequestError: When all retry attempts are exhausted.
+    """
     timeout = timeout if timeout is not None else DEFAULT_TIMEOUT
     follow_redirects = (
         DEFAULT_FOLLOW_REDIRECTS if follow_redirects is None else follow_redirects

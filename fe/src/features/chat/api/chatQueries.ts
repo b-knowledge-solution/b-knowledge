@@ -1,288 +1,202 @@
 /**
- * @fileoverview TanStack Query hooks for chat dialogs and conversations.
- * Extracts data-fetching concerns from UI hooks into the api/ layer.
+ * @fileoverview TanStack Query hooks for chat assistants and conversations.
  * @module features/chat/api/chatQueries
  */
 
-import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { chatApi } from './chatApi'
-import type {
-  Conversation,
-  ChatDialog,
-  CreateDialogPayload,
-} from '../types/chat.types'
-import { globalMessage } from '@/app/App'
 import { queryKeys } from '@/lib/queryKeys'
+import { chatApi } from './chatApi'
+import type { ChatAssistant, Conversation } from '../types/chat.types'
 
 // ============================================================================
-// Types
+// Query Keys
 // ============================================================================
 
-/**
- * @description Return type for the useChatConversations hook.
- */
-export interface UseChatConversationsReturn {
-  /** List of conversations for the active dialog */
-  conversations: Conversation[]
-  /** Whether conversations are being loaded */
-  loading: boolean
-  /** The currently active conversation */
-  activeConversation: Conversation | null
-  /** Set the active conversation by ID */
-  setActiveConversationId: (id: string | null) => void
-  /** Create a new conversation */
-  createConversation: (name?: string) => Promise<Conversation | null>
-  /** Delete a conversation by ID */
-  deleteConversation: (id: string) => Promise<void>
-  /** Refresh the conversation list */
-  refresh: () => void
-  /** Search filter text */
-  search: string
-  /** Update search filter */
-  setSearch: (value: string) => void
-}
-
-/**
- * @description Return type for the useChatDialogs hook.
- */
-export interface UseChatDialogsReturn {
-  /** List of available dialogs */
-  dialogs: ChatDialog[]
-  /** Whether dialogs are being loaded */
-  loading: boolean
-  /** The currently selected dialog */
-  activeDialog: ChatDialog | null
-  /** Set the active dialog by ID */
-  setActiveDialogId: (id: string | null) => void
-  /** Create a new dialog */
-  createDialog: (data: CreateDialogPayload) => Promise<ChatDialog | null>
-  /** Delete a dialog by ID */
-  deleteDialog: (id: string) => Promise<void>
-  /** Refresh the dialog list */
-  refresh: () => void
+const chatKeys = {
+  all: ['chat'] as const,
+  assistants: () => [...chatKeys.all, 'assistants'] as const,
+  conversations: (assistantId: string) => [...chatKeys.all, 'conversations', assistantId] as const,
 }
 
 // ============================================================================
-// useChatConversations
+// Assistant Hooks
 // ============================================================================
 
 /**
- * @description Hook to manage conversations for a given dialog.
- * Uses useQuery for fetching and useMutation for create/delete.
- * @param dialogId - The dialog whose conversations to manage
- * @returns Conversation state and CRUD functions
+ * @description Hook to manage chat assistants with active assistant selection.
+ * Fetches all assistants (no pagination) for the chat page selector.
+ * @returns Assistant list state and active assistant management
  */
-export function useChatConversations(dialogId: string | null): UseChatConversationsReturn {
-  const { t } = useTranslation()
+export function useChatAssistants() {
+  const [activeAssistantId, setActiveAssistantId] = useState<string | null>(null)
   const queryClient = useQueryClient()
 
-  // Local UI state for active selection and search filter
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
-  const [search, setSearch] = useState('')
-
-  // Query key for conversation list
-  const conversationsKey = queryKeys.chat.conversations(dialogId ?? '')
-
-  // Fetch conversations using useQuery
-  const { data: conversations = [], isLoading } = useQuery({
-    queryKey: conversationsKey,
-    queryFn: () => chatApi.listConversations(dialogId!),
-    // Only fetch when dialogId is available
-    enabled: !!dialogId,
+  const query = useQuery({
+    queryKey: chatKeys.assistants(),
+    queryFn: () => chatApi.listAssistants(),
   })
 
-  // Derive the active conversation from the fetched list
-  const activeConversation = conversations.find((c) => c.id === activeConversationId) || null
-
-  // Filter conversations by search text
-  const filteredConversations = search.trim()
-    ? conversations.filter((c) =>
-        c.name.toLowerCase().includes(search.toLowerCase()),
-      )
-    : conversations
-
-  // Mutation to create a new conversation
-  const createMutation = useMutation({
-    mutationFn: async (name?: string) => {
-      if (!dialogId) throw new Error('No dialog selected')
-      return chatApi.createConversation({
-        dialog_id: dialogId,
-        name: name || t('chat.newConversation'),
-      })
-    },
-    onSuccess: (conv) => {
-      // Invalidate the conversations list to refetch
-      queryClient.invalidateQueries({ queryKey: conversationsKey })
-      // Set the new conversation as active
-      setActiveConversationId(conv.id)
-    },
-    onError: (error: any) => {
-      globalMessage.error(error?.message || t('common.error'))
-    },
-  })
-
-  // Mutation to delete a conversation
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => chatApi.deleteConversation(id),
-    onSuccess: (_data, id) => {
-      // Invalidate the conversations list to refetch
-      queryClient.invalidateQueries({ queryKey: conversationsKey })
-      // Clear active if it was the deleted one
-      if (activeConversationId === id) {
-        setActiveConversationId(null)
-      }
-      globalMessage.success(t('common.deleteSuccess'))
-    },
-    onError: (error: any) => {
-      globalMessage.error(error?.message || t('common.error'))
-    },
-  })
+  const assistants = query.data?.data ?? []
+  const activeAssistant = assistants.find((d) => d.id === activeAssistantId) ?? assistants[0] ?? null
 
   /**
-   * Create a new conversation under the active dialog.
-   * @param name - Optional display name for the conversation
+   * Create a new assistant.
+   * @param data - Assistant creation payload
+   * @returns The created assistant
+   */
+  const createAssistant = async (data: Parameters<typeof chatApi.createAssistant>[0]) => {
+    const result = await chatApi.createAssistant(data)
+    await queryClient.invalidateQueries({ queryKey: chatKeys.assistants() })
+    return result
+  }
+
+  /**
+   * Delete an assistant by ID.
+   * @param id - Assistant identifier
+   */
+  const deleteAssistant = async (id: string) => {
+    await chatApi.deleteAssistant(id)
+    await queryClient.invalidateQueries({ queryKey: chatKeys.assistants() })
+  }
+
+  /**
+   * Invalidate assistant cache to trigger refetch.
+   */
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: chatKeys.assistants() })
+  }
+
+  return {
+    assistants,
+    activeAssistant,
+    activeAssistantId: activeAssistant?.id ?? null,
+    setActiveAssistantId,
+    createAssistant,
+    deleteAssistant,
+    refresh,
+    loading: query.isLoading,
+    error: query.error,
+  }
+}
+
+/** Parameters for the admin chat assistants list query */
+export interface ChatAssistantsAdminParams {
+  page?: number | undefined
+  page_size?: number | undefined
+  search?: string | undefined
+  sort_by?: 'created_at' | 'name' | undefined
+  sort_order?: 'asc' | 'desc' | undefined
+}
+
+/**
+ * @description Hook to fetch paginated chat assistants for admin management.
+ * @param params - Pagination, search, and sorting parameters
+ * @returns Query result with data array, total count, and loading state
+ */
+export function useChatAssistantsAdmin(params: ChatAssistantsAdminParams = {}) {
+  const query = useQuery({
+    queryKey: queryKeys.chat.dialogs(params as Record<string, unknown>),
+    queryFn: () => chatApi.listAssistants(params),
+  })
+
+  return {
+    assistants: query.data?.data ?? [] as ChatAssistant[],
+    total: query.data?.total ?? 0,
+    isLoading: query.isLoading,
+    error: query.error,
+  }
+}
+
+// ============================================================================
+// Conversation Hooks
+// ============================================================================
+
+/**
+ * @description Hook to manage conversations for an assistant.
+ * @param assistantId - Parent assistant identifier
+ * @returns Conversation list state and CRUD operations
+ */
+export function useChatConversations(assistantId: string | null) {
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const queryClient = useQueryClient()
+
+  const query = useQuery({
+    queryKey: chatKeys.conversations(assistantId ?? ''),
+    queryFn: () => chatApi.listConversations(assistantId!),
+    enabled: !!assistantId,
+  })
+
+  const conversations = query.data ?? []
+  const activeConversation = conversations.find((c) => c.id === activeConversationId) ?? null
+
+  /**
+   * Create a new conversation and set it as active.
+   * @param name - Optional conversation name
    * @returns The created conversation or null on failure
    */
   const createConversation = async (name?: string): Promise<Conversation | null> => {
+    if (!assistantId) return null
     try {
-      return await createMutation.mutateAsync(name)
+      const payload = name ? { dialog_id: assistantId, name } : { dialog_id: assistantId }
+      const conv = await chatApi.createConversation(payload)
+      await queryClient.invalidateQueries({ queryKey: chatKeys.conversations(assistantId) })
+      setActiveConversationId(conv.id)
+      return conv
     } catch {
       return null
     }
   }
 
   /**
-   * Delete a conversation by ID.
+   * Delete a conversation.
    * @param id - Conversation identifier
    */
-  const deleteConversation = async (id: string): Promise<void> => {
-    await deleteMutation.mutateAsync(id)
+  const deleteConversation = async (id: string) => {
+    await chatApi.deleteConversation(id)
+    if (activeConversationId === id) {
+      setActiveConversationId(null)
+    }
+    if (assistantId) {
+      await queryClient.invalidateQueries({ queryKey: chatKeys.conversations(assistantId) })
+    }
   }
 
   /**
-   * Refresh the conversation list by invalidating the query cache.
+   * Refresh the conversation list.
    */
   const refresh = () => {
-    queryClient.invalidateQueries({ queryKey: conversationsKey })
+    if (assistantId) {
+      queryClient.invalidateQueries({ queryKey: chatKeys.conversations(assistantId) })
+    }
   }
 
   return {
-    conversations: filteredConversations,
-    loading: isLoading,
+    conversations,
     activeConversation,
+    activeConversationId,
     setActiveConversationId,
     createConversation,
     deleteConversation,
     refresh,
+    loading: query.isLoading,
     search,
     setSearch,
   }
 }
 
 // ============================================================================
-// useChatDialogs
+// Mutation Hooks
 // ============================================================================
 
-/** Query key for the dialog list */
-const DIALOGS_KEY = queryKeys.chat.dialogs()
-
 /**
- * @description Hook to manage chat dialog configurations.
- * Uses useQuery for fetching and useMutation for create/delete.
- * @returns Dialog state and CRUD functions
+ * @description Hook for renaming a conversation.
+ * @returns Mutation object for renaming
  */
-export function useChatDialogs(): UseChatDialogsReturn {
-  const { t } = useTranslation()
-  const queryClient = useQueryClient()
-
-  // Local UI state for active dialog selection
-  const [activeDialogId, setActiveDialogId] = useState<string | null>(null)
-
-  // Fetch all dialogs using useQuery
-  const { data: dialogs = [], isLoading } = useQuery({
-    queryKey: DIALOGS_KEY,
-    queryFn: () => chatApi.listDialogs(),
+export function useRenameConversation() {
+  return useMutation({
+    mutationFn: ({ conversationId, name }: { conversationId: string; name: string }) =>
+      chatApi.renameConversation(conversationId, name),
   })
-
-  // Auto-select first dialog when data loads and none is selected
-  useEffect(() => {
-    if (!activeDialogId && dialogs.length > 0) {
-      setActiveDialogId(dialogs[0]!.id)
-    }
-  }, [activeDialogId, dialogs])
-
-  // Derive the active dialog from the fetched list
-  const activeDialog = dialogs.find((d) => d.id === activeDialogId) || null
-
-  // Mutation to create a new dialog
-  const createMutation = useMutation({
-    mutationFn: (data: CreateDialogPayload) => chatApi.createDialog(data),
-    onSuccess: (dialog) => {
-      // Invalidate dialogs list to refetch
-      queryClient.invalidateQueries({ queryKey: DIALOGS_KEY })
-      // Set new dialog as active
-      setActiveDialogId(dialog.id)
-      globalMessage.success(t('common.createSuccess'))
-    },
-    onError: (error: any) => {
-      globalMessage.error(error?.message || t('common.error'))
-    },
-  })
-
-  // Mutation to delete a dialog
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => chatApi.deleteDialog(id),
-    onSuccess: (_data, id) => {
-      // Invalidate dialogs list to refetch
-      queryClient.invalidateQueries({ queryKey: DIALOGS_KEY })
-      // Clear active if it was the deleted one
-      if (activeDialogId === id) {
-        setActiveDialogId(null)
-      }
-      globalMessage.success(t('common.deleteSuccess'))
-    },
-    onError: (error: any) => {
-      globalMessage.error(error?.message || t('common.error'))
-    },
-  })
-
-  /**
-   * Create a new dialog.
-   * @param data - Dialog creation payload
-   * @returns The created dialog or null on failure
-   */
-  const createDialog = async (data: CreateDialogPayload): Promise<ChatDialog | null> => {
-    try {
-      return await createMutation.mutateAsync(data)
-    } catch {
-      return null
-    }
-  }
-
-  /**
-   * Delete a dialog by ID.
-   * @param id - Dialog identifier
-   */
-  const deleteDialog = async (id: string): Promise<void> => {
-    await deleteMutation.mutateAsync(id)
-  }
-
-  /**
-   * Refresh the dialog list by invalidating the query cache.
-   */
-  const refresh = () => {
-    queryClient.invalidateQueries({ queryKey: DIALOGS_KEY })
-  }
-
-  return {
-    dialogs,
-    loading: isLoading,
-    activeDialog,
-    setActiveDialogId,
-    createDialog,
-    deleteDialog,
-    refresh,
-  }
 }

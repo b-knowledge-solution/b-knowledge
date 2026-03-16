@@ -13,6 +13,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""
+Singleton connection pool for the Infinity vector database.
+
+Wraps Infinity's native ``ConnectionPool`` in a per-process singleton,
+validates server health on startup (retrying for up to 120 seconds),
+and provides helpers to get/refresh connections and retrieve the
+PostgreSQL-protocol connection URI for SQL access.
+"""
 import logging
 import time
 
@@ -26,6 +34,12 @@ from common.decorator import singleton
 
 @singleton
 class InfinityConnectionPool:
+    """Process-scoped singleton managing an Infinity connection pool.
+
+    Reads the Infinity URI and database name from ``settings.INFINITY``.
+    On initialisation, retries connecting up to 24 times (5 s apart, ~120 s)
+    until the server reports a healthy status.
+    """
 
     def __init__(self):
         if hasattr(settings, "INFINITY"):
@@ -37,11 +51,13 @@ class InfinityConnectionPool:
                 "db_name": "default_db"
             })
 
+        # Parse host:port from the configured URI string
         infinity_uri = self.INFINITY_CONFIG["uri"]
         if ":" in infinity_uri:
             host, port = infinity_uri.split(":")
             self.infinity_uri = infinity.common.NetworkAddress(host, int(port))
 
+        # Retry loop: wait for the Infinity server to become healthy
         for _ in range(24):
             try:
                 conn_pool = ConnectionPool(self.infinity_uri, max_size=4)
@@ -63,11 +79,14 @@ class InfinityConnectionPool:
         logging.info(f"Infinity {infinity_uri} is healthy.")
 
     def get_conn_pool(self):
+        """Return the underlying Infinity ``ConnectionPool``."""
         return self.conn_pool
 
     def get_conn_uri(self):
-        """
-        Get connection URI for PostgreSQL protocol.
+        """Build a PostgreSQL-protocol connection string for Infinity's SQL interface.
+
+        Returns:
+            A string like ``"host=infinity port=5432 dbname=default_db"``.
         """
         infinity_uri = self.INFINITY_CONFIG["uri"]
         postgres_port = self.INFINITY_CONFIG["postgres_port"]
@@ -79,6 +98,11 @@ class InfinityConnectionPool:
         return f"host=localhost port={postgres_port} dbname={db_name}"
 
     def refresh_conn_pool(self):
+        """Check pool health and recreate it if the connection is unhealthy.
+
+        Returns:
+            The (possibly refreshed) ``ConnectionPool`` instance.
+        """
         try:
             inf_conn = self.conn_pool.get_conn()
             res = inf_conn.show_current_node()
@@ -99,4 +123,5 @@ class InfinityConnectionPool:
             self.conn_pool.destroy()
 
 
+# Module-level singleton -- instantiated once per process
 INFINITY_CONN = InfinityConnectionPool()

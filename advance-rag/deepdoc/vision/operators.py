@@ -1,3 +1,17 @@
+"""Image preprocessing operators for OCR and object detection pipelines.
+
+Provides a collection of image transformation operators used as preprocessing
+steps before model inference. Each operator is a callable class that transforms
+image data dicts or (image, im_info) tuples.
+
+Key operator categories:
+- Decode/Format: DecodeImage, ToCHWImage, GrayImageChannelFormat, Permute
+- Normalize: NormalizeImage, StandardizeImag
+- Resize: DetResizeForTest, LinearResize, Resize, E2EResizeForTest, KieResize, SRResize
+- Pad: Pad, PadStride
+- Filter: KeepKeys
+- Utility: decode_image, preprocess, nms (Non-Maximum Suppression)
+"""
 #
 #  Copyright 2024 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -711,6 +725,19 @@ def preprocess(im, preprocess_ops):
 
 
 def nms(bboxes, scores, iou_thresh):
+    """Perform Non-Maximum Suppression on bounding boxes.
+
+    Iteratively selects the highest-scoring box and removes all boxes with
+    IoU (Intersection over Union) above the threshold.
+
+    Args:
+        bboxes: Array of shape (N, 4) with [x1, y1, x2, y2] coordinates.
+        scores: Array of shape (N,) with confidence scores.
+        iou_thresh: IoU threshold for suppression.
+
+    Returns:
+        List of indices of boxes to keep.
+    """
     import numpy as np
     x1 = bboxes[:, 0]
     y1 = bboxes[:, 1]

@@ -13,12 +13,35 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+
+"""Prompt assembly utilities for LLM-based memory extraction.
+
+This module contains the PromptAssembler class which constructs system and user
+prompts for instructing an LLM to extract structured memory (semantic, episodic,
+and procedural knowledge) from conversations. The prompts include type-specific
+instructions, output format templates, and examples to guide extraction.
+"""
+
 from typing import Optional, List
 
 from common.constants import MemoryType
 from common.time_utils import current_timestamp
 
 class PromptAssembler:
+    """Assembles system and user prompts for memory extraction from conversations.
+
+    This class provides class methods to build complete LLM prompts that instruct
+    the model to analyze conversations and extract structured memory items. It
+    supports three memory types (semantic, episodic, procedural) and generates
+    type-specific instructions, output format specifications, and examples.
+
+    Attributes:
+        SYSTEM_BASE_TEMPLATE: Base system prompt template with placeholders for
+            type instructions, timestamp format, and max items.
+        TYPE_INSTRUCTIONS: Per-memory-type extraction guidelines.
+        OUTPUT_TEMPLATES: Per-memory-type JSON output format examples.
+        BASE_USER_PROMPT: User prompt template with conversation and time placeholders.
+    """
 
     SYSTEM_BASE_TEMPLATE = """**Memory Extraction Specialist**
 You are an expert at analyzing conversations to extract structured memory.
@@ -111,17 +134,33 @@ You are an expert at analyzing conversations to extract structured memory.
 {conversation}
 
 **CONVERSATION TIME:** {conversation_time}
-**CURRENT TIME:** {current_time}    
+**CURRENT TIME:** {current_time}
 """
 
     @classmethod
     def assemble_system_prompt(cls, config: dict) -> str:
+        """Build the complete system prompt for memory extraction.
+
+        Combines the base template with type-specific instructions, output format,
+        and examples based on the requested memory types in the config.
+
+        Args:
+            config: Configuration dict with keys:
+                - "memory_type": list of memory type strings to extract.
+                - "timestamp_format" (optional): timestamp format string, defaults to "ISO 8601".
+                - "max_items_per_type" (optional): max items per type, defaults to 5.
+
+        Returns:
+            A fully assembled system prompt string ready for LLM consumption.
+        """
+        # Determine which memory types the caller wants to extract
         types_to_extract = cls._get_types_to_extract(config["memory_type"])
 
         type_instructions = cls._generate_type_instructions(types_to_extract)
 
         output_format = cls._generate_output_format(types_to_extract)
 
+        # Fill the base template with type instructions and config values
         full_prompt = cls.SYSTEM_BASE_TEMPLATE.format(
             type_specific_instructions=type_instructions,
             timestamp_format=config.get("timestamp_format", "ISO 8601"),
@@ -130,6 +169,7 @@ You are an expert at analyzing conversations to extract structured memory.
 
         full_prompt += f"\n**REQUIRED OUTPUT FORMAT (JSON):**\n```json\n{{\n{output_format}\n}}\n```\n"
 
+        # Append concrete examples to help the LLM understand expected outputs
         examples = cls._generate_examples(types_to_extract)
         if examples:
             full_prompt += f"\n**EXAMPLES:**\n{examples}\n"
@@ -138,26 +178,59 @@ You are an expert at analyzing conversations to extract structured memory.
 
     @staticmethod
     def _get_types_to_extract(requested_types: List[str]) -> List[str]:
+        """Filter requested types to only valid, non-RAW memory types.
+
+        Args:
+            requested_types: List of memory type name strings from the caller.
+
+        Returns:
+            A deduplicated list of valid memory type names (excluding RAW).
+        """
         types = set()
         for rt in requested_types:
+            # Only accept known memory types, excluding RAW (which is stored verbatim)
             if rt in [e.name.lower()  for e in MemoryType] and rt != MemoryType.RAW.name.lower():
                 types.add(rt)
         return list(types)
 
     @classmethod
     def _generate_type_instructions(cls, types_to_extract: List[str]) -> str:
+        """Generate combined extraction instructions for the requested memory types.
+
+        Args:
+            types_to_extract: List of valid memory type names.
+
+        Returns:
+            A concatenated string of type-specific extraction instructions.
+        """
         target_types = set(types_to_extract)
         instructions = [cls.TYPE_INSTRUCTIONS[mt] for mt in target_types]
         return "\n".join(instructions)
 
     @classmethod
     def _generate_output_format(cls, types_to_extract: List[str]) -> str:
+        """Generate the JSON output format specification for the requested types.
+
+        Args:
+            types_to_extract: List of valid memory type names.
+
+        Returns:
+            A comma-separated string of JSON output templates for each type.
+        """
         target_types = set(types_to_extract)
         output_parts = [cls.OUTPUT_TEMPLATES[mt] for mt in target_types]
         return ",\n".join(output_parts)
 
     @staticmethod
     def _generate_examples(types_to_extract: list[str]) -> str:
+        """Generate concrete input/output examples for each requested memory type.
+
+        Args:
+            types_to_extract: List of valid memory type names.
+
+        Returns:
+            A concatenated string of example blocks, one per requested type.
+        """
         examples = []
 
         if MemoryType.SEMANTIC.name.lower() in types_to_extract:
@@ -190,6 +263,18 @@ You are an expert at analyzing conversations to extract structured memory.
             conversation_time: Optional[str] = None,
             current_time: Optional[str] = None
     ) -> str:
+        """Build the user prompt containing the conversation to analyze.
+
+        Args:
+            conversation: The conversation text to extract memories from.
+            conversation_time: Optional timestamp of when the conversation occurred.
+                Defaults to "Not specified" if not provided.
+            current_time: Optional current timestamp. Defaults to the current
+                system time via current_timestamp().
+
+        Returns:
+            A formatted user prompt string with the conversation and timestamps.
+        """
         return cls.BASE_USER_PROMPT.format(
             conversation=conversation,
             conversation_time=conversation_time or "Not specified",
@@ -198,4 +283,10 @@ You are an expert at analyzing conversations to extract structured memory.
 
     @classmethod
     def get_raw_user_prompt(cls):
+        """Return the raw user prompt template string with unfilled placeholders.
+
+        Returns:
+            The BASE_USER_PROMPT template string containing {conversation},
+            {conversation_time}, and {current_time} placeholders.
+        """
         return cls.BASE_USER_PROMPT

@@ -13,6 +13,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""Hierarchical Merger component for the RAG processing flow pipeline.
+
+Merges document sections based on configurable heading-level regex patterns
+to create hierarchically structured chunks. Builds a tree of sections
+based on matched heading levels and merges content at a configurable
+depth, producing chunks that preserve document structure context.
+"""
+
 import asyncio
 import logging
 import random
@@ -30,6 +38,12 @@ from common import settings
 
 
 class HierarchicalMergerParam(ProcessParamBase):
+    """Parameter class for the Hierarchical Merger component.
+
+    Attributes:
+        levels: List of regex pattern lists, one per heading level.
+        hierarchy: Depth at which to cut the tree into separate chunks.
+    """
     def __init__(self):
         super().__init__()
         self.levels = []
@@ -44,6 +58,12 @@ class HierarchicalMergerParam(ProcessParamBase):
 
 
 class HierarchicalMerger(ProcessBase):
+    """Pipeline component for hierarchical section merging.
+
+    Analyzes document sections to detect heading levels using regex
+    patterns, builds a tree structure, and merges content at the
+    configured hierarchy depth to produce structured chunks.
+    """
     component_name = "HierarchicalMerger"
 
     async def _invoke(self, **kwargs):

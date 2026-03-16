@@ -25,12 +25,39 @@ export const deleteConversationsSchema = z.object({
 
 /**
  * Schema for sending a chat completion request.
+ * Supports per-message overrides for variables, filtering, and LLM settings.
  */
 export const chatCompletionSchema = z.object({
   /** User message text */
   content: z.string().min(1, 'Message content is required'),
   /** Dialog ID for the chat configuration */
   dialog_id: z.string().uuid('Invalid dialog ID').optional(),
+  /** Custom prompt variable values (key → value map) */
+  variables: z.record(z.string(), z.string()).optional(),
+  /** Per-message metadata filter conditions for RAG search */
+  metadata_condition: z.object({
+    /** Logical operator to combine conditions */
+    logic: z.enum(['and', 'or']).default('and'),
+    /** Array of filter conditions */
+    conditions: z.array(z.object({
+      /** Field name in the OpenSearch document metadata */
+      name: z.string().min(1),
+      /** Comparison operator */
+      comparison_operator: z.enum(['is', 'is_not', 'contains', 'gt', 'lt', 'range']),
+      /** Value to compare against */
+      value: z.union([z.string(), z.number(), z.tuple([z.number(), z.number()])]),
+    })).max(20),
+  }).optional(),
+  /** Document IDs to restrict RAG search to specific documents */
+  doc_ids: z.array(z.string()).max(50).optional(),
+  /** Per-message LLM provider override */
+  llm_id: z.string().max(128).optional(),
+  /** Per-message temperature override */
+  temperature: z.number().min(0).max(2).optional(),
+  /** Per-message max tokens override */
+  max_tokens: z.number().int().min(1).max(128000).optional(),
+  /** File attachment IDs from chat file uploads */
+  file_ids: z.array(z.string().uuid()).max(5).optional(),
 })
 
 /**
@@ -60,6 +87,14 @@ export const deleteMessageParamsSchema = z.object({
  */
 export const conversationIdParamSchema = z.object({
   id: z.string().uuid('Invalid conversation ID'),
+})
+
+/**
+ * Schema for renaming a conversation.
+ */
+export const renameConversationSchema = z.object({
+  /** New name/title for the conversation */
+  name: z.string().min(1, 'Name is required').max(256),
 })
 
 /**

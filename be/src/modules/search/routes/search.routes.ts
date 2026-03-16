@@ -18,6 +18,8 @@ import {
   relatedQuestionsSchema,
   mindmapSchema,
   searchAppAccessSchema,
+  listSearchAppsSchema,
+  retrievalTestSchema,
 } from '../schemas/search.schemas.js'
 
 const router = Router()
@@ -38,12 +40,13 @@ router.post(
 
 /**
  * @route GET /api/search/apps
- * @description List all search apps.
+ * @description List all search apps with optional pagination, search, and sorting.
  * @access Private
  */
 router.get(
   '/apps',
   requireAuth,
+  validate({ query: listSearchAppsSchema }),
   controller.listSearchApps.bind(controller)
 )
 
@@ -109,6 +112,18 @@ router.put(
   requirePermission('manage_users'),
   validate({ body: searchAppAccessSchema, params: searchAppIdParamSchema }),
   controller.setAppAccess.bind(controller)
+)
+
+/**
+ * @route POST /api/search/apps/:id/retrieval-test
+ * @description Dry-run retrieval test without LLM summary for testing search quality.
+ * @access Private
+ */
+router.post(
+  '/apps/:id/retrieval-test',
+  requireAuth,
+  validate({ body: retrievalTestSchema, params: searchAppIdParamSchema }),
+  controller.retrievalTest.bind(controller)
 )
 
 /**

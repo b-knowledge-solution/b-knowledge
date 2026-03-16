@@ -13,6 +13,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""LLM service layer for managing tenant LLM configurations.
+
+Provides services for CRUD operations on tenant LLM provider settings,
+model discovery, factory registration, and API key management. Handles
+both built-in model factories and user-configured providers, with
+support for embedding, chat, reranking, TTS, and image models.
+"""
 import asyncio
 import inspect
 import logging

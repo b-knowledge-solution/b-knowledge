@@ -14,6 +14,15 @@
 #  limitations under the License.
 #
 
+"""Infinity document store connection base implementation.
+
+Provides the abstract base class for connecting to the Infinity vector
+database engine. Handles index management, document CRUD operations,
+fulltext + dense vector search with fusion, and schema management for
+RAG chunk storage. Concrete subclasses (in infinity_conn_pool.py)
+implement connection pooling.
+"""
+
 import logging
 import os
 import re
@@ -33,6 +42,13 @@ from common.doc_store.doc_store_base import DocStoreConnection, MatchExpr, Order
 
 
 class InfinityConnectionBase(DocStoreConnection):
+    """Base class for Infinity vector database connections.
+
+    Implements DocStoreConnection interface for the Infinity engine,
+    providing index creation/deletion, document insert/update/delete,
+    hybrid search (fulltext + dense vector with weighted fusion),
+    and field retrieval. Uses Infinity's native Python SDK.
+    """
     def __init__(self, mapping_file_name: str = "infinity_mapping.json", logger_name: str = "ragflow.infinity_conn", table_name_prefix: str="ragflow_"):
         from common.doc_store.infinity_conn_pool import INFINITY_CONN
 

@@ -1,6 +1,6 @@
 ---
-name: b-knowledge-converter
-description: Converter worker development skill — enforces B-Knowledge converter architecture for Office-to-PDF conversion
+name: converter
+description: Converter worker development skill — enforces B-Knowledge converter architecture for Office-to-PDF conversion. Use this whenever working in converter/, adding file type converters, modifying PDF post-processing, or changing the Redis job queue logic.
 ---
 
 # B-Knowledge Converter Worker Development Skill
@@ -12,6 +12,7 @@ Use this skill when modifying or extending the `converter/` Python workspace.
 - Python 3.10+, Redis task queue, LibreOffice for Office-to-PDF
 - loguru for logging, dataclasses for config
 - No web framework — standalone worker polling Redis
+- Dependencies: redis, pypdf, pdfminer.six, pyyaml, python-dotenv, loguru, requests
 
 ## Architecture
 
@@ -25,11 +26,12 @@ converter/
 │   ├── excel_converter.py     # .xls/.xlsx/.xlsm → PDF (LibreOffice UNO bridge)
 │   ├── pdf_processor.py       # Post-processing: remove empty pages, trim whitespace
 │   ├── config.py              # Dataclass-based config loaded from Redis job data
-│   ├── logger.py              # loguru setup
+│   ├── logger.py              # loguru setup (console + rotating file)
 │   └── __init__.py
 ├── requirements.txt
 ├── Dockerfile                 # Ubuntu 24.04 + LibreOffice + Python
-└── start.sh                   # WSL startup script (Windows dev)
+├── start.sh                   # Linux startup script
+└── start-converter.cmd        # Windows startup script
 ```
 
 ## Conventions
@@ -38,7 +40,7 @@ converter/
 - Type hints on all function signatures and return types
 - Docstrings with `@param` and `@returns` on every public function
 - Functions over classes (except config dataclasses)
-- Use `loguru` logger from `src.logger`, not stdlib `logging`
+- Use `logger` from `src.logger`, not stdlib `logging`
 - Constants in `UPPER_SNAKE_CASE` at module top
 - Use `os.path.join` for cross-platform path handling
 
@@ -47,6 +49,7 @@ converter/
 - Update Redis file status to `'failed'` with error string
 - Log at appropriate levels: `logger.debug` for progress, `logger.error` for failures
 - Graceful shutdown on SIGTERM/SIGINT
+- 2-second delay between files to avoid LibreOffice resource exhaustion
 
 ---
 
@@ -72,6 +75,16 @@ pending → processing → completed
                     → failed
 ```
 
+### Worker Loop Flow
+
+1. Poll Redis for pending jobs (sorted set, FIFO)
+2. Check schedule window (configurable hours) or manual trigger flag
+3. Dequeue job → set status `converting`
+4. Process files sequentially (2s delay between files)
+5. Update per-file status at each transition
+6. Publish progress to Redis pub/sub (for SSE to frontend)
+7. Handle graceful shutdown (SIGTERM/SIGINT)
+
 ---
 
 ## Adding a New File Type Converter
@@ -81,6 +94,7 @@ pending → processing → completed
 Create `src/<type>_converter.py`:
 
 ```python
+import os
 from loguru import logger
 
 
@@ -148,11 +162,17 @@ def process_pdf(
     """
 ```
 
+Post-processing details:
+- **Empty page removal:** pdfminer content detection, removes completely blank pages
+- **Whitespace trimming:** Analyzes content bounds, applies CropBox with configurable margin
+- **Parallel processing:** Multi-threaded for large PDFs (up to 8 workers)
+- **Artifact filtering:** Ignores tiny/decorative elements (<5pt), keeps text/images/vectors
+
 ---
 
 ## Config Pattern
 
-Use dataclasses for configuration, loaded from Redis job data:
+Use dataclasses for configuration, loaded from Redis job data (set by backend):
 
 ```python
 from dataclasses import dataclass, field
@@ -163,6 +183,7 @@ class TrimWhitespaceConfig:
     """Configuration for whitespace trimming."""
     enabled: bool = False
     margin: int = 10
+    include: list[str] = field(default_factory=lambda: ['excel'])
 
 
 @dataclass
@@ -170,9 +191,26 @@ class PostProcessingConfig:
     """Configuration for PDF post-processing."""
     remove_empty_pages: bool = False
     trim_whitespace: TrimWhitespaceConfig = field(default_factory=TrimWhitespaceConfig)
+
+
+@dataclass
+class SuffixConfig:
+    """Filename suffix configuration per converter type."""
+    word: str = '_d'
+    excel: str = '_x'
+    powerpoint: str = '_p'
 ```
 
 ---
+
+## Gotchas
+
+- **LibreOffice required:** Ubuntu packages `libreoffice-calc libreoffice-writer libreoffice-impress` — not available on macOS without Docker
+- **Python-UNO bridge:** Excel conversion uses `python3-uno` (LibreOffice Python API) — only works with system Python linked to LibreOffice, not the venv Python
+- **Schedule window:** Converter respects configurable time windows — jobs queue but don't process outside the window unless manually triggered
+- **Shared filesystem:** Reads from backend's upload dir, writes to output dir — paths must be accessible to both services
+- **2-second delay:** Intentional pause between files to avoid LibreOffice resource exhaustion — don't remove it
+- **Redis key sync:** Key patterns must match backend constants exactly or jobs won't be found
 
 ## Checklist for Changes
 
@@ -188,9 +226,10 @@ class PostProcessingConfig:
 ## Key Files Reference
 
 - `converter/src/worker.py` — Main polling loop and job orchestration
-- `converter/src/converter.py` — Format dispatcher
+- `converter/src/converter.py` — Format dispatcher (routes by extension)
 - `converter/src/config.py` — Dataclass config definitions
-- `converter/src/pdf_processor.py` — PDF post-processing
+- `converter/src/pdf_processor.py` — PDF post-processing (trim, empty page removal)
+- `converter/src/excel_converter.py` — Excel via UNO bridge (most complex converter)
 - `converter/src/logger.py` — loguru setup
-- `converter/requirements.txt` — Python dependencies
-- `converter/Dockerfile` — Container build (Ubuntu + LibreOffice)
+- `converter/requirements.txt` — Python dependencies (7 packages)
+- `converter/Dockerfile` — Container build (Ubuntu 24.04 + LibreOffice)

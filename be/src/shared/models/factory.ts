@@ -31,8 +31,10 @@ import { RagFileModel } from '@/modules/rag/models/rag-file.model.js';
 import { RagTaskModel } from '@/modules/rag/models/rag-task.model.js';
 import { ConnectorModel } from '@/modules/sync/models/connector.model.js';
 import { SyncLogModel } from '@/modules/sync/models/sync-log.model.js';
-import { ChatDialogModel } from '@/modules/chat/models/chat-dialog.model.js';
-import { ChatDialogAccessModel } from '@/modules/chat/models/chat-dialog-access.model.js';
+import { ChatAssistantModel } from '@/modules/chat/models/chat-assistant.model.js';
+import { ChatAssistantAccessModel } from '@/modules/chat/models/chat-assistant-access.model.js';
+import { ChatFileModel } from '@/modules/chat/models/chat-file.model.js';
+import { ChatEmbedTokenModel } from '@/modules/chat/models/chat-embed-token.model.js';
 import { SearchAppModel } from '@/modules/search/models/search-app.model.js'
 import { SearchAppAccessModel } from '@/modules/search/models/search-app-access.model.js';
 import { DocumentVersionModel } from '@/modules/rag/models/document-version.model.js';
@@ -112,10 +114,14 @@ export class ModelFactory {
   private static connectorModel: ConnectorModel;
   /** SyncLog model singleton instance */
   private static syncLogModel: SyncLogModel;
-  /** ChatDialog model singleton instance */
-  private static chatDialogModel: ChatDialogModel;
-  /** ChatDialogAccess model singleton instance */
-  private static chatDialogAccessModel: ChatDialogAccessModel;
+  /** ChatAssistant model singleton instance */
+  private static chatAssistantModel: ChatAssistantModel;
+  /** ChatAssistantAccess model singleton instance */
+  private static chatAssistantAccessModel: ChatAssistantAccessModel;
+  /** ChatFile model singleton instance */
+  private static chatFileModel: ChatFileModel;
+  /** ChatEmbedToken model singleton instance */
+  private static chatEmbedTokenModel: ChatEmbedTokenModel;
   /** SearchApp model singleton instance */
   private static searchAppModel: SearchAppModel;
   /** SearchAppAccess model singleton instance */
@@ -381,23 +387,43 @@ export class ModelFactory {
   }
 
   /**
-   * Get the ChatDialog model singleton.
-   * @returns ChatDialogModel instance for dialog configuration operations
+   * Get the ChatAssistant model singleton.
+   * @returns ChatAssistantModel instance for assistant configuration operations
    */
-  static get chatDialog() {
-    if (!this.chatDialogModel) this.chatDialogModel = new ChatDialogModel();
-    return this.chatDialogModel;
+  static get chatAssistant() {
+    if (!this.chatAssistantModel) this.chatAssistantModel = new ChatAssistantModel();
+    return this.chatAssistantModel;
   }
 
   /**
-   * Get the ChatDialogAccess model singleton.
-   * Manages RBAC access entries for chat dialogs.
-   * @returns ChatDialogAccessModel instance for access control operations
+   * Get the ChatAssistantAccess model singleton.
+   * Manages RBAC access entries for chat assistants.
+   * @returns ChatAssistantAccessModel instance for access control operations
    */
-  static get chatDialogAccess() {
+  static get chatAssistantAccess() {
     // Create instance on first access (lazy initialization)
-    if (!this.chatDialogAccessModel) this.chatDialogAccessModel = new ChatDialogAccessModel();
-    return this.chatDialogAccessModel;
+    if (!this.chatAssistantAccessModel) this.chatAssistantAccessModel = new ChatAssistantAccessModel();
+    return this.chatAssistantAccessModel;
+  }
+
+  /**
+   * Get the ChatFile model singleton.
+   * Manages file attachments for chat conversations.
+   * @returns ChatFileModel instance for chat file operations
+   */
+  static get chatFile() {
+    if (!this.chatFileModel) this.chatFileModel = new ChatFileModel();
+    return this.chatFileModel;
+  }
+
+  /**
+   * Get the ChatEmbedToken model singleton.
+   * Manages embed tokens for external chat widget access.
+   * @returns ChatEmbedTokenModel instance for embed token operations
+   */
+  static get chatEmbedToken() {
+    if (!this.chatEmbedTokenModel) this.chatEmbedTokenModel = new ChatEmbedTokenModel();
+    return this.chatEmbedTokenModel;
   }
 
   /**

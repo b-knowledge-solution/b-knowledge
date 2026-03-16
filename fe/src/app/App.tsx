@@ -47,7 +47,7 @@ const GlossaryPage = lazy(() => import('@/features/glossary/pages/GlossaryPage')
 const AdminDashboardPage = lazy(() => import('@/features/dashboard/pages/AdminDashboardPage'));
 const DatasetsPage = lazy(() => import('@/features/datasets/pages/DatasetsPage'));
 const DatasetDetailPage = lazy(() => import('@/features/datasets/pages/DatasetDetailPage'));
-const ChatDialogManagementPage = lazy(() => import('@/features/chat/pages/ChatDialogManagementPage'));
+const ChatAssistantManagementPage = lazy(() => import('@/features/chat/pages/ChatAssistantManagementPage'));
 const SearchAppManagementPage = lazy(() => import('@/features/search/pages/SearchAppManagementPage'));
 const ProjectListPage = lazy(() => import('@/features/projects/pages/ProjectListPage'));
 const ProjectDetailPage = lazy(() => import('@/features/projects/pages/ProjectDetailPage'));
@@ -122,14 +122,14 @@ function App() {
               } />
 
               {/* Dataset routes */}
-              <Route path="datasets" element={
+              <Route path="data-studio/datasets" element={
                 <FeatureErrorBoundary>
                   <RoleRoute allowedRoles={['admin', 'leader']}>
                     <DatasetsPage />
                   </RoleRoute>
                 </FeatureErrorBoundary>
               } />
-              <Route path="datasets/:id" element={
+              <Route path="data-studio/datasets/:id" element={
                 <FeatureErrorBoundary>
                   <RoleRoute allowedRoles={['admin', 'leader']}>
                     <DatasetDetailPage />
@@ -177,8 +177,9 @@ function App() {
               <Route path="admin/tokenizer" element={<FeatureErrorBoundary><AdminRoute><TokenizerPage /></AdminRoute></FeatureErrorBoundary>} />
               <Route path="admin/broadcast-messages" element={<FeatureErrorBoundary><AdminRoute><BroadcastMessagePage /></AdminRoute></FeatureErrorBoundary>} />
               <Route path="admin/histories" element={<FeatureErrorBoundary><AdminRoute><HistoriesPage /></AdminRoute></FeatureErrorBoundary>} />
-              <Route path="admin/chat-dialogs" element={<FeatureErrorBoundary><AdminRoute><ChatDialogManagementPage /></AdminRoute></FeatureErrorBoundary>} />
-              <Route path="admin/search-apps" element={<FeatureErrorBoundary><AdminRoute><SearchAppManagementPage /></AdminRoute></FeatureErrorBoundary>} />
+              {/* Data Studio — Chat & Search config (admin) */}
+              <Route path="data-studio/chat-assistants" element={<FeatureErrorBoundary><AdminRoute><ChatAssistantManagementPage /></AdminRoute></FeatureErrorBoundary>} />
+              <Route path="data-studio/search-apps" element={<FeatureErrorBoundary><AdminRoute><SearchAppManagementPage /></AdminRoute></FeatureErrorBoundary>} />
               <Route path="admin/dashboard" element={<FeatureErrorBoundary><AdminRoute><AdminDashboardPage /></AdminRoute></FeatureErrorBoundary>} />
               <Route path="admin/llm-providers" element={<FeatureErrorBoundary><AdminRoute><LLMProviderPage /></AdminRoute></FeatureErrorBoundary>} />
             </Route>

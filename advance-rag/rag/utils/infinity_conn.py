@@ -13,6 +13,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Infinity vector database connector for CRUD and search operations.
+
+Extends InfinityConnectionBase with concrete implementations for search,
+insert, update, and field conversion. Infinity uses per-table storage
+(one table per knowledge base) rather than per-index storage. This connector
+handles field name mapping between the RAG pipeline's naming conventions
+(e.g., docnm_kwd, content_with_weight) and Infinity's column names.
+
+Supports text matching, dense vector search, and fusion scoring with
+the Infinity-native query builder API.
+"""
 
 import re
 import json
@@ -28,12 +39,32 @@ from common.doc_store.infinity_conn_base import InfinityConnectionBase
 
 @singleton
 class InfinityConnection(InfinityConnectionBase):
-    """
-    Dataframe and fields convert
+    """Singleton Infinity database connection with field conversion and CRUD operations.
+
+    Handles bidirectional field name mapping between the RAG pipeline's
+    conventions and Infinity's column schema. Manages scatter-gather
+    search across per-KB tables and result concatenation.
+
+    Attributes:
+        connPool: Connection pool for Infinity database connections.
+        dbName: Name of the Infinity database.
+        logger: Logger instance for debug/error output.
     """
 
     @staticmethod
     def field_keyword(field_name: str):
+        """Determine whether a field should be treated as a keyword list.
+
+        Keyword fields (e.g., tag_kwd, source_id) are stored as
+        '###'-delimited strings in Infinity and split back into lists
+        on retrieval.
+
+        Args:
+            field_name: Column/field name to check.
+
+        Returns:
+            True if the field is a keyword-list type.
+        """
         # Treat "*_kwd" tag-like columns as keyword lists except knowledge_graph_kwd; source_id is also keyword-like.
         if field_name == "source_id" or (
                 field_name.endswith("_kwd") and field_name not in ["knowledge_graph_kwd", "docnm_kwd", "important_kwd",
@@ -42,6 +73,14 @@ class InfinityConnection(InfinityConnectionBase):
         return False
 
     def convert_select_fields(self, output_fields: list[str]) -> list[str]:
+        """Map RAG pipeline field names to Infinity column names for SELECT.
+
+        Args:
+            output_fields: List of RAG pipeline field names.
+
+        Returns:
+            Deduplicated list of Infinity column names.
+        """
         need_empty_count = "important_kwd" in output_fields
         for i, field in enumerate(output_fields):
             if field in ["docnm_kwd", "title_tks", "title_sm_tks"]:
@@ -60,6 +99,17 @@ class InfinityConnection(InfinityConnectionBase):
 
     @staticmethod
     def convert_matching_field(field_weight_str: str) -> str:
+        """Convert a RAG field^weight string to Infinity's fulltext index format.
+
+        Maps field names like 'content_ltks^2' to Infinity's
+        'content@ft_content_rag_coarse^2' format for fulltext search.
+
+        Args:
+            field_weight_str: Field name with optional ^weight suffix.
+
+        Returns:
+            Converted field@index_name^weight string.
+        """
         tokens = field_weight_str.split("^")
         field = tokens[0]
         if field == "docnm_kwd" or field == "title_tks":

@@ -49,7 +49,7 @@ const DatasetDetailPage: React.FC = () => {
     datasetApi
       .getDataset(id)
       .then(setDataset)
-      .catch(() => navigate('/datasets'))
+      .catch(() => navigate('/data-studio/datasets'))
       .finally(() => setLoadingDataset(false));
   }, [id, navigate]);
 
@@ -80,7 +80,7 @@ const DatasetDetailPage: React.FC = () => {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate('/datasets')}
+          onClick={() => navigate('/data-studio/datasets')}
         >
           <ArrowLeft size={18} />
         </Button>

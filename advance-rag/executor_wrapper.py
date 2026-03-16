@@ -35,6 +35,11 @@ _redis_client = None
 
 
 def _get_redis():
+    """Get or create a lazy-initialized Redis client for progress publishing.
+
+    Returns:
+        Redis client instance connected to the configured Redis server.
+    """
     global _redis_client
     if _redis_client is None:
         _redis_client = redis.Redis(
@@ -47,7 +52,12 @@ def _get_redis():
 
 
 def install_progress_hook():
-    """Monkey-patch task_executor.set_progress to add Redis pub/sub."""
+    """Monkey-patch task_executor.set_progress to add Redis pub/sub notifications.
+
+    Wraps the original set_progress function so that every progress update
+    is also published to a Redis channel (task:<task_id>:progress). The Node.js
+    backend subscribes to these channels to stream progress via SSE.
+    """
     try:
         from rag.svr import task_executor
     except ImportError:

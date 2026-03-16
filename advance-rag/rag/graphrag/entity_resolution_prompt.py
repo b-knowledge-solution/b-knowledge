@@ -13,6 +13,20 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Entity resolution prompt template for GraphRAG.
+
+This module defines the LLM prompt used during entity resolution to determine
+whether two entities of the same type refer to the same real-world concept.
+The prompt uses a few-shot learning approach with examples of product and
+toponym comparisons, guiding the LLM to output structured yes/no decisions
+with delimited formatting for downstream parsing.
+
+Template variables:
+    - ``{record_delimiter}``: Separator between answer records (default "##").
+    - ``{entity_index_delimiter}``: Wraps the question index (default "<|>").
+    - ``{resolution_result_delimiter}``: Wraps the yes/no answer (default "&&").
+    - ``{input_text}``: The formatted list of entity-pair comparison questions.
+"""
 
 ENTITY_RESOLUTION_PROMPT = """
 -Goal-
@@ -29,13 +43,13 @@ Please answer the following Question as required
 Example 1:
 
 Question:
-When determining whether two Products are the same, you should only focus on critical properties and overlook noisy factors. 
+When determining whether two Products are the same, you should only focus on critical properties and overlook noisy factors.
 
 Demonstration 1: name of Product A is : "computer", name of Product B is :"phone"  No, Product A and Product B are different products.
-Question 1: name of Product A is : "television", name of Product B is :"TV"  
-Question 2: name of Product A is : "cup", name of Product B is :"mug"  
-Question 3: name of Product A is : "soccer", name of Product B is :"football"  
-Question 4: name of Product A is : "pen", name of Product B is  :"eraser"  
+Question 1: name of Product A is : "television", name of Product B is :"TV"
+Question 2: name of Product A is : "cup", name of Product B is :"mug"
+Question 3: name of Product A is : "soccer", name of Product B is :"football"
+Question 4: name of Product A is : "pen", name of Product B is  :"eraser"
 
 Use domain knowledge of Products to help understand the text and answer the above 4 questions in the format: For Question i, Yes, Product A and Product B are the same product. or  No, Product A and Product B are different products. For Question i+1, (repeat the above procedures)
 ################
@@ -49,13 +63,13 @@ Output:
 Example 2:
 
 Question:
-When determining whether two toponym are the same, you should only focus on critical properties and overlook noisy factors. 
+When determining whether two toponym are the same, you should only focus on critical properties and overlook noisy factors.
 
 Demonstration 1: name of toponym A is : "nanjing", name of toponym B is :"nanjing city"  Yes, toponym A and toponym B are same toponym.
-Question 1: name of toponym A is : "Chicago", name of toponym B is :"ChiTown"  
-Question 2: name of toponym A is : "Shanghai", name of toponym B is :"Zhengzhou"  
+Question 1: name of toponym A is : "Chicago", name of toponym B is :"ChiTown"
+Question 2: name of toponym A is : "Shanghai", name of toponym B is :"Zhengzhou"
 Question 3: name of toponym A is : "Beijing", name of toponym B is :"Peking"
-Question 4: name of toponym A is : "Los Angeles", name of toponym B is :"Cleveland" 
+Question 4: name of toponym A is : "Los Angeles", name of toponym B is :"Cleveland"
 
 Use domain knowledge of toponym to help understand the text and answer the above 4 questions in the format: For Question i, Yes, toponym A and toponym B are the same toponym. or  No, toponym A and toponym B are different toponym. For Question i+1, (repeat the above procedures)
 ################

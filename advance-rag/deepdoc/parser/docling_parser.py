@@ -1,3 +1,12 @@
+"""Docling-based PDF parser using IBM's Docling library for document conversion.
+
+Docling provides high-quality document understanding with support for text extraction,
+table parsing (with HTML export), equation detection, and figure/picture identification.
+This parser wraps Docling's DocumentConverter and converts its output into the
+section/table tuple format used by the RAG pipeline.
+
+Falls back gracefully when the docling package is not installed.
+"""
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -40,6 +49,7 @@ except Exception:
 
 
 class DoclingContentType(str, Enum):
+    """Content types recognized by the Docling document parser."""
     IMAGE = "image"
     TABLE = "table"
     TEXT = "text"
@@ -74,6 +84,12 @@ def _extract_bbox_from_prov(item, prov_attr: str = "prov") -> Optional[_BBox]:
 
 
 class DoclingParser(RAGFlowPdfParser):
+    """PDF parser using IBM's Docling library for high-quality document conversion.
+
+    Extracts text sections, equations, tables (with HTML export), and pictures
+    with bounding box positions. Supports page image cropping for visual elements.
+    """
+
     def __init__(self):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.page_images: list[Image.Image] = []

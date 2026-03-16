@@ -1,7 +1,7 @@
 /**
  * @fileoverview Dialog for managing user and team access to a chat assistant.
  * Provides tabbed interface with searchable checkboxes for assigning access.
- * @module features/ai/components/ChatDialogAccessDialog
+ * @module features/ai/components/ChatAssistantAccessDialog
  */
 
 import { useState, useEffect } from 'react'
@@ -21,7 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { api } from '@/lib/api'
 import { chatApi } from '../api/chatApi'
 import { globalMessage } from '@/app/App'
-import type { ChatDialog, ChatDialogAccessEntry } from '../types/chat.types'
+import type { ChatAssistant, ChatAssistantAccessEntry } from '../types/chat.types'
 
 // ============================================================================
 // Types
@@ -44,13 +44,13 @@ interface AccessTeam {
 // Props
 // ============================================================================
 
-interface ChatDialogAccessDialogProps {
+interface ChatAssistantAccessDialogProps {
   /** Whether the dialog is open */
   open: boolean
   /** Callback to close the dialog */
   onClose: () => void
   /** The chat dialog to manage access for */
-  dialog: ChatDialog | null
+  dialog: ChatAssistant | null
 }
 
 // ============================================================================
@@ -61,18 +61,18 @@ interface ChatDialogAccessDialogProps {
  * @description Modal dialog for managing user and team access to a chat assistant.
  * Displays tabs for Users and Teams with searchable checkbox lists.
  *
- * @param {ChatDialogAccessDialogProps} props - Component properties
+ * @param {ChatAssistantAccessDialogProps} props - Component properties
  * @returns {JSX.Element} The rendered access management dialog
  */
-export default function ChatDialogAccessDialog({
+export default function ChatAssistantAccessDialog({
   open,
   onClose,
   dialog,
-}: ChatDialogAccessDialogProps) {
+}: ChatAssistantAccessDialogProps) {
   const { t } = useTranslation()
 
   // Current access entries from the API (used to initialize selected sets)
-  const [, setAccessEntries] = useState<ChatDialogAccessEntry[]>([])
+  const [, setAccessEntries] = useState<ChatAssistantAccessEntry[]>([])
 
   // All available users and teams
   const [allUsers, setAllUsers] = useState<AccessUser[]>([])
@@ -96,7 +96,7 @@ export default function ChatDialogAccessDialog({
     if (!dialog) return
     try {
       // Fetch current access entries
-      const entries = await chatApi.getDialogAccess(dialog.id)
+      const entries = await chatApi.getAssistantAccess(dialog.id)
       setAccessEntries(entries)
 
       // Build selected sets from existing entries
@@ -169,7 +169,7 @@ export default function ChatDialogAccessDialog({
     setSaving(true)
     try {
       // Build the entries array from selected IDs
-      const entries: ChatDialogAccessEntry[] = [
+      const entries: ChatAssistantAccessEntry[] = [
         ...[...selectedUserIds].map((id) => ({
           entity_type: 'user' as const,
           entity_id: id,
@@ -180,7 +180,7 @@ export default function ChatDialogAccessDialog({
         })),
       ]
 
-      await chatApi.setDialogAccess(dialog.id, entries)
+      await chatApi.setAssistantAccess(dialog.id, entries)
       globalMessage.success(t('common.saveSuccess'))
       onClose()
     } catch (error: any) {

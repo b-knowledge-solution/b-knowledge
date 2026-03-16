@@ -14,6 +14,15 @@
 #  limitations under the License.
 #
 
+"""Academic paper parser module for the RAG pipeline.
+
+Specialized parser for scientific/academic papers in PDF format. Extracts
+structured metadata including title, authors, and abstract. Handles
+two-column layouts common in academic papers. The abstract is preserved
+as a single chunk, and remaining sections are merged based on title
+frequency analysis for optimal chunk boundaries.
+"""
+
 import logging
 import copy
 import re
@@ -29,6 +38,12 @@ from common.parser_config_utils import normalize_layout_recognizer
 
 
 class Pdf(PdfParser):
+    """PDF parser specialized for academic papers.
+
+    Uses the PAPER parser type for model selection. Extracts title,
+    authors, and abstract from the first pages, detects two-column
+    layouts, and sorts text blocks accordingly.
+    """
     def __init__(self):
         self.model_speciess = ParserType.PAPER.value
         super().__init__()

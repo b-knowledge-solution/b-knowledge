@@ -12,12 +12,28 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""Pydantic schema for validating Splitter component upstream inputs.
+
+Defines the expected data shape for the Splitter component, which receives
+parsed document content from the Parser or other upstream components.
+"""
+
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class SplitterFromUpstream(BaseModel):
+    """Schema for data flowing into the Splitter from upstream components.
+
+    Supports JSON list, markdown, text, HTML, and pre-split chunks
+    as input formats.
+
+    Attributes:
+        name: Original filename of the document.
+        chunks: Pre-split chunk dicts from upstream.
+        output_format: Format indicator for the payload data.
+    """
     created_time: float | None = Field(default=None, alias="_created_time")
     elapsed_time: float | None = Field(default=None, alias="_elapsed_time")
 

@@ -14,6 +14,15 @@
 #  limitations under the License.
 #
 
+"""Question-and-Answer document parser module for the RAG pipeline.
+
+Parses structured Q&A content from Excel, CSV, TXT, PDF, Markdown, and
+DOCX files. Each question-answer pair is treated as a separate chunk.
+For Excel/CSV/TXT, expects two-column format (question, answer). For
+PDF, uses bullet pattern detection to identify Q&A boundaries. For
+Markdown and DOCX, uses heading levels to separate questions from answers.
+"""
+
 import logging
 import re
 import csv
@@ -34,6 +43,12 @@ from common.float_utils import get_float
 
 
 class Excel(ExcelParser):
+    """Excel parser for Q&A format documents.
+
+    Extracts question-answer pairs from Excel workbooks where each
+    row contains a question in the first column and answer in the
+    second column. Supports multiple sheets.
+    """
     def __call__(self, fnm, binary=None, callback=None):
         if not binary:
             wb = load_workbook(fnm)
@@ -77,6 +92,12 @@ class Excel(ExcelParser):
 
 
 class Pdf(PdfParser):
+    """PDF parser for Q&A format documents.
+
+    Detects question bullet patterns in PDF text and extracts
+    question-answer pairs with associated images and positions.
+    Handles tables embedded between Q&A sections.
+    """
     def __call__(self, filename, binary=None, from_page=0,
                  to_page=100000, zoomin=3, callback=None):
         start = timer()
@@ -189,6 +210,12 @@ class Pdf(PdfParser):
 
 
 class Docx(DocxParser):
+    """DOCX parser for Q&A format documents.
+
+    Extracts question-answer pairs from Word documents using
+    heading levels to identify questions. Supports embedded
+    images and document tables.
+    """
     def __init__(self):
         pass
 

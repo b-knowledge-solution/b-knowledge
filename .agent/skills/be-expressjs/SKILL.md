@@ -1,6 +1,6 @@
 ---
-name: b-knowledge-be
-description: Backend development skill — enforces B-Knowledge BE architecture for new modules, routes, services, and models
+name: be-expressjs
+description: Backend development skill — enforces B-Knowledge BE architecture for new modules, routes, services, and models. Use this whenever working in be/, creating Express routes, adding API endpoints, writing Knex models, or modifying backend modules.
 ---
 
 # B-Knowledge Backend Development Skill
@@ -12,8 +12,10 @@ Use this skill when creating or modifying modules, routes, controllers, services
 - Node.js 22+, Express 4, TypeScript strict, ESM (`.js` import extensions)
 - Knex ORM + PostgreSQL, Redis for sessions/cache
 - Zod for request validation
+- Socket.IO for real-time events
 - Path alias: `@/*` → `be/src/*`
 - Logging: Winston via `@/shared/services/logger.service.js`
+- Config: Always use `config` object from `@/shared/config/index.js` — never `process.env` directly
 
 ## Module Layout Decision
 
@@ -46,6 +48,8 @@ modules/<domain>/
 └── index.ts                    # Barrel export
 ```
 
+**Flat modules:** `auth`, `dashboard`, `preview`, `system-tools`, `user-history`
+
 ---
 
 ## Import Rules
@@ -55,6 +59,7 @@ modules/<domain>/
 3. **Within same module** — direct paths are fine: `import { myService } from '../services/my.service.js'`
 4. **Shared imports**: `@/shared/middleware/`, `@/shared/services/`, `@/shared/models/`, `@/shared/db/`, `@/shared/utils/`
 5. **Always use `.js` extension** in import paths (ESM requirement)
+6. **Config access**: `import { config } from '@/shared/config/index.js'` — never `process.env.SOME_VAR`
 
 ---
 
@@ -233,7 +238,7 @@ export class DomainController {
 
 ### Service (`services/<domain>.service.ts`)
 
-Singleton export, uses Knex or ModelFactory:
+Singleton export, uses ModelFactory:
 
 ```ts
 import { ModelFactory } from '@/shared/models/factory.js'
@@ -300,7 +305,7 @@ export class DomainModel extends BaseModel<DomainItem> {
 }
 ```
 
-Register in `shared/models/factory.ts` as a lazy singleton.
+Register in `shared/models/factory.ts` as a lazy singleton getter.
 
 ### Route Registration
 
@@ -309,16 +314,16 @@ After creating the module, register in `be/src/app/routes.ts`:
 ```ts
 import domainRoutes from '@/modules/domain/routes/domain.routes.js'
 
-// Inside registerRoutes():
+// Inside setupApiRoutes():
 apiRouter.use('/domain', domainRoutes)
 ```
 
 ### Database Migration
 
-If a new table is needed, create in `be/src/shared/db/migrations/`:
+If a new table is needed, run `npm run db:migrate:make <name>` then edit the generated file:
 
 ```ts
-// yyyymmddhhmmss_create_domain_items.ts  (e.g. 20260311130900_create_domain_items.ts)
+// 20260315120000_create_domain_items.ts
 import { Knex } from 'knex'
 
 /**
@@ -342,6 +347,19 @@ export async function down(knex: Knex): Promise<void> {
 }
 ```
 
+### Socket.IO Events (if real-time needed)
+
+Emit events from service layer via the socket service:
+
+```ts
+import { socketService } from '@/shared/services/socket.service.js'
+
+// After a mutation that frontend should react to:
+socketService.emitToUser(userId, 'domain:updated', { id: item.id })
+```
+
+Frontend uses `useSocketEvent()` or `useSocketQueryInvalidation()` to react.
+
 ---
 
 ## New Module Checklist
@@ -353,12 +371,13 @@ export async function down(knex: Knex): Promise<void> {
 5. [ ] Create routes with `requireAuth` + `validate()` on mutations
 6. [ ] Create `index.ts` barrel file
 7. [ ] Register routes in `be/src/app/routes.ts`
-8. [ ] If new DB table: create migration in `be/src/shared/db/migrations/`
+8. [ ] If new DB table: create migration via `npm run db:migrate:make <name>`
 9. [ ] If new model: extend `BaseModel`, register in `ModelFactory`
 10. [ ] Add JSDoc headers to every function (`@param`, `@returns`, `@description`)
 11. [ ] Add inline comments above significant logic lines
 12. [ ] Use `.js` extensions in all imports
-13. [ ] Verify with `npm run build` if changes are extensive
+13. [ ] Use `config` object for env access, never `process.env`
+14. [ ] Verify with `npm run build` if changes are extensive
 
 ## Middleware Reference
 
@@ -371,11 +390,14 @@ export async function down(knex: Knex): Promise<void> {
 ### Validation (`@/shared/middleware/validate.middleware.js`)
 - `validate(zodSchema)` — body-only validation (shorthand)
 - `validate({ body, params, query })` — multi-target validation
+- Mutates `req.body` with parsed/coerced values
+- Returns 400 with structured error details on failure
 
 ## Key Files Reference
 
 - `be/src/app/index.ts` — Express app bootstrap, middleware setup
 - `be/src/app/routes.ts` — Central route registration
+- `be/src/shared/config/index.ts` — Environment config (`config` object)
 - `be/src/shared/middleware/auth.middleware.ts` — Auth middleware
 - `be/src/shared/middleware/validate.middleware.ts` — Zod validation
 - `be/src/shared/models/base.model.ts` — BaseModel abstract class

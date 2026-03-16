@@ -13,6 +13,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""
+Singleton connection pool for Elasticsearch / OpenSearch.
+
+Creates a single ``OpenSearch`` client at module load time and exposes it
+via the ``ES_CONN`` module-level singleton.  The pool validates connectivity
+and version (requires OpenSearch >= 2) during initialisation, retrying up
+to ``ATTEMPT_TIME`` attempts.
+"""
 import logging
 import time
 from opensearchpy import OpenSearch
@@ -20,11 +28,18 @@ from opensearchpy import OpenSearch
 from common import settings
 from common.decorator import singleton
 
+# Number of connection attempts before giving up
 ATTEMPT_TIME = 2
 
 
 @singleton
 class ElasticSearchConnectionPool:
+    """Process-scoped singleton managing a single OpenSearch client connection.
+
+    Reads connection parameters from ``settings.VECTORDB`` (hosts, username,
+    password, verify_certs).  Validates that the server is reachable and
+    running OpenSearch version 2 or later.
+    """
 
     def __init__(self):
         if hasattr(settings, "VECTORDB"):
@@ -44,6 +59,7 @@ class ElasticSearchConnectionPool:
             msg = f"OpenSearch {self.ES_CONFIG['hosts']} is unhealthy in 10s."
             logging.error(msg)
             raise Exception(msg)
+        # Ensure OpenSearch major version is >= 2
         v = self.info.get("version", {"number": "2.18.0"})
         v = v["number"].split(".")[0]
         if int(v) < 2:
@@ -52,6 +68,11 @@ class ElasticSearchConnectionPool:
             raise Exception(msg)
 
     def _connect(self):
+        """Create the OpenSearch client and verify connectivity.
+
+        Returns:
+            True if the connection was established and ping succeeded.
+        """
         self.es_conn = OpenSearch(
             self.ES_CONFIG["hosts"].split(","),
             http_auth=(self.ES_CONFIG["username"], self.ES_CONFIG[
@@ -64,9 +85,15 @@ class ElasticSearchConnectionPool:
         return False
 
     def get_conn(self):
+        """Return the active OpenSearch client instance."""
         return self.es_conn
 
     def refresh_conn(self):
+        """Re-establish the connection if the current one is unhealthy.
+
+        Returns:
+            The (possibly refreshed) OpenSearch client instance.
+        """
         if self.es_conn.ping():
             return self.es_conn
         else:
@@ -81,4 +108,5 @@ class ElasticSearchConnectionPool:
             self.es_conn.close()
 
 
+# Module-level singleton -- instantiated once per process
 ES_CONN = ElasticSearchConnectionPool()

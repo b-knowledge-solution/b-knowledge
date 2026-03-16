@@ -1,3 +1,13 @@
+"""MinerU-based PDF parser that delegates parsing to an external MinerU API server.
+
+MinerU is a document parsing engine supporting multiple backends (traditional pipeline,
+vision-language models via Transformers/vLLM/MLX, or HTTP client). This parser sends
+PDFs to a MinerU API endpoint, receives structured content blocks (text, tables, images,
+equations, code, lists), and converts them into the section/table tuple format used by
+the RAG pipeline.
+
+Extends RAGFlowPdfParser to inherit image cropping and position extraction utilities.
+"""
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -134,7 +144,21 @@ class MinerUParseOptions:
 
 
 class MinerUParser(RAGFlowPdfParser):
+    """PDF parser that delegates parsing to an external MinerU API server.
+
+    Sends PDF files to a MinerU API endpoint, receives structured content blocks
+    (text, tables, images, equations, code, lists) as a ZIP archive, and converts
+    them into the section/table tuple format used by the RAG pipeline.
+    """
+
     def __init__(self, mineru_path: str = "mineru", mineru_api: str = "", mineru_server_url: str = ""):
+        """Initialize the MinerU parser.
+
+        Args:
+            mineru_path: Path to the mineru CLI binary (unused with API mode).
+            mineru_api: Base URL of the MinerU API server.
+            mineru_server_url: URL of the vLLM server for vlm-http-client backend.
+        """
         self.mineru_api = mineru_api.rstrip("/")
         self.mineru_server_url = mineru_server_url.rstrip("/")
         self.outlines = []

@@ -14,7 +14,9 @@
  * 
  * Features:
  * - List all users
- * - Update user roles
+ * - Create local users
+ * - Update user profile / role / permissions
+ * - Delete users
  * 
  * @module routes/user
  */
@@ -23,7 +25,13 @@ import { Router } from 'express';
 import { UserController } from '../controllers/users.controller.js';
 import { requireAuth, requirePermission, requireRecentAuth } from '@/shared/middleware/auth.middleware.js';
 import { validate } from '@/shared/middleware/validate.middleware.js';
-import { updateRoleSchema, updatePermissionsSchema, uuidParamSchema } from '../schemas/users.schemas.js';
+import {
+  updateRoleSchema,
+  updatePermissionsSchema,
+  uuidParamSchema,
+  createUserSchema,
+  updateUserSchema,
+} from '../schemas/users.schemas.js';
 
 const router = Router();
 const controller = new UserController();
@@ -35,90 +43,84 @@ const controller = new UserController();
 /**
  * GET /api/users
  * List all users in the system.
- * 
- * Returns user records from the database with role information.
- * Sensitive fields like access tokens are not included.
- * 
- * @requires manage_users permission
- * @returns {Array<User>} List of all users
- * @returns {500} If database query fails
+ * @requires requireAuth
  */
-// Route guarded by requireAuth alone is likely incorrect per docs above, but kept consistent with existing code if intention is broader access
-// However, standard practice for user listing is usually admin-only.
-// Assuming 'requireAuth' + controller logic or subsequent permission checks.
-// If it strictly needs manage_users, should use requirePermission('manage_users') like others.
-// Keeping as is based on existing file content for minimal behavioral change, but noting context.
 router.get('/', requireAuth, controller.getUsers.bind(controller));
+
+/**
+ * POST /api/users
+ * Create a new local user (with optional password).
+ * @requires manage_users permission
+ */
+router.post(
+  '/',
+  requirePermission('manage_users'),
+  validate({ body: createUserSchema }),
+  controller.createUser.bind(controller)
+);
 
 /**
  * GET /api/users/ip-history
  * Get IP access history for all users.
- * 
- * Returns a mapping of user IDs to their IP history records.
- * Each record contains the IP address and last access timestamp.
- * 
  * @requires manage_users permission
- * @returns {Object} Map of user ID to IP history array
- * @returns {500} If database query fails
  */
-// Restricted to users with manage_users permission
 router.get('/ip-history', requirePermission('manage_users'), controller.getAllIpHistory.bind(controller));
 
 /**
  * GET /api/users/:id/ip-history
  * Get IP access history for a specific user.
- * 
- * Returns all IPs that have accessed the system as this user,
- * sorted by last access time (most recent first).
- * 
  * @requires manage_users permission
- * @param {string} id - User ID (UUID)
- * @returns {Array<UserIpHistory>} IP history records
- * @returns {500} If database query fails
  */
-// Restricted to users with manage_users permission
 router.get('/:id/ip-history', requirePermission('manage_users'), controller.getUserIpHistory.bind(controller));
 
 /**
  * PUT /api/users/:id/role
  * Update a user's role.
- * 
- * Changes the role of the specified user. Valid roles are:
- * - 'admin': Full system access
- * - 'manager': Can manage users and storage
- * - 'user': Basic access only
- * 
- * Security checks:
- * - Requires manage_users permission
- * - Requires recent authentication (within 15 minutes) - session security
- * - Prevents self-demotion (users cannot change their own role)
- * - Managers cannot promote users to admin role
- * - Validates input (UUID format, valid role values)
- * - Full audit logging
- * 
- * @requires manage_users permission
- * @requires Recent authentication (OWASP Session Security)
- * @param {string} id - User ID (UUID)
- * @body {string} role - New role ('admin' | 'manager' | 'user')
- * @returns {User} Updated user object
- * @returns {400} If role is invalid or self-modification attempted
- * @returns {401} If re-authentication required (REAUTH_REQUIRED error code)
- * @returns {403} If attempting unauthorized role promotion
- * @returns {404} If user not found
- * @returns {500} If update fails
+ * @requires manage_users permission + recent auth
  */
-// High security route: requires permission AND recent authentication
-router.put('/:id/role', requirePermission('manage_users'), requireRecentAuth(15), validate({ params: uuidParamSchema, body: updateRoleSchema }), controller.updateUserRole.bind(controller));
+router.put(
+  '/:id/role',
+  requirePermission('manage_users'),
+  requireRecentAuth(15),
+  validate({ params: uuidParamSchema, body: updateRoleSchema }),
+  controller.updateUserRole.bind(controller)
+);
 
 /**
  * PUT /api/users/:id/permissions
  * Update user permissions.
- * 
- * Used to grant granular permissions to specific users.
- * 
  * @requires manage_users permission
  */
-// Restricted to users with manage_users permission
-router.put('/:id/permissions', requirePermission('manage_users'), validate({ params: uuidParamSchema, body: updatePermissionsSchema }), controller.updateUserPermissions.bind(controller));
+router.put(
+  '/:id/permissions',
+  requirePermission('manage_users'),
+  validate({ params: uuidParamSchema, body: updatePermissionsSchema }),
+  controller.updateUserPermissions.bind(controller)
+);
+
+/**
+ * PUT /api/users/:id
+ * Update user profile fields (display_name, department, job_title, mobile_phone).
+ * @requires manage_users permission
+ */
+router.put(
+  '/:id',
+  requirePermission('manage_users'),
+  validate({ params: uuidParamSchema, body: updateUserSchema }),
+  controller.updateUser.bind(controller)
+);
+
+/**
+ * DELETE /api/users/:id
+ * Delete a user from the system.
+ * @requires manage_users permission + recent auth
+ */
+router.delete(
+  '/:id',
+  requirePermission('manage_users'),
+  requireRecentAuth(15),
+  validate({ params: uuidParamSchema }),
+  controller.deleteUser.bind(controller)
+);
 
 export default router;

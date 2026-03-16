@@ -73,14 +73,15 @@ const VectorWeightControl = ({
   value?: number
   onChange?: (val: number) => void
 }) => {
+  const { t } = useTranslation()
   const vectorVal = (1 - value).toFixed(2)
   const fulltextVal = value.toFixed(2)
 
   return (
     <div>
       <div className="flex justify-between text-xs text-gray-500 mb-1">
-        <span>vector <strong>{vectorVal}</strong></span>
-        <span>full-text <strong>{fulltextVal}</strong></span>
+        <span>{t('projectManagement.common.vector')} <strong>{vectorVal}</strong></span>
+        <span>{t('projectManagement.common.fullText')} <strong>{fulltextVal}</strong></span>
       </div>
       <div className="flex items-center gap-3">
         <div className="flex-1">
@@ -588,7 +589,7 @@ const ChatModal = ({
                     {formData.prompt_config.variables.map((variable, index) => (
                       <div key={index} className="flex items-center gap-2 mb-2">
                         <Input
-                          placeholder="Key"
+                          placeholder={t('projectManagement.chats.variableKey')}
                           style={{ width: 160 }}
                           value={variable.key}
                           onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateVariable(index, 'key', e.target.value)}

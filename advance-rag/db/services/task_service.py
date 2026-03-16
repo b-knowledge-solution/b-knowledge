@@ -13,6 +13,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Task service for managing document processing tasks.
+
+Provides CRUD and lifecycle operations for RAG processing tasks
+including task creation from documents, progress tracking, chunk
+management, retry logic, and cleanup. Tasks represent the unit of
+work for the task executor pipeline (parsing, chunking, embedding).
+"""
 import logging
 import os
 import random

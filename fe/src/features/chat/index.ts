@@ -1,40 +1,22 @@
 /**
- * @fileoverview Barrel file for the Chat feature.
- * Exports pages, types, hooks, and components for external consumption.
+ * @fileoverview Barrel export for the chat feature module.
  * @module features/chat
  */
 
-// Pages
 export { default as ChatPage } from './pages/ChatPage'
-export { default as ChatDialogManagementPage } from './pages/ChatDialogManagementPage'
-
-// Components
-export { default as ChatMessage } from './components/ChatMessage'
 export { default as ChatInput } from './components/ChatInput'
-export { default as ChatMessageList } from './components/ChatMessageList'
-export { default as ChatSidebar } from './components/ChatSidebar'
-export { default as ChatReferencePanel } from './components/ChatReferencePanel'
-export { default as ChatDialogConfig } from './components/ChatDialogConfig'
-export { default as ChatDialogAccessDialog } from './components/ChatDialogAccessDialog'
-
-// Hooks
+export { default as ChatAssistantConfig } from './components/ChatAssistantConfig'
+export { default as ChatVariableForm } from './components/ChatVariableForm'
+export { chatApi } from './api/chatApi'
+export { useChatAssistants, useChatAssistantsAdmin, useChatConversations, useRenameConversation } from './api/chatQueries'
 export { useChatStream } from './hooks/useChatStream'
-
-// Query hooks (TanStack Query)
-export { useChatConversations, useChatDialogs } from './api/chatQueries'
-export type { UseChatConversationsReturn, UseChatDialogsReturn } from './api/chatQueries'
-
-// Types
 export type {
-  ChatMessage as ChatMessageType,
-  ChatReference,
-  ChatChunk,
-  DocAggregate,
+  ChatMessage,
+  ChatAssistant,
   Conversation,
-  ChatDialog,
+  PromptVariable,
   PromptConfig,
-  CreateDialogPayload,
-  CreateConversationPayload,
+  SendMessageOptions,
   SendMessagePayload,
-  ChatDialogAccessEntry,
 } from './types/chat.types'
+

@@ -5,7 +5,7 @@
  */
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Mail, Edit2, Globe } from 'lucide-react'
+import { Mail, ShieldCheck, Globe, Pencil, Trash2 } from 'lucide-react'
 import { useAuth, User } from '@/features/auth'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -26,12 +26,15 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table'
+import { useConfirm } from '@/components/ConfirmDialog'
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
-import { useUserManagement } from '../api/userQueries'
+import { useUserManagement, useDeleteUser } from '../api/userQueries'
 import { UserToolbar } from '../components/UserToolbar'
 import { EditRoleDialog } from '../components/EditRoleDialog'
 import { IpHistoryDialog } from '../components/IpHistoryDialog'
 import { GrantPermissionsDialog } from '../components/GrantPermissionsDialog'
+import { CreateUserDialog } from '../components/CreateUserDialog'
+import { EditUserDialog } from '../components/EditUserDialog'
 
 /**
  * @description User management page composing hook + components. Admin-only.
@@ -40,6 +43,7 @@ import { GrantPermissionsDialog } from '../components/GrantPermissionsDialog'
 export default function UserManagementPage() {
     const { t } = useTranslation()
     const { user: currentUser } = useAuth()
+    const confirm = useConfirm()
 
     // Guideline dialog
     const { isFirstVisit } = useFirstVisit('users')
@@ -51,8 +55,13 @@ export default function UserManagementPage() {
     // Hook
     const mgmt = useUserManagement()
 
+    // Delete mutation
+    const deleteUser = useDeleteUser()
+
     // Dialog state
     const [selectedUser, setSelectedUser] = useState<User | null>(null)
+    const [isCreateOpen, setIsCreateOpen] = useState(false)
+    const [isEditUserOpen, setIsEditUserOpen] = useState(false)
     const [isEditRoleOpen, setIsEditRoleOpen] = useState(false)
     const [isIpHistoryOpen, setIsIpHistoryOpen] = useState(false)
     const [isPermissionsOpen, setIsPermissionsOpen] = useState(false)
@@ -87,6 +96,20 @@ export default function UserManagementPage() {
         user: t('userManagement.userRole'),
     }
 
+    /** Handle delete with confirmation dialog */
+    const handleDelete = async (record: User) => {
+        const name = record.displayName || record.email || ''
+        const confirmed = await confirm({
+            title: t('userManagement.deleteUser', 'Delete User'),
+            message: t('userManagement.confirmDeleteUserMessage', 'Are you sure you want to delete {{name}}? This action cannot be undone.', { name }),
+            confirmText: t('common.delete', 'Delete'),
+            variant: 'danger',
+        })
+        if (confirmed) {
+            deleteUser.mutate(record.id)
+        }
+    }
+
     return (
         <>
             <div className="w-full h-full flex flex-col p-6">
@@ -100,6 +123,7 @@ export default function UserManagementPage() {
                             departmentFilter={mgmt.departmentFilter}
                             onDepartmentFilterChange={mgmt.setDepartmentFilter}
                             departments={mgmt.departments}
+                            onCreateUser={() => setIsCreateOpen(true)}
                         />
 
                         <div className="flex-1 overflow-auto p-4">
@@ -147,6 +171,7 @@ export default function UserManagementPage() {
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex items-center justify-end gap-1">
+                                                        {/* IP History */}
                                                         <TooltipProvider>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
@@ -163,6 +188,25 @@ export default function UserManagementPage() {
                                                                 <TooltipContent>{t('userManagement.viewIpHistory')}</TooltipContent>
                                                             </Tooltip>
                                                         </TooltipProvider>
+
+                                                        {/* Edit Profile */}
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={() => { setSelectedUser(record); setIsEditUserOpen(true) }}
+                                                                        className="text-slate-400 hover:text-blue-600"
+                                                                    >
+                                                                        <Pencil className="w-4 h-4" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>{t('userManagement.editUser', 'Edit User')}</TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+
+                                                        {/* Edit Role */}
                                                         <TooltipProvider>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
@@ -172,12 +216,31 @@ export default function UserManagementPage() {
                                                                         onClick={() => { setSelectedUser(record); setSaveError(null); setIsEditRoleOpen(true) }}
                                                                         className="text-slate-400 hover:text-primary-600"
                                                                     >
-                                                                        <Edit2 className="w-4 h-4" />
+                                                                        <ShieldCheck className="w-4 h-4" />
                                                                     </Button>
                                                                 </TooltipTrigger>
                                                                 <TooltipContent>{t('userManagement.editRole')}</TooltipContent>
                                                             </Tooltip>
                                                         </TooltipProvider>
+
+                                                        {/* Delete User — prevent self-deletion */}
+                                                        {record.id !== currentUser?.id && (
+                                                            <TooltipProvider>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            onClick={() => handleDelete(record)}
+                                                                            className="text-slate-400 hover:text-red-600"
+                                                                        >
+                                                                            <Trash2 className="w-4 h-4" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>{t('userManagement.deleteUser', 'Delete User')}</TooltipContent>
+                                                                </Tooltip>
+                                                            </TooltipProvider>
+                                                        )}
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -201,6 +264,17 @@ export default function UserManagementPage() {
             </div>
 
             {/* Dialogs */}
+            <CreateUserDialog
+                open={isCreateOpen}
+                onClose={() => setIsCreateOpen(false)}
+            />
+
+            <EditUserDialog
+                open={isEditUserOpen}
+                onClose={() => setIsEditUserOpen(false)}
+                user={selectedUser}
+            />
+
             <IpHistoryDialog
                 open={isIpHistoryOpen}
                 onClose={() => setIsIpHistoryOpen(false)}

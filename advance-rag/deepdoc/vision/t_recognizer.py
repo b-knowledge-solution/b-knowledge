@@ -1,3 +1,15 @@
+"""CLI tool for running layout recognition or table structure recognition on images.
+
+Supports two modes:
+- 'layout': Detects document layout regions (text, title, table, figure, etc.)
+  and saves annotated images with bounding boxes.
+- 'tsr': Detects table structure (rows, columns, headers, spans), runs OCR on
+  the table region, constructs an HTML table, and saves both the annotated image
+  and the HTML output.
+
+Usage:
+    python t_recognizer.py --inputs <path> --output_dir <dir> --mode layout --threshold 0.5
+"""
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -34,6 +46,11 @@ import numpy as np
 
 
 def main(args):
+    """Run layout or table structure recognition on input images.
+
+    Args:
+        args: Parsed CLI arguments with 'inputs', 'output_dir', 'mode', and 'threshold'.
+    """
     images, outputs = init_in_out(args)
     if args.mode.lower() == "layout":
         detr = LayoutRecognizer("layout")
@@ -59,6 +76,19 @@ def main(args):
 
 
 def get_table_html(img, tb_cpns, ocr):
+    """Construct an HTML table from table structure components and OCR results.
+
+    Runs OCR on the table image, maps text boxes to detected rows/columns/headers/spans,
+    and builds a styled HTML table using TableStructureRecognizer.construct_table.
+
+    Args:
+        img: The table region image (PIL Image or numpy array).
+        tb_cpns: List of detected table structure components from TSR.
+        ocr: An OCR instance for text extraction.
+
+    Returns:
+        A complete HTML document string containing the styled table.
+    """
     boxes = ocr(np.array(img))
     boxes = LayoutRecognizer.sort_Y_firstly(
         [{"x0": b[0][0], "x1": b[1][0],

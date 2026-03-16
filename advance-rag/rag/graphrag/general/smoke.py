@@ -13,6 +13,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Smoke test script for the general-mode GraphRAG pipeline.
+
+This script provides a CLI-based smoke test for the general-mode graph extraction
+pipeline. It loads a document's chunks from the document store, runs the full
+GraphRAG pipeline (extraction, merging, entity resolution, and community report
+generation), and prints the resulting graph and community reports.
+
+Usage:
+    python -m rag.graphrag.general.smoke -t <tenant_id> -d <doc_id>
+"""
 
 import argparse
 import asyncio
@@ -33,10 +43,23 @@ settings.init_settings()
 
 
 def callback(prog=None, msg="Processing..."):
+    """Simple progress callback that logs messages.
+
+    Args:
+        prog: Optional progress value (unused).
+        msg: Status message to log.
+    """
     logging.info(msg)
 
 
 async def main():
+    """Run the general-mode GraphRAG smoke test.
+
+    Parses command-line arguments for tenant_id and doc_id, loads the document
+    and its chunks, initializes LLM and embedding models, then runs the full
+    GraphRAG pipeline: graph extraction, entity resolution, and community
+    report generation.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-t",
@@ -60,6 +83,7 @@ async def main():
         raise LookupError("Document not found.")
     kb_id = doc.kb_id
 
+    # Load document chunks from the document store
     chunks = [
         d["content_with_weight"]
         for d in settings.retriever.chunk_list(
@@ -71,6 +95,7 @@ async def main():
         )
     ]
 
+    # Initialize LLM and embedding model bundles
     llm_config = get_tenant_default_model_by_type(args.tenant_id, LLMType.CHAT)
     llm_bdl = LLMBundle(args.tenant_id, llm_config)
     _, kb = KnowledgebaseService.get_by_id(kb_id)
@@ -80,6 +105,7 @@ async def main():
         embd_model_config = get_model_config_by_type_and_name(args.tenant_id, LLMType.EMBEDDING, kb.embd_id)
     embed_bdl = LLMBundle(args.tenant_id, embd_model_config)
 
+    # Run graph extraction and merging
     graph, doc_ids = await update_graph(
         GraphExtractor,
         args.tenant_id,
@@ -93,9 +119,11 @@ async def main():
     )
     print(json.dumps(nx.node_link_data(graph), ensure_ascii=False, indent=2))
 
+    # Run entity resolution
     await with_resolution(
         args.tenant_id, kb_id, args.doc_id, llm_bdl, embed_bdl, callback
     )
+    # Run community detection and report generation
     community_structure, community_reports = await with_community(
         args.tenant_id, kb_id, args.doc_id, llm_bdl, embed_bdl, callback
     )

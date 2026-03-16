@@ -101,7 +101,8 @@ function SearchFilters({
     (filters.file_types?.length || 0) +
     (filters.search_method ? 1 : 0) +
     (filters.similarity_threshold !== undefined ? 1 : 0) +
-    (filters.vector_similarity_weight !== undefined ? 1 : 0)
+    (filters.vector_similarity_weight !== undefined ? 1 : 0) +
+    (filters.top_k !== undefined ? 1 : 0)
 
   if (!visible) {
     return (
@@ -226,33 +227,63 @@ function SearchFilters({
         />
       </div>
 
-      {/* Vector similarity weight */}
+      {/* Top K results */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label className="text-xs font-medium">{t('search.vectorWeight')}</Label>
+          <Label className="text-xs font-medium">{t('search.topK')}</Label>
           <span className="text-xs text-muted-foreground">
-            {((filters.vector_similarity_weight ?? 0.5) * 100).toFixed(0)}%
+            {filters.top_k ?? 10}
           </span>
         </div>
         <input
           type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value={filters.vector_similarity_weight ?? 0.5}
+          min="1"
+          max="100"
+          step="1"
+          value={filters.top_k ?? 10}
           onChange={(e) =>
             onFiltersChange({
               ...filters,
-              vector_similarity_weight: parseFloat(e.target.value),
+              top_k: parseInt(e.target.value, 10),
             })
           }
           className="w-full accent-primary"
         />
         <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-          <span>{t('search.keyword')}</span>
-          <span>{t('search.semantic')}</span>
+          <span>1</span>
+          <span>100</span>
         </div>
       </div>
+
+      {/* Vector similarity weight (only shown for hybrid method) */}
+      {(!filters.search_method || filters.search_method === 'hybrid') && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-medium">{t('search.vectorWeight')}</Label>
+            <span className="text-xs text-muted-foreground">
+              {((filters.vector_similarity_weight ?? 0.5) * 100).toFixed(0)}%
+            </span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={filters.vector_similarity_weight ?? 0.5}
+            onChange={(e) =>
+              onFiltersChange({
+                ...filters,
+                vector_similarity_weight: parseFloat(e.target.value),
+              })
+            }
+            className="w-full accent-primary"
+          />
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+            <span>{t('search.keyword')}</span>
+            <span>{t('search.semantic')}</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

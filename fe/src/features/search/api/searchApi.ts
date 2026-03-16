@@ -10,6 +10,7 @@ import type {
   SearchApp,
   SearchAppAccessEntry,
   CreateSearchAppPayload,
+  RetrievalTestResponse,
 } from '../types/search.types'
 
 /** Base URL for RAG search endpoints */
@@ -107,11 +108,25 @@ export const searchApi = {
   // ============================================================================
 
   /**
-   * List all search apps.
-   * @returns Array of search apps
+   * List search apps with server-side pagination, search, and sorting.
+   * @param params - Optional pagination and filter parameters
+   * @returns Paginated response with data array and total count
    */
-  listSearchApps: async (): Promise<SearchApp[]> => {
-    return api.get<SearchApp[]>('/api/search/apps')
+  listSearchApps: async (params?: {
+    page?: number | undefined
+    page_size?: number | undefined
+    search?: string | undefined
+    sort_by?: 'created_at' | 'name' | undefined
+    sort_order?: 'asc' | 'desc' | undefined
+  }): Promise<{ data: SearchApp[]; total: number }> => {
+    const searchParams = new URLSearchParams()
+    if (params?.page) searchParams.set('page', String(params.page))
+    if (params?.page_size) searchParams.set('page_size', String(params.page_size))
+    if (params?.search) searchParams.set('search', params.search)
+    if (params?.sort_by) searchParams.set('sort_by', params.sort_by)
+    if (params?.sort_order) searchParams.set('sort_order', params.sort_order)
+    const qs = searchParams.toString()
+    return api.get<{ data: SearchApp[]; total: number }>(`/api/search/apps${qs ? `?${qs}` : ''}`)
   },
 
   /**
@@ -177,6 +192,36 @@ export const searchApi = {
     return api.post<{ mindmap: any }>(
       `/api/search/apps/${searchAppId}/mindmap`,
       { query },
+    )
+  },
+
+  // ============================================================================
+  // Retrieval Test
+  // ============================================================================
+
+  /**
+   * Run a retrieval test against a search app (dry-run, no LLM summary).
+   * @param appId - Search application ID
+   * @param query - Test query text
+   * @param options - Optional retrieval parameters
+   * @returns Paginated retrieval test results
+   */
+  retrievalTest: async (
+    appId: string,
+    query: string,
+    options?: {
+      top_k?: number
+      similarity_threshold?: number
+      vector_similarity_weight?: number
+      search_method?: string
+      doc_ids?: string[]
+      page?: number
+      page_size?: number
+    },
+  ): Promise<RetrievalTestResponse> => {
+    return api.post<RetrievalTestResponse>(
+      `/api/search/apps/${appId}/retrieval-test`,
+      { query, ...options },
     )
   },
 }

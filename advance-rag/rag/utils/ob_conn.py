@@ -13,6 +13,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""OceanBase (OB) vector database connector for CRUD and search operations.
+
+Extends OBConnectionBase with concrete implementations for search, insert,
+update, delete, and field management using OceanBase's SQL-based vector
+search capabilities. Uses SQLAlchemy column definitions for schema management
+and supports full-text search, vector similarity search, metadata filtering,
+and rank-feature boosting.
+
+OceanBase stores data in MySQL-compatible tables with JSON and ARRAY column
+types, requiring special handling for serialization/deserialization.
+"""
 import json
 import logging
 import re

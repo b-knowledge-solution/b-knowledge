@@ -12,12 +12,30 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""Pydantic schema for validating Extractor component upstream inputs.
+
+Defines the expected shape of data passed from upstream pipeline components
+(e.g., Parser, Splitter) to the Extractor. Supports multiple output formats
+including JSON, markdown, text, HTML, and chunks.
+"""
+
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class ExtractorFromUpstream(BaseModel):
+    """Schema for data flowing into the Extractor from upstream components.
+
+    Validates and normalizes the upstream output format, ensuring
+    the Extractor receives data in a consistent structure.
+
+    Attributes:
+        name: Original filename of the document.
+        file: File metadata dict (for upload-based processing).
+        chunks: List of chunk dicts with text and metadata.
+        output_format: Format of the upstream output data.
+    """
     created_time: float | None = Field(default=None, alias="_created_time")
     elapsed_time: float | None = Field(default=None, alias="_elapsed_time")
 

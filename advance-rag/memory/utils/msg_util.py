@@ -13,19 +13,34 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+
+"""Utility for parsing JSON from LLM response strings.
+
+This module provides a helper to safely extract JSON objects from LLM outputs,
+which may be wrapped in markdown code fences (e.g. ```json ... ```). It is
+used during memory extraction to parse structured data returned by language models.
+"""
+
 import json
 
 
 def get_json_result_from_llm_response(response_str: str) -> dict:
-    """
-    Parse the LLM response string to extract JSON content.
-    The function looks for the first and last curly braces to identify the JSON part.
-    If parsing fails, it returns an empty dictionary.
+    """Parse an LLM response string to extract a JSON object.
 
-    :param response_str: The response string from the LLM.
-    :return: A dictionary parsed from the JSON content in the response.
+    Strips optional markdown code fence delimiters (```json / ```) and
+    attempts to parse the remaining content as JSON. Returns an empty
+    dictionary on parse failure rather than raising.
+
+    Args:
+        response_str: The raw response string from an LLM, potentially
+            wrapped in markdown code fences.
+
+    Returns:
+        A dictionary parsed from the JSON content, or an empty dict
+        if parsing fails.
     """
     try:
+        # Strip markdown code fence wrappers if present
         clean_str = response_str.strip()
         if clean_str.startswith('```json'):
             clean_str = clean_str[7:]  # Remove the starting ```json

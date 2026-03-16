@@ -1,12 +1,13 @@
 /**
  * @fileoverview Admin page for managing search app configurations.
- * Provides CRUD operations, search filtering, and RBAC access control per search app.
+ * Provides CRUD operations, server-side search/pagination, and RBAC access control per search app.
  * @module features/ai/pages/SearchAppManagementPage
  */
 
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/queryKeys'
 import { Plus, Search, Pencil, Trash2, Shield, Globe, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -20,13 +21,18 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Pagination } from '@/components/ui/pagination'
 import { HeaderActions } from '@/components/HeaderActions'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { globalMessage } from '@/app/App'
 import { searchApi } from '../api/searchApi'
+import { useSearchApps } from '../api/searchQueries'
 import SearchAppConfig from '../components/SearchAppConfig'
 import SearchAppAccessDialog from '../components/SearchAppAccessDialog'
 import type { SearchApp, CreateSearchAppPayload } from '../types/search.types'
+
+/** Default number of items per page */
+const PAGE_SIZE = 20
 
 // ============================================================================
 // Component
@@ -34,28 +40,63 @@ import type { SearchApp, CreateSearchAppPayload } from '../types/search.types'
 
 /**
  * @description Admin management page for search apps.
- * Lists all search apps in a table with search, CRUD actions, and access control.
+ * Lists all search apps in a table with server-side search, pagination, CRUD actions, and access control.
  * @returns {JSX.Element} The rendered page
  */
 export default function SearchAppManagementPage() {
   const { t } = useTranslation()
   const confirm = useConfirm()
   const queryClient = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
 
-  // Search apps via TanStack Query (deduplicated, cached)
-  const { data: apps = [], isLoading: loading } = useQuery({
-    queryKey: queryKeys.search.apps(),
-    queryFn: () => searchApi.listSearchApps(),
+  // Read pagination and search state from URL
+  const page = Number(searchParams.get('page')) || 1
+  const searchTerm = searchParams.get('search') || ''
+
+  // Fetch search apps with server-side pagination
+  const { apps, total, isLoading: loading } = useSearchApps({
+    page,
+    page_size: PAGE_SIZE,
+    search: searchTerm || undefined,
   })
+
+  const totalPages = Math.ceil(total / PAGE_SIZE)
+
+  /**
+   * Update the search term in URL state, resetting to page 1.
+   * @param value - New search term
+   */
+  const handleSearchChange = (value: string) => {
+    const next = new URLSearchParams(searchParams)
+    if (value) {
+      next.set('search', value)
+    } else {
+      next.delete('search')
+    }
+    // Reset to first page when search changes
+    next.delete('page')
+    setSearchParams(next, { replace: true })
+  }
+
+  /**
+   * Update the current page in URL state.
+   * @param newPage - Target page number
+   */
+  const handlePageChange = (newPage: number) => {
+    const next = new URLSearchParams(searchParams)
+    if (newPage > 1) {
+      next.set('page', String(newPage))
+    } else {
+      next.delete('page')
+    }
+    setSearchParams(next, { replace: true })
+  }
 
   /**
    * Invalidate search apps cache to trigger refetch.
    */
   const fetchApps = () =>
-    queryClient.invalidateQueries({ queryKey: queryKeys.search.apps() })
-
-  // Search filter state
-  const [searchTerm, setSearchTerm] = useState('')
+    queryClient.invalidateQueries({ queryKey: queryKeys.search.all })
 
   // Config dialog state
   const [isConfigOpen, setIsConfigOpen] = useState(false)
@@ -64,12 +105,6 @@ export default function SearchAppManagementPage() {
   // Access dialog state
   const [isAccessOpen, setIsAccessOpen] = useState(false)
   const [accessApp, setAccessApp] = useState<SearchApp | null>(null)
-
-  // Filter apps by search term
-  const filteredApps = apps.filter((a) =>
-    a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.description?.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
 
   /**
    * Open the config dialog in create mode.
@@ -148,10 +183,16 @@ export default function SearchAppManagementPage() {
           <Input
             placeholder={t('searchAdmin.searchPlaceholder')}
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-10 h-10 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
           />
         </div>
+        {/* Total count indicator */}
+        {!loading && total > 0 && (
+          <div className="flex items-center text-sm text-slate-500 dark:text-slate-400 shrink-0">
+            {t('common.totalItems', { count: total })}
+          </div>
+        )}
       </div>
 
       {/* Search apps table */}
@@ -159,7 +200,7 @@ export default function SearchAppManagementPage() {
         <div className="flex-1 flex justify-center items-center">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
         </div>
-      ) : filteredApps.length === 0 ? (
+      ) : apps.length === 0 ? (
         <div className="flex-1 flex justify-center items-center text-slate-500 dark:text-slate-400">
           {t('searchAdmin.noApps')}
         </div>
@@ -177,7 +218,7 @@ export default function SearchAppManagementPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredApps.map((app) => (
+              {apps.map((app) => (
                 <TableRow key={app.id}>
                   {/* Name */}
                   <TableCell className="font-medium text-slate-900 dark:text-white">
@@ -253,6 +294,17 @@ export default function SearchAppManagementPage() {
               ))}
             </TableBody>
           </Table>
+        </div>
+      )}
+
+      {/* Pagination controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-4 shrink-0">
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
         </div>
       )}
 

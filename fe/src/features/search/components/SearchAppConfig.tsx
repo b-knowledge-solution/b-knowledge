@@ -1,6 +1,7 @@
 /**
  * @fileoverview Dialog configuration panel for search app settings.
- * Allows selecting datasets and tuning search parameters.
+ * Allows selecting datasets, tuning search parameters, configuring LLM,
+ * cross-language search, feature toggles, and running retrieval tests.
  * @module features/ai/components/SearchAppConfig
  */
 
@@ -11,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Separator } from '@/components/ui/separator'
 import {
   Dialog,
   DialogContent,
@@ -19,6 +21,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { searchApi } from '../api/searchApi'
+import { SearchCrossLanguage } from './SearchCrossLanguage'
+import { SearchRetrievalTest } from './SearchRetrievalTest'
 import type { SearchApp, CreateSearchAppPayload } from '../types/search.types'
 
 // ============================================================================
@@ -42,7 +46,8 @@ interface SearchAppConfigProps {
 
 /**
  * @description Configuration dialog for creating or editing a search app.
- * Includes dataset selection, public toggle, and search parameter sliders.
+ * Includes dataset selection, public toggle, search parameter sliders,
+ * rerank model, cross-language, feature toggles, LLM config, and retrieval test.
  *
  * @param {SearchAppConfigProps} props - Component properties
  * @returns {JSX.Element} The rendered configuration dialog
@@ -58,7 +63,7 @@ function SearchAppConfig({
   // Available datasets for selection
   const [datasets, setDatasets] = useState<{ id: string; name: string }[]>([])
 
-  // Form state
+  // ---- Basic form state ----
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([])
@@ -67,6 +72,26 @@ function SearchAppConfig({
   const [topK, setTopK] = useState(5)
   const [searchMethod, setSearchMethod] = useState<'hybrid' | 'semantic' | 'fulltext'>('hybrid')
   const [vectorWeight, setVectorWeight] = useState(0.7)
+
+  // ---- Rerank model ----
+  const [rerankId, setRerankId] = useState('')
+
+  // ---- Cross-language ----
+  const [crossLanguages, setCrossLanguages] = useState('')
+
+  // ---- Feature toggles ----
+  const [keywordEnabled, setKeywordEnabled] = useState(false)
+  const [useKg, setUseKg] = useState(false)
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false)
+  const [tavilyApiKey, setTavilyApiKey] = useState('')
+  const [enableRelatedQuestions, setEnableRelatedQuestions] = useState(true)
+  const [enableMindmap, setEnableMindmap] = useState(true)
+  const [highlightEnabled, setHighlightEnabled] = useState(true)
+
+  // ---- LLM config ----
+  const [llmId, setLlmId] = useState('')
+  const [temperature, setTemperature] = useState(0.1)
+  const [enableSummary, setEnableSummary] = useState(true)
 
   // Fetch available datasets on open
   useEffect(() => {
@@ -78,14 +103,27 @@ function SearchAppConfig({
   // Populate form when editing an existing search app
   useEffect(() => {
     if (app) {
+      const cfg = app.search_config
       setName(app.name)
       setDescription(app.description || '')
       setSelectedDatasets(app.dataset_ids)
       setIsPublic(app.is_public ?? false)
-      setSimilarityThreshold(app.search_config?.similarity_threshold ?? 0.2)
-      setTopK(app.search_config?.top_k ?? 5)
-      setSearchMethod(app.search_config?.search_method ?? 'hybrid')
-      setVectorWeight(app.search_config?.vector_similarity_weight ?? 0.7)
+      setSimilarityThreshold(cfg?.similarity_threshold ?? 0.2)
+      setTopK(cfg?.top_k ?? 5)
+      setSearchMethod(cfg?.search_method ?? 'hybrid')
+      setVectorWeight(cfg?.vector_similarity_weight ?? 0.7)
+      setRerankId(cfg?.rerank_id ?? '')
+      setCrossLanguages(cfg?.cross_languages ?? '')
+      setKeywordEnabled(cfg?.keyword ?? false)
+      setUseKg(cfg?.use_kg ?? false)
+      setWebSearchEnabled(cfg?.web_search ?? false)
+      setTavilyApiKey(cfg?.tavily_api_key ?? '')
+      setEnableRelatedQuestions(cfg?.enable_related_questions ?? true)
+      setEnableMindmap(cfg?.enable_mindmap ?? true)
+      setHighlightEnabled(cfg?.highlight ?? true)
+      setLlmId(cfg?.llm_id ?? '')
+      setTemperature(cfg?.llm_setting?.temperature ?? 0.1)
+      setEnableSummary(cfg?.enable_summary ?? true)
     } else {
       // Reset for new search app
       setName('')
@@ -96,6 +134,18 @@ function SearchAppConfig({
       setTopK(5)
       setSearchMethod('hybrid')
       setVectorWeight(0.7)
+      setRerankId('')
+      setCrossLanguages('')
+      setKeywordEnabled(false)
+      setUseKg(false)
+      setWebSearchEnabled(false)
+      setTavilyApiKey('')
+      setEnableRelatedQuestions(true)
+      setEnableMindmap(true)
+      setHighlightEnabled(true)
+      setLlmId('')
+      setTemperature(0.1)
+      setEnableSummary(true)
     }
   }, [app, open])
 
@@ -126,6 +176,20 @@ function SearchAppConfig({
         top_k: topK,
         search_method: searchMethod,
         vector_similarity_weight: vectorWeight,
+        rerank_id: rerankId.trim() || undefined,
+        cross_languages: crossLanguages || undefined,
+        keyword: keywordEnabled,
+        highlight: highlightEnabled,
+        use_kg: useKg,
+        web_search: webSearchEnabled,
+        tavily_api_key: webSearchEnabled ? tavilyApiKey.trim() || undefined : undefined,
+        enable_summary: enableSummary,
+        enable_related_questions: enableRelatedQuestions,
+        enable_mindmap: enableMindmap,
+        llm_id: llmId.trim() || undefined,
+        llm_setting: {
+          temperature,
+        },
       },
     })
 
@@ -134,7 +198,7 @@ function SearchAppConfig({
 
   return (
     <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) onClose() }}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings2 className="h-5 w-5" />
@@ -143,6 +207,10 @@ function SearchAppConfig({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* ================================================================
+              Basic Settings
+              ================================================================ */}
+
           {/* Name */}
           <div className="space-y-1.5">
             <Label>{t('common.name')} *</Label>
@@ -200,6 +268,13 @@ function SearchAppConfig({
               )}
             </div>
           </div>
+
+          {/* ================================================================
+              Search Parameters
+              ================================================================ */}
+
+          <Separator />
+          <h4 className="text-sm font-medium">{t('searchAdmin.searchParams')}</h4>
 
           {/* Search method select */}
           <div className="space-y-1.5">
@@ -265,6 +340,169 @@ function SearchAppConfig({
               className="w-full accent-primary"
             />
           </div>
+
+          {/* Rerank model */}
+          <div className="space-y-1.5">
+            <Label>{t('searchAdmin.rerankModel')}</Label>
+            <Input
+              value={rerankId}
+              onChange={(e) => setRerankId(e.target.value)}
+              placeholder={t('searchAdmin.rerankModelPlaceholder')}
+            />
+          </div>
+
+          {/* ================================================================
+              Cross-Language Search
+              ================================================================ */}
+
+          <Separator />
+          <SearchCrossLanguage value={crossLanguages} onChange={setCrossLanguages} />
+
+          {/* ================================================================
+              LLM Configuration
+              ================================================================ */}
+
+          <Separator />
+          <h4 className="text-sm font-medium">{t('searchAdmin.llmConfig')}</h4>
+
+          {/* Enable AI Summary */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>{t('searchAdmin.enableSummary')}</Label>
+              <p className="text-xs text-muted-foreground">
+                {t('searchAdmin.enableSummaryDesc')}
+              </p>
+            </div>
+            <Switch checked={enableSummary} onCheckedChange={setEnableSummary} />
+          </div>
+
+          {/* LLM model input (only relevant when summary is enabled) */}
+          {enableSummary && (
+            <>
+              <div className="space-y-1.5">
+                <Label>{t('searchAdmin.llmModel')}</Label>
+                <Input
+                  value={llmId}
+                  onChange={(e) => setLlmId(e.target.value)}
+                  placeholder={t('searchAdmin.llmModelPlaceholder')}
+                />
+              </div>
+
+              {/* Temperature slider */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label>{t('searchAdmin.temperature')}</Label>
+                  <span className="text-xs text-muted-foreground">{temperature.toFixed(1)}</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.1"
+                  value={temperature}
+                  onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                  className="w-full accent-primary"
+                />
+              </div>
+            </>
+          )}
+
+          {/* ================================================================
+              Feature Toggles
+              ================================================================ */}
+
+          <Separator />
+          <h4 className="text-sm font-medium">{t('searchAdmin.featureToggles')}</h4>
+
+          {/* Keyword extraction */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>{t('searchAdmin.keywordExtraction')}</Label>
+              <p className="text-xs text-muted-foreground">
+                {t('searchAdmin.keywordExtractionDesc')}
+              </p>
+            </div>
+            <Switch checked={keywordEnabled} onCheckedChange={setKeywordEnabled} />
+          </div>
+
+          {/* Knowledge graph */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>{t('searchAdmin.knowledgeGraph')}</Label>
+              <p className="text-xs text-muted-foreground">
+                {t('searchAdmin.knowledgeGraphDesc')}
+              </p>
+            </div>
+            <Switch checked={useKg} onCheckedChange={setUseKg} />
+          </div>
+
+          {/* Web search */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>{t('searchAdmin.webSearch')}</Label>
+              <p className="text-xs text-muted-foreground">
+                {t('searchAdmin.webSearchDesc')}
+              </p>
+            </div>
+            <Switch checked={webSearchEnabled} onCheckedChange={setWebSearchEnabled} />
+          </div>
+
+          {/* Tavily API key (shown only when web search is enabled) */}
+          {webSearchEnabled && (
+            <div className="space-y-1.5 pl-4 border-l-2 border-primary/20">
+              <Label>{t('searchAdmin.tavilyApiKey')}</Label>
+              <Input
+                type="password"
+                value={tavilyApiKey}
+                onChange={(e) => setTavilyApiKey(e.target.value)}
+                placeholder={t('searchAdmin.tavilyApiKeyPlaceholder')}
+              />
+            </div>
+          )}
+
+          {/* Related questions */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>{t('searchAdmin.relatedQuestions')}</Label>
+              <p className="text-xs text-muted-foreground">
+                {t('searchAdmin.relatedQuestionsDesc')}
+              </p>
+            </div>
+            <Switch checked={enableRelatedQuestions} onCheckedChange={setEnableRelatedQuestions} />
+          </div>
+
+          {/* Mind map */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>{t('searchAdmin.mindMap')}</Label>
+              <p className="text-xs text-muted-foreground">
+                {t('searchAdmin.mindMapDesc')}
+              </p>
+            </div>
+            <Switch checked={enableMindmap} onCheckedChange={setEnableMindmap} />
+          </div>
+
+          {/* Highlight terms */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>{t('searchAdmin.highlight')}</Label>
+              <p className="text-xs text-muted-foreground">
+                {t('searchAdmin.highlightDesc')}
+              </p>
+            </div>
+            <Switch checked={highlightEnabled} onCheckedChange={setHighlightEnabled} />
+          </div>
+
+          {/* ================================================================
+              Retrieval Test (only for existing apps)
+              ================================================================ */}
+
+          {app && (
+            <>
+              <Separator />
+              <SearchRetrievalTest appId={app.id} />
+            </>
+          )}
         </div>
 
         <DialogFooter>

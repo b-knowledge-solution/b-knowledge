@@ -87,7 +87,8 @@ function LoginPage() {
         const response = await fetch(`${API_BASE_URL}/api/auth/config`);
         if (response.ok) {
           const data = await response.json();
-          setEnableRootLogin(data.enableRootLogin);
+          // Support both legacy enableRootLogin and new enableLocalLogin flag
+          setEnableRootLogin(data.enableLocalLogin || data.enableRootLogin);
         }
       } catch (err) {
         console.error('Failed to fetch auth config:', err);
@@ -210,7 +211,7 @@ function LoginPage() {
               onClick={() => setIsRootLoginOpen(true)}
               className="w-full btn btn-secondary py-3 text-base"
             >
-              {t('login.rootLogin')}
+              {t('login.localAccountLogin', t('login.rootLogin'))}
             </button>
           )}
         </div>
@@ -223,7 +224,7 @@ function LoginPage() {
       <Dialog open={isRootLoginOpen} onOpenChange={(v: boolean) => { if (!v) setIsRootLoginOpen(false) }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('login.rootLoginTitle')}</DialogTitle>
+            <DialogTitle>{t('login.localAccountLoginTitle', t('login.rootLoginTitle'))}</DialogTitle>
           </DialogHeader>
         <div className="space-y-4 py-4">
           {rootLoginError && (
@@ -241,7 +242,7 @@ function LoginPage() {
               onChange={(e) => setRootUsername(e.target.value)}
               onKeyDown={handleKeyDown}
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="admin@localhost"
+              placeholder={t('login.usernamePlaceholder')}
             />
           </div>
           <div>
@@ -254,7 +255,7 @@ function LoginPage() {
               onChange={(e) => setRootPassword(e.target.value)}
               onKeyDown={handleKeyDown}
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="••••••••"
+              placeholder={t('login.passwordPlaceholder')}
             />
           </div>
         </div>

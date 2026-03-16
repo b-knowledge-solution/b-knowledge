@@ -13,6 +13,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+"""Term weight computation for RAG query construction.
+
+Computes TF-IDF-like term weights using corpus frequency data, named
+entity recognition scores, and part-of-speech tags. The Dealer class
+provides tokenization, token merging, and weight normalization used
+by the FulltextQueryer to build boosted search queries.
+"""
 
 import logging
 import math
@@ -25,7 +32,20 @@ from common.file_utils import get_project_base_directory
 
 
 class Dealer:
+    """Term weight calculator using TF-IDF, NER, and POS features.
+
+    Loads corpus frequency data and named entity dictionaries at init,
+    then provides methods to tokenize text, merge short tokens, and
+    compute normalized term weights for query construction.
+
+    Attributes:
+        stop_words: Set of Chinese stop words to filter during tokenization.
+        ne: Named entity dictionary mapping terms to entity types.
+        df: Document frequency dictionary mapping terms to counts.
+    """
+
     def __init__(self):
+        """Initialize the term weight dealer with stop words, NER dict, and frequency data."""
         self.stop_words = set(["请问",
                                "您",
                                "你",
@@ -59,6 +79,15 @@ class Dealer:
                                "相关"])
 
         def load_dict(fnm):
+            """Load a tab-separated frequency dictionary from file.
+
+            Args:
+                fnm: Path to the dictionary file (term\\tcount format).
+
+            Returns:
+                Dict mapping terms to integer counts, or a set of terms
+                if all counts are zero.
+            """
             res = {}
             f = open(fnm, "r")
             while True:
@@ -90,6 +119,19 @@ class Dealer:
             logging.warning("Load term.freq FAIL!")
 
     def pretoken(self, txt, num=False, stpwd=True):
+        """Pre-tokenize text by splitting and filtering tokens.
+
+        Tokenizes text using the RAG tokenizer, then filters out stop
+        words and punctuation-only tokens.
+
+        Args:
+            txt: Raw text to tokenize.
+            num: If False, filter out single-digit numeric tokens.
+            stpwd: If True, filter out stop words.
+
+        Returns:
+            List of cleaned token strings.
+        """
         patt = [
             r"[~—\t @#%!<>,\.\?\":;'\{\}\[\]_=\(\)\|，。？》•●○↓《；‘’：“”【¥ 】…￥！、·（）×`&\\/「」\\]"
         ]
@@ -114,6 +156,18 @@ class Dealer:
         return res
 
     def token_merge(self, tks):
+        """Merge adjacent short tokens into compound tokens.
+
+        Combines consecutive single-character or very short tokens
+        (1-2 chars) into longer compound tokens to improve query
+        precision. Limits merged sequences to 4 tokens max.
+
+        Args:
+            tks: List of token strings.
+
+        Returns:
+            List of tokens with short adjacent tokens merged.
+        """
         def one_term(t):
             return len(t) == 1 or re.match(r"[0-9a-z]{1,2}$", t)
 
@@ -143,6 +197,15 @@ class Dealer:
         return [t for t in res if t]
 
     def ner(self, t):
+        """Look up the named entity type for a token.
+
+        Args:
+            t: Token string to look up.
+
+        Returns:
+            Entity type string (e.g., 'corp', 'loca', 'func') or
+            empty string if not found or NER dict is unavailable.
+        """
         if not self.ne:
             return ""
         res = self.ne.get(t, "")
@@ -150,6 +213,18 @@ class Dealer:
             return res
 
     def split(self, txt):
+        """Split text into tokens, merging adjacent English tokens.
+
+        Tokenizes whitespace-separated text and merges consecutive
+        English-only tokens (except 'func' NER types) into single
+        compound tokens.
+
+        Args:
+            txt: Text string to split.
+
+        Returns:
+            List of token strings.
+        """
         tks = []
         for t in re.sub(r"[ \t]+", " ", txt).split():
             if tks and re.match(r".*[a-zA-Z]$", tks[-1]) and \
@@ -161,6 +236,24 @@ class Dealer:
         return tks
 
     def weights(self, tks, preprocess=True):
+        """Compute normalized term weights using IDF, NER, and POS features.
+
+        Calculates a composite weight for each token by combining:
+        - Inverse document frequency (IDF) from corpus term frequency
+        - Inverse document frequency from document frequency counts
+        - Named entity recognition multiplier (e.g., 3x for locations)
+        - Part-of-speech tag multiplier (e.g., 3x for proper nouns)
+
+        Weights are normalized to sum to 1.0.
+
+        Args:
+            tks: List of token strings.
+            preprocess: If True, apply pretokenization and token merging
+                before computing weights. If False, use tokens as-is.
+
+        Returns:
+            List of (token, weight) tuples with weights normalized to sum to 1.0.
+        """
         num_pattern = re.compile(r"[0-9,.]{2,}$")
         short_letter_pattern = re.compile(r"[a-z]{1,2}$")
         num_space_pattern = re.compile(r"[0-9. -]{2,}$")

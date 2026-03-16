@@ -25,12 +25,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { HeaderActions } from '@/components/HeaderActions'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { DefaultModelsPanel } from '../components/DefaultModelsPanel'
@@ -59,42 +53,9 @@ const TYPE_FILTERS = ['all', ...MODEL_TYPES] as const
 const MODEL_TYPE_BADGE_CLASSES: Record<string, string> = {
   chat: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
   embedding: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  image2text: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   speech2text: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
   rerank: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
   tts: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
-}
-
-/** Short display labels for model types in filter tabs and badges */
-const MODEL_TYPE_LABELS: Record<string, string> = {
-  chat: 'LLM',
-  embedding: 'Embedding',
-  image2text: 'VLM',
-  speech2text: 'ASR',
-  rerank: 'Rerank',
-  tts: 'TTS',
-}
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-/**
- * Check whether a chat provider has a matching image2text sibling
- * (same factory_name + model_name).
- *
- * @param provider - The chat provider to check
- * @param allProviders - Full list of providers
- * @returns True if a vision sibling exists
- */
-function hasVisionSibling(provider: ModelProvider, allProviders: ModelProvider[]): boolean {
-  if (provider.model_type !== 'chat') return false
-  return allProviders.some(
-    (p) =>
-      p.model_type === 'image2text' &&
-      p.factory_name === provider.factory_name &&
-      p.model_name === provider.model_name
-  )
 }
 
 // ============================================================================
@@ -217,7 +178,7 @@ export function LLMProviderPage() {
    */
   const getFilterLabel = (filter: string): string => {
     if (filter === 'all') return t('llmProviders.allTypes')
-    return MODEL_TYPE_LABELS[filter] ?? filter
+    return t(`llmProviders.modelTypes.${filter}`)
   }
 
   // -- Render ----------------------------------------------------------------
@@ -262,7 +223,6 @@ export function LLMProviderPage() {
                 <TableHead>{t('llmProviders.factoryName')}</TableHead>
                 <TableHead>{t('llmProviders.modelType')}</TableHead>
                 <TableHead>{t('llmProviders.modelName')}</TableHead>
-                <TableHead>{t('llmProviders.vision')}</TableHead>
                 <TableHead>{t('llmProviders.apiBase')}</TableHead>
                 <TableHead>{t('llmProviders.maxTokens')}</TableHead>
                 <TableHead className="text-right">{t('common.actions')}</TableHead>
@@ -271,13 +231,13 @@ export function LLMProviderPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
                     {t('common.loading')}
                   </TableCell>
                 </TableRow>
               ) : pageData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
                     {t('common.noData')}
                   </TableCell>
                 </TableRow>
@@ -290,29 +250,22 @@ export function LLMProviderPage() {
                         {p.factory_name}
                       </Badge>
                     </TableCell>
-                    {/* Color-coded model type badge */}
+                    {/* Color-coded model type badge + vision tag */}
                     <TableCell>
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${MODEL_TYPE_BADGE_CLASSES[p.model_type] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}>
-                        {MODEL_TYPE_LABELS[p.model_type] ?? p.model_type}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${MODEL_TYPE_BADGE_CLASSES[p.model_type] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}>
+                          {t(`llmProviders.modelTypes.${p.model_type}`)}
+                        </span>
+                        {p.vision && (
+                          <span className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                            <Eye size={10} />
+                            {t('llmProviders.modelTypes.vision')}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     {/* Model name */}
                     <TableCell>{p.model_name}</TableCell>
-                    {/* Vision indicator — only shown for chat providers with an image2text sibling */}
-                    <TableCell>
-                      {p.model_type === 'chat' && hasVisionSibling(p, providers) && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Eye size={16} className="text-purple-500 fill-purple-200 dark:fill-purple-800" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {t('llmProviders.supportsVision')}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                    </TableCell>
                     {/* API base URL */}
                     <TableCell className="max-w-[200px] truncate text-gray-500 dark:text-gray-400">
                       {p.api_base || '\u2014'}
@@ -375,7 +328,6 @@ export function LLMProviderPage() {
         onSubmit={handleSubmit}
         provider={editingProvider}
         presets={presets}
-        allProviders={providers}
       />
     </div>
   )

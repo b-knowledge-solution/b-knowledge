@@ -1,5 +1,21 @@
 # Licensed under the MIT License
-"""
+"""Graph entity/relationship extraction and RAG prompt templates (light mode).
+
+This module defines the full set of LLM prompt templates used by the LightRAG-style
+graph extractor and retrieval pipeline. Key prompts include:
+
+- ``entity_extraction``: Few-shot prompt for extracting entities, relationships,
+  and content-level keywords from text chunks.
+- ``entity_continue_extraction`` / ``entity_if_loop_extraction``: Iterative
+  gleaning prompts to maximise entity recall.
+- ``keywords_extraction``: Extracts high-level and low-level keywords from
+  user queries for hybrid graph retrieval.
+- ``rag_response`` / ``naive_rag_response``: Response generation prompts that
+  combine knowledge graph context and/or document chunks.
+- ``summarize_entity_descriptions``: Merges duplicate entity descriptions.
+
+Also defines default delimiters, entity types, and example sets.
+
 Reference:
  - [LightRAG](https://github.com/HKUDS/LightRAG/blob/main/lightrag/prompt.py)
 """

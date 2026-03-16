@@ -119,7 +119,7 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
     roles: ['admin', 'leader'],
     children: [
       {
-        path: '/datasets',
+        path: '/data-studio/datasets',
         labelKey: 'nav.datasets',
         icon: Database,
       },
@@ -134,13 +134,13 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
         icon: BookOpen,
       },
       {
-        path: '/admin/chat-dialogs',
+        path: '/data-studio/chat-assistants',
         labelKey: 'nav.chatAssistants',
         icon: MessageSquare,
         roles: ['admin'],
       },
       {
-        path: '/admin/search-apps',
+        path: '/data-studio/search-apps',
         labelKey: 'nav.searchApps',
         icon: Search,
         roles: ['admin'],
