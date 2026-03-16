@@ -163,6 +163,7 @@ export const retrievalTestSchema = z.object({
   method: z.enum(['hybrid', 'semantic', 'full_text']).optional().default('hybrid'),
   top_k: z.number().int().min(1).max(100).optional().default(5),
   similarity_threshold: z.number().min(0).max(1).optional().default(0.2),
+  vector_similarity_weight: z.number().min(0).max(1).optional().default(0.3),
   doc_ids: z.array(z.string()).optional(),
 })
 
