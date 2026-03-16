@@ -21,6 +21,7 @@ import {
   updateDatasetSettingsSchema, createChunkSchema, updateChunkSchema, chunkParamSchema, retrievalTestSchema,
   docParamSchema, toggleDocumentSchema,
   bulkParseDocumentsSchema, bulkToggleDocumentsSchema, bulkDeleteDocumentsSchema,
+  bulkChunkSwitchSchema,
 } from '../schemas/rag.schemas.js';
 
 const router = Router();
@@ -47,6 +48,7 @@ router.put('/datasets/:id/settings', requirePermission('manage_datasets'), valid
 router.post('/datasets/:id/chunks', requirePermission('manage_datasets'), validate({ params: uuidParamSchema, body: createChunkSchema }), controller.createChunk.bind(controller));
 router.put('/datasets/:id/chunks/:chunkId', requirePermission('manage_datasets'), validate({ params: chunkParamSchema, body: updateChunkSchema }), controller.updateChunk.bind(controller));
 router.delete('/datasets/:id/chunks/:chunkId', requirePermission('manage_datasets'), controller.deleteChunk.bind(controller));
+router.post('/datasets/:id/chunks/bulk-switch', requirePermission('manage_datasets'), validate({ params: uuidParamSchema, body: bulkChunkSwitchSchema }), controller.bulkSwitchChunks.bind(controller));
 
 // Retrieval test endpoint
 router.post('/datasets/:id/retrieval-test', requireAuth, validate({ params: uuidParamSchema, body: retrievalTestSchema }), controller.retrievalTest.bind(controller));

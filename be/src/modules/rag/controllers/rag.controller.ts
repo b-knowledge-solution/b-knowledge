@@ -823,6 +823,25 @@ export class RagController {
         }
     }
 
+    /**
+     * @description POST /datasets/:id/chunks/bulk-switch — Bulk enable/disable chunks by IDs.
+     * @param {Request} req - Express request with chunk_ids and available in body
+     * @param {Response} res - Express response with updated count
+     * @returns {Promise<void>}
+     */
+    async bulkSwitchChunks(req: Request, res: Response): Promise<void> {
+        const datasetId = req.params['id'];
+        if (!datasetId) { res.status(400).json({ error: 'Dataset ID is required' }); return; }
+        try {
+            const { chunk_ids, available } = req.body;
+            const result = await ragSearchService.bulkSwitchChunks(datasetId, chunk_ids, available);
+            res.json(result);
+        } catch (error) {
+            log.error('Failed to bulk switch chunks', { error: String(error) });
+            res.status(500).json({ error: 'Failed to bulk switch chunks' });
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Retrieval Test
     // -------------------------------------------------------------------------
@@ -887,10 +906,14 @@ export class RagController {
         if (!datasetId) { res.status(400).json({ error: 'Dataset ID is required' }); return; }
 
         try {
-            const options: { doc_id?: string; page?: number; limit?: number } = {};
+            const options: { doc_id?: string; page?: number; limit?: number; available?: boolean } = {};
             if (req.query['doc_id']) options.doc_id = req.query['doc_id'] as string;
             if (req.query['page']) options.page = parseInt(req.query['page'] as string, 10);
             if (req.query['limit']) options.limit = parseInt(req.query['limit'] as string, 10);
+            // Parse available filter: '1'/'true' = enabled, '0'/'false' = disabled
+            if (req.query['available'] !== undefined) {
+                options.available = req.query['available'] === '1' || req.query['available'] === 'true';
+            }
             const result = await ragSearchService.listChunks(datasetId, options);
             res.json(result);
         } catch (error) {

@@ -124,6 +124,14 @@ export const updateChunkSchema = z.object({
   available: z.boolean().optional(),
 })
 
+/**
+ * @description Schema for bulk chunk enable/disable switch
+ */
+export const bulkChunkSwitchSchema = z.object({
+  chunk_ids: z.array(z.string()).min(1, 'At least one chunk ID is required'),
+  available: z.boolean(),
+})
+
 /** @description Chunk path parameter schema — validates :id (dataset) and :chunkId params */
 export const chunkParamSchema = z.object({
   id: z.string().uuid('Invalid dataset UUID'),

@@ -286,7 +286,7 @@ export class RagSearchService {
      */
     async listChunks(
         datasetId: string,
-        options: { doc_id?: string; page?: number; limit?: number } = {},
+        options: { doc_id?: string; page?: number; limit?: number; available?: boolean } = {},
     ): Promise<{ chunks: ChunkResult[]; total: number; page: number; limit: number }> {
         const client = getClient()
         const page = options.page || 1
@@ -296,6 +296,10 @@ export class RagSearchService {
         const must: Record<string, unknown>[] = [{ term: { kb_id: datasetId } }]
         if (options.doc_id) {
             must.push({ term: { doc_id: options.doc_id } })
+        }
+        // Filter by availability status when explicitly specified
+        if (options.available !== undefined) {
+            must.push({ term: { available_int: options.available ? 1 : 0 } })
         }
 
         const res = await client.search({
@@ -398,6 +402,26 @@ export class RagSearchService {
             id: chunkId,
             refresh: 'true',
         })
+    }
+
+    /**
+     * @description Bulk update availability status for multiple chunks
+     * @param {string} datasetId - The dataset ID the chunks belong to
+     * @param {string[]} chunkIds - Array of chunk IDs to update
+     * @param {boolean} available - Whether chunks should be enabled or disabled
+     * @returns {Promise<{ updated: number }>} Count of updated chunks
+     */
+    async bulkSwitchChunks(datasetId: string, chunkIds: string[], available: boolean): Promise<{ updated: number }> {
+        const client = getClient()
+        const availableInt = available ? 1 : 0
+        // Build bulk update request with one update action per chunk
+        const body = chunkIds.flatMap((id) => [
+            { update: { _index: getIndexName(), _id: id } },
+            { doc: { available_int: availableInt } },
+        ])
+        const res = await client.bulk({ body, refresh: 'true' })
+        const updated = res.body.items?.filter((item: any) => item.update?.status === 200).length ?? 0
+        return { updated }
     }
 
     /**
