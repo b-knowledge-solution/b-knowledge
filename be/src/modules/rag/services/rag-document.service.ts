@@ -10,6 +10,7 @@
 
 import { ModelFactory } from '@/shared/models/factory.js';
 import { log } from '@/shared/services/logger.service.js';
+import { getRedisClient } from '@/shared/services/redis.service.js';
 import { DocumentRow, TaskRow, KnowledgebaseRow } from '@/shared/models/types.js';
 import { ragSearchService } from './rag-search.service.js';
 
@@ -382,11 +383,13 @@ export class RagDocumentService {
     }
 
     /**
-     * @description Create a document from a web URL (async crawl via worker)
+     * @description Create a document from a web URL and push a crawl task to Redis
+     * for the advance-rag worker. The worker listens on the 'rag_web_crawl' Redis list,
+     * fetches the URL content, converts it to PDF, and triggers parsing.
      * @param {string} datasetId - Dataset ID
      * @param {object} data - URL, optional name, auto_parse flag
      * @returns {Promise<any>} Placeholder document record
-     * @throws {Error} If URL is unsafe or dataset not found
+     * @throws {Error} If URL is unsafe, dataset not found, or Redis unavailable
      */
     async webCrawlDocument(
         datasetId: string,
@@ -399,21 +402,53 @@ export class RagDocumentService {
         const name = data.name || `${url.hostname}${url.pathname}`.replace(/\/$/, '').substring(0, 255)
         const dataset = await this.getKnowledgebase(datasetId)
         if (!dataset) throw new Error('Dataset not found')
-        // Create placeholder document record for the web crawl
+
+        // Generate a UUID hex string (32 chars, no hyphens) matching RAGFlow format
         const docId = crypto.randomUUID().replace(/-/g, '')
+
+        // Create placeholder document record with all required fields for the model
         await ModelFactory.ragDocument.create({
             id: docId,
             kb_id: datasetId,
             name,
             type: 'pdf',
+            suffix: 'pdf',
+            location: '',
+            size: 0,
+            parser_id: dataset.parser_id || 'naive',
+            parser_config: dataset.parser_config
+                ? (typeof dataset.parser_config === 'string'
+                    ? JSON.parse(dataset.parser_config as string)
+                    : dataset.parser_config) as Record<string, unknown>
+                : {},
+        })
+
+        // Mark the document source as web_crawl with the original URL
+        await ModelFactory.ragDocument.update(docId, {
             source_type: 'web_crawl',
             source_url: data.url,
-            run: '0',
-            progress: 0,
             progress_msg: 'Queued for web crawl',
-            parser_id: dataset.parser_id || 'naive',
-            size: 0,
-        } as any)
+        })
+
+        // Push crawl task to Redis list for advance-rag worker consumption
+        const redisClient = getRedisClient()
+        if (!redisClient) {
+            log.error('Redis not available — cannot queue web crawl task', { docId, url: data.url })
+            throw new Error('Redis not available for web crawl queue')
+        }
+
+        const taskPayload = JSON.stringify({
+            doc_id: docId,
+            kb_id: datasetId,
+            url: data.url,
+            auto_parse: data.auto_parse ?? true,
+            created_at: new Date().toISOString(),
+        })
+
+        // LPUSH to the rag_web_crawl list; advance-rag worker BRPOPs from this list
+        await redisClient.lPush('rag_web_crawl', taskPayload)
+        log.info('Queued web crawl task to Redis', { docId, datasetId, url: data.url })
+
         const doc = await this.getDocument(docId)
         return doc
     }
