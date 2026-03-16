@@ -187,3 +187,20 @@ export const bulkToggleDocumentsSchema = z.object({
 export const bulkDeleteDocumentsSchema = z.object({
   doc_ids: z.array(z.string().min(1)).min(1, 'At least one document ID is required'),
 })
+
+/**
+ * @description Schema for changing a document's parser/chunking method
+ */
+export const changeDocumentParserSchema = z.object({
+  parser_id: z.enum(['naive', 'qa', 'resume', 'manual', 'table', 'paper', 'book', 'laws', 'presentation', 'one', 'picture', 'audio', 'email']),
+  parser_config: z.record(z.unknown()).optional(),
+})
+
+/**
+ * @description Schema for web crawl document creation
+ */
+export const webCrawlSchema = z.object({
+  url: z.string().url('Invalid URL format'),
+  name: z.string().min(1).max(255).optional(),
+  auto_parse: z.boolean().optional().default(true),
+})
