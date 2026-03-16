@@ -5,23 +5,31 @@
  * and audit logging integration.
  */
 
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ---------------------------------------------------------------------------
-// Mocks
+// Mocks — use vi.hoisted so variables are available inside vi.mock factories
 // ---------------------------------------------------------------------------
 
-const mockDatasetModel = {
-  findAll: vi.fn(),
-  findById: vi.fn(),
-  create: vi.fn(),
-  update: vi.fn(),
-}
-
-const mockDocumentModel = {
-  findByDatasetId: vi.fn(),
-  findById: vi.fn(),
-}
+const {
+  mockDatasetModel,
+  mockDocumentModel,
+  mockAuditLog,
+  mockGetUserTeams,
+} = vi.hoisted(() => ({
+  mockDatasetModel: {
+    findAll: vi.fn(),
+    findById: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+  },
+  mockDocumentModel: {
+    findByDatasetId: vi.fn(),
+    findById: vi.fn(),
+  },
+  mockAuditLog: vi.fn(),
+  mockGetUserTeams: vi.fn(),
+}))
 
 vi.mock('../../src/shared/models/factory.js', () => ({
   ModelFactory: {
@@ -30,16 +38,43 @@ vi.mock('../../src/shared/models/factory.js', () => ({
   },
 }))
 
-const mockAuditLog = vi.fn()
 vi.mock('../../src/modules/audit/services/audit.service.js', () => ({
   auditService: { log: mockAuditLog },
   AuditAction: { CREATE_SOURCE: 'CREATE_SOURCE', UPDATE_SOURCE: 'UPDATE_SOURCE', DELETE_SOURCE: 'DELETE_SOURCE' },
   AuditResourceType: { DATASET: 'DATASET' },
 }))
 
-const mockGetUserTeams = vi.fn()
 vi.mock('../../src/modules/teams/services/team.service.js', () => ({
   teamService: { getUserTeams: mockGetUserTeams },
+}))
+
+// Mock knex DB to prevent real PostgreSQL connections — use a Proxy for full chain support
+vi.mock('../../src/shared/db/knex.js', () => {
+  function makeChain(): any {
+    return new Proxy({}, {
+      get(_target, prop) {
+        if (prop === 'then') {
+          return (resolve: any) => Promise.resolve(resolve([]))
+        }
+        if (prop === 'catch') {
+          return () => makeChain()
+        }
+        if (prop === 'first') {
+          return () => Promise.resolve(undefined)
+        }
+        if (prop === 'update') {
+          return () => Promise.resolve(0)
+        }
+        // All other chainable methods return a new chain
+        return () => makeChain()
+      },
+    })
+  }
+  return { db: () => makeChain() }
+})
+
+vi.mock('../../src/shared/services/logger.service.js', () => ({
+  log: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }))
 
 import { RagService } from '../../src/modules/rag/services/rag.service'

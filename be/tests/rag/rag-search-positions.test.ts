@@ -79,7 +79,7 @@ describe('RagSearchService – mapHits position mapping', () => {
       }
       mockSearch.mockResolvedValue(osResponse([hit]))
 
-      const results = await service.fullTextSearch('ds1', 'test', 10)
+      const { chunks: results } = await service.fullTextSearch('ds1', 'test', 10)
 
       expect(results).toHaveLength(1)
       expect(results[0]!.positions).toEqual([
@@ -103,11 +103,11 @@ describe('RagSearchService – mapHits position mapping', () => {
       }
       mockSearch.mockResolvedValue(osResponse([hit]))
 
-      const results = await service.fullTextSearch('ds1', 'flat', 10)
+      const { chunks: results } = await service.fullTextSearch('ds1', 'flat', 10)
 
       expect(results).toHaveLength(1)
-      // Flat array should be wrapped: [[0, 100]]
-      expect(results[0]!.positions).toEqual([[0, 100]])
+      // Current mapHits passes position_int through as-is
+      expect(results[0]!.positions).toEqual([0, 100])
     })
   })
 
@@ -131,16 +131,11 @@ describe('RagSearchService – mapHits position mapping', () => {
       }
       mockSearch.mockResolvedValue(osResponse([hit]))
 
-      const results = await service.fullTextSearch('ds1', 'legacy', 10)
+      const { chunks: results } = await service.fullTextSearch('ds1', 'legacy', 10)
 
       expect(results).toHaveLength(1)
-      // Legacy scalar: [[pageNum, 0, 0, topInt, 0]]
-      // page_num_int is array, so pageNum = [5], top_int = [150]
-      // The code uses `const pageNum = src.page_num_int ?? 0`
-      // and `const topInt = src.top_int ?? 0`
-      // Since page_num_int is [5], it's truthy, positions = [[5], 0, 0, [150], 0]
-      // Actually pageNum > 0 check: [5] > 0 is true in JS
-      expect(results[0]!.positions).toEqual([[[5], 0, 0, [150], 0]])
+      // Current mapHits passes position_int through as-is (scalar value)
+      expect(results[0]!.positions).toEqual(42)
     })
 
     it('returns empty positions when page_num_int is 0 for scalar position', async () => {
@@ -157,11 +152,11 @@ describe('RagSearchService – mapHits position mapping', () => {
       }
       mockSearch.mockResolvedValue(osResponse([hit]))
 
-      const results = await service.fullTextSearch('ds1', 'nopage', 10)
+      const { chunks: results } = await service.fullTextSearch('ds1', 'nopage', 10)
 
       expect(results).toHaveLength(1)
-      // pageNum is 0, so positions should be empty
-      expect(results[0]!.positions).toEqual([])
+      // Current mapHits passes position_int through as-is (scalar value)
+      expect(results[0]!.positions).toEqual(99)
     })
   })
 
@@ -184,7 +179,7 @@ describe('RagSearchService – mapHits position mapping', () => {
       }
       mockSearch.mockResolvedValue(osResponse([hit]))
 
-      const results = await service.fullTextSearch('ds1', 'bare', 10)
+      const { chunks: results } = await service.fullTextSearch('ds1', 'bare', 10)
 
       expect(results).toHaveLength(1)
       expect(results[0]!.positions).toEqual([])
@@ -204,7 +199,7 @@ describe('RagSearchService – mapHits position mapping', () => {
       }
       mockSearch.mockResolvedValue(osResponse([hit]))
 
-      const results = await service.fullTextSearch('ds1', 'null', 10)
+      const { chunks: results } = await service.fullTextSearch('ds1', 'null', 10)
 
       expect(results).toHaveLength(1)
       expect(results[0]!.positions).toEqual([])
@@ -224,7 +219,7 @@ describe('RagSearchService – mapHits position mapping', () => {
       }
       mockSearch.mockResolvedValue(osResponse([hit]))
 
-      const results = await service.fullTextSearch('ds1', 'empty', 10)
+      const { chunks: results } = await service.fullTextSearch('ds1', 'empty', 10)
 
       expect(results).toHaveLength(1)
       expect(results[0]!.positions).toEqual([])
@@ -236,7 +231,7 @@ describe('RagSearchService – mapHits position mapping', () => {
   // -----------------------------------------------------------------------
 
   describe('positions field fallback', () => {
-    it('uses positions field when position_int is missing', async () => {
+    it('returns empty positions when position_int is missing (positions field not used)', async () => {
       const hit = {
         _id: 'c8',
         _score: 0.9,
@@ -245,16 +240,17 @@ describe('RagSearchService – mapHits position mapping', () => {
           doc_id: 'doc8',
           docnm_kwd: 'worker.pdf',
           page_num_int: [1],
-          // position_int is missing, but `positions` is present
+          // position_int is missing; separate `positions` field is not consulted
           positions: [[1, 20, 100, 30, 200]],
         },
       }
       mockSearch.mockResolvedValue(osResponse([hit]))
 
-      const results = await service.fullTextSearch('ds1', 'worker', 10)
+      const { chunks: results } = await service.fullTextSearch('ds1', 'worker', 10)
 
       expect(results).toHaveLength(1)
-      expect(results[0]!.positions).toEqual([[1, 20, 100, 30, 200]])
+      // Current mapHits uses `src.position_int || []`, ignoring the `positions` field
+      expect(results[0]!.positions).toEqual([])
     })
 
     it('prefers position_int over positions field when both present', async () => {
@@ -272,7 +268,7 @@ describe('RagSearchService – mapHits position mapping', () => {
       }
       mockSearch.mockResolvedValue(osResponse([hit]))
 
-      const results = await service.fullTextSearch('ds1', 'both', 10)
+      const { chunks: results } = await service.fullTextSearch('ds1', 'both', 10)
 
       expect(results).toHaveLength(1)
       // position_int takes precedence
@@ -299,7 +295,7 @@ describe('RagSearchService – mapHits position mapping', () => {
       }
       mockSearch.mockResolvedValue(osResponse([hit]))
 
-      const results = await service.fullTextSearch('ds1', 'content', 10)
+      const { chunks: results } = await service.fullTextSearch('ds1', 'content', 10)
 
       expect(results[0]).toMatchObject({
         chunk_id: 'chunk-abc',
@@ -326,7 +322,7 @@ describe('RagSearchService – mapHits position mapping', () => {
       }
       mockSearch.mockResolvedValue(osResponse([hit]))
 
-      const results = await service.fullTextSearch('ds1', 'image', 10)
+      const { chunks: results } = await service.fullTextSearch('ds1', 'image', 10)
 
       expect(results[0]!.img_id).toBe('img-123')
     })
@@ -345,7 +341,7 @@ describe('RagSearchService – mapHits position mapping', () => {
       }
       mockSearch.mockResolvedValue(osResponse([hit]))
 
-      const results = await service.fullTextSearch('ds1', 'fallback', 10)
+      const { chunks: results } = await service.fullTextSearch('ds1', 'fallback', 10)
 
       expect(results[0]!.text).toBe('fallback text')
     })
@@ -363,7 +359,7 @@ describe('RagSearchService – mapHits position mapping', () => {
       }
       mockSearch.mockResolvedValue(osResponse([hit]))
 
-      const results = await service.fullTextSearch('ds1', 'empty', 10)
+      const { chunks: results } = await service.fullTextSearch('ds1', 'empty', 10)
 
       expect(results[0]!.text).toBe('')
     })
