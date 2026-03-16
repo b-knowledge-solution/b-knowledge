@@ -453,6 +453,33 @@ export class RagSearchService {
     }
 
     /**
+     * @description Delete all chunks belonging to a specific document
+     * @param {string} datasetId - Dataset ID
+     * @param {string} docId - Document ID whose chunks to delete
+     * @returns {Promise<{ deleted: number }>} Count of deleted chunks
+     */
+    async deleteChunksByDocId(datasetId: string, docId: string): Promise<{ deleted: number }> {
+        const client = getClient()
+        const res = await client.deleteByQuery({
+            index: getIndexName(),
+            body: {
+                query: {
+                    bool: {
+                        must: [
+                            { term: { kb_id: datasetId } },
+                            { term: { doc_id: docId } },
+                        ],
+                    },
+                },
+            },
+            refresh: true,
+        })
+        const deleted = (res.body as Record<string, unknown>).deleted as number ?? 0
+        log.info('Deleted chunks by doc ID', { datasetId, docId, deleted })
+        return { deleted }
+    }
+
+    /**
      * Toggle availability of all chunks belonging to a document.
      * Updates the available_int field in OpenSearch for all chunks with the given doc_id.
      * @param datasetId - UUID of the dataset (kb_id) the document belongs to

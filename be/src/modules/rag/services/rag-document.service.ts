@@ -11,6 +11,7 @@
 import { ModelFactory } from '@/shared/models/factory.js';
 import { log } from '@/shared/services/logger.service.js';
 import { DocumentRow, TaskRow, KnowledgebaseRow } from '@/shared/models/types.js';
+import { ragSearchService } from './rag-search.service.js';
 
 /**
  * @description Service layer for RAG document and task metadata operations.
@@ -302,6 +303,119 @@ export class RagDocumentService {
      */
     async incrementDocCount(datasetId: string, count: number): Promise<void> {
         await ModelFactory.knowledgebase.incrementDocCount(datasetId, count);
+    }
+
+    // -----------------------------------------------------------------------
+    // Per-Document Parser Change
+    // -----------------------------------------------------------------------
+
+    /**
+     * @description Change a document's parser and reset for re-parsing
+     * @param {string} datasetId - Dataset ID
+     * @param {string} docId - Document ID
+     * @param {object} data - New parser_id and optional parser_config
+     * @returns {Promise<any>} Updated document record
+     * @throws {Error} If document not found or currently being parsed (409)
+     */
+    async changeDocumentParser(
+        datasetId: string,
+        docId: string,
+        data: { parser_id: string; parser_config?: Record<string, unknown> },
+    ): Promise<any> {
+        const doc = await this.getDocument(docId)
+        // Guard: document must exist and belong to this dataset
+        if (!doc || doc.kb_id !== datasetId) throw new Error('Document not found in this dataset')
+        // Guard: cannot change parser while parsing is in progress
+        if (doc.run === '1') {
+            const error = new Error('Cannot change parser while document is being parsed')
+            ;(error as any).statusCode = 409
+            throw error
+        }
+        // Skip if parser is unchanged and no new config provided
+        if (doc.parser_id === data.parser_id && !data.parser_config) return doc
+        // Delete existing chunks from OpenSearch before resetting
+        await ragSearchService.deleteChunksByDocId(datasetId, docId)
+        // Reset document metadata for re-parsing
+        const updateData: Record<string, unknown> = {
+            parser_id: data.parser_id,
+            progress: 0,
+            progress_msg: '',
+            run: '0',
+            chunk_num: 0,
+            token_num: 0,
+        }
+        if (data.parser_config) {
+            updateData.parser_config = JSON.stringify(data.parser_config)
+        }
+        await this.updateDocument(docId, updateData)
+        return { ...doc, ...updateData }
+    }
+
+    // -----------------------------------------------------------------------
+    // Web Crawl
+    // -----------------------------------------------------------------------
+
+    /**
+     * @description Validate URL is not targeting internal networks (SSRF prevention)
+     * @param {string} urlString - URL to validate
+     * @throws {Error} If URL targets a private/internal IP range
+     */
+    private validateUrlSafety(urlString: string): void {
+        const url = new URL(urlString)
+        const hostname = url.hostname
+        // Block private and loopback IP ranges
+        const privatePatterns = [
+            /^10\./,
+            /^172\.(1[6-9]|2\d|3[01])\./,
+            /^192\.168\./,
+            /^127\./,
+            /^0\./,
+            /^localhost$/i,
+            /^::1$/,
+            /^fe80:/i,
+        ]
+        for (const pattern of privatePatterns) {
+            if (pattern.test(hostname)) {
+                throw new Error('URL targets a private/internal network address')
+            }
+        }
+    }
+
+    /**
+     * @description Create a document from a web URL (async crawl via worker)
+     * @param {string} datasetId - Dataset ID
+     * @param {object} data - URL, optional name, auto_parse flag
+     * @returns {Promise<any>} Placeholder document record
+     * @throws {Error} If URL is unsafe or dataset not found
+     */
+    async webCrawlDocument(
+        datasetId: string,
+        data: { url: string; name?: string; auto_parse?: boolean },
+    ): Promise<any> {
+        // Validate URL against SSRF before proceeding
+        this.validateUrlSafety(data.url)
+        const url = new URL(data.url)
+        // Use provided name or derive from URL hostname + path
+        const name = data.name || `${url.hostname}${url.pathname}`.replace(/\/$/, '').substring(0, 255)
+        const dataset = await this.getKnowledgebase(datasetId)
+        if (!dataset) throw new Error('Dataset not found')
+        // Create placeholder document record for the web crawl
+        const docId = crypto.randomUUID().replace(/-/g, '')
+        await ModelFactory.ragDocument.create({
+            id: docId,
+            kb_id: datasetId,
+            name,
+            type: 'pdf',
+            source_type: 'web_crawl',
+            source_url: data.url,
+            run: '0',
+            progress: 0,
+            progress_msg: 'Queued for web crawl',
+            parser_id: dataset.parser_id || 'naive',
+            size: 0,
+        } as any)
+        const doc = await this.getDocument(docId)
+        return doc
     }
 
     // -----------------------------------------------------------------------

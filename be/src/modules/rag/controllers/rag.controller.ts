@@ -1314,4 +1314,77 @@ export class RagController {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Per-Document Parser Change
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description PUT /datasets/:id/documents/:docId/parser — Change a document's parser method.
+     * Deletes existing chunks and resets the document for re-parsing.
+     * @param {Request} req - Express request with parser_id and optional parser_config in body
+     * @param {Response} res - Express response with updated document
+     * @returns {Promise<void>}
+     */
+    async changeDocumentParser(req: Request, res: Response): Promise<void> {
+        const { id, docId } = req.params
+        if (!id || !docId) {
+            res.status(400).json({ error: 'Dataset ID and Document ID are required' })
+            return
+        }
+
+        try {
+            const result = await ragDocumentService.changeDocumentParser(id, docId, req.body)
+            res.json(result)
+        } catch (error: any) {
+            // Return 409 when document is currently being parsed
+            if (error.statusCode === 409) {
+                res.status(409).json({ error: error.message })
+                return
+            }
+            if (error.message?.includes('not found')) {
+                res.status(404).json({ error: error.message })
+                return
+            }
+            log.error('Failed to change document parser', { error: String(error) })
+            res.status(500).json({ error: 'Failed to change document parser' })
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Web Crawl
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description POST /datasets/:id/documents/web-crawl — Create a document from a web URL.
+     * Validates URL safety (SSRF prevention) and creates a placeholder document
+     * for async crawl processing by the RAG worker.
+     * @param {Request} req - Express request with url, optional name, and auto_parse in body
+     * @param {Response} res - Express response with created placeholder document
+     * @returns {Promise<void>}
+     */
+    async webCrawlDocument(req: Request, res: Response): Promise<void> {
+        const { id } = req.params
+        if (!id) {
+            res.status(400).json({ error: 'Dataset ID is required' })
+            return
+        }
+
+        try {
+            const doc = await ragDocumentService.webCrawlDocument(id, req.body)
+            res.status(201).json(doc)
+        } catch (error: any) {
+            // Return 400 for SSRF-blocked URLs
+            if (error.message?.includes('private/internal')) {
+                res.status(400).json({ error: error.message })
+                return
+            }
+            if (error.message?.includes('not found')) {
+                res.status(404).json({ error: error.message })
+                return
+            }
+            log.error('Failed to create web crawl document', { error: String(error) })
+            res.status(500).json({ error: 'Failed to create web crawl document' })
+        }
+    }
+
 }

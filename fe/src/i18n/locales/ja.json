@@ -1449,7 +1449,21 @@
     "download": "ダウンロード",
     "downloadFile": "ファイルをダウンロード",
     "previewNotAvailable": "このファイル形式はプレビューに対応していません",
-    "total": "合計"
+    "total": "合計",
+    "changeParser": "パーサー変更",
+    "currentParser": "現在",
+    "newParser": "新しいパーサー",
+    "changeParserWarning": "パーサーを変更すると、既存のチャンクがすべて削除され、ドキュメントが再解析されます。",
+    "changeParserSuccess": "パーサーを変更しました。ドキュメントは再解析されます。",
+    "webCrawl": "Webクロール",
+    "webCrawlUrl": "URL",
+    "webCrawlName": "ドキュメント名",
+    "webCrawlNamePlaceholder": "ページから自動検出",
+    "webCrawlAutoParse": "クロール後に自動解析",
+    "webCrawlSubmit": "クロール",
+    "webCrawlSuccess": "Webページが処理キューに追加されました",
+    "webCrawlInvalidUrl": "有効なHTTPまたはHTTPS URLを入力してください",
+    "webCrawlFailed": "URLのクロールに失敗しました"
   },
   "versions": {
     "title": "バージョン",

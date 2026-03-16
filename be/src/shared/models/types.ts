@@ -1085,8 +1085,10 @@ export interface DocumentRow {
     parser_id: string;
     /** Parser configuration (JSONB) */
     parser_config: Record<string, unknown>;
-    /** Source type (e.g., 'local', 'web') */
+    /** Source type (e.g., 'local', 'web_crawl') */
     source_type: string;
+    /** Source URL for web-crawled documents */
+    source_url?: string;
     /** Document type identifier */
     type: string;
     /** User ID who uploaded this document */

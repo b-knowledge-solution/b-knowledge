@@ -85,6 +85,10 @@ export interface Document {
   chunk_num?: number;
   /** Knowledgebase ID (RAGflow) */
   kb_id?: string;
+  /** Source type: 'local' for uploaded files, 'web_crawl' for crawled URLs */
+  source_type?: 'local' | 'web_crawl';
+  /** Original source URL for web-crawled documents */
+  source_url?: string;
 }
 
 /** @description Possible document processing status values */

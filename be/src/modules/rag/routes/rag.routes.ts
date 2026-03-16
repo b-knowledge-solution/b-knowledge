@@ -22,6 +22,7 @@ import {
   docParamSchema, toggleDocumentSchema,
   bulkParseDocumentsSchema, bulkToggleDocumentsSchema, bulkDeleteDocumentsSchema,
   bulkChunkSwitchSchema,
+  changeDocumentParserSchema, webCrawlSchema,
 } from '../schemas/rag.schemas.js';
 
 const router = Router();
@@ -61,6 +62,11 @@ router.get('/datasets/:id/documents/:docId/download', requireAuth, controller.do
 router.get('/datasets/:id/documents/:docId/status', requireAuth, controller.streamDocumentProgress.bind(controller));
 router.delete('/datasets/:id/documents/:docId', requirePermission('manage_datasets'), controller.deleteDocument.bind(controller));
 router.patch('/datasets/:id/documents/:docId/toggle', requirePermission('manage_datasets'), validate({ params: docParamSchema, body: toggleDocumentSchema }), controller.toggleDocumentAvailability.bind(controller));
+// Per-document parser change
+router.put('/datasets/:id/documents/:docId/parser', requirePermission('manage_datasets'), validate({ params: docParamSchema, body: changeDocumentParserSchema }), controller.changeDocumentParser.bind(controller));
+
+// Web crawl document creation
+router.post('/datasets/:id/documents/web-crawl', requirePermission('manage_datasets'), validate({ params: uuidParamSchema, body: webCrawlSchema }), controller.webCrawlDocument.bind(controller));
 
 // Bulk document operations
 router.post('/datasets/:id/documents/bulk-parse', requirePermission('manage_datasets'), validate({ params: uuidParamSchema, body: bulkParseDocumentsSchema }), controller.bulkParseDocuments.bind(controller));

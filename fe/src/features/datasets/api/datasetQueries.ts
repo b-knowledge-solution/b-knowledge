@@ -815,3 +815,61 @@ export function useUpdateMetadata(datasetId: string) {
   })
 }
 
+// ============================================================================
+// Per-Document Parser Change
+// ============================================================================
+
+/**
+ * @description Mutation to change a document's parser method.
+ * Invalidates both documents and chunks queries on success.
+ * @param {string} datasetId - Dataset UUID
+ * @returns Mutation hook for changing document parser
+ */
+export function useChangeDocumentParser(datasetId: string) {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ docId, parser_id, parser_config }: {
+      docId: string
+      parser_id: string
+      parser_config?: Record<string, unknown>
+    }) => {
+      // Build payload, omitting parser_config when undefined to satisfy exactOptionalPropertyTypes
+      const payload: { parser_id: string; parser_config?: Record<string, unknown> } = { parser_id }
+      if (parser_config !== undefined) payload.parser_config = parser_config
+      return datasetApi.changeDocumentParser(datasetId, docId, payload)
+    },
+    meta: { successMessage: t('datasets.changeParserSuccess') },
+    onSuccess: () => {
+      // Invalidate documents to reflect reset progress and chunks to clear stale data
+      queryClient.invalidateQueries({ queryKey: queryKeys.datasets.documents(datasetId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.datasets.chunks(datasetId) })
+    },
+  })
+}
+
+// ============================================================================
+// Web Crawl
+// ============================================================================
+
+/**
+ * @description Mutation to create a document from a web URL.
+ * Invalidates documents query on success.
+ * @param {string} datasetId - Dataset UUID
+ * @returns Mutation hook for web crawl document creation
+ */
+export function useWebCrawl(datasetId: string) {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: { url: string; name?: string; auto_parse?: boolean }) =>
+      datasetApi.webCrawlDocument(datasetId, data),
+    meta: { successMessage: t('datasets.webCrawlSuccess') },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.datasets.documents(datasetId) })
+    },
+  })
+}
+
