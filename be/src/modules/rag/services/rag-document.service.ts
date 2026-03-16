@@ -95,6 +95,8 @@ export class RagDocumentService {
     /**
      * @description Create a new document record in the Peewee 'document' table
      * @param {object} data - Document creation data including kb_id, parser settings, and file info
+     * @param {string} [data.source_type] - Source type: 'local' (default) or 'web_crawl'
+     * @param {string} [data.source_url] - Original URL for web-crawled documents
      * @returns {Promise<void>}
      */
     async createDocument(data: {
@@ -107,6 +109,8 @@ export class RagDocumentService {
         size: number;
         suffix: string;
         type: string;
+        source_type?: string;
+        source_url?: string;
     }): Promise<void> {
         await ModelFactory.ragDocument.create(data);
     }
@@ -410,8 +414,8 @@ export class RagDocumentService {
         // Generate a UUID hex string (32 chars, no hyphens) matching RAGFlow format
         const docId = crypto.randomUUID().replace(/-/g, '')
 
-        // Create placeholder document record with source_type and source_url set directly
-        await ModelFactory.ragDocument.create({
+        // Create placeholder document through the service API
+        await this.createDocument({
             id: docId,
             kb_id: datasetId,
             name,
