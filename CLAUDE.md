@@ -110,9 +110,116 @@ npm run generate:cert       # Generate self-signed SSL certs in certs/
 - TypeScript strict mode (both BE and FE)
 - Single quotes, no semicolons
 - Functional patterns where possible
-- JSDoc headers on every function/class (`@param`, `@returns`, `@description`)
-- Inline comments above significant logic/control flow
 - If changes are extensive, run `npm run build` to verify
+
+### Documentation Comments (Mandatory)
+
+**This is a mandatory convention — all generated code MUST include documentation comments.**
+
+#### TypeScript (BE + FE): JSDoc
+
+Every exported function, class, method, interface, and type alias MUST have a JSDoc block:
+
+```typescript
+/**
+ * @description Retrieves paginated audit logs filtered by date range and user
+ * @param {AuditLogQuery} query - Filter criteria including dateFrom, dateTo, userId
+ * @returns {Promise<PaginatedResult<AuditLog>>} Paginated audit log entries
+ */
+export async function getAuditLogs(query: AuditLogQuery): Promise<PaginatedResult<AuditLog>> {
+  // Validate date range before querying to prevent unbounded scans
+  const validRange = clampDateRange(query.dateFrom, query.dateTo)
+
+  // Use cursor-based pagination for large result sets
+  const results = await AuditLogModel.findPaginated(validRange)
+  return results
+}
+```
+
+**Required JSDoc tags:**
+| Tag | When Required |
+|-----|--------------|
+| `@description` | Always — one-line summary of purpose |
+| `@param` | Every parameter with type and meaning |
+| `@returns` | Every function that returns a value |
+| `@throws` | If function throws specific errors |
+| `@example` | Complex utility functions or non-obvious usage |
+
+**React components:**
+```typescript
+/**
+ * @description Displays a filterable, sortable data table with pagination controls
+ * @param {DataTableProps<T>} props - Table configuration including columns, data source, and filter options
+ * @returns {JSX.Element} Rendered data table with toolbar and pagination
+ */
+export function DataTable<T>({ columns, data, filters }: DataTableProps<T>) {
+  // Track sort state locally — not URL-synced since tables appear in dialogs too
+  const [sortConfig, setSortConfig] = useState<SortConfig>(defaultSort)
+  ...
+}
+```
+
+#### Python (advance-rag + converter): Google-style Docstrings
+
+Every function, class, and method MUST have a Google-style docstring:
+
+```python
+def chunk_document(content: str, method: ChunkMethod, config: ChunkConfig) -> list[Chunk]:
+    """Split document content into chunks using the specified method.
+
+    Args:
+        content: Raw document text content to be chunked.
+        method: Chunking strategy (e.g., RECURSIVE, SEMANTIC, FIXED_SIZE).
+        config: Chunking parameters including size, overlap, and separators.
+
+    Returns:
+        List of Chunk objects with text content and metadata.
+
+    Raises:
+        ChunkingError: If content is empty or method is unsupported.
+    """
+    # Normalize whitespace before chunking to prevent empty chunks
+    normalized = normalize_text(content)
+
+    # Select chunking strategy based on method enum
+    splitter = get_splitter(method, config)
+    return splitter.split(normalized)
+```
+
+**Required docstring sections:**
+| Section | When Required |
+|---------|--------------|
+| Summary line | Always — imperative mood, one line |
+| `Args` | Every parameter with type hint and meaning |
+| `Returns` | Every function that returns a value |
+| `Raises` | If function raises specific exceptions |
+
+#### Inline Comments (All Languages)
+
+Inline comments are MANDATORY above:
+- **Control flow:** `if`/`else` branches, `switch` cases, loops with non-obvious conditions
+- **Business logic:** Domain rules, calculations, thresholds, status transitions
+- **Integration points:** API calls, database queries, Redis operations, queue interactions
+- **Non-obvious code:** Workarounds, performance optimizations, regex patterns, bitwise operations
+- **Early returns / guard clauses:** Explain what condition is being guarded
+
+```typescript
+// Reject files exceeding 100MB to prevent memory exhaustion during parsing
+if (file.size > MAX_FILE_SIZE) {
+  throw new FileTooLargeError(file.name, file.size)
+}
+
+// Fall back to keyword search when embedding service is unavailable
+const results = embeddingAvailable
+  ? await vectorSearch(query, topK)
+  : await keywordSearch(query, topK)
+```
+
+#### What NOT to Comment
+
+- Obvious code (`i++`, `return result`, simple assignments)
+- Restating the code in English (`// set x to 5` above `x = 5`)
+- Commented-out code — delete it, git has history
 
 ### NX-Style Module Boundary Rules
 

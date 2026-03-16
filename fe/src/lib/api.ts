@@ -173,6 +173,19 @@ export const api = {
   },
 
   /**
+   * Perform a PATCH request with JSON body.
+   * @template T - Expected response type
+   */
+  patch: <T = unknown>(endpoint: string, data?: unknown, options?: FetchOptions) => {
+    const body = data ? JSON.stringify(data) : null;
+    return apiFetch<T>(endpoint, {
+      ...options,
+      method: 'PATCH',
+      body,
+    });
+  },
+
+  /**
    * Perform a DELETE request.
    * @template T - Expected response type
    */

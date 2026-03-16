@@ -1,7 +1,7 @@
 /**
  * @fileoverview Modal form for creating/updating an AI Search app with full RAGFlow config.
  *
- * Uses native useState instead of Ant Design Form.
+ * Uses native useState instead of form libraries.
  *
  * @module features/projects/components/SearchModal
  */
@@ -9,25 +9,32 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  Modal,
-  Input,
-  Checkbox,
-  Collapse,
-  Slider,
-  InputNumber,
-  Switch,
-  Typography,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { Separator } from '@/components/ui/separator'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
   Select,
-  Divider,
-} from 'antd'
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
+import { ChevronDown } from 'lucide-react'
 import type {
   DocumentCategory,
   DocumentCategoryVersion,
   ProjectSearch,
 } from '../api/projectApi'
-
-const { TextArea } = Input
-const { Text } = Typography
 
 // ============================================================================
 // Constants
@@ -50,7 +57,9 @@ const CREATIVITY_PRESETS: Record<string, {
 // ============================================================================
 
 /**
- * Custom slider + input control that shows the value on the right.
+ * @description Custom slider + input control that shows the value on the right.
+ * @param props - min, max, step, value, onChange
+ * @returns {JSX.Element} Rendered slider input
  */
 const SliderInput = ({
   value = 0,
@@ -65,30 +74,29 @@ const SliderInput = ({
   max?: number
   step?: number
 }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-    <Slider
-      style={{ flex: 1 }}
-      min={min}
-      max={max}
-      step={step}
+  <div className="flex items-center gap-3">
+    <input
+      type="range"
+      min={min} max={max} step={step}
       value={value}
-      onChange={onChange}
+      onChange={(e) => onChange?.(Number(e.target.value))}
+      className="flex-1 h-2 accent-primary"
     />
-    <InputNumber
-      style={{ width: 72 }}
-      min={min}
-      max={max}
-      step={step}
+    <Input
+      type="number"
+      min={min} max={max} step={step}
       value={value}
-      onChange={(v: number | null) => onChange?.(v ?? min)}
-      size="small"
+      onChange={(e) => onChange?.(Number(e.target.value))}
+      className="w-[72px]"
     />
   </div>
 )
 
 /**
- * Custom control for Vector Similarity Weight that shows dual labels
+ * @description Custom control for Vector Similarity Weight that shows dual labels
  * (vector X.XX / full-text X.XX) above the slider.
+ * @param {{ value?: number, onChange?: (val: number) => void }} props
+ * @returns {JSX.Element} Rendered weight control
  */
 const VectorWeightControl = ({
   value = 0.7,
@@ -101,29 +109,57 @@ const VectorWeightControl = ({
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-        <Text type="secondary" style={{ fontSize: 12 }}>{t('projectManagement.common.vector')} {value.toFixed(2)}</Text>
-        <Text type="secondary" style={{ fontSize: 12 }}>{t('projectManagement.common.fullText')} {(1 - value).toFixed(2)}</Text>
+      <div className="flex justify-between mb-1">
+        <span className="text-xs text-muted-foreground">{t('projectManagement.common.vector')} {value.toFixed(2)}</span>
+        <span className="text-xs text-muted-foreground">{t('projectManagement.common.fullText')} {(1 - value).toFixed(2)}</span>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <Slider
-          style={{ flex: 1 }}
-          min={0}
-          max={1}
-          step={0.01}
+      <div className="flex items-center gap-3">
+        <input
+          type="range"
+          min={0} max={1} step={0.01}
           value={value}
-          onChange={onChange}
+          onChange={(e) => onChange?.(Number(e.target.value))}
+          className="flex-1 h-2 accent-primary"
         />
-        <InputNumber
-          style={{ width: 72 }}
-          min={0}
-          max={1}
-          step={0.01}
+        <Input
+          type="number"
+          min={0} max={1} step={0.01}
           value={value}
-          onChange={(v: number | null) => onChange?.(v ?? 0.7)}
-          size="small"
+          onChange={(e) => onChange?.(Number(e.target.value))}
+          className="w-[72px]"
         />
       </div>
+    </div>
+  )
+}
+
+/**
+ * @description Simple collapsible section with a toggle header.
+ * @param {{ title: string, defaultOpen?: boolean, children: React.ReactNode }} props
+ * @returns {JSX.Element} Rendered collapsible section
+ */
+const CollapsibleSection = ({
+  title,
+  defaultOpen = false,
+  children,
+}: {
+  title: string
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen)
+
+  return (
+    <div>
+      <button
+        type="button"
+        className="flex items-center gap-2 w-full text-left py-2 text-sm font-semibold"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
+        {title}
+      </button>
+      {isOpen && <div className="pl-6 pt-2">{children}</div>}
     </div>
   )
 }
@@ -203,7 +239,9 @@ interface SearchModalProps {
 // ============================================================================
 
 /**
- * Modal form for creating/editing an AI Search app.
+ * @description Modal form for creating/editing an AI Search app.
+ * @param {SearchModalProps} props - Component props
+ * @returns {JSX.Element} The rendered modal
  */
 const SearchModal = ({
   open,
@@ -247,7 +285,7 @@ const SearchModal = ({
   }, [open, isEditing, editingSearch])
 
   /**
-   * Category checkbox options: one per category with a label showing version count.
+   * @description Category checkbox options: one per category with a label showing version count.
    */
   const categoryOptions = categories.map((cat) => {
     const versions = categoryVersions[cat.id] || []
@@ -259,7 +297,7 @@ const SearchModal = ({
   })
 
   /**
-   * Update a top-level field.
+   * @description Update a top-level field.
    * @param field - Field name
    * @param value - New value
    */
@@ -268,7 +306,7 @@ const SearchModal = ({
   }
 
   /**
-   * Update a search_config field.
+   * @description Update a search_config field.
    * @param field - Config field name
    * @param value - New value
    */
@@ -280,7 +318,7 @@ const SearchModal = ({
   }
 
   /**
-   * Handle creativity preset change.
+   * @description Handle creativity preset change.
    * @param preset - Preset name
    */
   const handleCreativityChange = (preset: string) => {
@@ -295,7 +333,7 @@ const SearchModal = ({
   }
 
   /**
-   * Validate and submit.
+   * @description Validate and submit.
    */
   const handleOk = () => {
     if (!formData.name.trim()) {
@@ -307,223 +345,230 @@ const SearchModal = ({
   }
 
   return (
-    <Modal
-      title={isEditing
-        ? t('projectManagement.searches.editSearch', 'Edit Search')
-        : t('projectManagement.searches.createSearch', 'Create Search')
-      }
-      open={open}
-      onCancel={onClose}
-      onOk={handleOk}
-      confirmLoading={saving}
-      width={720}
-      destroyOnClose
-    >
-      <div className="space-y-4">
-        {/* Section 1: Basic Info */}
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            {t('projectManagement.searches.name', 'Name')} <span className="text-red-500">*</span>
-          </label>
-          <Input
-            placeholder={t('projectManagement.searches.namePlaceholder', 'Enter search app name')}
-            value={formData.name}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-              updateField('name', e.target.value)
-              if (nameError) setNameError('')
-            }}
-            status={nameError ? 'error' : undefined}
-          />
-          {nameError && <p className="text-red-500 text-xs mt-1">{nameError}</p>}
-        </div>
+    <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) onClose() }}>
+      <DialogContent className="max-w-[720px] max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {isEditing
+              ? t('projectManagement.searches.editSearch', 'Edit Search')
+              : t('projectManagement.searches.createSearch', 'Create Search')
+            }
+          </DialogTitle>
+        </DialogHeader>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            {t('projectManagement.searches.description', 'Description')}
-          </label>
-          <TextArea
-            rows={2}
-            placeholder={t('projectManagement.searches.descriptionPlaceholder', 'Enter description')}
-            value={formData.description}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updateField('description', e.target.value)}
-          />
-        </div>
+        <div className="space-y-4">
+          {/* Section 1: Basic Info */}
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              {t('projectManagement.searches.name', 'Name')} <span className="text-red-500">*</span>
+            </label>
+            <Input
+              placeholder={t('projectManagement.searches.namePlaceholder', 'Enter search app name')}
+              value={formData.name}
+              onChange={(e) => {
+                updateField('name', e.target.value)
+                if (nameError) setNameError('')
+              }}
+              className={nameError ? 'border-destructive' : ''}
+            />
+            {nameError && <p className="text-destructive text-xs mt-1">{nameError}</p>}
+          </div>
 
-        <Divider />
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              {t('projectManagement.searches.description', 'Description')}
+            </label>
+            <Textarea
+              rows={2}
+              placeholder={t('projectManagement.searches.descriptionPlaceholder', 'Enter description')}
+              value={formData.description}
+              onChange={(e) => updateField('description', e.target.value)}
+            />
+          </div>
 
-        {/* Section 2: Datasets */}
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            {t('projectManagement.searches.datasets', 'Datasets')}
-          </label>
-          <Checkbox.Group
-            options={categoryOptions}
-            value={formData.dataset_ids}
-            onChange={(vals: string[]) => updateField('dataset_ids', vals)}
-          />
-        </div>
+          <Separator />
 
-        <Divider />
-
-        {/* Section 3: Retrieval Config */}
-        <Collapse
-          ghost
-          defaultActiveKey={['retrieval']}
-          items={[
-            {
-              key: 'retrieval',
-              label: t('projectManagement.searches.retrievalConfig', 'Retrieval Configuration'),
-              children: (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      {t('projectManagement.searches.similarityThreshold', 'Similarity Threshold')}
-                    </label>
-                    <SliderInput
-                      min={0}
-                      max={1}
-                      step={0.01}
-                      value={formData.search_config.similarity_threshold}
-                      onChange={(v) => updateConfig('similarity_threshold', v)}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      {t('projectManagement.searches.vectorWeight', 'Vector Similarity Weight')}
-                    </label>
-                    <VectorWeightControl
-                      value={formData.search_config.vector_similarity_weight}
-                      onChange={(v) => updateConfig('vector_similarity_weight', v)}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      {t('projectManagement.searches.rerankModel', 'Rerank Model')}
-                    </label>
-                    <Switch
-                      checked={formData.search_config.rerank_enabled}
-                      onChange={(v: boolean) => updateConfig('rerank_enabled', v)}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      {t('projectManagement.searches.aiSummary', 'AI Summary')}
-                    </label>
-                    <Switch
-                      checked={formData.search_config.ai_summary}
-                      onChange={(v: boolean) => updateConfig('ai_summary', v)}
-                    />
-                  </div>
+          {/* Section 2: Datasets */}
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              {t('projectManagement.searches.datasets', 'Datasets')}
+            </label>
+            <div className="flex flex-col gap-2">
+              {categoryOptions.map((opt) => (
+                <div key={opt.value} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`search-cat-${opt.value}`}
+                    checked={formData.dataset_ids.includes(opt.value)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        updateField('dataset_ids', [...formData.dataset_ids, opt.value])
+                      } else {
+                        updateField('dataset_ids', formData.dataset_ids.filter((id) => id !== opt.value))
+                      }
+                    }}
+                  />
+                  <Label htmlFor={`search-cat-${opt.value}`} className="text-sm">{opt.label}</Label>
                 </div>
-              ),
-            },
-          ]}
-        />
+              ))}
+            </div>
+          </div>
 
-        {/* Section 4: LLM Config (shown when AI Summary is on) */}
-        {formData.search_config.ai_summary && (
-          <Collapse
-            ghost
-            defaultActiveKey={['llm']}
-            items={[
-              {
-                key: 'llm',
-                label: t('projectManagement.searches.llmConfig', 'LLM Configuration'),
-                children: (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        {t('projectManagement.searches.model', 'Model')}
-                      </label>
-                      {chatModels.length > 0 ? (
-                        <Select
-                          placeholder={t('projectManagement.searches.selectModel', 'Select model')}
-                          options={chatModels.map((m) => ({ label: m, value: m }))}
-                          allowClear
-                          value={formData.search_config.model || undefined}
-                          onChange={(v: string) => updateConfig('model', v || '')}
-                          className="w-full"
-                        />
-                      ) : (
-                        <Input
-                          placeholder={t('projectManagement.searches.modelPlaceholder', 'Enter model name')}
-                          value={formData.search_config.model}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateConfig('model', e.target.value)}
-                        />
-                      )}
-                    </div>
+          <Separator />
 
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        {t('projectManagement.searches.creativity', 'Creativity')}
-                      </label>
-                      <Select
-                        defaultValue="custom"
-                        onChange={handleCreativityChange}
-                        options={[
-                          { label: t('projectManagement.searches.improvise', 'Improvise'), value: 'improvise' },
-                          { label: t('projectManagement.searches.precise', 'Precise'), value: 'precise' },
-                          { label: t('projectManagement.searches.balance', 'Balance'), value: 'balance' },
-                          { label: t('projectManagement.searches.custom', 'Custom'), value: 'custom' },
-                        ]}
-                        className="w-full"
-                      />
-                    </div>
+          {/* Section 3: Retrieval Config */}
+          <CollapsibleSection title={t('projectManagement.searches.retrievalConfig', 'Retrieval Configuration')} defaultOpen>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  {t('projectManagement.searches.similarityThreshold', 'Similarity Threshold')}
+                </label>
+                <SliderInput
+                  min={0} max={1} step={0.01}
+                  value={formData.search_config.similarity_threshold}
+                  onChange={(v) => updateConfig('similarity_threshold', v)}
+                />
+              </div>
 
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        {t('projectManagement.searches.temperature', 'Temperature')}
-                      </label>
-                      <SliderInput
-                        min={0} max={1} step={0.01}
-                        value={formData.search_config.temperature}
-                        onChange={(v) => updateConfig('temperature', v)}
-                      />
-                    </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  {t('projectManagement.searches.vectorWeight', 'Vector Similarity Weight')}
+                </label>
+                <VectorWeightControl
+                  value={formData.search_config.vector_similarity_weight}
+                  onChange={(v) => updateConfig('vector_similarity_weight', v)}
+                />
+              </div>
 
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        {t('projectManagement.searches.topP', 'Top P')}
-                      </label>
-                      <SliderInput
-                        min={0} max={1} step={0.01}
-                        value={formData.search_config.top_p}
-                        onChange={(v) => updateConfig('top_p', v)}
-                      />
-                    </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="rerank-enabled"
+                  checked={formData.search_config.rerank_enabled}
+                  onCheckedChange={(v: boolean) => updateConfig('rerank_enabled', v)}
+                />
+                <Label htmlFor="rerank-enabled" className="text-sm">
+                  {t('projectManagement.searches.rerankModel', 'Rerank Model')}
+                </Label>
+              </div>
 
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        {t('projectManagement.searches.presencePenalty', 'Presence Penalty')}
-                      </label>
-                      <SliderInput
-                        min={0} max={1} step={0.01}
-                        value={formData.search_config.presence_penalty}
-                        onChange={(v) => updateConfig('presence_penalty', v)}
-                      />
-                    </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="ai-summary"
+                  checked={formData.search_config.ai_summary}
+                  onCheckedChange={(v: boolean) => updateConfig('ai_summary', v)}
+                />
+                <Label htmlFor="ai-summary" className="text-sm">
+                  {t('projectManagement.searches.aiSummary', 'AI Summary')}
+                </Label>
+              </div>
+            </div>
+          </CollapsibleSection>
 
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        {t('projectManagement.searches.frequencyPenalty', 'Frequency Penalty')}
-                      </label>
-                      <SliderInput
-                        min={0} max={1} step={0.01}
-                        value={formData.search_config.frequency_penalty}
-                        onChange={(v) => updateConfig('frequency_penalty', v)}
-                      />
-                    </div>
-                  </div>
-                ),
-              },
-            ]}
-          />
-        )}
-      </div>
-    </Modal>
+          {/* Section 4: LLM Config (shown when AI Summary is on) */}
+          {formData.search_config.ai_summary && (
+            <CollapsibleSection title={t('projectManagement.searches.llmConfig', 'LLM Configuration')} defaultOpen>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    {t('projectManagement.searches.model', 'Model')}
+                  </label>
+                  {chatModels.length > 0 ? (
+                    <Select
+                      value={formData.search_config.model || undefined}
+                      onValueChange={(v: string) => updateConfig('model', v || '')}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={t('projectManagement.searches.selectModel', 'Select model')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {chatModels.map((m) => (
+                          <SelectItem key={m} value={m}>{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      placeholder={t('projectManagement.searches.modelPlaceholder', 'Enter model name')}
+                      value={formData.search_config.model}
+                      onChange={(e) => updateConfig('model', e.target.value)}
+                    />
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    {t('projectManagement.searches.creativity', 'Creativity')}
+                  </label>
+                  <Select defaultValue="custom" onValueChange={handleCreativityChange}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="improvise">{t('projectManagement.searches.improvise', 'Improvise')}</SelectItem>
+                      <SelectItem value="precise">{t('projectManagement.searches.precise', 'Precise')}</SelectItem>
+                      <SelectItem value="balance">{t('projectManagement.searches.balance', 'Balance')}</SelectItem>
+                      <SelectItem value="custom">{t('projectManagement.searches.custom', 'Custom')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    {t('projectManagement.searches.temperature', 'Temperature')}
+                  </label>
+                  <SliderInput
+                    min={0} max={1} step={0.01}
+                    value={formData.search_config.temperature}
+                    onChange={(v) => updateConfig('temperature', v)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    {t('projectManagement.searches.topP', 'Top P')}
+                  </label>
+                  <SliderInput
+                    min={0} max={1} step={0.01}
+                    value={formData.search_config.top_p}
+                    onChange={(v) => updateConfig('top_p', v)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    {t('projectManagement.searches.presencePenalty', 'Presence Penalty')}
+                  </label>
+                  <SliderInput
+                    min={0} max={1} step={0.01}
+                    value={formData.search_config.presence_penalty}
+                    onChange={(v) => updateConfig('presence_penalty', v)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    {t('projectManagement.searches.frequencyPenalty', 'Frequency Penalty')}
+                  </label>
+                  <SliderInput
+                    min={0} max={1} step={0.01}
+                    value={formData.search_config.frequency_penalty}
+                    onChange={(v) => updateConfig('frequency_penalty', v)}
+                  />
+                </div>
+              </div>
+            </CollapsibleSection>
+          )}
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button onClick={handleOk} disabled={saving}>
+            {saving ? t('common.saving') : t('common.save')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

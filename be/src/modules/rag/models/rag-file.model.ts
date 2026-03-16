@@ -6,7 +6,10 @@
 import { db } from '@/shared/db/knex.js'
 import { getUuid } from '../services/rag-redis.service.js'
 
-const SYSTEM_TENANT_ID = process.env['SYSTEM_TENANT_ID'] || '00000000-0000-0000-0000-000000000001';
+// RAGFlow stores tenant_id as a 32-char hex string (UUID without hyphens)
+const SYSTEM_TENANT_ID = (
+    process.env['SYSTEM_TENANT_ID'] || '00000000000000000000000000000001'
+).replace(/-/g, '');
 
 function nowMs(): number {
     return Date.now();
@@ -53,5 +56,26 @@ export class RagFileModel {
             update_time: now,
             update_date: nowDatetime(),
         });
+    }
+
+    /**
+     * Delete file2document and file records for a given document ID.
+     * @param documentId - The document ID to clean up
+     */
+    async deleteByDocumentId(documentId: string): Promise<void> {
+        const docIdClean = documentId.replace(/-/g, '');
+
+        // Find linked file IDs via file2document join table
+        const links = await db('file2document')
+            .where({ document_id: docIdClean })
+            .select('file_id');
+
+        // Delete join records
+        await db('file2document').where({ document_id: docIdClean }).delete();
+
+        // Delete file records (each file may be linked to only one document)
+        for (const link of links) {
+            await db('file').where({ id: link.file_id }).delete();
+        }
     }
 }

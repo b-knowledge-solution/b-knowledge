@@ -1,39 +1,87 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
-import { Play, Trash2, Eye } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Spinner } from '@/components/ui/spinner';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+/**
+ * @fileoverview Document table component with checkbox multi-select, bulk actions,
+ * inline parse status, enabled toggle, and process log dialog.
+ *
+ * Modeled after RAGflow's dataset-table.tsx with bulk operations.
+ *
+ * @module features/datasets/components/DocumentTable
+ */
+
+import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Play, Trash2, Eye, XCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import { Spinner } from '@/components/ui/spinner'
+import { Switch } from '@/components/ui/switch'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
-import type { Document } from '../types';
+} from '@/components/ui/table'
+import { Checkbox } from '@/components/Checkbox'
+import ProcessLogDialog from './ProcessLogDialog'
+import type { Document } from '../types'
+
+// ============================================================================
+// Types
+// ============================================================================
 
 interface DocumentTableProps {
-  documents: Document[];
-  loading: boolean;
-  isAdmin: boolean;
-  onParse: (docId: string) => void;
-  onDelete: (docId: string) => void;
-  onView?: (doc: Document) => void;
+  documents: Document[]
+  loading: boolean
+  isAdmin: boolean
+  onParse: (docId: string) => void
+  onDelete: (docId: string) => void
+  onView?: (doc: Document) => void
+  onToggleAvailability?: (docId: string, enabled: boolean) => void
+  onBulkParse?: (docIds: string[], run?: number) => void
+  onBulkDelete?: (docIds: string[]) => void
 }
 
-const statusVariantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  pending: 'secondary',
-  parsing: 'outline',
-  completed: 'default',
-  failed: 'destructive',
-};
+// ============================================================================
+// Helpers
+// ============================================================================
 
+/** Format file size to human-readable string */
 function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
+
+/** Format document date from RAGFlow fields */
+function formatDocDate(doc: Document): string {
+  const raw = doc.create_time || doc.create_date || doc.created_at
+  if (!raw) return '-'
+  const d = typeof raw === 'number' ? new Date(raw) : new Date(raw)
+  if (isNaN(d.getTime())) return '-'
+  return d.toLocaleDateString()
+}
+
+/** Map run/progress to status badge props */
+function getStatusBadge(doc: Document): {
+  label: string
+  variant: 'default' | 'secondary' | 'destructive' | 'outline'
+} {
+  // Use RAGflow run field if available
+  if (doc.run === '1') return { label: 'Parsing', variant: 'default' }
+  if (doc.run === '2') return { label: 'Cancelled', variant: 'secondary' }
+  if (doc.progress === 1) return { label: 'Completed', variant: 'outline' }
+  if (doc.progress === -1) return { label: 'Failed', variant: 'destructive' }
+  if (doc.progress > 0 && doc.progress < 1) return { label: 'In Progress', variant: 'default' }
+  // Fallback to string status
+  if (doc.status === 'completed') return { label: 'Completed', variant: 'outline' }
+  if (doc.status === 'failed') return { label: 'Failed', variant: 'destructive' }
+  if (doc.status === 'parsing') return { label: 'Parsing', variant: 'default' }
+  return { label: 'Pending', variant: 'secondary' }
+}
+
+// ============================================================================
+// Component
+// ============================================================================
 
 const DocumentTable: React.FC<DocumentTableProps> = ({
   documents,
@@ -42,108 +90,252 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
   onParse,
   onDelete,
   onView,
+  onToggleAvailability,
+  onBulkParse,
+  onBulkDelete,
 }) => {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [logDocument, setLogDocument] = useState<Document | null>(null)
+  const [logOpen, setLogOpen] = useState(false)
+
+  // Selection helpers
+  const allSelected = documents.length > 0 && selectedIds.size === documents.length
+  const hasSelection = selectedIds.size > 0
+
+  const toggleAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(documents.map((d) => d.id)))
+    } else {
+      setSelectedIds(new Set())
+    }
+  }
+
+  const toggleRow = (docId: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (checked) {
+        next.add(docId)
+      } else {
+        next.delete(docId)
+      }
+      return next
+    })
+  }
+
+  const selectedArray = Array.from(selectedIds)
+
+  // Show log dialog for a document
+  const showLog = (doc: Document) => {
+    setLogDocument(doc)
+    setLogOpen(true)
+  }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Spinner size={48} />
       </div>
-    );
+    )
   }
 
   return (
-    <div className="overflow-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t('datasets.docName')}</TableHead>
-            <TableHead className="w-[100px]">{t('datasets.docSize')}</TableHead>
-            <TableHead className="w-[140px]">{t('datasets.docStatus')}</TableHead>
-            <TableHead className="w-[100px] text-right">{t('datasets.chunkCount')}</TableHead>
-            <TableHead className="w-[140px]">{t('datasets.docUploadDate')}</TableHead>
-            {isAdmin && <TableHead className="w-[120px]">{t('common.actions')}</TableHead>}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {documents.length === 0 ? (
+    <div className="space-y-2">
+      {/* Bulk Action Bar */}
+      {hasSelection && isAdmin && (
+        <div className="flex items-center gap-3 rounded-md bg-muted/50 dark:bg-slate-800/50 px-4 py-2 border border-border">
+          <span className="text-sm text-muted-foreground">
+            {t('datasets.selectedCount', { count: selectedIds.size })}
+          </span>
+          <div className="flex gap-2 ml-auto">
+            {onBulkParse && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { onBulkParse(selectedArray, 1); setSelectedIds(new Set()) }}
+                >
+                  <Play size={14} className="mr-1" />
+                  {t('datasets.parseSelected')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { onBulkParse(selectedArray, 2); setSelectedIds(new Set()) }}
+                >
+                  <XCircle size={14} className="mr-1" />
+                  {t('datasets.cancelSelected')}
+                </Button>
+              </>
+            )}
+            {onBulkDelete && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => { onBulkDelete(selectedArray); setSelectedIds(new Set()) }}
+              >
+                <Trash2 size={14} className="mr-1" />
+                {t('datasets.deleteSelected')}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Table */}
+      <div className="overflow-auto">
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={isAdmin ? 6 : 5} className="text-center py-8 text-muted-foreground">
-                {t('common.noData')}
-              </TableCell>
-            </TableRow>
-          ) : documents.map((doc) => (
-            <TableRow key={doc.id}>
-              <TableCell className="max-w-[300px] truncate">
-                {doc.status === 'completed' && onView ? (
-                  <button
-                    className="font-medium text-primary hover:underline text-left"
-                    onClick={() => onView(doc)}
-                  >
-                    {doc.name}
-                  </button>
-                ) : (
-                  <span className="font-medium">{doc.name}</span>
-                )}
-              </TableCell>
-              <TableCell>{formatFileSize(doc.size)}</TableCell>
-              <TableCell>
-                <div>
-                  <Badge variant={statusVariantMap[doc.status] || 'secondary'}>{doc.status}</Badge>
-                  {doc.status === 'parsing' && (
-                    <Progress value={Math.round(doc.progress * 100)} className="mt-1 h-1.5" />
-                  )}
-                </div>
-              </TableCell>
-              <TableCell className="text-right">{doc.chunk_count}</TableCell>
-              <TableCell>{new Date(doc.created_at).toLocaleDateString()}</TableCell>
               {isAdmin && (
-                <TableCell>
-                  <div className="flex gap-1">
-                    {doc.status === 'completed' && onView && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onView(doc)}>
-                              <Eye size={14} />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>{t('datasets.viewDocument', 'View')}</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                    {doc.status === 'pending' && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onParse(doc.id)}>
-                              <Play size={14} />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>{t('datasets.parse')}</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
+                <TableHead className="w-[40px]">
+                  <Checkbox
+                    checked={allSelected}
+                    onChange={toggleAll}
+                  />
+                </TableHead>
+              )}
+              <TableHead>{t('datasets.docName')}</TableHead>
+              <TableHead className="w-[100px]">{t('datasets.docSize')}</TableHead>
+              <TableHead className="w-[100px]">{t('datasets.parser')}</TableHead>
+              <TableHead className="w-[140px]">{t('datasets.docStatus')}</TableHead>
+              {isAdmin && <TableHead className="w-[80px]">{t('datasets.enabled')}</TableHead>}
+              <TableHead className="w-[100px] text-right">{t('datasets.chunkCount')}</TableHead>
+              <TableHead className="w-[140px]">{t('datasets.docUploadDate')}</TableHead>
+              {isAdmin && <TableHead className="w-[100px]">{t('common.actions')}</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {documents.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={isAdmin ? 9 : 6} className="text-center py-8 text-muted-foreground">
+                  {t('common.noData')}
+                </TableCell>
+              </TableRow>
+            ) : documents.map((doc) => {
+              const status = getStatusBadge(doc)
+              const isEnabled = doc.status === '1' || doc.status === 'completed'
+              const isSelected = selectedIds.has(doc.id)
+
+              return (
+                <TableRow key={doc.id} className="group" data-state={isSelected ? 'selected' : undefined}>
+                  {/* Checkbox */}
+                  {isAdmin && (
+                    <TableCell>
+                      <Checkbox
+                        checked={isSelected}
+                        onChange={(checked) => toggleRow(doc.id, checked)}
+                      />
+                    </TableCell>
+                  )}
+
+                  {/* Name */}
+                  <TableCell className="max-w-[300px]">
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onDelete(doc.id)}>
-                            <Trash2 size={14} />
-                          </Button>
+                          <span className="font-medium truncate block cursor-default">{doc.name}</span>
                         </TooltipTrigger>
-                        <TooltipContent>{t('common.delete')}</TooltipContent>
+                        <TooltipContent>{doc.name}</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                  </div>
-                </TableCell>
-              )}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-};
+                  </TableCell>
 
-export default DocumentTable;
+                  {/* Size */}
+                  <TableCell>{formatFileSize(doc.size)}</TableCell>
+
+                  {/* Parser */}
+                  <TableCell>
+                    <Badge variant="outline" className="capitalize text-xs">
+                      {doc.parser_id === 'naive' ? 'General' : doc.parser_id || 'General'}
+                    </Badge>
+                  </TableCell>
+
+                  {/* Status (clickable → opens log dialog) */}
+                  <TableCell>
+                    <button
+                      className="text-left cursor-pointer"
+                      onClick={() => showLog(doc)}
+                    >
+                      <Badge variant={status.variant}>{status.label}</Badge>
+                      {doc.run === '1' && doc.progress > 0 && doc.progress < 1 && (
+                        <Progress value={Math.round(doc.progress * 100)} className="mt-1 h-1.5" />
+                      )}
+                    </button>
+                  </TableCell>
+
+                  {/* Enabled toggle */}
+                  {isAdmin && (
+                    <TableCell>
+                      <Switch
+                        checked={isEnabled}
+                        onCheckedChange={(checked: boolean) => {
+                          onToggleAvailability?.(doc.id, checked)
+                        }}
+                      />
+                    </TableCell>
+                  )}
+
+                  {/* Chunk count */}
+                  <TableCell className="text-right">{doc.chunk_num ?? doc.chunk_count ?? 0}</TableCell>
+
+                  {/* Upload date */}
+                  <TableCell>{formatDocDate(doc)}</TableCell>
+
+                  {/* Actions */}
+                  {isAdmin && (
+                    <TableCell>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {onView && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onView(doc)}>
+                                  <Eye size={14} />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{t('datasets.viewDocument', 'View')}</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onParse(doc.id)}>
+                                <Play size={14} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('datasets.parse')}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onDelete(doc.id)}>
+                                <Trash2 size={14} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('common.delete')}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </TableCell>
+                  )}
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Process Log Dialog */}
+      <ProcessLogDialog
+        open={logOpen}
+        onClose={() => setLogOpen(false)}
+        document={logDocument}
+      />
+    </div>
+  )
+}
+
+export default DocumentTable

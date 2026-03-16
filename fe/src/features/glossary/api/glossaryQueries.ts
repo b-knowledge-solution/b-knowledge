@@ -7,6 +7,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useConfirm } from '@/components/ConfirmDialog'
 import { glossaryApi } from './glossaryApi'
 import type { GlossaryKeyword, CreateKeywordDto, GlossaryTask, CreateTaskDto } from './glossaryApi'
 import type { KeywordFormData, TaskFormData } from '../types/glossary.types'
@@ -69,7 +70,7 @@ export interface UseGlossaryKeywordsReturn {
     /** Handle form submission (create or update). */
     handleSubmit: () => Promise<void>
     /** Handle keyword deletion with confirmation. */
-    handleDelete: (keyword: GlossaryKeyword) => void
+    handleDelete: (keyword: GlossaryKeyword) => Promise<void>
     /** Refresh the keyword list. */
     refresh: () => void
 }
@@ -81,6 +82,7 @@ export interface UseGlossaryKeywordsReturn {
  */
 export function useGlossaryKeywords(enabled = true): UseGlossaryKeywordsReturn {
     const { t } = useTranslation()
+    const confirm = useConfirm()
     const queryClient = useQueryClient()
 
     // Local UI state
@@ -212,9 +214,15 @@ export function useGlossaryKeywords(enabled = true): UseGlossaryKeywordsReturn {
      * @description Handle keyword deletion with confirmation dialog.
      * @param keyword - The keyword to delete.
      */
-    const handleDelete = (keyword: GlossaryKeyword) => {
-        // Show native confirmation dialog
-        if (!confirm(t('glossary.keyword.deleteConfirm', { name: keyword.name }))) return
+    const handleDelete = async (keyword: GlossaryKeyword) => {
+        // Show styled confirmation dialog before deleting keyword
+        const confirmed = await confirm({
+            title: t('common.delete'),
+            message: t('glossary.keyword.deleteConfirm', { name: keyword.name }),
+            variant: 'danger',
+            confirmText: t('common.delete'),
+        })
+        if (!confirmed) return
 
         deleteMutation.mutate(keyword.id, {
             onError: (error: any) => {
@@ -282,7 +290,7 @@ export interface UseGlossaryTasksReturn {
     /** Handle form submission (create or update). */
     handleSubmit: () => Promise<void>
     /** Confirm and delete a task. */
-    handleDelete: (task: GlossaryTask) => void
+    handleDelete: (task: GlossaryTask) => Promise<void>
     /** Re-fetch the task list from the server. */
     refresh: () => void
 }
@@ -294,6 +302,7 @@ export interface UseGlossaryTasksReturn {
  */
 export const useGlossaryTasks = (): UseGlossaryTasksReturn => {
     const { t } = useTranslation()
+    const confirm = useConfirm()
     const queryClient = useQueryClient()
 
     // Local UI state
@@ -430,9 +439,15 @@ export const useGlossaryTasks = (): UseGlossaryTasksReturn => {
      * @description Confirm and delete a task.
      * @param task - The task to delete.
      */
-    const handleDelete = (task: GlossaryTask) => {
-        // Show native confirmation dialog
-        if (!window.confirm(t('glossary.task.confirmDeleteMessage', { name: task.name }))) return
+    const handleDelete = async (task: GlossaryTask) => {
+        // Show styled confirmation dialog before deleting task
+        const confirmed = await confirm({
+            title: t('common.delete'),
+            message: t('glossary.task.confirmDeleteMessage', { name: task.name }),
+            variant: 'danger',
+            confirmText: t('common.delete'),
+        })
+        if (!confirmed) return
 
         deleteMutation.mutate(task.id, {
             onError: (error: any) => {

@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import { HeaderActions } from '@/components/HeaderActions';
 import { useTranslation } from 'react-i18next';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { broadcastMessageService } from '../api/broadcastApi';
 import { BroadcastMessage } from '../types/broadcast.types';
 import { Plus, CheckCircle, Trash2, Edit2, XCircle } from 'lucide-react';
@@ -30,6 +31,7 @@ import { Spinner } from '@/components/ui/spinner';
  */
 const BroadcastMessagePage: React.FC = () => {
     const { t } = useTranslation();
+    const confirm = useConfirm();
     const queryClient = useQueryClient();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingMessage, setEditingMessage] = useState<Partial<BroadcastMessage> | null>(null);
@@ -96,7 +98,14 @@ const BroadcastMessagePage: React.FC = () => {
      * @param {string} id - ID of message to delete.
      */
     const handleDelete = async (id: string) => {
-        if (!confirm(t('common.confirmDelete'))) return;
+        // Show styled confirmation dialog before deleting
+        const confirmed = await confirm({
+            title: t('common.delete'),
+            message: t('common.confirmDelete'),
+            variant: 'danger',
+            confirmText: t('common.delete'),
+        });
+        if (!confirmed) return;
         deleteMutation.mutate(id);
     };
 

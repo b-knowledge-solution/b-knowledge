@@ -11,7 +11,10 @@ import { minioClient } from '@/shared/services/minio.service.js';
 import { log } from '@/shared/services/logger.service.js';
 import { Readable } from 'stream';
 
-const SYSTEM_TENANT_ID = process.env['SYSTEM_TENANT_ID'] || '00000000-0000-0000-0000-000000000001';
+// RAGFlow stores tenant_id as a 32-char hex string (UUID without hyphens)
+const SYSTEM_TENANT_ID = (
+    process.env['SYSTEM_TENANT_ID'] || '00000000000000000000000000000001'
+).replace(/-/g, '');
 
 /**
  * The S3 bucket name. Uses tenant_id as bucket in multi-bucket mode,

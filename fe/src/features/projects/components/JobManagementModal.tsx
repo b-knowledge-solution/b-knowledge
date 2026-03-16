@@ -6,25 +6,8 @@
  * @module features/projects/components/JobManagementModal
  */
 
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Modal,
-  Table,
-  Tabs,
-  Tag,
-  Space,
-  Button,
-  Typography,
-  Progress,
-  Tooltip,
-  Badge,
-  Checkbox,
-  message,
-  Alert,
-  type CheckboxProps,
-} from 'antd'
-import type { ColumnsType } from 'antd/es/table'
 import {
   RefreshCw,
   Clock,
@@ -38,6 +21,15 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { globalMessage } from '@/app/App'
+
 import {
   getConverterJobs,
   getVersionJobFiles,
@@ -47,8 +39,6 @@ import {
   type FileTrackingRecord,
   type ConversionJobStatus,
 } from '../../system/api/converterApi'
-
-const { Text } = Typography
 
 // ============================================================================
 // Types
@@ -73,16 +63,16 @@ interface JobManagementModalProps {
 // Helpers
 // ============================================================================
 
-/** Map status to Ant Design tag color */
-const statusColor = (status: ConversionJobStatus): string => {
-  const map: Record<string, string> = {
-    pending: 'default',
-    waiting: 'warning',
-    converting: 'processing',
-    finished: 'success',
-    failed: 'error',
+/** Map status to badge variant */
+const statusVariant = (status: ConversionJobStatus): 'default' | 'secondary' | 'destructive' | 'outline' => {
+  const map: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+    pending: 'secondary',
+    waiting: 'outline',
+    converting: 'default',
+    finished: 'default',
+    failed: 'destructive',
   }
-  return map[status] || 'default'
+  return map[status] || 'secondary'
 }
 
 /** Map status to icon */
@@ -103,7 +93,7 @@ const StatusIcon = ({ status }: { status: ConversionJobStatus }) => {
 
 /** Format ISO date string */
 const formatDate = (iso: string): string => {
-  if (!iso) return '—'
+  if (!iso) return '\u2014'
   const d = new Date(iso)
   return d.toLocaleString('en-GB', {
     day: '2-digit',
@@ -142,65 +132,61 @@ const FileExpandRow = ({ jobId }: { jobId: string }) => {
     return () => { cancelled = true }
   }, [jobId])
 
-  const fileColumns: ColumnsType<FileTrackingRecord> = [
-    {
-      title: t('converter.files.fileName'),
-      dataIndex: 'fileName',
-      key: 'fileName',
-      ellipsis: true,
-      render: (name: string) => (
-        <Space size={4}>
-          <FileText size={14} className="text-gray-400 shrink-0" />
-          <Text className="text-xs">{name}</Text>
-        </Space>
-      ),
-    },
-    {
-      title: t('converter.files.status'),
-      dataIndex: 'status',
-      key: 'status',
-      width: 110,
-      render: (status: ConversionJobStatus) => (
-        <Tag color={statusColor(status)} className="text-xs">
-          <Space size={4}>
-            <StatusIcon status={status} />
-            {t(`converter.status.${status}`)}
-          </Space>
-        </Tag>
-      ),
-    },
-    {
-      title: t('converter.files.error'),
-      dataIndex: 'error',
-      key: 'error',
-      ellipsis: true,
-      render: (err?: string) =>
-        err ? (
-          <Tooltip title={err}>
-            <Text type="danger" className="text-xs">{err}</Text>
-          </Tooltip>
-        ) : (
-          <Text type="secondary" className="text-xs">—</Text>
-        ),
-    },
-    {
-      title: t('converter.files.updatedAt'),
-      dataIndex: 'updatedAt',
-      key: 'updatedAt',
-      width: 140,
-      render: (v: string) => <Text className="text-xs">{formatDate(v)}</Text>,
-    },
-  ]
+  // Show spinner while loading
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-4">
+        <Loader2 size={16} className="animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
   return (
-    <Table
-      columns={fileColumns}
-      dataSource={files}
-      rowKey="id"
-      loading={loading}
-      pagination={false}
-      size="small"
-    />
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>{t('converter.files.fileName')}</TableHead>
+          <TableHead className="w-[110px]">{t('converter.files.status')}</TableHead>
+          <TableHead>{t('converter.files.error')}</TableHead>
+          <TableHead className="w-[140px]">{t('converter.files.updatedAt')}</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {files.map((file) => (
+          <TableRow key={file.id}>
+            <TableCell>
+              <div className="flex items-center gap-1">
+                <FileText size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
+                <span className="text-xs truncate">{file.fileName}</span>
+              </div>
+            </TableCell>
+            <TableCell>
+              <Badge variant={statusVariant(file.status)} className="text-xs">
+                <StatusIcon status={file.status} />
+                <span className="ml-1">{t(`converter.status.${file.status}`)}</span>
+              </Badge>
+            </TableCell>
+            <TableCell>
+              {file.error ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-xs text-destructive truncate block max-w-[200px]">{file.error}</span>
+                    </TooltipTrigger>
+                    <TooltipContent><p className="max-w-xs text-xs">{file.error}</p></TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <span className="text-xs text-muted-foreground">{'\u2014'}</span>
+              )}
+            </TableCell>
+            <TableCell>
+              <span className="text-xs">{formatDate(file.updatedAt)}</span>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   )
 }
 
@@ -305,16 +291,16 @@ const JobManagementModal = ({
       }
       const fileNames = Array.from(fileNamesSet)
       if (fileNames.length === 0) {
-        message.warning(t('converter.panel.autoParseNoFiles'))
+        globalMessage.warning(t('converter.panel.autoParseNoFiles'))
         return
       }
 
       const result = await parseVersionDocuments(projectId, categoryId, versionId, fileNames)
-      message.success(
+      globalMessage.success(
         t('converter.panel.autoParseSuccess', { count: result.triggered ?? fileNames.length }),
       )
     } catch (err) {
-      message.error(t('converter.panel.autoParseError'))
+      globalMessage.error(t('converter.panel.autoParseError'))
       console.error('Auto-parse failed:', err)
     } finally {
       setParsing(false)
@@ -337,19 +323,19 @@ const JobManagementModal = ({
     setForceStarting(true)
     try {
       const result = await triggerManualConversion()
-      message.success(result.message || t('converter.panel.forceStartSuccess'))
+      globalMessage.success(result.message || t('converter.panel.forceStartSuccess'))
 
       // If user checked "parse after finish", set the pending flag.
       // The refresh interval will detect when all jobs are done and call triggerParseAll.
       if (autoParseAfterUpload) {
         pendingAutoParseRef.current = true
-        message.info(t('converter.panel.autoParseScheduled'))
+        globalMessage.info(t('converter.panel.autoParseScheduled'))
       }
 
       // Refresh after a short delay to show new status
       setTimeout(() => fetchJobs(), 1500)
     } catch (err) {
-      message.error(t('converter.panel.forceStartError'))
+      globalMessage.error(t('converter.panel.forceStartError'))
     } finally {
       setForceStarting(false)
     }
@@ -364,214 +350,233 @@ const JobManagementModal = ({
     (j) => j.status === 'finished' || j.status === 'failed',
   )
 
-  // Force Start: enabled only when ≥1 pending job and no waiting/converting
+  // Force Start: enabled only when >=1 pending job and no waiting/converting
   const hasPending = jobs.some((j) => j.status === 'pending')
   const hasActive = jobs.some((j) => j.status === 'waiting' || j.status === 'converting')
   const forceStartDisabled = !hasPending || hasActive
 
-  // ── Table Columns ──────────────────────────────────────────────────────
-
-  const columns: ColumnsType<VersionJob> = [
-    {
-      title: t('converter.jobs.status'),
-      dataIndex: 'status',
-      key: 'status',
-      width: 120,
-      render: (status: ConversionJobStatus) => (
-        <Tag color={statusColor(status)}>
-          <Space size={4}>
-            <StatusIcon status={status} />
-            {t(`converter.status.${status}`)}
-          </Space>
-        </Tag>
-      ),
-    },
-    {
-      title: t('converter.jobs.files'),
-      key: 'fileProgress',
-      width: 200,
-      render: (_: unknown, record: VersionJob) => {
-        const { fileCount, finishedCount, failedCount } = record
-        const doneCount = finishedCount + failedCount
-        const percent = fileCount > 0 ? Math.round((doneCount / fileCount) * 100) : 0
-        return (
-          <div className="flex flex-col gap-0.5">
-            <Progress
-              percent={percent}
-              size="small"
-              status={failedCount > 0 ? 'exception' : undefined}
-              format={() => `${doneCount}/${fileCount}`}
-            />
-            <Text type="secondary" className="text-xs">
-              {finishedCount > 0 && <span className="text-green-600">{finishedCount} ✓</span>}
-              {failedCount > 0 && <span className="text-red-500 ml-1">{failedCount} ✗</span>}
-            </Text>
-          </div>
-        )
-      },
-    },
-    {
-      title: t('converter.jobs.createdAt'),
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      width: 140,
-      render: (v: string) => <Text className="text-xs">{formatDate(v)}</Text>,
-    },
-    {
-      title: t('converter.jobs.updatedAt'),
-      dataIndex: 'updatedAt',
-      key: 'updatedAt',
-      width: 140,
-      render: (v: string) => <Text className="text-xs">{formatDate(v)}</Text>,
-    },
-  ]
-
   // ── Shared table render ────────────────────────────────────────────────
 
-  const renderJobTable = (data: VersionJob[]) => (
-    <Table<VersionJob>
-      columns={columns}
-      dataSource={data}
-      rowKey="id"
-      loading={loading}
-      size="small"
-      pagination={data.length > 10 ? { pageSize: 10, size: 'small', showSizeChanger: false } : false}
-      expandable={{
-        expandedRowKeys,
-        onExpand: (expanded: boolean, record: VersionJob) => {
-          setExpandedRowKeys(expanded ? [record.id] : [])
-        },
-        expandedRowRender: (record: VersionJob) => <FileExpandRow jobId={record.id} />,
-        expandIcon: ({ expanded, onExpand, record }: { expanded: boolean; onExpand: (record: VersionJob, e: React.MouseEvent<HTMLElement>) => void; record: VersionJob }) => (
-          <Button
-            type="text"
-            size="small"
-            icon={expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-            onClick={(e: React.MouseEvent<HTMLElement>) => onExpand(record, e)}
-          />
-        ),
-      }}
-    />
-  )
+  /**
+   * Renders the jobs table for a given data set.
+   * @param data - Array of VersionJob to render
+   */
+  const renderJobTable = (data: VersionJob[]) => {
+    // Show loading spinner when fetching
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 size={20} className="animate-spin text-muted-foreground" />
+        </div>
+      )
+    }
 
-  // ── Tab items ──────────────────────────────────────────────────────────
+    if (data.length === 0) {
+      return (
+        <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+          {t('common.noData', 'No data')}
+        </div>
+      )
+    }
 
-  const tabItems = [
-    {
-      key: 'active',
-      label: (
-        <Space size={4}>
-          {t('converter.panel.activeJobs')}
-          {activeJobs.length > 0 && <Badge count={activeJobs.length} size="small" />}
-        </Space>
-      ),
-      children: renderJobTable(activeJobs),
-    },
-    {
-      key: 'history',
-      label: t('converter.panel.jobHistory'),
-      children: renderJobTable(historyJobs),
-    },
-  ]
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-8" />
+            <TableHead className="w-[120px]">{t('converter.jobs.status')}</TableHead>
+            <TableHead className="w-[200px]">{t('converter.jobs.files')}</TableHead>
+            <TableHead className="w-[140px]">{t('converter.jobs.createdAt')}</TableHead>
+            <TableHead className="w-[140px]">{t('converter.jobs.updatedAt')}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((job) => {
+            const isExpanded = expandedRowKeys.includes(job.id)
+            const { fileCount, finishedCount, failedCount } = job
+            const doneCount = finishedCount + failedCount
+            const percent = fileCount > 0 ? Math.round((doneCount / fileCount) * 100) : 0
+
+            return (
+              <React.Fragment key={job.id}>
+                <TableRow>
+                  {/* Expand toggle */}
+                  <TableCell className="px-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => setExpandedRowKeys(isExpanded ? [] : [job.id])}
+                    >
+                      {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                    </Button>
+                  </TableCell>
+                  {/* Status */}
+                  <TableCell>
+                    <Badge variant={statusVariant(job.status)}>
+                      <StatusIcon status={job.status} />
+                      <span className="ml-1">{t(`converter.status.${job.status}`)}</span>
+                    </Badge>
+                  </TableCell>
+                  {/* File progress */}
+                  <TableCell>
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-2">
+                        <Progress value={percent} className={`h-2 flex-1 ${failedCount > 0 ? '[&>div]:bg-destructive' : ''}`} />
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">{doneCount}/{fileCount}</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {finishedCount > 0 && <span className="text-green-600">{finishedCount} &#10003;</span>}
+                        {failedCount > 0 && <span className="text-red-500 ml-1">{failedCount} &#10007;</span>}
+                      </span>
+                    </div>
+                  </TableCell>
+                  {/* Created at */}
+                  <TableCell>
+                    <span className="text-xs">{formatDate(job.createdAt)}</span>
+                  </TableCell>
+                  {/* Updated at */}
+                  <TableCell>
+                    <span className="text-xs">{formatDate(job.updatedAt)}</span>
+                  </TableCell>
+                </TableRow>
+                {/* Expanded row with file details */}
+                {isExpanded && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="bg-muted/50 p-2">
+                      <FileExpandRow jobId={job.id} />
+                    </TableCell>
+                  </TableRow>
+                )}
+              </React.Fragment>
+            )
+          })}
+        </TableBody>
+      </Table>
+    )
+  }
 
   // ── Render ─────────────────────────────────────────────────────────────
 
   return (
     <>
       {/* ── Main modal ─────────────────────────────────────────────────── */}
-      <Modal
-        open={open}
-        onCancel={onClose}
-        title={
-          <div className="flex items-center justify-between pr-8">
-            <Text strong>
-              {t('converter.panel.title')}
+      <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) onClose() }}>
+        <DialogContent className="max-w-[70%] max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              <span className="font-semibold">{t('converter.panel.title')}</span>
               {versionLabel && (
-                <Text type="secondary" className="ml-2 text-sm font-normal">
-                  — {versionLabel}
-                </Text>
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  {'\u2014'} {versionLabel}
+                </span>
               )}
-            </Text>
-          </div>
-        }
-        width="70%"
-        footer={null}
-        destroyOnClose
-      >
-        {/* Action bar */}
-        <div className="flex items-center justify-between mb-3">
-          <Space>
-            <Button
-              type="primary"
-              icon={<Play size={14} />}
-              onClick={() => setConfirmVisible(true)}
-              loading={forceStarting || parsing}
-              disabled={forceStartDisabled}
-              size="small"
-            >
-              {parsing
-                ? t('converter.panel.parsing')
-                : t('converter.panel.forceStart')}
-            </Button>
-            {pendingAutoParseRef.current && (
-              <Text type="secondary" className="text-xs">
-                {t('converter.panel.waitingToAutoparse')}
-              </Text>
-            )}
-          </Space>
-          <Button
-            type="text"
-            size="small"
-            icon={<RefreshCw size={14} />}
-            onClick={() => fetchJobs()}
-            loading={loading}
-          />
-        </div>
+            </DialogTitle>
+          </DialogHeader>
 
-        <Tabs items={tabItems} defaultActiveKey="active" size="small" />
-      </Modal>
+          {/* Action bar */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => setConfirmVisible(true)}
+                disabled={forceStartDisabled || forceStarting || parsing}
+              >
+                {(forceStarting || parsing) && <Loader2 size={14} className="animate-spin mr-1" />}
+                <Play size={14} className="mr-1" />
+                {parsing
+                  ? t('converter.panel.parsing')
+                  : t('converter.panel.forceStart')}
+              </Button>
+              {pendingAutoParseRef.current && (
+                <span className="text-xs text-muted-foreground">
+                  {t('converter.panel.waitingToAutoparse')}
+                </span>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => fetchJobs()}
+              disabled={loading}
+            >
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            </Button>
+          </div>
+
+          {/* Tabs for Active / History */}
+          <Tabs defaultValue="active" className="flex-1 overflow-hidden flex flex-col">
+            <TabsList>
+              <TabsTrigger value="active" className="gap-1">
+                {t('converter.panel.activeJobs')}
+                {activeJobs.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 min-w-[20px] text-xs">
+                    {activeJobs.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="history">
+                {t('converter.panel.jobHistory')}
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="active" className="flex-1 overflow-auto">
+              {renderJobTable(activeJobs)}
+            </TabsContent>
+            <TabsContent value="history" className="flex-1 overflow-auto">
+              {renderJobTable(historyJobs)}
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Confirm dialog ─────────────────────────────────────────────── */}
-      <Modal
-        open={confirmVisible}
-        onCancel={() => setConfirmVisible(false)}
-        onOk={handleConfirmForceStart}
-        okText={t('converter.panel.forceStart')}
-        okType="primary"
-        cancelText={t('common.cancel', 'Cancel')}
-        title={
-          <Space>
-            <AlertTriangle size={16} className="text-orange-500" />
-            {t('converter.panel.forceStartConfirmTitle')}
-          </Space>
-        }
-        width={480}
-      >
-        <div className="flex flex-col gap-3 py-1">
-          <Alert
-            type="warning"
-            showIcon={false}
-            message={t('converter.panel.forceStartConfirmMessage')}
-          />
+      <Dialog open={confirmVisible} onOpenChange={(v: boolean) => { if (!v) setConfirmVisible(false) }}>
+        <DialogContent className="max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle size={16} className="text-orange-500" />
+              {t('converter.panel.forceStartConfirmTitle')}
+            </DialogTitle>
+          </DialogHeader>
 
-          {/* Auto-parse checkbox */}
-          <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
-            <Checkbox
-              checked={autoParseAfterUpload}
-              onChange={((e) => setAutoParseAfterUpload(e.target.checked)) as CheckboxProps['onChange']}
-            >
-              <div>
-                <div className="font-medium text-sm">
-                  {t('converter.panel.autoParseLabel')}
+          <div className="flex flex-col gap-3 py-1">
+            {/* Warning alert */}
+            <div className="rounded-md border border-yellow-200 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 p-3 text-sm text-yellow-800 dark:text-yellow-200">
+              {t('converter.panel.forceStartConfirmMessage')}
+            </div>
+
+            {/* Auto-parse checkbox */}
+            <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoParseAfterUpload}
+                  onChange={(e) => setAutoParseAfterUpload(e.target.checked)}
+                  className="rounded mt-0.5"
+                />
+                <div>
+                  <div className="font-medium text-sm">
+                    {t('converter.panel.autoParseLabel')}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {t('converter.panel.autoParseDesc')}
+                  </div>
                 </div>
-                <div className="text-xs text-gray-500 mt-0.5">
-                  {t('converter.panel.autoParseDesc')}
-                </div>
-              </div>
-            </Checkbox>
+              </label>
+            </div>
           </div>
-        </div>
-      </Modal>
+
+          {/* Footer buttons */}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setConfirmVisible(false)}>
+              {t('common.cancel', 'Cancel')}
+            </Button>
+            <Button onClick={handleConfirmForceStart}>
+              {t('converter.panel.forceStart')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

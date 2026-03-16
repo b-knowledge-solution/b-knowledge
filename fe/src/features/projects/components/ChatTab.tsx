@@ -9,9 +9,14 @@
 
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Table, Popconfirm, message, Tag } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
-import { Plus, Trash2, RefreshCw, Pencil, Lock } from 'lucide-react'
+import { Plus, Trash2, RefreshCw, Pencil, Lock, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useConfirm } from '@/components/ConfirmDialog'
+import { globalMessage } from '@/app/App'
+import { EmptyState } from '@/components/ui/empty-state'
 import {
   getProjectChats,
   createProjectChat,
@@ -61,6 +66,7 @@ const ChatTab = ({
   chatModels,
 }: ChatTabProps) => {
   const { t } = useTranslation()
+  const confirm = useConfirm()
 
   // -- State --
   const [chats, setChats] = useState<ProjectChat[]>(initialChats)
@@ -175,11 +181,11 @@ const ChatTab = ({
       if (editingChat) {
         // Update existing chat
         await updateProjectChat(projectId, editingChat.id, payload)
-        message.success(t('projectManagement.chats.updateSuccess'))
+        globalMessage.success(t('projectManagement.chats.updateSuccess'))
       } else {
         // Create new chat
         await createProjectChat(projectId, payload)
-        message.success(t('projectManagement.chats.createSuccess'))
+        globalMessage.success(t('projectManagement.chats.createSuccess'))
       }
 
       setChatModalOpen(false)
@@ -187,24 +193,33 @@ const ChatTab = ({
       const chatData = await getProjectChats(projectId)
       setChats(chatData)
     } catch (err) {
-      message.error(String(err))
+      globalMessage.error(String(err))
     } finally {
       setSaving(false)
     }
   }
 
   /**
-   * Delete a chat assistant.
+   * Delete a chat assistant after confirmation.
    *
    * @param chatId - Chat UUID to delete
    */
   const handleDeleteChat = async (chatId: string) => {
+    // Prompt confirmation before deleting
+    const confirmed = await confirm({
+      title: t('common.delete'),
+      message: t('projectManagement.chats.deleteConfirm'),
+      variant: 'danger',
+      confirmText: t('common.delete'),
+    })
+    if (!confirmed) return
+
     try {
       await deleteProjectChat(projectId, chatId)
       const chatData = await getProjectChats(projectId)
       setChats(chatData)
     } catch (err) {
-      message.error(String(err))
+      globalMessage.error(String(err))
     }
   }
 
@@ -219,83 +234,13 @@ const ChatTab = ({
       await syncProjectChat(projectId, chatId)
       const chatData = await getProjectChats(projectId)
       setChats(chatData)
-      message.success(t('projectManagement.chats.syncSuccess'))
+      globalMessage.success(t('projectManagement.chats.syncSuccess'))
     } catch (err) {
-      message.error(String(err))
+      globalMessage.error(String(err))
     } finally {
       setSyncingId(null)
     }
   }
-
-  // -- Table columns --
-
-  /** Chat assistant table columns */
-  const chatColumns: ColumnsType<ProjectChat> = [
-    {
-      title: t('projectManagement.chats.name'),
-      dataIndex: 'name',
-      key: 'name',
-    },
-    {
-      title: t('projectManagement.chats.datasets'),
-      key: 'categories',
-      render: (_: unknown, record: ProjectChat) => {
-        const names = getChatCategoryNames(record)
-        if (names.length === 0) return <span className="text-gray-400">—</span>
-        return (
-          <div className="flex flex-wrap gap-1">
-            {names.map((name) => (
-              <Tag key={name} color="blue">{name}</Tag>
-            ))}
-          </div>
-        )
-      },
-    },
-    {
-      title: 'RAGFlow ID',
-      dataIndex: 'ragflow_chat_id',
-      key: 'ragflow_chat_id',
-      ellipsis: true,
-      render: (text: string) => text || '—',
-    },
-    {
-      title: '',
-      key: 'actions',
-      width: 150,
-      render: (_: unknown, record: ProjectChat) => (
-        <div className="flex items-center gap-1">
-          <Button
-            type="text"
-            size="small"
-            icon={<Lock size={14} />}
-            onClick={() => { setPermChatId(record.id); setPermChatName(record.name) }}
-            title={t('projectManagement.entityPermissions.title', 'Permissions')}
-          />
-          <Button
-            type="text"
-            size="small"
-            icon={<Pencil size={14} />}
-            onClick={() => handleOpenEdit(record)}
-            title={t('projectManagement.chats.edit')}
-          />
-          <Button
-            type="text"
-            size="small"
-            icon={<RefreshCw size={14} />}
-            loading={syncingId === record.id}
-            onClick={() => handleSyncChat(record.id)}
-            title={t('projectManagement.chats.sync')}
-          />
-          <Popconfirm
-            title={t('projectManagement.chats.deleteConfirm')}
-            onConfirm={() => handleDeleteChat(record.id)}
-          >
-            <Button type="text" size="small" danger icon={<Trash2 size={14} />} />
-          </Popconfirm>
-        </div>
-      ),
-    },
-  ]
 
   // -- Render --
 
@@ -306,17 +251,130 @@ const ChatTab = ({
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
             {t('projectManagement.chats.title')}
           </h3>
-          <Button icon={<Plus size={14} />} onClick={handleOpenCreate}>
+          <Button variant="outline" size="sm" onClick={handleOpenCreate}>
+            <Plus size={14} className="mr-1" />
             {t('projectManagement.chats.add')}
           </Button>
         </div>
-        <Table
-          rowKey="id"
-          columns={chatColumns}
-          dataSource={chats}
-          pagination={false}
-          locale={{ emptyText: t('projectManagement.chats.noChatsHint') }}
-        />
+
+        {/* Chat assistant table */}
+        {chats.length === 0 ? (
+          <EmptyState description={t('projectManagement.chats.noChatsHint')} />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('projectManagement.chats.name')}</TableHead>
+                <TableHead>{t('projectManagement.chats.datasets')}</TableHead>
+                <TableHead>RAGFlow ID</TableHead>
+                <TableHead className="w-[150px]" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {chats.map((chat) => {
+                const names = getChatCategoryNames(chat)
+                return (
+                  <TableRow key={chat.id}>
+                    {/* Name */}
+                    <TableCell>{chat.name}</TableCell>
+
+                    {/* Datasets (category names) */}
+                    <TableCell>
+                      {names.length === 0 ? (
+                        <span className="text-gray-400">—</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {names.map((name) => (
+                            <Badge key={name} variant="info">{name}</Badge>
+                          ))}
+                        </div>
+                      )}
+                    </TableCell>
+
+                    {/* RAGFlow ID */}
+                    <TableCell className="truncate max-w-[200px]">
+                      {chat.ragflow_chat_id || '—'}
+                    </TableCell>
+
+                    {/* Actions */}
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => { setPermChatId(chat.id); setPermChatName(chat.name) }}
+                              >
+                                <Lock size={14} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('projectManagement.entityPermissions.title', 'Permissions')}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => handleOpenEdit(chat)}
+                              >
+                                <Pencil size={14} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('projectManagement.chats.edit')}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                disabled={syncingId === chat.id}
+                                onClick={() => handleSyncChat(chat.id)}
+                              >
+                                {syncingId === chat.id ? (
+                                  <Loader2 size={14} className="animate-spin" />
+                                ) : (
+                                  <RefreshCw size={14} />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('projectManagement.chats.sync')}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-destructive hover:text-destructive"
+                                onClick={() => handleDeleteChat(chat.id)}
+                              >
+                                <Trash2 size={14} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('common.delete')}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        )}
       </div>
 
       {/* Chat create/edit modal */}

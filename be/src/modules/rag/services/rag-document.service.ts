@@ -108,6 +108,14 @@ export class RagDocumentService {
         await ModelFactory.ragFile.createFile2Document(fileId, documentId);
     }
 
+    /**
+     * Delete file and file2document records for a given document ID.
+     * @param docId - Document ID to clean up
+     */
+    async deleteFileRecords(docId: string): Promise<void> {
+        await ModelFactory.ragFile.deleteByDocumentId(docId);
+    }
+
     // -----------------------------------------------------------------------
     // Task
     // -----------------------------------------------------------------------
@@ -198,6 +206,44 @@ export class RagDocumentService {
      */
     async incrementDocCount(datasetId: string, count: number): Promise<void> {
         await ModelFactory.knowledgebase.incrementDocCount(datasetId, count);
+    }
+
+    // -----------------------------------------------------------------------
+    // Bulk Operations
+    // -----------------------------------------------------------------------
+
+    /**
+     * Cancel parsing for a document (reset run status).
+     * @param docId - Document ID to cancel
+     */
+    async cancelParse(docId: string): Promise<void> {
+        await ModelFactory.ragDocument.update(docId, {
+            run: '2',
+            progress: 0,
+            progress_msg: '',
+        });
+    }
+
+    /**
+     * Soft-delete multiple documents.
+     * @param docIds - Array of document IDs
+     */
+    async bulkSoftDelete(docIds: string[]): Promise<void> {
+        for (const docId of docIds) {
+            await ModelFactory.ragDocument.softDelete(docId);
+        }
+    }
+
+    /**
+     * Toggle availability status for multiple documents.
+     * @param docIds - Array of document IDs
+     * @param enabled - Whether to enable (status '1') or disable (status '0')
+     */
+    async bulkToggle(docIds: string[], enabled: boolean): Promise<void> {
+        const status = enabled ? '1' : '0';
+        for (const docId of docIds) {
+            await ModelFactory.ragDocument.update(docId, { status });
+        }
     }
 }
 

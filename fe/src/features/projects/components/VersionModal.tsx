@@ -2,18 +2,32 @@
  * @fileoverview Modal form for creating a new category version.
  * Includes page rank slider and ingestion pipeline toggle (Built-in vs Choose pipeline).
  * When "Built-in" is selected, shows parser config fields pre-filled from category defaults.
- * Uses native useState instead of Ant Design Form.
+ * Uses native useState instead of form libraries.
  * @module features/projects/components/VersionModal
  */
 
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Modal, Input, InputNumber, Slider, Divider, Typography, Tooltip, Row, Col, Radio } from 'antd'
-import type { RadioChangeEvent } from 'antd'
-import { InfoCircleOutlined } from '@ant-design/icons'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { Info } from 'lucide-react'
 import BuiltInParserFields, { type ParserConfig } from './BuiltInParserFields'
-
-const { Text } = Typography
 
 // ============================================================================
 // Types
@@ -67,7 +81,7 @@ interface VersionModalProps {
 // ============================================================================
 
 /**
- * Modal dialog with a form for creating a new category version.
+ * @description Modal dialog with a form for creating a new category version.
  *
  * @param {VersionModalProps} props - Component props
  * @returns {JSX.Element} The rendered modal
@@ -115,7 +129,7 @@ const VersionModal = ({ open, saving, categoryConfig, onOk, onCancel }: VersionM
   }, [open, categoryConfig])
 
   /**
-   * Handle form submission with inline validation.
+   * @description Handle form submission with inline validation.
    */
   const handleOk = () => {
     if (!formData.version_label.trim()) {
@@ -127,7 +141,7 @@ const VersionModal = ({ open, saving, categoryConfig, onOk, onCancel }: VersionM
   }
 
   /**
-   * Reset parse mode and close.
+   * @description Reset parse mode and close.
    */
   const handleCancel = () => {
     setParseMode('builtin')
@@ -135,7 +149,7 @@ const VersionModal = ({ open, saving, categoryConfig, onOk, onCancel }: VersionM
   }
 
   /**
-   * Update a top-level form field.
+   * @description Update a top-level form field.
    * @param field - Field name
    * @param value - New value
    */
@@ -144,7 +158,7 @@ const VersionModal = ({ open, saving, categoryConfig, onOk, onCancel }: VersionM
   }
 
   /**
-   * Update a parser_config field.
+   * @description Update a parser_config field.
    * @param field - Parser config field name
    * @param value - New value
    */
@@ -156,139 +170,159 @@ const VersionModal = ({ open, saving, categoryConfig, onOk, onCancel }: VersionM
   }
 
   return (
-    <Modal
-      title={t('projectManagement.versions.add')}
-      open={open}
-      onOk={handleOk}
-      onCancel={handleCancel}
-      confirmLoading={saving}
-      destroyOnHidden
-      width={600}
-      styles={{ body: { maxHeight: '70vh', overflowY: 'auto', overflowX: 'hidden' } }}
-    >
-      <div className="mt-4 space-y-4">
-        {/* Version label */}
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            {t('projectManagement.versions.label')} <span className="text-red-500">*</span>
-          </label>
-          <Input
-            placeholder={t('projectManagement.versions.labelPlaceholder') || 'e.g. v1.0'}
-            value={formData.version_label}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-              updateField('version_label', e.target.value)
-              if (labelError) setLabelError('')
-            }}
-            status={labelError ? 'error' : undefined}
-          />
-          {labelError && <p className="text-red-500 text-xs mt-1">{labelError}</p>}
-        </div>
+    <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) handleCancel() }}>
+      <DialogContent className="max-w-[600px] max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{t('projectManagement.versions.add')}</DialogTitle>
+        </DialogHeader>
 
-        {/* Page Rank slider */}
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            <span>
-              {t('projectManagement.versions.pageRank')}
-              <Tooltip title={t('projectManagement.versions.pageRankTip')}>
-                <InfoCircleOutlined style={{ marginLeft: 4, color: '#999' }} />
-              </Tooltip>
-            </span>
-          </label>
-          <Row gutter={12} align="middle">
-            <Col flex="auto">
-              <Slider
-                min={0}
-                max={100}
-                value={formData.pagerank}
-                onChange={(v: number) => updateField('pagerank', v)}
-              />
-            </Col>
-            <Col>
-              <InputNumber
-                min={0}
-                max={100}
-                style={{ width: 70 }}
-                value={formData.pagerank}
-                onChange={(v: number | null) => updateField('pagerank', v ?? 0)}
-              />
-            </Col>
-          </Row>
-        </div>
-
-        {/* Ingestion pipeline section */}
-        <Divider orientation="left" plain>
-          <Text type="secondary" style={{ fontSize: 13 }}>
-            {t('projectManagement.versions.pipelineSection')}
-          </Text>
-        </Divider>
-
-        {/* Parse type radio toggle */}
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            {t('projectManagement.versions.parseType')}
-          </label>
-          <Radio.Group
-            value={parseMode}
-            onChange={(e: RadioChangeEvent) => {
-              setParseMode(e.target.value)
-              if (e.target.value === 'builtin') {
-                updateField('pipeline_id', undefined)
-                updateField('parse_type', undefined)
-              }
-            }}
-          >
-            <Radio value="builtin">{t('projectManagement.versions.parseTypeBuiltIn')}</Radio>
-            <Radio value="pipeline">{t('projectManagement.versions.parseTypeChoosePipeline')}</Radio>
-          </Radio.Group>
-        </div>
-
-        {/* Built-in fields -- pre-filled from category, user can override */}
-        {parseMode === 'builtin' && (
-          <>
-            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 16 }}>
-              {t('projectManagement.versions.builtInHint')}
-            </Text>
-            <BuiltInParserFields
-              chunkMethod={formData.chunk_method ?? 'naive'}
-              onChunkMethodChange={(v: string) => updateField('chunk_method', v)}
-              parserConfig={formData.parser_config}
-              onParserConfigChange={updateParserConfig}
+        <div className="space-y-4">
+          {/* Version label */}
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              {t('projectManagement.versions.label')} <span className="text-red-500">*</span>
+            </label>
+            <Input
+              placeholder={t('projectManagement.versions.labelPlaceholder') || 'e.g. v1.0'}
+              value={formData.version_label}
+              onChange={(e) => {
+                updateField('version_label', e.target.value)
+                if (labelError) setLabelError('')
+              }}
+              className={labelError ? 'border-destructive' : ''}
             />
-          </>
-        )}
+            {labelError && <p className="text-destructive text-xs mt-1">{labelError}</p>}
+          </div>
 
-        {/* Pipeline fields -- only visible when "Choose pipeline" is selected */}
-        {parseMode === 'pipeline' && (
-          <>
-            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 16 }}>
-              {t('projectManagement.versions.pipelineSectionTip')}
-            </Text>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">
-                {t('projectManagement.versions.pipelineId')} <span className="text-red-500">*</span>
-              </label>
+          {/* Page Rank slider */}
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              <span className="flex items-center gap-1">
+                {t('projectManagement.versions.pageRank')}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{t('projectManagement.versions.pageRankTip')}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </span>
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min={0} max={100}
+                value={formData.pagerank}
+                onChange={(e) => updateField('pagerank', Number(e.target.value))}
+                className="flex-1 h-2 accent-primary"
+              />
               <Input
-                placeholder={t('projectManagement.versions.pipelineIdPlaceholder')}
-                value={formData.pipeline_id || ''}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('pipeline_id', e.target.value)}
+                type="number"
+                min={0} max={100}
+                className="w-[70px]"
+                value={formData.pagerank}
+                onChange={(e) => updateField('pagerank', Number(e.target.value))}
               />
             </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">
-                {t('projectManagement.versions.parseTypeNum')}
-              </label>
-              <InputNumber
-                min={1}
-                style={{ width: '100%' }}
-                placeholder={t('projectManagement.versions.parseTypePlaceholder') || ''}
-                value={formData.parse_type}
-                onChange={(v: number | null) => updateField('parse_type', v ?? undefined)}
+          </div>
+
+          {/* Ingestion pipeline section */}
+          <div className="flex items-center gap-2">
+            <Separator className="flex-1" />
+            <span className="text-xs text-muted-foreground">
+              {t('projectManagement.versions.pipelineSection')}
+            </span>
+            <Separator className="flex-1" />
+          </div>
+
+          {/* Parse type radio toggle */}
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              {t('projectManagement.versions.parseType')}
+            </label>
+            <RadioGroup
+              value={parseMode}
+              onValueChange={(value: string) => {
+                setParseMode(value as 'builtin' | 'pipeline')
+                if (value === 'builtin') {
+                  updateField('pipeline_id', undefined)
+                  updateField('parse_type', undefined)
+                }
+              }}
+              className="flex gap-4"
+            >
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="builtin" id="parse-builtin" />
+                <Label htmlFor="parse-builtin">{t('projectManagement.versions.parseTypeBuiltIn')}</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="pipeline" id="parse-pipeline" />
+                <Label htmlFor="parse-pipeline">{t('projectManagement.versions.parseTypeChoosePipeline')}</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {/* Built-in fields -- pre-filled from category, user can override */}
+          {parseMode === 'builtin' && (
+            <>
+              <p className="text-xs text-muted-foreground mb-4">
+                {t('projectManagement.versions.builtInHint')}
+              </p>
+              <BuiltInParserFields
+                chunkMethod={formData.chunk_method ?? 'naive'}
+                onChunkMethodChange={(v: string) => updateField('chunk_method', v)}
+                parserConfig={formData.parser_config}
+                onParserConfigChange={updateParserConfig}
               />
-            </div>
-          </>
-        )}
-      </div>
-    </Modal>
+            </>
+          )}
+
+          {/* Pipeline fields -- only visible when "Choose pipeline" is selected */}
+          {parseMode === 'pipeline' && (
+            <>
+              <p className="text-xs text-muted-foreground mb-4">
+                {t('projectManagement.versions.pipelineSectionTip')}
+              </p>
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1">
+                  {t('projectManagement.versions.pipelineId')} <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  placeholder={t('projectManagement.versions.pipelineIdPlaceholder')}
+                  value={formData.pipeline_id || ''}
+                  onChange={(e) => updateField('pipeline_id', e.target.value)}
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1">
+                  {t('projectManagement.versions.parseTypeNum')}
+                </label>
+                <Input
+                  type="number"
+                  min={1}
+                  className="w-full"
+                  placeholder={t('projectManagement.versions.parseTypePlaceholder') || ''}
+                  value={formData.parse_type ?? ''}
+                  onChange={(e) => updateField('parse_type', e.target.value ? Number(e.target.value) : undefined)}
+                />
+              </div>
+            </>
+          )}
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={handleCancel}>
+            {t('common.cancel')}
+          </Button>
+          <Button onClick={handleOk} disabled={saving}>
+            {saving ? t('common.saving') : t('common.save')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileText, Edit2, Trash2, Check, X } from 'lucide-react';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import type { Chunk } from '@/features/datasets/types';
@@ -16,6 +17,7 @@ interface ChunkCardProps {
 
 const ChunkCard: React.FC<ChunkCardProps> = ({ chunk, index, isSelected, onClick, onUpdate, onDelete }) => {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(chunk.text);
   const [saving, setSaving] = useState(false);
@@ -41,7 +43,14 @@ const ChunkCard: React.FC<ChunkCardProps> = ({ chunk, index, isSelected, onClick
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!onDelete) return;
-    if (window.confirm(t('common.confirmDelete', 'Are you sure you want to delete this item?'))) {
+    // Show styled confirmation dialog before deleting chunk
+    const confirmed = await confirm({
+      title: t('common.delete'),
+      message: t('common.confirmDelete', 'Are you sure you want to delete this item?'),
+      variant: 'danger',
+      confirmText: t('common.delete'),
+    });
+    if (confirmed) {
       await onDelete(chunk.chunk_id);
     }
   };

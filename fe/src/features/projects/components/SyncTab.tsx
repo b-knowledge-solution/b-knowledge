@@ -8,8 +8,10 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Tabs, Spin, message } from 'antd'
 import { Settings, Clock, Activity } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Spinner } from '@/components/ui/spinner'
+import { globalMessage } from '@/app/App'
 import {
   getSyncConfigs,
   createSyncConfig,
@@ -112,77 +114,65 @@ const SyncTab = ({ projectId }: SyncTabProps) => {
     setTriggering(true)
     try {
       await triggerSync(projectId, activeConfig.id)
-      message.success(t('projectManagement.sync.triggerSuccess'))
+      globalMessage.success(t('projectManagement.sync.triggerSuccess'))
       await fetchConfigs()
     } catch (err) {
-      message.error(String(err))
+      globalMessage.error(String(err))
     } finally {
       setTriggering(false)
     }
   }
 
+  // Show spinner while loading initial configs
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Spin />
+        <Spinner />
       </div>
     )
   }
 
   return (
-    <Tabs
-      defaultActiveKey="connection"
-      items={[
-        {
-          key: 'connection',
-          label: (
-            <span className="flex items-center gap-2">
-              <Settings size={16} />
-              {t('projectManagement.sync.connection')}
-            </span>
-          ),
-          children: (
-            <SyncConfigPanel
-              config={activeConfig ?? null}
-              onSave={handleSaveConfig}
-              saving={saving}
-            />
-          ),
-        },
-        {
-          key: 'schedule',
-          label: (
-            <span className="flex items-center gap-2">
-              <Clock size={16} />
-              {t('projectManagement.sync.schedule.title')}
-            </span>
-          ),
-          children: (
-            <SyncSchedulePanel
-              schedule={activeConfig?.sync_schedule || null}
-              onSave={handleSaveSchedule}
-              saving={saving}
-            />
-          ),
-        },
-        {
-          key: 'status',
-          label: (
-            <span className="flex items-center gap-2">
-              <Activity size={16} />
-              {t('projectManagement.sync.status')}
-            </span>
-          ),
-          children: (
-            <SyncStatusPanel
-              config={activeConfig ?? null}
-              onTriggerSync={handleTriggerSync}
-              triggering={triggering}
-            />
-          ),
-        },
-      ]}
-    />
+    <Tabs defaultValue="connection">
+      <TabsList>
+        <TabsTrigger value="connection" className="flex items-center gap-2">
+          <Settings size={16} />
+          {t('projectManagement.sync.connection')}
+        </TabsTrigger>
+        <TabsTrigger value="schedule" className="flex items-center gap-2">
+          <Clock size={16} />
+          {t('projectManagement.sync.schedule.title')}
+        </TabsTrigger>
+        <TabsTrigger value="status" className="flex items-center gap-2">
+          <Activity size={16} />
+          {t('projectManagement.sync.status')}
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="connection">
+        <SyncConfigPanel
+          config={activeConfig ?? null}
+          onSave={handleSaveConfig}
+          saving={saving}
+        />
+      </TabsContent>
+
+      <TabsContent value="schedule">
+        <SyncSchedulePanel
+          schedule={activeConfig?.sync_schedule || null}
+          onSave={handleSaveSchedule}
+          saving={saving}
+        />
+      </TabsContent>
+
+      <TabsContent value="status">
+        <SyncStatusPanel
+          config={activeConfig ?? null}
+          onTriggerSync={handleTriggerSync}
+          triggering={triggering}
+        />
+      </TabsContent>
+    </Tabs>
   )
 }
 

@@ -11,18 +11,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  Collapse,
-  Table,
-  Tag,
-  Space,
-  Button,
-  Typography,
-  Progress,
-  Tooltip,
-  Badge,
-} from 'antd'
-import type { ColumnsType } from 'antd/es/table'
-import {
   RefreshCw,
   Clock,
   CheckCircle,
@@ -34,6 +22,20 @@ import {
   Layers,
 } from 'lucide-react'
 
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import { Spinner } from '@/components/ui/spinner'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table'
+
 import {
   getConverterJobs,
   getVersionJobFiles,
@@ -42,8 +44,6 @@ import {
   type ConversionJobStatus,
 } from '../../system/api/converterApi'
 import { useConverterSocket } from '../../system/hooks/useConverterSocket'
-
-const { Text } = Typography
 
 // ============================================================================
 // Types
@@ -62,16 +62,16 @@ interface JobManagementPanelProps {
 // Helpers
 // ============================================================================
 
-/** Map status to Ant Design tag color */
-const statusColor = (status: ConversionJobStatus): string => {
-  const map: Record<string, string> = {
-    pending: 'default',
+/** Map status to Badge variant */
+const statusVariant = (status: ConversionJobStatus): 'secondary' | 'warning' | 'info' | 'success' | 'destructive' => {
+  const map: Record<string, 'secondary' | 'warning' | 'info' | 'success' | 'destructive'> = {
+    pending: 'secondary',
     waiting: 'warning',
-    converting: 'processing',
+    converting: 'info',
     finished: 'success',
-    failed: 'error',
+    failed: 'destructive',
   }
-  return map[status] || 'default'
+  return map[status] || 'secondary'
 }
 
 /** Map status to icon */
@@ -131,65 +131,63 @@ const FileExpandRow = ({ jobId }: { jobId: string }) => {
     return () => { cancelled = true }
   }, [jobId])
 
-  const fileColumns: ColumnsType<FileTrackingRecord> = [
-    {
-      title: t('converter.files.fileName'),
-      dataIndex: 'fileName',
-      key: 'fileName',
-      ellipsis: true,
-      render: (name: string) => (
-        <Space size={4}>
-          <FileText size={14} className="text-gray-400 shrink-0" />
-          <Text className="text-xs">{name}</Text>
-        </Space>
-      ),
-    },
-    {
-      title: t('converter.files.status'),
-      dataIndex: 'status',
-      key: 'status',
-      width: 110,
-      render: (status: ConversionJobStatus) => (
-        <Tag color={statusColor(status)} className="text-xs">
-          <Space size={4}>
-            <StatusIcon status={status} />
-            {t(`converter.status.${status}`)}
-          </Space>
-        </Tag>
-      ),
-    },
-    {
-      title: t('converter.files.error'),
-      dataIndex: 'error',
-      key: 'error',
-      ellipsis: true,
-      render: (err?: string) =>
-        err ? (
-          <Tooltip title={err}>
-            <Text type="danger" className="text-xs">{err}</Text>
-          </Tooltip>
-        ) : (
-          <Text type="secondary" className="text-xs">—</Text>
-        ),
-    },
-    {
-      title: t('converter.files.updatedAt'),
-      dataIndex: 'updatedAt',
-      key: 'updatedAt',
-      width: 140,
-      render: (v: string) => <Text className="text-xs">{formatDate(v)}</Text>,
-    },
-  ]
+  // Show spinner while loading file records
+  if (loading) {
+    return (
+      <div className="flex justify-center py-4">
+        <Spinner size={20} />
+      </div>
+    )
+  }
 
   return (
-    <Table
-      columns={fileColumns}
-      dataSource={files}
-      rowKey="id"
-      loading={loading}
-      pagination={false}
-      size="small"
-    />
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>{t('converter.files.fileName')}</TableHead>
+          <TableHead className="w-[110px]">{t('converter.files.status')}</TableHead>
+          <TableHead>{t('converter.files.error')}</TableHead>
+          <TableHead className="w-[140px]">{t('converter.files.updatedAt')}</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {files.map((file) => (
+          <TableRow key={file.id}>
+            <TableCell>
+              <div className="flex items-center gap-1">
+                <FileText size={14} className="text-gray-400 shrink-0" />
+                <span className="text-xs truncate">{file.fileName}</span>
+              </div>
+            </TableCell>
+            <TableCell>
+              <Badge variant={statusVariant(file.status)} className="text-xs">
+                <span className="flex items-center gap-1">
+                  <StatusIcon status={file.status} />
+                  {t(`converter.status.${file.status}`)}
+                </span>
+              </Badge>
+            </TableCell>
+            <TableCell>
+              {file.error ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-xs text-destructive truncate block max-w-[200px]">{file.error}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>{file.error}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <span className="text-xs text-muted-foreground">—</span>
+              )}
+            </TableCell>
+            <TableCell>
+              <span className="text-xs">{formatDate(file.updatedAt)}</span>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   )
 }
 
@@ -210,6 +208,7 @@ const JobManagementPanel = ({
   const [jobs, setJobs] = useState<VersionJob[]>([])
   const [loading, setLoading] = useState(false)
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([])
+  const [collapsed, setCollapsed] = useState(false)
 
   // ── Data Fetching ──────────────────────────────────────────────────────
 
@@ -251,128 +250,139 @@ const JobManagementPanel = ({
     (j) => j.status === 'pending' || j.status === 'waiting' || j.status === 'converting',
   ).length
 
-  const panelHeader = (
-    <div className="flex items-center justify-between w-full pr-2">
-      <Space>
-        <Layers size={16} className="text-gray-500" />
-        <Text strong className="text-sm">
-          {t('converter.panel.title')}
-        </Text>
-        {activeCount > 0 && (
-          <Badge count={activeCount} size="small" />
-        )}
-      </Space>
-      <Button
-        type="text"
-        size="small"
-        icon={<RefreshCw size={14} />}
-        onClick={(e: React.MouseEvent) => {
-          e.stopPropagation()
-          fetchJobs()
-        }}
-        loading={loading}
-      />
-    </div>
-  )
-
-  // ── Table Columns ──────────────────────────────────────────────────────
-
-  const columns: ColumnsType<VersionJob> = [
-    {
-      title: t('converter.jobs.status'),
-      dataIndex: 'status',
-      key: 'status',
-      width: 120,
-      render: (status: ConversionJobStatus) => (
-        <Tag color={statusColor(status)}>
-          <Space size={4}>
-            <StatusIcon status={status} />
-            {t(`converter.status.${status}`)}
-          </Space>
-        </Tag>
-      ),
-    },
-    {
-      title: t('converter.jobs.files'),
-      key: 'fileProgress',
-      width: 200,
-      render: (_: unknown, record: VersionJob) => {
-        const { fileCount, finishedCount, failedCount } = record
-        const doneCount = finishedCount + failedCount
-        const percent = fileCount > 0 ? Math.round((doneCount / fileCount) * 100) : 0
-        return (
-          <div className="flex flex-col gap-0.5">
-            <Progress
-              percent={percent}
-              size="small"
-              status={failedCount > 0 ? 'exception' : undefined}
-              format={() => `${doneCount}/${fileCount}`}
-            />
-            <Text type="secondary" className="text-xs">
-              {finishedCount > 0 && <span className="text-green-600">{finishedCount} ✓</span>}
-              {failedCount > 0 && <span className="text-red-500 ml-1">{failedCount} ✗</span>}
-            </Text>
-          </div>
-        )
-      },
-    },
-    {
-      title: t('converter.jobs.createdAt'),
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      width: 140,
-      render: (v: string) => <Text className="text-xs">{formatDate(v)}</Text>,
-    },
-    {
-      title: t('converter.jobs.updatedAt'),
-      dataIndex: 'updatedAt',
-      key: 'updatedAt',
-      width: 140,
-      render: (v: string) => <Text className="text-xs">{formatDate(v)}</Text>,
-    },
-  ]
-
   // ── Render ─────────────────────────────────────────────────────────────
 
   if (jobs.length === 0 && !loading) return null
 
   return (
-    <Collapse
-      ghost
-      defaultActiveKey={['jobs']}
-      className="converter-job-panel"
-      items={[
-        {
-          key: 'jobs',
-          label: panelHeader,
-          children: (
-            <Table<VersionJob>
-              columns={columns}
-              dataSource={jobs}
-              rowKey="id"
-              loading={loading}
-              size="small"
-              pagination={false}
-              expandable={{
-                expandedRowKeys,
-                onExpand: (expanded: boolean, record: VersionJob) => {
-                  setExpandedRowKeys(expanded ? [record.id] : [])
-                },
-                expandedRowRender: (record: VersionJob) => <FileExpandRow jobId={record.id} />,
-                expandIcon: ({ expanded, onExpand, record }: { expanded: boolean; onExpand: (record: VersionJob, e: React.MouseEvent) => void; record: VersionJob }) => (
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                    onClick={(e: React.MouseEvent) => onExpand(record, e)}
-                  />
-                ),
-              }}
-            />
-          ),
-        },
-      ]}
-    />
+    <div className="converter-job-panel border rounded-lg">
+      {/* Collapsible header */}
+      <button
+        type="button"
+        className="flex items-center justify-between w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors rounded-t-lg"
+        onClick={() => setCollapsed(!collapsed)}
+      >
+        <div className="flex items-center gap-2">
+          {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+          <Layers size={16} className="text-gray-500" />
+          <span className="text-sm font-semibold">
+            {t('converter.panel.title')}
+          </span>
+          {activeCount > 0 && (
+            <Badge variant="destructive" className="text-xs px-1.5 py-0">
+              {activeCount}
+            </Badge>
+          )}
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation()
+            fetchJobs()
+          }}
+          disabled={loading}
+        >
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+        </Button>
+      </button>
+
+      {/* Collapsible content */}
+      {!collapsed && (
+        <div className="px-2 pb-2">
+          {loading && jobs.length === 0 ? (
+            <div className="flex justify-center py-4">
+              <Spinner size={20} />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-8" />
+                  <TableHead className="w-[120px]">{t('converter.jobs.status')}</TableHead>
+                  <TableHead className="w-[200px]">{t('converter.jobs.files')}</TableHead>
+                  <TableHead className="w-[140px]">{t('converter.jobs.createdAt')}</TableHead>
+                  <TableHead className="w-[140px]">{t('converter.jobs.updatedAt')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {jobs.map((job) => {
+                  const isExpanded = expandedRowKeys.includes(job.id)
+                  const { fileCount, finishedCount, failedCount } = job
+                  const doneCount = finishedCount + failedCount
+                  const percent = fileCount > 0 ? Math.round((doneCount / fileCount) * 100) : 0
+
+                  return (
+                    <>
+                      <TableRow key={job.id}>
+                        {/* Expand toggle */}
+                        <TableCell className="w-8 p-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() =>
+                              setExpandedRowKeys(isExpanded ? [] : [job.id])
+                            }
+                          >
+                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                          </Button>
+                        </TableCell>
+                        {/* Status */}
+                        <TableCell>
+                          <Badge variant={statusVariant(job.status)}>
+                            <span className="flex items-center gap-1">
+                              <StatusIcon status={job.status} />
+                              {t(`converter.status.${job.status}`)}
+                            </span>
+                          </Badge>
+                        </TableCell>
+                        {/* File progress */}
+                        <TableCell>
+                          <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-2">
+                              <Progress
+                                value={percent}
+                                className={`h-2 flex-1 ${failedCount > 0 ? '[&>div]:bg-destructive' : ''}`}
+                              />
+                              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                {doneCount}/{fileCount}
+                              </span>
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {finishedCount > 0 && <span className="text-green-600">{finishedCount} ✓</span>}
+                              {failedCount > 0 && <span className="text-red-500 ml-1">{failedCount} ✗</span>}
+                            </span>
+                          </div>
+                        </TableCell>
+                        {/* Created at */}
+                        <TableCell>
+                          <span className="text-xs">{formatDate(job.createdAt)}</span>
+                        </TableCell>
+                        {/* Updated at */}
+                        <TableCell>
+                          <span className="text-xs">{formatDate(job.updatedAt)}</span>
+                        </TableCell>
+                      </TableRow>
+                      {/* Expanded file tracking row */}
+                      {isExpanded && (
+                        <TableRow key={`${job.id}-expand`}>
+                          <TableCell colSpan={5} className="p-0 bg-muted/30">
+                            <div className="pl-8 py-2">
+                              <FileExpandRow jobId={job.id} />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 

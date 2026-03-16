@@ -7,7 +7,7 @@
  */
 
 import { useTranslation } from 'react-i18next'
-import { Segmented } from 'antd'
+import { Button } from '@/components/ui/button'
 import type { ProjectCategory } from '../api/projectApi'
 
 // ============================================================================
@@ -22,6 +22,23 @@ interface CategoryFilterTabsProps {
 }
 
 // ============================================================================
+// Tab options
+// ============================================================================
+
+interface TabOption {
+  value: string
+  labelKey: string
+  disabled?: boolean
+}
+
+const TAB_OPTIONS: TabOption[] = [
+  { value: 'all', labelKey: 'projectManagement.categoryFilter.all' },
+  { value: 'office', labelKey: 'projectManagement.categories.office' },
+  { value: 'datasync', labelKey: 'projectManagement.categories.datasync' },
+  { value: 'source_code', labelKey: 'projectManagement.categories.source_code', disabled: true },
+]
+
+// ============================================================================
 // Component
 // ============================================================================
 
@@ -33,18 +50,27 @@ interface CategoryFilterTabsProps {
  */
 const CategoryFilterTabs = ({ selected, onChange }: CategoryFilterTabsProps) => {
   const { t } = useTranslation()
+  const currentValue = selected || 'all'
 
   return (
-    <Segmented
-      value={selected || 'all'}
-      onChange={(value: string) => onChange(value === 'all' ? null : (value as ProjectCategory))}
-      options={[
-        { value: 'all', label: t('projectManagement.categoryFilter.all') },
-        { value: 'office', label: t('projectManagement.categories.office') },
-        { value: 'datasync', label: t('projectManagement.categories.datasync') },
-        { value: 'source_code', label: t('projectManagement.categories.source_code'), disabled: true },
-      ]}
-    />
+    <div className="inline-flex items-center rounded-lg bg-muted p-1">
+      {TAB_OPTIONS.map((option) => (
+        <Button
+          key={option.value}
+          variant="ghost"
+          size="sm"
+          disabled={option.disabled}
+          onClick={() => onChange(option.value === 'all' ? null : (option.value as ProjectCategory))}
+          className={
+            currentValue === option.value
+              ? 'bg-background shadow-sm text-foreground hover:bg-background'
+              : 'text-muted-foreground hover:text-foreground'
+          }
+        >
+          {t(option.labelKey)}
+        </Button>
+      ))}
+    </div>
   )
 }
 

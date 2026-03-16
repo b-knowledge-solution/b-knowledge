@@ -7,8 +7,11 @@
  * @module features/projects/components/SyncConnectionFields
  */
 
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Input } from 'antd'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Eye, EyeOff } from 'lucide-react'
 import type { SyncSourceType } from '../api/projectApi'
 
 // ============================================================================
@@ -68,6 +71,49 @@ const SOURCE_FIELDS: Record<SyncSourceType, FieldDef[]> = {
 }
 
 // ============================================================================
+// Password Input Component
+// ============================================================================
+
+/**
+ * @description Input with toggle visibility for password fields
+ * @param props - Standard input props plus value/onChange
+ * @returns React element
+ */
+const PasswordInput = ({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  placeholder: string
+}) => {
+  const [visible, setVisible] = useState(false)
+
+  return (
+    <div className="relative">
+      <Input
+        type={visible ? 'text' : 'password'}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className="pr-10"
+      />
+      {/* Toggle password visibility */}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+        onClick={() => setVisible(!visible)}
+      >
+        {visible ? <EyeOff size={16} /> : <Eye size={16} />}
+      </Button>
+    </div>
+  )
+}
+
+// ============================================================================
 // Component
 // ============================================================================
 
@@ -104,7 +150,7 @@ const SyncConnectionFields = ({
             {field.required && <span className="text-red-500 ml-1">*</span>}
           </label>
           {field.type === 'password' ? (
-            <Input.Password
+            <PasswordInput
               value={(config[field.key] as string) || ''}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFieldChange(field.key, e.target.value)}
               placeholder={t(field.labelKey)}

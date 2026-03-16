@@ -17,7 +17,10 @@ import { log } from '@/shared/services/logger.service.js'
 // Constants & OpenSearch client (reuse same pattern as rag-search.service)
 // ---------------------------------------------------------------------------
 
-const SYSTEM_TENANT_ID = process.env['SYSTEM_TENANT_ID'] || '00000000-0000-0000-0000-000000000001'
+// RAGFlow stores tenant_id as a 32-char hex string (UUID without hyphens)
+const SYSTEM_TENANT_ID = (
+    process.env['SYSTEM_TENANT_ID'] || '00000000000000000000000000000001'
+).replace(/-/g, '')
 const ES_HOST = process.env['ES_HOST'] || 'http://localhost:9200'
 const ES_PASSWORD = process.env['ES_PASSWORD'] || ''
 

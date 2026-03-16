@@ -10,8 +10,12 @@
 
 import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Upload, Button, message, Progress, List, Tag } from 'antd'
+import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 import { UploadCloud, FolderUp, CheckCircle, XCircle, Loader } from 'lucide-react'
+import { globalMessage } from '@/app/App'
 import { uploadVersionDocument } from '../api/projectApi'
 
 // ============================================================================
@@ -21,7 +25,7 @@ import { uploadVersionDocument } from '../api/projectApi'
 /** Accepted file extensions for document upload */
 const ACCEPTED_EXTENSIONS = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv'
 
-/** Accepted MIME types for the Upload component */
+/** Accepted MIME types for the file input */
 const ACCEPTED_MIME =
   '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,' +
   'application/pdf,' +
@@ -97,6 +101,9 @@ const VersionUploadArea = ({ projectId, categoryId, versionId, onUploadComplete 
   // ── State ──────────────────────────────────────────────────────────────
   const [uploading, setUploading] = useState(false)
   const [fileList, setFileList] = useState<FileUploadItem[]>([])
+  const [dragActive, setDragActive] = useState(false)
+  /** Hidden file input ref for file selection */
+  const fileInputRef = useRef<HTMLInputElement>(null)
   /** Hidden folder input ref for directory selection */
   const folderInputRef = useRef<HTMLInputElement>(null)
 
@@ -145,9 +152,9 @@ const VersionUploadArea = ({ projectId, categoryId, versionId, onUploadComplete 
 
     // Show result summary
     if (failed === 0) {
-      message.success(t('projectManagement.documents.uploadSuccess'))
+      globalMessage.success(t('projectManagement.documents.uploadSuccess'))
     } else {
-      message.warning(
+      globalMessage.warning(
         `${succeeded}/${files.length} ${t('projectManagement.documents.uploadSuccess')}. ${failed} ${t('projectManagement.documents.uploadError')}`
       )
     }
@@ -156,6 +163,25 @@ const VersionUploadArea = ({ projectId, categoryId, versionId, onUploadComplete 
     onUploadComplete?.()
     // Clear file list after a short delay so user sees final states
     setTimeout(() => setFileList([]), 3000)
+  }
+
+  /** Handle files dropped onto the drop zone */
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragActive(false)
+    // Ignore drops while uploading
+    if (uploading) return
+    const files = Array.from(e.dataTransfer.files)
+    handleUploadFiles(files)
+  }
+
+  /** Handle file input change */
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    handleUploadFiles(Array.from(files))
+    // Reset input so the same files can be selected again
+    e.target.value = ''
   }
 
   /**
@@ -174,7 +200,7 @@ const VersionUploadArea = ({ projectId, categoryId, versionId, onUploadComplete 
     })
 
     if (files.length === 0) {
-      message.warning(t('projectManagement.documents.acceptedTypes'))
+      globalMessage.warning(t('projectManagement.documents.acceptedTypes'))
       return
     }
 
@@ -197,43 +223,46 @@ const VersionUploadArea = ({ projectId, categoryId, versionId, onUploadComplete 
       {/* Compact drag-and-drop + folder button row */}
       <div className="flex gap-3 items-stretch">
         {/* Drag-and-drop area */}
-        <div className="flex-1">
-          <Upload.Dragger
-            accept={ACCEPTED_MIME}
+        <div
+          className={cn(
+            'flex-1 border-2 border-dashed rounded-lg p-3 cursor-pointer transition-colors',
+            uploading && 'pointer-events-none opacity-60',
+            dragActive ? 'border-primary bg-primary/5' : 'border-gray-300 dark:border-gray-600 hover:border-primary'
+          )}
+          onDragOver={(e) => { e.preventDefault(); setDragActive(true) }}
+          onDragLeave={() => setDragActive(false)}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
             multiple
-            showUploadList={false}
-            disabled={uploading}
-            beforeUpload={(_file: File, uploadFileList: File[]) => {
-              // Ant Design calls beforeUpload once per file — only trigger on the first to avoid N×N uploads
-              if (_file === uploadFileList[0]) {
-                handleUploadFiles(uploadFileList as unknown as File[])
-              }
-              return false // Prevent default upload behavior
-            }}
-            className="!border-dashed !border-gray-300 dark:!border-gray-600"
-            style={{ padding: '12px 16px' }}
-          >
-            <div className="flex items-center gap-3">
-              <UploadCloud size={24} className="text-gray-400 shrink-0" />
-              <div className="text-left">
-                <p className="text-sm text-gray-600 dark:text-gray-400 m-0">
-                  {t('projectManagement.documents.uploadHint')}
-                </p>
-                <p className="text-xs text-gray-400 m-0">
-                  {t('projectManagement.documents.acceptedTypes')}
-                </p>
-              </div>
+            accept={ACCEPTED_MIME}
+            onChange={handleFileInputChange}
+          />
+          <div className="flex items-center gap-3">
+            <UploadCloud size={24} className="text-gray-400 shrink-0" />
+            <div className="text-left">
+              <p className="text-sm text-gray-600 dark:text-gray-400 m-0">
+                {t('projectManagement.documents.uploadHint')}
+              </p>
+              <p className="text-xs text-gray-400 m-0">
+                {t('projectManagement.documents.acceptedTypes')}
+              </p>
             </div>
-          </Upload.Dragger>
+          </div>
         </div>
 
         {/* Folder upload button */}
         <Button
-          icon={<FolderUp size={16} />}
+          variant="outline"
           disabled={uploading}
           onClick={() => folderInputRef.current?.click()}
           className="h-auto flex flex-col items-center justify-center px-4 gap-1"
         >
+          <FolderUp size={16} />
           <span className="text-xs">{t('projectManagement.documents.folderUpload')}</span>
         </Button>
       </div>
@@ -247,40 +276,36 @@ const VersionUploadArea = ({ projectId, categoryId, versionId, onUploadComplete 
               {t('projectManagement.documents.uploading')} {completedCount}/{fileList.length}
             </span>
             <Progress
-              percent={overallPercent}
-              size="small"
-              status={failedCount > 0 ? 'exception' : uploading ? 'active' : 'success'}
-              style={{ width: 120, margin: 0 }}
+              value={overallPercent}
+              className={cn(
+                'w-[120px] h-2',
+                failedCount > 0 && '[&>div]:bg-destructive'
+              )}
             />
           </div>
 
           {/* Individual file list */}
-          <List
-            size="small"
-            dataSource={fileList}
-            renderItem={(item) => (
-              <List.Item className="!py-1 !px-0 !border-b-0">
-                <div className="flex items-center justify-between w-full gap-2">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    {/* Status icon */}
-                    {item.status === 'success' && <CheckCircle size={14} className="text-green-500 shrink-0" />}
-                    {item.status === 'failed' && <XCircle size={14} className="text-red-500 shrink-0" />}
-                    {item.status === 'uploading' && <Loader size={14} className="text-blue-500 animate-spin shrink-0" />}
-                    {item.status === 'pending' && <div className="w-[14px] h-[14px] rounded-full bg-gray-300 dark:bg-gray-600 shrink-0" />}
-                    {/* File name */}
-                    <span className="text-xs truncate text-gray-700 dark:text-gray-300">{item.name}</span>
-                  </div>
-                  {/* File size + status tag */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs text-gray-400">{formatFileSize(item.size)}</span>
-                    {item.status === 'uploading' && <Tag color="processing" className="text-xs m-0">{t('projectManagement.documents.uploading')}</Tag>}
-                    {item.status === 'failed' && <Tag color="error" className="text-xs m-0">{t('projectManagement.documents.uploadError')}</Tag>}
-                  </div>
+          <ul className="max-h-[200px] overflow-auto space-y-1">
+            {fileList.map((item) => (
+              <li key={item.key} className="flex items-center justify-between w-full gap-2 py-1">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {/* Status icon */}
+                  {item.status === 'success' && <CheckCircle size={14} className="text-green-500 shrink-0" />}
+                  {item.status === 'failed' && <XCircle size={14} className="text-red-500 shrink-0" />}
+                  {item.status === 'uploading' && <Loader size={14} className="text-blue-500 animate-spin shrink-0" />}
+                  {item.status === 'pending' && <div className="w-[14px] h-[14px] rounded-full bg-gray-300 dark:bg-gray-600 shrink-0" />}
+                  {/* File name */}
+                  <span className="text-xs truncate text-gray-700 dark:text-gray-300">{item.name}</span>
                 </div>
-              </List.Item>
-            )}
-            style={{ maxHeight: 200, overflow: 'auto' }}
-          />
+                {/* File size + status tag */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs text-gray-400">{formatFileSize(item.size)}</span>
+                  {item.status === 'uploading' && <Badge variant="info" className="text-xs">{t('projectManagement.documents.uploading')}</Badge>}
+                  {item.status === 'failed' && <Badge variant="destructive" className="text-xs">{t('projectManagement.documents.uploadError')}</Badge>}
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -292,7 +317,7 @@ const VersionUploadArea = ({ projectId, categoryId, versionId, onUploadComplete 
         webkitdirectory=""
         directory=""
         multiple
-        style={{ display: 'none' }}
+        className="hidden"
         onChange={handleFolderSelect}
       />
     </div>

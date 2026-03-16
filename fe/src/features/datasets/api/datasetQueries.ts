@@ -9,6 +9,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { useConfirm } from '@/components/ConfirmDialog'
 import { datasetApi } from './datasetApi'
 import type {
   Dataset,
@@ -66,7 +67,7 @@ export interface UseDatasetsReturn {
   openModal: (dataset?: Dataset) => void
   closeModal: () => void
   handleSubmit: () => Promise<void>
-  handleDelete: (dataset: Dataset) => void
+  handleDelete: (dataset: Dataset) => Promise<void>
   refresh: () => void
 }
 
@@ -77,6 +78,7 @@ export interface UseDatasetsReturn {
  */
 export function useDatasets(): UseDatasetsReturn {
   const { t } = useTranslation()
+  const confirm = useConfirm()
   const queryClient = useQueryClient()
 
   // UI-only state
@@ -197,8 +199,15 @@ export function useDatasets(): UseDatasetsReturn {
   }
 
   /** Delete a dataset after user confirmation */
-  const handleDelete = (dataset: Dataset) => {
-    if (!window.confirm(t('datasets.confirmDeleteMessage', { name: dataset.name }))) return
+  const handleDelete = async (dataset: Dataset) => {
+    // Show styled confirmation dialog before deleting dataset
+    const confirmed = await confirm({
+      title: t('common.delete'),
+      message: t('datasets.confirmDeleteMessage', { name: dataset.name }),
+      variant: 'danger',
+      confirmText: t('common.delete'),
+    })
+    if (!confirmed) return
     deleteMutation.mutate(dataset.id)
   }
 
@@ -232,6 +241,10 @@ export interface UseDocumentsReturn {
   uploadFiles: (files: File[]) => Promise<void>
   deleteDocument: (docId: string) => void
   parseDocument: (docId: string) => Promise<void>
+  toggleAvailability: (docId: string, enabled: boolean) => Promise<void>
+  bulkParse: (docIds: string[], run?: number) => Promise<void>
+  bulkDelete: (docIds: string[]) => Promise<void>
+  bulkToggle: (docIds: string[], enabled: boolean) => Promise<void>
 }
 
 /**
@@ -242,6 +255,7 @@ export interface UseDocumentsReturn {
  */
 export function useDocuments(datasetId: string | undefined): UseDocumentsReturn {
   const { t } = useTranslation()
+  const confirm = useConfirm()
   const queryClient = useQueryClient()
 
   // Fetch documents via TanStack Query
@@ -250,6 +264,12 @@ export function useDocuments(datasetId: string | undefined): UseDocumentsReturn 
     queryFn: () => datasetApi.listDocuments(datasetId!),
     // Only fetch when datasetId is available
     enabled: !!datasetId,
+    // Auto-refresh every 5s when any document is parsing
+    refetchInterval: (query) => {
+      const docs = query.state.data
+      if (docs && docs.some((d: Document) => d.run === '1')) return 5000
+      return false
+    },
   })
 
   // Upload mutation with custom success message including file count
@@ -280,6 +300,44 @@ export function useDocuments(datasetId: string | undefined): UseDocumentsReturn 
     },
   })
 
+  // Toggle availability mutation (single doc)
+  const toggleMutation = useMutation({
+    mutationFn: ({ docId, enabled }: { docId: string; enabled: boolean }) =>
+      datasetApi.toggleDocumentAvailability(datasetId!, docId, enabled),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.datasets.documents(datasetId!) })
+    },
+  })
+
+  // Bulk parse mutation
+  const bulkParseMutation = useMutation({
+    mutationFn: ({ docIds, run }: { docIds: string[]; run: number }) =>
+      datasetApi.bulkParseDocuments(datasetId!, docIds, run),
+    meta: { successMessage: t('datasets.bulkParseStarted') },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.datasets.documents(datasetId!) })
+    },
+  })
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (docIds: string[]) =>
+      datasetApi.bulkDeleteDocuments(datasetId!, docIds),
+    meta: { successMessage: t('datasets.bulkDeleteSuccess') },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.datasets.documents(datasetId!) })
+    },
+  })
+
+  // Bulk toggle mutation
+  const bulkToggleMutation = useMutation({
+    mutationFn: ({ docIds, enabled }: { docIds: string[]; enabled: boolean }) =>
+      datasetApi.bulkToggleDocuments(datasetId!, docIds, enabled),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.datasets.documents(datasetId!) })
+    },
+  })
+
   /** Upload files to the dataset */
   const uploadFiles = async (files: File[]) => {
     if (!datasetId) return
@@ -287,9 +345,16 @@ export function useDocuments(datasetId: string | undefined): UseDocumentsReturn 
   }
 
   /** Delete a document after user confirmation */
-  const deleteDocument = (docId: string) => {
+  const deleteDocument = async (docId: string) => {
     if (!datasetId) return
-    if (!window.confirm(t('datasets.confirmDeleteDocMessage'))) return
+    // Show styled confirmation dialog before deleting document
+    const confirmed = await confirm({
+      title: t('common.delete'),
+      message: t('datasets.confirmDeleteDocMessage'),
+      variant: 'danger',
+      confirmText: t('common.delete'),
+    })
+    if (!confirmed) return
     deleteMutation.mutate(docId)
   }
 
@@ -297,6 +362,37 @@ export function useDocuments(datasetId: string | undefined): UseDocumentsReturn 
   const parseDocument = async (docId: string) => {
     if (!datasetId) return
     await parseMutation.mutateAsync(docId)
+  }
+
+  /** Toggle single document availability */
+  const toggleAvailability = async (docId: string, enabled: boolean) => {
+    if (!datasetId) return
+    await toggleMutation.mutateAsync({ docId, enabled })
+  }
+
+  /** Bulk parse/cancel multiple documents */
+  const bulkParse = async (docIds: string[], run = 1) => {
+    if (!datasetId) return
+    await bulkParseMutation.mutateAsync({ docIds, run })
+  }
+
+  /** Bulk delete multiple documents after confirmation */
+  const bulkDelete = async (docIds: string[]) => {
+    if (!datasetId) return
+    const confirmed = await confirm({
+      title: t('common.delete'),
+      message: t('datasets.confirmBulkDelete', { count: docIds.length }),
+      variant: 'danger',
+      confirmText: t('common.delete'),
+    })
+    if (!confirmed) return
+    await bulkDeleteMutation.mutateAsync(docIds)
+  }
+
+  /** Bulk toggle availability for multiple documents */
+  const bulkToggle = async (docIds: string[], enabled: boolean) => {
+    if (!datasetId) return
+    await bulkToggleMutation.mutateAsync({ docIds, enabled })
   }
 
   return {
@@ -307,6 +403,10 @@ export function useDocuments(datasetId: string | undefined): UseDocumentsReturn 
     uploadFiles,
     deleteDocument,
     parseDocument,
+    toggleAvailability,
+    bulkParse,
+    bulkDelete,
+    bulkToggle,
   }
 }
 

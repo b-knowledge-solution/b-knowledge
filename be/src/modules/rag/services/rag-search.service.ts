@@ -425,6 +425,32 @@ export class RagSearchService {
     }
 
     /**
+     * Delete all chunks for a document from OpenSearch.
+     * @param docId - The document ID whose chunks should be removed
+     * @returns Number of chunks deleted
+     */
+    async deleteDocumentChunks(docId: string): Promise<number> {
+        try {
+            const client = getClient()
+            const res = await client.deleteByQuery({
+                index: getIndexName(),
+                body: {
+                    query: {
+                        term: { doc_id: docId.replace(/-/g, '') },
+                    },
+                },
+                refresh: true,
+            })
+            const deleted = (res.body as Record<string, unknown>).deleted as number ?? 0
+            log.info('Deleted document chunks from OpenSearch', { docId, chunksDeleted: deleted })
+            return deleted
+        } catch (err) {
+            log.warn('Failed to delete chunks from OpenSearch', { docId, error: String(err) })
+            return 0
+        }
+    }
+
+    /**
      * Check OpenSearch connection health.
      * @returns True if the cluster is reachable
      */

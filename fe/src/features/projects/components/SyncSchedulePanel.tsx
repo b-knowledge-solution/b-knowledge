@@ -8,8 +8,12 @@
 
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Radio, Input, Button, message } from 'antd'
-import { Save } from 'lucide-react'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Save, Loader2 } from 'lucide-react'
+import { globalMessage } from '@/app/App'
 
 // ============================================================================
 // Types
@@ -48,7 +52,7 @@ const SyncSchedulePanel = ({ schedule, onSave, saving }: SyncSchedulePanelProps)
   // Determine if current schedule is a preset
   const isPreset = PRESETS.some((p) => p.value !== 'custom' && p.value === schedule)
   const [selectedPreset, setSelectedPreset] = useState(
-    isPreset ? schedule : schedule ? 'custom' : '0 0 * * *',
+    isPreset ? schedule! : schedule ? 'custom' : '0 0 * * *',
   )
   const [customCron, setCustomCron] = useState(
     !isPreset && schedule ? schedule : '',
@@ -61,25 +65,28 @@ const SyncSchedulePanel = ({ schedule, onSave, saving }: SyncSchedulePanelProps)
     const value = selectedPreset === 'custom' ? customCron : (selectedPreset || '0 0 * * *')
     try {
       await onSave(value)
-      message.success(t('projectManagement.sync.scheduleUpdated'))
+      globalMessage.success(t('projectManagement.sync.scheduleUpdated'))
     } catch (err) {
-      message.error(String(err))
+      globalMessage.error(String(err))
     }
   }
 
   return (
     <div className="space-y-4">
-      <Radio.Group
+      <RadioGroup
         value={selectedPreset}
-        onChange={(e: { target: { value: string } }) => setSelectedPreset(e.target.value)}
+        onValueChange={(value: string) => setSelectedPreset(value)}
         className="flex flex-col gap-2"
       >
         {PRESETS.map((preset) => (
-          <Radio key={preset.value} value={preset.value}>
-            {t(preset.labelKey)}
-          </Radio>
+          <div key={preset.value} className="flex items-center space-x-2">
+            <RadioGroupItem value={preset.value} id={`schedule-${preset.value}`} />
+            <Label htmlFor={`schedule-${preset.value}`} className="cursor-pointer">
+              {t(preset.labelKey)}
+            </Label>
+          </div>
         ))}
-      </Radio.Group>
+      </RadioGroup>
 
       {/* Custom cron input */}
       {selectedPreset === 'custom' && (
@@ -98,12 +105,12 @@ const SyncSchedulePanel = ({ schedule, onSave, saving }: SyncSchedulePanelProps)
 
       {/* Save button */}
       <div className="flex justify-end pt-2">
-        <Button
-          type="primary"
-          icon={<Save size={16} />}
-          onClick={handleSave}
-          loading={saving}
-        >
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? (
+            <Loader2 size={16} className="mr-2 animate-spin" />
+          ) : (
+            <Save size={16} className="mr-2" />
+          )}
           {t('common.save')}
         </Button>
       </div>

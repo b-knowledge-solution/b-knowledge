@@ -101,6 +101,34 @@ Full conventions: `fe/STATE_MANAGEMENT.md`
   3. Add i18n keys for all 3 locales
   4. Wrap route with `<FeatureErrorBoundary>`
 
+## Documentation Comments (Mandatory)
+
+All code MUST follow the root `CLAUDE.md` comment conventions. Summary:
+
+- **JSDoc on every exported function, component, hook, interface, type alias** — `@description`, `@param`, `@returns`
+- **Inline comments** above control flow, state logic, side effects, event handlers, guard clauses
+- **Components:** Document what the component renders and its key behavioral aspects
+- **Hooks:** Document state management intent, dependencies, and cleanup behavior
+- **API files:** Document the endpoint called, expected payload shape, and error scenarios
+- **Query hooks:** Document cache key strategy, invalidation triggers, and optimistic updates
+
+```typescript
+/**
+ * @description Sidebar navigation item with role-based visibility and active state highlighting
+ * @param {NavItemProps} props - Navigation config including route path, icon, label, and required roles
+ * @returns {JSX.Element | null} Rendered nav link or null if user lacks required role
+ */
+export function NavItem({ path, icon, label, roles }: NavItemProps) {
+  // Hide nav items the user doesn't have permission to access
+  const { user } = useAuth()
+  if (roles && !roles.includes(user.role)) return null
+
+  // Match nested routes for active state (e.g., /datasets/* highlights Datasets nav)
+  const isActive = useMatch(`${path}/*`)
+  ...
+}
+```
+
 ## HTTP Client (`lib/api.ts`)
 
 - Native fetch wrapper with credentials

@@ -10,9 +10,17 @@
 
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Table, Tag, Empty, Input, Button, Tooltip, Popconfirm, message, Badge } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
-import { FileText, FileSpreadsheet, FileImage, File, UploadCloud, FolderUp, Trash2, Layers, RefreshCw, Play } from 'lucide-react'
+import { FileText, FileSpreadsheet, FileImage, File, UploadCloud, FolderUp, Trash2, Layers, RefreshCw, Play, Loader2, Search } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Spinner } from '@/components/ui/spinner'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Pagination } from '@/components/ui/pagination'
+import { useConfirm } from '@/components/ConfirmDialog'
+import { globalMessage } from '@/app/App'
 import { getVersionDocuments, deleteVersionDocuments, requeueVersionDocuments, parseVersionDocuments, syncVersionParserStatus, type VersionDocument } from '../api/projectApi'
 
 import { useConverterSocket } from '../../system/hooks/useConverterSocket'
@@ -46,6 +54,29 @@ const getFileIcon = (name: string) => {
   if (['xls', 'xlsx', 'csv'].includes(ext)) return <FileSpreadsheet size={14} className="text-green-500" />
   if (['ppt', 'pptx'].includes(ext)) return <FileImage size={14} className="text-orange-500" />
   return <File size={14} className="text-gray-400" />
+}
+
+/**
+ * Map document pipeline status to Badge variant and label.
+ * @param run - Document run status string
+ * @param t - Translation function
+ * @returns Object with variant and label
+ */
+const getStatusBadge = (run: string, t: (key: string) => string): { variant: 'secondary' | 'info' | 'destructive' | 'warning' | 'success' | 'default'; label: string } => {
+  const statusMap: Record<string, { variant: 'secondary' | 'info' | 'destructive' | 'warning' | 'success' | 'default'; label: string }> = {
+    // Local pipeline statuses
+    local: { variant: 'secondary', label: t('projectManagement.documents.statusLocal') },
+    converted: { variant: 'info', label: t('projectManagement.documents.statusConverted') },
+    imported: { variant: 'info', label: t('projectManagement.documents.statusImported') },
+    failed: { variant: 'destructive', label: t('projectManagement.documents.statusFailed') },
+    // RAGFlow parsing statuses
+    UNSTART: { variant: 'secondary', label: t('projectManagement.documents.statusPending') },
+    RUNNING: { variant: 'info', label: t('projectManagement.documents.statusParsing') },
+    CANCEL: { variant: 'warning', label: t('projectManagement.documents.statusCancelled') },
+    DONE: { variant: 'success', label: t('projectManagement.documents.statusParsed') },
+    FAIL: { variant: 'destructive', label: t('projectManagement.documents.statusFailed') },
+  }
+  return statusMap[run] || { variant: 'secondary', label: run }
 }
 
 
@@ -82,9 +113,11 @@ interface DocumentListPanelProps {
  */
 const DocumentListPanel = ({ projectId, categoryId, versionId, versionLabel, refreshKey, onShowJobs, activeJobCount }: DocumentListPanelProps) => {
   const { t } = useTranslation()
+  const confirm = useConfirm()
   const [documents, setDocuments] = useState<VersionDocument[]>([])
   const [loading, setLoading] = useState(false)
   const [searchKeyword, setSearchKeyword] = useState('')
+  const [searchInput, setSearchInput] = useState('')
 
   // Upload modal state
   const [uploadFilesOpen, setUploadFilesOpen] = useState(false)
@@ -103,6 +136,10 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, versionLabel, ref
   const [parsing, setParsing] = useState(false)
   /** Loading state for parser status sync operation */
   const [syncing, setSyncing] = useState(false)
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 20
 
   /** Fetch documents for the selected version */
   const fetchDocuments = async () => {
@@ -153,18 +190,35 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, versionLabel, ref
     setLocalRefreshKey((k) => k + 1)
   }
 
-  /** Delete selected documents */
+  /** Delete selected documents after confirmation */
   const handleDeleteSelected = async () => {
     if (selectedRowKeys.length === 0) return
+
+    // Check if any imported documents are selected for the warning message
+    const hasImported = documents.some(
+      (doc) => selectedRowKeys.includes(doc.id) && doc.run === 'imported',
+    )
+
+    // Prompt confirmation before deleting
+    const confirmed = await confirm({
+      title: t('common.delete'),
+      message: hasImported
+        ? `${t('projectManagement.documents.deleteConfirm', { count: selectedRowKeys.length })}\n${t('projectManagement.documents.deleteConfirmRagflow')}`
+        : t('projectManagement.documents.deleteConfirm', { count: selectedRowKeys.length }),
+      variant: 'danger',
+      confirmText: t('common.delete'),
+    })
+    if (!confirmed) return
+
     setDeleting(true)
     try {
       const result = await deleteVersionDocuments(projectId, categoryId, versionId, selectedRowKeys)
       const deletedCount = result.deleted?.length ?? selectedRowKeys.length
-      message.success(t('projectManagement.documents.deleteSuccess', { count: deletedCount }))
+      globalMessage.success(t('projectManagement.documents.deleteSuccess', { count: deletedCount }))
       setSelectedRowKeys([])
       setLocalRefreshKey((k) => k + 1)
     } catch (err) {
-      message.error(t('projectManagement.documents.deleteError'))
+      globalMessage.error(t('projectManagement.documents.deleteError'))
     } finally {
       setDeleting(false)
     }
@@ -177,11 +231,11 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, versionLabel, ref
     try {
       const result = await requeueVersionDocuments(projectId, categoryId, versionId, selectedRowKeys)
       const queuedCount = result.queued?.length ?? 0
-      message.success(t('projectManagement.documents.retryParseSuccess', { count: queuedCount }))
+      globalMessage.success(t('projectManagement.documents.retryParseSuccess', { count: queuedCount }))
       setSelectedRowKeys([])
       setLocalRefreshKey((k) => k + 1)
     } catch (err) {
-      message.error(String(err))
+      globalMessage.error(String(err))
     } finally {
       setRequeueing(false)
     }
@@ -194,11 +248,11 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, versionLabel, ref
     try {
       const result = await parseVersionDocuments(projectId, categoryId, versionId, selectedRowKeys)
       const parsedCount = result.parsed?.length ?? 0
-      message.success(t('projectManagement.documents.startParseSuccess', { count: parsedCount }))
+      globalMessage.success(t('projectManagement.documents.startParseSuccess', { count: parsedCount }))
       setSelectedRowKeys([])
       setLocalRefreshKey((k) => k + 1)
     } catch (err) {
-      message.error(String(err))
+      globalMessage.error(String(err))
     } finally {
       setParsing(false)
     }
@@ -229,75 +283,44 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, versionLabel, ref
       await syncVersionParserStatus(projectId, categoryId, versionId)
       // Refresh the local document list to pick up updated statuses
       await fetchDocuments()
-      message.success(t('projectManagement.documents.syncParserSuccess'))
+      globalMessage.success(t('projectManagement.documents.syncParserSuccess'))
     } catch (err) {
-      message.error(t('projectManagement.documents.syncParserError'))
+      globalMessage.error(t('projectManagement.documents.syncParserError'))
     } finally {
       setSyncing(false)
     }
   }
 
-  // ── Table columns ──────────────────────────────────────────────────────
+  /** Handle search input submission */
+  const handleSearch = () => {
+    setSearchKeyword(searchInput)
+    setCurrentPage(1)
+  }
 
-  const columns: ColumnsType<VersionDocument> = [
-    {
-      title: t('projectManagement.documents.name'),
-      dataIndex: 'name',
-      key: 'name',
-      ellipsis: true,
-      render: (name: string) => (
-        <div className="flex items-center gap-2">
-          {getFileIcon(name)}
-          <span className="truncate" title={name}>{name}</span>
-        </div>
-      ),
-    },
-    {
-      title: t('projectManagement.documents.size'),
-      dataIndex: 'size',
-      key: 'size',
-      width: 100,
-      render: (size: number) => <span className="text-gray-500 text-xs">{formatFileSize(size)}</span>,
-    },
-    {
-      title: t('projectManagement.documents.status'),
-      dataIndex: 'run',
-      key: 'run',
-      width: 140,
-      render: (run: string, record: VersionDocument) => {
-        // Document pipeline status map
-        const statusMap: Record<string, { color: string; label: string }> = {
-          // Local pipeline statuses (from BE converter tracking)
-          local: { color: 'default', label: t('projectManagement.documents.statusLocal') },
-          converted: { color: 'cyan', label: t('projectManagement.documents.statusConverted') },
-          imported: { color: 'blue', label: t('projectManagement.documents.statusImported') },
-          failed: { color: 'error', label: t('projectManagement.documents.statusFailed') },
-          // RAGFlow parsing statuses
-          UNSTART: { color: 'default', label: t('projectManagement.documents.statusPending') },
-          RUNNING: { color: 'processing', label: t('projectManagement.documents.statusParsing') },
-          CANCEL: { color: 'warning', label: t('projectManagement.documents.statusCancelled') },
-          DONE: { color: 'success', label: t('projectManagement.documents.statusParsed') },
-          FAIL: { color: 'error', label: t('projectManagement.documents.statusFailed') },
-        }
-        const info = statusMap[run] || { color: 'default', label: run }
-        return (
-          <Tooltip title={record.progress_msg || undefined}>
-            <Tag color={info.color}>
-              {info.label}
-              {run === 'RUNNING' && record.progress > 0 && ` ${Math.round(record.progress * 100)}%`}
-            </Tag>
-          </Tooltip>
-        )
-      },
-    },
-    {
-      title: t('projectManagement.documents.chunks'),
-      dataIndex: 'chunk_count',
-      key: 'chunk_count',
-      width: 80,
-      render: (count: number) => <span className="text-gray-500 text-xs">{count ?? '-'}</span>,
-    },
-  ]
+  /** Toggle row selection for a single document */
+  const toggleRowSelection = (docId: string) => {
+    setSelectedRowKeys((prev) =>
+      prev.includes(docId)
+        ? prev.filter((k) => k !== docId)
+        : [...prev, docId]
+    )
+  }
+
+  /** Toggle all rows selection */
+  const toggleAllRows = () => {
+    if (selectedRowKeys.length === documents.length) {
+      setSelectedRowKeys([])
+    } else {
+      setSelectedRowKeys(documents.map((d) => d.id))
+    }
+  }
+
+  // Paginate documents locally
+  const totalPages = Math.ceil(documents.length / pageSize)
+  const paginatedDocuments = documents.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  )
 
   // ── Render ─────────────────────────────────────────────────────────────
 
@@ -305,135 +328,227 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, versionLabel, ref
     <div className="mt-4">
       {/* Header: title + actions */}
       <div className="flex items-center justify-between mb-3">
-        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
           {t('projectManagement.documents.title')}
           {versionLabel && (
-            <Tag color="blue" style={{ marginLeft: 8, fontSize: 12 }}>{versionLabel}</Tag>
+            <Badge variant="info" className="text-xs">{versionLabel}</Badge>
           )}
           {!loading && documents.length > 0 && (
-            <span className="ml-2 text-xs font-normal text-gray-400">
+            <span className="text-xs font-normal text-gray-400">
               ({documents.length} {t('projectManagement.documents.totalFiles')})
             </span>
           )}
         </h4>
         <div className="flex items-center gap-2">
+          {/* Bulk action buttons -- visible when rows are selected */}
           {selectedRowKeys.length > 0 && (
             <>
-              <Popconfirm
-                title={t('projectManagement.documents.deleteConfirm', { count: selectedRowKeys.length })}
-                description={hasImportedSelected ? t('projectManagement.documents.deleteConfirmRagflow') : undefined}
-                onConfirm={handleDeleteSelected}
-                okButtonProps={{ danger: true, loading: deleting }}
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={deleting}
+                onClick={handleDeleteSelected}
               >
-                <Button
-                  danger
-                  size="small"
-                  icon={<Trash2 size={14} />}
-                  loading={deleting}
-                >
-                  {t('projectManagement.documents.deleteSelected', { count: selectedRowKeys.length })}
-                </Button>
-              </Popconfirm>
+                {deleting ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Trash2 size={14} className="mr-1" />}
+                {t('projectManagement.documents.deleteSelected', { count: selectedRowKeys.length })}
+              </Button>
               {hasLocalSelected && (
                 <Button
-                  type="primary"
-                  size="small"
-                  icon={<RefreshCw size={14} />}
-                  loading={requeueing}
+                  size="sm"
+                  disabled={requeueing}
                   onClick={handleRetryParse}
                 >
+                  {requeueing ? <Loader2 size={14} className="mr-1 animate-spin" /> : <RefreshCw size={14} className="mr-1" />}
                   {t('projectManagement.documents.retryParse')}
                 </Button>
               )}
               {hasImportedSelected && (
                 <Button
-                  type="primary"
-                  size="small"
-                  icon={<Play size={14} />}
-                  loading={parsing}
+                  size="sm"
+                  disabled={parsing}
                   onClick={handleStartParse}
                 >
+                  {parsing ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Play size={14} className="mr-1" />}
                   {t('projectManagement.documents.startParse')}
                 </Button>
               )}
             </>
           )}
-          <Input.Search
-            placeholder={t('projectManagement.documents.search')}
-            size="small"
-            style={{ width: 200 }}
-            allowClear
-            onSearch={(value: string) => setSearchKeyword(value)}
-          />
-          <Tooltip title={t('projectManagement.documents.uploadFiles')}>
-            <Button
-              type="primary"
-              size="small"
-              icon={<UploadCloud size={14} />}
-              onClick={() => setUploadFilesOpen(true)}
+
+          {/* Search input */}
+          <div className="relative w-[200px]">
+            <Input
+              placeholder={t('projectManagement.documents.search')}
+              className="h-8 pr-8 text-sm"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSearch() }}
+            />
+            <button
+              onClick={handleSearch}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
-              {t('projectManagement.documents.uploadFiles')}
-            </Button>
-          </Tooltip>
-          <Tooltip title={t('projectManagement.documents.folderUpload')}>
-            <Button
-              type="primary"
-              size="small"
-              icon={<FolderUp size={14} />}
-              onClick={() => setUploadFolderOpen(true)}
-            >
-              {t('projectManagement.documents.folderUpload')}
-            </Button>
-          </Tooltip>
-          {onShowJobs && (
-            <Tooltip title={t('converter.panel.title')}>
-              <Badge count={activeJobCount || 0} size="small" offset={[-2, 2]}>
-                <Button
-                  size="small"
-                  icon={<Layers size={14} />}
-                  onClick={onShowJobs}
-                >
-                  {t('converter.panel.title')}
+              <Search size={14} />
+            </button>
+          </div>
+
+          {/* Upload buttons */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="sm" onClick={() => setUploadFilesOpen(true)}>
+                  <UploadCloud size={14} className="mr-1" />
+                  {t('projectManagement.documents.uploadFiles')}
                 </Button>
-              </Badge>
+              </TooltipTrigger>
+              <TooltipContent>{t('projectManagement.documents.uploadFiles')}</TooltipContent>
             </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="sm" onClick={() => setUploadFolderOpen(true)}>
+                  <FolderUp size={14} className="mr-1" />
+                  {t('projectManagement.documents.folderUpload')}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('projectManagement.documents.folderUpload')}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          {/* Jobs button with badge */}
+          {onShowJobs && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" className="relative" onClick={onShowJobs}>
+                    <Layers size={14} className="mr-1" />
+                    {t('converter.panel.title')}
+                    {(activeJobCount ?? 0) > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground">
+                        {activeJobCount}
+                      </span>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('converter.panel.title')}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
+
+          {/* Sync parser status button */}
           {hasParseableStatus && (
-            <Tooltip title={t('projectManagement.documents.syncParserStatus')}>
-              <Button
-                size="small"
-                icon={<RefreshCw size={14} />}
-                loading={syncing}
-                onClick={handleSyncParserStatus}
-              >
-                {t('projectManagement.documents.syncParserStatus')}
-              </Button>
-            </Tooltip>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={syncing} onClick={handleSyncParserStatus}>
+                    {syncing ? <Loader2 size={14} className="mr-1 animate-spin" /> : <RefreshCw size={14} className="mr-1" />}
+                    {t('projectManagement.documents.syncParserStatus')}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('projectManagement.documents.syncParserStatus')}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </div>
       </div>
 
       {/* Document table */}
-      <Table
-        rowKey="id"
-        columns={columns}
-        dataSource={documents}
-        size="small"
-        loading={loading}
-        rowSelection={{
-          selectedRowKeys,
-          onChange: (keys: React.Key[]) => setSelectedRowKeys(keys as string[]),
-        }}
-        pagination={documents.length > 20 ? { pageSize: 20, size: 'small', showSizeChanger: false } : false}
-        locale={{
-          emptyText: (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description={t('projectManagement.documents.noDocumentsHint')}
-            />
-          ),
-        }}
-      />
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Spinner />
+        </div>
+      ) : documents.length === 0 ? (
+        <EmptyState description={t('projectManagement.documents.noDocumentsHint')} />
+      ) : (
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[40px]">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 dark:border-gray-600"
+                    checked={selectedRowKeys.length === documents.length && documents.length > 0}
+                    onChange={toggleAllRows}
+                  />
+                </TableHead>
+                <TableHead>{t('projectManagement.documents.name')}</TableHead>
+                <TableHead className="w-[100px]">{t('projectManagement.documents.size')}</TableHead>
+                <TableHead className="w-[140px]">{t('projectManagement.documents.status')}</TableHead>
+                <TableHead className="w-[80px]">{t('projectManagement.documents.chunks')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedDocuments.map((doc) => {
+                const status = getStatusBadge(doc.run, t)
+                return (
+                  <TableRow key={doc.id} data-state={selectedRowKeys.includes(doc.id) ? 'selected' : undefined}>
+                    {/* Checkbox */}
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300 dark:border-gray-600"
+                        checked={selectedRowKeys.includes(doc.id)}
+                        onChange={() => toggleRowSelection(doc.id)}
+                      />
+                    </TableCell>
+
+                    {/* File name with icon */}
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getFileIcon(doc.name)}
+                        <span className="truncate" title={doc.name}>{doc.name}</span>
+                      </div>
+                    </TableCell>
+
+                    {/* File size */}
+                    <TableCell>
+                      <span className="text-gray-500 dark:text-gray-400 text-xs">{formatFileSize(doc.size)}</span>
+                    </TableCell>
+
+                    {/* Status badge with optional progress tooltip */}
+                    <TableCell>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <Badge variant={status.variant}>
+                                {status.label}
+                                {doc.run === 'RUNNING' && doc.progress > 0 && ` ${Math.round(doc.progress * 100)}%`}
+                              </Badge>
+                            </span>
+                          </TooltipTrigger>
+                          {doc.progress_msg && (
+                            <TooltipContent>{doc.progress_msg}</TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TooltipProvider>
+                    </TableCell>
+
+                    {/* Chunk count */}
+                    <TableCell>
+                      <span className="text-gray-500 dark:text-gray-400 text-xs">{doc.chunk_count ?? '-'}</span>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+
+          {/* Pagination below table */}
+          {totalPages > 1 && (
+            <div className="flex justify-end mt-4">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
+        </>
+      )}
 
       {/* Upload modals */}
       <UploadFilesModal
@@ -457,4 +572,3 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, versionLabel, ref
 }
 
 export default DocumentListPanel
-

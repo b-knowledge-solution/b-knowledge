@@ -101,7 +101,7 @@ RAGFlow sources are configured via JSON file. Default location: `be/src/config/r
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ENABLE_ROOT_LOGIN` | `true` | Enable root user login |
+| `ENABLE_LOCAL_LOGIN` | `true` | Enable local user login |
 | `KB_ROOT_USER` | `admin@localhost` | Root username (email format) |
 | `KB_ROOT_PASSWORD` | `admin` | Root password |
 

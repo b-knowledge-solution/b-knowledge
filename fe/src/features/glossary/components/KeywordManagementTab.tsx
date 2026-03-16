@@ -7,6 +7,7 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Edit2, Trash2, Search, Tag, Upload } from 'lucide-react'
+import { useConfirm } from '@/components/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -41,6 +42,7 @@ export const KeywordManagementTab: React.FC<KeywordManagementTabProps> = ({
     isAdmin,
 }) => {
     const { t } = useTranslation()
+    const confirm = useConfirm()
     const [isBulkImportOpen, setIsBulkImportOpen] = useState(false)
 
     // Row selection state for bulk delete
@@ -70,7 +72,14 @@ export const KeywordManagementTab: React.FC<KeywordManagementTabProps> = ({
     // ========================================================================
 
     const handleBulkDelete = async () => {
-        if (!window.confirm(t('glossary.keyword.bulkDeleteMessage', { count: selectedRowKeys.length }))) return
+        // Show styled confirmation dialog before bulk deleting keywords
+        const confirmed = await confirm({
+            title: t('common.delete'),
+            message: t('glossary.keyword.bulkDeleteMessage', { count: selectedRowKeys.length }),
+            variant: 'danger',
+            confirmText: t('common.delete'),
+        })
+        if (!confirmed) return
         setBulkDeleting(true)
         try {
             for (const id of selectedRowKeys) {

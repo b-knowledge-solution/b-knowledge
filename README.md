@@ -287,7 +287,7 @@ Each workspace has `.env.example` — copy to `.env` and fill in credentials:
 | `fe/.env` | API URL, feature flags, Azure AD |
 | `advance-rag/.env` | DB, Redis, OpenSearch, S3, model defaults |
 
-**Production checklist:** Change all default passwords, set `ENABLE_ROOT_LOGIN=false`, generate a strong `SESSION_SECRET`, configure SSL.
+**Production checklist:** Change all default passwords, set `ENABLE_LOCAL_LOGIN=false`, generate a strong `SESSION_SECRET`, configure SSL.
 
 ## Documentation
 

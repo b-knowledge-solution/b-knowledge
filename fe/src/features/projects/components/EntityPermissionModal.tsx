@@ -11,8 +11,13 @@
  */
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Modal, Select, Table, Switch, Button, message, Divider } from 'antd'
 import { Lock, Users, User, Trash2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { Separator } from '@/components/ui/separator'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { globalMessage } from '@/app/App'
 import { teamApi, type Team } from '@/features/teams'
 import { userApi } from '@/features/users'
 import { User as UserType } from '@/features/auth'
@@ -68,7 +73,7 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
   const [permissions, setPermissions] = useState<ProjectEntityPermission[]>([])
   const [teams, setTeams] = useState<Team[]>([])
   const [users, setUsers] = useState<UserType[]>([])
-  const [loading, setLoading] = useState(false)
+  const [, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
   // Form state: selected team/user IDs (local until Save)
@@ -175,6 +180,30 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
   }
 
   /**
+   * Toggle a team in the selected list.
+   * @param teamId - Team ID to toggle
+   */
+  const toggleTeam = (teamId: string) => {
+    setSelectedTeamIds((prev) =>
+      prev.includes(teamId)
+        ? prev.filter((id) => id !== teamId)
+        : [...prev, teamId],
+    )
+  }
+
+  /**
+   * Toggle a user in the selected list.
+   * @param userId - User ID to toggle
+   */
+  const toggleUser = (userId: string) => {
+    setSelectedUserIds((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId],
+    )
+  }
+
+  /**
    * Save all permission changes to the server.
    * Compares current selections with server state and applies diffs.
    */
@@ -186,7 +215,7 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
         for (const perm of permissions) {
           await removeEntityPermission(projectId, perm.id)
         }
-        message.success(t('projectManagement.entityPermissions.saved', 'Permissions saved'))
+        globalMessage.success(t('projectManagement.entityPermissions.saved', 'Permissions saved'))
         onClose()
         return
       }
@@ -237,11 +266,11 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
         })
       }
 
-      message.success(t('projectManagement.entityPermissions.saved', 'Permissions saved'))
+      globalMessage.success(t('projectManagement.entityPermissions.saved', 'Permissions saved'))
       onClose()
     } catch (err) {
       console.error('[EntityPermissionModal] Failed to save:', err)
-      message.error(t('projectManagement.entityPermissions.saveError', 'Failed to save'))
+      globalMessage.error(t('projectManagement.entityPermissions.saveError', 'Failed to save'))
     } finally {
       setSaving(false)
     }
@@ -253,172 +282,157 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
     entityType,
   )
 
-  // Table columns for granted users/teams
-  const columns = [
-    {
-      title: t('projectManagement.entityPermissions.name', 'Name'),
-      dataIndex: 'name',
-      key: 'name',
-      render: (name: string, record: { type: string }) => (
-        <div className="flex items-center gap-2">
-          {record.type === 'team' ? (
-            <Users size={14} className="text-purple-500 flex-shrink-0" />
-          ) : (
-            <User size={14} className="text-blue-500 flex-shrink-0" />
-          )}
-          <span>{name}</span>
-        </div>
-      ),
-    },
-    {
-      title: t('projectManagement.entityPermissions.email', 'Email'),
-      dataIndex: 'email',
-      key: 'email',
-      render: (email: string) => (
-        <span className="text-gray-500 dark:text-gray-400">{email || '—'}</span>
-      ),
-    },
-    {
-      title: '',
-      key: 'actions',
-      width: 50,
-      align: 'center' as const,
-      render: (_: any, record: { type: 'team' | 'user'; id: string }) => (
-        <Button
-          type="text"
-          danger
-          size="small"
-          icon={<Trash2 size={14} />}
-          onClick={() => handleRemoveGrantee(record.type, record.id)}
-        />
-      ),
-    },
-  ]
-
   return (
-    <Modal
-      open={open}
-      onCancel={onClose}
-      title={t('projectManagement.entityPermissions.editTitle', 'Edit Permissions')}
-      width={640}
-      footer={
-        <div className="flex justify-end gap-2">
-          <Button onClick={onClose}>
-            {t('common.cancel', 'Cancel')}
-          </Button>
-          <Button type="primary" onClick={handleSave} loading={saving}>
-            {t('common.save', 'Save')}
-          </Button>
-        </div>
-      }
-      destroyOnClose
-    >
-      <div className="space-y-5 py-2">
-        {/* Entity info banner */}
-        <div className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
-          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{entityName}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {entityTypeLabel}
-          </p>
-        </div>
+    <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) onClose() }}>
+      <DialogContent className="max-w-[640px]">
+        <DialogHeader>
+          <DialogTitle>{t('projectManagement.entityPermissions.editTitle', 'Edit Permissions')}</DialogTitle>
+        </DialogHeader>
 
-        {/* Permissions section */}
-        <div>
-          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            {t('projectManagement.entityPermissions.permissions', 'Permissions')}
-          </h4>
-
-          {/* Private Access toggle */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
-            <div className="flex items-center gap-3">
-              <Lock size={18} className="text-amber-500" />
-              <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {t('projectManagement.entityPermissions.privateAccess', 'Private Access')}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {t(
-                    'projectManagement.entityPermissions.privateAccessDesc',
-                    'Only selected teams or users can access this {{type}}',
-                    { type: entityTypeLabel },
-                  )}
-                </p>
-              </div>
-            </div>
-            <Switch
-              checked={isPrivate}
-              onChange={setIsPrivate}
-            />
+        <div className="space-y-5 py-2">
+          {/* Entity info banner */}
+          <div className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{entityName}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {entityTypeLabel}
+            </p>
           </div>
+
+          {/* Permissions section */}
+          <div>
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              {t('projectManagement.entityPermissions.permissions', 'Permissions')}
+            </h4>
+
+            {/* Private Access toggle */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+              <div className="flex items-center gap-3">
+                <Lock size={18} className="text-amber-500" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {t('projectManagement.entityPermissions.privateAccess', 'Private Access')}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {t(
+                      'projectManagement.entityPermissions.privateAccessDesc',
+                      'Only selected teams or users can access this {{type}}',
+                      { type: entityTypeLabel },
+                    )}
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={isPrivate}
+                onCheckedChange={setIsPrivate}
+              />
+            </div>
+          </div>
+
+          {/* Team/User selection — only shown when Private Access is enabled */}
+          {isPrivate && (
+            <>
+              <Separator className="my-2" />
+
+              {/* Select Teams */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <Users size={14} />
+                  {t('projectManagement.entityPermissions.selectTeams', 'Select Teams')}
+                </label>
+                <div className="border rounded-md max-h-48 overflow-auto p-2 space-y-1 dark:border-slate-700">
+                  {teams.map((team) => (
+                    <label key={team.id} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedTeamIds.includes(team.id)}
+                        onChange={() => toggleTeam(team.id)}
+                        className="rounded"
+                      />
+                      <span className="text-sm">{team.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Select Users */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <User size={14} />
+                  {t('projectManagement.entityPermissions.selectUsers', 'Select Users')}
+                </label>
+                <div className="border rounded-md max-h-48 overflow-auto p-2 space-y-1 dark:border-slate-700">
+                  {users.map((user) => (
+                    <label key={user.id} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedUserIds.includes(user.id)}
+                        onChange={() => toggleUser(user.id)}
+                        className="rounded"
+                      />
+                      <span className="text-sm">{user.displayName} ({user.email})</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Grantee table */}
+              {granteeTableData.length > 0 && (
+                <div className="border rounded-lg dark:border-slate-700 overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t('projectManagement.entityPermissions.name', 'Name')}</TableHead>
+                        <TableHead>{t('projectManagement.entityPermissions.email', 'Email')}</TableHead>
+                        <TableHead className="w-[50px]" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {granteeTableData.map((row) => (
+                        <TableRow key={row.key}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {row.type === 'team' ? (
+                                <Users size={14} className="text-purple-500 flex-shrink-0" />
+                              ) : (
+                                <User size={14} className="text-blue-500 flex-shrink-0" />
+                              )}
+                              <span>{row.name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-gray-500 dark:text-gray-400">{row.email || '\u2014'}</span>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                              onClick={() => handleRemoveGrantee(row.type, row.id)}
+                            >
+                              <Trash2 size={14} />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
-        {/* Team/User selection — only shown when Private Access is enabled */}
-        {isPrivate && (
-          <>
-            <Divider className="my-2" />
-
-            {/* Select Teams */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <Users size={14} />
-                {t('projectManagement.entityPermissions.selectTeams', 'Select Teams')}
-              </label>
-              <Select
-                mode="multiple"
-                value={selectedTeamIds}
-                onChange={setSelectedTeamIds}
-                placeholder={t(
-                  'projectManagement.entityPermissions.selectTeamsPlaceholder',
-                  'Select teams allowed to access this source',
-                )}
-                className="w-full"
-                optionFilterProp="label"
-                loading={loading}
-                options={teams.map((team) => ({
-                  label: team.name,
-                  value: team.id,
-                }))}
-              />
-            </div>
-
-            {/* Select Users */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <User size={14} />
-                {t('projectManagement.entityPermissions.selectUsers', 'Select Users')}
-              </label>
-              <Select
-                mode="multiple"
-                value={selectedUserIds}
-                onChange={setSelectedUserIds}
-                placeholder={t(
-                  'projectManagement.entityPermissions.selectUsersPlaceholder',
-                  'Select users allowed to access this source',
-                )}
-                className="w-full"
-                optionFilterProp="label"
-                loading={loading}
-                options={users.map((user) => ({
-                  label: `${user.displayName} (${user.email})`,
-                  value: user.id,
-                }))}
-              />
-            </div>
-
-            {/* Grantee table */}
-            {granteeTableData.length > 0 && (
-              <Table
-                dataSource={granteeTableData}
-                columns={columns}
-                rowKey="key"
-                size="small"
-                pagination={false}
-                className="border rounded-lg dark:border-slate-700 overflow-hidden"
-              />
-            )}
-          </>
-        )}
-      </div>
-    </Modal>
+        <DialogFooter>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={onClose}>
+              {t('common.cancel', 'Cancel')}
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? t('common.saving', 'Saving...') : t('common.save', 'Save')}
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

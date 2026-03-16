@@ -104,6 +104,37 @@ modules/<domain>/
 8. Root user bootstrap (creates admin if needed)
 9. Cron job scheduling
 
+## Documentation Comments (Mandatory)
+
+All code MUST follow the root `CLAUDE.md` comment conventions. Summary:
+
+- **JSDoc on every exported function, class, method, interface, type alias** — `@description`, `@param`, `@returns`, `@throws`
+- **Inline comments** above control flow, business logic, DB queries, Redis operations, guard clauses
+- **Controllers:** Document the HTTP semantics (what the endpoint does, auth requirements)
+- **Services:** Document business logic intent, side effects, and integration points
+- **Models:** Document table relationships, constraints, and non-obvious column semantics
+- **Middleware:** Document when/why the middleware runs and what it mutates on `req`/`res`
+
+```typescript
+/**
+ * @description Creates a new knowledge base and initializes its OpenSearch index
+ * @param {CreateKnowledgeBaseDto} data - Knowledge base configuration including name, embedding model, and chunk settings
+ * @param {string} userId - ID of the creating user for ownership tracking
+ * @returns {Promise<KnowledgeBase>} The created knowledge base with generated ID
+ * @throws {ConflictError} If a knowledge base with the same name already exists
+ */
+export async function createKnowledgeBase(data: CreateKnowledgeBaseDto, userId: string): Promise<KnowledgeBase> {
+  // Check uniqueness before creating to provide a clear error message
+  const existing = await KnowledgeBaseModel.findByName(data.name)
+  if (existing) throw new ConflictError('Knowledge base name already exists')
+
+  // Create DB record first, then initialize search index using the generated ID
+  const kb = await KnowledgeBaseModel.create({ ...data, createdBy: userId })
+  await openSearchService.createIndex(kb.id, data.embeddingModel)
+  return kb
+}
+```
+
 ## Gotchas
 
 - **Config access:** Always use `config` object from `@/shared/config/`, never `process.env` directly

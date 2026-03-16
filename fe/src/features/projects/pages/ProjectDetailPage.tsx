@@ -14,8 +14,14 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Tabs, Button, Tag, Spin, Empty, message } from 'antd'
 import { ArrowLeft, FolderOpen, MessageSquare, Search, Settings, RefreshCw } from 'lucide-react'
+
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Spinner } from '@/components/ui/spinner'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { globalMessage } from '@/app/App'
+
 import {
   getProjectById,
   getDocumentCategories,
@@ -108,7 +114,7 @@ const ProjectDetailPage = () => {
 
     } catch (err) {
       console.error('Failed to load project:', err)
-      message.error(String(err))
+      globalMessage.error(String(err))
     } finally {
       setLoading(false)
     }
@@ -124,7 +130,7 @@ const ProjectDetailPage = () => {
   if (loading) {
     return (
       <div className="w-full h-full flex items-center justify-center">
-        <Spin size="large" />
+        <Spinner size={32} />
       </div>
     )
   }
@@ -132,7 +138,7 @@ const ProjectDetailPage = () => {
   if (!project) {
     return (
       <div className="w-full h-full flex items-center justify-center">
-        <Empty description="Project not found" />
+        <p className="text-muted-foreground">Project not found</p>
       </div>
     )
   }
@@ -144,17 +150,19 @@ const ProjectDetailPage = () => {
           {/* Back + title */}
           <div className="mb-6">
             <Button
-              type="text"
-              icon={<ArrowLeft size={16} />}
+              variant="ghost"
               onClick={() => navigate('/data-studio/projects')}
               className="mb-2"
             >
+              <ArrowLeft size={16} className="mr-2" />
               {t('projectManagement.title')}
             </Button>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{project.name}</h1>
-                <Tag color={project.status === 'active' ? 'green' : 'default'}>{project.status}</Tag>
+                <Badge variant={project.status === 'active' ? 'success' : 'secondary'}>
+                  {project.status}
+                </Badge>
               </div>
               {project.description && (
                 <p className="text-gray-500 dark:text-gray-400 text-sm">{project.description}</p>
@@ -163,94 +171,82 @@ const ProjectDetailPage = () => {
           </div>
 
           {/* Tabs */}
-          <Tabs
-            defaultActiveKey="documents"
-            items={[
-              {
-                key: 'documents',
-                label: (
+          <Tabs defaultValue="documents">
+            <TabsList>
+              <TabsTrigger value="documents">
+                <span className="flex items-center gap-2">
+                  <FolderOpen size={16} />
+                  {t('projectManagement.tabs.documents')}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger value="chat">
+                <span className="flex items-center gap-2">
+                  <MessageSquare size={16} />
+                  {t('projectManagement.tabs.chat')}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger value="search">
+                <span className="flex items-center gap-2">
+                  <Search size={16} />
+                  {t('projectManagement.tabs.search', 'Search')}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger value="settings">
+                <span className="flex items-center gap-2">
+                  <Settings size={16} />
+                  {t('projectManagement.tabs.settings')}
+                </span>
+              </TabsTrigger>
+              {/* Sync tab only for datasync projects */}
+              {project.category === 'datasync' && (
+                <TabsTrigger value="sync">
                   <span className="flex items-center gap-2">
-                    <FolderOpen size={16} />
-                    {t('projectManagement.tabs.documents')}
+                    <RefreshCw size={16} />
+                    {t('projectManagement.tabs.sync')}
                   </span>
-                ),
-                children: (
-                  <DocumentsTab
-                    projectId={projectId!}
-                    initialCategories={categories}
-                    embeddingModels={embeddingModels}
-                  />
-                ),
-              },
-              {
-                key: 'chat',
-                label: (
-                  <span className="flex items-center gap-2">
-                    <MessageSquare size={16} />
-                    {t('projectManagement.tabs.chat')}
-                  </span>
-                ),
-                children: (
-                  <ChatTab
-                    projectId={projectId!}
-                    initialChats={chats}
-                    categories={categories}
-                    categoryVersions={categoryVersions}
-                    chatModels={chatModels}
-                  />
-                ),
-              },
-              {
-                key: 'search',
-                label: (
-                  <span className="flex items-center gap-2">
-                    <Search size={16} />
-                    {t('projectManagement.tabs.search', 'Search')}
-                  </span>
-                ),
-                children: (
-                  <SearchTab
-                    projectId={projectId!}
-                    initialSearches={searches}
-                    categories={categories}
-                    categoryVersions={categoryVersions}
-                    chatModels={chatModels}
-                  />
-                ),
-              },
-              {
-                key: 'settings',
-                label: (
-                  <span className="flex items-center gap-2">
-                    <Settings size={16} />
-                    {t('projectManagement.tabs.settings')}
-                  </span>
-                ),
-                children: (
-                  <SettingsTab
-                    projectId={projectId!}
-                    permissions={permissions}
-                    onPermissionRemoved={fetchProject}
-                  />
-                ),
-              },
-              // Sync tab only for datasync projects
-              ...(project.category === 'datasync'
-                ? [
-                    {
-                      key: 'sync',
-                      label: (
-                        <span className="flex items-center gap-2">
-                          <RefreshCw size={16} />
-                          {t('projectManagement.tabs.sync')}
-                        </span>
-                      ),
-                      children: <SyncTab projectId={projectId!} />,
-                    },
-                  ]
-                : []),
-            ]}
-          />
+                </TabsTrigger>
+              )}
+            </TabsList>
+
+            <TabsContent value="documents">
+              <DocumentsTab
+                projectId={projectId!}
+                initialCategories={categories}
+                embeddingModels={embeddingModels}
+              />
+            </TabsContent>
+            <TabsContent value="chat">
+              <ChatTab
+                projectId={projectId!}
+                initialChats={chats}
+                categories={categories}
+                categoryVersions={categoryVersions}
+                chatModels={chatModels}
+              />
+            </TabsContent>
+            <TabsContent value="search">
+              <SearchTab
+                projectId={projectId!}
+                initialSearches={searches}
+                categories={categories}
+                categoryVersions={categoryVersions}
+                chatModels={chatModels}
+              />
+            </TabsContent>
+            <TabsContent value="settings">
+              <SettingsTab
+                projectId={projectId!}
+                permissions={permissions}
+                onPermissionRemoved={fetchProject}
+              />
+            </TabsContent>
+            {/* Sync tab only for datasync projects */}
+            {project.category === 'datasync' && (
+              <TabsContent value="sync">
+                <SyncTab projectId={projectId!} />
+              </TabsContent>
+            )}
+          </Tabs>
         </div>
       </div>
     </div>

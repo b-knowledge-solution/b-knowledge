@@ -66,7 +66,8 @@
       "Bash(cp:*)",
       "Bash(winget install:*)",
       "Bash(cd:*)",
-      "Bash(for wt:*)"
+      "Bash(for wt:*)",
+      "Bash(wc:*)"
     ]
   },
   "sandbox": {

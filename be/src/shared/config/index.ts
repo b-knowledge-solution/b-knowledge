@@ -412,7 +412,7 @@ export const config = {
   opensearch: {
     host: process.env['VECTORDB_HOST'] || process.env['ES_HOST'] || 'http://localhost:9200',
     password: process.env['VECTORDB_PASSWORD'] || process.env['ES_PASSWORD'] || '',
-    systemTenantId: process.env['SYSTEM_TENANT_ID'] || '00000000-0000-0000-0000-000000000001',
+    systemTenantId: (process.env['SYSTEM_TENANT_ID'] || '00000000000000000000000000000001').replace(/-/g, ''),
   },
 
   // --------------------------------------------------------------------------

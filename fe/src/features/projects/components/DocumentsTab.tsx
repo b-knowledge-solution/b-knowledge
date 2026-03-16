@@ -10,8 +10,12 @@
 
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Tag, Popconfirm, Tooltip, message } from 'antd'
 import { Plus, Trash2, Pencil, Archive, FolderOpen, Lock } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useConfirm } from '@/components/ConfirmDialog'
+import { globalMessage } from '@/app/App'
 import {
   getDocumentCategories,
   createDocumentCategory,
@@ -58,6 +62,7 @@ interface DocumentsTabProps {
  */
 const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: DocumentsTabProps) => {
   const { t } = useTranslation()
+  const confirm = useConfirm()
 
   // -- State --
   const [categories, setCategories] = useState<DocumentCategory[]>(initialCategories)
@@ -130,7 +135,7 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
       })
       .catch((err: unknown) => {
         console.error('Failed to load versions:', err)
-        message.error(String(err))
+        globalMessage.error(String(err))
       })
       .finally(() => setLoadingVersions(false))
   }, [projectId, selectedCategory])
@@ -163,7 +168,7 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
       const catData = await getDocumentCategories(projectId)
       setCategories(catData)
     } catch (err) {
-      message.error(String(err))
+      globalMessage.error(String(err))
     } finally {
       setSaving(false)
     }
@@ -191,14 +196,23 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
         if (updated) setSelectedCategory(updated)
       }
     } catch (err) {
-      message.error(String(err))
+      globalMessage.error(String(err))
     } finally {
       setSaving(false)
     }
   }
 
-  /** Delete a category */
+  /** Delete a category after confirmation */
   const handleDeleteCategory = async (categoryId: string) => {
+    // Prompt confirmation before deleting the category
+    const confirmed = await confirm({
+      title: t('common.delete'),
+      message: t('projectManagement.categories.deleteConfirm'),
+      variant: 'danger',
+      confirmText: t('common.delete'),
+    })
+    if (!confirmed) return
+
     try {
       await deleteDocumentCategory(projectId, categoryId)
       const catData = await getDocumentCategories(projectId)
@@ -207,32 +221,52 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
         setSelectedCategory(null)
       }
     } catch (err) {
-      message.error(String(err))
+      globalMessage.error(String(err))
     }
   }
 
-  /** Delete a version */
+  /** Delete a version after confirmation */
   const handleDeleteVersion = async (versionId: string) => {
     if (!selectedCategory) return
+
+    // Prompt confirmation before deleting the version
+    const confirmed = await confirm({
+      title: t('common.delete'),
+      message: t('projectManagement.versions.deleteConfirm'),
+      variant: 'danger',
+      confirmText: t('common.delete'),
+    })
+    if (!confirmed) return
+
     try {
       await deleteCategoryVersion(projectId, selectedCategory.id, versionId)
       if (selectedVersion?.id === versionId) setSelectedVersion(null)
       await refreshVersions()
     } catch (err) {
-      message.error(String(err))
+      globalMessage.error(String(err))
     }
   }
 
-  /** Deactivate (archive) a version */
+  /** Deactivate (archive) a version after confirmation */
   const handleDeactivateVersion = async (versionId: string) => {
     if (!selectedCategory) return
+
+    // Prompt confirmation before archiving the version
+    const confirmed = await confirm({
+      title: t('projectManagement.versions.deactivate'),
+      message: t('projectManagement.versions.deactivateConfirm'),
+      variant: 'warning',
+      confirmText: t('projectManagement.versions.deactivate'),
+    })
+    if (!confirmed) return
+
     try {
       await archiveCategoryVersion(projectId, selectedCategory.id, versionId)
-      message.success(t('projectManagement.versions.deactivateSuccess'))
+      globalMessage.success(t('projectManagement.versions.deactivateSuccess'))
       if (selectedVersion?.id === versionId) setSelectedVersion(null)
       await refreshVersions()
     } catch (err) {
-      message.error(String(err))
+      globalMessage.error(String(err))
     }
   }
 
@@ -260,7 +294,7 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
         (v) => v.version_label.toLowerCase() === version_label.toLowerCase()
       )
       if (duplicate) {
-        message.error(t('projectManagement.versions.duplicateError'))
+        globalMessage.error(t('projectManagement.versions.duplicateError'))
         return
       }
 
@@ -275,9 +309,9 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
       })
       setVersionModalOpen(false)
       await refreshVersions()
-      message.success(t('projectManagement.versions.syncSuccess'))
+      globalMessage.success(t('projectManagement.versions.syncSuccess'))
     } catch (err) {
-      message.error(String(err))
+      globalMessage.error(String(err))
     } finally {
       setSaving(false)
     }
@@ -285,10 +319,14 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
 
   // -- Render --
 
-  /** Color for version status */
-  const statusColor = (status: string) => {
-    const map: Record<string, string> = { active: 'green', synced: 'blue', archived: 'default' }
-    return map[status] || 'default'
+  /**
+   * Map version status to Badge variant.
+   * @param status - Version status string
+   * @returns Badge variant
+   */
+  const statusVariant = (status: string): 'success' | 'info' | 'secondary' => {
+    const map: Record<string, 'success' | 'info' | 'secondary'> = { active: 'success', synced: 'info', archived: 'secondary' }
+    return map[status] || 'secondary'
   }
 
   return (
@@ -300,7 +338,14 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
               {t('projectManagement.categories.title')}
             </h3>
-            <Button size="small" type="text" icon={<Plus size={14} />} onClick={() => { setEditingCategory(null); setCategoryModalOpen(true) }} />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => { setEditingCategory(null); setCategoryModalOpen(true) }}
+            >
+              <Plus size={14} />
+            </Button>
           </div>
           {categories.length === 0 ? (
             <div className="text-center py-8">
@@ -321,37 +366,53 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
                 >
                   <span className="truncate">{cat.name}</span>
                   <div className="flex items-center gap-0.5">
-                    <Tooltip title={t('projectManagement.entityPermissions.title', 'Permissions')}>
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<Lock size={12} />}
-                        onClick={(e: React.MouseEvent) => { e.stopPropagation(); setPermCategoryId(cat.id); setPermCategoryName(cat.name) }}
-                        className="opacity-0 group-hover:opacity-100"
-                      />
-                    </Tooltip>
-                    <Tooltip title={t('projectManagement.categories.edit')}>
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<Pencil size={12} />}
-                        onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleOpenEditCategory(cat) }}
-                        className="opacity-0 group-hover:opacity-100"
-                      />
-                    </Tooltip>
-                    <Popconfirm
-                      title={t('projectManagement.categories.deleteConfirm')}
-                      onConfirm={(e?: React.MouseEvent) => { e?.stopPropagation(); handleDeleteCategory(cat.id) }}
-                    >
-                      <Button
-                        type="text"
-                        size="small"
-                        danger
-                        icon={<Trash2 size={12} />}
-                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                        className="opacity-0 group-hover:opacity-100"
-                      />
-                    </Popconfirm>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                            onClick={(e: React.MouseEvent) => { e.stopPropagation(); setPermCategoryId(cat.id); setPermCategoryName(cat.name) }}
+                          >
+                            <Lock size={12} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('projectManagement.entityPermissions.title', 'Permissions')}</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                            onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleOpenEditCategory(cat) }}
+                          >
+                            <Pencil size={12} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('projectManagement.categories.edit')}</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive"
+                            onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDeleteCategory(cat.id) }}
+                          >
+                            <Trash2 size={12} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('common.delete')}</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </div>
               ))}
@@ -368,7 +429,8 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
                 <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                   {t('projectManagement.versions.title')} — {selectedCategory.name}
                 </h3>
-                <Button type="primary" size="small" icon={<Plus size={14} />} onClick={handleCreateVersion}>
+                <Button size="sm" onClick={handleCreateVersion}>
+                  <Plus size={14} className="mr-1" />
                   {t('projectManagement.versions.add')}
                 </Button>
               </div>
@@ -401,48 +463,62 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
                         <span className="font-medium text-gray-800 dark:text-gray-200 truncate">
                           {ver.version_label}
                         </span>
-                        <Tag color={statusColor(ver.status)} className="text-xs m-0">
+                        <Badge variant={statusVariant(ver.status)} className="text-xs">
                           {t(`projectManagement.versions.status.${ver.status}`)}
-                        </Tag>
+                        </Badge>
                       </div>
 
                       {/* Action buttons -- visible on hover */}
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Tooltip title={t('projectManagement.versions.editLabel')}>
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<Pencil size={12} />}
-                            onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleOpenEditVersion(ver) }}
-                          />
-                        </Tooltip>
-                        {ver.status !== 'archived' && (
-                          <Popconfirm
-                            title={t('projectManagement.versions.deactivateConfirm')}
-                            onConfirm={() => handleDeactivateVersion(ver.id)}
-                          >
-                            <Tooltip title={t('projectManagement.versions.deactivate')}>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
                               <Button
-                                type="text"
-                                size="small"
-                                icon={<Archive size={12} />}
-                                onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                              />
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleOpenEditVersion(ver) }}
+                              >
+                                <Pencil size={12} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('projectManagement.versions.editLabel')}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+
+                        {ver.status !== 'archived' && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDeactivateVersion(ver.id) }}
+                                >
+                                  <Archive size={12} />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{t('projectManagement.versions.deactivate')}</TooltipContent>
                             </Tooltip>
-                          </Popconfirm>
+                          </TooltipProvider>
                         )}
-                        <Popconfirm
-                          title={t('projectManagement.versions.deleteConfirm')}
-                          onConfirm={() => handleDeleteVersion(ver.id)}
-                        >
-                          <Button
-                            type="text"
-                            size="small"
-                            danger
-                            icon={<Trash2 size={12} />}
-                            onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                          />
-                        </Popconfirm>
+
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-destructive hover:text-destructive"
+                                onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDeleteVersion(ver.id) }}
+                              >
+                                <Trash2 size={12} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('common.delete')}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </div>
                   ))}

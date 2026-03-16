@@ -39,7 +39,7 @@ const DatasetDetailPage: React.FC = () => {
     setPreviewDoc(doc)
   }
 
-  const { documents, loading: loadingDocs, uploading, refresh, uploadFiles, deleteDocument, parseDocument } = useDocuments(id);
+  const { documents, loading: loadingDocs, uploading, refresh, uploadFiles, deleteDocument, parseDocument, toggleAvailability, bulkParse, bulkDelete } = useDocuments(id);
 
   useEffect(() => {
     if (!id) return;
@@ -52,12 +52,16 @@ const DatasetDetailPage: React.FC = () => {
   }, [id, navigate]);
 
   const handleUpload = async (files: File[]) => {
-    await uploadFiles(files);
-    setUploadModalOpen(false);
-    // Refresh dataset to update counts
-    if (id) {
-      const updated = await datasetApi.getDataset(id);
-      setDataset(updated);
+    try {
+      await uploadFiles(files);
+      setUploadModalOpen(false);
+      // Refresh dataset to update counts
+      if (id) {
+        const updated = await datasetApi.getDataset(id);
+        setDataset(updated);
+      }
+    } catch {
+      // Modal stays open on error; toast is shown by the mutation's onError
     }
   };
 
@@ -168,6 +172,9 @@ const DatasetDetailPage: React.FC = () => {
             onParse={parseDocument}
             onDelete={deleteDocument}
             onView={handleViewDocument}
+            onToggleAvailability={toggleAvailability}
+            onBulkParse={bulkParse}
+            onBulkDelete={bulkDelete}
           />
         </CardContent>
       </Card>

@@ -7,6 +7,7 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Edit2, Trash2, Search, Upload } from 'lucide-react'
+import { useConfirm } from '@/components/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -47,6 +48,7 @@ export const TaskManagementTab: React.FC<TaskManagementTabProps> = ({
     onOpenBulkImport,
 }) => {
     const { t } = useTranslation()
+    const confirm = useConfirm()
 
     // Row selection state for bulk delete
     const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([])
@@ -75,7 +77,14 @@ export const TaskManagementTab: React.FC<TaskManagementTabProps> = ({
     // ========================================================================
 
     const handleBulkDelete = async () => {
-        if (!window.confirm(t('glossary.task.bulkDeleteMessage', { count: selectedRowKeys.length }))) return
+        // Show styled confirmation dialog before bulk deleting tasks
+        const confirmed = await confirm({
+            title: t('common.delete'),
+            message: t('glossary.task.bulkDeleteMessage', { count: selectedRowKeys.length }),
+            variant: 'danger',
+            confirmText: t('common.delete'),
+        })
+        if (!confirmed) return
         setBulkDeleting(true)
         try {
             for (const id of selectedRowKeys) {

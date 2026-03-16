@@ -6,7 +6,10 @@
 import { db } from '@/shared/db/knex.js'
 import { DocumentRow } from '@/shared/models/types.js'
 
-const SYSTEM_TENANT_ID = process.env['SYSTEM_TENANT_ID'] || '00000000-0000-0000-0000-000000000001';
+// RAGFlow stores tenant_id as a 32-char hex string (UUID without hyphens)
+const SYSTEM_TENANT_ID = (
+    process.env['SYSTEM_TENANT_ID'] || '00000000000000000000000000000001'
+).replace(/-/g, '');
 
 function nowMs(): number {
     return Date.now();
@@ -47,6 +50,7 @@ export class RagDocumentModel {
             status: '1',
             progress: 0,
             progress_msg: '',
+            process_duration: 0,
             token_num: 0,
             chunk_num: 0,
             create_time: now,
@@ -70,7 +74,7 @@ export class RagDocumentModel {
 
     async findByDatasetId(datasetId: string): Promise<DocumentRow[]> {
         return db(this.tableName)
-            .where({ kb_id: datasetId.replace(/-/g, ''), status: '1' })
+            .where({ kb_id: datasetId.replace(/-/g, '') })
             .orderBy('create_time', 'desc');
     }
 
@@ -93,6 +97,6 @@ export class RagDocumentModel {
     }
 
     async softDelete(docId: string): Promise<void> {
-        await this.update(docId, { status: '0' });
+        await db(this.tableName).where({ id: docId.replace(/-/g, '') }).delete();
     }
 }

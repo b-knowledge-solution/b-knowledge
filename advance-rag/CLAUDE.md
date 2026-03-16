@@ -86,6 +86,40 @@ All via environment variables through `config.py`. Key groups:
 | Models | `DEFAULT_EMBEDDING_MODEL`, `DEFAULT_CHAT_MODEL`, `DEFAULT_RERANK_MODEL` |
 | Tenant | `SYSTEM_TENANT_ID=00000000-0000-0000-0000-000000000001` |
 
+## Documentation Comments (Mandatory)
+
+All code MUST follow the root `CLAUDE.md` comment conventions. Summary:
+
+- **Google-style docstrings on every function, class, and method** — summary, `Args`, `Returns`, `Raises`
+- **Inline comments** above control flow, ML/NLP logic, DB queries, Redis operations, pipeline stages
+- **Parsers:** Document supported input formats, output structure, and failure modes
+- **Flow components:** Document pipeline stage inputs/outputs and transformation logic
+- **Services:** Document integration points (OpenSearch, Redis, S3) and retry/error behavior
+- **Config:** Document environment variable purpose and valid value ranges
+
+```python
+def search_vectors(self, query_embedding: list[float], index: str, top_k: int = 10) -> list[SearchHit]:
+    """Search OpenSearch index for nearest neighbors of the query embedding.
+
+    Args:
+        query_embedding: Dense vector from the embedding model.
+        index: OpenSearch index name (typically the knowledge base ID).
+        top_k: Maximum number of results to return.
+
+    Returns:
+        List of SearchHit with document ID, score, and chunk content.
+
+    Raises:
+        OpenSearchError: If the index does not exist or query fails.
+    """
+    # Use script_score with cosine similarity — OpenSearch kNN plugin requires this wrapper
+    body = build_knn_query(query_embedding, top_k)
+
+    # Execute search with a timeout to prevent blocking the task executor
+    response = self.client.search(index=index, body=body, request_timeout=30)
+    return parse_hits(response)
+```
+
 ## Gotchas
 
 - **Derived from RAGFlow:** This is an extracted/modified version of RAGFlow's core — patterns follow RAGFlow conventions, not the Node.js backend

@@ -9,8 +9,13 @@
 
 import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Modal, Button, message, Progress, List, Tag } from 'antd'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 import { FolderUp, CheckCircle, XCircle, Loader } from 'lucide-react'
+import { globalMessage } from '@/app/App'
 import { uploadVersionDocument } from '../api/projectApi'
 
 // ============================================================================
@@ -126,9 +131,9 @@ const UploadFolderModal = ({
     }
 
     if (failed === 0) {
-      message.success(t('projectManagement.documents.uploadSuccess'))
+      globalMessage.success(t('projectManagement.documents.uploadSuccess'))
     } else {
-      message.warning(
+      globalMessage.warning(
         `${succeeded}/${files.length} ${t('projectManagement.documents.uploadSuccess')}. ${failed} ${t('projectManagement.documents.uploadError')}`
       )
     }
@@ -153,7 +158,7 @@ const UploadFolderModal = ({
     })
 
     if (files.length === 0) {
-      message.warning(t('projectManagement.documents.acceptedTypes'))
+      globalMessage.warning(t('projectManagement.documents.acceptedTypes'))
       return
     }
 
@@ -174,56 +179,51 @@ const UploadFolderModal = ({
   const failedCount = fileList.filter((f) => f.status === 'failed').length
 
   return (
-    <Modal
-      title={t('projectManagement.documents.uploadFolderTitle')}
-      open={open}
-      onCancel={handleClose}
-      footer={null}
-      destroyOnHidden
-      width={560}
-      maskClosable={!uploading}
-    >
-      {/* Folder select area */}
-      <div className="flex flex-col items-center gap-3 py-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-        <FolderUp size={36} className="text-gray-400" />
-        <p className="text-sm text-gray-600 dark:text-gray-400 m-0">
-          {t('projectManagement.documents.folderUploadHint')}
-        </p>
-        <p className="text-xs text-gray-400 m-0">
-          {t('projectManagement.documents.acceptedTypes')}
-        </p>
-        <Button
-          type="primary"
-          icon={<FolderUp size={14} />}
-          disabled={uploading}
-          onClick={() => folderInputRef.current?.click()}
-        >
-          {t('projectManagement.documents.selectFolder')}
-        </Button>
-      </div>
+    <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) handleClose() }}>
+      <DialogContent className="sm:max-w-[560px]">
+        <DialogHeader>
+          <DialogTitle>{t('projectManagement.documents.uploadFolderTitle')}</DialogTitle>
+        </DialogHeader>
 
-      {/* Per-file upload progress */}
-      {fileList.length > 0 && (
-        <div className="mt-4 bg-gray-50 dark:bg-slate-800/50 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-              {t('projectManagement.documents.uploading')} {completedCount}/{fileList.length}
-            </span>
-            <Progress
-              percent={overallPercent}
-              size="small"
-              status={failedCount > 0 ? 'exception' : uploading ? 'active' : 'success'}
-              style={{ width: 120, margin: 0 }}
-            />
-          </div>
+        {/* Folder select area */}
+        <div className="flex flex-col items-center gap-3 py-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+          <FolderUp size={36} className="text-gray-400" />
+          <p className="text-sm text-gray-600 dark:text-gray-400 m-0">
+            {t('projectManagement.documents.folderUploadHint')}
+          </p>
+          <p className="text-xs text-gray-400 m-0">
+            {t('projectManagement.documents.acceptedTypes')}
+          </p>
+          <Button
+            disabled={uploading}
+            onClick={() => folderInputRef.current?.click()}
+          >
+            <FolderUp size={14} className="mr-1" />
+            {t('projectManagement.documents.selectFolder')}
+          </Button>
+        </div>
 
-          <List
-            size="small"
-            dataSource={fileList}
-            renderItem={(item) => (
-              <List.Item className="!py-1 !px-0 !border-b-0">
-                <div className="flex items-center justify-between w-full gap-2">
+        {/* Per-file upload progress */}
+        {fileList.length > 0 && (
+          <div className="mt-4 bg-gray-50 dark:bg-slate-800/50 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                {t('projectManagement.documents.uploading')} {completedCount}/{fileList.length}
+              </span>
+              <Progress
+                value={overallPercent}
+                className={cn(
+                  'w-[120px] h-2',
+                  failedCount > 0 && '[&>div]:bg-destructive'
+                )}
+              />
+            </div>
+
+            <ul className="max-h-[200px] overflow-auto space-y-1">
+              {fileList.map((item) => (
+                <li key={item.key} className="flex items-center justify-between w-full gap-2 py-1">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
+                    {/* Status icon */}
                     {item.status === 'success' && <CheckCircle size={14} className="text-green-500 shrink-0" />}
                     {item.status === 'failed' && <XCircle size={14} className="text-red-500 shrink-0" />}
                     {item.status === 'uploading' && <Loader size={14} className="text-blue-500 animate-spin shrink-0" />}
@@ -232,29 +232,28 @@ const UploadFolderModal = ({
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-xs text-gray-400">{formatFileSize(item.size)}</span>
-                    {item.status === 'uploading' && <Tag color="processing" className="text-xs m-0">{t('projectManagement.documents.uploading')}</Tag>}
-                    {item.status === 'failed' && <Tag color="error" className="text-xs m-0">{t('projectManagement.documents.uploadError')}</Tag>}
+                    {item.status === 'uploading' && <Badge variant="info" className="text-xs">{t('projectManagement.documents.uploading')}</Badge>}
+                    {item.status === 'failed' && <Badge variant="destructive" className="text-xs">{t('projectManagement.documents.uploadError')}</Badge>}
                   </div>
-                </div>
-              </List.Item>
-            )}
-            style={{ maxHeight: 200, overflow: 'auto' }}
-          />
-        </div>
-      )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
-      {/* Hidden folder input */}
-      <input
-        ref={folderInputRef}
-        type="file"
-        // @ts-ignore — webkitdirectory is a non-standard attribute
-        webkitdirectory=""
-        directory=""
-        multiple
-        style={{ display: 'none' }}
-        onChange={handleFolderSelect}
-      />
-    </Modal>
+        {/* Hidden folder input */}
+        <input
+          ref={folderInputRef}
+          type="file"
+          // @ts-ignore — webkitdirectory is a non-standard attribute
+          webkitdirectory=""
+          directory=""
+          multiple
+          className="hidden"
+          onChange={handleFolderSelect}
+        />
+      </DialogContent>
+    </Dialog>
   )
 }
 

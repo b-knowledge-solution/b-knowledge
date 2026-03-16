@@ -8,8 +8,16 @@
 
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Select as AntSelect, Button, message } from 'antd'
-import { Save } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import { Save, Loader2 } from 'lucide-react'
+import { globalMessage } from '@/app/App'
 import type { ProjectSyncConfig, SyncSourceType } from '../api/projectApi'
 import SyncConnectionFields from './SyncConnectionFields'
 
@@ -28,6 +36,18 @@ interface SyncConfigPanelProps {
   /** Whether saving is in progress */
   saving: boolean
 }
+
+// ============================================================================
+// Source type options
+// ============================================================================
+
+const SOURCE_TYPE_OPTIONS: { value: SyncSourceType; label: string }[] = [
+  { value: 'sharepoint', label: 'SharePoint' },
+  { value: 'jira', label: 'JIRA' },
+  { value: 'confluence', label: 'Confluence' },
+  { value: 'gitlab', label: 'GitLab' },
+  { value: 'github', label: 'GitHub' },
+]
 
 // ============================================================================
 // Component
@@ -54,9 +74,9 @@ const SyncConfigPanel = ({ config, onSave, saving }: SyncConfigPanelProps) => {
   const handleSave = async () => {
     try {
       await onSave({ source_type: sourceType, connection_config: connectionConfig })
-      message.success(t('projectManagement.sync.saveSuccess'))
+      globalMessage.success(t('projectManagement.sync.saveSuccess'))
     } catch (err) {
-      message.error(String(err))
+      globalMessage.error(String(err))
     }
   }
 
@@ -67,21 +87,25 @@ const SyncConfigPanel = ({ config, onSave, saving }: SyncConfigPanelProps) => {
         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
           {t('projectManagement.sync.sourceType')}
         </label>
-        <AntSelect
+        <Select
           value={sourceType}
-          onChange={(v: SyncSourceType) => {
-            setSourceType(v)
+          onValueChange={(v: string) => {
+            // Reset connection config when source type changes
+            setSourceType(v as SyncSourceType)
             setConnectionConfig({})
           }}
-          className="w-full"
-          options={[
-            { value: 'sharepoint', label: 'SharePoint' },
-            { value: 'jira', label: 'JIRA' },
-            { value: 'confluence', label: 'Confluence' },
-            { value: 'gitlab', label: 'GitLab' },
-            { value: 'github', label: 'GitHub' },
-          ]}
-        />
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SOURCE_TYPE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Connection fields */}
@@ -93,12 +117,12 @@ const SyncConfigPanel = ({ config, onSave, saving }: SyncConfigPanelProps) => {
 
       {/* Save button */}
       <div className="flex justify-end pt-2">
-        <Button
-          type="primary"
-          icon={<Save size={16} />}
-          onClick={handleSave}
-          loading={saving}
-        >
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? (
+            <Loader2 size={16} className="mr-2 animate-spin" />
+          ) : (
+            <Save size={16} className="mr-2" />
+          )}
           {t('common.save')}
         </Button>
       </div>

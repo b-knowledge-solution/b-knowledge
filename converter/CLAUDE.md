@@ -81,6 +81,44 @@ Job-level config loaded from Redis job's `config` JSON field (set by backend):
 - `SuffixConfig`: PDF filename suffixes (_d for Word, _x for Excel, _p for PowerPoint)
 - `ExcelConfig`: orientation, row dimensions, shrink thresholds
 
+## Documentation Comments (Mandatory)
+
+All code MUST follow the root `CLAUDE.md` comment conventions. Summary:
+
+- **Google-style docstrings on every function, class, and method** — summary, `Args`, `Returns`, `Raises`
+- **Inline comments** above control flow, file processing logic, Redis operations, subprocess calls
+- **Converters:** Document supported file extensions, LibreOffice CLI flags used, and failure modes
+- **Worker:** Document queue polling logic, status transitions, and graceful shutdown behavior
+- **PDF processing:** Document page analysis heuristics, thresholds, and filtering decisions
+
+```python
+def convert_word_to_pdf(input_path: Path, output_dir: Path) -> Path:
+    """Convert a Word document (.doc/.docx) to PDF using LibreOffice CLI.
+
+    Args:
+        input_path: Path to the source Word document.
+        output_dir: Directory to write the converted PDF.
+
+    Returns:
+        Path to the generated PDF file.
+
+    Raises:
+        ConversionError: If LibreOffice process exits with non-zero code.
+        FileNotFoundError: If input_path does not exist.
+    """
+    # Use headless mode to avoid X11 dependency in Docker containers
+    result = subprocess.run(
+        ['soffice', '--headless', '--convert-to', 'pdf', '--outdir', str(output_dir), str(input_path)],
+        capture_output=True, timeout=120
+    )
+
+    # LibreOffice may exit 0 but produce no output on corrupt files — verify output exists
+    output_path = output_dir / f'{input_path.stem}.pdf'
+    if not output_path.exists():
+        raise ConversionError(f'LibreOffice produced no output for {input_path.name}')
+    return output_path
+```
+
 ## Gotchas
 
 - **LibreOffice required:** Ubuntu package `libreoffice-calc libreoffice-writer libreoffice-impress` — not available on macOS dev without Docker

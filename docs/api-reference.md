@@ -24,7 +24,7 @@ GET /api/auth/config
 **Response:**
 ```json
 {
-  "enableRootLogin": true,
+  "enableLocalLogin": true,
   "azureAdEnabled": true
 }
 ```

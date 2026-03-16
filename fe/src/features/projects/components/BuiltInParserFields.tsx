@@ -7,9 +7,14 @@
  * @module features/projects/components/BuiltInParserFields
  */
 
+import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Select, Input, InputNumber, Switch, Slider, Tooltip, Row, Col } from 'antd'
-import { InfoCircleOutlined } from '@ant-design/icons'
+import { Info } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 // ============================================================================
 // Constants
@@ -104,85 +109,143 @@ const BuiltInParserFields = ({
     onParserConfigChange(field, value)
   }
 
+  /**
+   * Render a tooltip info icon next to a label.
+   * @param tip - Tooltip text
+   */
+  const renderInfoTip = (tip: string) => (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Info size={14} className="ml-1 inline text-muted-foreground cursor-help" />
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="max-w-xs text-xs">{tip}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+
+  /**
+   * Render a slider+number row for numeric range fields.
+   * @param min - Minimum value
+   * @param max - Maximum value
+   * @param value - Current value
+   * @param onChange - Change handler
+   */
+  const renderSliderRow = (min: number, max: number, value: number, onChange: (v: number) => void) => (
+    <div className="flex items-center gap-3">
+      <input
+        type="range"
+        className="w-full accent-primary"
+        min={min}
+        max={max}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
+      <Input
+        type="number"
+        min={min}
+        max={max}
+        className="w-[70px]"
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
+    </div>
+  )
+
   return (
     <>
       {/* Chunk method */}
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-1">
+        <Label className="mb-1">
           {t('projectManagement.categories.datasetConfig.chunkMethod')}
-        </label>
+        </Label>
         <Select
-          value={chunkMethod}
-          onChange={onChunkMethodChange}
-          options={chunkMethodOptions}
-          allowClear
-          placeholder={t('projectManagement.categories.datasetConfig.inheritFromCategory')}
-          className="w-full"
-        />
+          value={chunkMethod || ''}
+          onValueChange={onChunkMethodChange}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder={t('projectManagement.categories.datasetConfig.inheritFromCategory')} />
+          </SelectTrigger>
+          <SelectContent>
+            {chunkMethodOptions.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Layout Recognize (PDF Parser) */}
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-1">
+        <Label className="mb-1">
           {t('projectManagement.categories.datasetConfig.pdfParser')}
-        </label>
+        </Label>
         <Select
-          value={parserConfig.layout_recognize}
-          onChange={(v: string) => updateField('layout_recognize', v)}
-          options={pdfParserOptions}
-          allowClear
-          placeholder={t('projectManagement.categories.datasetConfig.inheritFromCategory')}
-          className="w-full"
-        />
+          value={parserConfig.layout_recognize || ''}
+          onValueChange={(v: string) => updateField('layout_recognize', v)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder={t('projectManagement.categories.datasetConfig.inheritFromCategory')} />
+          </SelectTrigger>
+          <SelectContent>
+            {pdfParserOptions.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Chunk token number */}
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-1">
+        <Label className="mb-1">
           {t('projectManagement.categories.datasetConfig.chunkTokenNum')}
-        </label>
-        <InputNumber
+        </Label>
+        <Input
+          type="number"
           min={1}
           max={2048}
-          style={{ width: '100%' }}
+          className="w-full"
           placeholder={t('projectManagement.categories.datasetConfig.inheritFromCategory')}
-          value={parserConfig.chunk_token_num}
-          onChange={(v: number | null) => updateField('chunk_token_num', v ?? undefined)}
+          value={parserConfig.chunk_token_num ?? ''}
+          onChange={(e) => updateField('chunk_token_num', e.target.value ? Number(e.target.value) : undefined)}
         />
       </div>
 
       {/* Delimiter */}
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-1">
+        <Label className="mb-1">
           {t('projectManagement.categories.datasetConfig.delimiter')}
-        </label>
+        </Label>
         <Input
           placeholder="\n"
-          value={parserConfig.delimiter}
+          value={parserConfig.delimiter ?? ''}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('delimiter', e.target.value)}
         />
       </div>
 
       {/* Child chunk for retrieval */}
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-1">
+        <Label className="mb-1">
           {t('projectManagement.categories.datasetConfig.childChunk')}
-        </label>
-        <Switch
-          checked={parserConfig.child_chunk ?? false}
-          onChange={(v: boolean) => updateField('child_chunk', v)}
-        />
+        </Label>
+        <div>
+          <Switch
+            checked={parserConfig.child_chunk ?? false}
+            onCheckedChange={(v: boolean) => updateField('child_chunk', v)}
+          />
+        </div>
       </div>
 
       {/* Child chunk delimiter -- shown only when child_chunk is enabled */}
       {parserConfig.child_chunk && (
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">
+          <Label className="mb-1">
             {t('projectManagement.categories.datasetConfig.childChunkDelimiter')}
-          </label>
+          </Label>
           <Input
             placeholder="\n"
-            value={parserConfig.child_chunk_delimiter}
+            value={parserConfig.child_chunk_delimiter ?? ''}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('child_chunk_delimiter', e.target.value)}
           />
         </div>
@@ -190,169 +253,79 @@ const BuiltInParserFields = ({
 
       {/* PageIndex */}
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-1">
-          <span>
-            {t('projectManagement.categories.datasetConfig.pageIndex')}
-            <Tooltip title={t('projectManagement.categories.datasetConfig.pageIndexTip')}>
-              <InfoCircleOutlined style={{ marginLeft: 4, color: '#999' }} />
-            </Tooltip>
-          </span>
-        </label>
-        <Switch
-          checked={parserConfig.page_index ?? false}
-          onChange={(v: boolean) => updateField('page_index', v)}
-        />
+        <Label className="mb-1">
+          {t('projectManagement.categories.datasetConfig.pageIndex')}
+          {renderInfoTip(t('projectManagement.categories.datasetConfig.pageIndexTip'))}
+        </Label>
+        <div>
+          <Switch
+            checked={parserConfig.page_index ?? false}
+            onCheckedChange={(v: boolean) => updateField('page_index', v)}
+          />
+        </div>
       </div>
 
       {/* Image & table context window */}
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-1">
-          <span>
-            {t('projectManagement.categories.datasetConfig.imageContextSize')}
-            <Tooltip title={t('projectManagement.categories.datasetConfig.imageContextSizeTip')}>
-              <InfoCircleOutlined style={{ marginLeft: 4, color: '#999' }} />
-            </Tooltip>
-          </span>
-        </label>
-        <Row gutter={12} align="middle">
-          <Col flex="auto">
-            <Slider
-              min={0}
-              max={256}
-              value={parserConfig.image_context_size ?? 128}
-              onChange={(v: number) => updateField('image_context_size', v)}
-            />
-          </Col>
-          <Col>
-            <InputNumber
-              min={0}
-              max={256}
-              style={{ width: 70 }}
-              value={parserConfig.image_context_size ?? 128}
-              onChange={(v: number | null) => updateField('image_context_size', v ?? 0)}
-            />
-          </Col>
-        </Row>
+        <Label className="mb-1">
+          {t('projectManagement.categories.datasetConfig.imageContextSize')}
+          {renderInfoTip(t('projectManagement.categories.datasetConfig.imageContextSizeTip'))}
+        </Label>
+        {renderSliderRow(0, 256, parserConfig.image_context_size ?? 128, (v) => updateField('image_context_size', v))}
       </div>
 
       {/* Auto metadata */}
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-1">
-          <span>
-            {t('projectManagement.categories.datasetConfig.autoMetadata')}
-            <Tooltip title={t('projectManagement.categories.datasetConfig.autoMetadataTip')}>
-              <InfoCircleOutlined style={{ marginLeft: 4, color: '#999' }} />
-            </Tooltip>
-          </span>
-        </label>
-        <Switch
-          checked={parserConfig.auto_metadata ?? true}
-          onChange={(v: boolean) => updateField('auto_metadata', v)}
-        />
+        <Label className="mb-1">
+          {t('projectManagement.categories.datasetConfig.autoMetadata')}
+          {renderInfoTip(t('projectManagement.categories.datasetConfig.autoMetadataTip'))}
+        </Label>
+        <div>
+          <Switch
+            checked={parserConfig.auto_metadata ?? true}
+            onCheckedChange={(v: boolean) => updateField('auto_metadata', v)}
+          />
+        </div>
       </div>
 
       {/* Overlapped percent */}
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-1">
+        <Label className="mb-1">
           {t('projectManagement.categories.datasetConfig.overlappedPercent')}
-        </label>
-        <Row gutter={12} align="middle">
-          <Col flex="auto">
-            <Slider
-              min={0}
-              max={100}
-              value={parserConfig.overlapped_percent ?? 4}
-              onChange={(v: number) => updateField('overlapped_percent', v)}
-            />
-          </Col>
-          <Col>
-            <InputNumber
-              min={0}
-              max={100}
-              style={{ width: 70 }}
-              value={parserConfig.overlapped_percent ?? 4}
-              onChange={(v: number | null) => updateField('overlapped_percent', v ?? 0)}
-            />
-          </Col>
-        </Row>
+        </Label>
+        {renderSliderRow(0, 100, parserConfig.overlapped_percent ?? 4, (v) => updateField('overlapped_percent', v))}
       </div>
 
       {/* Auto-keywords */}
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-1">
-          <span>
-            {t('projectManagement.categories.datasetConfig.autoKeyword')}
-            <Tooltip title={t('projectManagement.categories.datasetConfig.autoKeywordTip')}>
-              <InfoCircleOutlined style={{ marginLeft: 4, color: '#999' }} />
-            </Tooltip>
-          </span>
-        </label>
-        <Row gutter={12} align="middle">
-          <Col flex="auto">
-            <Slider
-              min={0}
-              max={32}
-              value={parserConfig.auto_keywords ?? 0}
-              onChange={(v: number) => updateField('auto_keywords', v)}
-            />
-          </Col>
-          <Col>
-            <InputNumber
-              min={0}
-              max={32}
-              style={{ width: 70 }}
-              value={parserConfig.auto_keywords ?? 0}
-              onChange={(v: number | null) => updateField('auto_keywords', v ?? 0)}
-            />
-          </Col>
-        </Row>
+        <Label className="mb-1">
+          {t('projectManagement.categories.datasetConfig.autoKeyword')}
+          {renderInfoTip(t('projectManagement.categories.datasetConfig.autoKeywordTip'))}
+        </Label>
+        {renderSliderRow(0, 32, parserConfig.auto_keywords ?? 0, (v) => updateField('auto_keywords', v))}
       </div>
 
       {/* Auto-questions */}
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-1">
-          <span>
-            {t('projectManagement.categories.datasetConfig.autoQuestion')}
-            <Tooltip title={t('projectManagement.categories.datasetConfig.autoQuestionTip')}>
-              <InfoCircleOutlined style={{ marginLeft: 4, color: '#999' }} />
-            </Tooltip>
-          </span>
-        </label>
-        <Row gutter={12} align="middle">
-          <Col flex="auto">
-            <Slider
-              min={0}
-              max={10}
-              value={parserConfig.auto_questions ?? 0}
-              onChange={(v: number) => updateField('auto_questions', v)}
-            />
-          </Col>
-          <Col>
-            <InputNumber
-              min={0}
-              max={10}
-              style={{ width: 70 }}
-              value={parserConfig.auto_questions ?? 0}
-              onChange={(v: number | null) => updateField('auto_questions', v ?? 0)}
-            />
-          </Col>
-        </Row>
+        <Label className="mb-1">
+          {t('projectManagement.categories.datasetConfig.autoQuestion')}
+          {renderInfoTip(t('projectManagement.categories.datasetConfig.autoQuestionTip'))}
+        </Label>
+        {renderSliderRow(0, 10, parserConfig.auto_questions ?? 0, (v) => updateField('auto_questions', v))}
       </div>
 
       {/* HTML for Excel */}
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-1">
-          <span>
-            {t('projectManagement.categories.datasetConfig.html4excel')}
-            <Tooltip title={t('projectManagement.categories.datasetConfig.html4excelTip')}>
-              <InfoCircleOutlined style={{ marginLeft: 4, color: '#999' }} />
-            </Tooltip>
-          </span>
-        </label>
-        <Switch
-          checked={parserConfig.html4excel ?? false}
-          onChange={(v: boolean) => updateField('html4excel', v)}
-        />
+        <Label className="mb-1">
+          {t('projectManagement.categories.datasetConfig.html4excel')}
+          {renderInfoTip(t('projectManagement.categories.datasetConfig.html4excelTip'))}
+        </Label>
+        <div>
+          <Switch
+            checked={parserConfig.html4excel ?? false}
+            onCheckedChange={(v: boolean) => updateField('html4excel', v)}
+          />
+        </div>
       </div>
     </>
   )

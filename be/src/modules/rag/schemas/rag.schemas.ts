@@ -153,3 +153,25 @@ export const retrievalTestSchema = z.object({
   similarity_threshold: z.number().min(0).max(1).optional().default(0.2),
   doc_ids: z.array(z.string()).optional(),
 })
+
+// ---------------------------------------------------------------------------
+// Bulk Document Operation schemas
+// ---------------------------------------------------------------------------
+
+/** POST /api/rag/datasets/:id/documents/bulk-parse – body */
+export const bulkParseDocumentsSchema = z.object({
+  doc_ids: z.array(z.string().min(1)).min(1, 'At least one document ID is required'),
+  /** 1 = start parsing, 2 = cancel parsing */
+  run: z.number().int().min(1).max(2),
+})
+
+/** POST /api/rag/datasets/:id/documents/bulk-toggle – body */
+export const bulkToggleDocumentsSchema = z.object({
+  doc_ids: z.array(z.string().min(1)).min(1, 'At least one document ID is required'),
+  enabled: z.boolean({ required_error: 'enabled (boolean) is required' }),
+})
+
+/** POST /api/rag/datasets/:id/documents/bulk-delete – body */
+export const bulkDeleteDocumentsSchema = z.object({
+  doc_ids: z.array(z.string().min(1)).min(1, 'At least one document ID is required'),
+})

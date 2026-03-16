@@ -7,6 +7,7 @@ import {
   createDatasetSchema, updateDatasetSchema, searchChunksSchema, uuidParamSchema, datasetAccessSchema,
   updateDatasetSettingsSchema, createChunkSchema, updateChunkSchema, chunkParamSchema, retrievalTestSchema,
   docParamSchema, toggleDocumentSchema,
+  bulkParseDocumentsSchema, bulkToggleDocumentsSchema, bulkDeleteDocumentsSchema,
 } from '../schemas/rag.schemas.js';
 
 const router = Router();
@@ -44,6 +45,11 @@ router.get('/datasets/:id/documents/:docId/download', requireAuth, controller.do
 router.get('/datasets/:id/documents/:docId/status', requireAuth, controller.streamDocumentProgress.bind(controller));
 router.delete('/datasets/:id/documents/:docId', requirePermission('manage_datasets'), controller.deleteDocument.bind(controller));
 router.patch('/datasets/:id/documents/:docId/toggle', requirePermission('manage_datasets'), validate({ params: docParamSchema, body: toggleDocumentSchema }), controller.toggleDocumentAvailability.bind(controller));
+
+// Bulk document operations
+router.post('/datasets/:id/documents/bulk-parse', requirePermission('manage_datasets'), validate({ params: uuidParamSchema, body: bulkParseDocumentsSchema }), controller.bulkParseDocuments.bind(controller));
+router.post('/datasets/:id/documents/bulk-toggle', requirePermission('manage_datasets'), validate({ params: uuidParamSchema, body: bulkToggleDocumentsSchema }), controller.bulkToggleDocuments.bind(controller));
+router.post('/datasets/:id/documents/bulk-delete', requirePermission('manage_datasets'), validate({ params: uuidParamSchema, body: bulkDeleteDocumentsSchema }), controller.bulkDeleteDocuments.bind(controller));
 
 // Search + Chunks
 router.post('/datasets/:id/search', requireAuth, validate({ params: uuidParamSchema, body: searchChunksSchema }), controller.searchChunks.bind(controller));

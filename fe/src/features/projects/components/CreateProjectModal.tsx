@@ -5,7 +5,7 @@
  * Step 2: Project details + auto-dataset name preview
  * Step 3 (datasync only): Sync source configuration
  *
- * Uses native useState instead of Ant Design Form.
+ * Uses native useState instead of form libraries.
  *
  * @module features/projects/components/CreateProjectModal
  */
@@ -13,14 +13,24 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  Modal,
-  Steps,
-  Input,
-  Select as AntSelect,
-  Card,
-  Tag,
-  Divider,
-} from 'antd'
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { Badge } from '@/components/ui/badge'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
 
 import {
   FileText,
@@ -84,10 +94,10 @@ const CATEGORY_OPTIONS: {
 // ============================================================================
 
 /**
- * Multi-step modal for creating a new project.
+ * @description Multi-step modal for creating a new project.
  *
  * @param props - Component props
- * @returns React element
+ * @returns {JSX.Element} React element
  */
 const CreateProjectModal = ({
   open,
@@ -112,7 +122,7 @@ const CreateProjectModal = ({
     : ''
 
   /**
-   * Update a form field.
+   * @description Update a form field.
    * @param field - Field name
    * @param value - New value
    */
@@ -121,7 +131,7 @@ const CreateProjectModal = ({
   }
 
   /**
-   * Handle the next step or final submit.
+   * @description Handle the next step or final submit.
    */
   const handleNext = () => {
     if (step === 0) {
@@ -166,14 +176,14 @@ const CreateProjectModal = ({
   }
 
   /**
-   * Handle going back a step.
+   * @description Handle going back a step.
    */
   const handlePrev = () => {
     if (step > 0) setStep(step - 1)
   }
 
   /**
-   * Reset state when modal closes.
+   * @description Reset state when modal closes.
    */
   const handleCancel = () => {
     setStep(0)
@@ -186,163 +196,180 @@ const CreateProjectModal = ({
   }
 
   return (
-    <Modal
-      title={t('projectManagement.createProject')}
-      open={open}
-      onOk={handleNext}
-      onCancel={handleCancel}
-      confirmLoading={saving}
-      okText={step < totalSteps - 1 ? t('common.next') : t('common.save')}
-      cancelText={step > 0 ? t('common.previous') : t('common.cancel')}
-      onClose={handleCancel}
-      width={640}
-      destroyOnHidden
-      footer={(_: unknown, { OkBtn, CancelBtn }: { OkBtn: React.ComponentType; CancelBtn: React.ComponentType }) => (
-        <div className="flex justify-between">
-          <div>
-            {step > 0 && (
-              <button
-                type="button"
-                className="ant-btn ant-btn-default"
-                onClick={handlePrev}
+    <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) handleCancel() }}>
+      <DialogContent className="max-w-[640px]">
+        <DialogHeader>
+          <DialogTitle>{t('projectManagement.createProject')}</DialogTitle>
+        </DialogHeader>
+
+        {/* Step indicator */}
+        <div className="flex items-center gap-2 mb-6">
+          {[
+            t('projectManagement.steps.category'),
+            t('projectManagement.steps.details'),
+            ...(category === 'datasync'
+              ? [t('projectManagement.steps.syncConfig')]
+              : []),
+          ].map((title, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              {idx > 0 && <div className="w-8 h-px bg-border" />}
+              <div className="flex items-center gap-1.5">
+                <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                  idx <= step
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground'
+                }`}>
+                  {idx + 1}
+                </div>
+                <span className={`text-sm ${idx <= step ? 'font-medium' : 'text-muted-foreground'}`}>
+                  {title}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Step 1: Category selection */}
+        {step === 0 && (
+          <div className="grid grid-cols-3 gap-4">
+            {CATEGORY_OPTIONS.map((opt) => {
+              const Icon = opt.icon
+              const isSelected = category === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  disabled={opt.disabled}
+                  onClick={() => !opt.disabled && setCategory(opt.value)}
+                  className={`text-center cursor-pointer transition-all rounded-lg border p-4 ${
+                    isSelected
+                      ? 'border-primary ring-2 ring-primary/20 dark:ring-primary/40'
+                      : 'border-border hover:border-primary/50'
+                  } ${opt.disabled ? 'opacity-50 cursor-not-allowed' : ''} bg-card dark:bg-card`}
+                >
+                  <Icon
+                    size={32}
+                    className={`mx-auto mb-2 ${
+                      isSelected ? 'text-primary' : 'text-muted-foreground'
+                    }`}
+                  />
+                  <p className="font-medium text-foreground">
+                    {t(`projectManagement.categories.${opt.value}`)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t(`projectManagement.categoryDesc.${opt.value}`)}
+                  </p>
+                  {opt.disabled && (
+                    <Badge variant="secondary" className="mt-2">{t('common.comingSoon', 'Coming Soon')}</Badge>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Step 2: Project details */}
+        {step === 1 && (
+          <div className="mt-2 space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                {t('projectManagement.name')} <span className="text-red-500">*</span>
+              </label>
+              <Input
+                placeholder={t('projectManagement.namePlaceholder')}
+                value={formData.name}
+                onChange={(e) => {
+                  updateField('name', e.target.value)
+                  if (nameError) setNameError('')
+                }}
+                className={nameError ? 'border-destructive' : ''}
+              />
+              {nameError && <p className="text-destructive text-xs mt-1">{nameError}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                {t('projectManagement.descriptionLabel')}
+              </label>
+              <Textarea
+                rows={2}
+                placeholder={t('projectManagement.descriptionPlaceholder')}
+                value={formData.description}
+                onChange={(e) => updateField('description', e.target.value)}
+              />
+            </div>
+
+            {/* Auto-dataset name preview */}
+            <Separator className="my-2" />
+            <div className="text-sm text-muted-foreground">
+              <span className="font-medium">{t('projectManagement.autoDataset')}:</span>{' '}
+              <code className="bg-muted px-2 py-0.5 rounded text-xs">
+                {datasetPreview || '—'}
+              </code>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Sync config (datasync only) */}
+        {step === 2 && category === 'datasync' && (
+          <div className="mt-2">
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-foreground mb-2">
+                {t('projectManagement.sync.sourceType')}
+              </label>
+              <Select
+                value={syncSourceType}
+                onValueChange={(v: string) => {
+                  setSyncSourceType(v as SyncSourceType)
+                  setConnectionConfig({})
+                }}
               >
-                {t('common.previous')}
-              </button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <CancelBtn />
-            <OkBtn />
-          </div>
-        </div>
-      )}
-    >
-      {/* Step indicator */}
-      <Steps
-        current={step}
-        size="small"
-        className="mb-6"
-        items={[
-          { title: t('projectManagement.steps.category') },
-          { title: t('projectManagement.steps.details') },
-          ...(category === 'datasync'
-            ? [{ title: t('projectManagement.steps.syncConfig') }]
-            : []),
-        ]}
-      />
-
-      {/* Step 1: Category selection */}
-      {step === 0 && (
-        <div className="grid grid-cols-3 gap-4">
-          {CATEGORY_OPTIONS.map((opt) => {
-            const Icon = opt.icon
-            const isSelected = category === opt.value
-            return (
-              // @ts-expect-error antd v6 Card type mismatch with React 19
-              <Card
-                key={opt.value}
-                hoverable={!opt.disabled}
-                onClick={() => !opt.disabled && setCategory(opt.value)}
-                className={`text-center cursor-pointer transition-all ${
-                  isSelected
-                    ? 'border-primary-500 ring-2 ring-primary-200 dark:ring-primary-800'
-                    : ''
-                } ${opt.disabled ? 'opacity-50 cursor-not-allowed' : ''} dark:bg-slate-800 dark:border-slate-700`}
-              >
-                <Icon
-                  size={32}
-                  className={`mx-auto mb-2 ${
-                    isSelected ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400'
-                  }`}
-                />
-                <p className="font-medium text-slate-900 dark:text-white">
-                  {t(`projectManagement.categories.${opt.value}`)}
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {t(`projectManagement.categoryDesc.${opt.value}`)}
-                </p>
-                {opt.disabled && (
-                  <Tag className="mt-2">{t('common.comingSoon', 'Coming Soon')}</Tag>
-                )}
-              </Card>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Step 2: Project details */}
-      {step === 1 && (
-        <div className="mt-2 space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              {t('projectManagement.name')} <span className="text-red-500">*</span>
-            </label>
-            <Input
-              placeholder={t('projectManagement.namePlaceholder')}
-              value={formData.name}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                updateField('name', e.target.value)
-                if (nameError) setNameError('')
-              }}
-              status={nameError ? 'error' : undefined}
-            />
-            {nameError && <p className="text-red-500 text-xs mt-1">{nameError}</p>}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              {t('projectManagement.descriptionLabel')}
-            </label>
-            <Input.TextArea
-              rows={2}
-              placeholder={t('projectManagement.descriptionPlaceholder')}
-              value={formData.description}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updateField('description', e.target.value)}
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sharepoint">SharePoint</SelectItem>
+                  <SelectItem value="jira">JIRA</SelectItem>
+                  <SelectItem value="confluence">Confluence</SelectItem>
+                  <SelectItem value="gitlab">GitLab</SelectItem>
+                  <SelectItem value="github">GitHub</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <SyncConnectionFields
+              sourceType={syncSourceType}
+              config={connectionConfig}
+              onChange={setConnectionConfig}
             />
           </div>
+        )}
 
-          {/* Auto-dataset name preview */}
-          <Divider className="my-2" />
-          <div className="text-sm text-slate-500 dark:text-slate-400">
-            <span className="font-medium">{t('projectManagement.autoDataset')}:</span>{' '}
-            <code className="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-xs">
-              {datasetPreview || '—'}
-            </code>
+        <DialogFooter>
+          <div className="flex w-full justify-between">
+            <div>
+              {step > 0 && (
+                <Button variant="outline" onClick={handlePrev}>
+                  {t('common.previous')}
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleCancel}>
+                {t('common.cancel')}
+              </Button>
+              <Button onClick={handleNext} disabled={saving}>
+                {saving
+                  ? t('common.saving')
+                  : step < totalSteps - 1
+                    ? t('common.next')
+                    : t('common.save')
+                }
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* Step 3: Sync config (datasync only) */}
-      {step === 2 && category === 'datasync' && (
-        <div className="mt-2">
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              {t('projectManagement.sync.sourceType')}
-            </label>
-            <AntSelect
-              value={syncSourceType}
-              onChange={(v: SyncSourceType) => {
-                setSyncSourceType(v)
-                setConnectionConfig({})
-              }}
-              className="w-full"
-              options={[
-                { value: 'sharepoint', label: 'SharePoint' },
-                { value: 'jira', label: 'JIRA' },
-                { value: 'confluence', label: 'Confluence' },
-                { value: 'gitlab', label: 'GitLab' },
-                { value: 'github', label: 'GitHub' },
-              ]}
-            />
-          </div>
-          <SyncConnectionFields
-            sourceType={syncSourceType}
-            config={connectionConfig}
-            onChange={setConnectionConfig}
-          />
-        </div>
-      )}
-    </Modal>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

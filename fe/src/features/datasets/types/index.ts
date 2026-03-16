@@ -52,6 +52,23 @@ export interface Document {
   created_by?: string | null;
   created_at: string;
   updated_at: string;
+  /** RAGflow fields — returned by the RAG document table */
+  /** Parser ID (e.g. 'naive', 'qa', 'resume') */
+  parser_id?: string;
+  /** Run status: '0' = idle, '1' = running, '2' = cancelled */
+  run?: string;
+  /** Processing duration in seconds */
+  process_duration?: number;
+  /** Creation timestamp as Unix milliseconds */
+  create_time?: number;
+  /** Creation date as ISO/datetime string */
+  create_date?: string;
+  /** Suffix (file extension) */
+  suffix?: string;
+  /** Chunk number from RAGflow table */
+  chunk_num?: number;
+  /** Knowledgebase ID (RAGflow) */
+  kb_id?: string;
 }
 
 export type DocumentStatus = 'pending' | 'parsing' | 'completed' | 'failed';

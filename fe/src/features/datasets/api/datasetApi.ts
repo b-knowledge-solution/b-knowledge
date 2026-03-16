@@ -60,6 +60,26 @@ export const datasetApi = {
     return api.post<void>(`${BASE_URL}/datasets/${datasetId}/documents/${docId}/parse`);
   },
 
+  /** @description Toggle document availability (enabled/disabled) */
+  toggleDocumentAvailability: async (datasetId: string, docId: string, available: boolean): Promise<void> => {
+    return api.patch<void>(`${BASE_URL}/datasets/${datasetId}/documents/${docId}/toggle`, { available });
+  },
+
+  /** @description Bulk start or cancel parsing for multiple documents */
+  bulkParseDocuments: async (datasetId: string, docIds: string[], run: number): Promise<{ results: { doc_id: string; status: string }[] }> => {
+    return api.post(`${BASE_URL}/datasets/${datasetId}/documents/bulk-parse`, { doc_ids: docIds, run });
+  },
+
+  /** @description Bulk toggle availability for multiple documents */
+  bulkToggleDocuments: async (datasetId: string, docIds: string[], enabled: boolean): Promise<void> => {
+    return api.post<void>(`${BASE_URL}/datasets/${datasetId}/documents/bulk-toggle`, { doc_ids: docIds, enabled });
+  },
+
+  /** @description Bulk delete multiple documents */
+  bulkDeleteDocuments: async (datasetId: string, docIds: string[]): Promise<void> => {
+    return api.post<void>(`${BASE_URL}/datasets/${datasetId}/documents/bulk-delete`, { doc_ids: docIds });
+  },
+
   getDocumentDownloadUrl: (datasetId: string, docId: string): string => {
     const base = import.meta.env.VITE_API_BASE_URL || '';
     return `${base}${BASE_URL}/datasets/${datasetId}/documents/${docId}/download`;

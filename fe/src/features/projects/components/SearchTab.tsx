@@ -9,9 +9,15 @@
 
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Table, Popconfirm, message, Tag } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
 import { Plus, Trash2, RefreshCw, Pencil, Lock } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Spinner } from '@/components/ui/spinner'
+import { EmptyState } from '@/components/ui/empty-state'
+import { useConfirm } from '@/components/ConfirmDialog'
+import { globalMessage } from '@/app/App'
 import {
   getProjectSearches,
   createProjectSearch,
@@ -58,6 +64,7 @@ const SearchTab = ({
   chatModels,
 }: SearchTabProps) => {
   const { t } = useTranslation()
+  const confirm = useConfirm()
 
   // List state
   const [searches, setSearches] = useState<ProjectSearch[]>(initialSearches)
@@ -85,7 +92,7 @@ const SearchTab = ({
       const data = await getProjectSearches(projectId)
       setSearches(data)
     } catch {
-      message.error(t('projectManagement.searches.fetchError', 'Failed to fetch search apps'))
+      globalMessage.error(t('projectManagement.searches.fetchError', 'Failed to fetch search apps'))
     } finally {
       setLoading(false)
     }
@@ -129,16 +136,25 @@ const SearchTab = ({
   }
 
   /**
-   * Delete a search app.
+   * Delete a search app after confirmation.
    * @param id - Search ID to delete
    */
   const handleDelete = async (id: string) => {
+    // Prompt user for confirmation before deleting
+    const confirmed = await confirm({
+      title: t('common.delete'),
+      message: t('projectManagement.searches.deleteConfirm', 'Delete this search app?'),
+      variant: 'danger',
+      confirmText: t('common.delete'),
+    })
+    if (!confirmed) return
+
     try {
       await deleteProjectSearch(projectId, id)
-      message.success(t('projectManagement.searches.deleteSuccess', 'Search app deleted'))
+      globalMessage.success(t('projectManagement.searches.deleteSuccess', 'Search app deleted'))
       refreshSearches()
     } catch {
-      message.error(t('projectManagement.searches.deleteError', 'Failed to delete search app'))
+      globalMessage.error(t('projectManagement.searches.deleteError', 'Failed to delete search app'))
     }
   }
 
@@ -149,10 +165,10 @@ const SearchTab = ({
   const handleSync = async (id: string) => {
     try {
       await syncProjectSearch(projectId, id)
-      message.success(t('projectManagement.searches.syncSuccess', 'Search app synced'))
+      globalMessage.success(t('projectManagement.searches.syncSuccess', 'Search app synced'))
       refreshSearches()
     } catch {
-      message.error(t('projectManagement.searches.syncError', 'Failed to sync search app'))
+      globalMessage.error(t('projectManagement.searches.syncError', 'Failed to sync search app'))
     }
   }
 
@@ -176,16 +192,16 @@ const SearchTab = ({
 
       if (isEditing && editingSearch) {
         await updateProjectSearch(projectId, editingSearch.id, payload)
-        message.success(t('projectManagement.searches.updateSuccess', 'Search app updated'))
+        globalMessage.success(t('projectManagement.searches.updateSuccess', 'Search app updated'))
       } else {
         await createProjectSearch(projectId, payload)
-        message.success(t('projectManagement.searches.createSuccess', 'Search app created'))
+        globalMessage.success(t('projectManagement.searches.createSuccess', 'Search app created'))
       }
 
       setModalOpen(false)
       refreshSearches()
     } catch (err: any) {
-      message.error(err.message || t('projectManagement.searches.saveError', 'Failed to save search app'))
+      globalMessage.error(err.message || t('projectManagement.searches.saveError', 'Failed to save search app'))
     } finally {
       setSaving(false)
     }
@@ -197,119 +213,147 @@ const SearchTab = ({
   const categoryMap: Record<string, string> = {}
   categories.forEach((c) => { categoryMap[c.id] = c.name })
 
-  // -- Table columns --
-
-  const columns: ColumnsType<ProjectSearch> = [
-    {
-      title: t('projectManagement.searches.name', 'Name'),
-      dataIndex: 'name',
-      key: 'name',
-      width: '25%',
-    },
-    {
-      title: t('projectManagement.searches.description', 'Description'),
-      dataIndex: 'description',
-      key: 'description',
-      width: '25%',
-      render: (val: string | null) => val || '—',
-    },
-    {
-      title: t('projectManagement.searches.datasets', 'Datasets'),
-      dataIndex: 'dataset_ids',
-      key: 'datasets',
-      width: '25%',
-      render: (ids: string[]) =>
-        ids && ids.length > 0
-          ? ids.map((id) => (
-              <Tag key={id} color="blue" style={{ marginBottom: 2 }}>
-                {categoryMap[id] || id}
-              </Tag>
-            ))
-          : '—',
-    },
-    {
-      title: t('projectManagement.searches.ragflowId', 'RAGFlow ID'),
-      dataIndex: 'ragflow_search_id',
-      key: 'ragflow_search_id',
-      width: '10%',
-      render: (val: string | null) =>
-        val ? (
-          <Tag color="cyan" style={{ fontSize: 11 }}>
-            {val.substring(0, 8)}...
-          </Tag>
-        ) : (
-          '—'
-        ),
-    },
-    {
-      title: t('projectManagement.searches.actions', 'Actions'),
-      key: 'actions',
-      width: '15%',
-      render: (_: unknown, record: ProjectSearch) => (
-        <div className="flex items-center gap-1">
-          <Button
-            type="text"
-            size="small"
-            icon={<Lock size={14} />}
-            onClick={() => { setPermSearchId(record.id); setPermSearchName(record.name) }}
-            title={t('projectManagement.entityPermissions.title', 'Permissions')}
-          />
-          <Button
-            type="text"
-            size="small"
-            icon={<Pencil size={14} />}
-            onClick={() => handleEdit(record)}
-            title={t('projectManagement.searches.edit', 'Edit')}
-          />
-          <Button
-            type="text"
-            size="small"
-            icon={<RefreshCw size={14} />}
-            onClick={() => handleSync(record.id)}
-            title={t('projectManagement.searches.sync', 'Sync')}
-            disabled={!record.ragflow_search_id}
-          />
-          <Popconfirm
-            title={t('projectManagement.searches.deleteConfirm', 'Delete this search app?')}
-            onConfirm={() => handleDelete(record.id)}
-            okText={t('common.yes', 'Yes')}
-            cancelText={t('common.no', 'No')}
-          >
-            <Button
-              type="text"
-              size="small"
-              danger
-              icon={<Trash2 size={14} />}
-              title={t('projectManagement.searches.delete', 'Delete')}
-            />
-          </Popconfirm>
-        </div>
-      ),
-    },
-  ]
-
   // -- Render --
 
   return (
     <>
       {/* Toolbar */}
       <div className="flex justify-end mb-4">
-        <Button type="primary" icon={<Plus size={16} />} onClick={handleAdd}>
+        <Button size="sm" onClick={handleAdd}>
+          <Plus size={16} className="mr-1" />
           {t('projectManagement.searches.addSearch', 'Add Search')}
         </Button>
       </div>
 
       {/* Table */}
-      <Table
-        dataSource={searches}
-        columns={columns}
-        rowKey="id"
-        loading={loading}
-        pagination={{ pageSize: 10 }}
-        locale={{
-          emptyText: t('projectManagement.searches.noSearches', 'No search apps yet. Click "Add Search" to create one.'),
-        }}
-      />
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Spinner />
+        </div>
+      ) : searches.length === 0 ? (
+        <EmptyState
+          description={t('projectManagement.searches.noSearches', 'No search apps yet. Click "Add Search" to create one.')}
+        />
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[25%]">{t('projectManagement.searches.name', 'Name')}</TableHead>
+              <TableHead className="w-[25%]">{t('projectManagement.searches.description', 'Description')}</TableHead>
+              <TableHead className="w-[25%]">{t('projectManagement.searches.datasets', 'Datasets')}</TableHead>
+              <TableHead className="w-[10%]">{t('projectManagement.searches.ragflowId', 'RAGFlow ID')}</TableHead>
+              <TableHead className="w-[15%]">{t('projectManagement.searches.actions', 'Actions')}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {searches.map((record) => (
+              <TableRow key={record.id}>
+                {/* Name */}
+                <TableCell>{record.name}</TableCell>
+
+                {/* Description */}
+                <TableCell>{record.description || '—'}</TableCell>
+
+                {/* Datasets */}
+                <TableCell>
+                  {record.dataset_ids && record.dataset_ids.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {record.dataset_ids.map((id) => (
+                        <Badge key={id} variant="info" className="mb-0.5">
+                          {categoryMap[id] || id}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    '—'
+                  )}
+                </TableCell>
+
+                {/* RAGFlow ID */}
+                <TableCell>
+                  {record.ragflow_search_id ? (
+                    <Badge variant="secondary" className="text-[11px]">
+                      {record.ragflow_search_id.substring(0, 8)}...
+                    </Badge>
+                  ) : (
+                    '—'
+                  )}
+                </TableCell>
+
+                {/* Actions */}
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => { setPermSearchId(record.id); setPermSearchName(record.name) }}
+                          >
+                            <Lock size={14} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('projectManagement.entityPermissions.title', 'Permissions')}</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => handleEdit(record)}
+                          >
+                            <Pencil size={14} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('projectManagement.searches.edit', 'Edit')}</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => handleSync(record.id)}
+                            disabled={!record.ragflow_search_id}
+                          >
+                            <RefreshCw size={14} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('projectManagement.searches.sync', 'Sync')}</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={() => handleDelete(record.id)}
+                          >
+                            <Trash2 size={14} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('projectManagement.searches.delete', 'Delete')}</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
 
       {/* Create/Edit Modal */}
       <SearchModal

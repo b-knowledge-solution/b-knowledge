@@ -1112,10 +1112,10 @@
     "chunks": "chunks",
     "documentPreview": "Document Preview",
     "toggleReferences": "Toggle references panel",
-    "createDialog": "Create Dialog",
-    "editDialog": "Edit Dialog",
-    "dialogNamePlaceholder": "Enter dialog name",
-    "dialogDescriptionPlaceholder": "Enter dialog description",
+    "createDialog": "Create Assistant",
+    "editDialog": "Edit Assistant",
+    "dialogNamePlaceholder": "Enter assistant name",
+    "dialogDescriptionPlaceholder": "Enter assistant description",
     "knowledgeBases": "Knowledge Bases",
     "noDatasets": "No datasets available",
     "llmModel": "LLM Model",
@@ -1420,7 +1420,25 @@
     "confirmDeleteDocMessage": "Are you sure you want to delete this document?",
     "chunksTotal": "total",
     "noChunks": "No chunks found",
-    "previewNotSupported": "Preview not supported for this file type"
+    "previewNotSupported": "Preview not supported for this file type",
+    "parser": "Parser",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "status": "Status",
+    "fileName": "File Name",
+    "size": "Size",
+    "duration": "Duration",
+    "progress": "Progress",
+    "progressMsg": "Progress Log",
+    "createdDate": "Created",
+    "processLog": "Process Log",
+    "selectedCount": "{{count}} selected",
+    "parseSelected": "Parse",
+    "cancelSelected": "Cancel",
+    "deleteSelected": "Delete",
+    "confirmBulkDelete": "Are you sure you want to delete {{count}} selected document(s)?",
+    "bulkParseStarted": "Parsing started for selected documents",
+    "bulkDeleteSuccess": "Selected documents deleted successfully"
   },
   "versions": {
     "title": "Versions",
@@ -1798,8 +1816,8 @@
     },
     "chat": {
       "title": "Chat",
-      "noDialog": "No dialog configured",
-      "selectDialog": "Select a dialog"
+      "noDialog": "No assistant configured",
+      "selectDialog": "Select an assistant"
     },
     "chats": {
       "variableKey": "Key",

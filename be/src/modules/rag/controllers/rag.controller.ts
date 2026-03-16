@@ -155,8 +155,18 @@ export class RagController {
         }
 
         try {
-            const updated = await ragSearchService.toggleDocumentAvailability(datasetId, docId, available);
-            res.json({ doc_id: docId, available, chunks_updated: updated });
+            // Update document status in PostgreSQL
+            await ragDocumentService.updateDocument(docId!, { status: available ? '1' : '0' });
+
+            // Update chunk availability in OpenSearch
+            let chunksUpdated = 0;
+            try {
+                chunksUpdated = await ragSearchService.toggleDocumentAvailability(datasetId, docId!, available);
+            } catch {
+                // OpenSearch update may fail if no chunks exist yet — that's OK
+            }
+
+            res.json({ doc_id: docId, available, chunks_updated: chunksUpdated });
         } catch (error) {
             log.error('Failed to toggle document availability', { datasetId, docId, error: String(error) });
             res.status(500).json({ error: 'Failed to toggle document availability' });
@@ -380,11 +390,138 @@ export class RagController {
         }
 
         try {
+            // 1. Fetch document to get storage path (location field)
+            const doc = await ragDocumentService.getDocument(docId!);
+            if (!doc) {
+                res.status(404).json({ error: 'Document not found' });
+                return;
+            }
+
+            // 2. Delete file from S3 storage
+            if (doc.location) {
+                try { await ragStorageService.deleteFile(doc.location); } catch { /* best-effort */ }
+            }
+
+            // 3. Delete chunks from OpenSearch
+            try { await ragSearchService.deleteDocumentChunks(docId!); } catch { /* best-effort */ }
+
+            // 4. Delete file and file2document records from PostgreSQL
+            try { await ragDocumentService.deleteFileRecords(docId!); } catch { /* best-effort */ }
+
+            // 5. Delete document row from PostgreSQL
             await ragDocumentService.softDeleteDocument(docId!);
+
+            // 6. Decrement dataset doc count
+            try { await ragDocumentService.incrementDocCount(datasetId!, -1); } catch { /* best-effort */ }
+
             res.status(204).send();
         } catch (error) {
             log.error('Failed to delete document', { error: String(error) });
             res.status(500).json({ error: 'Failed to delete document' });
+        }
+    }
+
+    /**
+     * POST /datasets/:id/documents/bulk-parse
+     * @description Start or cancel parsing for multiple documents.
+     * @param req - Express request with { doc_ids: string[], run: 1|2 }
+     * @param res - Express response
+     */
+    async bulkParseDocuments(req: Request, res: Response): Promise<void> {
+        const datasetId = req.params['id'];
+        if (!datasetId) { res.status(400).json({ error: 'Dataset ID is required' }); return; }
+
+        const { doc_ids, run } = req.body as { doc_ids: string[]; run: number };
+
+        try {
+            const results: { doc_id: string; status: string }[] = [];
+
+            for (const docId of doc_ids) {
+                const doc = await ragDocumentService.getDocument(docId);
+                if (!doc) continue;
+
+                if (run === 1) {
+                    // Start parsing
+                    await ragDocumentService.beginParse(docId);
+                    await ragRedisService.queueParseInit(docId);
+                    results.push({ doc_id: docId, status: 'parsing' });
+                } else {
+                    // Cancel parsing
+                    await ragDocumentService.cancelParse(docId);
+                    results.push({ doc_id: docId, status: 'cancelled' });
+                }
+            }
+
+            res.json({ results });
+        } catch (error) {
+            log.error('Failed to bulk parse documents', { error: String(error) });
+            res.status(500).json({ error: 'Failed to bulk parse documents' });
+        }
+    }
+
+    /**
+     * POST /datasets/:id/documents/bulk-toggle
+     * @description Enable or disable multiple documents.
+     * @param req - Express request with { doc_ids: string[], enabled: boolean }
+     * @param res - Express response
+     */
+    async bulkToggleDocuments(req: Request, res: Response): Promise<void> {
+        const datasetId = req.params['id'];
+        if (!datasetId) { res.status(400).json({ error: 'Dataset ID is required' }); return; }
+
+        const { doc_ids, enabled } = req.body as { doc_ids: string[]; enabled: boolean };
+
+        try {
+            await ragDocumentService.bulkToggle(doc_ids, enabled);
+            res.json({ doc_ids, enabled });
+        } catch (error) {
+            log.error('Failed to bulk toggle documents', { error: String(error) });
+            res.status(500).json({ error: 'Failed to bulk toggle documents' });
+        }
+    }
+
+    /**
+     * POST /datasets/:id/documents/bulk-delete
+     * @description Delete multiple documents.
+     * @param req - Express request with { doc_ids: string[] }
+     * @param res - Express response
+     */
+    async bulkDeleteDocuments(req: Request, res: Response): Promise<void> {
+        const datasetId = req.params['id'];
+        if (!datasetId) { res.status(400).json({ error: 'Dataset ID is required' }); return; }
+
+        const { doc_ids } = req.body as { doc_ids: string[] };
+
+        try {
+            let deletedCount = 0;
+
+            for (const docId of doc_ids) {
+                const doc = await ragDocumentService.getDocument(docId);
+                if (!doc) continue;
+
+                // S3
+                if (doc.location) {
+                    try { await ragStorageService.deleteFile(doc.location); } catch { /* best-effort */ }
+                }
+                // OpenSearch chunks
+                try { await ragSearchService.deleteDocumentChunks(docId); } catch { /* best-effort */ }
+                // file + file2document PG records
+                try { await ragDocumentService.deleteFileRecords(docId); } catch { /* best-effort */ }
+                // document row
+                await ragDocumentService.softDeleteDocument(docId);
+
+                deletedCount++;
+            }
+
+            // Decrement dataset doc count
+            if (deletedCount > 0) {
+                try { await ragDocumentService.incrementDocCount(datasetId!, -deletedCount); } catch { /* best-effort */ }
+            }
+
+            res.json({ deleted: deletedCount });
+        } catch (error) {
+            log.error('Failed to bulk delete documents', { error: String(error) });
+            res.status(500).json({ error: 'Failed to bulk delete documents' });
         }
     }
 
