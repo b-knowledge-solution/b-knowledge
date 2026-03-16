@@ -331,7 +331,7 @@ export class RagSearchService {
      * @param data - Chunk data with content and optional metadata
      * @returns Created chunk info with ID
      */
-    async addChunk(datasetId: string, data: { content: string; doc_id?: string; important_keywords?: string[] }): Promise<{ chunk_id: string }> {
+    async addChunk(datasetId: string, data: { content: string; doc_id?: string; important_keywords?: string[]; question_keywords?: string[] }): Promise<{ chunk_id: string }> {
         const client = getClient()
         const body: Record<string, unknown> = {
             kb_id: datasetId,
@@ -344,6 +344,10 @@ export class RagSearchService {
         }
         if (data.important_keywords?.length) {
             body.important_kwd = data.important_keywords
+        }
+        // Store question keywords in OpenSearch for retrieval augmentation
+        if (data.question_keywords?.length) {
+            body.question_kwd = data.question_keywords
         }
 
         const res = await client.index({
@@ -365,7 +369,7 @@ export class RagSearchService {
     async updateChunk(
         datasetId: string,
         chunkId: string,
-        data: { content?: string; important_keywords?: string[]; available?: boolean },
+        data: { content?: string; important_keywords?: string[]; question_keywords?: string[]; available?: boolean },
     ): Promise<{ chunk_id: string; updated: boolean }> {
         const client = getClient()
         const doc: Record<string, unknown> = {}
@@ -375,6 +379,10 @@ export class RagSearchService {
         }
         if (data.important_keywords !== undefined) {
             doc.important_kwd = data.important_keywords
+        }
+        // Update question keywords when explicitly provided (including empty array to clear)
+        if (data.question_keywords !== undefined) {
+            doc.question_kwd = data.question_keywords
         }
         if (data.available !== undefined) {
             doc.available_int = data.available ? 1 : 0

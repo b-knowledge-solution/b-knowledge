@@ -115,12 +115,14 @@ export const createChunkSchema = z.object({
   content: z.string().min(1, 'Chunk content is required'),
   doc_id: z.string().optional(),
   important_keywords: z.array(z.string()).optional(),
+  question_keywords: z.array(z.string()).optional(),
 })
 
 /** @description PUT /api/rag/datasets/:id/chunks/:chunkId — body schema for chunk update */
 export const updateChunkSchema = z.object({
   content: z.string().min(1, 'Chunk content is required').optional(),
   important_keywords: z.array(z.string()).optional(),
+  question_keywords: z.array(z.string()).optional(),
   available: z.boolean().optional(),
 })
 
