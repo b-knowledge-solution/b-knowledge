@@ -20,6 +20,8 @@ interface RetrievalTestParams {
   method?: string
   top_k?: number
   similarity_threshold?: number
+  vector_similarity_weight?: number
+  doc_ids?: string[]
 }
 
 export interface UseRetrievalTestReturn {
