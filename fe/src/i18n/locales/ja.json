@@ -1549,7 +1549,11 @@
       "contentPlaceholder": "チャンクの内容を入力...",
       "addSuccess": "チャンクが正常に追加されました",
       "updateSuccess": "チャンクが正常に更新されました",
-      "deleteSuccess": "チャンクが正常に削除されました"
+      "deleteSuccess": "チャンクが正常に削除されました",
+      "keywords": "キーワード",
+      "keywordsPlaceholder": "キーワードを入力してEnterを押す",
+      "questions": "質問",
+      "questionsPlaceholder": "質問を入力してEnterを押す"
     },
     "retrieval": {
       "query": "クエリ",

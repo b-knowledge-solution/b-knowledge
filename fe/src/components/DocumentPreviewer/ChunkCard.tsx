@@ -10,7 +10,9 @@ import { useTranslation } from 'react-i18next';
 import { FileText, Edit2, Trash2, Check, X } from 'lucide-react';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { TagEditor } from '@/components/ui/tag-editor';
 import type { Chunk } from '@/features/datasets/types';
 
 /**
@@ -25,8 +27,8 @@ interface ChunkCardProps {
   isSelected?: boolean | undefined;
   /** Callback when the card is clicked */
   onClick?: ((chunk: Chunk) => void) | undefined;
-  /** Callback to update chunk text (enables edit mode) */
-  onUpdate?: ((chunkId: string, text: string) => Promise<void>) | undefined;
+  /** Callback to update chunk content, keywords, and questions (enables edit mode) */
+  onUpdate?: ((chunkId: string, data: { content?: string; important_keywords?: string[]; question_keywords?: string[] }) => Promise<void>) | undefined;
   /** Callback to delete a chunk (enables delete button) */
   onDelete?: ((chunkId: string) => Promise<void>) | undefined;
 }
@@ -41,6 +43,8 @@ const ChunkCard: React.FC<ChunkCardProps> = ({ chunk, index, isSelected, onClick
   const confirm = useConfirm();
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(chunk.text);
+  const [editKeywords, setEditKeywords] = useState<string[]>(chunk.important_kwd ?? []);
+  const [editQuestions, setEditQuestions] = useState<string[]>(chunk.question_kwd ?? []);
   const [saving, setSaving] = useState(false);
 
   /** Save edited chunk text via the onUpdate callback */
@@ -50,17 +54,24 @@ const ChunkCard: React.FC<ChunkCardProps> = ({ chunk, index, isSelected, onClick
     if (!onUpdate || !editText.trim()) return;
     setSaving(true);
     try {
-      await onUpdate(chunk.chunk_id, editText);
+      // Send content and keyword/question updates together
+      await onUpdate(chunk.chunk_id, {
+        content: editText,
+        important_keywords: editKeywords,
+        question_keywords: editQuestions,
+      });
       setIsEditing(false);
     } finally {
       setSaving(false);
     }
   };
 
-  /** Cancel editing and revert text to original */
+  /** Cancel editing and revert all fields to original values */
   const handleCancel = (e: React.MouseEvent) => {
     e.stopPropagation();
     setEditText(chunk.text);
+    setEditKeywords(chunk.important_kwd ?? []);
+    setEditQuestions(chunk.question_kwd ?? []);
     setIsEditing(false);
   };
 
@@ -139,6 +150,20 @@ const ChunkCard: React.FC<ChunkCardProps> = ({ chunk, index, isSelected, onClick
             onChange={(e) => setEditText(e.target.value)}
             className="min-h-[100px] text-sm"
           />
+          <TagEditor
+            value={editKeywords}
+            onChange={setEditKeywords}
+            label={t('datasetSettings.chunks.keywords')}
+            placeholder={t('datasetSettings.chunks.keywordsPlaceholder')}
+            variant="secondary"
+          />
+          <TagEditor
+            value={editQuestions}
+            onChange={setEditQuestions}
+            label={t('datasetSettings.chunks.questions')}
+            placeholder={t('datasetSettings.chunks.questionsPlaceholder')}
+            variant="outline"
+          />
           <div className="flex justify-end gap-2 mt-2">
             <Button variant="ghost" size="sm" onClick={handleCancel} disabled={saving}>
               <X size={14} className="mr-1" />
@@ -151,9 +176,22 @@ const ChunkCard: React.FC<ChunkCardProps> = ({ chunk, index, isSelected, onClick
           </div>
         </div>
       ) : (
-        <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-4 whitespace-pre-wrap break-words mt-1">
-          {chunk.text}
-        </p>
+        <>
+          <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-4 whitespace-pre-wrap break-words mt-1">
+            {chunk.text}
+          </p>
+          {/* Display keyword and question badges in view mode */}
+          {(chunk.important_kwd?.length || chunk.question_kwd?.length) ? (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {chunk.important_kwd?.map((kw, i) => (
+                <Badge key={`kw-${i}`} variant="secondary" className="text-xs">{kw}</Badge>
+              ))}
+              {chunk.question_kwd?.map((q, i) => (
+                <Badge key={`q-${i}`} variant="outline" className="text-xs">{q}</Badge>
+              ))}
+            </div>
+          ) : null}
+        </>
       )}
     </div>
   );

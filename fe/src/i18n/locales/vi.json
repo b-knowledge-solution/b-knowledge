@@ -1563,7 +1563,11 @@
       "contentPlaceholder": "Nhập nội dung đoạn...",
       "addSuccess": "Thêm đoạn thành công",
       "updateSuccess": "Cập nhật đoạn thành công",
-      "deleteSuccess": "Xóa đoạn thành công"
+      "deleteSuccess": "Xóa đoạn thành công",
+      "keywords": "Từ khóa",
+      "keywordsPlaceholder": "Thêm từ khóa và nhấn Enter",
+      "questions": "Câu hỏi",
+      "questionsPlaceholder": "Thêm câu hỏi và nhấn Enter"
     },
     "retrieval": {
       "query": "Truy vấn",
