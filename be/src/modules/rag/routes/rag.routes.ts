@@ -5,7 +5,6 @@ import { requireAuth, requirePermission } from '@/shared/middleware/auth.middlew
 import { validate } from '@/shared/middleware/validate.middleware.js';
 import {
   createDatasetSchema, updateDatasetSchema, searchChunksSchema, uuidParamSchema, datasetAccessSchema,
-  createVersionSchema, updateVersionSchema, versionParamSchema, bulkDeleteFilesSchema,
   updateDatasetSettingsSchema, createChunkSchema, updateChunkSchema, chunkParamSchema, retrievalTestSchema,
   docParamSchema, toggleDocumentSchema,
 } from '../schemas/rag.schemas.js';
@@ -24,21 +23,6 @@ router.delete('/datasets/:id', requirePermission('manage_datasets'), controller.
 // Dataset RBAC access control endpoints
 router.get('/datasets/:id/access', requirePermission('manage_datasets'), controller.getDatasetAccess.bind(controller));
 router.put('/datasets/:id/access', requirePermission('manage_datasets'), validate({ params: uuidParamSchema, body: datasetAccessSchema }), controller.setDatasetAccess.bind(controller));
-
-// Version endpoints
-router.get('/datasets/:id/versions', requireAuth, controller.listVersions.bind(controller));
-router.post('/datasets/:id/versions', requirePermission('manage_datasets'), validate({ params: uuidParamSchema, body: createVersionSchema }), controller.createVersion.bind(controller));
-router.put('/datasets/:id/versions/:versionId', requirePermission('manage_datasets'), validate({ params: versionParamSchema, body: updateVersionSchema }), controller.updateVersion.bind(controller));
-router.delete('/datasets/:id/versions/:versionId', requirePermission('manage_datasets'), controller.deleteVersion.bind(controller));
-
-// Version document endpoints
-router.post('/datasets/:id/versions/:versionId/documents', requirePermission('manage_datasets'), upload.array('files'), controller.uploadVersionDocuments.bind(controller));
-router.get('/datasets/:id/versions/:versionId/documents', requireAuth, controller.listVersionDocuments.bind(controller));
-router.delete('/datasets/:id/versions/:versionId/documents', requirePermission('manage_datasets'), validate({ params: versionParamSchema, body: bulkDeleteFilesSchema }), controller.deleteVersionDocuments.bind(controller));
-router.post('/datasets/:id/versions/:versionId/documents/convert', requirePermission('manage_datasets'), controller.convertVersionDocuments.bind(controller));
-router.post('/datasets/:id/versions/:versionId/documents/parse', requirePermission('manage_datasets'), controller.parseVersionDocuments.bind(controller));
-router.get('/datasets/:id/versions/:versionId/documents/status', requireAuth, controller.syncVersionDocumentStatus.bind(controller));
-router.post('/datasets/:id/versions/:versionId/documents/requeue', requirePermission('manage_datasets'), controller.requeueVersionDocuments.bind(controller));
 
 // Dataset settings endpoints
 router.get('/datasets/:id/settings', requireAuth, controller.getDatasetSettings.bind(controller));

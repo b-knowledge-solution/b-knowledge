@@ -483,6 +483,20 @@ export class ChatConversationService {
   }
 
   /**
+   * Rename a conversation.
+   * @param conversationId - The conversation ID
+   * @param name - The new name
+   * @param userId - Requesting user ID
+   */
+  async renameConversation(conversationId: string, name: string, userId: string) {
+    const session = await ModelFactory.chatSession.findById(conversationId)
+    if (!session || session.user_id !== userId) return null
+
+    await ModelFactory.chatSession.update(conversationId, { title: name, updated_by: userId } as any)
+    return await ModelFactory.chatSession.findById(conversationId)
+  }
+
+  /**
    * List conversations for a dialog belonging to a user.
    * @param dialogId - The dialog ID to filter by
    * @param userId - The user ID to filter by
@@ -591,7 +605,8 @@ export class ChatConversationService {
     content: string,
     dialogId: string | undefined,
     userId: string,
-    res: ExpressResponse
+    res: ExpressResponse,
+    overrides?: Record<string, any>
   ): Promise<void> {
     // Set SSE headers
     res.setHeader('Content-Type', 'text/event-stream')

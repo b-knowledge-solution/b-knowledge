@@ -1,10 +1,13 @@
 /**
  * @fileoverview Chat message list component rendering all messages in a conversation.
+ * Uses the ChatMessage component for rich rendering with avatars, markdown, and actions.
  * @module features/chat/components/ChatMessageList
  */
 
+import { useRef, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ChatMessage, ChatReference, ChatChunk } from '../types/chat.types'
+import ChatMessage from './ChatMessage'
+import type { ChatMessage as ChatMessageType, ChatReference, ChatChunk } from '../types/chat.types'
 
 // ============================================================================
 // Props
@@ -12,7 +15,7 @@ import type { ChatMessage, ChatReference, ChatChunk } from '../types/chat.types'
 
 interface ChatMessageListProps {
   /** Array of messages to display */
-  messages: ChatMessage[]
+  messages: ChatMessageType[]
   /** Whether streaming is in progress */
   isStreaming: boolean
   /** Partial answer being streamed */
@@ -27,6 +30,8 @@ interface ChatMessageListProps {
   onRegenerate: () => void
   /** CSS class name */
   className?: string
+  /** Active conversation ID for feedback */
+  conversationId?: string | undefined
 }
 
 // ============================================================================
@@ -35,6 +40,8 @@ interface ChatMessageListProps {
 
 /**
  * @description Renders the message list for a chat conversation.
+ * Uses the ChatMessage component for each message with full action support.
+ * Auto-scrolls to the bottom when new messages arrive or streaming content updates.
  *
  * @param {ChatMessageListProps} props - Component properties
  * @returns {JSX.Element} The rendered message list
@@ -43,46 +50,111 @@ function ChatMessageList({
   messages,
   isStreaming,
   currentAnswer,
-  onCitationClick: _onCitationClick,
-  onChunkCitationClick: _onChunkCitationClick,
+  onCitationClick,
+  onChunkCitationClick,
   onSuggestedPrompt: _onSuggestedPrompt,
-  onRegenerate: _onRegenerate,
+  onRegenerate,
   className = '',
+  conversationId,
 }: ChatMessageListProps) {
   const { t } = useTranslation()
+  const containerRef = useRef<HTMLDivElement>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const [isNearBottom, setIsNearBottom] = useState(true)
+
+  // Track whether user is near the bottom of the scroll container
+  const handleScroll = () => {
+    const el = containerRef.current
+    if (!el) return
+    const threshold = 100
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold
+    setIsNearBottom(nearBottom)
+  }
+
+  // Auto-scroll only when user is near the bottom or new messages arrive
+  useEffect(() => {
+    if (isNearBottom) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages.length, currentAnswer, isNearBottom])
+
+  // Always scroll to bottom when conversation changes (messages reset)
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'instant' })
+    setIsNearBottom(true)
+  }, [conversationId])
 
   return (
-    <div className={`overflow-y-auto px-4 py-6 space-y-4 ${className}`}>
+    <div
+      ref={containerRef}
+      onScroll={handleScroll}
+      className={`overflow-y-auto px-4 py-6 space-y-1 ${className}`}
+    >
+      {/* Empty state */}
       {messages.length === 0 && !isStreaming && (
         <div className="flex items-center justify-center h-full">
-          <p className="text-sm text-slate-500 dark:text-slate-400">{t('chat.startConversation')}</p>
+          <p className="text-sm text-muted-foreground">{t('chat.startConversation')}</p>
         </div>
       )}
-      {messages.map((msg) => (
-        <div
-          key={msg.id}
-          className={`max-w-3xl mx-auto ${msg.role === 'user' ? 'text-right' : 'text-left'}`}
-        >
-          <div
-            className={`inline-block px-4 py-2.5 rounded-xl text-sm ${
-              msg.role === 'user'
-                ? 'bg-blue-600 text-white'
-                : 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100'
-            }`}
-          >
-            {msg.content}
-          </div>
-        </div>
-      ))}
-      {/* Streaming indicator */}
+
+      {/* Rendered messages */}
+      {messages.map((msg, index) => {
+        const isLastAssistant =
+          !isStreaming &&
+          msg.role === 'assistant' &&
+          index === messages.length - 1
+
+        return (
+          <ChatMessage
+            key={msg.id}
+            message={msg}
+            conversationId={conversationId}
+            onCitationClick={onCitationClick}
+            onChunkCitationClick={onChunkCitationClick}
+            isLast={index === messages.length - 1}
+            onRegenerate={isLastAssistant ? onRegenerate : undefined}
+          />
+        )
+      })}
+
+      {/* Streaming message */}
       {isStreaming && currentAnswer && (
-        <div className="max-w-3xl mx-auto text-left">
-          <div className="inline-block px-4 py-2.5 rounded-xl text-sm bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100">
-            {currentAnswer}
-            <span className="animate-pulse ml-1">|</span>
+        <ChatMessage
+          message={{
+            id: 'streaming',
+            role: 'assistant',
+            content: currentAnswer,
+            timestamp: new Date().toISOString(),
+          }}
+          conversationId={conversationId}
+          onCitationClick={onCitationClick}
+          onChunkCitationClick={onChunkCitationClick}
+          isLast
+        />
+      )}
+
+      {/* Typing indicator: shown when streaming but no content yet */}
+      {isStreaming && !currentAnswer && (
+        <div className="flex gap-3 px-4 py-3">
+          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+            <div className="h-4 w-4 text-muted-foreground">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="4" cy="12" r="2" />
+                <circle cx="12" cy="12" r="2" />
+                <circle cx="20" cy="12" r="2" />
+              </svg>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl rounded-bl-md bg-muted/60 dark:bg-muted/40">
+            <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:0ms]" />
+            <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:150ms]" />
+            <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:300ms]" />
           </div>
         </div>
       )}
+
+      {/* Scroll anchor */}
+      <div ref={bottomRef} />
     </div>
   )
 }

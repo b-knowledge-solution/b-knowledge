@@ -128,3 +128,28 @@ export function useSearchApps(params: SearchAppsParams = {}) {
     error: query.error,
   }
 }
+
+/**
+ * @description Hook to fetch search apps accessible to the current user.
+ * Auto-selects the first app.
+ * @returns Search apps list, active app, and selection setter
+ */
+export function useAccessibleSearchApps() {
+  const [activeAppId, setActiveAppId] = useState<string | null>(null)
+
+  const query = useQuery({
+    queryKey: queryKeys.search.apps({ accessible: true }),
+    queryFn: () => searchApi.listSearchApps(),
+  })
+
+  const apps = query.data?.data ?? []
+  const activeApp = apps.find((a) => a.id === activeAppId) ?? apps[0] ?? null
+
+  return {
+    apps,
+    activeApp,
+    activeAppId: activeApp?.id ?? null,
+    setActiveAppId,
+    loading: query.isLoading,
+  }
+}

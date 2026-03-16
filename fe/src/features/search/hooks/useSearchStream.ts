@@ -98,7 +98,7 @@ export function useSearchStream(): UseSearchStreamReturn {
       abortRef.current = new AbortController()
 
       // Call the streaming endpoint
-      const response = await searchApi.askSearch(searchAppId, query, filters)
+      const response = await searchApi.askSearch(searchAppId, query, filters, abortRef.current.signal)
 
       // Check for HTTP errors
       if (!response.ok) {
@@ -181,9 +181,10 @@ export function useSearchStream(): UseSearchStreamReturn {
             if (data.error) {
               throw new Error(data.error)
             }
-          } catch (parseErr: any) {
+          } catch (parseErr: unknown) {
             // Re-throw actual errors (not JSON parse errors)
-            if (parseErr.message && !parseErr.message.includes('JSON')) {
+            const errMsg = parseErr instanceof Error ? parseErr.message : ''
+            if (errMsg && !errMsg.includes('JSON')) {
               throw parseErr
             }
             // Skip malformed JSON lines
@@ -197,12 +198,13 @@ export function useSearchStream(): UseSearchStreamReturn {
         setAnswer(completedAnswer)
       }
       answerRef.current = ''
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Handle abort (user cancelled)
-      if (err.name === 'AbortError') return
+      if (err instanceof Error && err.name === 'AbortError') return
 
       // Set error state
-      setError(err.message || 'An error occurred while searching')
+      const errorMsg = err instanceof Error ? err.message : 'An error occurred while searching'
+      setError(errorMsg)
     } finally {
       setIsStreaming(false)
       setPipelineStatus('')

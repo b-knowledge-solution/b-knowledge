@@ -64,7 +64,8 @@
       "Bash(xargs grep -l \"^import pydantic\\\\|^from pydantic\")",
       "Bash(pip install shapely pyclipper editdistance)",
       "Bash(cp:*)",
-      "Bash(winget install:*)"
+      "Bash(winget install:*)",
+      "Bash(cd:*)"
     ]
   },
   "sandbox": {

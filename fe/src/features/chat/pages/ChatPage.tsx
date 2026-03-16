@@ -7,7 +7,8 @@
 
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PanelRightOpen, PanelRightClose } from 'lucide-react'
+import { PanelRightOpen, PanelRightClose, Menu } from 'lucide-react'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
 import ChatSidebar from '../components/ChatSidebar'
 import ChatMessageList from '../components/ChatMessageList'
@@ -62,6 +63,9 @@ function DatasetChatPage() {
 
   // Variable values state (user-provided values for required variables)
   const [variableValues, setVariableValues] = useState<Record<string, string>>({})
+
+  // Mobile sidebar drawer state
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   // Hooks
   const assistants = useChatAssistants()
@@ -241,6 +245,28 @@ function DatasetChatPage() {
           {/* Chat header */}
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
             <div className="flex items-center gap-2 min-w-0">
+              {/* Mobile hamburger menu */}
+              <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+                <SheetTrigger asChild>
+                  <button className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors md:hidden">
+                    <Menu className="h-4 w-4" />
+                  </button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-72 p-0">
+                  <ChatSidebar
+                    className="w-full h-full flex"
+                    conversations={conversations.conversations}
+                    loading={conversations.loading}
+                    activeConversationId={conversations.activeConversation?.id}
+                    onSelect={(id) => { conversations.setActiveConversationId(id); setMobileSidebarOpen(false) }}
+                    onCreate={() => { conversations.createConversation(); setMobileSidebarOpen(false) }}
+                    onDelete={conversations.deleteConversation}
+                    onRename={handleRenameConversation}
+                    search={conversations.search}
+                    onSearchChange={conversations.setSearch}
+                  />
+                </SheetContent>
+              </Sheet>
               <h2 className="text-sm font-semibold truncate text-slate-800 dark:text-slate-200">
                 {conversations.activeConversation?.name || t('chat.newConversation')}
               </h2>
@@ -276,6 +302,7 @@ function DatasetChatPage() {
             onSuggestedPrompt={handleSendMessage}
             onRegenerate={handleRegenerate}
             className="flex-1"
+            conversationId={conversations.activeConversation?.id}
           />
 
           {/* Variable form - shown when assistant has required variables without defaults */}
@@ -329,7 +356,7 @@ function DatasetChatPage() {
           />
         </div>
 
-        {/* Right panel: document references */}
+        {/* Right panel: document references (desktop) */}
         {showReferences && (
           <ChatReferencePanel
             className="w-80 shrink-0 hidden lg:flex"
@@ -338,15 +365,40 @@ function DatasetChatPage() {
             onDocumentClick={handleDocumentClick}
           />
         )}
+
+        {/* Right panel: document references (mobile drawer) */}
+        <Sheet open={showReferences} onOpenChange={setShowReferences}>
+          <SheetContent side="right" className="w-80 p-0 lg:hidden">
+            <ChatReferencePanel
+              className="w-full h-full flex"
+              reference={activeReference || stream.references}
+              onClose={() => setShowReferences(false)}
+              onDocumentClick={handleDocumentClick}
+            />
+          </SheetContent>
+        </Sheet>
       </div>
 
       {/* Document preview drawer */}
-      <ChatDocumentPreviewDrawer
-        open={showDocPreview}
-        onClose={() => setShowDocPreview(false)}
-        chunk={previewChunk}
-        datasetId={assistants.activeAssistant?.kb_ids[0]}
-      />
+      {(() => {
+        // Find the dataset_id for the preview chunk from references
+        const previewDatasetId = (() => {
+          if (!previewChunk) return assistants.activeAssistant?.kb_ids[0]
+          const ref = stream.references
+          const match = ref?.chunks.find((c) => c.doc_id === previewChunk.doc_id)
+          // If chunk has dataset_id (from backend), use it; otherwise fall back to first KB
+          return (match as any)?.dataset_id || assistants.activeAssistant?.kb_ids[0]
+        })()
+
+        return (
+          <ChatDocumentPreviewDrawer
+            open={showDocPreview}
+            onClose={() => setShowDocPreview(false)}
+            chunk={previewChunk}
+            datasetId={previewDatasetId}
+          />
+        )
+      })()}
 
       {/* First visit guide */}
       <GuidelineDialog

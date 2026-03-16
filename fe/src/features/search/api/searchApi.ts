@@ -71,6 +71,7 @@ export const searchApi = {
     searchAppId: string,
     query: string,
     filters?: SearchFilters,
+    signal?: AbortSignal,
   ): Promise<Response> => {
     const apiBase = import.meta.env.VITE_API_BASE_URL || ''
     const url = `${apiBase}/api/search/apps/${searchAppId}/ask`
@@ -84,6 +85,7 @@ export const searchApi = {
         'Accept': 'text/event-stream',
       },
       body: JSON.stringify({ query, ...filters }),
+      ...(signal ? { signal } : {}),
     })
   },
 

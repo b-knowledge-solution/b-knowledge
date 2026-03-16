@@ -25,6 +25,7 @@ export class RagDocumentService {
         embedding_model?: string;
         parser_id?: string;
         parser_config?: Record<string, unknown>;
+        pagerank?: number;
     }): Promise<void> {
         await ModelFactory.knowledgebase.create(data);
     }

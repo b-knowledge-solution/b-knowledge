@@ -113,13 +113,15 @@ export class SearchService {
    * @param userId - UUID of the requesting user
    * @param userRole - Role of the requesting user (e.g., 'admin', 'user')
    * @param teamIds - Array of team UUIDs the user belongs to
-   * @returns Array of accessible SearchApp records
+   * @param options - Paging, sorting, and searching
+   * @returns Array of accessible SearchApp records or paginated object
    */
   async listAccessibleApps(
     userId: string,
     userRole: string,
-    teamIds: string[]
-  ): Promise<SearchApp[]> {
+    teamIds: string[],
+    options?: { page?: number; pageSize?: number; search?: string; sortBy?: string; sortOrder?: string }
+  ): Promise<any> {
     // Admins can see all apps without restriction
     if (userRole === 'admin' || userRole === 'superadmin') {
       return ModelFactory.searchApp.findAll(undefined, { orderBy: { created_at: 'desc' } })
@@ -129,8 +131,8 @@ export class SearchService {
     const accessibleIds = await ModelFactory.searchAppAccess.findAccessibleAppIds(userId, teamIds)
 
     // Build query: created_by user OR is_public OR in accessible IDs
-    const apps = await ModelFactory.searchApp.getKnex()
-      .where(function () {
+    const appsQuery = ModelFactory.searchApp.getKnex()
+      .where(function (this: any) {
         // User's own apps
         this.where('created_by', userId)
         // Public apps
@@ -140,9 +142,28 @@ export class SearchService {
           this.orWhereIn('id', accessibleIds)
         }
       })
-      .orderBy('created_at', 'desc')
 
-    return apps
+    if (options?.search) {
+      appsQuery.where(function(this: any) {
+        this.where('name', 'ilike', `%${options.search}%`)
+          .orWhere('description', 'ilike', `%${options.search}%`)
+      })
+    }
+
+    if (options?.page && options?.pageSize) {
+      // count total
+      const countQuery = appsQuery.clone().clearSelect().count('* as count').first()
+      const totalResult = await countQuery
+      const total = Number((totalResult as any)?.count || 0)
+
+      appsQuery.orderBy(options.sortBy || 'created_at', options.sortOrder || 'desc')
+      appsQuery.limit(options.pageSize).offset((options.page - 1) * options.pageSize)
+      const data = await appsQuery
+      return { data, total, page: options.page, pageSize: options.pageSize }
+    }
+
+    appsQuery.orderBy('created_at', 'desc')
+    return appsQuery
   }
 
   /**
@@ -261,17 +282,19 @@ export class SearchService {
    * Searches across all dataset IDs and merges results.
    * @param searchId - UUID of the search app
    * @param query - The search query string
-   * @param topK - Maximum results per dataset
-   * @param method - Search method (full_text, semantic, hybrid)
-   * @param similarityThreshold - Minimum similarity score for semantic results
+   * @param options - Pagination and search configuration parameters
    * @returns Object with chunks array and total count
    */
   async executeSearch(
     searchId: string,
     query: string,
-    topK: number = 10,
-    method: 'full_text' | 'semantic' | 'hybrid' = 'full_text',
-    similarityThreshold: number = 0
+    options?: {
+      topK?: number
+      method?: 'full_text' | 'semantic' | 'hybrid'
+      similarityThreshold?: number
+      page?: number
+      pageSize?: number
+    }
   ): Promise<{ chunks: any[]; total: number }> {
     // Load the search app to get dataset IDs
     const app = await ModelFactory.searchApp.findById(searchId)
@@ -283,6 +306,10 @@ export class SearchService {
     const datasetIds: string[] = Array.isArray(app.dataset_ids)
       ? app.dataset_ids
       : JSON.parse(app.dataset_ids as unknown as string)
+
+    const topK = options?.topK ?? 10
+    const method = options?.method ?? 'full_text'
+    const similarityThreshold = options?.similarityThreshold ?? 0
 
     // Search across all datasets and merge results
     const allChunks: any[] = []
@@ -298,11 +325,36 @@ export class SearchService {
       allChunks.push(...result.chunks)
     }
 
-    // Sort merged results by score descending and limit to topK
+    // Sort merged results by score descending
     allChunks.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-    const limited = allChunks.slice(0, topK)
+    
+    // Apply pagination if provided, otherwise fallback to topK
+    let limited = allChunks
+    if (options?.page && options?.pageSize) {
+      const page = options.page
+      const pageSize = options.pageSize
+      limited = allChunks.slice((page - 1) * pageSize, page * pageSize)
+    } else {
+      limited = allChunks.slice(0, topK)
+    }
 
-    return { chunks: limited, total: limited.length }
+    return { chunks: limited, total: allChunks.length }
+  }
+
+  /**
+   * Perform a dry-run retrieval test without LLM summary.
+   * @param searchId - UUID of the search app
+   * @param data - Request body containing test parameters
+   */
+  async retrievalTest(searchId: string, data: any): Promise<{ chunks: any[], doc_aggs: any[] }> {
+    const app = await ModelFactory.searchApp.findById(searchId)
+    if (!app) throw new Error('Search app not found')
+    
+    const chunks = await this.retrieveChunks(app, data.query, data.top_k, data.method, data.similarity_threshold)
+    return {
+      chunks: chunks.map((c, i) => ({ ...c, chunk_id: c.chunk_id, id: i })),
+      doc_aggs: this.buildDocAggs(chunks)
+    }
   }
 
   /**

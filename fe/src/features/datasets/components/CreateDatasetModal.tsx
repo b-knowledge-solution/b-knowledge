@@ -94,6 +94,17 @@ const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
                 </SelectContent>
               </Select>
             </div>
+
+            <div>
+              <Label>Page Rank</Label>
+              <Input
+                type="number"
+                min={0}
+                value={formData.pagerank || 0}
+                onChange={(e) => setFormField('pagerank', Number(e.target.value))}
+                placeholder="0"
+              />
+            </div>
           </div>
 
           <DialogFooter>

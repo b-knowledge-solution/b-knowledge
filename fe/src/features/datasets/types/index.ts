@@ -17,6 +17,7 @@ export interface Dataset {
   doc_count: number;
   chunk_count: number;
   token_count: number;
+  pagerank?: number;
   created_by?: string | null;
   updated_by?: string | null;
   created_at: string;
@@ -30,6 +31,7 @@ export interface CreateDatasetDto {
   embedding_model?: string;
   parser_id?: string;
   parser_config?: Record<string, unknown>;
+  pagerank?: number;
   access_control?: AccessControl;
 }
 
@@ -95,67 +97,7 @@ export const LANGUAGE_OPTIONS = [
   { value: 'Korean', label: 'Korean' },
 ] as const;
 
-// ============================================================================
-// Document Versioning Types
-// ============================================================================
-
-/** @description A version of documents within a dataset */
-export interface DocumentVersion {
-  id: string;
-  dataset_id: string;
-  version_label: string;
-  ragflow_dataset_id: string | null;
-  ragflow_dataset_name: string | null;
-  status: 'active' | 'archived';
-  last_synced_at: string | null;
-  metadata: Record<string, unknown>;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-}
-
-/** @description A file belonging to a document version */
-export interface VersionFile {
-  id: string;
-  version_id: string;
-  file_name: string;
-  file_size: number;
-  ragflow_doc_id: string | null;
-  status: VersionFileStatus;
-  error: string | null;
-  chunk_count: number;
-  created_at: string;
-  updated_at: string;
-}
-
-/** @description Possible statuses for a version file through the conversion pipeline */
-export type VersionFileStatus = 'pending' | 'converting' | 'converted' | 'imported' | 'parsing' | 'done' | 'failed';
-
-/** @description A converter job tracking batch file processing */
-export interface ConverterJob {
-  id: string;
-  dataset_id: string;
-  version_id: string;
-  status: 'pending' | 'converting' | 'finished' | 'failed';
-  file_count: number;
-  finished_count: number;
-  failed_count: number;
-  created_at: string;
-  updated_at: string;
-}
-
-/** @description DTO for creating a new document version */
-export interface CreateVersionDto {
-  version_label: string;
-  metadata?: Record<string, unknown>;
-}
-
-/** @description DTO for updating a document version */
-export interface UpdateVersionDto {
-  version_label?: string;
-  status?: 'active' | 'archived';
-  metadata?: Record<string, unknown>;
-}
+// Removed Versioning Types
 
 // ============================================================================
 // Dataset Settings Types
@@ -171,6 +113,7 @@ export interface DatasetSettings {
   permission: string;
   parser_id: string;
   parser_config: Record<string, unknown>;
+  pagerank?: number;
   graphrag?: GraphRAGConfig;
   raptor?: RAPTORConfig;
   auto_keywords?: number;

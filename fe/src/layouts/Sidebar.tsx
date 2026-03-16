@@ -17,7 +17,7 @@ import { useAuth, User } from '@/features/auth'
 import { useSettings } from '@/app/contexts/SettingsContext'
 import { config } from '@/config'
 import { LogOut, ChevronLeft, ChevronRight, Settings } from 'lucide-react'
-import logoDark from '@/assets/logo-dark.png'
+import logoDark from '@/assets/logo-dark.svg'
 
 import { SIDEBAR_NAV, isNavGroup } from './sidebarNav'
 import { SidebarNavLink } from './SidebarNavLink'

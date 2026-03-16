@@ -118,11 +118,7 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
     icon: LayoutDashboard,
     roles: ['admin', 'leader'],
     children: [
-      {
-        path: '/data-studio/datasets',
-        labelKey: 'nav.datasets',
-        icon: Database,
-      },
+
       {
         path: '/data-studio/projects',
         labelKey: 'nav.projects',
@@ -143,6 +139,23 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
         path: '/data-studio/search-apps',
         labelKey: 'nav.searchApps',
         icon: Search,
+        roles: ['admin'],
+      },
+      {
+        path: '/data-studio/histories',
+        labelKey: 'nav.histories',
+        icon: History,
+        roles: ['admin'],
+      },
+      {
+        path: '/data-studio/datasets',
+        labelKey: 'nav.datasets',
+        icon: Database,
+      },
+      {
+        path: '/data-studio/llm-providers',
+        labelKey: 'nav.llmProviders',
+        icon: BrainCircuit,
         roles: ['admin'],
       },
     ],
@@ -202,16 +215,6 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
         path: '/admin/broadcast-messages',
         labelKey: 'nav.broadcastMessages',
         icon: Megaphone,
-      },
-      {
-        path: '/admin/histories',
-        labelKey: 'nav.histories',
-        icon: History,
-      },
-      {
-        path: '/admin/llm-providers',
-        labelKey: 'nav.llmProviders',
-        icon: BrainCircuit,
       },
     ],
   },

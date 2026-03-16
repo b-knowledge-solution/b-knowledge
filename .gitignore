@@ -169,3 +169,5 @@ advance-rag/**/*.onnx
 advance-rag/**/*.bin
 advance-rag/**/*.pt
 advance-rag/**/*.pth
+
+worktrees

@@ -22,6 +22,8 @@
     "docker:base": "docker compose -f docker/docker-compose-base.yml up -d",
     "docker:down": "docker compose -f docker/docker-compose-base.yml down",
     "docker:up": "docker compose -f docker/docker-compose.yml up -d --build",
+    "docker:litellm": "docker compose -f docker/docker-compose-litellm.yml up -d",
+    "docker:litellm:down": "docker compose -f docker/docker-compose-litellm.yml down",
     "dev:https": "concurrently \"npm run dev:be\" \"npm run dev:fe\"",
     "generate:cert": "node scripts/generate-cert.js",
     "build": "npm run build --workspaces",

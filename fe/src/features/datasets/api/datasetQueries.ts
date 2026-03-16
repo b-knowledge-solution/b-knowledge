@@ -6,7 +6,7 @@
  * @module features/datasets/api/datasetQueries
  */
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { datasetApi } from './datasetApi'
@@ -16,11 +16,6 @@ import type {
   Document,
   DatasetSettings,
   Chunk,
-  DocumentVersion,
-  CreateVersionDto,
-  UpdateVersionDto,
-  VersionFile,
-  ConverterJob,
 } from '../types'
 import { globalMessage } from '@/app/App'
 import { queryKeys } from '@/lib/queryKeys'
@@ -35,6 +30,7 @@ export interface DatasetFormData {
   description: string
   language: string
   parser_id: string
+  pagerank: number
 }
 
 const EMPTY_FORM: DatasetFormData = {
@@ -42,6 +38,7 @@ const EMPTY_FORM: DatasetFormData = {
   description: '',
   language: 'English',
   parser_id: 'naive',
+  pagerank: 0,
 }
 
 // ============================================================================
@@ -111,6 +108,7 @@ export function useDatasets(): UseDatasetsReturn {
         description: dataset.description || '',
         language: dataset.language || 'English',
         parser_id: dataset.parser_id || 'naive',
+        pagerank: dataset.pagerank || 0,
       })
     } else {
       setEditingDataset(null)
@@ -167,6 +165,7 @@ export function useDatasets(): UseDatasetsReturn {
       description: formData.description,
       language: formData.language,
       parser_id: formData.parser_id,
+      pagerank: formData.pagerank,
     }
     if (editingDataset) {
       await updateMutation.mutateAsync({ id: editingDataset.id, payload })
@@ -326,7 +325,7 @@ const CHUNK_LIMIT = 20
  * @param {string | undefined} datasetId - Dataset ID
  * @returns {UseChunksReturn} Chunk state and operations
  */
-export function useChunks(datasetId: string | undefined): UseChunksReturn {
+export function useChunks(datasetId: string | undefined, docId?: string): UseChunksReturn {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
 
@@ -336,11 +335,12 @@ export function useChunks(datasetId: string | undefined): UseChunksReturn {
 
   // Fetch chunks via TanStack Query with pagination params
   const { data, isLoading } = useQuery({
-    queryKey: queryKeys.datasets.chunks(datasetId ?? '', { page, search }),
+    queryKey: queryKeys.datasets.chunks(datasetId ?? '', { page, search, docId }),
     queryFn: () => datasetApi.listChunks(datasetId!, {
       page,
       limit: CHUNK_LIMIT,
       ...(search ? { search } : {}),
+      ...(docId ? { doc_id: docId } : {}),
     }),
     enabled: !!datasetId,
   })
@@ -350,10 +350,9 @@ export function useChunks(datasetId: string | undefined): UseChunksReturn {
     queryClient.invalidateQueries({ queryKey: queryKeys.datasets.chunks(datasetId!) })
   }
 
-  // Add chunk mutation
   const addMutation = useMutation({
     mutationKey: ['datasets', 'chunks', 'create'],
-    mutationFn: (text: string) => datasetApi.addChunk(datasetId!, { text }),
+    mutationFn: (text: string) => datasetApi.addChunk(datasetId!, { text, ...(docId ? { doc_id: docId } : {}) }),
     meta: { successMessage: t('datasetSettings.chunks.addSuccess') },
     onSuccess: invalidateChunks,
   })
@@ -472,361 +471,5 @@ export function useDatasetSettings(datasetId: string | undefined): UseDatasetSet
     saving: updateMutation.isPending,
     refresh,
     updateSettings,
-  }
-}
-
-// ============================================================================
-// useVersions — Document version management
-// ============================================================================
-
-/** @description Return type for the useVersions hook */
-export interface UseVersionsReturn {
-  /** List of versions for the dataset */
-  versions: DocumentVersion[]
-  /** Whether versions are loading */
-  loading: boolean
-  /** Currently selected version */
-  selectedVersion: DocumentVersion | null
-  /** Select a version */
-  selectVersion: (version: DocumentVersion | null) => void
-  /** Create a new version */
-  createVersion: (data: CreateVersionDto) => Promise<void>
-  /** Update a version */
-  updateVersion: (versionId: string, data: UpdateVersionDto) => Promise<void>
-  /** Archive a version */
-  archiveVersion: (versionId: string) => Promise<void>
-  /** Delete a version */
-  deleteVersion: (versionId: string) => Promise<void>
-  /** Refresh version list */
-  refresh: () => void
-}
-
-/**
- * Hook for managing document versions within a dataset.
- *
- * @param {string | undefined} datasetId - The dataset ID to fetch versions for
- * @returns {UseVersionsReturn} Version management state and handlers
- */
-export function useVersions(datasetId: string | undefined): UseVersionsReturn {
-  const { t } = useTranslation()
-  const queryClient = useQueryClient()
-
-  // UI-only state for version selection
-  const [selectedVersion, setSelectedVersion] = useState<DocumentVersion | null>(null)
-
-  // Fetch versions via TanStack Query
-  const { data: versions = [], isLoading } = useQuery({
-    queryKey: queryKeys.datasets.versions(datasetId ?? ''),
-    queryFn: () => datasetApi.getVersions(datasetId!),
-    enabled: !!datasetId,
-  })
-
-  // Auto-select first active version when data loads
-  useEffect(() => {
-    if (versions.length > 0 && !selectedVersion) {
-      const active = versions.find((v) => v.status === 'active') || versions[0]
-      setSelectedVersion(active || null)
-    }
-  }, [versions, selectedVersion])
-
-  // Reset selection when datasetId changes
-  useEffect(() => {
-    setSelectedVersion(null)
-  }, [datasetId])
-
-  /** Helper to invalidate version queries */
-  const invalidateVersions = () => {
-    queryClient.invalidateQueries({ queryKey: queryKeys.datasets.versions(datasetId!) })
-  }
-
-  // Create version mutation
-  const createMutation = useMutation({
-    mutationKey: ['datasets', 'versions', 'create'],
-    mutationFn: (data: CreateVersionDto) => datasetApi.createVersion(datasetId!, data),
-    meta: { successMessage: t('versions.createSuccess') },
-    onSuccess: invalidateVersions,
-  })
-
-  // Update version mutation
-  const updateMutation = useMutation({
-    mutationKey: ['datasets', 'versions', 'update'],
-    mutationFn: ({ versionId, data }: { versionId: string; data: UpdateVersionDto }) =>
-      datasetApi.updateVersion(datasetId!, versionId, data),
-    meta: { successMessage: t('versions.updateSuccess') },
-    onSuccess: invalidateVersions,
-  })
-
-  // Archive version mutation
-  const archiveMutation = useMutation({
-    mutationFn: (versionId: string) =>
-      datasetApi.updateVersion(datasetId!, versionId, { status: 'archived' }),
-    meta: { successMessage: t('versions.archiveSuccess') },
-    onSuccess: (_data, versionId) => {
-      // Deselect if the archived version was selected
-      if (selectedVersion?.id === versionId) {
-        setSelectedVersion(null)
-      }
-      invalidateVersions()
-    },
-  })
-
-  // Delete version mutation
-  const deleteMutation = useMutation({
-    mutationKey: ['datasets', 'versions', 'delete'],
-    mutationFn: (versionId: string) => datasetApi.deleteVersion(datasetId!, versionId),
-    meta: { successMessage: t('versions.deleteSuccess') },
-    onSuccess: (_data, versionId) => {
-      // Deselect if the deleted version was selected
-      if (selectedVersion?.id === versionId) {
-        setSelectedVersion(null)
-      }
-      invalidateVersions()
-    },
-  })
-
-  /** Select a version */
-  const selectVersion = (version: DocumentVersion | null) => {
-    setSelectedVersion(version)
-  }
-
-  /** Create a new version */
-  const createVersion = async (data: CreateVersionDto) => {
-    if (!datasetId) return
-    await createMutation.mutateAsync(data)
-  }
-
-  /** Update a version */
-  const updateVersion = async (versionId: string, data: UpdateVersionDto) => {
-    if (!datasetId) return
-    await updateMutation.mutateAsync({ versionId, data })
-  }
-
-  /** Archive a version */
-  const archiveVersion = async (versionId: string) => {
-    if (!datasetId) return
-    await archiveMutation.mutateAsync(versionId)
-  }
-
-  /** Delete a version after user confirmation */
-  const deleteVersion = async (versionId: string) => {
-    if (!datasetId) return
-    if (!window.confirm(t('versions.confirmDeleteMessage'))) return
-    await deleteMutation.mutateAsync(versionId)
-  }
-
-  return {
-    versions,
-    loading: isLoading,
-    selectedVersion,
-    selectVersion,
-    createVersion,
-    updateVersion,
-    archiveVersion,
-    deleteVersion,
-    refresh: invalidateVersions,
-  }
-}
-
-// ============================================================================
-// useVersionFiles — File management within a document version
-// ============================================================================
-
-/** @description Return type for the useVersionFiles hook */
-export interface UseVersionFilesReturn {
-  /** List of files in the version */
-  files: VersionFile[]
-  /** Whether files are loading */
-  loading: boolean
-  /** Whether files are being uploaded */
-  uploading: boolean
-  /** Upload progress (0-100) */
-  uploadProgress: number
-  /** Upload files to the version */
-  uploadFiles: (files: File[]) => Promise<void>
-  /** Delete files by ID */
-  deleteFiles: (fileIds: string[]) => Promise<void>
-  /** Start file conversion */
-  convertFiles: () => Promise<void>
-  /** Start file parsing in RAGFlow */
-  parseFiles: () => Promise<void>
-  /** Sync file statuses from RAGFlow */
-  syncStatus: () => Promise<void>
-  /** Re-queue failed files */
-  requeueFiles: () => Promise<void>
-  /** Refresh file list */
-  refresh: () => void
-  /** Converter jobs for this version */
-  jobs: ConverterJob[]
-  /** Whether jobs are loading */
-  loadingJobs: boolean
-  /** Refresh converter jobs */
-  refreshJobs: () => void
-}
-
-/**
- * Hook for managing files within a document version.
- *
- * @param {string | undefined} datasetId - The dataset ID
- * @param {string | undefined} versionId - The version ID
- * @returns {UseVersionFilesReturn} File management state and handlers
- */
-export function useVersionFiles(
-  datasetId: string | undefined,
-  versionId: string | undefined,
-): UseVersionFilesReturn {
-  const { t } = useTranslation()
-  const queryClient = useQueryClient()
-
-  // Upload progress is ephemeral UI state
-  const [uploadProgress, setUploadProgress] = useState(0)
-
-  const enabled = !!datasetId && !!versionId
-
-  // Fetch files via TanStack Query
-  const { data: files = [], isLoading: loading } = useQuery({
-    queryKey: queryKeys.datasets.versionFiles(datasetId ?? '', versionId ?? ''),
-    queryFn: () => datasetApi.getVersionFiles(datasetId!, versionId!),
-    enabled,
-    // Auto-refresh every 5s when files are in progress
-    refetchInterval: (query) => {
-      const data = query.state.data as VersionFile[] | undefined
-      const hasInProgress = data?.some(
-        (f) => f.status === 'pending' || f.status === 'converting' || f.status === 'parsing',
-      )
-      return hasInProgress ? 5000 : false
-    },
-  })
-
-  // Fetch converter jobs
-  const { data: jobs = [], isLoading: loadingJobs } = useQuery({
-    queryKey: queryKeys.datasets.converterJobs(datasetId ?? '', versionId ?? ''),
-    queryFn: () => datasetApi.getConverterJobs(datasetId!, versionId!),
-    enabled,
-  })
-
-  /** Helper to invalidate file queries */
-  const invalidateFiles = () => {
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.datasets.versionFiles(datasetId!, versionId!),
-    })
-  }
-
-  /** Helper to invalidate job queries */
-  const invalidateJobs = () => {
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.datasets.converterJobs(datasetId!, versionId!),
-    })
-  }
-
-  // Upload mutation
-  const uploadMutation = useMutation({
-    mutationFn: (fileList: File[]) =>
-      datasetApi.uploadVersionFiles(datasetId!, versionId!, fileList),
-    onMutate: () => {
-      setUploadProgress(0)
-    },
-    onSuccess: (_data, fileList) => {
-      setUploadProgress(100)
-      globalMessage.success(t('versions.uploadSuccess', { count: fileList.length }))
-      invalidateFiles()
-    },
-    onSettled: () => {
-      setUploadProgress(0)
-    },
-  })
-
-  // Delete files mutation
-  const deleteMutation = useMutation({
-    mutationKey: ['datasets', 'versions', 'files', 'delete'],
-    mutationFn: (fileIds: string[]) =>
-      datasetApi.deleteVersionFiles(datasetId!, versionId!, fileIds),
-    onSuccess: (_data, fileIds) => {
-      globalMessage.success(t('versions.deleteFilesSuccess', { count: fileIds.length }))
-      invalidateFiles()
-    },
-  })
-
-  // Convert files mutation
-  const convertMutation = useMutation({
-    mutationFn: () => datasetApi.convertFiles(datasetId!, versionId!),
-    meta: { successMessage: t('versions.convertStarted') },
-    onSuccess: () => {
-      invalidateFiles()
-      invalidateJobs()
-    },
-  })
-
-  // Parse files mutation
-  const parseMutation = useMutation({
-    mutationFn: () => datasetApi.parseFiles(datasetId!, versionId!),
-    meta: { successMessage: t('versions.parseStarted') },
-    onSuccess: invalidateFiles,
-  })
-
-  // Sync status mutation
-  const syncMutation = useMutation({
-    mutationFn: () => datasetApi.syncFileStatus(datasetId!, versionId!),
-    meta: { successMessage: t('versions.syncSuccess') },
-    onSuccess: invalidateFiles,
-  })
-
-  // Requeue mutation
-  const requeueMutation = useMutation({
-    mutationFn: () => datasetApi.requeueFiles(datasetId!, versionId!),
-    meta: { successMessage: t('versions.requeueSuccess') },
-    onSuccess: invalidateFiles,
-  })
-
-  /** Upload files to the version */
-  const uploadFiles = async (fileList: File[]) => {
-    if (!datasetId || !versionId) return
-    await uploadMutation.mutateAsync(fileList)
-  }
-
-  /** Delete files by ID */
-  const deleteFiles = async (fileIds: string[]) => {
-    if (!datasetId || !versionId) return
-    await deleteMutation.mutateAsync(fileIds)
-  }
-
-  /** Start file conversion */
-  const convertFiles = async () => {
-    if (!datasetId || !versionId) return
-    await convertMutation.mutateAsync()
-  }
-
-  /** Start file parsing in RAGFlow */
-  const parseFiles = async () => {
-    if (!datasetId || !versionId) return
-    await parseMutation.mutateAsync()
-  }
-
-  /** Sync file statuses from RAGFlow */
-  const syncStatus = async () => {
-    if (!datasetId || !versionId) return
-    await syncMutation.mutateAsync()
-  }
-
-  /** Re-queue failed files for conversion */
-  const requeueFiles = async () => {
-    if (!datasetId || !versionId) return
-    await requeueMutation.mutateAsync()
-  }
-
-  return {
-    files,
-    loading,
-    uploading: uploadMutation.isPending,
-    uploadProgress,
-    uploadFiles,
-    deleteFiles,
-    convertFiles,
-    parseFiles,
-    syncStatus,
-    requeueFiles,
-    refresh: invalidateFiles,
-    jobs,
-    loadingJobs,
-    refreshJobs: invalidateJobs,
   }
 }

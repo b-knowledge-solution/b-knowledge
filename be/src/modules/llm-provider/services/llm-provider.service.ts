@@ -10,6 +10,16 @@ interface UserContext {
     ip?: string;
 }
 
+/** Result of a provider connection test */
+export interface TestConnectionResult {
+    /** Whether the connection was successful */
+    success: boolean;
+    /** Round-trip latency in milliseconds (present on success) */
+    latencyMs?: number;
+    /** Error message (present on failure) */
+    error?: string;
+}
+
 export class LlmProviderService {
     async list(): Promise<ModelProvider[]> {
         return ModelFactory.modelProvider.findAll(
@@ -160,6 +170,169 @@ export class LlmProviderService {
                 resourceId: id,
                 ipAddress: user.ip,
             });
+        }
+    }
+
+    /**
+     * Test the connection to an LLM provider using raw HTTP fetch.
+     * Routes by model_type for accurate health checks:
+     *   - chat/VLM → POST chat/completions with a "hello" prompt
+     *   - embedding → POST embeddings with a test input
+     *   - others   → GET models list
+     * Tries multiple URL patterns to support OpenAI, LiteLLM, and Ollama.
+     * @param id - Provider UUID
+     * @returns Test result with success flag, latency, and optional error
+     */
+    async testConnection(id: string): Promise<TestConnectionResult> {
+        const provider = await ModelFactory.modelProvider.findById(id);
+        if (!provider || provider.status !== 'active') {
+            return { success: false, error: 'Provider not found or inactive' };
+        }
+
+        const apiBase = (provider.api_base || '').replace(/\/+$/, '');
+        if (!apiBase) {
+            return { success: false, error: 'No API base URL configured' };
+        }
+
+        // Debug: log connection test details
+        log.info('LLM provider connection test starting', {
+            providerId: id,
+            modelType: provider.model_type,
+            modelName: provider.model_name,
+            apiBase,
+            vision: provider.vision,
+            hasApiKey: !!provider.api_key,
+            factoryName: provider.factory_name,
+        });
+
+        // Build auth headers
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (provider.api_key) {
+            headers['Authorization'] = `Bearer ${provider.api_key}`;
+        }
+
+        // Build candidate base paths to try (handles /v1 presence/absence)
+        const basePaths: string[] = [apiBase];
+        if (apiBase.endsWith('/v1')) {
+            // api_base already has /v1, also try without
+            basePaths.push(apiBase.replace(/\/v1$/, ''));
+        } else {
+            // api_base has no /v1, also try with
+            basePaths.push(`${apiBase}/v1`);
+        }
+
+        // Determine endpoint path and request body based on model type
+        const probeConfig = this.buildProbeConfig(provider);
+
+        const start = Date.now();
+
+        // Try each base path with the model-type-specific endpoint
+        for (const base of basePaths) {
+            const url = `${base}/${probeConfig.endpoint}`;
+
+            try {
+                log.info('Trying connection test', { url, method: probeConfig.method });
+
+                const fetchOpts: RequestInit = {
+                    method: probeConfig.method,
+                    headers,
+                    signal: AbortSignal.timeout(30_000),
+                };
+
+                // Add body for POST requests
+                if (probeConfig.method === 'POST' && probeConfig.body) {
+                    fetchOpts.body = JSON.stringify(probeConfig.body);
+                }
+
+                const response = await fetch(url, fetchOpts);
+
+                if (!response.ok) {
+                    const errorText = await response.text().catch(() => '');
+                    log.info('Connection test URL returned non-OK', {
+                        url,
+                        status: response.status,
+                        body: errorText.slice(0, 200),
+                    });
+                    continue;
+                }
+
+                // Consume the response body (may be streamed for chat)
+                await response.text();
+                const latencyMs = Date.now() - start;
+
+                log.info('LLM provider connection test succeeded', {
+                    providerId: id,
+                    modelType: provider.model_type,
+                    modelName: provider.model_name,
+                    matchedUrl: url,
+                    latencyMs,
+                });
+
+                return { success: true, latencyMs };
+            } catch (err: any) {
+                log.info('Connection test URL failed', {
+                    url,
+                    error: err?.message || String(err),
+                });
+                continue;
+            }
+        }
+
+        // All URLs failed
+        const latencyMs = Date.now() - start;
+        log.warn('LLM provider connection test failed — all URLs exhausted', {
+            providerId: id,
+            modelType: provider.model_type,
+            modelName: provider.model_name,
+            apiBase,
+            latencyMs,
+        });
+
+        return { success: false, error: `Could not reach API at ${apiBase}` };
+    }
+
+    /**
+     * Build the probe configuration (endpoint + method + body) for a model type.
+     * @param provider - The model provider record
+     * @returns Probe config with endpoint path, HTTP method, and optional body
+     */
+    private buildProbeConfig(provider: ModelProvider): {
+        endpoint: string;
+        method: 'GET' | 'POST';
+        body?: Record<string, unknown>;
+    } {
+        switch (provider.model_type) {
+            case 'chat': {
+                // Chat/VLM probe: send a real prompt to chat/completions
+                return {
+                    endpoint: 'chat/completions',
+                    method: 'POST',
+                    body: {
+                        model: provider.model_name,
+                        messages: [{ role: 'user', content: 'hello' }],
+                        max_tokens: 5,
+                        stream: false,
+                    },
+                };
+            }
+            case 'embedding': {
+                // Embedding probe: embed a short test string
+                return {
+                    endpoint: 'embeddings',
+                    method: 'POST',
+                    body: {
+                        model: provider.model_name,
+                        input: 'test',
+                    },
+                };
+            }
+            default: {
+                // For rerank, speech2text, tts — list models as a connectivity check
+                return {
+                    endpoint: 'models',
+                    method: 'GET',
+                };
+            }
         }
     }
 }

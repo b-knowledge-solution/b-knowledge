@@ -59,8 +59,8 @@ vi.mock('../../src/config', () => ({
 }))
 
 // Mock the image imports
-vi.mock('../../src/assets/logo.png', () => ({ default: 'logo.png' }))
-vi.mock('../../src/assets/logo-dark.png', () => ({ default: 'logo-dark.png' }))
+vi.mock('../../src/assets/logo.svg', () => ({ default: 'logo.svg' }))
+vi.mock('../../src/assets/logo-dark.svg', () => ({ default: 'logo-dark.svg' }))
 
 import Layout from '../../src/layouts/MainLayout'
 

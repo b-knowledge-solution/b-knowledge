@@ -5,9 +5,6 @@ import { ragDocumentService } from '../services/rag-document.service.js';
 import { ragRedisService, getUuid } from '../services/rag-redis.service.js';
 import { ragStorageService } from '../services/rag-storage.service.js';
 import { ragSearchService } from '../services/rag-search.service.js';
-import { ragVersionService } from '../services/rag-version.service.js';
-import { ragConverterService } from '../services/rag-converter.service.js';
-import { ragUploadService } from '../services/rag-upload.service.js';
 import { log } from '@/shared/services/logger.service.js';
 import { getClientIp } from '@/shared/utils/ip.js';
 import { getRedisClient } from '@/shared/services/redis.service.js';
@@ -63,6 +60,7 @@ export class RagController {
                     kbData.parser_config = typeof dataset.parser_config === 'string'
                         ? JSON.parse(dataset.parser_config) : dataset.parser_config;
                 }
+                if (dataset.pagerank !== undefined) kbData.pagerank = dataset.pagerank;
                 await ragDocumentService.createKnowledgebase(kbData);
             } catch (syncErr) {
                 log.warn('Failed to sync dataset to knowledgebase table (non-blocking)', { error: String(syncErr) });
@@ -89,7 +87,18 @@ export class RagController {
             if (!dataset) { res.status(404).json({ error: 'Dataset not found' }); return; }
 
             try {
-                await ragDocumentService.updateKnowledgebase(id, req.body);
+                const kbData: any = {};
+                if (req.body.name !== undefined) kbData.name = req.body.name;
+                if (req.body.description !== undefined) kbData.description = req.body.description;
+                if (req.body.language !== undefined) kbData.language = req.body.language;
+                if (req.body.embedding_model !== undefined) kbData.embedding_model = req.body.embedding_model;
+                if (req.body.parser_id !== undefined) kbData.parser_id = req.body.parser_id;
+                if (req.body.parser_config !== undefined) kbData.parser_config = req.body.parser_config;
+                if (req.body.pagerank !== undefined) kbData.pagerank = req.body.pagerank;
+                
+                if (Object.keys(kbData).length > 0) {
+                    await ragDocumentService.updateKnowledgebase(id, kbData);
+                }
             } catch (syncErr) {
                 log.warn('Failed to sync dataset update to knowledgebase table', { error: String(syncErr) });
             }
@@ -455,6 +464,7 @@ export class RagController {
                     ? JSON.parse(dataset.parser_config) : dataset.parser_config,
                 access_control: typeof dataset.access_control === 'string'
                     ? JSON.parse(dataset.access_control) : dataset.access_control,
+                pagerank: dataset.pagerank || 0,
             });
         } catch (error) {
             log.error('Failed to get dataset settings', { error: String(error) });
@@ -481,7 +491,18 @@ export class RagController {
 
             // Sync to knowledgebase table
             try {
-                await ragDocumentService.updateKnowledgebase(id, req.body);
+                const kbData: any = {};
+                if (req.body.name !== undefined) kbData.name = req.body.name;
+                if (req.body.description !== undefined) kbData.description = req.body.description;
+                if (req.body.language !== undefined) kbData.language = req.body.language;
+                if (req.body.embedding_model !== undefined) kbData.embedding_model = req.body.embedding_model;
+                if (req.body.parser_id !== undefined) kbData.parser_id = req.body.parser_id;
+                if (req.body.parser_config !== undefined) kbData.parser_config = req.body.parser_config;
+                if (req.body.pagerank !== undefined) kbData.pagerank = req.body.pagerank;
+                
+                if (Object.keys(kbData).length > 0) {
+                    await ragDocumentService.updateKnowledgebase(id, kbData);
+                }
             } catch (syncErr) {
                 log.warn('Failed to sync dataset settings to knowledgebase', { error: String(syncErr) });
             }
@@ -773,278 +794,4 @@ export class RagController {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Document Versions
-    // -------------------------------------------------------------------------
-
-    /**
-     * GET /datasets/:id/versions — list all versions for a dataset.
-     * @param req - Express request with dataset ID param
-     * @param res - Express response with array of versions
-     */
-    async listVersions(req: Request, res: Response): Promise<void> {
-        try {
-            const versions = await ragVersionService.listVersions(req.params['id']!);
-            res.json(versions);
-        } catch (error) {
-            log.error('Failed to list versions', { error: String(error) });
-            res.status(500).json({ error: 'Failed to list versions' });
-        }
-    }
-
-    /**
-     * POST /datasets/:id/versions — create a new version.
-     * @param req - Express request with dataset ID and version body
-     * @param res - Express response with created version
-     */
-    async createVersion(req: Request, res: Response): Promise<void> {
-        const datasetId = req.params['id']!;
-        try {
-            const user = req.user
-                ? { id: req.user.id, email: req.user.email, ip: getClientIp(req) }
-                : undefined;
-
-            const version = await ragVersionService.createVersion(datasetId, req.body, user);
-            res.status(201).json(version);
-        } catch (error: any) {
-            log.error('Failed to create version', { error: String(error) });
-            const status = error.message?.includes('already exists') ? 409 : 500;
-            res.status(status).json({ error: error.message || 'Failed to create version' });
-        }
-    }
-
-    /**
-     * PUT /datasets/:id/versions/:versionId — update a version.
-     * @param req - Express request with version ID and update body
-     * @param res - Express response with updated version
-     */
-    async updateVersion(req: Request, res: Response): Promise<void> {
-        const { versionId } = req.params;
-        if (!versionId) { res.status(400).json({ error: 'Version ID is required' }); return; }
-
-        try {
-            const version = await ragVersionService.updateVersion(versionId, req.body);
-            if (!version) { res.status(404).json({ error: 'Version not found' }); return; }
-            res.json(version);
-        } catch (error) {
-            log.error('Failed to update version', { error: String(error) });
-            res.status(500).json({ error: 'Failed to update version' });
-        }
-    }
-
-    /**
-     * DELETE /datasets/:id/versions/:versionId — delete a version.
-     * @param req - Express request with version ID
-     * @param res - Express response (204 on success)
-     */
-    async deleteVersion(req: Request, res: Response): Promise<void> {
-        const { versionId } = req.params;
-        if (!versionId) { res.status(400).json({ error: 'Version ID is required' }); return; }
-
-        try {
-            await ragVersionService.deleteVersion(versionId);
-            res.status(204).send();
-        } catch (error) {
-            log.error('Failed to delete version', { error: String(error) });
-            res.status(500).json({ error: 'Failed to delete version' });
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // Version Documents
-    // -------------------------------------------------------------------------
-
-    /**
-     * POST /datasets/:id/versions/:versionId/documents — upload files to a version.
-     * @param req - Express request with multipart files
-     * @param res - Express response with upload results
-     */
-    async uploadVersionDocuments(req: Request, res: Response): Promise<void> {
-        const { id: datasetId, versionId } = req.params;
-        if (!datasetId || !versionId) {
-            res.status(400).json({ error: 'Dataset ID and version ID are required' });
-            return;
-        }
-
-        try {
-            const files = req.files as Express.Multer.File[] | undefined;
-            if (!files || files.length === 0) {
-                res.status(400).json({ error: 'No files provided' });
-                return;
-            }
-
-            // Verify version exists
-            const version = await ragVersionService.getVersion(versionId);
-            if (!version) { res.status(404).json({ error: 'Version not found' }); return; }
-
-            // Add file records to the version
-            const fileNames = files.map(f => f.originalname || 'unknown');
-            const fileRecords = await ragVersionService.addFiles(versionId, fileNames);
-
-            // If the version has a RAGFlow dataset, upload directly
-            if (version.ragflow_dataset_id) {
-                const result = await ragUploadService.uploadFilesToRagflow(
-                    versionId,
-                    version.ragflow_dataset_id,
-                    files.map(f => ({
-                        originalname: f.originalname,
-                        buffer: f.buffer,
-                        size: f.size,
-                    }))
-                );
-                res.status(201).json({ files: fileRecords, upload: result });
-            } else {
-                // Files registered but not uploaded to RAGFlow yet
-                res.status(201).json({ files: fileRecords });
-            }
-        } catch (error) {
-            log.error('Failed to upload version documents', { error: String(error) });
-            res.status(500).json({ error: 'Failed to upload documents' });
-        }
-    }
-
-    /**
-     * GET /datasets/:id/versions/:versionId/documents — list version files with status.
-     * @param req - Express request with version ID
-     * @param res - Express response with file array
-     */
-    async listVersionDocuments(req: Request, res: Response): Promise<void> {
-        const { versionId } = req.params;
-        if (!versionId) { res.status(400).json({ error: 'Version ID is required' }); return; }
-
-        try {
-            const files = await ragVersionService.listVersionFiles(versionId);
-            res.json(files);
-        } catch (error) {
-            log.error('Failed to list version documents', { error: String(error) });
-            res.status(500).json({ error: 'Failed to list version documents' });
-        }
-    }
-
-    /**
-     * DELETE /datasets/:id/versions/:versionId/documents — bulk delete files.
-     * @param req - Express request with file_ids in body
-     * @param res - Express response (204 on success)
-     */
-    async deleteVersionDocuments(req: Request, res: Response): Promise<void> {
-        const { versionId } = req.params;
-        if (!versionId) { res.status(400).json({ error: 'Version ID is required' }); return; }
-
-        try {
-            await ragVersionService.deleteFiles(versionId, req.body.file_ids);
-            res.status(204).send();
-        } catch (error) {
-            log.error('Failed to delete version documents', { error: String(error) });
-            res.status(500).json({ error: 'Failed to delete version documents' });
-        }
-    }
-
-    /**
-     * POST /datasets/:id/versions/:versionId/documents/convert — queue conversion.
-     * @param req - Express request with version ID
-     * @param res - Express response with job details
-     */
-    async convertVersionDocuments(req: Request, res: Response): Promise<void> {
-        const { id: datasetId, versionId } = req.params;
-        if (!datasetId || !versionId) {
-            res.status(400).json({ error: 'Dataset ID and version ID are required' });
-            return;
-        }
-
-        try {
-            // Get pending files for this version
-            const files = await ragVersionService.listVersionFiles(versionId);
-            const pendingFiles = files.filter(f => f.status === 'pending');
-
-            if (pendingFiles.length === 0) {
-                res.status(400).json({ error: 'No pending files to convert' });
-                return;
-            }
-
-            // Enqueue conversion job
-            const { job } = await ragConverterService.enqueueConversion({
-                datasetId,
-                versionId,
-                fileNames: pendingFiles.map(f => f.file_name),
-            });
-
-            // Update file statuses to 'converting'
-            for (const file of pendingFiles) {
-                await ragVersionService.updateFileStatus(file.id, 'converting');
-            }
-
-            // Set manual trigger to start processing
-            await ragConverterService.setManualTrigger();
-
-            res.json({ job_id: job.id, file_count: pendingFiles.length, status: job.status });
-        } catch (error) {
-            log.error('Failed to queue conversion', { error: String(error) });
-            res.status(500).json({ error: 'Failed to queue conversion' });
-        }
-    }
-
-    /**
-     * POST /datasets/:id/versions/:versionId/documents/parse — start RAGFlow parsing.
-     * @param req - Express request with version ID
-     * @param res - Express response with parse count
-     */
-    async parseVersionDocuments(req: Request, res: Response): Promise<void> {
-        const { versionId } = req.params;
-        if (!versionId) { res.status(400).json({ error: 'Version ID is required' }); return; }
-
-        try {
-            const queued = await ragUploadService.triggerParse(versionId);
-            res.json({ queued, status: 'parsing' });
-        } catch (error) {
-            log.error('Failed to trigger parse', { error: String(error) });
-            res.status(500).json({ error: 'Failed to trigger parsing' });
-        }
-    }
-
-    /**
-     * GET /datasets/:id/versions/:versionId/documents/status — sync status from RAGFlow.
-     * @param req - Express request with version ID
-     * @param res - Express response with file statuses
-     */
-    async syncVersionDocumentStatus(req: Request, res: Response): Promise<void> {
-        const { versionId } = req.params;
-        if (!versionId) { res.status(400).json({ error: 'Version ID is required' }); return; }
-
-        try {
-            const statuses = await ragUploadService.syncStatus(versionId);
-            res.json(statuses);
-        } catch (error) {
-            log.error('Failed to sync document status', { error: String(error) });
-            res.status(500).json({ error: 'Failed to sync document status' });
-        }
-    }
-
-    /**
-     * POST /datasets/:id/versions/:versionId/documents/requeue — retry failed conversions.
-     * @param req - Express request with dataset and version IDs
-     * @param res - Express response with new job details
-     */
-    async requeueVersionDocuments(req: Request, res: Response): Promise<void> {
-        const { id: datasetId, versionId } = req.params;
-        if (!datasetId || !versionId) {
-            res.status(400).json({ error: 'Dataset ID and version ID are required' });
-            return;
-        }
-
-        try {
-            const job = await ragConverterService.requeueFailed(datasetId, versionId);
-            if (!job) {
-                res.status(400).json({ error: 'No failed files to requeue' });
-                return;
-            }
-
-            // Set manual trigger to start processing
-            await ragConverterService.setManualTrigger();
-
-            res.json({ job_id: job.id, file_count: job.file_count, status: job.status });
-        } catch (error) {
-            log.error('Failed to requeue documents', { error: String(error) });
-            res.status(500).json({ error: 'Failed to requeue documents' });
-        }
-    }
 }

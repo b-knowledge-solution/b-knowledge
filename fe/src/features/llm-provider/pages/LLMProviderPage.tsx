@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/queryKeys'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, Eye } from 'lucide-react'
+import { Plus, Pencil, Trash2, Eye, Plug, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -35,6 +35,7 @@ import {
   createProvider,
   updateProvider,
   deleteProvider,
+  testConnection,
 } from '../api/llmProviderApi'
 import { MODEL_TYPES } from '../types/llmProvider.types'
 import type { ModelProvider, CreateProviderDTO, UpdateProviderDTO } from '../types/llmProvider.types'
@@ -99,6 +100,9 @@ export function LLMProviderPage() {
   // -- Dialog state ----------------------------------------------------------
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingProvider, setEditingProvider] = useState<ModelProvider | null>(null)
+
+  // Track which providers are currently being tested for connection
+  const [testingIds, setTestingIds] = useState<Set<string>>(new Set())
 
   // -- Derived data ----------------------------------------------------------
 
@@ -168,6 +172,33 @@ export function LLMProviderPage() {
       await fetchProviders()
     } catch {
       toast.error(t('llmProviders.deleteError'))
+    }
+  }
+
+  /**
+   * Test the connection to a provider and show toast result.
+   * @param provider - Provider to test
+   */
+  const handleTestConnection = async (provider: ModelProvider) => {
+    // Add provider to testing set
+    setTestingIds((prev) => new Set(prev).add(provider.id))
+
+    try {
+      const result = await testConnection(provider.id)
+      if (result.success) {
+        toast.success(t('llmProviders.connectionSuccess', { latency: result.latencyMs ?? 0 }))
+      } else {
+        toast.error(t('llmProviders.connectionFailed', { error: result.error ?? 'Unknown error' }))
+      }
+    } catch {
+      toast.error(t('llmProviders.connectionFailed', { error: 'Network error' }))
+    } finally {
+      // Remove provider from testing set
+      setTestingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(provider.id)
+        return next
+      })
     }
   }
 
@@ -275,6 +306,17 @@ export function LLMProviderPage() {
                     {/* Action buttons */}
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleTestConnection(p)}
+                          disabled={testingIds.has(p.id)}
+                          title={t('llmProviders.testConnection')}
+                        >
+                          {testingIds.has(p.id)
+                            ? <Loader2 size={14} className="animate-spin" />
+                            : <Plug size={14} />}
+                        </Button>
                         <Button variant="ghost" size="sm" onClick={() => handleEdit(p)}>
                           <Pencil size={14} />
                         </Button>

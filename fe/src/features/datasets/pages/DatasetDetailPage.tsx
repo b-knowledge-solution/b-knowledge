@@ -15,9 +15,7 @@ import { useDocuments } from '../api/datasetQueries';
 import DocumentTable from '../components/DocumentTable';
 import FileUploadModal from '../components/FileUploadModal';
 import DatasetAccessDialog from '../components/DatasetAccessDialog';
-import VersionPanel from '../components/VersionPanel';
 import DatasetSettingsDrawer from '../components/DatasetSettingsDrawer';
-import ChunkManagementPanel from '../components/ChunkManagementPanel';
 import { DocumentPreviewer } from '@/components/DocumentPreviewer';
 import type { Dataset, Document } from '../types';
 
@@ -157,11 +155,6 @@ const DatasetDetailPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Version Management Panel */}
-      {id && (
-        <VersionPanel datasetId={id} isAdmin={isAdmin} />
-      )}
-
       {/* Documents Table */}
       <Card className="dark:bg-slate-800 dark:border-slate-700 flex-1">
         <CardHeader className="pb-0">
@@ -178,18 +171,6 @@ const DatasetDetailPage: React.FC = () => {
           />
         </CardContent>
       </Card>
-
-      {/* Chunk Management */}
-      {id && (
-        <Card className="dark:bg-slate-800 dark:border-slate-700 mt-6">
-          <CardHeader className="pb-0">
-            <CardTitle className="text-base">{t('datasetSettings.chunks.title')}</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <ChunkManagementPanel datasetId={id} />
-          </CardContent>
-        </Card>
-      )}
 
       {/* Settings Drawer */}
       {id && (

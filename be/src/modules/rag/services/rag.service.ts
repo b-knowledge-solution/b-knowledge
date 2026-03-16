@@ -64,6 +64,7 @@ export class RagService {
                 embedding_model: data.embedding_model || null,
                 parser_id: data.parser_id || 'naive',
                 parser_config: JSON.stringify(data.parser_config || {}),
+                pagerank: data.pagerank || 0,
                 access_control: JSON.stringify(data.access_control || { public: true }),
                 status: 'active',
                 created_by: user?.id || null,
@@ -106,6 +107,7 @@ export class RagService {
             if (data.embedding_model !== undefined) updateData.embedding_model = data.embedding_model;
             if (data.parser_id !== undefined) updateData.parser_id = data.parser_id;
             if (data.parser_config !== undefined) updateData.parser_config = JSON.stringify(data.parser_config);
+            if (data.pagerank !== undefined) updateData.pagerank = data.pagerank;
             if (data.access_control !== undefined) updateData.access_control = JSON.stringify(data.access_control);
             if (user) updateData.updated_by = user.id;
 

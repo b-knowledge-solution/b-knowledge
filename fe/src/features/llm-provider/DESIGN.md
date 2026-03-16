@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-Admin-only page at `/admin/llm-providers` for managing system-wide LLM model providers. Accessible from the **Administrators** sidebar group. Supports full CRUD, default-provider toggling, and filtering by factory/model type.
+Admin-only page at `/data-studio/llm-providers` for managing system-wide LLM model providers. Accessible from the **Administrators** sidebar group. Supports full CRUD, default-provider toggling, and filtering by factory/model type.
 
 ---
 
@@ -281,7 +281,7 @@ fe/src/features/llm-provider/
 
 ```ts
 {
-  path: '/admin/llm-providers',
+  path: '/data-studio/llm-providers',
   titleKey: 'llmProvider.pageTitle',
   featureId: 'llm-provider',
   layout: { sidebar: true, header: true },

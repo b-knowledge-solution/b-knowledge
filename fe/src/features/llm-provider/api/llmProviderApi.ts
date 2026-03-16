@@ -68,3 +68,26 @@ export function deleteProvider(id: string): Promise<void> {
 export function getPresets(): Promise<FactoryPreset[]> {
   return api.get<FactoryPreset[]>(`${BASE}/presets`)
 }
+
+// ============================================================================
+// Connection Test
+// ============================================================================
+
+/** Result of a provider connection test */
+export interface TestConnectionResult {
+  /** Whether the connection was successful */
+  success: boolean
+  /** Round-trip latency in milliseconds (present on success) */
+  latencyMs?: number
+  /** Error message (present on failure) */
+  error?: string
+}
+
+/**
+ * Test the connection to an LLM provider by sending a lightweight probe.
+ * @param id - Provider UUID
+ * @returns Test result with success flag, latency, and optional error
+ */
+export function testConnection(id: string): Promise<TestConnectionResult> {
+  return api.post<TestConnectionResult>(`${BASE}/${id}/test-connection`)
+}

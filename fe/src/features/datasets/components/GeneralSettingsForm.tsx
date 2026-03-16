@@ -53,6 +53,7 @@ const GeneralSettingsForm: React.FC<GeneralSettingsFormProps> = ({
   const [language, setLanguage] = useState(settings.language);
   const [embeddingModel, setEmbeddingModel] = useState(settings.embedding_model || '');
   const [permission, setPermission] = useState(settings.permission || 'me');
+  const [pagerank, setPagerank] = useState(settings.pagerank || 0);
 
   // Reset form when settings change
   useEffect(() => {
@@ -61,6 +62,7 @@ const GeneralSettingsForm: React.FC<GeneralSettingsFormProps> = ({
     setLanguage(settings.language);
     setEmbeddingModel(settings.embedding_model || '');
     setPermission(settings.permission || 'me');
+    setPagerank(settings.pagerank || 0);
   }, [settings]);
 
   /**
@@ -73,6 +75,7 @@ const GeneralSettingsForm: React.FC<GeneralSettingsFormProps> = ({
       language,
       embedding_model: embeddingModel || null,
       permission,
+      pagerank,
     });
   };
 
@@ -133,6 +136,18 @@ const GeneralSettingsForm: React.FC<GeneralSettingsFormProps> = ({
             <SelectItem value="team">{t('datasetSettings.general.permissionTeam')}</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Page Rank */}
+      <div className="space-y-1.5">
+        <Label>Page Rank (0 - 1000)</Label>
+        <Input
+          type="number"
+          min={0}
+          value={pagerank}
+          onChange={(e) => setPagerank(Number(e.target.value))}
+          placeholder="0"
+        />
       </div>
 
       {/* Save */}

@@ -69,6 +69,7 @@
     "email": "メール",
     "prompt": "Prompt",
     "noDescription": "説明なし",
+    "rename": "名前を変更",
     "pagination": "ページネーション",
     "previousPage": "前のページ",
     "nextPage": "次のページ",
@@ -1146,7 +1147,7 @@
       "useCases": "ユースケース",
       "sdlc": "SDLC",
       "deployment": "デプロイ",
-      "login": "ログイン",
+      "signIn": "サインイン",
       "getStarted": "始める"
     },
     "hero": {
@@ -1571,7 +1572,10 @@
     "defaultUpdated": "デフォルトモデルが更新されました",
     "defaultNotSet": "未設定",
     "fetchError": "プロバイダーの読み込みに失敗しました",
-    "maxTokensPlaceholder": "最大トークン数を入力"
+    "maxTokensPlaceholder": "最大トークン数を入力",
+    "testConnection": "接続テスト",
+    "connectionSuccess": "接続成功 ({{latency}}ms)",
+    "connectionFailed": "接続失敗: {{error}}"
   },
   "chatAdmin": {
     "title": "チャットアシスタント",
@@ -1944,6 +1948,7 @@
     "searchDocuments": "Search documents...",
     "selectAll": "Select All",
     "clearAll": "Clear All",
+    "selectApp": "検索アプリを選択",
     "noResults": "No results found",
     "relatedSearch": "Related Searches",
     "placeholder": "Search your knowledge base...",

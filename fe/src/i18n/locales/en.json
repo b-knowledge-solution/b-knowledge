@@ -69,6 +69,7 @@
     "copy": "Copy",
     "email": "Email",
     "noDescription": "No description",
+    "rename": "Rename",
     "pagination": "Pagination",
     "previousPage": "Previous page",
     "nextPage": "Next page",
@@ -1158,7 +1159,7 @@
       "useCases": "Use Cases",
       "sdlc": "SDLC",
       "deployment": "Deployment",
-      "login": "Login",
+      "signIn": "Sign In",
       "getStarted": "Get Started"
     },
     "hero": {
@@ -1583,7 +1584,10 @@
     "defaultUpdated": "Default model updated",
     "defaultNotSet": "Not set",
     "fetchError": "Failed to load providers",
-    "maxTokensPlaceholder": "Enter max tokens"
+    "maxTokensPlaceholder": "Enter max tokens",
+    "testConnection": "Test Connection",
+    "connectionSuccess": "Connection successful ({{latency}}ms)",
+    "connectionFailed": "Connection failed: {{error}}"
   },
   "chatAdmin": {
     "title": "Chat Assistants",
@@ -1973,7 +1977,8 @@
     "filesSelected": "{{count}} of {{total}} files selected",
     "searchDocuments": "Search documents...",
     "selectAll": "Select All",
-    "clearAll": "Clear All"
+    "clearAll": "Clear All",
+    "selectApp": "Select search app"
   },
   "searchAdmin": {
     "title": "Search Apps",

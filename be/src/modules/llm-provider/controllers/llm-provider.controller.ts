@@ -108,4 +108,23 @@ export class LlmProviderController {
             res.status(500).json({ error: 'Failed to delete model provider' });
         }
     }
+
+    /**
+     * Test the connection to an LLM provider.
+     * @description POST /api/llm-provider/:id/test-connection
+     * @param req - Express request with provider ID param
+     * @param res - Express response with test result
+     */
+    async testConnection(req: Request, res: Response): Promise<void> {
+        const { id } = req.params;
+        if (!id) { res.status(400).json({ error: 'ID is required' }); return; }
+
+        try {
+            const result = await llmProviderService.testConnection(id);
+            res.json(result);
+        } catch (error) {
+            log.error('Failed to test provider connection', { error: String(error) });
+            res.status(500).json({ success: false, error: 'Failed to test connection' });
+        }
+    }
 }

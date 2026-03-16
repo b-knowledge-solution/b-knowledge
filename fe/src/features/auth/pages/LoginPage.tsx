@@ -17,8 +17,8 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettings } from '@/app/contexts/SettingsContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import logo from '@/assets/logo.png';
-import logoDark from '@/assets/logo-dark.png';
+import logo from '@/assets/logo.svg';
+import logoDark from '@/assets/logo-dark.svg';
 import BroadcastBanner from '@/features/broadcast/components/BroadcastBanner';
 
 /** API base URL from environment */

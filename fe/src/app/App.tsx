@@ -20,7 +20,6 @@ import Layout from '@/layouts/MainLayout';
 import { config } from '@/config';
 import { FeatureErrorBoundary } from '@/components/ErrorBoundary'
 import '@/i18n';
-import icon from '@/assets/icon.png';
 
 // Re-export globalMessage for backward compatibility
 export { globalMessage } from '@/app/Providers';
@@ -80,7 +79,7 @@ function App() {
       link.rel = 'icon';
       document.head.appendChild(link);
     }
-    link.href = icon;
+    link.href = '/favicon.svg';
   }, []);
 
   const getDefaultPath = () => {
@@ -176,12 +175,13 @@ function App() {
               <Route path="admin/system-monitor" element={<FeatureErrorBoundary><AdminRoute><SystemMonitorPage /></AdminRoute></FeatureErrorBoundary>} />
               <Route path="admin/tokenizer" element={<FeatureErrorBoundary><AdminRoute><TokenizerPage /></AdminRoute></FeatureErrorBoundary>} />
               <Route path="admin/broadcast-messages" element={<FeatureErrorBoundary><AdminRoute><BroadcastMessagePage /></AdminRoute></FeatureErrorBoundary>} />
-              <Route path="admin/histories" element={<FeatureErrorBoundary><AdminRoute><HistoriesPage /></AdminRoute></FeatureErrorBoundary>} />
-              {/* Data Studio — Chat & Search config (admin) */}
+              <Route path="admin/dashboard" element={<FeatureErrorBoundary><AdminRoute><AdminDashboardPage /></AdminRoute></FeatureErrorBoundary>} />
+
+              {/* Data Studio — Chat & Search config, Histories, LLM Providers (admin) */}
               <Route path="data-studio/chat-assistants" element={<FeatureErrorBoundary><AdminRoute><ChatAssistantManagementPage /></AdminRoute></FeatureErrorBoundary>} />
               <Route path="data-studio/search-apps" element={<FeatureErrorBoundary><AdminRoute><SearchAppManagementPage /></AdminRoute></FeatureErrorBoundary>} />
-              <Route path="admin/dashboard" element={<FeatureErrorBoundary><AdminRoute><AdminDashboardPage /></AdminRoute></FeatureErrorBoundary>} />
-              <Route path="admin/llm-providers" element={<FeatureErrorBoundary><AdminRoute><LLMProviderPage /></AdminRoute></FeatureErrorBoundary>} />
+              <Route path="data-studio/histories" element={<FeatureErrorBoundary><AdminRoute><HistoriesPage /></AdminRoute></FeatureErrorBoundary>} />
+              <Route path="data-studio/llm-providers" element={<FeatureErrorBoundary><AdminRoute><LLMProviderPage /></AdminRoute></FeatureErrorBoundary>} />
             </Route>
           </Route>
 

@@ -95,6 +95,7 @@ export function useChatStream(
   const abortRef = useRef<AbortController | null>(null)
   // Track accumulated answer across renders for the stop handler
   const answerRef = useRef('')
+  const referencesRef = useRef<ChatReference | null>(null)
 
   /**
    * Send a user message and begin streaming the assistant response.
@@ -131,7 +132,7 @@ export function useChatStream(
       abortRef.current = new AbortController()
 
       // Call the streaming endpoint with optional parameters
-      const response = await chatApi.sendMessage(conversationId, content, dialogId, options)
+      const response = await chatApi.sendMessage(conversationId, content, dialogId, options, abortRef.current.signal)
 
       // Check for HTTP errors
       if (!response.ok) {
@@ -186,6 +187,7 @@ export function useChatStream(
 
             // Handle reference data (sent early for sidebar display)
             if (data.reference && !data.answer) {
+              referencesRef.current = data.reference
               setReferences(data.reference)
             }
 
@@ -194,6 +196,7 @@ export function useChatStream(
               finalAnswer = data.answer
               // Update references with citation tracking
               if (data.reference) {
+                referencesRef.current = data.reference
                 setReferences(data.reference)
               }
               // Store metrics
@@ -228,7 +231,7 @@ export function useChatStream(
           role: 'assistant',
           content: completedAnswer,
           timestamp: new Date().toISOString(),
-          reference: references ?? undefined,
+          reference: referencesRef.current ?? undefined,
         }
         setMessages((prev) => [...prev, assistantMessage])
       }
@@ -279,6 +282,7 @@ export function useChatStream(
       setMessages((prev) => [...prev, partialMessage])
       setCurrentAnswer('')
       answerRef.current = ''
+      referencesRef.current = null
     }
   }
 
@@ -293,6 +297,7 @@ export function useChatStream(
     setMetrics(null)
     setError(null)
     answerRef.current = ''
+    referencesRef.current = null
   }
 
   /**
@@ -331,13 +336,14 @@ export function useChatStream(
           // Best-effort deletion; proceed even on failure
         })
       }
-
-      // Remove the assistant message from local state
-      setMessages((prev) => prev.filter((_, idx) => idx !== lastAssistantIdx))
     }
 
-    // Also remove the last user message so sendMessage can re-add it
-    setMessages((prev) => prev.filter((_, idx) => idx !== lastUserIdx))
+    // Remove both assistant and user messages in a single setMessages call
+    // to avoid React batching issues where two separate calls run against the same prev
+    const indicesToRemove = new Set<number>()
+    if (lastAssistantIdx > lastUserIdx) indicesToRemove.add(lastAssistantIdx)
+    indicesToRemove.add(lastUserIdx)
+    setMessages((prev) => prev.filter((_, idx) => !indicesToRemove.has(idx)))
 
     // Re-send the user message
     sendMessage(lastUserContent)

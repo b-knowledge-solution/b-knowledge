@@ -103,12 +103,12 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     titleKey: 'admin.broadcastMessages',
     guidelineFeatureId: 'broadcast',
   },
-  '/admin/histories': {
+  '/data-studio/histories': {
     titleKey: 'histories.title',
     guidelineFeatureId: 'global-histories',
     fullBleed: true,
   },
-  '/admin/llm-providers': {
+  '/data-studio/llm-providers': {
     titleKey: 'llmProviders.title',
     fullBleed: true,
   },

@@ -6,7 +6,6 @@
 
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '@/features/auth'
 import { config } from '@/config'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, Mail, Phone } from 'lucide-react'
@@ -18,16 +17,10 @@ import { ArrowRight, Mail, Phone } from 'lucide-react'
 export function CTASection() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
-
-  /** @description Navigate to app if authenticated, otherwise to login */
-  const handleSignIn = () => {
-    if (isAuthenticated) {
-      const defaultPath = config.features.enableAiChat ? '/chat' : '/search'
-      navigate(defaultPath)
-    } else {
-      navigate('/login')
-    }
+  /** @description Navigate to default app route; ProtectedRoute handles auth redirect */
+  const handleGetStarted = () => {
+    const defaultPath = config.features.enableAiChat ? '/chat' : '/search'
+    navigate(defaultPath)
   }
 
   return (
@@ -51,7 +44,7 @@ export function CTASection() {
           <Button
             size="lg"
             className="bg-white text-blue-700 hover:bg-blue-50 px-8 py-6 text-lg rounded-xl font-semibold shadow-xl"
-            onClick={handleSignIn}
+            onClick={handleGetStarted}
           >
             {t('landing.cta.getStarted')}
             <ArrowRight className="ml-2 w-5 h-5" />

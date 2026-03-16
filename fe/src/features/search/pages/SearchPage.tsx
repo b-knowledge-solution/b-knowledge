@@ -9,6 +9,8 @@ import { useTranslation } from 'react-i18next'
 import { Search, Database, Brain } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/features/auth'
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
 import type { ChatChunk, ChatReference } from '@/features/chat/types/chat.types'
@@ -17,6 +19,7 @@ import SearchResults from '../components/SearchResults'
 import SearchFilters from '../components/SearchFilters'
 import SearchDocumentPreviewDrawer from '../components/SearchDocumentPreviewDrawer'
 import SearchMindMapDrawer from '../components/SearchMindMapDrawer'
+import { useAccessibleSearchApps, useSearch } from '../api/searchQueries'
 import { useSearchStream } from '../hooks/useSearchStream'
 import type { SearchFilters as SearchFiltersType, SearchResult } from '../types/search.types'
 
@@ -41,8 +44,11 @@ function DatasetSearchPage() {
   const [filters, setFilters] = useState<SearchFiltersType>({})
   const [showFilters, setShowFilters] = useState(false)
 
-  // Search app ID (could come from URL params or config)
-  const [searchAppId] = useState('default')
+  // Search app selection (replaces hardcoded 'default')
+  const { apps: searchApps, activeAppId: searchAppId, setActiveAppId } = useAccessibleSearchApps()
+
+  // Paginated search for non-first pages (avoids re-triggering SSE stream)
+  const paginatedSearch = useSearch()
 
   // Pagination state
   const [page, setPage] = useState(1)
@@ -124,6 +130,7 @@ function DatasetSearchPage() {
    * @param query - Search query text
    */
   const handleSearch = (query: string) => {
+    if (!searchAppId) return
     // Reset pagination and document filter on new search
     setPage(1)
     setSelectedDocIds([])
@@ -141,7 +148,7 @@ function DatasetSearchPage() {
   const handleFiltersChange = (newFilters: SearchFiltersType) => {
     setFilters(newFilters)
     // Re-run search with updated filters if a query exists
-    if (searchStream.lastQuery) {
+    if (searchStream.lastQuery && searchAppId) {
       setPage(1)
       searchStream.askSearch(searchAppId, searchStream.lastQuery, {
         ...newFilters,
@@ -164,6 +171,7 @@ function DatasetSearchPage() {
    * @param question - The related question text
    */
   const handleRelatedQuestionClick = (question: string) => {
+    if (!searchAppId) return
     setPage(1)
     searchStream.askSearch(searchAppId, question, {
       ...filters,
@@ -179,13 +187,21 @@ function DatasetSearchPage() {
   const handlePageChange = (newPage: number) => {
     setPage(newPage)
     if (searchStream.lastQuery) {
-      searchStream.askSearch(searchAppId, searchStream.lastQuery, {
+      paginatedSearch.search(searchStream.lastQuery, {
         ...filters,
         page: newPage,
         page_size: pageSize,
       })
     }
   }
+
+  // Use paginated results for non-first pages, SSE stream results for page 1
+  const displayResults = page === 1 ? searchStream.chunks : paginatedSearch.results
+  // Use paginatedSearch.totalResults when available (it has the true server total),
+  // otherwise fall back to stream chunks length (page 1 initial load)
+  const displayTotal = paginatedSearch.totalResults > 0
+    ? paginatedSearch.totalResults
+    : searchStream.chunks.length
 
   return (
     <>
@@ -239,9 +255,14 @@ function DatasetSearchPage() {
               className={hasSearched ? 'max-w-xl' : 'max-w-2xl'}
             />
 
-            {/* Filter toggle and mind map button (only after search) */}
+            {/* Filter toggle, app badge, and mind map button (only after search) */}
             {hasSearched && (
               <div className="flex items-center gap-2 mt-3">
+                {searchApps.length > 1 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {searchApps.find((a) => a.id === searchAppId)?.name}
+                  </Badge>
+                )}
                 <SearchFilters
                   filters={filters}
                   onFiltersChange={handleFiltersChange}
@@ -253,6 +274,7 @@ function DatasetSearchPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setMindMapOpen(true)}
+                  disabled={!searchAppId}
                   title={t('search.mindMap')}
                 >
                   <Brain className="h-4 w-4 mr-1.5" />
@@ -267,10 +289,10 @@ function DatasetSearchPage() {
             <div className="flex-1 px-4 py-6">
               <div className="max-w-3xl mx-auto">
                 <SearchResults
-                  results={searchStream.chunks}
+                  results={displayResults}
                   isSearching={searchStream.isStreaming && !searchStream.answer}
                   summary={searchStream.answer}
-                  totalResults={searchStream.chunks.length}
+                  totalResults={displayTotal}
                   query={searchStream.lastQuery}
                   onResultClick={handleResultClick}
                   error={searchStream.error}
@@ -290,6 +312,24 @@ function DatasetSearchPage() {
                   onCitationClick={handleCitationClick}
                 />
               </div>
+            </div>
+          )}
+
+          {/* Search app selector */}
+          {!hasSearched && searchApps.length > 1 && (
+            <div className="flex justify-center mt-4">
+              <Select value={searchAppId ?? ''} onValueChange={setActiveAppId}>
+                <SelectTrigger className="w-64">
+                  <SelectValue placeholder={t('search.selectApp')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {searchApps.map((app) => (
+                    <SelectItem key={app.id} value={app.id}>
+                      {app.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
@@ -316,12 +356,14 @@ function DatasetSearchPage() {
       />
 
       {/* Mind map drawer */}
-      <SearchMindMapDrawer
-        open={mindMapOpen}
-        onOpenChange={setMindMapOpen}
-        searchAppId={searchAppId}
-        query={searchStream.lastQuery || ''}
-      />
+      {searchAppId && (
+        <SearchMindMapDrawer
+          open={mindMapOpen}
+          onOpenChange={setMindMapOpen}
+          searchAppId={searchAppId}
+          query={searchStream.lastQuery || ''}
+        />
+      )}
 
       {/* First visit guide */}
       <GuidelineDialog

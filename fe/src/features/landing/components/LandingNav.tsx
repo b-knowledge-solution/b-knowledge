@@ -7,12 +7,11 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '@/features/auth'
 import { config } from '@/config'
 import { Button } from '@/components/ui/button'
 import { Menu, X } from 'lucide-react'
-import logo from '@/assets/logo.png'
-import logoDark from '@/assets/logo-dark.png'
+import logo from '@/assets/logo.svg'
+import logoDark from '@/assets/logo-dark.svg'
 
 /**
  * @description Sticky navigation bar for the landing page with mobile menu.
@@ -21,18 +20,13 @@ import logoDark from '@/assets/logo-dark.png'
 export function LandingNav() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  /** @description Navigate to app if authenticated, otherwise to login */
-  const handleSignIn = () => {
-    if (isAuthenticated) {
-      const defaultPath = config.features.enableAiChat ? '/chat' : '/search'
-      navigate(defaultPath)
-    } else {
-      navigate('/login')
-    }
+  /** @description Navigate to default app route; ProtectedRoute handles auth redirect */
+  const handleGetStarted = () => {
+    const defaultPath = config.features.enableAiChat ? '/chat' : '/search'
+    navigate(defaultPath)
   }
 
   // Track scroll position for background effect
@@ -91,10 +85,10 @@ export function LandingNav() {
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => handleSignIn()}>
-              {t('landing.nav.login')}
+            <Button variant="ghost" size="sm" onClick={handleGetStarted}>
+              {t('landing.nav.signIn')}
             </Button>
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg" onClick={() => handleSignIn()}>
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg" onClick={handleGetStarted}>
               {t('landing.nav.getStarted')}
             </Button>
           </div>
@@ -122,7 +116,7 @@ export function LandingNav() {
                 </button>
               ))}
               <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white" onClick={() => handleSignIn()}>
+                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white" onClick={handleGetStarted}>
                   {t('landing.nav.getStarted')}
                 </Button>
               </div>

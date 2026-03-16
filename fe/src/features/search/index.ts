@@ -20,7 +20,7 @@ export { SearchCrossLanguage } from './components/SearchCrossLanguage'
 export { SearchRetrievalTest } from './components/SearchRetrievalTest'
 
 // Query hooks (TanStack Query)
-export { useSearch, useSearchApps } from './api/searchQueries'
+export { useSearch, useSearchApps, useAccessibleSearchApps } from './api/searchQueries'
 
 // Hooks (UI/streaming)
 export { useSearchStream } from './hooks/useSearchStream'

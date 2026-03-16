@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { ChatMessage as ChatMessageType, ChatReference, ChatChunk } from '../types/chat.types'
+import { chatApi } from '../api/chatApi'
 import { useTts } from '../hooks/useTts'
 import CitationInline from '@/components/CitationInline'
 
@@ -29,6 +30,8 @@ interface ChatMessageProps {
   isLast?: boolean | undefined
   /** Callback to regenerate this assistant message (only shown on last assistant message) */
   onRegenerate?: (() => void) | undefined
+  /** Conversation ID for sending feedback */
+  conversationId?: string | undefined
 }
 
 // ============================================================================
@@ -43,7 +46,7 @@ interface ChatMessageProps {
  * @param {ChatMessageProps} props - Component properties
  * @returns {JSX.Element} The rendered chat message
  */
-function ChatMessage({ message, onCitationClick, onChunkCitationClick, isLast, onRegenerate }: ChatMessageProps) {
+function ChatMessage({ message, onCitationClick, onChunkCitationClick, isLast, onRegenerate, conversationId }: ChatMessageProps) {
   const { t } = useTranslation()
   const { speak, stop, isPlaying, isLoading } = useTts()
   const [copied, setCopied] = useState(false)
@@ -73,11 +76,22 @@ function ChatMessage({ message, onCitationClick, onChunkCitationClick, isLast, o
   }
 
   /**
-   * Handle feedback button click.
+   * Handle feedback button click and send to backend.
    * @param type - Feedback type
    */
-  const handleFeedback = (type: 'up' | 'down') => {
-    setFeedback(feedback === type ? null : type)
+  const handleFeedback = async (type: 'up' | 'down') => {
+    const newValue = feedback === type ? null : type
+    setFeedback(newValue)
+
+    if (conversationId && message.id && !message.id.startsWith('assistant-') && !message.id.startsWith('error-')) {
+      try {
+        if (newValue) {
+          await chatApi.sendFeedback(conversationId, message.id, newValue === 'up')
+        }
+      } catch {
+        // Best-effort
+      }
+    }
   }
 
   return (

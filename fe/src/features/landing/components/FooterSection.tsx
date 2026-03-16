@@ -7,7 +7,7 @@
 import { useTranslation } from 'react-i18next'
 import { SUPPORTED_LANGUAGES, type LanguageCode } from '@/i18n'
 import { useSettings } from '@/app/contexts/SettingsContext'
-import logo from '@/assets/logo-dark.png'
+import logo from '@/assets/logo-dark.svg'
 
 /**
  * @description Landing page footer with branding, links, and language switcher.

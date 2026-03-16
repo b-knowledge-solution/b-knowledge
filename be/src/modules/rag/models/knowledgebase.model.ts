@@ -28,6 +28,7 @@ export class KnowledgebaseModel {
         embedding_model?: string;
         parser_id?: string;
         parser_config?: Record<string, unknown>;
+        pagerank?: number;
     }): Promise<void> {
         const now = nowMs();
         await db(this.tableName).insert({
@@ -39,6 +40,7 @@ export class KnowledgebaseModel {
             embd_id: data.embedding_model || '',
             parser_id: data.parser_id || 'naive',
             parser_config: JSON.stringify(data.parser_config || { pages: [[1, 1000000]] }),
+            pagerank: data.pagerank || 0,
             created_by: SYSTEM_TENANT_ID,
             permission: 'team',
             status: '1',

@@ -617,7 +617,8 @@ export interface Dataset {
     status: string;
     doc_count: number;
     chunk_count: number;
-    token_count: number;
+    token_count?: number;
+    pagerank?: number;
     created_by?: string | null;
     updated_by?: string | null;
     created_at: Date;
@@ -1239,8 +1240,8 @@ export interface ChunkResult {
     text: string;
     doc_id?: string;
     doc_name?: string;
-    /** Page number where the chunk was extracted from */
-    page_num?: number;
+    /** Page numbers where the chunk was extracted from */
+    page_num?: number[];
     /** Position coordinates: [[page, x1, x2, y1, y2], ...] for PDF highlighting */
     positions?: number[][];
     score?: number;

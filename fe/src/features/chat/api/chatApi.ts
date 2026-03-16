@@ -137,8 +137,8 @@ export const chatApi = {
    * @param ids - Array of conversation identifiers
    */
   deleteConversations: async (ids: string[]): Promise<void> => {
-    return api.delete<void>(`${BASE_URL}/sessions`, {
-      body: JSON.stringify({ sessionIds: ids }),
+    return api.delete<void>(`${BASE_URL}/conversations`, {
+      body: JSON.stringify({ ids }),
       headers: { 'Content-Type': 'application/json' },
     })
   },
@@ -155,6 +155,26 @@ export const chatApi = {
    */
   deleteMessage: async (conversationId: string, messageId: string): Promise<void> => {
     return api.delete<void>(`${BASE_URL}/conversations/${conversationId}/messages/${messageId}`)
+  },
+
+  /**
+   * Send feedback (thumbs up/down) on an assistant message.
+   * @param conversationId - Conversation identifier
+   * @param messageId - Message identifier
+   * @param thumbup - True for positive, false for negative
+   * @param feedback - Optional text feedback
+   */
+  sendFeedback: async (
+    conversationId: string,
+    messageId: string,
+    thumbup: boolean,
+    feedback?: string,
+  ): Promise<void> => {
+    await api.post(`${BASE_URL}/conversations/${conversationId}/feedback`, {
+      message_id: messageId,
+      thumbup,
+      feedback,
+    })
   },
 
   // ============================================================================
@@ -175,6 +195,7 @@ export const chatApi = {
     content: string,
     assistantId: string,
     options?: SendMessageOptions,
+    signal?: AbortSignal,
   ): Promise<Response> => {
     const apiBase = import.meta.env.VITE_API_BASE_URL || ''
     const url = `${apiBase}${BASE_URL}/conversations/${conversationId}/completion`
@@ -214,6 +235,7 @@ export const chatApi = {
         'Accept': 'text/event-stream',
       },
       body: JSON.stringify(body),
+      ...(signal ? { signal } : {}),
     })
 
     return response

@@ -15,5 +15,6 @@ router.get('/:id', requirePermission('manage_model_providers'), controller.getBy
 router.post('/', requirePermission('manage_model_providers'), validate(createProviderSchema), controller.create.bind(controller));
 router.put('/:id', requirePermission('manage_model_providers'), validate({ params: uuidParamSchema, body: updateProviderSchema }), controller.update.bind(controller));
 router.delete('/:id', requirePermission('manage_model_providers'), controller.delete.bind(controller));
+router.post('/:id/test-connection', requirePermission('manage_model_providers'), controller.testConnection.bind(controller));
 
 export default router;

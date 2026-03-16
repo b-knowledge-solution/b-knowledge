@@ -11,7 +11,4 @@ export type { DeepResearchOptions } from './services/rag-deep-research.service.j
 export { ragRerankService } from './services/rag-rerank.service.js';
 export { ragCitationService } from './services/rag-citation.service.js';
 export { ragSqlService } from './services/rag-sql.service.js';
-export { ragVersionService } from './services/rag-version.service.js';
-export { ragConverterService } from './services/rag-converter.service.js';
-export { ragUploadService } from './services/rag-upload.service.js';
 export type { AccessControl } from '@/shared/models/types.js';

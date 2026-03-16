@@ -22,6 +22,7 @@ export const createDatasetSchema = z.object({
     team_ids: z.array(z.string().uuid()).optional(),
     user_ids: z.array(z.string().uuid()).optional(),
   }).optional(),
+  pagerank: z.number().int().min(0).optional(),
 });
 
 /** PUT /api/rag/datasets/:id – body */
@@ -37,6 +38,7 @@ export const updateDatasetSchema = z.object({
     team_ids: z.array(z.string().uuid()).optional(),
     user_ids: z.array(z.string().uuid()).optional(),
   }).optional(),
+  pagerank: z.number().int().min(0).optional(),
 });
 
 /** PUT /api/rag/datasets/:id/access – body */
@@ -97,6 +99,7 @@ export const updateDatasetSettingsSchema = z.object({
   permission: z.enum(['me', 'team']).optional(),
   parser_id: z.string().max(50).optional(),
   parser_config: z.record(z.unknown()).optional(),
+  pagerank: z.number().int().min(0).optional(),
 })
 
 // ---------------------------------------------------------------------------
