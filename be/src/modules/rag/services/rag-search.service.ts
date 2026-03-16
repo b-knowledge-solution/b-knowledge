@@ -106,7 +106,7 @@ export class RagSearchService {
                     },
                 },
                 size: topK,
-                _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id'],
+                _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
             },
         })
 
@@ -159,7 +159,7 @@ export class RagSearchService {
                     },
                 },
                 size: topK,
-                _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id'],
+                _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
             },
         })
 
@@ -305,7 +305,7 @@ export class RagSearchService {
                 from: offset,
                 size: limit,
                 sort: [{ create_time: { order: 'desc' as const } }],
-                _source: ['content_with_weight', 'content_ltks', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id'],
+                _source: ['content_with_weight', 'content_ltks', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
             },
         })
 
@@ -487,6 +487,7 @@ export class RagSearchService {
     private mapHits(hits: any[], method?: string): ChunkResult[] {
         return hits.map((hit: any) => {
             const src = hit._source || {}
+            const highlightFields = hit.highlight || {}
             return {
                 chunk_id: hit._id,
                 text: src.content_with_weight || src.content_ltks || '',
@@ -495,8 +496,15 @@ export class RagSearchService {
                 page_num: src.page_num_int || [],
                 positions: src.position_int || [],
                 score: hit._score ?? 0,
+                // Default to available when field is missing (legacy chunks)
+                available: src.available_int === undefined ? true : src.available_int === 1,
+                important_kwd: src.important_kwd || [],
+                question_kwd: src.question_kwd || [],
+                // Estimate token count as ~4 chars per token
+                token_count: Math.ceil((src.content_with_weight || '').length / 4),
                 ...(method ? { method } : {}),
                 ...(src.img_id ? { img_id: src.img_id } : {}),
+                ...(highlightFields.content_with_weight?.[0] ? { highlight: highlightFields.content_with_weight[0] } : {}),
             }
         })
     }

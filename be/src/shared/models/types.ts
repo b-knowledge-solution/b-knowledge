@@ -1337,6 +1337,20 @@ export interface ChunkResult {
     method?: string;
     /** Image ID for image-type chunks */
     img_id?: string;
+    /** Whether this chunk is available for search (mapped from available_int) */
+    available?: boolean;
+    /** Important keywords extracted or manually assigned */
+    important_kwd?: string[];
+    /** Associated questions for this chunk */
+    question_kwd?: string[];
+    /** Highlighted text with <mark> tags from OpenSearch */
+    highlight?: string;
+    /** Approximate token count */
+    token_count?: number;
+    /** Vector/semantic search score component */
+    vector_similarity?: number;
+    /** Full-text/keyword search score component */
+    term_similarity?: number;
 }
 
 /**
