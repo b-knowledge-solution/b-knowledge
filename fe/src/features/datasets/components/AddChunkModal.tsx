@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { TagEditor } from '@/components/ui/tag-editor';
 
 // ============================================================================
 // Types
@@ -22,8 +23,8 @@ interface AddChunkModalProps {
   open: boolean;
   /** Close handler */
   onClose: () => void;
-  /** Submit handler */
-  onSubmit: (text: string) => Promise<void>;
+  /** Submit handler with content, keywords, and questions */
+  onSubmit: (data: { content: string; important_keywords?: string[]; question_keywords?: string[] }) => Promise<void>;
 }
 
 // ============================================================================
@@ -40,6 +41,8 @@ interface AddChunkModalProps {
 const AddChunkModal: React.FC<AddChunkModalProps> = ({ open, onClose, onSubmit }) => {
   const { t } = useTranslation();
   const [text, setText] = useState('');
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [questions, setQuestions] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   /**
@@ -50,8 +53,15 @@ const AddChunkModal: React.FC<AddChunkModalProps> = ({ open, onClose, onSubmit }
     if (!text.trim()) return;
     setSaving(true);
     try {
-      await onSubmit(text);
+      // Build payload with content and optional keyword/question arrays
+      await onSubmit({
+        content: text,
+        ...(keywords.length > 0 ? { important_keywords: keywords } : {}),
+        ...(questions.length > 0 ? { question_keywords: questions } : {}),
+      });
       setText('');
+      setKeywords([]);
+      setQuestions([]);
       onClose();
     } finally {
       setSaving(false);
@@ -74,6 +84,20 @@ const AddChunkModal: React.FC<AddChunkModalProps> = ({ open, onClose, onSubmit }
               placeholder={t('datasetSettings.chunks.contentPlaceholder')}
             />
           </div>
+          <TagEditor
+            value={keywords}
+            onChange={setKeywords}
+            label={t('datasetSettings.chunks.keywords')}
+            placeholder={t('datasetSettings.chunks.keywordsPlaceholder')}
+            variant="secondary"
+          />
+          <TagEditor
+            value={questions}
+            onChange={setQuestions}
+            label={t('datasetSettings.chunks.questions')}
+            placeholder={t('datasetSettings.chunks.questionsPlaceholder')}
+            variant="outline"
+          />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>

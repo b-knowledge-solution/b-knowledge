@@ -447,10 +447,10 @@ export interface UseChunksReturn {
   setPage: (page: number) => void
   /** Refresh chunks */
   refresh: () => void
-  /** Add a manual chunk */
-  addChunk: (text: string) => Promise<void>
-  /** Update a chunk */
-  updateChunk: (chunkId: string, text: string) => Promise<void>
+  /** Add a manual chunk with optional keywords and questions */
+  addChunk: (data: { content: string; important_keywords?: string[]; question_keywords?: string[] }) => Promise<void>
+  /** Update a chunk's content, keywords, or questions */
+  updateChunk: (chunkId: string, data: { content?: string; important_keywords?: string[]; question_keywords?: string[] }) => Promise<void>
   /** Delete a chunk */
   deleteChunk: (chunkId: string) => Promise<void>
   /** Available filter: undefined = all, true = enabled, false = disabled */
@@ -498,16 +498,17 @@ export function useChunks(datasetId: string | undefined, docId?: string): UseChu
 
   const addMutation = useMutation({
     mutationKey: ['datasets', 'chunks', 'create'],
-    mutationFn: (text: string) => datasetApi.addChunk(datasetId!, { text, ...(docId ? { doc_id: docId } : {}) }),
+    mutationFn: (data: { content: string; important_keywords?: string[]; question_keywords?: string[] }) =>
+      datasetApi.addChunk(datasetId!, { ...data, ...(docId ? { doc_id: docId } : {}) }),
     meta: { successMessage: t('datasetSettings.chunks.addSuccess') },
     onSuccess: invalidateChunks,
   })
 
-  // Update chunk mutation
+  // Update chunk mutation — supports content, keywords, and questions
   const updateMutation = useMutation({
     mutationKey: ['datasets', 'chunks', 'update'],
-    mutationFn: ({ chunkId, text }: { chunkId: string; text: string }) =>
-      datasetApi.updateChunk(datasetId!, chunkId, { text }),
+    mutationFn: ({ chunkId, data }: { chunkId: string; data: { content?: string; important_keywords?: string[]; question_keywords?: string[] } }) =>
+      datasetApi.updateChunk(datasetId!, chunkId, data),
     meta: { successMessage: t('datasetSettings.chunks.updateSuccess') },
     onSuccess: invalidateChunks,
   })
@@ -529,16 +530,16 @@ export function useChunks(datasetId: string | undefined, docId?: string): UseChu
     onSuccess: invalidateChunks,
   })
 
-  /** Add a manual chunk */
-  const addChunk = async (text: string) => {
+  /** Add a manual chunk with optional keywords and questions */
+  const addChunk = async (data: { content: string; important_keywords?: string[]; question_keywords?: string[] }) => {
     if (!datasetId) return
-    await addMutation.mutateAsync(text)
+    await addMutation.mutateAsync(data)
   }
 
-  /** Update a chunk */
-  const updateChunk = async (chunkId: string, text: string) => {
+  /** Update a chunk's content, keywords, or questions */
+  const updateChunk = async (chunkId: string, data: { content?: string; important_keywords?: string[]; question_keywords?: string[] }) => {
     if (!datasetId) return
-    await updateMutation.mutateAsync({ chunkId, text })
+    await updateMutation.mutateAsync({ chunkId, data })
   }
 
   /** Delete a chunk */

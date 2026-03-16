@@ -250,21 +250,21 @@ export const datasetApi = {
   /**
    * @description Add a manual text chunk to a dataset.
    * @param {string} datasetId - Dataset UUID
-   * @param {{ text: string; doc_id?: string }} data - Chunk content and optional document association
+   * @param {object} data - Chunk content, optional document association, and keyword/question tags
    * @returns {Promise<Chunk>} The created chunk
    */
-  addChunk: async (datasetId: string, data: { text: string; doc_id?: string }): Promise<Chunk> => {
+  addChunk: async (datasetId: string, data: { content: string; doc_id?: string; important_keywords?: string[]; question_keywords?: string[] }): Promise<Chunk> => {
     return api.post<Chunk>(`${BASE_URL}/datasets/${datasetId}/chunks`, data);
   },
 
   /**
-   * @description Update a chunk's text content.
+   * @description Update a chunk's content, keywords, questions, or availability.
    * @param {string} datasetId - Dataset UUID
    * @param {string} chunkId - Chunk UUID
-   * @param {{ text: string }} data - Updated text content
+   * @param {object} data - Partial update fields for the chunk
    * @returns {Promise<Chunk>} The updated chunk
    */
-  updateChunk: async (datasetId: string, chunkId: string, data: { text?: string; available?: boolean }): Promise<Chunk> => {
+  updateChunk: async (datasetId: string, chunkId: string, data: { content?: string; important_keywords?: string[]; question_keywords?: string[]; available?: boolean }): Promise<Chunk> => {
     return api.put<Chunk>(`${BASE_URL}/datasets/${datasetId}/chunks/${chunkId}`, data);
   },
 
