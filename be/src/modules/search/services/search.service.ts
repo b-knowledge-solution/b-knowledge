@@ -432,10 +432,11 @@ export class SearchService {
     allChunks.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
     let chunks = allChunks.slice(0, topK)
 
-    // Rerank if configured
+    // Rerank if configured, using rerank_top_k as the input size limit
     const config = app.search_config as Record<string, unknown>
     if (config?.rerank_id) {
-      chunks = await ragRerankService.rerank(query, chunks, topK, config.rerank_id as string)
+      const rerankTopK = (config.rerank_top_k as number) ?? 1024
+      chunks = await ragRerankService.rerank(query, chunks, rerankTopK, config.rerank_id as string)
     }
 
     return { chunks, total: totalHits }

@@ -2,7 +2,6 @@
  * @fileoverview Type definitions for the dataset search feature.
  * @module features/ai/types/search.types
  */
-import type { MetadataFilter } from '@/components/metadata-filter/metadata-filter.types'
 
 // ============================================================================
 // Search Result Types
@@ -169,7 +168,7 @@ export interface SearchAppConfig {
   /** Top K input size for reranker (0-2048) */
   rerank_top_k?: number | undefined
   /** Metadata filter for document filtering */
-  metadata_filter?: MetadataFilter | undefined
+  metadata_filter?: import('@/components/metadata-filter/metadata-filter.types').MetadataFilter | undefined
   /** LLM model identifier for summary generation */
   llm_id?: string | undefined
   /** LLM generation settings */

@@ -2122,7 +2122,8 @@
     "mindMap": "Mind Map",
     "mindMapDesc": "Mind Map Desc",
     "highlight": "Highlight",
-    "highlightDesc": "Highlight Desc"
+    "highlightDesc": "Highlight Desc",
+    "embeddingMismatchWarning": "Warning: Selected datasets use different embedding models. This may reduce search quality."
   },
   "embed": {
     "tokens": "Embed Tokens",
@@ -2136,5 +2137,67 @@
     "expired": "Expired",
     "expiresLabel": "Expires",
     "revoke": "Revoke"
+  },
+  "llmSettings": {
+    "preset": "Parameter Preset",
+    "precise": "Precise",
+    "balance": "Balance",
+    "creative": "Creative",
+    "custom": "Custom",
+    "temperature": "Temperature",
+    "topP": "Top P",
+    "frequencyPenalty": "Frequency Penalty",
+    "presencePenalty": "Presence Penalty",
+    "maxTokens": "Max Tokens",
+    "rerankModel": "Rerank Model",
+    "rerankPlaceholder": "Select a rerank model",
+    "topK": "Top K (Reranker)",
+    "llmModel": "LLM Model",
+    "llmModelPlaceholder": "Select an LLM model"
+  },
+  "chatSettings": {
+    "basicInfo": "Basic Information",
+    "promptConfig": "Prompt Configuration",
+    "retrievalConfig": "Retrieval Configuration",
+    "llmConfig": "LLM Model Settings",
+    "featureFlags": "Feature Toggles",
+    "emptyResponse": "Empty Response Message",
+    "emptyResponsePlaceholder": "Message when no relevant content found...",
+    "quote": "Show Citations",
+    "quoteDesc": "Include source document citations in responses",
+    "keyword": "Keyword Extraction",
+    "keywordDesc": "Extract keywords from the query for better retrieval",
+    "refineMultiturn": "Multi-turn Refinement",
+    "refineMultiturnDesc": "Refine context across conversation turns",
+    "tocEnhance": "TOC Enhancement",
+    "tocEnhanceDesc": "Enhance results using table of contents structure",
+    "useKg": "Knowledge Graph",
+    "useKgDesc": "Use knowledge graph for entity-based retrieval",
+    "tts": "Text-to-Speech",
+    "ttsDesc": "Enable audio output for responses",
+    "language": "Language",
+    "languagePlaceholder": "Select assistant language",
+    "similarityThreshold": "Similarity Threshold",
+    "vectorWeight": "Vector Similarity Weight",
+    "vectorWeightDesc": "Balance between vector search and keyword search",
+    "vectorSearch": "Vector",
+    "keywordSearch": "Keyword",
+    "reasoning": "Reasoning",
+    "reasoningDesc": "Enable deep thinking and reasoning mode"
+  },
+  "metadataFilter": {
+    "title": "Metadata Filter",
+    "addCondition": "Add Condition",
+    "logic": "Match logic",
+    "keyPlaceholder": "Metadata key",
+    "valuePlaceholder": "Value",
+    "op": {
+      "is": "equals",
+      "is_not": "not equals",
+      "contains": "contains",
+      "gt": "greater than",
+      "lt": "less than",
+      "range": "in range"
+    }
   }
 }

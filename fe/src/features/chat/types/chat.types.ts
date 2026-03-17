@@ -2,6 +2,7 @@
  * @fileoverview Type definitions for the dataset chat feature.
  * @module features/chat/types/chat.types
  */
+
 import type { MetadataFilter, MetadataFilterCondition } from '@/components/metadata-filter/metadata-filter.types'
 export type { MetadataFilter, MetadataFilterCondition }
 
@@ -158,11 +159,7 @@ export interface PromptConfig {
   top_n?: number | undefined
   /** Number of top keywords / reranker input size */
   top_k?: number | undefined
-  /** @deprecated Use llm_setting.temperature — kept for backward compat with existing config payloads */
-  temperature?: number | undefined
-  /** @deprecated Use llm_setting.max_tokens — kept for backward compat with existing config payloads */
-  max_tokens?: number | undefined
-  /** LLM sampling parameters (full control with per-param enable toggles) */
+  /** LLM sampling parameters */
   llm_setting?: ChatLlmSetting | undefined
   /** Custom prompt variables for template substitution */
   variables?: PromptVariable[] | undefined

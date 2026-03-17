@@ -6,20 +6,18 @@
 
 /**
  * @description Metadata filter condition for RAG retrieval.
- * Each condition filters documents by a metadata field using a comparison operator.
  */
 export interface MetadataFilterCondition {
-  /** Metadata field name (e.g. 'source', 'author', 'date') */
+  /** Metadata field name */
   name: string
-  /** Comparison operator for the filter */
+  /** Comparison operator */
   comparison_operator: 'is' | 'is_not' | 'contains' | 'gt' | 'lt' | 'range'
-  /** Comparison value — string, number, or [min, max] tuple for range operator */
+  /** Comparison value */
   value: string | number | [number, number]
 }
 
 /**
  * @description Metadata filter configuration with logical grouping.
- * Combines multiple conditions with AND/OR logic for document filtering.
  */
 export interface MetadataFilter {
   /** Logical operator between conditions */
