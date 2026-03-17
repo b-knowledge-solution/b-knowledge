@@ -11,10 +11,24 @@ import { z } from 'zod'
 const llmSettingSchema = z.object({
   /** LLM temperature for response randomness */
   temperature: z.number().min(0).max(2).optional(),
+  /** Whether temperature is enabled */
+  temperatureEnabled: z.boolean().optional(),
   /** Top-p nucleus sampling parameter */
   top_p: z.number().min(0).max(1).optional(),
+  /** Whether top_p is enabled */
+  topPEnabled: z.boolean().optional(),
+  /** Penalty for frequent tokens */
+  frequency_penalty: z.number().min(0).max(1).optional(),
+  /** Whether frequency_penalty is enabled */
+  frequencyPenaltyEnabled: z.boolean().optional(),
+  /** Penalty for repeated tokens */
+  presence_penalty: z.number().min(0).max(1).optional(),
+  /** Whether presence_penalty is enabled */
+  presencePenaltyEnabled: z.boolean().optional(),
   /** Maximum tokens for LLM response */
   max_tokens: z.number().int().min(1).max(128000).optional(),
+  /** Whether max_tokens is enabled */
+  maxTokensEnabled: z.boolean().optional(),
 }).optional()
 
 /**
@@ -54,6 +68,8 @@ const searchConfigSchema = z.record(z.unknown()).and(
     cross_languages: z.string().max(256).optional(),
     /** Rerank model ID for post-retrieval reranking */
     rerank_id: z.string().max(128).optional(),
+    /** Top K input size for reranker (0-2048) */
+    rerank_top_k: z.number().int().min(0).max(2048).optional(),
     /** Enable keyword extraction from query before retrieval */
     keyword: z.boolean().optional(),
     /** Enable knowledge graph retrieval */

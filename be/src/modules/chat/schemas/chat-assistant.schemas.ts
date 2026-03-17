@@ -55,6 +55,24 @@ const promptConfigSchema = z.object({
   use_kg: z.boolean().optional(),
   rerank_id: z.string().optional(),
   reasoning: z.boolean().optional(),
+  // LLM sampling parameters (nested object matching RAGFlow llm_setting)
+  llm_setting: z.object({
+    temperature: z.number().min(0).max(2).optional(),
+    temperatureEnabled: z.boolean().optional(),
+    top_p: z.number().min(0).max(1).optional(),
+    topPEnabled: z.boolean().optional(),
+    frequency_penalty: z.number().min(0).max(1).optional(),
+    frequencyPenaltyEnabled: z.boolean().optional(),
+    presence_penalty: z.number().min(0).max(1).optional(),
+    presencePenaltyEnabled: z.boolean().optional(),
+    max_tokens: z.number().int().min(1).max(128000).optional(),
+    maxTokensEnabled: z.boolean().optional(),
+  }).optional(),
+  // Text-to-speech toggle
+  tts: z.boolean().optional(),
+  // Chat language preference
+  language: z.string().max(32).optional(),
+  // Legacy top-level LLM params (kept for backward compat with existing payloads)
   temperature: z.number().min(0).max(2).optional(),
   top_p: z.number().min(0).max(1).optional(),
   frequency_penalty: z.number().optional(),
