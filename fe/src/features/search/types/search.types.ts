@@ -2,6 +2,7 @@
  * @fileoverview Type definitions for the dataset search feature.
  * @module features/ai/types/search.types
  */
+import type { MetadataFilter } from '@/components/metadata-filter/metadata-filter.types'
 
 // ============================================================================
 // Search Result Types
@@ -131,10 +132,24 @@ export interface SearchApp {
 export interface SearchLlmSetting {
   /** Temperature for LLM generation (0-2) */
   temperature?: number | undefined
+  /** Whether temperature is enabled */
+  temperatureEnabled?: boolean | undefined
   /** Top-p sampling parameter (0-1) */
   top_p?: number | undefined
+  /** Whether top_p is enabled */
+  topPEnabled?: boolean | undefined
+  /** Penalty for frequent tokens (0-1) */
+  frequency_penalty?: number | undefined
+  /** Whether frequency_penalty is enabled */
+  frequencyPenaltyEnabled?: boolean | undefined
+  /** Penalty for repeated tokens (0-1) */
+  presence_penalty?: number | undefined
+  /** Whether presence_penalty is enabled */
+  presencePenaltyEnabled?: boolean | undefined
   /** Maximum tokens for LLM response */
   max_tokens?: number | undefined
+  /** Whether max_tokens is enabled */
+  maxTokensEnabled?: boolean | undefined
 }
 
 /**
@@ -151,6 +166,10 @@ export interface SearchAppConfig {
   vector_similarity_weight?: number | undefined
   /** Rerank model identifier */
   rerank_id?: string | undefined
+  /** Top K input size for reranker (0-2048) */
+  rerank_top_k?: number | undefined
+  /** Metadata filter for document filtering */
+  metadata_filter?: MetadataFilter | undefined
   /** LLM model identifier for summary generation */
   llm_id?: string | undefined
   /** LLM generation settings */
