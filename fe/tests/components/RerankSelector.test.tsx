@@ -2,8 +2,6 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { RerankSelector } from '@/components/rerank-selector/RerankSelector'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { I18nextProvider } from 'react-i18next'
-import i18n from '@/i18n'
 
 vi.mock('@/lib/llmProviderPublicApi', () => ({
   listModels: vi.fn().mockResolvedValue([
@@ -13,23 +11,26 @@ vi.mock('@/lib/llmProviderPublicApi', () => ({
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 const wrap = (ui: React.ReactNode) => (
-  <QueryClientProvider client={qc}>
-    <I18nextProvider i18n={i18n}>{ui}</I18nextProvider>
-  </QueryClientProvider>
+  <QueryClientProvider client={qc}>{ui}</QueryClientProvider>
 )
 
+/**
+ * @description Tests for the RerankSelector component with conditional Top K slider.
+ */
 describe('RerankSelector', () => {
-  it('shows Top K slider only when rerank model is selected', async () => {
-    const { rerender } = render(wrap(
+  it('hides Top K slider when no rerank model selected', () => {
+    render(wrap(
       <RerankSelector rerankId="" topK={1024} onRerankChange={vi.fn()} onTopKChange={vi.fn()} />
     ))
-    // Top K slider should NOT be visible when no rerank model
-    expect(screen.queryByText(/Top K/i)).not.toBeInTheDocument()
+    // Top K label should NOT be visible when no rerank model
+    expect(screen.queryByText(/llmSettings.topK/)).not.toBeInTheDocument()
+  })
 
-    // Select a rerank model
-    rerender(wrap(
+  it('shows Top K slider when rerank model is selected', () => {
+    render(wrap(
       <RerankSelector rerankId="r1" topK={1024} onRerankChange={vi.fn()} onTopKChange={vi.fn()} />
     ))
-    expect(screen.getByText(/Top K/i)).toBeInTheDocument()
+    // Top K label should be visible (i18n mock returns the key)
+    expect(screen.getByText(/llmSettings.topK/)).toBeInTheDocument()
   })
 })
