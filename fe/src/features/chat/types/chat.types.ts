@@ -3,6 +3,9 @@
  * @module features/chat/types/chat.types
  */
 
+import type { MetadataFilter, MetadataFilterCondition } from '@/components/metadata-filter/metadata-filter.types'
+export type { MetadataFilter, MetadataFilterCondition }
+
 // ============================================================================
 // Chat Message Types
 // ============================================================================
@@ -119,7 +122,33 @@ export interface Conversation {
 // ============================================================================
 
 /**
- * @description Prompt configuration for an assistant.
+ * @description LLM sampling parameters for a chat assistant.
+ */
+export interface ChatLlmSetting {
+  /** LLM temperature (0-2) */
+  temperature?: number | undefined
+  /** Whether temperature is enabled */
+  temperatureEnabled?: boolean | undefined
+  /** Nucleus sampling parameter (0-1) */
+  top_p?: number | undefined
+  /** Whether top_p is enabled */
+  topPEnabled?: boolean | undefined
+  /** Penalty for frequent tokens (0-1) */
+  frequency_penalty?: number | undefined
+  /** Whether frequency_penalty is enabled */
+  frequencyPenaltyEnabled?: boolean | undefined
+  /** Penalty for repeated tokens (0-1) */
+  presence_penalty?: number | undefined
+  /** Whether presence_penalty is enabled */
+  presencePenaltyEnabled?: boolean | undefined
+  /** Maximum output length */
+  max_tokens?: number | undefined
+  /** Whether max_tokens is enabled */
+  maxTokensEnabled?: boolean | undefined
+}
+
+/**
+ * @description Prompt and retrieval configuration for an assistant.
  */
 export interface PromptConfig {
   /** System-level instruction */
@@ -128,14 +157,42 @@ export interface PromptConfig {
   prologue?: string | undefined
   /** Number of top documents to retrieve */
   top_n?: number | undefined
-  /** Number of top keywords */
+  /** Number of top keywords / reranker input size */
   top_k?: number | undefined
-  /** LLM temperature (0-1) */
-  temperature?: number | undefined
-  /** Maximum tokens for the response */
-  max_tokens?: number | undefined
+  /** LLM sampling parameters */
+  llm_setting?: ChatLlmSetting | undefined
   /** Custom prompt variables for template substitution */
   variables?: PromptVariable[] | undefined
+  /** Enable multi-turn query refinement */
+  refine_multiturn?: boolean | undefined
+  /** Enable cross-language query expansion (comma-separated codes) */
+  cross_languages?: string | undefined
+  /** Enable keyword extraction from query */
+  keyword?: boolean | undefined
+  /** Include source citations in response */
+  quote?: boolean | undefined
+  /** Response when no relevant content found */
+  empty_response?: string | undefined
+  /** Enable table of contents enhancement */
+  toc_enhance?: boolean | undefined
+  /** Tavily API key for web search */
+  tavily_api_key?: string | undefined
+  /** Enable knowledge graph retrieval */
+  use_kg?: boolean | undefined
+  /** Rerank model provider ID */
+  rerank_id?: string | undefined
+  /** Enable reasoning / deep thinking mode */
+  reasoning?: boolean | undefined
+  /** Enable text-to-speech */
+  tts?: boolean | undefined
+  /** Chat language preference */
+  language?: string | undefined
+  /** Similarity threshold for chunk retrieval (0-1) */
+  similarity_threshold?: number | undefined
+  /** Weight for vector search vs keyword search (0-1) */
+  vector_similarity_weight?: number | undefined
+  /** Metadata filter for document filtering */
+  metadata_filter?: MetadataFilter | undefined
 }
 
 /**
