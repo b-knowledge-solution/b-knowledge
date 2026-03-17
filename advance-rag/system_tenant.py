@@ -1,11 +1,10 @@
-"""
-System tenant initialization.
+"""System tenant verification.
 
-b-knowledge uses a single system tenant instead of per-user tenants.
-This module ensures the system tenant row exists on startup.
+b-knowledge uses a single system tenant. The tenant row is created by the
+Node.js backend Knex migration. This module only verifies it exists on
+worker startup — it never writes to the database.
 """
 import logging
-import os
 
 from config import SYSTEM_TENANT_ID
 
@@ -13,11 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 def ensure_system_tenant():
-    """Create the system tenant row in the database if it does not already exist.
+    """Verify the system tenant row exists in the database.
 
-    Uses the SYSTEM_TENANT_ID from config and populates default model IDs
-    from environment variables. The tenant is initialized with all supported
-    parser types and a high credit limit (9999999).
+    Logs an error if the tenant is missing, indicating that backend
+    migrations need to run first. Does NOT create the row — all schema
+    and seed data is owned by the backend Knex migrations.
     """
     from db.db_models import Tenant, DB
 
@@ -25,23 +24,11 @@ def ensure_system_tenant():
         try:
             tenant = Tenant.select().where(Tenant.id == SYSTEM_TENANT_ID).first()
             if tenant:
-                logger.info(f"System tenant already exists: {SYSTEM_TENANT_ID}")
-                return
-        except Exception:
-            pass
-
-        logger.info(f"Creating system tenant: {SYSTEM_TENANT_ID}")
-        Tenant.insert(
-            id=SYSTEM_TENANT_ID,
-            name="system",
-            llm_id=os.getenv("DEFAULT_CHAT_MODEL", ""),
-            embd_id=os.getenv("DEFAULT_EMBEDDING_MODEL", ""),
-            asr_id=os.getenv("DEFAULT_ASR_MODEL", ""),
-            img2txt_id=os.getenv("DEFAULT_IMAGE2TEXT_MODEL", ""),
-            rerank_id=os.getenv("DEFAULT_RERANK_MODEL", ""),
-            tts_id=os.getenv("DEFAULT_TTS_MODEL", ""),
-            parser_ids="naive:General,qa:Q&A,table:Table,paper:Paper,book:Book,laws:Laws,presentation:Presentation,picture:Picture,one:One,audio:Audio,email:Email",
-            credit=9999999,
-            status="1",
-        ).execute()
-        logger.info("System tenant created successfully")
+                logger.info(f"System tenant verified: {SYSTEM_TENANT_ID}")
+            else:
+                logger.error(
+                    f"System tenant {SYSTEM_TENANT_ID} not found. "
+                    "Run backend migrations first (npm run db:migrate)."
+                )
+        except Exception as e:
+            logger.error(f"Failed to verify system tenant: {e}")
