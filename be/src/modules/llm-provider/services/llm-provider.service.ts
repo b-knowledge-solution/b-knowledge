@@ -3,6 +3,7 @@
  * @module modules/llm-provider/services/llm-provider
  */
 import { ModelFactory } from '@/shared/models/factory.js';
+import { db } from '@/shared/db/knex.js';
 import { log } from '@/shared/services/logger.service.js';
 import { cryptoService } from '@/shared/services/crypto.service.js';
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js';
@@ -375,6 +376,28 @@ export class LlmProviderService {
                 };
             }
         }
+    }
+
+    /**
+     * @description List active providers with safe fields only (no API keys).
+     * Optionally filtered by model_type. Used by config dialogs (no admin permission).
+     * @param {string} [modelType] - Filter by model_type: 'chat', 'embedding', 'rerank', 'tts', 'speech2text'
+     * @returns {Promise<Array<Pick<ModelProvider, 'id' | 'factory_name' | 'model_type' | 'model_name' | 'max_tokens' | 'is_default' | 'vision'>>>} Safe provider records
+     */
+    async listPublic(modelType?: string) {
+        // Only expose safe columns — never return api_key or api_base
+        let query = db('model_providers')
+            .select('id', 'factory_name', 'model_type', 'model_name', 'max_tokens', 'is_default', 'vision')
+            .where('status', 'active')
+            .orderBy('factory_name')
+            .orderBy('model_name');
+
+        // Filter by model_type if provided
+        if (modelType) {
+            query = query.where('model_type', modelType);
+        }
+
+        return query;
     }
 }
 

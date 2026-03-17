@@ -35,6 +35,7 @@ import dashboardRoutes from '@/modules/dashboard/dashboard.routes.js';
 import glossaryRoutes from '@/modules/glossary/routes/glossary.routes.js';
 import ragRoutes from '@/modules/rag/routes/rag.routes.js';
 import llmProviderRoutes from '@/modules/llm-provider/routes/llm-provider.routes.js';
+import llmProviderPublicRoutes from '@/modules/llm-provider/routes/llm-provider-public.routes.js';
 import syncRoutes from '@/modules/sync/routes/sync.routes.js';
 import projectRoutes from '@/modules/projects/routes/projects.routes.js';
 
@@ -164,6 +165,9 @@ function registerRoutes(apiRouter: Router): void {
 
     // LLM provider management (admin only)
     apiRouter.use('/llm-provider', llmProviderRoutes);
+
+    // Public model listing (auth required, no admin permission)
+    apiRouter.use('/models', llmProviderPublicRoutes);
 
     // Data source sync (connectors → MinIO → parse)
     apiRouter.use('/sync', syncRoutes);
