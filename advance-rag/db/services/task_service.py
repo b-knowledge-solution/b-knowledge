@@ -354,7 +354,9 @@ class TaskService(CommonService):
                         )
                     ).execute()
 
-        process_duration = (datetime.now() - task.begin_at).total_seconds()
+        # Use timezone-aware now() to match PostgreSQL timestamp columns
+        now = datetime.now(task.begin_at.tzinfo) if task.begin_at and hasattr(task.begin_at, 'tzinfo') and task.begin_at.tzinfo else datetime.now()
+        process_duration = (now - task.begin_at).total_seconds() if task.begin_at else 0
         cls.model.update(process_duration=process_duration).where(cls.model.id == id).execute()
 
     @classmethod

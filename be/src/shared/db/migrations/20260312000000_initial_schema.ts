@@ -896,6 +896,11 @@ export async function up(knex: Knex): Promise<void> {
     table.text('created_by').references('id').inTable('users').onDelete('SET NULL')
     table.text('updated_by').references('id').inTable('users').onDelete('SET NULL')
     table.timestamps(true, true)
+    // Peewee BaseModel timestamp columns (used by advance-rag TenantLLMService)
+    table.bigInteger('create_time').nullable()
+    table.timestamp('create_date').nullable()
+    table.bigInteger('update_time').nullable()
+    table.timestamp('update_date').nullable()
   })
   // Partial unique index — only active rows must have unique (tenant_id, factory_name, model_name)
   await knex.raw(`
