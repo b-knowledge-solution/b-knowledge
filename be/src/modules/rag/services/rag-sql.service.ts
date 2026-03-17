@@ -50,7 +50,7 @@ export class RagSqlService {
       if (!fieldMap || Object.keys(fieldMap).length === 0) continue
 
       // This KB has structured data; generate and execute SQL
-      const tableName = `ragflow_${SYSTEM_TENANT_ID}`
+      const tableName = `knowledge_${SYSTEM_TENANT_ID}`
 
       try {
         // Generate SQL from natural language

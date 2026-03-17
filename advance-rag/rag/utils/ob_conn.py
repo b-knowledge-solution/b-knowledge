@@ -672,7 +672,7 @@ class OBConnection(OBConnectionBase):
 
         output_fields = select_fields.copy()
         if "*" in output_fields:
-            if index_names[0].startswith("ragflow_doc_meta_"):
+            if index_names[0].startswith("knowledge_doc_meta_"):
                 output_fields = doc_meta_column_names.copy()
             else:
                 output_fields = column_names.copy()
@@ -1066,7 +1066,7 @@ class OBConnection(OBConnectionBase):
             return []
 
         # For doc_meta tables, use simple insert without field transformation
-        if index_name.startswith("ragflow_doc_meta_"):
+        if index_name.startswith("knowledge_doc_meta_"):
             return self._insert_doc_meta(documents, index_name)
 
         docs: list[dict] = []
@@ -1176,7 +1176,7 @@ class OBConnection(OBConnectionBase):
             return True
 
         # For doc_meta tables, don't force kb_id in condition
-        if not index_name.startswith("ragflow_doc_meta_"):
+        if not index_name.startswith("knowledge_doc_meta_"):
             condition["kb_id"] = knowledgebase_id
         filters = get_filters(condition)
         set_values: list[str] = []

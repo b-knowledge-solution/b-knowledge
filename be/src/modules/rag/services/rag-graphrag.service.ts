@@ -2,7 +2,7 @@
  * @fileoverview Knowledge Graph (GraphRAG) retrieval service.
  *
  * Queries entity, relation, and community report documents stored in the
- * same OpenSearch index as regular chunks (`ragflow_{SYSTEM_TENANT_ID}`).
+ * same OpenSearch index as regular chunks (`knowledge_{SYSTEM_TENANT_ID}`).
  * Documents are distinguished by the `knowledge_graph_kwd` field.
  *
  * @module modules/rag/services/rag-graphrag
@@ -29,7 +29,7 @@ const ES_PASSWORD = process.env['ES_PASSWORD'] || ''
  * @returns The index name string
  */
 function getIndexName(): string {
-  return `ragflow_${SYSTEM_TENANT_ID}`
+  return `knowledge_${SYSTEM_TENANT_ID}`
 }
 
 let osClient: Client | null = null

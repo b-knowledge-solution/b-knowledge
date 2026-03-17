@@ -178,7 +178,7 @@ class ESConnectionBase(DocStoreConnection):
                     "method": {
                         "name": "hnsw",
                         "space_type": "cosinesimil",
-                        "engine": "nmslib",
+                        "engine": "lucene",
                         "parameters": {
                             "ef_construction": 512,
                             "m": 32
@@ -193,7 +193,7 @@ class ESConnectionBase(DocStoreConnection):
         """
         Create a document metadata index.
 
-        Index name pattern: ragflow_doc_meta_{tenant_id}
+        Index name pattern: knowledge_doc_meta_{tenant_id}
         - Per-tenant metadata index for storing document metadata fields
         """
         if self.index_exist(index_name, ""):

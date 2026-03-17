@@ -6,7 +6,7 @@
  * Also provides chunk CRUD operations (manual add/edit/delete) and
  * document-level chunk toggling.
  *
- * Index naming: "ragflow_{SYSTEM_TENANT_ID}"
+ * Index naming: "knowledge_{SYSTEM_TENANT_ID}"
  * Chunks are filtered by kb_id (dataset_id).
  *
  * @module modules/rag/services/rag-search
@@ -26,7 +26,7 @@ const ES_PASSWORD = config.opensearch.password
  * @returns The index name string
  */
 function getIndexName(): string {
-    return `ragflow_${SYSTEM_TENANT_ID}`
+    return `knowledge_${SYSTEM_TENANT_ID}`
 }
 
 let osClient: Client | null = null

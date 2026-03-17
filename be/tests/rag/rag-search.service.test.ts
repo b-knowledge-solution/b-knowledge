@@ -405,8 +405,8 @@ describe('RagSearchService', () => {
 
       expect(mockDeleteByQuery).toHaveBeenCalledTimes(1)
       const callArg = mockDeleteByQuery.mock.calls[0]![0]
-      // Index should follow ragflow_{tenantId} pattern
-      expect(callArg.index).toBe('ragflow_00000000000000000000000000000001')
+      // Index should follow knowledge_{tenantId} pattern
+      expect(callArg.index).toBe('knowledge_00000000000000000000000000000001')
       // Query must include both kb_id and doc_id
       const must = callArg.body.query.bool.must
       expect(must).toEqual(

@@ -46,9 +46,9 @@ def index_name(uid):
         uid: Tenant or user UUID string.
 
     Returns:
-        Index name string prefixed with 'ragflow_'.
+        Index name string prefixed with 'knowledge_'.
     """
-    return f"ragflow_{uid}"
+    return f"knowledge_{uid}"
 
 
 class Dealer:

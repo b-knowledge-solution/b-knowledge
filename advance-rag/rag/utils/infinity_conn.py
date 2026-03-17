@@ -202,7 +202,7 @@ class InfinityConnection(InfinityConnectionBase):
 
             table_found = False
             for indexName in index_names:
-                if indexName.startswith("ragflow_doc_meta_"):
+                if indexName.startswith("knowledge_doc_meta_"):
                     table_names_to_search = [indexName]
                 else:
                     table_names_to_search = [f"{indexName}_{kb_id}" for kb_id in knowledgebase_ids]
@@ -277,7 +277,7 @@ class InfinityConnection(InfinityConnectionBase):
         total_hits_count = 0
         # Scatter search tables and gather the results
         for indexName in index_names:
-            if indexName.startswith("ragflow_doc_meta_"):
+            if indexName.startswith("knowledge_doc_meta_"):
                 table_names_to_search = [indexName]
             else:
                 table_names_to_search = [f"{indexName}_{kb_id}" for kb_id in knowledgebase_ids]
@@ -335,7 +335,7 @@ class InfinityConnection(InfinityConnectionBase):
         df_list = list()
         assert isinstance(knowledgebase_ids, list)
         table_list = list()
-        if index_name.startswith("ragflow_doc_meta_"):
+        if index_name.startswith("knowledge_doc_meta_"):
             table_names_to_search = [index_name]
         else:
             table_names_to_search = [f"{index_name}_{kb_id}" for kb_id in knowledgebase_ids]
@@ -363,7 +363,7 @@ class InfinityConnection(InfinityConnectionBase):
     def insert(self, documents: list[dict], index_name: str, knowledgebase_id: str = None) -> list[str]:
         inf_conn = self.connPool.get_conn()
         db_instance = inf_conn.get_database(self.dbName)
-        if index_name.startswith("ragflow_doc_meta_"):
+        if index_name.startswith("knowledge_doc_meta_"):
             table_name = index_name
         else:
             table_name = f"{index_name}_{knowledgebase_id}"
@@ -504,7 +504,7 @@ class InfinityConnection(InfinityConnectionBase):
         #     logger.info(f"update position_int: {newValue['position_int']}")
         inf_conn = self.connPool.get_conn()
         db_instance = inf_conn.get_database(self.dbName)
-        if index_name.startswith("ragflow_doc_meta_"):
+        if index_name.startswith("knowledge_doc_meta_"):
             table_name = index_name
         else:
             table_name = f"{index_name}_{knowledgebase_id}"

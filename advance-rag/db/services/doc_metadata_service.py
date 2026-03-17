@@ -47,7 +47,7 @@ class DocMetadataService:
         Returns:
             Index name for document metadata
         """
-        return f"ragflow_doc_meta_{tenant_id}"
+        return f"knowledge_doc_meta_{tenant_id}"
 
     @staticmethod
     def _extract_metadata(flat_meta: Dict) -> Dict:
