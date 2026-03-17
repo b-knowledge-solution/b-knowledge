@@ -1583,7 +1583,8 @@
       "filterAll": "すべて",
       "filterEnabled": "有効",
       "filterDisabled": "無効",
-      "toggleSuccess": "チャンクの可用性を更新しました"
+      "toggleSuccess": "チャンクの有効状態を更新しました",
+      "bulkSwitchSuccess": "チャンクの有効状態を一括更新しました"
     },
     "retrieval": {
       "query": "クエリ",

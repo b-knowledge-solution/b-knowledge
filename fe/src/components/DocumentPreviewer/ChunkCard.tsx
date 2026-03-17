@@ -33,7 +33,7 @@ interface ChunkCardProps {
   onUpdate?: ((chunkId: string, data: { content?: string; important_keywords?: string[]; question_keywords?: string[] }) => Promise<void>) | undefined;
   /** Callback to delete a chunk (enables delete button) */
   onDelete?: ((chunkId: string) => Promise<void>) | undefined;
-  /** Callback to toggle chunk availability (enables switch control) */
+  /** Callback to toggle chunk availability (enables switch) */
   onToggle?: ((chunkId: string, available: boolean) => Promise<void>) | undefined;
 }
 
@@ -50,6 +50,18 @@ const ChunkCard: React.FC<ChunkCardProps> = ({ chunk, index, isSelected, onClick
   const [editKeywords, setEditKeywords] = useState<string[]>(chunk.important_kwd ?? []);
   const [editQuestions, setEditQuestions] = useState<string[]>(chunk.question_kwd ?? []);
   const [saving, setSaving] = useState(false);
+  const [toggling, setToggling] = useState(false);
+
+  /** Toggle chunk availability via the onToggle callback */
+  const handleToggle = async (checked: boolean) => {
+    if (!onToggle || toggling) return;
+    setToggling(true);
+    try {
+      await onToggle(chunk.chunk_id, checked);
+    } finally {
+      setToggling(false);
+    }
+  };
 
   /** Reset edit state from current chunk props and enter edit mode */
   const handleStartEdit = () => {
@@ -130,13 +142,15 @@ const ChunkCard: React.FC<ChunkCardProps> = ({ chunk, index, isSelected, onClick
         {/* Action buttons visible on hover */}
         <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {/* Toggle chunk availability when onToggle is provided */}
-          {onToggle && (
-            <Switch
-              checked={chunk.available !== false}
-              onCheckedChange={(checked: boolean) => onToggle(chunk.chunk_id, checked)}
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              className="h-4 w-7"
-            />
+          {onToggle && !isEditing && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <Switch
+                checked={chunk.available !== false}
+                disabled={toggling}
+                onCheckedChange={handleToggle}
+                className="scale-75"
+              />
+            </div>
           )}
           {/* Show edit button only when onUpdate handler is provided and not already editing */}
           {onUpdate && !isEditing && (

@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+
 import { useChunks } from '@/features/datasets/api/datasetQueries';
 import type { Chunk } from '@/features/datasets/types';
 import ChunkCard from './ChunkCard';
@@ -49,7 +50,7 @@ const ChunkList: React.FC<ChunkListProps> = ({
   const { t } = useTranslation();
   const [addModalOpen, setAddModalOpen] = useState(false);
   
-  // Fetch chunks with search, pagination, and CRUD operations
+  // Fetch chunks with search, pagination, filtering, and CRUD operations
   const {
     chunks,
     total,

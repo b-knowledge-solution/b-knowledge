@@ -1613,7 +1613,8 @@
       "filterAll": "All",
       "filterEnabled": "Enabled",
       "filterDisabled": "Disabled",
-      "toggleSuccess": "Chunk availability updated"
+      "toggleSuccess": "Chunk availability updated",
+      "bulkSwitchSuccess": "Chunks availability updated"
     },
     "retrieval": {
       "query": "Query",

@@ -1597,7 +1597,8 @@
       "filterAll": "Tất cả",
       "filterEnabled": "Đã bật",
       "filterDisabled": "Đã tắt",
-      "toggleSuccess": "Đã cập nhật trạng thái chunk"
+      "toggleSuccess": "Đã cập nhật trạng thái đoạn",
+      "bulkSwitchSuccess": "Đã cập nhật trạng thái các đoạn"
     },
     "retrieval": {
       "query": "Truy vấn",
