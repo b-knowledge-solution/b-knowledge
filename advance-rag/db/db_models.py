@@ -760,18 +760,6 @@ class UserTenant(DataBaseModel):
         db_table = "user_tenant"
 
 
-class InvitationCode(DataBaseModel):
-    id = CharField(max_length=32, primary_key=True)
-    code = CharField(max_length=32, null=False, index=True)
-    visit_time = DateTimeField(null=True, index=True)
-    user_id = CharField(max_length=32, null=True, index=True)
-    tenant_id = CharField(max_length=32, null=True, index=True)
-    status = CharField(max_length=1, null=True, help_text="is it validate(0: wasted, 1: validate)", default="1", index=True)
-
-    class Meta:
-        db_table = "invitation_code"
-
-
 class LLMFactories(DataBaseModel):
     name = CharField(max_length=128, null=False, help_text="LLM factory name", primary_key=True)
     logo = TextField(null=True, help_text="llm logo base64")
@@ -958,86 +946,6 @@ class Task(DataBaseModel):
     chunk_ids = LongTextField(null=True, help_text="chunk ids", default="")
 
 
-class Dialog(DataBaseModel):
-    id = CharField(max_length=32, primary_key=True)
-    tenant_id = CharField(max_length=32, null=False, index=True)
-    name = CharField(max_length=255, null=True, help_text="dialog application name", index=True)
-    description = TextField(null=True, help_text="Dialog description")
-    icon = TextField(null=True, help_text="icon base64 string")
-    language = CharField(max_length=32, null=True, default="Chinese" if "zh_CN" in os.getenv("LANG", "") else "English", help_text="English|Chinese", index=True)
-    llm_id = CharField(max_length=128, null=False, help_text="default llm ID")
-    tenant_llm_id = CharField(max_length=36, null=True, help_text="id in model_providers", index=True)
-
-    llm_setting = JSONField(null=False, default={"temperature": 0.1, "top_p": 0.3, "frequency_penalty": 0.7, "presence_penalty": 0.4, "max_tokens": 512})
-    prompt_type = CharField(max_length=16, null=False, default="simple", help_text="simple|advanced", index=True)
-    prompt_config = JSONField(
-        null=False,
-        default={"system": "", "prologue": "Hi! I'm your assistant. What can I do for you?", "parameters": [], "empty_response": "Sorry! No relevant content was found in the knowledge base!"},
-    )
-    meta_data_filter = JSONField(null=True, default={})
-
-    similarity_threshold = FloatField(default=0.2)
-    vector_similarity_weight = FloatField(default=0.3)
-
-    top_n = IntegerField(default=6)
-
-    top_k = IntegerField(default=1024)
-
-    do_refer = CharField(max_length=1, null=False, default="1", help_text="it needs to insert reference index into answer or not")
-
-    rerank_id = CharField(max_length=128, null=False, help_text="default rerank model ID")
-    tenant_rerank_id = CharField(max_length=36, null=True, help_text="id in model_providers", index=True)
-    kb_ids = JSONField(null=False, default=[])
-    status = CharField(max_length=1, null=True, help_text="is it validate(0: wasted, 1: validate)", default="1", index=True)
-
-    class Meta:
-        db_table = "dialog"
-
-
-class Conversation(DataBaseModel):
-    id = CharField(max_length=32, primary_key=True)
-    dialog_id = CharField(max_length=32, null=False, index=True)
-    name = CharField(max_length=255, null=True, help_text="conversation name", index=True)
-    message = JSONField(null=True)
-    reference = JSONField(null=True, default=[])
-    user_id = CharField(max_length=255, null=True, help_text="user_id", index=True)
-
-    class Meta:
-        db_table = "conversation"
-
-
-class APIToken(DataBaseModel):
-    tenant_id = CharField(max_length=32, null=False, index=True)
-    token = CharField(max_length=255, null=False, index=True)
-    dialog_id = CharField(max_length=32, null=True, index=True)
-    source = CharField(max_length=16, null=True, help_text="none|agent|dialog", index=True)
-    beta = CharField(max_length=255, null=True, index=True)
-
-    class Meta:
-        db_table = "api_token"
-        primary_key = CompositeKey("tenant_id", "token")
-
-
-class API4Conversation(DataBaseModel):
-    id = CharField(max_length=32, primary_key=True)
-    name = CharField(max_length=255, null=True, help_text="conversation name", index=False)
-    dialog_id = CharField(max_length=32, null=False, index=True)
-    user_id = CharField(max_length=255, null=False, help_text="user_id", index=True)
-    exp_user_id = CharField(max_length=255, null=True, help_text="exp_user_id", index=True)
-    message = JSONField(null=True)
-    reference = JSONField(null=True, default=[])
-    tokens = IntegerField(default=0)
-    source = CharField(max_length=16, null=True, help_text="none|agent|dialog", index=True)
-    dsl = JSONField(null=True, default={})
-    duration = FloatField(default=0, index=True)
-    round = IntegerField(default=0, index=True)
-    thumb_up = IntegerField(default=0, index=True)
-    errors = TextField(null=True, help_text="errors")
-
-    class Meta:
-        db_table = "api_4_conversation"
-
-
 class UserCanvas(DataBaseModel):
     id = CharField(max_length=32, primary_key=True)
     avatar = TextField(null=True, help_text="avatar base64 string")
@@ -1068,18 +976,6 @@ class CanvasTemplate(DataBaseModel):
         db_table = "canvas_template"
 
 
-class UserCanvasVersion(DataBaseModel):
-    id = CharField(max_length=32, primary_key=True)
-    user_canvas_id = CharField(max_length=255, null=False, help_text="user_canvas_id", index=True)
-
-    title = CharField(max_length=255, null=True, help_text="Canvas title")
-    description = TextField(null=True, help_text="Canvas description")
-    dsl = JSONField(null=True, default={})
-
-    class Meta:
-        db_table = "user_canvas_version"
-
-
 class MCPServer(DataBaseModel):
     id = CharField(max_length=32, primary_key=True)
     name = CharField(max_length=255, null=False, help_text="MCP Server name")
@@ -1092,51 +988,6 @@ class MCPServer(DataBaseModel):
 
     class Meta:
         db_table = "mcp_server"
-
-
-class Search(DataBaseModel):
-    id = CharField(max_length=32, primary_key=True)
-    avatar = TextField(null=True, help_text="avatar base64 string")
-    tenant_id = CharField(max_length=32, null=False, index=True)
-    name = CharField(max_length=128, null=False, help_text="Search name", index=True)
-    description = TextField(null=True, help_text="KB description")
-    created_by = CharField(max_length=32, null=False, index=True)
-    search_config = JSONField(
-        null=False,
-        default={
-            "kb_ids": [],
-            "doc_ids": [],
-            "similarity_threshold": 0.2,
-            "vector_similarity_weight": 0.3,
-            "use_kg": False,
-            # rerank settings
-            "rerank_id": "",
-            "top_k": 1024,
-            # chat settings
-            "summary": False,
-            "chat_id": "",
-            # Leave it here for reference, don't need to set default values
-            "llm_setting": {
-                # "temperature": 0.1,
-                # "top_p": 0.3,
-                # "frequency_penalty": 0.7,
-                # "presence_penalty": 0.4,
-            },
-            "chat_settingcross_languages": [],
-            "highlight": False,
-            "keyword": False,
-            "web_search": False,
-            "related_search": False,
-            "query_mindmap": False,
-        },
-    )
-    status = CharField(max_length=1, null=True, help_text="is it validate(0: wasted, 1: validate)", default="1", index=True)
-
-    def __str__(self):
-        return self.name
-
-    class Meta:
-        db_table = "search"
 
 
 class PipelineOperationLog(DataBaseModel):
@@ -1236,70 +1087,6 @@ class SyncLogs(DataBaseModel):
         db_table = "sync_logs"
 
 
-class EvaluationDataset(DataBaseModel):
-    """Ground truth dataset for RAG evaluation"""
-    id = CharField(max_length=32, primary_key=True)
-    tenant_id = CharField(max_length=32, null=False, index=True, help_text="tenant ID")
-    name = CharField(max_length=255, null=False, index=True, help_text="dataset name")
-    description = TextField(null=True, help_text="dataset description")
-    kb_ids = JSONField(null=False, help_text="knowledge base IDs to evaluate against")
-    created_by = CharField(max_length=32, null=False, index=True, help_text="creator user ID")
-    create_time = BigIntegerField(null=False, index=True, help_text="creation timestamp")
-    update_time = BigIntegerField(null=False, help_text="last update timestamp")
-    status = IntegerField(null=False, default=1, help_text="1=valid, 0=invalid")
-
-    class Meta:
-        db_table = "evaluation_datasets"
-
-
-class EvaluationCase(DataBaseModel):
-    """Individual test case in an evaluation dataset"""
-    id = CharField(max_length=32, primary_key=True)
-    dataset_id = CharField(max_length=32, null=False, index=True, help_text="FK to evaluation_datasets")
-    question = TextField(null=False, help_text="test question")
-    reference_answer = TextField(null=True, help_text="optional ground truth answer")
-    relevant_doc_ids = JSONField(null=True, help_text="expected relevant document IDs")
-    relevant_chunk_ids = JSONField(null=True, help_text="expected relevant chunk IDs")
-    metadata = JSONField(null=True, help_text="additional context/tags")
-    create_time = BigIntegerField(null=False, help_text="creation timestamp")
-
-    class Meta:
-        db_table = "evaluation_cases"
-
-
-class EvaluationRun(DataBaseModel):
-    """A single evaluation run"""
-    id = CharField(max_length=32, primary_key=True)
-    dataset_id = CharField(max_length=32, null=False, index=True, help_text="FK to evaluation_datasets")
-    dialog_id = CharField(max_length=32, null=False, index=True, help_text="dialog configuration being evaluated")
-    name = CharField(max_length=255, null=False, help_text="run name")
-    config_snapshot = JSONField(null=False, help_text="dialog config at time of evaluation")
-    metrics_summary = JSONField(null=True, help_text="aggregated metrics")
-    status = CharField(max_length=32, null=False, default="PENDING", help_text="PENDING/RUNNING/COMPLETED/FAILED")
-    created_by = CharField(max_length=32, null=False, index=True, help_text="user who started the run")
-    create_time = BigIntegerField(null=False, index=True, help_text="creation timestamp")
-    complete_time = BigIntegerField(null=True, help_text="completion timestamp")
-
-    class Meta:
-        db_table = "evaluation_runs"
-
-
-class EvaluationResult(DataBaseModel):
-    """Result for a single test case in an evaluation run"""
-    id = CharField(max_length=32, primary_key=True)
-    run_id = CharField(max_length=32, null=False, index=True, help_text="FK to evaluation_runs")
-    case_id = CharField(max_length=32, null=False, index=True, help_text="FK to evaluation_cases")
-    generated_answer = TextField(null=False, help_text="generated answer")
-    retrieved_chunks = JSONField(null=False, help_text="chunks that were retrieved")
-    metrics = JSONField(null=False, help_text="all computed metrics")
-    execution_time = FloatField(null=False, help_text="response time in seconds")
-    token_usage = JSONField(null=True, help_text="prompt/completion tokens")
-    create_time = BigIntegerField(null=False, help_text="creation timestamp")
-
-    class Meta:
-        db_table = "evaluation_results"
-
-
 class Memory(DataBaseModel):
     id = CharField(max_length=32, primary_key=True)
     name = CharField(max_length=128, null=False, index=False, help_text="Memory name")
@@ -1321,12 +1108,4 @@ class Memory(DataBaseModel):
 
     class Meta:
         db_table = "memory"
-
-class SystemSettings(DataBaseModel):
-    name = CharField(max_length=128, primary_key=True)
-    source = CharField(max_length=32, null=False, index=False)
-    data_type = CharField(max_length=32, null=False, index=False)
-    value = TextField(null=False, help_text="Configuration value (JSON, string, etc.)")
-    class Meta:
-        db_table = "system_settings"
 

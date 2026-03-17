@@ -595,6 +595,242 @@ export async function up(knex: Knex): Promise<void> {
     t.timestamp('update_date').nullable().index()
   })
 
+  // User — RAGFlow user table (separate from Knex `users` table, Peewee-managed)
+  if (!(await knex.schema.hasTable('user'))) {
+    await knex.schema.createTable('user', (t) => {
+      t.string('id', 32).primary()
+      t.string('access_token', 255).nullable().index()
+      t.string('nickname', 100).notNullable().index()
+      t.string('password', 255).nullable().index()
+      t.string('email', 255).notNullable().unique()
+      t.text('avatar').nullable()
+      t.string('language', 32).nullable().defaultTo('English').index()
+      t.string('color_schema', 32).nullable().defaultTo('Bright').index()
+      t.string('timezone', 64).nullable().defaultTo('UTC+8\tAsia/Shanghai').index()
+      t.timestamp('last_login_time').nullable().index()
+      t.string('is_authenticated', 1).notNullable().defaultTo('1').index()
+      t.string('is_active', 1).notNullable().defaultTo('1').index()
+      t.string('is_anonymous', 1).notNullable().defaultTo('0').index()
+      t.string('login_channel', 255).nullable().index()
+      t.string('status', 1).nullable().defaultTo('1').index()
+      t.boolean('is_superuser').nullable().defaultTo(false).index()
+      t.bigInteger('create_time').nullable().index()
+      t.timestamp('create_date').nullable().index()
+      t.bigInteger('update_time').nullable().index()
+      t.timestamp('update_date').nullable().index()
+    })
+  }
+
+  // UserTenant — maps RAGFlow users to tenants (Peewee-managed)
+  if (!(await knex.schema.hasTable('user_tenant'))) {
+    await knex.schema.createTable('user_tenant', (t) => {
+      t.string('id', 32).primary()
+      t.string('user_id', 32).notNullable().index()
+      t.string('tenant_id', 32).notNullable().index()
+      t.string('role', 32).notNullable().index()
+      t.string('invited_by', 32).notNullable().index()
+      t.string('status', 1).nullable().defaultTo('1').index()
+      t.bigInteger('create_time').nullable().index()
+      t.timestamp('create_date').nullable().index()
+      t.bigInteger('update_time').nullable().index()
+      t.timestamp('update_date').nullable().index()
+    })
+  }
+
+  // LLMFactories — LLM provider factory registry (Peewee-managed)
+  if (!(await knex.schema.hasTable('llm_factories'))) {
+    await knex.schema.createTable('llm_factories', (t) => {
+      t.string('name', 128).primary()
+      t.text('logo').nullable()
+      t.string('tags', 255).notNullable().index()
+      t.integer('rank').defaultTo(0)
+      t.string('status', 1).nullable().defaultTo('1').index()
+      t.bigInteger('create_time').nullable().index()
+      t.timestamp('create_date').nullable().index()
+      t.bigInteger('update_time').nullable().index()
+      t.timestamp('update_date').nullable().index()
+    })
+  }
+
+  // LLM — LLM model dictionary with composite primary key (Peewee-managed)
+  if (!(await knex.schema.hasTable('llm'))) {
+    await knex.schema.createTable('llm', (t) => {
+      t.string('llm_name', 128).notNullable().index()
+      t.string('model_type', 128).notNullable().index()
+      t.string('fid', 128).notNullable().index()
+      t.integer('max_tokens').defaultTo(0)
+      t.string('tags', 255).notNullable().index()
+      t.boolean('is_tools').notNullable().defaultTo(false)
+      t.string('status', 1).nullable().defaultTo('1').index()
+      t.bigInteger('create_time').nullable().index()
+      t.timestamp('create_date').nullable().index()
+      t.bigInteger('update_time').nullable().index()
+      t.timestamp('update_date').nullable().index()
+      t.primary(['fid', 'llm_name'])
+    })
+  }
+
+  // TenantLangfuse — Langfuse observability config per tenant (Peewee-managed)
+  if (!(await knex.schema.hasTable('tenant_langfuse'))) {
+    await knex.schema.createTable('tenant_langfuse', (t) => {
+      t.string('tenant_id', 32).primary()
+      t.string('secret_key', 2048).notNullable().index()
+      t.string('public_key', 2048).notNullable().index()
+      t.string('host', 128).notNullable().index()
+      t.bigInteger('create_time').nullable().index()
+      t.timestamp('create_date').nullable().index()
+      t.bigInteger('update_time').nullable().index()
+      t.timestamp('update_date').nullable().index()
+    })
+  }
+
+  // UserCanvas — user-created canvas workflows (Peewee-managed)
+  if (!(await knex.schema.hasTable('user_canvas'))) {
+    await knex.schema.createTable('user_canvas', (t) => {
+      t.string('id', 32).primary()
+      t.text('avatar').nullable()
+      t.string('user_id', 255).notNullable().index()
+      t.string('title', 255).nullable()
+      t.string('permission', 16).notNullable().defaultTo('me').index()
+      t.boolean('release').notNullable().defaultTo(false).index()
+      t.text('description').nullable()
+      t.string('canvas_type', 32).nullable().index()
+      t.string('canvas_category', 32).notNullable().defaultTo('agent_canvas').index()
+      t.text('dsl').nullable()
+      t.bigInteger('create_time').nullable().index()
+      t.timestamp('create_date').nullable().index()
+      t.bigInteger('update_time').nullable().index()
+      t.timestamp('update_date').nullable().index()
+    })
+  }
+
+  // CanvasTemplate — predefined canvas templates (Peewee-managed)
+  if (!(await knex.schema.hasTable('canvas_template'))) {
+    await knex.schema.createTable('canvas_template', (t) => {
+      t.string('id', 32).primary()
+      t.text('avatar').nullable()
+      t.text('title').nullable()
+      t.text('description').nullable()
+      t.string('canvas_type', 32).nullable().index()
+      t.string('canvas_category', 32).notNullable().defaultTo('agent_canvas').index()
+      t.text('dsl').nullable()
+      t.bigInteger('create_time').nullable().index()
+      t.timestamp('create_date').nullable().index()
+      t.bigInteger('update_time').nullable().index()
+      t.timestamp('update_date').nullable().index()
+    })
+  }
+
+  // MCPServer — MCP server configurations per tenant (Peewee-managed)
+  if (!(await knex.schema.hasTable('mcp_server'))) {
+    await knex.schema.createTable('mcp_server', (t) => {
+      t.string('id', 32).primary()
+      t.string('name', 255).notNullable()
+      t.string('tenant_id', 32).notNullable().index()
+      t.string('url', 2048).notNullable()
+      t.string('server_type', 32).notNullable()
+      t.text('description').nullable()
+      t.text('variables').nullable()
+      t.text('headers').nullable()
+      t.bigInteger('create_time').nullable().index()
+      t.timestamp('create_date').nullable().index()
+      t.bigInteger('update_time').nullable().index()
+      t.timestamp('update_date').nullable().index()
+    })
+  }
+
+  // PipelineOperationLog — tracks pipeline execution history (Peewee-managed)
+  if (!(await knex.schema.hasTable('pipeline_operation_log'))) {
+    await knex.schema.createTable('pipeline_operation_log', (t) => {
+      t.string('id', 32).primary()
+      t.string('document_id', 32).index()
+      t.string('tenant_id', 32).notNullable().index()
+      t.string('kb_id', 32).notNullable().index()
+      t.string('pipeline_id', 32).nullable().index()
+      t.string('pipeline_title', 32).nullable().index()
+      t.string('parser_id', 32).notNullable().index()
+      t.string('document_name', 255).notNullable()
+      t.string('document_suffix', 255).notNullable()
+      t.string('document_type', 255).notNullable()
+      t.string('source_from', 255).notNullable()
+      t.float('progress').defaultTo(0).index()
+      t.text('progress_msg').nullable().defaultTo('')
+      t.timestamp('process_begin_at').nullable().index()
+      t.float('process_duration').defaultTo(0)
+      t.text('dsl').nullable()
+      t.string('task_type', 32).notNullable().defaultTo('')
+      t.string('operation_status', 32).notNullable()
+      t.text('avatar').nullable()
+      t.string('status', 1).nullable().defaultTo('1').index()
+      t.bigInteger('create_time').nullable().index()
+      t.timestamp('create_date').nullable().index()
+      t.bigInteger('update_time').nullable().index()
+      t.timestamp('update_date').nullable().index()
+    })
+  }
+
+  // Connector — data source connector configs (Peewee-managed, separate from Knex `connectors`)
+  if (!(await knex.schema.hasTable('connector'))) {
+    await knex.schema.createTable('connector', (t) => {
+      t.string('id', 32).primary()
+      t.string('tenant_id', 32).notNullable().index()
+      t.string('name', 128).notNullable()
+      t.string('source', 128).notNullable().index()
+      t.string('input_type', 128).notNullable().index()
+      t.text('config').notNullable().defaultTo('{}')
+      t.integer('refresh_freq').defaultTo(0)
+      t.integer('prune_freq').defaultTo(0)
+      t.integer('timeout_secs').defaultTo(3600)
+      t.timestamp('indexing_start').nullable().index()
+      t.string('status', 16).nullable().defaultTo('schedule').index()
+      t.bigInteger('create_time').nullable().index()
+      t.timestamp('create_date').nullable().index()
+      t.bigInteger('update_time').nullable().index()
+      t.timestamp('update_date').nullable().index()
+    })
+  }
+
+  // Connector2Kb — join table linking connectors to knowledge bases (Peewee-managed)
+  if (!(await knex.schema.hasTable('connector2kb'))) {
+    await knex.schema.createTable('connector2kb', (t) => {
+      t.string('id', 32).primary()
+      t.string('connector_id', 32).notNullable().index()
+      t.string('kb_id', 32).notNullable().index()
+      t.string('auto_parse', 1).notNullable().defaultTo('1')
+      t.bigInteger('create_time').nullable().index()
+      t.timestamp('create_date').nullable().index()
+      t.bigInteger('update_time').nullable().index()
+      t.timestamp('update_date').nullable().index()
+    })
+  }
+
+  // Memory — AI memory storage configurations (Peewee-managed)
+  if (!(await knex.schema.hasTable('memory'))) {
+    await knex.schema.createTable('memory', (t) => {
+      t.string('id', 32).primary()
+      t.string('name', 128).notNullable()
+      t.text('avatar').nullable()
+      t.string('tenant_id', 32).notNullable().index()
+      t.integer('memory_type').notNullable().defaultTo(1).index()
+      t.string('storage_type', 32).notNullable().defaultTo('table').index()
+      t.string('embd_id', 128).notNullable()
+      t.text('tenant_embd_id').nullable().index()
+      t.string('llm_id', 128).notNullable()
+      t.text('tenant_llm_id').nullable().index()
+      t.string('permissions', 16).notNullable().defaultTo('me').index()
+      t.text('description').nullable()
+      t.integer('memory_size').notNullable().defaultTo(5242880)
+      t.string('forgetting_policy', 32).notNullable().defaultTo('FIFO')
+      t.float('temperature').defaultTo(0.5)
+      t.text('system_prompt').nullable()
+      t.text('user_prompt').nullable()
+      t.bigInteger('create_time').nullable().index()
+      t.timestamp('create_date').nullable().index()
+      t.bigInteger('update_time').nullable().index()
+      t.timestamp('update_date').nullable().index()
+    })
+  }
+
   // ──────────────────────────────────────────────
   // 9b. RAG pipeline tables (depends on users)
   // ──────────────────────────────────────────────
@@ -1040,6 +1276,18 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists('datasets')
 
   // Peewee-managed tables
+  await knex.schema.dropTableIfExists('memory')
+  await knex.schema.dropTableIfExists('connector2kb')
+  await knex.schema.dropTableIfExists('connector')
+  await knex.schema.dropTableIfExists('pipeline_operation_log')
+  await knex.schema.dropTableIfExists('mcp_server')
+  await knex.schema.dropTableIfExists('canvas_template')
+  await knex.schema.dropTableIfExists('user_canvas')
+  await knex.schema.dropTableIfExists('tenant_langfuse')
+  await knex.schema.dropTableIfExists('llm')
+  await knex.schema.dropTableIfExists('llm_factories')
+  await knex.schema.dropTableIfExists('user_tenant')
+  await knex.schema.dropTableIfExists('user')
   await knex.schema.dropTableIfExists('task')
   await knex.schema.dropTableIfExists('file2document')
   await knex.schema.dropTableIfExists('file')
