@@ -171,3 +171,4 @@ advance-rag/**/*.pt
 advance-rag/**/*.pth
 
 worktrees
+.claude/settings.local.json
