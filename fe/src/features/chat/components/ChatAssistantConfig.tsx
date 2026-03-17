@@ -39,13 +39,13 @@ import type { MetadataFilter } from '@/components/metadata-filter/metadata-filte
 const LANGUAGE_OPTIONS = [
   { value: '', label: 'Auto' },
   { value: 'en', label: 'English' },
-  { value: 'vi', label: 'Ti\u1EBFng Vi\u1EC7t' },
-  { value: 'ja', label: '\u65E5\u672C\u8A9E' },
-  { value: 'zh', label: '\u4E2D\u6587' },
-  { value: 'ko', label: '\uD55C\uAD6D\uC5B4' },
-  { value: 'fr', label: 'Fran\u00E7ais' },
+  { value: 'vi', label: 'Tiếng Việt' },
+  { value: 'ja', label: '日本語' },
+  { value: 'zh', label: '中文' },
+  { value: 'ko', label: '한국어' },
+  { value: 'fr', label: 'Français' },
   { value: 'de', label: 'Deutsch' },
-  { value: 'es', label: 'Espa\u00F1ol' },
+  { value: 'es', label: 'Español' },
 ] as const
 
 // ============================================================================

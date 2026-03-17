@@ -47,6 +47,9 @@ def bulk_insert_into_db(model, data_source, replace_on_conflict=False):
     """
     DB.create_tables([model])
 
+    if not data_source:
+        return
+
     # Stamp each record with creation and update timestamps
     for i, data in enumerate(data_source):
         current_time = current_timestamp() + i

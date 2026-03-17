@@ -299,9 +299,10 @@ function SearchAppConfig({
                 ))
               )}
             </div>
-            {/* Embedding model mismatch warning */}
             {hasEmbeddingMismatch && (
-              <p className="text-xs text-destructive">{t('searchAdmin.embeddingMismatchWarning')}</p>
+              <p className="text-xs text-destructive">
+                {t('searchAdmin.embeddingMismatchWarning')}
+              </p>
             )}
           </div>
 
@@ -339,7 +340,12 @@ function SearchAppConfig({
           </div>
 
           {/* Rerank model dropdown + conditional Top K slider */}
-          <RerankSelector rerankId={rerankId} topK={rerankTopK} onRerankChange={setRerankId} onTopKChange={setRerankTopK} />
+          <RerankSelector
+            rerankId={rerankId}
+            topK={rerankTopK}
+            onRerankChange={setRerankId}
+            onTopKChange={setRerankTopK}
+          />
 
           {/* Metadata Filter */}
           <Separator />
@@ -362,13 +368,26 @@ function SearchAppConfig({
             </div>
             <Switch checked={enableSummary} onCheckedChange={setEnableSummary} />
           </div>
+
+          {/* LLM model selector and parameter fields (only when summary is enabled) */}
           {enableSummary && (
             <>
               <div className="space-y-1.5">
                 <Label>{t('searchAdmin.llmModel')}</Label>
-                <ModelSelector modelType="chat" value={llmId} onChange={setLlmId} placeholder={t('searchAdmin.llmModelPlaceholder')} />
+                <ModelSelector
+                  modelType="chat"
+                  value={llmId}
+                  onChange={setLlmId}
+                  placeholder={t('searchAdmin.llmModelPlaceholder')}
+                />
               </div>
-              <LlmSettingFields value={llmSetting} onChange={setLlmSetting} showFields={['temperature', 'top_p', 'presence_penalty', 'frequency_penalty']} />
+
+              {/* LLM settings with presets -- no max_tokens for search summary */}
+              <LlmSettingFields
+                value={llmSetting}
+                onChange={setLlmSetting}
+                showFields={['temperature', 'top_p', 'presence_penalty', 'frequency_penalty']}
+              />
             </>
           )}
 

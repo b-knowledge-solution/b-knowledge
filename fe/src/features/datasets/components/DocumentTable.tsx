@@ -9,7 +9,7 @@
 
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Play, Trash2, Eye, XCircle, Settings2, Globe } from 'lucide-react'
+import { Play, Trash2, XCircle, Settings2, Globe } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -41,8 +41,7 @@ interface DocumentTableProps {
   onParse: (docId: string) => void
   /** Callback to delete a single document */
   onDelete: (docId: string) => void
-  /** Optional callback to open document viewer */
-  onView?: (doc: Document) => void
+
   /** Optional callback to toggle document availability */
   onToggleAvailability?: (docId: string, enabled: boolean) => void
   /** Optional callback for bulk parse/cancel operations */
@@ -115,7 +114,6 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
   isAdmin,
   onParse,
   onDelete,
-  onView,
   onToggleAvailability,
   onBulkParse,
   onBulkDelete,
@@ -327,18 +325,7 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
                   {isAdmin && (
                     <TableCell>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {onView && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onView(doc)}>
-                                  <Eye size={14} />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>{t('datasets.viewDocument', 'View')}</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
+
                         {/* Change Parser button — disabled while parsing */}
                         {onChangeParser && (
                           <TooltipProvider>

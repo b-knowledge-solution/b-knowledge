@@ -57,10 +57,8 @@ const DatasetDetailPage: React.FC = () => {
   // State for web crawl dialog
   const [webCrawlOpen, setWebCrawlOpen] = useState(false);
 
-  /** Open the document preview sheet for the selected document */
-  const handleViewDocument = (doc: Document) => {
-    setPreviewDoc(doc)
-  }
+
+
 
   // Fetch documents for this dataset with all CRUD operations
   const { documents, loading: loadingDocs, uploading, refresh, uploadFiles, deleteDocument, parseDocument, toggleAvailability, bulkParse, bulkDelete } = useDocuments(id);
@@ -76,8 +74,10 @@ const DatasetDetailPage: React.FC = () => {
   }
 
   /** Confirm parser change and close the dialog */
-  const handleConfirmChangeParser = async (docId: string, parserId: string) => {
-    await changeParserMutation.mutateAsync({ docId, parser_id: parserId })
+  const handleConfirmChangeParser = async (docId: string, parserId: string, parserConfig?: Record<string, unknown>) => {
+    const payload: { docId: string; parser_id: string; parser_config?: Record<string, unknown> } = { docId, parser_id: parserId }
+    if (parserConfig) payload.parser_config = parserConfig
+    await changeParserMutation.mutateAsync(payload)
     setParserDialogOpen(false)
     setParserDialogDoc(null)
   }
@@ -251,7 +251,6 @@ const DatasetDetailPage: React.FC = () => {
               isAdmin={isAdmin}
               onParse={parseDocument}
               onDelete={deleteDocument}
-              onView={handleViewDocument}
               onToggleAvailability={toggleAvailability}
               onBulkParse={bulkParse}
               onBulkDelete={bulkDelete}

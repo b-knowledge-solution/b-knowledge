@@ -397,8 +397,22 @@ def queue_tasks(doc: dict, bucket: str, name: str, priority: int):
 
     parse_task_array = []
 
+    # Fetch file binary from storage — bail early if bucket or name is missing
+    file_bin = None
+    if doc["type"] == FileType.PDF.value or doc["parser_id"] == "table":
+        if not bucket and not name:
+            logging.error(f"queue_tasks: empty bucket and name for doc {doc['id']}, cannot fetch file from storage")
+            raise ValueError(f"Cannot resolve storage address for document {doc['id']}: both bucket and name are empty")
+        try:
+            file_bin = settings.STORAGE_IMPL.get(bucket, name)
+        except Exception as e:
+            logging.exception(f"queue_tasks: failed to fetch file from storage for doc {doc['id']}: {e}")
+            raise
+        if file_bin is None:
+            logging.error(f"queue_tasks: file_bin is None for doc {doc['id']} (bucket={bucket!r}, name={name!r})")
+            raise ValueError(f"Failed to retrieve file from storage for document {doc['id']}")
+
     if doc["type"] == FileType.PDF.value:
-        file_bin = settings.STORAGE_IMPL.get(bucket, name)
         do_layout = doc["parser_config"].get("layout_recognize", "DeepDOC")
         pages = PdfParser.total_page_number(doc["name"], file_bin)
         if pages is None:
@@ -420,7 +434,6 @@ def queue_tasks(doc: dict, bucket: str, name: str, priority: int):
                 parse_task_array.append(task)
 
     elif doc["parser_id"] == "table":
-        file_bin = settings.STORAGE_IMPL.get(bucket, name)
         rn = RAGFlowExcelParser.row_number(doc["name"], file_bin)
         for i in range(0, rn, 3000):
             task = new_task()
@@ -461,6 +474,9 @@ def queue_tasks(doc: dict, bucket: str, name: str, priority: int):
                                          chunking_config["kb_id"])
     DocumentService.update_by_id(doc["id"], {"chunk_num": ck_num})
 
+    if not parse_task_array:
+        logging.warning(f"queue_tasks: no tasks generated for doc {doc['id']}, skipping insert")
+        return
     bulk_insert_into_db(Task, parse_task_array, True)
     DocumentService.begin2parse(doc["id"])
 

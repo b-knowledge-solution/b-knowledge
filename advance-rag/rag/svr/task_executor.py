@@ -73,7 +73,7 @@ import exceptiongroup
 import faulthandler
 import numpy as np
 from peewee import DoesNotExist
-from common.constants import LLMType, ParserType, PipelineTaskType
+from common.constants import LLMType, ParserType, PipelineTaskType, TaskStatus
 from db.services.document_service import DocumentService
 from db.services.doc_metadata_service import DocMetadataService
 from db.services.llm_service import LLMBundle
@@ -263,6 +263,15 @@ async def collect():
                 logging.warning(f"parse_init: document {doc_id} not found")
         except Exception as ex:
             logging.exception(f"parse_init failed for doc {msg.get('doc_id')}: {ex}")
+            # Mark document as failed so user sees the error in UI
+            try:
+                DocumentService.update_by_id(doc_id, {
+                    "run": TaskStatus.FAIL.value,
+                    "progress_msg": f"Parse initialization failed: {ex}",
+                    "progress": -1,
+                })
+            except Exception:
+                logging.exception(f"parse_init: failed to update doc {doc_id} status after error")
         redis_msg.ack()
         return None, None
 
@@ -1398,6 +1407,16 @@ async def handle_task():
                 e = e.exceptions[0]
                 err_msg += ' -- ' + str(e)
             set_progress(task_id, prog=-1, msg=f"[Exception]: {err_msg}")
+            # Immediately sync failed task status to the Document table
+            # so the frontend sees the error on its next poll cycle (~5s)
+            try:
+                doc_id = task.get("doc_id", "")
+                if doc_id and doc_id not in [GRAPH_RAPTOR_FAKE_DOC_ID, CANVAS_DEBUG_DOC_ID]:
+                    ok, doc = DocumentService.get_by_id(doc_id)
+                    if ok and doc:
+                        DocumentService.update_progress_immediately([doc.to_dict()])
+            except Exception:
+                logging.exception(f"Failed to sync progress to Document table for task {task_id}")
         except Exception as e:
             logging.exception(f"[Exception]: {str(e)}")
             pass
