@@ -429,7 +429,174 @@ export async function up(knex: Knex): Promise<void> {
   })
 
   // ──────────────────────────────────────────────
-  // 9. RAG pipeline tables (depends on users)
+  // 9a. Peewee-managed tables (shared with advance-rag Python worker)
+  // ──────────────────────────────────────────────
+
+  const SYSTEM_TENANT_ID = (
+    process.env['SYSTEM_TENANT_ID'] || '00000000000000000000000000000001'
+  ).replace(/-/g, '')
+
+  // Tenant — system tenant record (single-tenant mode)
+  await knex.schema.createTable('tenant', (t) => {
+    t.string('id', 32).primary()
+    t.string('name', 100).nullable().index()
+    t.string('public_key', 255).nullable().index()
+    t.string('llm_id', 128).notNullable().defaultTo('').index()
+    t.text('tenant_llm_id').nullable().index()
+    t.string('embd_id', 128).notNullable().defaultTo('').index()
+    t.text('tenant_embd_id').nullable().index()
+    t.string('asr_id', 128).notNullable().defaultTo('').index()
+    t.text('tenant_asr_id').nullable().index()
+    t.string('img2txt_id', 128).notNullable().defaultTo('').index()
+    t.text('tenant_img2txt_id').nullable().index()
+    t.string('rerank_id', 128).notNullable().defaultTo('').index()
+    t.text('tenant_rerank_id').nullable().index()
+    t.string('tts_id', 256).nullable().index()
+    t.text('tenant_tts_id').nullable().index()
+    t.string('parser_ids', 256).notNullable().defaultTo('').index()
+    t.integer('credit').defaultTo(512).index()
+    t.string('status', 1).nullable().defaultTo('1').index()
+    t.bigInteger('create_time').nullable().index()
+    t.timestamp('create_date').nullable().index()
+    t.bigInteger('update_time').nullable().index()
+    t.timestamp('update_date').nullable().index()
+  })
+
+  // Seed system tenant
+  await knex('tenant').insert({
+    id: SYSTEM_TENANT_ID,
+    name: 'system',
+    llm_id: '',
+    embd_id: '',
+    asr_id: '',
+    img2txt_id: '',
+    rerank_id: '',
+    tts_id: '',
+    parser_ids: 'naive:General,qa:Q&A,table:Table,paper:Paper,book:Book,laws:Laws,presentation:Presentation,picture:Picture,one:One,audio:Audio,email:Email',
+    credit: 9999999,
+    status: '1',
+    create_time: Date.now(),
+    create_date: new Date(),
+    update_time: Date.now(),
+    update_date: new Date(),
+  })
+
+  // Knowledgebase — dataset/knowledge base metadata (Peewee-managed)
+  await knex.schema.createTable('knowledgebase', (t) => {
+    t.string('id', 32).primary()
+    t.text('avatar').nullable()
+    t.string('tenant_id', 32).notNullable().index()
+    t.string('name', 128).notNullable().index()
+    t.string('language', 32).nullable().defaultTo('English').index()
+    t.text('description').nullable()
+    t.string('embd_id', 128).notNullable().defaultTo('').index()
+    t.text('tenant_embd_id').nullable().index()
+    t.string('permission', 16).notNullable().defaultTo('me').index()
+    t.string('created_by', 32).notNullable().index()
+    t.integer('doc_num').defaultTo(0).index()
+    t.integer('token_num').defaultTo(0).index()
+    t.integer('chunk_num').defaultTo(0).index()
+    t.float('similarity_threshold').defaultTo(0.2).index()
+    t.float('vector_similarity_weight').defaultTo(0.3).index()
+    t.string('parser_id', 32).notNullable().defaultTo('naive').index()
+    t.string('pipeline_id', 32).nullable().index()
+    t.jsonb('parser_config').notNullable().defaultTo('{"pages":[[1,1000000]],"table_context_size":0,"image_context_size":0}')
+    t.integer('pagerank').defaultTo(0)
+    t.string('graphrag_task_id', 32).nullable().index()
+    t.timestamp('graphrag_task_finish_at').nullable()
+    t.string('raptor_task_id', 32).nullable().index()
+    t.timestamp('raptor_task_finish_at').nullable()
+    t.string('mindmap_task_id', 32).nullable().index()
+    t.timestamp('mindmap_task_finish_at').nullable()
+    t.string('status', 1).nullable().defaultTo('1').index()
+    t.bigInteger('create_time').nullable().index()
+    t.timestamp('create_date').nullable().index()
+    t.bigInteger('update_time').nullable().index()
+    t.timestamp('update_date').nullable().index()
+  })
+
+  // Document — document records for RAG processing (Peewee-managed)
+  await knex.schema.createTable('document', (t) => {
+    t.string('id', 32).primary()
+    t.text('thumbnail').nullable()
+    t.string('kb_id', 256).notNullable().index()
+    t.string('parser_id', 32).notNullable().index()
+    t.string('pipeline_id', 32).nullable().index()
+    t.jsonb('parser_config').notNullable().defaultTo('{"pages":[[1,1000000]],"table_context_size":0,"image_context_size":0}')
+    t.string('source_type', 128).notNullable().defaultTo('local').index()
+    t.string('type', 32).notNullable().index()
+    t.string('created_by', 32).notNullable().index()
+    t.string('name', 255).nullable().index()
+    t.string('location', 255).nullable().index()
+    t.integer('size').defaultTo(0).index()
+    t.integer('token_num').defaultTo(0).index()
+    t.integer('chunk_num').defaultTo(0).index()
+    t.float('progress').defaultTo(0).index()
+    t.text('progress_msg').nullable().defaultTo('')
+    t.timestamp('process_begin_at').nullable().index()
+    t.float('process_duration').defaultTo(0)
+    t.string('suffix', 32).notNullable().defaultTo('').index()
+    t.string('content_hash', 32).nullable().defaultTo('').index()
+    t.string('run', 1).nullable().defaultTo('0').index()
+    t.string('status', 1).nullable().defaultTo('1').index()
+    t.string('source_url', 2048).nullable()
+    t.bigInteger('create_time').nullable().index()
+    t.timestamp('create_date').nullable().index()
+    t.bigInteger('update_time').nullable().index()
+    t.timestamp('update_date').nullable().index()
+  })
+
+  // File — file metadata (S3 storage references, Peewee-managed)
+  await knex.schema.createTable('file', (t) => {
+    t.string('id', 32).primary()
+    t.string('parent_id', 32).notNullable().index()
+    t.string('tenant_id', 32).notNullable().index()
+    t.string('created_by', 32).notNullable().index()
+    t.string('name', 255).notNullable().index()
+    t.string('location', 255).nullable().index()
+    t.integer('size').defaultTo(0).index()
+    t.string('type', 32).notNullable().index()
+    t.string('source_type', 128).notNullable().defaultTo('').index()
+    t.bigInteger('create_time').nullable().index()
+    t.timestamp('create_date').nullable().index()
+    t.bigInteger('update_time').nullable().index()
+    t.timestamp('update_date').nullable().index()
+  })
+
+  // File2Document — join table linking files to documents (Peewee-managed)
+  await knex.schema.createTable('file2document', (t) => {
+    t.string('id', 32).primary()
+    t.string('file_id', 32).nullable().index()
+    t.string('document_id', 32).nullable().index()
+    t.bigInteger('create_time').nullable().index()
+    t.timestamp('create_date').nullable().index()
+    t.bigInteger('update_time').nullable().index()
+    t.timestamp('update_date').nullable().index()
+  })
+
+  // Task — RAG processing task queue (Peewee-managed)
+  await knex.schema.createTable('task', (t) => {
+    t.string('id', 32).primary()
+    t.string('doc_id', 32).notNullable().index()
+    t.integer('from_page').defaultTo(0)
+    t.integer('to_page').defaultTo(100000000)
+    t.string('task_type', 32).notNullable().defaultTo('')
+    t.integer('priority').defaultTo(0)
+    t.timestamp('begin_at').nullable().index()
+    t.float('process_duration').defaultTo(0)
+    t.float('progress').defaultTo(0).index()
+    t.text('progress_msg').nullable().defaultTo('')
+    t.integer('retry_count').defaultTo(0)
+    t.text('digest').nullable().defaultTo('')
+    t.text('chunk_ids').nullable().defaultTo('')
+    t.bigInteger('create_time').nullable().index()
+    t.timestamp('create_date').nullable().index()
+    t.bigInteger('update_time').nullable().index()
+    t.timestamp('update_date').nullable().index()
+  })
+
+  // ──────────────────────────────────────────────
+  // 9b. RAG pipeline tables (depends on users)
   // ──────────────────────────────────────────────
 
   // Datasets - system-level resource with IAM access control
@@ -483,7 +650,7 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('model_providers', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
     table.string('factory_name', 128).notNullable()
-    table.string('model_type', 32).notNullable()
+    table.string('model_type', 128).notNullable()
     table.string('model_name', 128).notNullable()
     table.text('api_key')
     table.string('api_base', 512)
@@ -492,14 +659,20 @@ export async function up(knex: Knex): Promise<void> {
     table.boolean('vision').defaultTo(false).notNullable()
     table.string('status', 16).defaultTo('active')
     table.boolean('is_default').defaultTo(false)
+    // Tenant scoping (single-tenant default, future multi-tenant ready)
+    table.string('tenant_id', 32).notNullable().defaultTo(
+      (process.env['SYSTEM_TENANT_ID'] || '00000000000000000000000000000001').replace(/-/g, '')
+    )
+    // Cumulative token usage tracked by advance-rag worker
+    table.integer('used_tokens').notNullable().defaultTo(0)
     table.text('created_by').references('id').inTable('users').onDelete('SET NULL')
     table.text('updated_by').references('id').inTable('users').onDelete('SET NULL')
     table.timestamps(true, true)
   })
-  // Partial unique index — only active rows must have unique (factory_name, model_name)
+  // Partial unique index — only active rows must have unique (tenant_id, factory_name, model_name)
   await knex.raw(`
-    CREATE UNIQUE INDEX model_providers_factory_model_active_unique
-    ON model_providers (factory_name, model_name)
+    CREATE UNIQUE INDEX model_providers_tenant_factory_model_active_unique
+    ON model_providers (tenant_id, factory_name, model_name)
     WHERE status = 'active'
   `)
 
@@ -798,34 +971,6 @@ export async function up(knex: Knex): Promise<void> {
   })
 
   // ──────────────────────────────────────────────
-  // Section 13 – Alter Peewee-managed tables (Python RAGFlow ORM)
-  // ──────────────────────────────────────────────
-
-  // Add source_url to the Peewee 'document' table for web-crawled document tracking
-  const hasDocumentTable = await knex.schema.hasTable('document')
-  if (hasDocumentTable) {
-    const hasSourceUrl = await knex.schema.hasColumn('document', 'source_url')
-    if (!hasSourceUrl) {
-      await knex.schema.alterTable('document', (table) => {
-        table.string('source_url', 2048).nullable()
-      })
-    }
-  }
-
-  // Fix file records: set source_type='knowledgebase' and parent_id for files
-  // created by the Node.js backend with empty values (prevents empty bucket name errors)
-  const hasFileTable = await knex.schema.hasTable('file')
-  if (hasFileTable) {
-    await knex('file')
-      .where('source_type', '')
-      .orWhereNull('source_type')
-      .update({
-        source_type: 'knowledgebase',
-        parent_id: '00000000000000000000000000000001',
-      })
-  }
-
-  // ──────────────────────────────────────────────
   // Section 14 – Encrypt existing plaintext API keys
   // ──────────────────────────────────────────────
   // On a fresh database this is a no-op (no rows to encrypt).
@@ -846,25 +991,6 @@ export async function up(knex: Knex): Promise<void> {
       .update({ api_key: encrypted })
   }
 
-  // Encrypt tenant_llm rows (shared table read by Python workers)
-  // Table is managed by Python RAGFlow ORM — may not exist on fresh installs
-  const hasTenantLlm = await knex.schema.hasTable('tenant_llm')
-  if (hasTenantLlm) {
-    const tenantLlms = await knex('tenant_llm')
-      .select('id', 'api_key')
-      .whereNotNull('api_key')
-      .andWhereNot('api_key', '')
-
-    for (const row of tenantLlms) {
-      // Skip if already encrypted
-      if (row.api_key.startsWith('enc:')) continue
-
-      const encrypted = cryptoService.encrypt(row.api_key)
-      await knex('tenant_llm')
-        .where('id', row.id)
-        .update({ api_key: encrypted })
-    }
-  }
 }
 
 /**
@@ -890,21 +1016,6 @@ export async function down(knex: Knex): Promise<void> {
     }
   }
 
-  const hasTenantLlm = await knex.schema.hasTable('tenant_llm')
-  if (hasTenantLlm) {
-    const tenantLlms = await knex('tenant_llm')
-      .select('id', 'api_key')
-      .whereNotNull('api_key')
-      .andWhere('api_key', 'like', 'enc:%')
-
-    for (const row of tenantLlms) {
-      const decrypted = cryptoService.decrypt(row.api_key)
-      await knex('tenant_llm')
-        .where('id', row.id)
-        .update({ api_key: decrypted })
-    }
-  }
-
   // Project tables (reverse dependency order)
   await knex.schema.dropTableIfExists('project_sync_configs')
   await knex.schema.dropTableIfExists('project_datasets')
@@ -923,9 +1034,18 @@ export async function down(knex: Knex): Promise<void> {
 
   // RAG pipeline
   await knex.raw('DROP INDEX IF EXISTS datasets_name_active_unique')
+  await knex.raw('DROP INDEX IF EXISTS model_providers_tenant_factory_model_active_unique')
   await knex.schema.dropTableIfExists('model_providers')
   await knex.schema.dropTableIfExists('documents')
   await knex.schema.dropTableIfExists('datasets')
+
+  // Peewee-managed tables
+  await knex.schema.dropTableIfExists('task')
+  await knex.schema.dropTableIfExists('file2document')
+  await knex.schema.dropTableIfExists('file')
+  await knex.schema.dropTableIfExists('document')
+  await knex.schema.dropTableIfExists('knowledgebase')
+  await knex.schema.dropTableIfExists('tenant')
 
   // Glossary
   await knex.schema.dropTableIfExists('glossary_keywords')

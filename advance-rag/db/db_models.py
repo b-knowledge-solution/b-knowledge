@@ -28,6 +28,7 @@ import os
 import sys
 import time
 import typing
+import uuid
 from datetime import datetime, timezone
 from enum import Enum
 from functools import wraps
@@ -745,17 +746,17 @@ class Tenant(DataBaseModel):
     name = CharField(max_length=100, null=True, help_text="Tenant name", index=True)
     public_key = CharField(max_length=255, null=True, index=True)
     llm_id = CharField(max_length=128, null=False, help_text="default llm ID", index=True)
-    tenant_llm_id = IntegerField(null=True, help_text="id in tenant_llm", index=True)
+    tenant_llm_id = CharField(max_length=36, null=True, help_text="id in model_providers", index=True)
     embd_id = CharField(max_length=128, null=False, help_text="default embedding model ID", index=True)
-    tenant_embd_id = IntegerField(null=True, help_text="id in tenant_llm", index=True)
+    tenant_embd_id = CharField(max_length=36, null=True, help_text="id in model_providers", index=True)
     asr_id = CharField(max_length=128, null=False, help_text="default ASR model ID", index=True)
-    tenant_asr_id = IntegerField(null=True, help_text="id in tenant_llm", index=True)
+    tenant_asr_id = CharField(max_length=36, null=True, help_text="id in model_providers", index=True)
     img2txt_id = CharField(max_length=128, null=False, help_text="default image to text model ID", index=True)
-    tenant_img2txt_id = IntegerField(null=True, help_text="id in tenant_llm", index=True)
+    tenant_img2txt_id = CharField(max_length=36, null=True, help_text="id in model_providers", index=True)
     rerank_id = CharField(max_length=128, null=False, help_text="default rerank model ID", index=True)
-    tenant_rerank_id = IntegerField(null=True, help_text="id in tenant_llm", index=True)
+    tenant_rerank_id = CharField(max_length=36, null=True, help_text="id in model_providers", index=True)
     tts_id = CharField(max_length=256, null=True, help_text="default tts model ID", index=True)
-    tenant_tts_id = IntegerField(null=True, help_text="id in tenant_llm", index=True)
+    tenant_tts_id = CharField(max_length=36, null=True, help_text="id in model_providers", index=True)
     parser_ids = CharField(max_length=256, null=False, help_text="document processors", index=True)
     credit = IntegerField(default=512, index=True)
     status = CharField(max_length=1, null=True, help_text="is it validate(0: wasted, 1: validate)", default="1", index=True)
@@ -822,26 +823,33 @@ class LLM(DataBaseModel):
 
 
 class TenantLLM(DataBaseModel):
-    id = PrimaryKeyField()
+    """LLM model provider configuration shared with the Node.js backend.
+
+    Maps to the ``model_providers`` table (Knex-managed). Column aliasing
+    via ``column_name`` lets Python code keep using ``llm_factory`` /
+    ``llm_name`` while the actual SQL columns are ``factory_name`` /
+    ``model_name``.
+    """
+    id = CharField(max_length=36, primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = CharField(max_length=32, null=False, index=True)
-    llm_factory = CharField(max_length=128, null=False, help_text="LLM factory name", index=True)
-    model_type = CharField(max_length=128, null=True, help_text="LLM, Text Embedding, Image2Text, ASR", index=True)
-    llm_name = CharField(max_length=128, null=True, help_text="LLM name", default="", index=True)
-    api_key = TextField(null=True, help_text="API KEY")
-    api_base = CharField(max_length=255, null=True, help_text="API Base")
-    max_tokens = IntegerField(default=8192, help_text="Max context token num", index=True)
-    used_tokens = IntegerField(default=0, help_text="Used token num", index=True)
-    vision = BooleanField(null=True, help_text="Whether this chat model supports vision", default=False)
-    status = CharField(max_length=1, null=False, help_text="is it validate(0: wasted, 1: validate)", default="1", index=True)
+    llm_factory = CharField(max_length=128, null=False, column_name='factory_name', index=True)
+    model_type = CharField(max_length=128, null=True, index=True)
+    llm_name = CharField(max_length=128, null=True, column_name='model_name', default="", index=True)
+    api_key = TextField(null=True)
+    api_base = CharField(max_length=512, null=True)
+    max_tokens = IntegerField(default=0, index=True)
+    used_tokens = IntegerField(default=0, index=True)
+    vision = BooleanField(null=True, default=False)
+    is_default = BooleanField(null=True, default=False)
+    status = CharField(max_length=16, null=False, default="active", index=True)
+    created_by = CharField(max_length=255, null=True, column_name='created_by')
+    updated_by = CharField(max_length=255, null=True, column_name='updated_by')
 
     def __str__(self):
         return self.llm_name
 
     class Meta:
-        db_table = "tenant_llm"
-        indexes = (
-            (("tenant_id", "llm_factory", "llm_name"), True),
-        )
+        db_table = "model_providers"
 
 
 class TenantLangfuse(DataBaseModel):
@@ -865,7 +873,7 @@ class Knowledgebase(DataBaseModel):
     language = CharField(max_length=32, null=True, default="Chinese" if "zh_CN" in os.getenv("LANG", "") else "English", help_text="English|Chinese", index=True)
     description = TextField(null=True, help_text="KB description")
     embd_id = CharField(max_length=128, null=False, help_text="default embedding model ID", index=True)
-    tenant_embd_id = IntegerField(null=True, help_text="id in tenant_llm", index=True)
+    tenant_embd_id = CharField(max_length=36, null=True, help_text="id in model_providers", index=True)
     permission = CharField(max_length=16, null=False, help_text="me|team", default="me", index=True)
     created_by = CharField(max_length=32, null=False, index=True)
     doc_num = IntegerField(default=0, index=True)

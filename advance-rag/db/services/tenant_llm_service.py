@@ -347,11 +347,11 @@ class TenantLLMService(CommonService):
 
     @classmethod
     @DB.connection_context()
-    def increase_usage_by_id(cls, tenant_model_id: int, used_tokens: int):
+    def increase_usage_by_id(cls, tenant_model_id, used_tokens: int):
         """Increment the used_tokens counter by TenantLLM record ID.
 
         Args:
-            tenant_model_id (int): The TenantLLM auto-increment ID.
+            tenant_model_id: The model_providers UUID string ID.
             used_tokens (int): Number of tokens to add.
 
         Returns:

@@ -24,7 +24,6 @@ import { GlossaryKeywordModel } from '@/modules/glossary/models/glossary-keyword
 import { DatasetModel } from '@/modules/rag/models/dataset.model.js';
 import { DocumentModel } from '@/modules/rag/models/document.model.js';
 import { ModelProviderModel } from '@/modules/rag/models/model-provider.model.js';
-import { TenantLlmModel } from '@/modules/llm-provider/models/tenant-llm.model.js';
 import { KnowledgebaseModel } from '@/modules/rag/models/knowledgebase.model.js';
 import { RagDocumentModel } from '@/modules/rag/models/rag-document.model.js';
 import { RagFileModel } from '@/modules/rag/models/rag-file.model.js';
@@ -109,8 +108,6 @@ export class ModelFactory {
   private static documentModel: DocumentModel;
   /** Model provider model singleton instance */
   private static modelProviderModel: ModelProviderModel;
-  /** TenantLlm model singleton instance */
-  private static tenantLlmModel: TenantLlmModel;
   /** Knowledgebase (Peewee) model singleton instance */
   private static knowledgebaseModel: KnowledgebaseModel;
   /** RagDocument (Peewee) model singleton instance */
@@ -367,17 +364,6 @@ export class ModelFactory {
     // Create instance on first access (lazy initialization)
     if (!this.modelProviderModel) this.modelProviderModel = new ModelProviderModel();
     return this.modelProviderModel;
-  }
-
-  /**
-   * Get the TenantLlm model singleton.
-   * Manages the shared tenant_llm table read by Python task executors.
-   * @returns TenantLlmModel instance for tenant LLM config operations
-   */
-  static get tenantLlm() {
-    // Create instance on first access (lazy initialization)
-    if (!this.tenantLlmModel) this.tenantLlmModel = new TenantLlmModel();
-    return this.tenantLlmModel;
   }
 
   /**

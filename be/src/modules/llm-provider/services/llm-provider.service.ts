@@ -1,5 +1,5 @@
 /**
- * @fileoverview Service for managing LLM provider configurations with encryption, tenant sync, and connection testing.
+ * @fileoverview Service for managing LLM provider configurations with encryption and connection testing.
  * @module modules/llm-provider/services/llm-provider
  */
 import { ModelFactory } from '@/shared/models/factory.js';
@@ -115,13 +115,6 @@ export class LlmProviderService {
             });
         }
 
-        // Sync to shared tenant_llm table (used by task executors)
-        try {
-            await ModelFactory.tenantLlm.syncFromProvider(provider);
-        } catch (err) {
-            log.warn('Failed to sync model provider to tenant_llm', { error: String(err) });
-        }
-
         if (user) {
             await auditService.log({
                 userId: user.id,
@@ -138,7 +131,7 @@ export class LlmProviderService {
     }
 
     /**
-     * @description Update an existing model provider and sync changes to tenant_llm
+     * @description Update an existing model provider
      * @param {string} id - Provider UUID
      * @param {any} data - Fields to update
      * @param {UserContext} user - Optional user context for audit trail
@@ -165,12 +158,6 @@ export class LlmProviderService {
         const provider = await ModelFactory.modelProvider.update(id, updateData);
         if (!provider) return undefined;
 
-        try {
-            await ModelFactory.tenantLlm.syncFromProvider(provider);
-        } catch (err) {
-            log.warn('Failed to sync model provider update to tenant_llm', { error: String(err) });
-        }
-
         if (user) {
             await auditService.log({
                 userId: user.id,
@@ -187,26 +174,14 @@ export class LlmProviderService {
     }
 
     /**
-     * @description Soft-delete a model provider and remove its tenant_llm sync row
+     * @description Soft-delete a model provider by setting its status to 'deleted'
      * @param {string} id - Provider UUID
      * @param {UserContext} user - Optional user context for audit trail
      * @returns {Promise<void>}
      */
     async delete(id: string, user?: UserContext): Promise<void> {
-        // Fetch the provider before soft-deleting so we have the composite key
-        const provider = await ModelFactory.modelProvider.findById(id);
-
         // Soft-delete the model_providers row
         await ModelFactory.modelProvider.update(id, { status: 'deleted' });
-
-        // Remove the corresponding tenant_llm row so Python workers stop using it
-        if (provider) {
-            try {
-                await ModelFactory.tenantLlm.deleteByProvider(provider);
-            } catch (err) {
-                log.warn('Failed to remove tenant_llm row on provider delete', { error: String(err) });
-            }
-        }
 
         if (user) {
             await auditService.log({
