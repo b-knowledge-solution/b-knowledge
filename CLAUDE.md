@@ -239,6 +239,7 @@ These apply to **both** `be/src/modules/` and `fe/src/features/`:
 - Config access only through `config` object, never `process.env`
 - Knex ORM for all models; raw SQL only when Knex cannot support the query
 - Migration naming: `YYYYMMDDhhmmss_<name>.ts`
+- **All DB migrations through Knex** — including schema changes to Peewee-managed tables (`document`, `knowledgebase`, `task`, `file`, `tenant_llm`, etc.). Never use Peewee migrators. The backend owns the migration lifecycle; Python workers only read/write data via their ORM.
 
 ### Frontend Conventions (details in `fe/CLAUDE.md`)
 

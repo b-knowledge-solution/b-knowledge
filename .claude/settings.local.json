@@ -67,7 +67,8 @@
       "Bash(winget install:*)",
       "Bash(cd:*)",
       "Bash(for wt:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   },
   "sandbox": {
