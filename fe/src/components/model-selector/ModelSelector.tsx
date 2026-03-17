@@ -40,8 +40,9 @@ export function ModelSelector({ modelType, value, onChange, placeholder, disable
 
   // Group models by factory_name for optgroup rendering
   const groups = models.reduce<Record<string, PublicModelProvider[]>>((acc, m) => {
-    if (!acc[m.factory_name]) acc[m.factory_name] = []
-    acc[m.factory_name].push(m)
+    const group = acc[m.factory_name] ?? []
+    group.push(m)
+    acc[m.factory_name] = group
     return acc
   }, {})
 

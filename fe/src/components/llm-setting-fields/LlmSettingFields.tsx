@@ -5,7 +5,7 @@
  */
 import { useTranslation } from 'react-i18next'
 import { SliderWithToggle } from './SliderWithToggle'
-import { LLM_PRESETS, detectPreset, type PresetName } from './llm-presets'
+import { LLM_PRESETS, detectPreset, type PresetName, type LlmPreset } from './llm-presets'
 
 /** All configurable parameter names */
 type ParamField = 'temperature' | 'top_p' | 'frequency_penalty' | 'presence_penalty' | 'max_tokens'
@@ -67,14 +67,14 @@ export function LlmSettingFields({ value, onChange, showFields }: LlmSettingFiel
   const { t } = useTranslation()
   const visibleFields = showFields ?? (['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'max_tokens'] as ParamField[])
 
-  // Detect which preset currently matches
-  const currentPreset = detectPreset({
-    temperature: value.temperature,
-    top_p: value.top_p,
-    frequency_penalty: value.frequency_penalty,
-    presence_penalty: value.presence_penalty,
-    max_tokens: value.max_tokens,
-  })
+  // Detect which preset currently matches — build object without undefined values
+  const presetParams: Partial<LlmPreset> = {}
+  if (value.temperature !== undefined) presetParams.temperature = value.temperature
+  if (value.top_p !== undefined) presetParams.top_p = value.top_p
+  if (value.frequency_penalty !== undefined) presetParams.frequency_penalty = value.frequency_penalty
+  if (value.presence_penalty !== undefined) presetParams.presence_penalty = value.presence_penalty
+  if (value.max_tokens !== undefined) presetParams.max_tokens = value.max_tokens
+  const currentPreset = detectPreset(presetParams)
 
   /**
    * Apply a preset -- sets all parameter values and enables all toggles.
