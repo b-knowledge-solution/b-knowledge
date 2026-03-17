@@ -470,11 +470,16 @@ export class RagDocumentService {
      * @param docId - Document ID to cancel
      */
     async cancelParse(docId: string): Promise<void> {
-        await ModelFactory.ragDocument.update(docId, {
-            run: '2',
-            progress: 0,
-            progress_msg: '',
-        });
+        try {
+            await ModelFactory.ragDocument.update(docId, {
+                run: '2',
+                progress: 0,
+                progress_msg: '',
+            });
+        } catch (err) {
+            log.error('Failed to cancel parse', { docId, error: String(err) });
+            throw err;
+        }
     }
 
     /**

@@ -529,10 +529,21 @@ export class RagController {
 
         const { doc_ids, run } = req.body as { doc_ids: string[]; run: number };
 
+        // Validate inputs to prevent crashes from malformed request body
+        if (!Array.isArray(doc_ids) || doc_ids.length === 0) {
+            res.status(400).json({ error: 'doc_ids must be a non-empty array' });
+            return;
+        }
+        if (run !== 1 && run !== 2) {
+            res.status(400).json({ error: 'run must be 1 (parse) or 2 (cancel)' });
+            return;
+        }
+
         try {
             const results: { doc_id: string; status: string }[] = [];
 
             for (const docId of doc_ids) {
+                if (!docId || typeof docId !== 'string') continue;
                 const doc = await ragDocumentService.getDocument(docId);
                 if (!doc) continue;
 
