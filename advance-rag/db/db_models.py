@@ -698,30 +698,34 @@ def fill_db_model_object(model_object, human_model_dict):
 
 
 class User(DataBaseModel, AuthUser):
-    id = CharField(max_length=32, primary_key=True)
+    """User account shared with the Node.js backend.
+
+    Maps to the ``users`` table (Knex-managed). Column aliasing lets
+    Python code keep using ``nickname`` / ``password`` while the actual
+    SQL columns are ``display_name`` / ``password_hash``.
+    """
+    id = CharField(max_length=255, primary_key=True)
     access_token = CharField(max_length=255, null=True, index=True)
-    nickname = CharField(max_length=100, null=False, help_text="nicky name", index=True)
-    password = CharField(max_length=255, null=True, help_text="password", index=True)
-    email = CharField(max_length=255, null=False, help_text="email", unique=True)
-    avatar = TextField(null=True, help_text="avatar base64 string")
-    language = CharField(max_length=32, null=True, help_text="English|Chinese", default="Chinese" if "zh_CN" in os.getenv("LANG", "") else "English", index=True)
-    color_schema = CharField(max_length=32, null=True, help_text="Bright|Dark", default="Bright", index=True)
-    timezone = CharField(max_length=64, null=True, help_text="Timezone", default="UTC+8\tAsia/Shanghai", index=True)
+    nickname = CharField(max_length=255, null=False, column_name='display_name', index=True)
+    password = CharField(max_length=255, null=True, column_name='password_hash')
+    email = CharField(max_length=255, null=False, unique=True)
+    avatar = TextField(null=True)
+    language = CharField(max_length=32, null=True, default="English")
+    color_schema = CharField(max_length=32, null=True, default="Bright")
+    timezone = CharField(max_length=64, null=True)
     last_login_time = DateTimeField(null=True, index=True)
     is_authenticated = CharField(max_length=1, null=False, default="1", index=True)
     is_active = CharField(max_length=1, null=False, default="1", index=True)
     is_anonymous = CharField(max_length=1, null=False, default="0", index=True)
-    login_channel = CharField(null=True, help_text="from which user login", index=True)
-    status = CharField(max_length=1, null=True, help_text="is it validate(0: wasted, 1: validate)", default="1", index=True)
-    is_superuser = BooleanField(null=True, help_text="is root", default=False, index=True)
+    login_channel = CharField(null=True, index=True)
+    status = CharField(max_length=1, null=True, default="1", index=True)
+    is_superuser = BooleanField(null=True, default=False, index=True)
 
     def __str__(self):
         return self.email
 
-
-
     class Meta:
-        db_table = "user"
+        db_table = "users"
 
 
 class Tenant(DataBaseModel):
