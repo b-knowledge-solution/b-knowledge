@@ -148,10 +148,11 @@ export class RagDocumentModel {
      */
     async beginParse(docId: string): Promise<void> {
         await this.update(docId, {
-            // Small random progress (0-1%) signals "queued" state in the UI
+            // Reset progress for fresh parse — clears previous error state on retry
             progress: Math.random() * 0.01,
             progress_msg: 'Task is queued...',
             process_begin_at: nowDatetime(),
+            process_duration: 0,
             run: '1',
         });
     }
