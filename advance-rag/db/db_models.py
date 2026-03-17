@@ -983,7 +983,7 @@ class Dialog(DataBaseModel):
     icon = TextField(null=True, help_text="icon base64 string")
     language = CharField(max_length=32, null=True, default="Chinese" if "zh_CN" in os.getenv("LANG", "") else "English", help_text="English|Chinese", index=True)
     llm_id = CharField(max_length=128, null=False, help_text="default llm ID")
-    tenant_llm_id = IntegerField(null=True, help_text="id in tenant_llm", index=True)
+    tenant_llm_id = CharField(max_length=36, null=True, help_text="id in model_providers", index=True)
 
     llm_setting = JSONField(null=False, default={"temperature": 0.1, "top_p": 0.3, "frequency_penalty": 0.7, "presence_penalty": 0.4, "max_tokens": 512})
     prompt_type = CharField(max_length=16, null=False, default="simple", help_text="simple|advanced", index=True)
@@ -1003,7 +1003,7 @@ class Dialog(DataBaseModel):
     do_refer = CharField(max_length=1, null=False, default="1", help_text="it needs to insert reference index into answer or not")
 
     rerank_id = CharField(max_length=128, null=False, help_text="default rerank model ID")
-    tenant_rerank_id = IntegerField(null=True, help_text="id in tenant_llm", index=True)
+    tenant_rerank_id = CharField(max_length=36, null=True, help_text="id in model_providers", index=True)
     kb_ids = JSONField(null=False, default=[])
     status = CharField(max_length=1, null=True, help_text="is it validate(0: wasted, 1: validate)", default="1", index=True)
 
@@ -1325,9 +1325,9 @@ class Memory(DataBaseModel):
     memory_type = IntegerField(null=False, default=1, index=True, help_text="Bit flags (LSB->MSB): 1=raw, 2=semantic, 4=episodic, 8=procedural. E.g., 5 enables raw + episodic.")
     storage_type = CharField(max_length=32, default='table', null=False, index=True, help_text="table|graph")
     embd_id = CharField(max_length=128, null=False, index=False, help_text="embedding model ID")
-    tenant_embd_id = IntegerField(null=True, help_text="id in tenant_llm", index=True)
+    tenant_embd_id = CharField(max_length=36, null=True, help_text="id in model_providers", index=True)
     llm_id = CharField(max_length=128, null=False, index=False, help_text="chat model ID")
-    tenant_llm_id = IntegerField(null=True, help_text="id in tenant_llm", index=True)
+    tenant_llm_id = CharField(max_length=36, null=True, help_text="id in model_providers", index=True)
     permissions = CharField(max_length=16, null=False, index=True, help_text="me|team", default="me")
     description = TextField(null=True, help_text="description")
     memory_size = IntegerField(default=5242880, null=False, index=False)
@@ -1449,7 +1449,13 @@ def migrate_add_unique_email(migrator):
 
 
 def update_tenant_llm_to_id_primary_key():
-    """Add ID and set to primary key step by step."""
+    """Legacy migration: add ID primary key to old tenant_llm table.
+
+    Skipped when tenant_llm no longer exists (merged into model_providers).
+    """
+    # Skip if tenant_llm table doesn't exist (merged into model_providers)
+    if not DB.table_exists('tenant_llm'):
+        return
     is_postgres = settings.DATABASE_TYPE.upper() == "POSTGRES"
     try:
         with DB.atomic():

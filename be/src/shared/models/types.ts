@@ -719,31 +719,6 @@ export interface ModelProvider {
 }
 
 /**
- * @description TenantLlm interface representing a row in the shared 'tenant_llm' table.
- * This table is read by Python task executors to load LLM provider configs.
- */
-export interface TenantLlm {
-    /** Primary key (hex UUID without hyphens) */
-    id: string;
-    /** Tenant UUID this config belongs to */
-    tenant_id: string;
-    /** LLM provider factory name (e.g., 'OpenAI', 'Azure') */
-    llm_factory: string;
-    /** Model type (e.g., 'chat', 'embedding') */
-    model_type: string;
-    /** Model identifier (e.g., 'gpt-4o') */
-    llm_name: string;
-    /** API key for the provider */
-    api_key: string;
-    /** Optional custom API base URL */
-    api_base: string;
-    /** Maximum tokens allowed */
-    max_tokens: number;
-    /** Whether this chat model supports vision (image understanding) */
-    vision?: boolean;
-}
-
-/**
  * @description Result of glossary bulk import operation.
  */
 export interface BulkImportGlossaryResult {

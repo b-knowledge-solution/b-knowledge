@@ -134,7 +134,7 @@ export class LlmProviderController {
     }
 
     /**
-     * @description Soft-delete an LLM provider and remove its tenant_llm sync row
+     * @description Soft-delete an LLM provider
      * @param {Request} req - Express request with provider ID param
      * @param {Response} res - Express response object
      * @returns {Promise<void>}
