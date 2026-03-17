@@ -500,12 +500,13 @@ class RedisDB:
                     group_info = self.REDIS.xinfo_groups(queue_name)
                 except Exception as e:
                     if str(e) == 'no such key':
-                        logging.warning(f"RedisDB.get_unacked_iterator queue {queue_name} doesn't exist")
+                        # Stream doesn't exist yet — created on first task publish
+                        logging.debug(f"RedisDB.get_unacked_iterator queue {queue_name} doesn't exist yet")
                     else:
                         logging.warning(f"RedisDB.get_unacked_iterator queue {queue_name} error: {e}")
                     continue
                 if not any(gi["name"] == group_name for gi in group_info):
-                    logging.warning(f"RedisDB.get_unacked_iterator queue {queue_name} group {group_name} doesn't exist")
+                    logging.debug(f"RedisDB.get_unacked_iterator queue {queue_name} group {group_name} doesn't exist yet")
                     continue
                 current_min = 0
                 while True:
@@ -553,6 +554,10 @@ class RedisDB:
                     if group["name"] == group_name:
                         return group
             except Exception as e:
+                if 'no such key' in str(e).lower():
+                    # Stream doesn't exist yet — created on first task publish
+                    logging.debug("RedisDB.queue_info %s doesn't exist yet", queue)
+                    return None
                 logging.warning(
                     "RedisDB.queue_info " + str(queue) + " got exception: " + str(e)
                 )
