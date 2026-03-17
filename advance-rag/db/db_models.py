@@ -42,7 +42,6 @@ from peewee import (
     fn,
     InterfaceError,
     OperationalError,
-    ProgrammingError,
     BigIntegerField,
     BooleanField,
     CharField,
@@ -56,7 +55,6 @@ from peewee import (
     TextField,
     PrimaryKeyField,
 )
-from playhouse.migrate import MySQLMigrator, PostgresqlMigrator, migrate
 from playhouse.pool import PooledMySQLDatabase, PooledPostgresqlDatabase
 
 from db import SerializedType
@@ -497,11 +495,6 @@ class PooledDatabase(Enum):
     POSTGRES = RetryingPooledPostgresqlDatabase
 
 
-class DatabaseMigrator(Enum):
-    MYSQL = MySQLMigrator
-    OCEANBASE = MySQLMigrator
-    POSTGRES = PostgresqlMigrator
-
 
 @singleton
 class BaseDataBase:
@@ -680,30 +673,20 @@ class DataBaseModel(BaseModel):
 
 
 @DB.connection_context()
-@DB.lock("init_database_tables", 60)
 def init_database_tables(alter_fields=[]):
+    """Verify that expected tables exist in the database.
+
+    All table creation and schema migrations are managed by the Node.js
+    backend via Knex migrations.  This function only logs which tables
+    are present so that startup issues are easier to diagnose.
+    """
     members = inspect.getmembers(sys.modules[__name__], inspect.isclass)
-    table_objs = []
-    create_failed_list = []
     for name, obj in members:
         if obj != DataBaseModel and issubclass(obj, DataBaseModel):
-            table_objs.append(obj)
-
-            if not obj.table_exists():
-                logging.debug(f"start create table {obj.__name__}")
-                try:
-                    obj.create_table(safe=True)
-                    logging.debug(f"create table success: {obj.__name__}")
-                except Exception as e:
-                    logging.exception(e)
-                    create_failed_list.append(obj.__name__)
+            if obj.table_exists():
+                logging.debug(f"table {obj.__name__} exists.")
             else:
-                logging.debug(f"table {obj.__name__} already exists, skip creation.")
-
-    if create_failed_list:
-        logging.error(f"create tables failed: {create_failed_list}")
-        raise Exception(f"create tables failed: {create_failed_list}")
-    migrate_db()
+                logging.warning(f"table {obj.__name__} ({obj._meta.table_name}) does not exist — run backend migrations first.")
 
 
 def fill_db_model_object(model_object, human_model_dict):
@@ -1347,234 +1330,3 @@ class SystemSettings(DataBaseModel):
     class Meta:
         db_table = "system_settings"
 
-def alter_db_add_column(migrator, table_name, column_name, column_type):
-    try:
-        migrate(migrator.add_column(table_name, column_name, column_type))
-    except OperationalError as ex:
-        error_codes = [1060]
-        error_messages = ['Duplicate column name']
-
-        should_skip_error = (
-                (hasattr(ex, 'args') and ex.args and ex.args[0] in error_codes) or
-                (str(ex) in error_messages)
-        )
-
-        if not should_skip_error:
-            logging.critical(f"Failed to add {settings.DATABASE_TYPE.upper()}.{table_name} column {column_name}, operation error: {ex}")
-
-    except Exception as ex:
-        # PostgreSQL raises ProgrammingError with "already exists" — skip silently
-        if "already exists" in str(ex).lower():
-            pass
-        else:
-            logging.critical(f"Failed to add {settings.DATABASE_TYPE.upper()}.{table_name} column {column_name}, error: {ex}")
-            pass
-
-def alter_db_column_type(migrator, table_name, column_name, new_column_type):
-    try:
-        migrate(migrator.alter_column_type(table_name, column_name, new_column_type))
-    except Exception as ex:
-        logging.critical(f"Failed to alter {settings.DATABASE_TYPE.upper()}.{table_name} column {column_name} type, error: {ex}")
-        pass
-
-def alter_db_rename_column(migrator, table_name, old_column_name, new_column_name):
-    try:
-        migrate(migrator.rename_column(table_name, old_column_name, new_column_name))
-    except Exception:
-        # rename fail will lead to a weired error.
-        # logging.critical(f"Failed to rename {settings.DATABASE_TYPE.upper()}.{table_name} column {old_column_name} to {new_column_name}, error: {ex}")
-        pass
-
-def migrate_add_unique_email(migrator):
-    """Deduplicates user emails and add UNIQUE constraint to email column (idempotent)"""
-    is_postgres = settings.DATABASE_TYPE.upper() == "POSTGRES"
-    # step 0: check if UNIQUE index on email already exists
-    try:
-        if is_postgres:
-            cursor = DB.execute_sql("""
-                SELECT COUNT(*)
-                FROM pg_indexes
-                WHERE tablename = 'user'
-                  AND indexname = 'user_email'
-            """)
-        else:
-            cursor = DB.execute_sql("""
-                SELECT COUNT(*)
-                FROM information_schema.statistics
-                WHERE table_schema = DATABASE()
-                  AND table_name = 'user'
-                  AND index_name = 'user_email'
-                  AND non_unique = 0
-            """)
-        result = cursor.fetchone()
-        if result and result[0] > 0:
-            logging.info("UNIQUE index on user.email already exists, skipping migration")
-            return
-    except Exception as ex:
-        logging.warning("Failed to check if UNIQUE index exists on user.email: %s, continuing with migration", ex)
-
-    # step 1: rename duplicate rows so the UNIQUE constraint can be applied
-    try:
-        duplicates = User.select(User.email).group_by(User.email).having(fn.COUNT(User.id) > 1).tuples()
-        for (dup_email,) in duplicates:
-            # Keep the superuser row, or the oldest row if there is no superuser
-            rows = list(
-                User
-                    .select(User.id)
-                    .where(User.email == dup_email)
-                    .order_by(User.is_superuser.desc(), User.create_time.asc())
-                    .tuples()
-            )
-            for (uid,) in rows[1:]:
-                new_email = f"{dup_email}_DUPLICATE_{uid[:8]}"
-                User.update(email=new_email).where(User.id == uid).execute()
-                logging.warning("Renamed duplicate user %s email to %s during migration", uid, new_email)
-    except Exception as ex:
-        logging.critical("Failed to deduplicate user.email before adding UNIQUE constraint: %s", ex)
-        return
-
-    # step 2: add UNIQUE index via migrator
-    try:
-        migrate(migrator.add_index("user", ("email",), unique=True))
-    except (OperationalError, ProgrammingError) as ex:
-        msg = str(ex)
-        # MySQL 1061 "Duplicate key name" or PostgreSQL "already exists" -> already migrated
-        if "1061" in msg or "Duplicate key name" in msg or "already exists" in msg.lower():
-            pass
-        else:
-            logging.critical("Failed to add UNIQUE constraint on user.email: %s", ex)
-    except Exception as ex:
-        logging.critical("Failed to add UNIQUE constraint on user.email: %s", ex)
-
-
-
-def update_tenant_llm_to_id_primary_key():
-    """Legacy migration: add ID primary key to old tenant_llm table.
-
-    Skipped when tenant_llm no longer exists (merged into model_providers).
-    """
-    # Skip if tenant_llm table doesn't exist (merged into model_providers)
-    if not DB.table_exists('tenant_llm'):
-        return
-    is_postgres = settings.DATABASE_TYPE.upper() == "POSTGRES"
-    try:
-        with DB.atomic():
-            # 0. Check if 'id' column already exists
-            if is_postgres:
-                cursor = DB.execute_sql("""
-                    SELECT column_name
-                    FROM information_schema.columns
-                    WHERE table_name = 'tenant_llm'
-                      AND column_name = 'id'
-                """)
-            else:
-                cursor = DB.execute_sql("""
-                    SELECT COLUMN_NAME
-                    FROM INFORMATION_SCHEMA.COLUMNS
-                    WHERE TABLE_SCHEMA = DATABASE()
-                      AND TABLE_NAME = 'tenant_llm'
-                      AND COLUMN_NAME = 'id'
-                """)
-            if cursor.fetchone():
-                return
-
-            if is_postgres:
-                # PostgreSQL: add a SERIAL column as new primary key
-                DB.execute_sql("ALTER TABLE tenant_llm DROP CONSTRAINT IF EXISTS tenant_llm_pkey")
-                DB.execute_sql("ALTER TABLE tenant_llm ADD COLUMN id SERIAL PRIMARY KEY")
-                DB.execute_sql("""
-                    ALTER TABLE tenant_llm
-                    ADD CONSTRAINT uk_tenant_llm UNIQUE (tenant_id, llm_factory, llm_name)
-                """)
-            else:
-                # MySQL path
-                DB.execute_sql("ALTER TABLE tenant_llm ADD COLUMN temp_id INT NULL")
-                DB.execute_sql("SET @row = 0;")
-                DB.execute_sql("UPDATE tenant_llm SET temp_id = (@row := @row + 1) ORDER BY tenant_id, llm_factory, llm_name;")
-                DB.execute_sql("ALTER TABLE tenant_llm DROP PRIMARY KEY")
-                DB.execute_sql("ALTER TABLE tenant_llm MODIFY COLUMN temp_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY")
-                DB.execute_sql("ALTER TABLE tenant_llm ADD CONSTRAINT uk_tenant_llm UNIQUE (tenant_id, llm_factory, llm_name)")
-                DB.execute_sql("ALTER TABLE tenant_llm RENAME COLUMN temp_id TO id")
-
-            logging.info("Successfully updated tenant_llm to id primary key.")
-
-    except Exception as e:
-        logging.error(str(e))
-        if not is_postgres:
-            try:
-                cursor = DB.execute_sql("""
-                    SELECT COLUMN_NAME
-                    FROM INFORMATION_SCHEMA.COLUMNS
-                    WHERE TABLE_SCHEMA = DATABASE()
-                      AND TABLE_NAME = 'tenant_llm'
-                      AND COLUMN_NAME = 'temp_id'
-                """)
-                if cursor.rowcount > 0:
-                    DB.execute_sql("ALTER TABLE tenant_llm DROP COLUMN temp_id")
-            except Exception:
-                pass
-
-
-def migrate_db():
-    logging.disable(logging.ERROR)
-    migrator = DatabaseMigrator[settings.DATABASE_TYPE.upper()].value(DB)
-    alter_db_add_column(migrator, "file", "source_type", CharField(max_length=128, null=False, default="", help_text="where dose this document come from", index=True))
-    alter_db_add_column(migrator, "tenant", "rerank_id", CharField(max_length=128, null=False, default="BAAI/bge-reranker-v2-m3", help_text="default rerank model ID"))
-    alter_db_add_column(migrator, "dialog", "rerank_id", CharField(max_length=128, null=False, default="", help_text="default rerank model ID"))
-    alter_db_column_type(migrator, "dialog", "top_k", IntegerField(default=1024))
-    alter_db_add_column(migrator, "api_token", "source", CharField(max_length=16, null=True, help_text="none|agent|dialog", index=True))
-    alter_db_add_column(migrator, "tenant", "tts_id", CharField(max_length=256, null=True, help_text="default tts model ID", index=True))
-    alter_db_add_column(migrator, "api_4_conversation", "source", CharField(max_length=16, null=True, help_text="none|agent|dialog", index=True))
-    alter_db_add_column(migrator, "task", "retry_count", IntegerField(default=0))
-    alter_db_column_type(migrator, "api_token", "dialog_id", CharField(max_length=32, null=True, index=True))
-    alter_db_add_column(migrator, "api_4_conversation", "dsl", JSONField(null=True, default={}))
-    alter_db_add_column(migrator, "knowledgebase", "pagerank", IntegerField(default=0, index=False))
-    alter_db_add_column(migrator, "api_token", "beta", CharField(max_length=255, null=True, index=True))
-    alter_db_add_column(migrator, "task", "digest", TextField(null=True, help_text="task digest", default=""))
-    alter_db_add_column(migrator, "task", "chunk_ids", LongTextField(null=True, help_text="chunk ids", default=""))
-    alter_db_add_column(migrator, "conversation", "user_id", CharField(max_length=255, null=True, help_text="user_id", index=True))
-    alter_db_add_column(migrator, "task", "task_type", CharField(max_length=32, null=False, default=""))
-    alter_db_add_column(migrator, "task", "priority", IntegerField(default=0))
-    alter_db_add_column(migrator, "user_canvas", "permission", CharField(max_length=16, null=False, help_text="me|team", default="me", index=True))
-    alter_db_add_column(migrator, "user_canvas", "release", BooleanField(null=False, help_text="is released", default=False, index=True))
-    alter_db_add_column(migrator, "llm", "is_tools", BooleanField(null=False, help_text="support tools", default=False))
-    alter_db_add_column(migrator, "mcp_server", "variables", JSONField(null=True, help_text="MCP Server variables", default=dict))
-    alter_db_rename_column(migrator, "task", "process_duation", "process_duration")
-    alter_db_rename_column(migrator, "document", "process_duation", "process_duration")
-    alter_db_add_column(migrator, "document", "suffix", CharField(max_length=32, null=False, default="", help_text="The real file extension suffix", index=True))
-    alter_db_add_column(migrator, "api_4_conversation", "errors", TextField(null=True, help_text="errors"))
-    alter_db_add_column(migrator, "dialog", "meta_data_filter", JSONField(null=True, default={}))
-    alter_db_column_type(migrator, "canvas_template", "title", JSONField(null=True, default=dict, help_text="Canvas title"))
-    alter_db_column_type(migrator, "canvas_template", "description", JSONField(null=True, default=dict, help_text="Canvas description"))
-    alter_db_add_column(migrator, "user_canvas", "canvas_category", CharField(max_length=32, null=False, default="agent_canvas", help_text="agent_canvas|dataflow_canvas", index=True))
-    alter_db_add_column(migrator, "canvas_template", "canvas_category", CharField(max_length=32, null=False, default="agent_canvas", help_text="agent_canvas|dataflow_canvas", index=True))
-    alter_db_add_column(migrator, "knowledgebase", "pipeline_id", CharField(max_length=32, null=True, help_text="Pipeline ID", index=True))
-    alter_db_add_column(migrator, "document", "pipeline_id", CharField(max_length=32, null=True, help_text="Pipeline ID", index=True))
-    alter_db_add_column(migrator, "knowledgebase", "graphrag_task_id", CharField(max_length=32, null=True, help_text="Gragh RAG task ID", index=True))
-    alter_db_add_column(migrator, "knowledgebase", "raptor_task_id", CharField(max_length=32, null=True, help_text="RAPTOR task ID", index=True))
-    alter_db_add_column(migrator, "knowledgebase", "graphrag_task_finish_at", DateTimeField(null=True))
-    alter_db_add_column(migrator, "knowledgebase", "raptor_task_finish_at", CharField(null=True))
-    alter_db_add_column(migrator, "knowledgebase", "mindmap_task_id", CharField(max_length=32, null=True, help_text="Mindmap task ID", index=True))
-    alter_db_add_column(migrator, "knowledgebase", "mindmap_task_finish_at", CharField(null=True))
-    alter_db_add_column(migrator, "connector2kb", "auto_parse", CharField(max_length=1, null=False, default="1", index=False))
-    alter_db_add_column(migrator, "llm_factories", "rank", IntegerField(default=0, index=False))
-    alter_db_add_column(migrator, "api_4_conversation", "name", CharField(max_length=255, null=True, help_text="conversation name", index=False))
-    alter_db_add_column(migrator, "api_4_conversation", "exp_user_id", CharField(max_length=255, null=True, help_text="exp_user_id", index=True))
-    # Migrate system_settings.value from CharField to TextField for longer sandbox configs
-    alter_db_column_type(migrator, "system_settings", "value", TextField(null=False, help_text="Configuration value (JSON, string, etc.)"))
-    alter_db_add_column(migrator, "document", "content_hash", CharField(max_length=32, null=True, help_text="xxhash128 of document content for change detection", default="", index=True))
-    update_tenant_llm_to_id_primary_key()
-    alter_db_add_column(migrator, "tenant", "tenant_llm_id", IntegerField(null=True, help_text="id in tenant_llm", index=True))
-    alter_db_add_column(migrator, "tenant", "tenant_embd_id", IntegerField(null=True, help_text="id in tenant_llm", index=True))
-    alter_db_add_column(migrator, "tenant", "tenant_asr_id", IntegerField(null=True, help_text="id in tenant_llm", index=True))
-    alter_db_add_column(migrator, "tenant", "tenant_img2txt_id", IntegerField(null=True, help_text="id in tenant_llm", index=True))
-    alter_db_add_column(migrator, "tenant", "tenant_rerank_id", IntegerField(null=True, help_text="id in tenant_llm", index=True))
-    alter_db_add_column(migrator, "tenant", "tenant_tts_id", IntegerField(null=True, help_text="id in tenant_llm", index=True))
-    alter_db_add_column(migrator, "knowledgebase", "tenant_embd_id", IntegerField(null=True, help_text="id in tenant_llm", index=True))
-    alter_db_add_column(migrator, "dialog", "tenant_llm_id", IntegerField(null=True, help_text="id in tenant_llm", index=True))
-    alter_db_add_column(migrator, "dialog", "tenant_rerank_id", IntegerField(null=True, help_text="id in tenant_llm", index=True))
-    alter_db_add_column(migrator, "memory", "tenant_embd_id", IntegerField(null=True, help_text="id in tenant_llm", index=True))
-    alter_db_add_column(migrator, "memory", "tenant_llm_id", IntegerField(null=True, help_text="id in tenant_llm", index=True))
-    logging.disable(logging.NOTSET)
-    # this is after re-enabling logging to allow logging changed user emails
-    migrate_add_unique_email(migrator)
