@@ -616,11 +616,11 @@ export async function up(knex: Knex): Promise<void> {
   // UserTenant — maps RAGFlow users to tenants (Peewee-managed)
   if (!(await knex.schema.hasTable('user_tenant'))) {
     await knex.schema.createTable('user_tenant', (t) => {
-      t.string('id', 32).primary()
-      t.string('user_id', 32).notNullable().index()
-      t.string('tenant_id', 32).notNullable().index()
+      t.text('id').primary()
+      t.text('user_id').notNullable().index()
+      t.text('tenant_id').notNullable().index()
       t.string('role', 32).notNullable().index()
-      t.string('invited_by', 32).notNullable().index()
+      t.text('invited_by').notNullable().index()
       t.string('status', 1).nullable().defaultTo('1').index()
       t.bigInteger('create_time').nullable().index()
       t.timestamp('create_date').nullable().index()

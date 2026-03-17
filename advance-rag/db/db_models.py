@@ -753,11 +753,11 @@ class Tenant(DataBaseModel):
 
 
 class UserTenant(DataBaseModel):
-    id = CharField(max_length=32, primary_key=True)
-    user_id = CharField(max_length=32, null=False, index=True)
-    tenant_id = CharField(max_length=32, null=False, index=True)
+    id = CharField(max_length=255, primary_key=True)
+    user_id = CharField(max_length=255, null=False, index=True)
+    tenant_id = CharField(max_length=255, null=False, index=True)
     role = CharField(max_length=32, null=False, help_text="UserTenantRole", index=True)
-    invited_by = CharField(max_length=32, null=False, index=True)
+    invited_by = CharField(max_length=255, null=False, index=True)
     status = CharField(max_length=1, null=True, help_text="is it validate(0: wasted, 1: validate)", default="1", index=True)
 
     class Meta:

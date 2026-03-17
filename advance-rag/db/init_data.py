@@ -72,12 +72,11 @@ def init_superuser(nickname=DEFAULT_SUPERUSER_NICKNAME, email=DEFAULT_SUPERUSER_
         return
 
     user_info = {
-        "id": uuid.uuid1().hex,
+        "id": str(uuid.uuid4()),
         "password": encode_to_base64(password),
         "nickname": nickname,
         "is_superuser": True,
         "email": email,
-        "creator": "system",
         "status": "1",
     }
     tenant = {
