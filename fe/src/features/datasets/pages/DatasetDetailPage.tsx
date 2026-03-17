@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Upload, RefreshCw, Shield, Settings, Database, BarChart3, Network, Tags, Globe } from 'lucide-react';
+import { ArrowLeft, Upload, RefreshCw, Shield, Settings, Database, BarChart3, Network, Tags, Globe, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/components/ui/sheet';
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useAuth } from '@/features/auth';
 import { datasetApi } from '../api/datasetApi';
 import { useDocuments, useChangeDocumentParser, useWebCrawl } from '../api/datasetQueries';
@@ -146,75 +150,111 @@ const DatasetDetailPage: React.FC = () => {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => setSettingsOpen(true)}>
-            <Settings size={16} />
-          </Button>
-          <Button variant="outline" onClick={refresh}>
-            <RefreshCw size={16} className="mr-1" />
-            {t('datasets.refresh')}
-          </Button>
-          {isAdmin && (
-            <>
-              {/* Metadata button */}
-              <Button variant="outline" size="icon" onClick={() => setMetadataOpen(true)}>
-                <Tags size={16} />
-              </Button>
-              {/* Manage Access button */}
-              <Button variant="outline" onClick={() => setAccessDialogOpen(true)}>
-                <Shield size={16} className="mr-1" />
-                {t('datasetAccess.manageAccess')}
-              </Button>
-              <Button variant="outline" onClick={() => setWebCrawlOpen(true)}>
-                <Globe size={16} className="mr-1" />
-                {t('datasets.webCrawl')}
-              </Button>
-              <Button onClick={() => setUploadModalOpen(true)}>
-                <Upload size={16} className="mr-1" />
-                {t('datasets.uploadFiles')}
-              </Button>
-            </>
-          )}
-        </div>
+        <TooltipProvider>
+          <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={() => setSettingsOpen(true)}>
+                  <Settings size={16} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('datasets.settings')}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={refresh}>
+                  <RefreshCw size={16} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('datasets.refresh')}</TooltipContent>
+            </Tooltip>
+            {isAdmin && (
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" onClick={() => setMetadataOpen(true)}>
+                      <Tags size={16} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('datasets.metadata')}</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" onClick={() => setAccessDialogOpen(true)}>
+                      <Shield size={16} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('datasetAccess.manageAccess')}</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" onClick={() => setWebCrawlOpen(true)}>
+                      <Globe size={16} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('datasets.webCrawl')}</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button size="icon" onClick={() => setUploadModalOpen(true)}>
+                      <Upload size={16} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('datasets.uploadFiles')}</TooltipContent>
+                </Tooltip>
+              </>
+            )}
+          </div>
+        </TooltipProvider>
       </div>
 
-      {/* Dataset Info — replaces antd Descriptions */}
-      <Card className="dark:bg-slate-800 dark:border-slate-700 mb-6">
-        <CardContent className="p-4">
-          <dl className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <dt className="text-muted-foreground">{t('datasets.language')}</dt>
-              <dd className="font-medium mt-0.5">{dataset.language}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">{t('datasets.chunkMethod')}</dt>
-              <dd className="mt-0.5"><Badge variant="secondary">{dataset.parser_id}</Badge></dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">{t('datasets.docCount')}</dt>
-              <dd className="font-medium mt-0.5">{dataset.doc_count}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">{t('datasets.chunkCount')}</dt>
-              <dd className="font-medium mt-0.5">{dataset.chunk_count}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">{t('datasets.embeddingModel')}</dt>
-              <dd className="font-medium mt-0.5">{dataset.embedding_model || t('datasets.systemDefault')}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">{t('datasets.access')}</dt>
-              <dd className="mt-0.5">
-                {dataset.access_control?.public ? (
-                  <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">{t('datasets.public')}</Badge>
-                ) : (
-                  <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">{t('datasets.private')}</Badge>
-                )}
-              </dd>
-            </div>
-          </dl>
-        </CardContent>
-      </Card>
+      {/* Dataset Info — collapsible panel, defaults to collapsed */}
+      <Collapsible defaultOpen={false} className="mb-6">
+        <Card className="dark:bg-slate-800 dark:border-slate-700">
+          <CollapsibleTrigger asChild>
+            <button className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-muted/50 transition-colors rounded-t-lg group">
+              <span className="text-sm font-semibold text-foreground">{t('datasets.datasetInfo')}</span>
+              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="px-4 pb-4 pt-0">
+              <dl className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <dt className="text-muted-foreground">{t('datasets.language')}</dt>
+                  <dd className="font-medium mt-0.5">{dataset.language}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">{t('datasets.chunkMethod')}</dt>
+                  <dd className="mt-0.5"><Badge variant="secondary">{dataset.parser_id}</Badge></dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">{t('datasets.docCount')}</dt>
+                  <dd className="font-medium mt-0.5">{dataset.doc_count}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">{t('datasets.chunkCount')}</dt>
+                  <dd className="font-medium mt-0.5">{dataset.chunk_count}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">{t('datasets.embeddingModel')}</dt>
+                  <dd className="font-medium mt-0.5">{dataset.embedding_model || t('datasets.systemDefault')}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">{t('datasets.access')}</dt>
+                  <dd className="mt-0.5">
+                    {dataset.access_control?.public ? (
+                      <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">{t('datasets.public')}</Badge>
+                    ) : (
+                      <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">{t('datasets.private')}</Badge>
+                    )}
+                  </dd>
+                </div>
+              </dl>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Tab navigation */}
       <div className="flex items-center gap-1 mb-4 border-b">

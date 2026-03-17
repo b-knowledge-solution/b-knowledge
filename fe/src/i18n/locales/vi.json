@@ -1383,6 +1383,8 @@
     "noResults": "Không tìm thấy bộ dữ liệu phù hợp",
     "empty": "Chưa có bộ dữ liệu. Tạo bộ dữ liệu đầu tiên.",
     "refresh": "Làm mới",
+    "settings": "Cài đặt",
+    "metadata": "Siêu dữ liệu",
     "uploadFiles": "Tải lên tệp",
     "language": "Ngôn ngữ",
     "chunkMethod": "Phương thức chia đoạn",
@@ -1489,7 +1491,8 @@
     "webCrawlSubmit": "Thu thập",
     "webCrawlSuccess": "Trang web đã được đưa vào hàng đợi xử lý",
     "webCrawlInvalidUrl": "Vui lòng nhập URL HTTP hoặc HTTPS hợp lệ",
-    "webCrawlFailed": "Không thể thu thập URL"
+    "webCrawlFailed": "Không thể thu thập URL",
+    "datasetInfo": "Thông tin tập dữ liệu"
   },
   "versions": {
     "title": "Phiên bản",

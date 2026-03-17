@@ -357,6 +357,13 @@ def init_settings():
         S3 = get_base_config("s3", {})
     elif STORAGE_IMPL_TYPE == 'MINIO':
         S3 = decrypt_database_config(name="s3")
+        # Allow env vars to override YAML for single-bucket mode config,
+        # matching RAGFlow's MINIO_BUCKET / MINIO_PREFIX_PATH convention
+        # but using S3_BUCKET / S3_PREFIX_PATH naming.
+        if os.environ.get("S3_BUCKET"):
+            S3["bucket"] = os.environ["S3_BUCKET"]
+        if os.environ.get("S3_PREFIX_PATH"):
+            S3["prefix_path"] = os.environ["S3_PREFIX_PATH"]
     elif STORAGE_IMPL_TYPE == 'OSS':
         OSS = get_base_config("oss", {})
     elif STORAGE_IMPL_TYPE == 'GCS':

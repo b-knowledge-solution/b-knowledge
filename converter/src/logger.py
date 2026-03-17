@@ -40,12 +40,17 @@ def setup_logger(level: str = 'DEBUG', log_dir: Optional[str] = None) -> None:
     )
 
     # File Handler — rotating logs with module prefix
+    # Use LOG_DIR env var for centralized logging, otherwise fall back to local .data/logs
     if log_dir is None:
-        _converter_root = Path(__file__).resolve().parent.parent
-        log_dir = str(_converter_root / '.data' / 'logs')
+        env_log_dir = os.environ.get('LOG_DIR', '')
+        if env_log_dir:
+            log_dir = env_log_dir
+        else:
+            _converter_root = Path(__file__).resolve().parent.parent
+            log_dir = str(_converter_root / '.data' / 'logs')
 
     os.makedirs(log_dir, exist_ok=True)
-    log_path = os.path.join(log_dir, 'converter_{time}.log')
+    log_path = os.path.join(log_dir, 'converter_{time:YYYYMMDD_HHmmss}.log')
 
     logger.add(
         log_path,

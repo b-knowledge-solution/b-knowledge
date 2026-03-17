@@ -1,6 +1,6 @@
 
 /**
- * @fileoverview Singleton MinIO client configured from environment for reuse across services.
+ * @fileoverview Singleton MinIO client configured from centralized config for reuse across services.
  *
  * Provides S3-compatible object storage access via the MinIO SDK.
  * Uses a singleton pattern to ensure a single client instance is shared.
@@ -8,11 +8,12 @@
  * @module shared/services/minio
  */
 import * as Minio from 'minio'
+import { config } from '@/shared/config/index.js'
 
 /**
  * @description Wrapper class to ensure a single instance of the MinIO client
  * is shared across all services. Reads S3-compatible credentials from
- * environment variables.
+ * the centralized config object.
  */
 class MinioSingleton {
   /** Static instance holder */
@@ -22,19 +23,19 @@ class MinioSingleton {
   private constructor() { }
 
   /**
-   * @description Lazily create or reuse the MinIO client using environment variables.
+   * @description Lazily create or reuse the MinIO client using centralized config.
    * @returns {Minio.Client} The singleton MinIO client instance
    */
   public static getInstance(): Minio.Client {
     // Check if instance already exists
     if (!MinioSingleton.instance) {
-      // Create new instance if not, using env vars or defaults
+      // Create new instance using centralized S3 config
       MinioSingleton.instance = new Minio.Client({
-        endPoint: process.env.S3_ENDPOINT || 'localhost',
-        port: parseInt(process.env.S3_PORT || '9000', 10),
-        useSSL: process.env.S3_USE_SSL === 'true',
-        accessKey: process.env.S3_ACCESS_KEY || '',
-        secretKey: process.env.S3_SECRET_KEY || '',
+        endPoint: config.s3.endpoint,
+        port: config.s3.port,
+        useSSL: config.s3.useSSL,
+        accessKey: config.s3.accessKey,
+        secretKey: config.s3.secretKey,
       })
     }
     // Return the singleton instance

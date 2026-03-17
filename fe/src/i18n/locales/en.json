@@ -1381,6 +1381,8 @@
     "noResults": "No datasets match your search",
     "empty": "No datasets yet. Create your first dataset.",
     "refresh": "Refresh",
+    "settings": "Settings",
+    "metadata": "Metadata",
     "uploadFiles": "Upload Files",
     "language": "Language",
     "chunkMethod": "Chunk Method",
@@ -1505,7 +1507,8 @@
     "webCrawlSubmit": "Crawl",
     "webCrawlSuccess": "Web page queued for processing",
     "webCrawlInvalidUrl": "Please enter a valid HTTP or HTTPS URL",
-    "webCrawlFailed": "Failed to crawl URL"
+    "webCrawlFailed": "Failed to crawl URL",
+    "datasetInfo": "Dataset Information"
   },
   "versions": {
     "title": "Versions",

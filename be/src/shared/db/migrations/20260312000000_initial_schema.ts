@@ -435,7 +435,7 @@ export async function up(knex: Knex): Promise<void> {
   // Datasets - system-level resource with IAM access control
   await knex.schema.createTable('datasets', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
-    table.string('name', 128).notNullable().unique()
+    table.string('name', 128).notNullable()
     table.text('description')
     table.string('language', 32).defaultTo('English')
     table.string('embedding_model', 128)
@@ -446,10 +446,19 @@ export async function up(knex: Knex): Promise<void> {
     table.integer('doc_count').defaultTo(0)
     table.integer('chunk_count').defaultTo(0)
     table.integer('token_count').defaultTo(0)
+    // Pagerank for search result boosting (positive = boost, negative = suppress)
+    table.integer('pagerank').defaultTo(0)
     table.text('created_by').references('id').inTable('users').onDelete('SET NULL')
     table.text('updated_by').references('id').inTable('users').onDelete('SET NULL')
     table.timestamps(true, true)
   })
+
+  // Partial unique index — only active (non-deleted) datasets must have unique names
+  await knex.raw(`
+    CREATE UNIQUE INDEX datasets_name_active_unique
+    ON datasets (LOWER(name))
+    WHERE status <> 'deleted'
+  `)
 
   // Documents - files within a dataset
   await knex.schema.createTable('documents', (table) => {
@@ -493,56 +502,6 @@ export async function up(knex: Knex): Promise<void> {
     ON model_providers (factory_name, model_name)
     WHERE status = 'active'
   `)
-
-  // ──────────────────────────────────────────────
-  // 10. Document versioning (depends on datasets, users)
-  // ──────────────────────────────────────────────
-
-  // Document versions - versioned snapshots of a dataset's documents
-  await knex.schema.createTable('document_versions', (table) => {
-    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
-    table.uuid('dataset_id').notNullable().references('id').inTable('datasets').onDelete('CASCADE')
-    table.string('version_label', 128).notNullable()
-    table.string('ragflow_dataset_id', 255)
-    table.string('ragflow_dataset_name', 255)
-    table.string('status', 16).defaultTo('active').notNullable()
-    table.timestamp('last_synced_at')
-    table.jsonb('metadata').defaultTo('{}')
-    table.text('created_by').references('id').inTable('users').onDelete('SET NULL')
-    table.timestamps(true, true)
-
-    table.index('dataset_id')
-    table.unique(['dataset_id', 'version_label'])
-  })
-
-  // Document version files - individual files within a version
-  await knex.schema.createTable('document_version_files', (table) => {
-    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
-    table.uuid('version_id').notNullable().references('id').inTable('document_versions').onDelete('CASCADE')
-    table.string('file_name', 512).notNullable()
-    table.string('ragflow_doc_id', 255)
-    table.string('status', 32).defaultTo('pending').notNullable()
-    table.text('error')
-    table.timestamps(true, true)
-
-    table.unique(['version_id', 'file_name'])
-    table.index('version_id')
-  })
-
-  // Converter jobs - tracks conversion job state
-  await knex.schema.createTable('converter_jobs', (table) => {
-    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
-    table.uuid('dataset_id').notNullable().references('id').inTable('datasets').onDelete('CASCADE')
-    table.uuid('version_id').notNullable().references('id').inTable('document_versions').onDelete('CASCADE')
-    table.string('status', 32).defaultTo('pending').notNullable()
-    table.integer('file_count').defaultTo(0)
-    table.integer('finished_count').defaultTo(0)
-    table.integer('failed_count').defaultTo(0)
-    table.timestamps(true, true)
-
-    table.index('dataset_id')
-    table.index('version_id')
-  })
 
   // ──────────────────────────────────────────────
   // 11. Sync tables (depends on knowledgebase*, users)
@@ -839,7 +798,35 @@ export async function up(knex: Knex): Promise<void> {
   })
 
   // ──────────────────────────────────────────────
-  // Section 13 – Encrypt existing plaintext API keys
+  // Section 13 – Alter Peewee-managed tables (Python RAGFlow ORM)
+  // ──────────────────────────────────────────────
+
+  // Add source_url to the Peewee 'document' table for web-crawled document tracking
+  const hasDocumentTable = await knex.schema.hasTable('document')
+  if (hasDocumentTable) {
+    const hasSourceUrl = await knex.schema.hasColumn('document', 'source_url')
+    if (!hasSourceUrl) {
+      await knex.schema.alterTable('document', (table) => {
+        table.string('source_url', 2048).nullable()
+      })
+    }
+  }
+
+  // Fix file records: set source_type='knowledgebase' and parent_id for files
+  // created by the Node.js backend with empty values (prevents empty bucket name errors)
+  const hasFileTable = await knex.schema.hasTable('file')
+  if (hasFileTable) {
+    await knex('file')
+      .where('source_type', '')
+      .orWhereNull('source_type')
+      .update({
+        source_type: 'knowledgebase',
+        parent_id: '00000000000000000000000000000001',
+      })
+  }
+
+  // ──────────────────────────────────────────────
+  // Section 14 – Encrypt existing plaintext API keys
   // ──────────────────────────────────────────────
   // On a fresh database this is a no-op (no rows to encrypt).
 
@@ -934,12 +921,8 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists('sync_logs')
   await knex.schema.dropTableIfExists('connectors')
 
-  // Document versioning
-  await knex.schema.dropTableIfExists('converter_jobs')
-  await knex.schema.dropTableIfExists('document_version_files')
-  await knex.schema.dropTableIfExists('document_versions')
-
   // RAG pipeline
+  await knex.raw('DROP INDEX IF EXISTS datasets_name_active_unique')
   await knex.schema.dropTableIfExists('model_providers')
   await knex.schema.dropTableIfExists('documents')
   await knex.schema.dropTableIfExists('datasets')

@@ -26,6 +26,7 @@ s3:
   user: "rustfsadmin"
   password: "rustfsadmin"
   host: "localhost:9000"
+  bucket: "knowledge"
 
 # Redis — override via REDIS_HOST, REDIS_PORT, REDIS_PASSWORD env vars
 redis:

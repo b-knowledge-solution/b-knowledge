@@ -80,9 +80,15 @@ def init_root_logger(
     # Module prefix for distinguishing logs across services (e.g. [task-executor], [converter])
     log_prefix = os.environ.get("LOG_PREFIX", logfile_basename)
 
-    log_dir = os.path.abspath(os.path.join(get_project_base_directory(), "logs"))
+    # Resolve log directory: use LOG_DIR env var for centralized logging,
+    # otherwise fall back to project-local logs/
+    env_log_dir = os.environ.get("LOG_DIR", "")
+    if env_log_dir:
+        log_dir = os.path.abspath(env_log_dir)
+    else:
+        log_dir = os.path.abspath(os.path.join(get_project_base_directory(), "logs"))
     os.makedirs(log_dir, exist_ok=True)
-    log_path = os.path.join(log_dir, f"{logfile_basename}.log")
+    log_path = os.path.join(log_dir, "advance-rag_{time:YYYYMMDD_HHmmss}.log")
 
     # Remove default stderr sink, re-add with our level
     logger.remove()

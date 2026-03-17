@@ -26,14 +26,21 @@
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import { join } from 'path';
+import { mkdirSync } from 'fs';
 import { config } from '@/shared/config/index.js';
 
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
 
-/** Log directory - relative to backend working directory */
-const logDir = join(process.cwd(), 'logs');
+/**
+ * Log directory — uses LOG_DIR env var when set (centralized logging),
+ * otherwise falls back to <cwd>/logs for backward compatibility.
+ */
+const logDir = config.logDir || join(process.cwd(), 'logs');
+
+// Ensure log directory exists at startup
+mkdirSync(logDir, { recursive: true });
 
 /**
  * Custom log format for file output.
@@ -96,7 +103,7 @@ const getLogLevel = (): string => {
  */
 const allLogsTransport: DailyRotateFile = new DailyRotateFile({
   dirname: logDir,
-  filename: 'logs_%DATE%.log',
+  filename: 'backend-logs_%DATE%.log',
   datePattern: 'YYYYMMDD',
   zippedArchive: true,     // Compress old logs
   maxSize: '20m',          // Rotate at 20MB
@@ -115,7 +122,7 @@ const allLogsTransport: DailyRotateFile = new DailyRotateFile({
  */
 const errorLogsTransport: DailyRotateFile = new DailyRotateFile({
   dirname: logDir,
-  filename: 'error_%DATE%.log',
+  filename: 'backend-error_%DATE%.log',
   datePattern: 'YYYYMMDD',
   zippedArchive: true,
   maxSize: '20m',

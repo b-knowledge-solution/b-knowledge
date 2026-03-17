@@ -367,6 +367,13 @@ export const config = {
    */
   tempFileCleanupSchedule: process.env['TEMP_FILE_CLEANUP_SCHEDULE'] ?? '0 0 * * *',
 
+  /**
+   * Centralized log directory.
+   * When set, all log files are written to this directory with a 'backend-' prefix.
+   * When empty, falls back to '<cwd>/logs'.
+   */
+  logDir: process.env['LOG_DIR'] ?? '',
+
   // --------------------------------------------------------------------------
   // System Tools Configuration
   // --------------------------------------------------------------------------
@@ -405,6 +412,31 @@ export const config = {
    * WebSocket (Socket.IO) configuration.
    * Enables real-time notifications for Python clients and web browsers.
    */
+  // --------------------------------------------------------------------------
+  // S3-Compatible Storage Configuration
+  // --------------------------------------------------------------------------
+
+  /**
+   * S3-compatible object storage configuration (RustFS / MinIO / etc.).
+   * Bucket name must match advance-rag/conf/service_conf.yaml s3.bucket.
+   */
+  s3: {
+    /** S3-compatible endpoint hostname */
+    endpoint: process.env['S3_ENDPOINT'] ?? 'localhost',
+    /** S3-compatible endpoint port */
+    port: parseInt(process.env['S3_PORT'] ?? '9000', 10),
+    /** S3 access key */
+    accessKey: process.env['S3_ACCESS_KEY'] ?? '',
+    /** S3 secret key */
+    secretKey: process.env['S3_SECRET_KEY'] ?? '',
+    /** Whether to use SSL for S3 connections */
+    useSSL: process.env['S3_USE_SSL'] === 'true',
+    /** S3 bucket name for document storage (must match RAG worker config) */
+    bucket: process.env['S3_BUCKET'] ?? 'knowledge',
+    /** Optional prefix path within the bucket (must match RAG worker config) */
+    prefixPath: process.env['S3_PREFIX_PATH'] ?? '',
+  },
+
   // --------------------------------------------------------------------------
   // OpenSearch / VectorDB Configuration
   // --------------------------------------------------------------------------

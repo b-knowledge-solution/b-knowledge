@@ -707,6 +707,18 @@ class DocumentService(CommonService):
         )
         configs = configs.dicts()
         if not configs:
+            # Diagnose which record is missing to aid debugging
+            doc = cls.model.select().where(cls.model.id == doc_id).first()
+            if not doc:
+                logging.warning(f"get_chunking_config: document {doc_id} not found")
+            else:
+                kb = Knowledgebase.select().where(Knowledgebase.id == doc.kb_id).first()
+                if not kb:
+                    logging.warning(f"get_chunking_config: knowledgebase {doc.kb_id} not found for doc {doc_id}")
+                else:
+                    tenant = Tenant.select().where(Tenant.id == kb.tenant_id).first()
+                    if not tenant:
+                        logging.warning(f"get_chunking_config: tenant {kb.tenant_id} not found for kb {doc.kb_id}")
             return None
         return configs[0]
 

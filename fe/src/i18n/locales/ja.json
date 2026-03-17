@@ -1369,6 +1369,8 @@
     "noResults": "一致するデータセットが見つかりません",
     "empty": "データセットがまだありません。最初のデータセットを作成しましょう。",
     "refresh": "更新",
+    "settings": "設定",
+    "metadata": "メタデータ",
     "uploadFiles": "ファイルをアップロード",
     "language": "言語",
     "chunkMethod": "チャンク方法",
@@ -1475,7 +1477,8 @@
     "webCrawlSubmit": "クロール",
     "webCrawlSuccess": "Webページが処理キューに追加されました",
     "webCrawlInvalidUrl": "有効なHTTPまたはHTTPS URLを入力してください",
-    "webCrawlFailed": "URLのクロールに失敗しました"
+    "webCrawlFailed": "URLのクロールに失敗しました",
+    "datasetInfo": "データセット情報"
   },
   "versions": {
     "title": "バージョン",

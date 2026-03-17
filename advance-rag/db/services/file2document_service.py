@@ -204,4 +204,8 @@ class File2DocumentService(CommonService):
 
         assert doc_id, "please specify doc_id"
         e, doc = DocumentService.get_by_id(doc_id)
-        return doc.kb_id, doc.location
+        # Return None as bucket so the storage decorator resolves to the
+        # configured default bucket (e.g. 'ragflow') without prepending
+        # kb_id as a path prefix — the location field already contains
+        # the full S3 object key set by the Node.js backend.
+        return None, doc.location

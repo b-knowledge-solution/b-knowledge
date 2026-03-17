@@ -444,6 +444,11 @@ def queue_tasks(doc: dict, bucket: str, name: str, priority: int):
         parse_task_array.append(new_task())
 
     chunking_config = DocumentService.get_chunking_config(doc["id"])
+    if not chunking_config:
+        raise ValueError(
+            f"Cannot resolve chunking config for document {doc['id']}: "
+            "document, knowledgebase, or tenant record missing"
+        )
     for task in parse_task_array:
         hasher = xxhash.xxh64()
         for field in sorted(chunking_config.keys()):

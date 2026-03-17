@@ -74,6 +74,8 @@ export class KnowledgebaseModel {
             parser_id: data.parser_id || 'naive',
             parser_config: JSON.stringify(data.parser_config || { pages: [[1, 1000000]] }),
             pagerank: data.pagerank || 0,
+            similarity_threshold: 0.2,
+            vector_similarity_weight: 0.3,
             created_by: SYSTEM_TENANT_ID,
             permission: 'team',
             status: '1',

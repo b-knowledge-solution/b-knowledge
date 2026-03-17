@@ -6,6 +6,9 @@ This module provides defaults and a central place to read them.
 """
 import os
 
+# Centralized log directory (shared across all modules when set)
+LOG_DIR = os.getenv("LOG_DIR", "")
+
 # Database (PostgreSQL)
 DB_TYPE = os.getenv("DB_TYPE", "postgres")
 DB_HOST = os.getenv("DB_HOST", "localhost")

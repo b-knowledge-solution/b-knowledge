@@ -56,14 +56,14 @@ export class RagFileModel {
         const now = nowMs();
         await db('file').insert({
             id: data.id,
-            parent_id: '',
+            parent_id: SYSTEM_TENANT_ID,
             tenant_id: SYSTEM_TENANT_ID,
             created_by: SYSTEM_TENANT_ID,
             name: data.name,
             location: data.location,
             size: data.size,
             type: data.type,
-            source_type: '',
+            source_type: 'knowledgebase',
             create_time: now,
             create_date: nowDatetime(),
             update_time: now,

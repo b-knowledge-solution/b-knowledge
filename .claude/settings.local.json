@@ -68,7 +68,10 @@
       "Bash(cd:*)",
       "Bash(for wt:*)",
       "Bash(wc:*)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(xargs -I {} basename {})",
+      "Bash(xargs dirname:*)",
+      "Bash(/tmp/analyze_tables.txt:*)"
     ]
   },
   "sandbox": {

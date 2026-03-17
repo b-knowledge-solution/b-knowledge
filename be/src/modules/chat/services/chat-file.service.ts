@@ -13,6 +13,7 @@
 import { v4 as uuidv4 } from 'uuid'
 import { minioClient } from '@/shared/services/minio.service.js'
 import { log } from '@/shared/services/logger.service.js'
+import { config } from '@/shared/config/index.js'
 import { ModelFactory } from '@/shared/models/factory.js'
 import type { ChatFile } from '../models/chat-file.model.js'
 import { Readable } from 'stream'
@@ -36,8 +37,8 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024
 /** File retention period in days */
 const RETENTION_DAYS = 30
 
-/** S3 bucket for chat files */
-const S3_BUCKET = process.env['S3_BUCKET'] || 'ragflow'
+/** S3 bucket for chat files — sourced from centralized config */
+const S3_BUCKET = config.s3.bucket
 
 // ---------------------------------------------------------------------------
 // Service
