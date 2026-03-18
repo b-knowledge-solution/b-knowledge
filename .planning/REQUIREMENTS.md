@@ -110,50 +110,50 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| STAB-01 | — | Pending |
-| STAB-02 | — | Pending |
-| STAB-03 | — | Pending |
-| STAB-04 | — | Pending |
-| STAB-05 | — | Pending |
-| ACCS-01 | — | Pending |
-| ACCS-02 | — | Pending |
-| ACCS-03 | — | Pending |
-| ACCS-04 | — | Pending |
-| ACCS-05 | — | Pending |
-| ACCS-06 | — | Pending |
-| DOCM-01 | — | Pending |
-| DOCM-02 | — | Pending |
-| DOCM-03 | — | Pending |
-| DOCM-04 | — | Pending |
-| DOCM-05 | — | Pending |
-| DOCM-06 | — | Pending |
-| PRSR-01 | — | Pending |
-| PRSR-02 | — | Pending |
-| PRSR-03 | — | Pending |
-| PRSR-04 | — | Pending |
-| RETR-01 | — | Pending |
-| RETR-02 | — | Pending |
-| RETR-03 | — | Pending |
-| RETR-04 | — | Pending |
-| RETR-05 | — | Pending |
-| RETR-06 | — | Pending |
-| RETR-07 | — | Pending |
-| CHAT-01 | — | Pending |
-| CHAT-02 | — | Pending |
-| CHAT-03 | — | Pending |
-| OBSV-01 | — | Pending |
-| OBSV-02 | — | Pending |
-| OBSV-03 | — | Pending |
-| PROJ-01 | — | Pending |
-| PROJ-02 | — | Pending |
-| PROJ-03 | — | Pending |
-| PROJ-04 | — | Pending |
+| STAB-01 | Phase 1 | Pending |
+| STAB-02 | Phase 1 | Pending |
+| STAB-03 | Phase 1 | Pending |
+| STAB-04 | Phase 1 | Pending |
+| STAB-05 | Phase 1 | Pending |
+| CHAT-01 | Phase 1 | Pending |
+| CHAT-02 | Phase 1 | Pending |
+| CHAT-03 | Phase 1 | Pending |
+| ACCS-01 | Phase 2 | Pending |
+| ACCS-02 | Phase 2 | Pending |
+| ACCS-03 | Phase 2 | Pending |
+| ACCS-04 | Phase 2 | Pending |
+| ACCS-05 | Phase 2 | Pending |
+| ACCS-06 | Phase 2 | Pending |
+| DOCM-01 | Phase 3 | Pending |
+| DOCM-02 | Phase 3 | Pending |
+| DOCM-03 | Phase 3 | Pending |
+| DOCM-04 | Phase 3 | Pending |
+| DOCM-05 | Phase 3 | Pending |
+| DOCM-06 | Phase 3 | Pending |
+| PRSR-01 | Phase 4 | Pending |
+| PRSR-02 | Phase 4 | Pending |
+| PRSR-03 | Phase 4 | Pending |
+| PRSR-04 | Phase 4 | Pending |
+| RETR-01 | Phase 5 | Pending |
+| RETR-02 | Phase 5 | Pending |
+| RETR-03 | Phase 5 | Pending |
+| RETR-04 | Phase 5 | Pending |
+| RETR-05 | Phase 5 | Pending |
+| RETR-06 | Phase 5 | Pending |
+| RETR-07 | Phase 5 | Pending |
+| OBSV-01 | Phase 6 | Pending |
+| OBSV-02 | Phase 6 | Pending |
+| OBSV-03 | Phase 6 | Pending |
+| PROJ-01 | Phase 6 | Pending |
+| PROJ-02 | Phase 6 | Pending |
+| PROJ-03 | Phase 6 | Pending |
+| PROJ-04 | Phase 6 | Pending |
 
 **Coverage:**
 - v1 requirements: 38 total
-- Mapped to phases: 0
-- Unmapped: 38 ⚠️
+- Mapped to phases: 38
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-18*
-*Last updated: 2026-03-18 after initial definition*
+*Last updated: 2026-03-18 after roadmap creation — all 38 requirements mapped*
