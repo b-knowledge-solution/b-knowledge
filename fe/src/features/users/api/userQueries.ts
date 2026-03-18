@@ -217,6 +217,38 @@ export const useUserManagement = (): UseUserManagementReturn => {
     }
 }
 
+// ── Standalone query and mutation hooks for role management ──────────────────
+
+/**
+ * @description Hook to fetch all org members for the role management table.
+ * Returns the full user list from the backend.
+ * @returns Query result with array of User objects
+ */
+export function useOrgMembers() {
+    return useQuery({
+        queryKey: queryKeys.users.all,
+        queryFn: () => userApi.getUsers(),
+    })
+}
+
+/**
+ * @description Standalone mutation hook for updating a single user's role.
+ * Shows success/error toasts and invalidates the users query on success.
+ * @returns Mutation hook for role updates
+ */
+export function useUpdateUserRole() {
+    const { t } = useTranslation()
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: ({ userId, role }: { userId: string; role: string }) =>
+            userApi.updateUserRole(userId, role),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.users.all })
+        },
+        meta: { successMessage: t('accessControl.roleManagement.updateSuccess') },
+    })
+}
+
 // ── Standalone CRUD mutation hooks ───────────────────────────────────────────
 
 /**

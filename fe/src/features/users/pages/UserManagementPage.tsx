@@ -5,7 +5,6 @@
  */
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '@/features/auth'
 import { useAppAbility } from '@/lib/ability'
 import { Card, CardContent } from '@/components/ui/card'
 import { Pagination } from '@/components/ui/pagination'
@@ -13,11 +12,7 @@ import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
 import { useUserManagement } from '../api/userQueries'
 import { UserToolbar } from '../components/UserToolbar'
 import { RoleManagementTable } from '../components/RoleManagementTable'
-import { EditRoleDialog } from '../components/EditRoleDialog'
-import { IpHistoryDialog } from '../components/IpHistoryDialog'
-import { GrantPermissionsDialog } from '../components/GrantPermissionsDialog'
 import { CreateUserDialog } from '../components/CreateUserDialog'
-import { EditUserDialog } from '../components/EditUserDialog'
 
 /**
  * @description User management page composing hook + components. Admin-only.
@@ -25,7 +20,6 @@ import { EditUserDialog } from '../components/EditUserDialog'
  */
 export default function UserManagementPage() {
     const { t } = useTranslation()
-    const { user: currentUser } = useAuth()
     const ability = useAppAbility()
 
     // Guideline dialog
@@ -40,9 +34,6 @@ export default function UserManagementPage() {
 
     // Dialog state for create user
     const [isCreateOpen, setIsCreateOpen] = useState(false)
-
-    // Suppress unused variable warning -- currentUser is used by ability context
-    void currentUser
 
     // Loading / error early returns
     if (mgmt.isLoading) {
@@ -87,7 +78,6 @@ export default function UserManagementPage() {
                                 members={mgmt.paginatedUsers}
                                 isLoading={mgmt.isLoading}
                                 onRoleChange={(userId, role) => mgmt.updateRole(userId, role)}
-                                updatingUserId={mgmt.isUpdatingRole ? undefined : null}
                             />
                         </div>
 
@@ -108,40 +98,6 @@ export default function UserManagementPage() {
             <CreateUserDialog
                 open={isCreateOpen}
                 onClose={() => setIsCreateOpen(false)}
-            />
-
-            <EditUserDialog
-                open={isEditUserOpen}
-                onClose={() => setIsEditUserOpen(false)}
-                user={selectedUser}
-            />
-
-            <IpHistoryDialog
-                open={isIpHistoryOpen}
-                onClose={() => setIsIpHistoryOpen(false)}
-                user={selectedUser}
-                ipHistory={selectedUser ? (mgmt.ipHistoryMap[selectedUser.id] || []) : []}
-            />
-
-            <EditRoleDialog
-                open={isEditRoleOpen}
-                onClose={() => setIsEditRoleOpen(false)}
-                user={selectedUser}
-                onSave={(userId, role) => {
-                    mgmt.updateRole(userId, role)
-                    setIsEditRoleOpen(false)
-                }}
-                saveError={saveError}
-            />
-
-            <GrantPermissionsDialog
-                open={isPermissionsOpen}
-                onClose={() => setIsPermissionsOpen(false)}
-                user={selectedUser}
-                onSave={(userId, permissions) => {
-                    mgmt.updatePermissions(userId, permissions)
-                    setIsPermissionsOpen(false)
-                }}
             />
 
             <GuidelineDialog

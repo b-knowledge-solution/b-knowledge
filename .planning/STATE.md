@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-03-18T13:51:00Z"
-last_activity: 2026-03-18 — Plan 02-03 complete (tenant isolation + ABAC policy CRUD)
+stopped_at: Completed 02-06-PLAN.md
+last_updated: "2026-03-18T14:07:00Z"
+last_activity: 2026-03-18 — Plan 02-06 complete (audit events, role API, project ABAC)
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 11
-  completed_plans: 9
-  percent: 68
+  completed_plans: 10
+  percent: 73
 ---
 
 # Project State
@@ -26,17 +26,17 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 2 of 6 (Access Control)
-Plan: 6 of 7 in current phase
+Plan: 7 of 7 in current phase
 Status: In Progress
-Last activity: 2026-03-18 — Plan 02-03 complete (tenant isolation + ABAC policy CRUD)
+Last activity: 2026-03-18 — Plan 02-06 complete (audit events, role API, project ABAC)
 
-Progress: [██████▓░░░] 68%
+Progress: [███████▓░░] 73%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
-- Average duration: 5 min
+- Total plans completed: 10
+- Average duration: 6 min
 - Total execution time: 0.45 hours
 
 **By Phase:**
@@ -46,7 +46,7 @@ Progress: [██████▓░░░] 68%
 | 1 | 4 | 20 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-00 (3 min), 02-01 (4 min), 02-02 (9 min), 02-04 (10 min), 02-03 (16 min)
+- Last 5 plans: 02-01 (4 min), 02-02 (9 min), 02-04 (10 min), 02-03 (16 min), 02-06 (13 min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -59,6 +59,7 @@ Progress: [██████▓░░░] 68%
 | Phase 02 P02 | 9min | 2 tasks | 11 files |
 | Phase 02 P04 | 10min | 2 tasks | 10 files |
 | Phase 02 P03 | 16min | 2 tasks | 18 files |
+| Phase 02 P06 | 13min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,9 @@ Recent decisions affecting current work:
 - [Phase 2, Plan 03]: tenantId is first parameter on all RagSearchService methods to prevent accidental omission
 - [Phase 2, Plan 03]: Embed token controllers pass empty tenantId with TODO for future multi-tenant token resolution
 - [Phase 2, Plan 03]: Policy rules stored as JSONB on datasets table (co-located, no separate policy table)
+- [Phase 2, Plan 06]: Super-admin sees all orgs' audit logs (optional tenantId filter); admin forced to own org only
+- [Phase 2, Plan 06]: invalidateAllAbilities on role change (simpler than per-session invalidation)
+- [Phase 2, Plan 06]: Existing /:id/role route upgraded with requireTenant + requireAbility instead of requirePermission
 
 ### Pending Todos
 
@@ -102,6 +106,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T13:51:00Z
-Stopped at: Completed 02-03-PLAN.md
-Resume file: .planning/phases/02-access-control/02-03-SUMMARY.md
+Last session: 2026-03-18T14:07:00Z
+Stopped at: Completed 02-06-PLAN.md
+Resume file: .planning/phases/02-access-control/02-06-SUMMARY.md
