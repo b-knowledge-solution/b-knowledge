@@ -70,12 +70,15 @@ Plans:
   3. Each document version displays its author, upload timestamp, and change summary
   4. User can apply custom metadata tags to documents (e.g., sdlc_phase=design, department=clinical) that can be used to filter search results
   5. Metadata fields are automatically populated from document content during parsing; user can bulk-edit tags across multiple documents
-**Plans**: 3 plans
+**Plans**: 6 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Document version history: DB schema extensions, version creation service, upload API, FE version dialog and badges (DOCM-01, DOCM-03)
-- [ ] 03-02-PLAN.md — Version-aware search with rank_feature boost, chunk detail page, three document viewer patterns (DOCM-02)
-- [ ] 03-03-PLAN.md — Metadata tagging, auto-extraction UI, bulk operations, search filter chips, cron parsing scheduler (DOCM-04, DOCM-05, DOCM-06)
+- [ ] 03-00-PLAN.md — Wave 0 test scaffolds: version-history and metadata-tagging test stubs (DOCM-01..06)
+- [ ] 03-01-PLAN.md — BE version history: DB migration, version creation service, upload API endpoint (DOCM-01, DOCM-03)
+- [ ] 03-02-PLAN.md — FE version UI: upload dialog, version badges, dataset card/overview extensions, i18n (DOCM-01, DOCM-03)
+- [ ] 03-03-PLAN.md — Version-aware search with rank_feature boost, chunk detail page, three document viewer patterns (DOCM-02)
+- [ ] 03-04-PLAN.md — BE metadata: bulk metadata API, tag aggregation endpoint, cron parsing scheduler (DOCM-04, DOCM-05, DOCM-06)
+- [ ] 03-05-PLAN.md — FE metadata: parser settings, schema builder, bulk dialog, tag filter chips, cron UI, i18n (DOCM-04, DOCM-05, DOCM-06)
 
 ### Phase 4: Domain-Specific Parsers
 **Goal**: Documents from SDLC workflows (code files, API specs, ADRs) and healthcare corpora (clinical documents) are parsed into semantically meaningful chunks that preserve the structure unique to each document type
@@ -140,11 +143,11 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 |-------|----------------|--------|-----------|
 | 1. Migration Stabilization | 4/4 | Complete |  |
 | 2. Access Control | 6/7 | In Progress|  |
-| 3. Document Management | 0/3 | Not started | - |
+| 3. Document Management | 0/6 | Not started | - |
 | 4. Domain-Specific Parsers | 0/4 | Not started | - |
 | 5. Advanced Retrieval | 0/4 | Not started | - |
 | 6. Projects and Observability | 0/5 | Not started | - |
 
 ---
 *Roadmap created: 2026-03-18*
-*Last updated: 2026-03-18 after Phase 3 planning*
+*Last updated: 2026-03-18 after Phase 3 plan revision*
