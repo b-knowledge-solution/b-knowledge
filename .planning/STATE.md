@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-03-18T07:59:59.994Z"
-last_activity: 2026-03-18 — Plan 01-01 complete (Playwright E2E infrastructure + dataset CRUD tests)
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-03-18T08:04:35.000Z"
+last_activity: 2026-03-18 — Plan 01-02 complete (Document upload & parsing E2E tests)
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
-  percent: 25
+  completed_plans: 2
+  percent: 50
 ---
 
 # Project State
@@ -26,31 +26,32 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 1 of 6 (Migration Stabilization)
-Plan: 1 of 4 in current phase
+Plan: 2 of 4 in current phase
 Status: Executing
-Last activity: 2026-03-18 — Plan 01-01 complete (Playwright E2E infrastructure + dataset CRUD tests)
+Last activity: 2026-03-18 — Plan 01-02 complete (Document upload & parsing E2E tests with parser completeness validation)
 
-Progress: [███░░░░░░░] 25%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 5 min
-- Total execution time: 0.08 hours
+- Total plans completed: 2
+- Average duration: 4 min
+- Total execution time: 0.13 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1 | 1 | 5 min | 5 min |
+| 1 | 2 | 8 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (5 min)
-- Trend: -
+- Last 5 plans: 01-01 (5 min), 01-02 (3 min)
+- Trend: improving
 
 *Updated after each plan completion*
 | Phase 01 P01 | 5min | 2 tasks | 8 files |
+| Phase 01 P02 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -66,6 +67,7 @@ Recent decisions affecting current work:
 - [Pre-phase]: SYSTEM_TENANT_ID consolidation must happen in Phase 2 before any ABAC work — 5 files currently reading directly from process.env
 - [Phase 1, Plan 01]: Local account login for E2E auth fixture -- simpler than Azure AD, works with default dev credentials
 - [Phase 1, Plan 01]: Sequential single-worker Playwright execution to avoid DB race conditions
+- [Phase 1, Plan 02]: Parse tests use API trigger + polling helper for reliability; parser completeness validated statically against FACTORY keys
 
 ### Pending Todos
 
@@ -80,6 +82,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T07:59:59.961Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-03-18T08:04:35.000Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None
