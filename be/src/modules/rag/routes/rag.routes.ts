@@ -23,6 +23,7 @@ import {
   bulkParseDocumentsSchema, bulkToggleDocumentsSchema, bulkDeleteDocumentsSchema,
   bulkChunkSwitchSchema,
   changeDocumentParserSchema, webCrawlSchema,
+  updateDatasetPolicySchema,
 } from '../schemas/rag.schemas.js';
 
 const router = Router();
@@ -40,6 +41,10 @@ router.delete('/datasets/:id', requirePermission('manage_datasets'), controller.
 // Dataset RBAC access control endpoints
 router.get('/datasets/:id/access', requirePermission('manage_datasets'), controller.getDatasetAccess.bind(controller));
 router.put('/datasets/:id/access', requirePermission('manage_datasets'), validate({ params: uuidParamSchema, body: datasetAccessSchema }), controller.setDatasetAccess.bind(controller));
+
+// Dataset ABAC policy endpoints
+router.get('/datasets/:id/policy', requireAuth, controller.getDatasetPolicy.bind(controller));
+router.put('/datasets/:id/policy', requirePermission('manage_datasets'), validate({ params: uuidParamSchema, body: updateDatasetPolicySchema }), controller.updateDatasetPolicy.bind(controller));
 
 // Dataset settings endpoints
 router.get('/datasets/:id/settings', requireAuth, controller.getDatasetSettings.bind(controller));

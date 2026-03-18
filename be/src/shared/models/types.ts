@@ -637,6 +637,10 @@ export interface Dataset {
     created_by?: string | null;
     /** User ID who last updated this record */
     updated_by?: string | null;
+    /** ABAC policy rules for attribute-based access control (JSONB array) */
+    policy_rules?: any;
+    /** Tenant ID for multi-org isolation */
+    tenant_id?: string | null;
     /** Timestamp of record creation */
     created_at: Date;
     /** Timestamp of last update */

@@ -261,6 +261,58 @@ export class RagController {
     }
 
     // -------------------------------------------------------------------------
+    // Dataset ABAC Policy
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description GET /datasets/:id/policy — return ABAC policy rules for a dataset.
+     * @param {Request} req - Express request with dataset ID param
+     * @param {Response} res - Express response with policy rules array
+     * @returns {Promise<void>}
+     */
+    async getDatasetPolicy(req: Request, res: Response): Promise<void> {
+        const { id } = req.params;
+        if (!id) { res.status(400).json({ error: 'ID is required' }); return; }
+
+        try {
+            const policies = await ragService.getDatasetPolicies(id);
+            res.json({ policy_rules: policies });
+        } catch (error) {
+            log.error('Failed to get dataset policy', { error: String(error) });
+            res.status(500).json({ error: 'Failed to get dataset policy' });
+        }
+    }
+
+    /**
+     * @description PUT /datasets/:id/policy — update ABAC policy rules for a dataset.
+     * Validates and replaces the entire policy_rules array. Invalidates all cached abilities.
+     * @param {Request} req - Express request with dataset ID param and policy_rules body
+     * @param {Response} res - Express response with updated policy rules
+     * @returns {Promise<void>}
+     */
+    async updateDatasetPolicy(req: Request, res: Response): Promise<void> {
+        const { id } = req.params;
+        if (!id) { res.status(400).json({ error: 'ID is required' }); return; }
+
+        try {
+            // Extract tenant ID from request context
+            const tenantId = getTenantId(req) || ''
+            const user = req.user;
+            const userContext = user ? { id: user.id, email: (user as any).email, ip: (req as any).ip } : undefined;
+
+            await ragService.updateDatasetPolicy(id, tenantId, req.body.policy_rules, userContext);
+            res.json({ policy_rules: req.body.policy_rules });
+        } catch (error: any) {
+            if (error.message === 'Dataset not found') {
+                res.status(404).json({ error: error.message });
+                return;
+            }
+            log.error('Failed to update dataset policy', { error: String(error) });
+            res.status(500).json({ error: 'Failed to update dataset policy' });
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Dataset RBAC Access Control
     // -------------------------------------------------------------------------
 

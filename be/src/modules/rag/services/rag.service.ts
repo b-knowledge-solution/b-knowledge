@@ -13,6 +13,7 @@ import { log } from '@/shared/services/logger.service.js';
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js';
 import { Dataset, Document, AccessControl, UserContext } from '@/shared/models/types.js';
 import { teamService } from '@/modules/teams/services/team.service.js';
+import { AbacPolicyRule, invalidateAllAbilities } from '@/shared/services/ability.service.js';
 
 /**
  * @description Core service for dataset CRUD, RBAC access control, and document operations.
@@ -102,6 +103,8 @@ export class RagService {
                 parser_config: JSON.stringify(data.parser_config || {}),
                 pagerank: data.pagerank || 0,
                 access_control: JSON.stringify(data.access_control || { public: true }),
+                // Persist ABAC policy rules as JSONB for attribute-based access control
+                policy_rules: data.policy_rules ? JSON.stringify(data.policy_rules) : JSON.stringify([]),
                 status: 'active',
                 created_by: user?.id || null,
                 updated_by: user?.id || null,
@@ -155,6 +158,8 @@ export class RagService {
             if (data.parser_config !== undefined) updateData.parser_config = JSON.stringify(data.parser_config);
             if (data.pagerank !== undefined) updateData.pagerank = data.pagerank;
             if (data.access_control !== undefined) updateData.access_control = JSON.stringify(data.access_control);
+            // Persist ABAC policy rules if provided in the update
+            if (data.policy_rules !== undefined) updateData.policy_rules = JSON.stringify(data.policy_rules);
             if (user) updateData.updated_by = user.id;
 
             const dataset = await ModelFactory.dataset.update(id, updateData);
@@ -229,6 +234,78 @@ export class RagService {
         } catch (error) {
             log.error('Failed to delete dataset', { error: String(error) });
             throw error;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Dataset ABAC Policy
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description Update the ABAC policy rules on a dataset.
+     * Validates tenant ownership, persists the rules as JSONB, and invalidates
+     * all cached abilities so users recompute permissions on next request.
+     * @param {string} datasetId - Dataset UUID
+     * @param {string} tenantId - Tenant ID for ownership validation
+     * @param {AbacPolicyRule[]} policyRules - New policy rules to set
+     * @param {UserContext} [user] - User context for audit logging
+     * @returns {Promise<void>}
+     * @throws {Error} If dataset not found or does not belong to tenant
+     */
+    async updateDatasetPolicy(
+        datasetId: string,
+        tenantId: string,
+        policyRules: AbacPolicyRule[],
+        user?: UserContext,
+    ): Promise<void> {
+        const dataset = await ModelFactory.dataset.findById(datasetId)
+        if (!dataset) {
+            throw new Error('Dataset not found')
+        }
+
+        // Update the policy_rules JSONB column
+        await ModelFactory.dataset.update(datasetId, {
+            policy_rules: JSON.stringify(policyRules),
+        })
+
+        // Invalidate all cached abilities to force recompute with new policies
+        await invalidateAllAbilities()
+
+        // Log audit event for policy change
+        if (user) {
+            await auditService.log({
+                userId: user.id,
+                userEmail: user.email,
+                action: AuditAction.SET_PERMISSION,
+                resourceType: AuditResourceType.DATASET,
+                resourceId: datasetId,
+                details: { ruleCount: policyRules.length },
+                ipAddress: user.ip,
+            })
+        }
+
+        log.info('Dataset policy updated', { datasetId, ruleCount: policyRules.length })
+    }
+
+    /**
+     * @description Retrieve the ABAC policy rules for a dataset.
+     * Returns an empty array if no policy rules are set.
+     * @param {string} datasetId - Dataset UUID
+     * @returns {Promise<AbacPolicyRule[]>} Array of ABAC policy rules
+     */
+    async getDatasetPolicies(datasetId: string): Promise<AbacPolicyRule[]> {
+        const dataset = await ModelFactory.dataset.findById(datasetId)
+        if (!dataset) return []
+
+        // Parse the JSONB policy_rules field
+        const raw = (dataset as any).policy_rules
+        if (!raw) return []
+
+        try {
+            return typeof raw === 'string' ? JSON.parse(raw) : raw
+        } catch {
+            log.warn('Failed to parse policy_rules for dataset', { datasetId })
+            return []
         }
     }
 

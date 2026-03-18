@@ -27,6 +27,15 @@ export const createDatasetSchema = z.object({
     user_ids: z.array(z.string().uuid()).optional(),
   }).optional(),
   pagerank: z.number().int().min(0).optional(),
+  /** Optional ABAC policy rules for attribute-based access control */
+  policy_rules: z.array(z.object({
+    id: z.string().uuid().optional(),
+    effect: z.enum(['allow', 'deny']),
+    action: z.enum(['read', 'update', 'delete', 'manage']),
+    subject: z.enum(['Document', 'Dataset']),
+    conditions: z.record(z.unknown()).default({}),
+    description: z.string().max(500).optional(),
+  })).max(50).optional(),
 });
 
 /** @description PUT /api/rag/datasets/:id — body schema for dataset update (all fields optional) */
@@ -43,6 +52,15 @@ export const updateDatasetSchema = z.object({
     user_ids: z.array(z.string().uuid()).optional(),
   }).optional(),
   pagerank: z.number().int().min(0).optional(),
+  /** Optional ABAC policy rules for attribute-based access control */
+  policy_rules: z.array(z.object({
+    id: z.string().uuid().optional(),
+    effect: z.enum(['allow', 'deny']),
+    action: z.enum(['read', 'update', 'delete', 'manage']),
+    subject: z.enum(['Document', 'Dataset']),
+    conditions: z.record(z.unknown()).default({}),
+    description: z.string().max(500).optional(),
+  })).max(50).optional(),
 });
 
 /** @description PUT /api/rag/datasets/:id/access — body schema for access control update */
@@ -206,4 +224,41 @@ export const webCrawlSchema = z.object({
   url: z.string().url('Invalid URL format'),
   name: z.string().min(1).max(255).optional(),
   auto_parse: z.boolean().optional().default(true),
+})
+
+// ---------------------------------------------------------------------------
+// ABAC Policy schemas
+// ---------------------------------------------------------------------------
+
+/**
+ * @description Schema for a single ABAC policy rule.
+ * Defines access control conditions for attribute-based filtering on datasets and documents.
+ */
+export const policyRuleSchema = z.object({
+  /** Unique policy rule identifier — auto-generated if omitted */
+  id: z.string().uuid().optional(),
+  /** Whether this rule grants or denies access */
+  effect: z.enum(['allow', 'deny']),
+  /** CASL action verb (e.g., 'read', 'update', 'delete', 'manage') */
+  action: z.enum(['read', 'update', 'delete', 'manage']),
+  /** CASL subject type that this rule applies to */
+  subject: z.enum(['Document', 'Dataset']),
+  /** CASL conditions object for attribute-based filtering (MongoDB-style) */
+  conditions: z.record(z.unknown()).default({}),
+  /** Human-readable description of the policy rule */
+  description: z.string().max(500).optional(),
+})
+
+/**
+ * @description Schema for an array of ABAC policy rules.
+ * Limited to 50 rules per dataset to prevent performance degradation.
+ */
+export const policyRulesSchema = z.array(policyRuleSchema).max(50).default([])
+
+/**
+ * @description PUT /api/rag/datasets/:id/policy — body schema for updating only the ABAC policy rules on a dataset.
+ * Replaces the entire policy_rules array.
+ */
+export const updateDatasetPolicySchema = z.object({
+  policy_rules: policyRulesSchema,
 })
