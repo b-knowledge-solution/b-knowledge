@@ -13,7 +13,10 @@
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test --project=chromium",
+    "test:e2e:smoke": "playwright test --project=chromium --grep @smoke",
+    "test:e2e:setup": "playwright install chromium"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",
