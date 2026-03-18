@@ -32,6 +32,8 @@ declare module 'express-session' {
     lastAuthAt?: number;
     /** Unix timestamp (ms) of the last re-authentication (for sensitive ops) */
     lastReauthAt?: number;
+    /** Current active organization/tenant ID for multi-org support */
+    currentOrgId?: string;
   }
 }
 

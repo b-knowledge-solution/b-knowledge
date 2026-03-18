@@ -11,6 +11,7 @@ import { Request, Response, NextFunction } from 'express'
 import { log } from '@/shared/services/logger.service.js'
 import { User } from '@/shared/models/types.js'
 import { hasPermission, Role, Permission, ADMIN_ROLES } from '@/shared/config/rbac.js'
+import { abilityService, AppAbility } from '@/shared/services/ability.service.js'
 
 /** Session error code used by frontend to trigger re-auth flows */
 export const REAUTH_REQUIRED_ERROR = 'REAUTH_REQUIRED'
@@ -331,6 +332,71 @@ export function requireOwnershipCustom(
 
     // Not owner and not admin - return 403 Forbidden
     res.status(403).json({ error: 'Forbidden: You do not have access to this resource' })
+  }
+}
+
+/**
+ * @description Middleware factory that checks CASL ability for a specific action on a subject.
+ * Loads cached ability from Valkey, falling back to building fresh if cache misses.
+ * Attaches the resolved ability to the request for downstream use.
+ * @param {string} action - CASL action to check (e.g., 'read', 'create', 'manage')
+ * @param {string} subject - CASL subject to check (e.g., 'Dataset', 'Document')
+ * @returns {Function} Express middleware function
+ */
+export function requireAbility(action: string, subject: string) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    // Get user from session
+    const user = req.session?.user
+    if (!user) {
+      res.status(401).json({ error: 'Unauthorized' })
+      return
+    }
+
+    // Ensure user is attached to request for downstream use
+    if (!req.user) {
+      req.user = user
+    }
+
+    try {
+      // Try loading cached ability from Valkey first
+      let ability: AppAbility | null = await abilityService.loadCachedAbility(req.sessionID)
+
+      if (!ability) {
+        // Cache miss — build fresh ability from user context
+        ability = abilityService.buildAbilityFor({
+          id: user.id,
+          role: user.role,
+          is_superuser: user.is_superuser ?? null,
+          current_org_id: req.session.currentOrgId || '',
+        })
+        // Cache the freshly built ability for subsequent requests
+        await abilityService.cacheAbility(req.sessionID, ability)
+      }
+
+      // Check if user has the required ability
+      if (!ability.can(action as any, subject as any)) {
+        log.warn('CASL access denied', {
+          userId: user.id,
+          action,
+          subject,
+          role: user.role,
+        })
+        res.status(403).json({ error: 'Access denied' })
+        return
+      }
+
+      // Attach ability to request for downstream authorization checks
+      ;(req as any).ability = ability
+      next()
+    } catch (error) {
+      log.error('Error checking ability', {
+        error: error instanceof Error ? error.message : String(error),
+        userId: user.id,
+        action,
+        subject,
+      })
+      res.status(500).json({ error: 'Internal server error' })
+    }
   }
 }
 

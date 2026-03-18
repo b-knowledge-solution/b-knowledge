@@ -9,11 +9,85 @@ import { log } from '@/shared/services/logger.service.js'
 import { getClientIp } from '@/shared/utils/ip.js'
 import { config } from '@/shared/config/index.js'
 import { updateAuthTimestamp, getCurrentUser } from '@/shared/middleware/auth.middleware.js'
+import { abilityService } from '@/shared/services/ability.service.js'
+import { db } from '@/shared/db/knex.js'
 
 /**
  * @description Handles Azure AD OAuth, root/local login, token refresh, and session lifecycle management
  */
 export class AuthController {
+
+    /**
+     * @description Resolve the user's org membership and build + cache CASL ability on login.
+     * Queries user_tenant to find the user's orgs, sets session.currentOrgId to the first org,
+     * and builds/caches the CASL ability for the session.
+     * @param {Request} req - Express request with session.user already set
+     * @returns {Promise<void>}
+     */
+    private async wireAbilityOnLogin(req: Request): Promise<void> {
+      const user = req.session.user
+      if (!user) return
+
+      try {
+        // Query user_tenant to get the user's org memberships
+        const memberships = await db('user_tenant')
+          .where({ user_id: user.id })
+          .select('tenant_id', 'role')
+
+        // If user has no user_tenant entry, create one with role='user' and system tenant
+        if (memberships.length === 0) {
+          const systemTenantId = config.opensearch.systemTenantId
+          const now = Date.now()
+          const nowDate = new Date().toISOString().replace('T', ' ').slice(0, 19)
+          await db('user_tenant').insert({
+            id: db.raw("gen_random_uuid()::TEXT"),
+            user_id: user.id,
+            tenant_id: systemTenantId,
+            role: user.role || 'user',
+            invited_by: systemTenantId,
+            status: '1',
+            create_time: now,
+            create_date: nowDate,
+            update_time: now,
+            update_date: nowDate,
+          })
+          memberships.push({ tenant_id: systemTenantId, role: user.role || 'user' })
+        }
+
+        // Set session org context to the first membership
+        const primaryMembership = memberships[0]
+        req.session.currentOrgId = primaryMembership.tenant_id
+
+        // Update session user role to match the org-level role from user_tenant
+        if (req.session.user) {
+          req.session.user.role = primaryMembership.role
+        }
+
+        // Build and cache CASL ability for this session
+        const ability = abilityService.buildAbilityFor({
+          id: user.id,
+          role: primaryMembership.role,
+          is_superuser: user.is_superuser ?? null,
+          current_org_id: primaryMembership.tenant_id,
+          department: user.department ?? null,
+        })
+        await abilityService.cacheAbility(req.sessionID, ability)
+
+        log.debug('Wired ability on login', {
+          userId: user.id,
+          orgId: primaryMembership.tenant_id,
+          role: primaryMembership.role,
+          ruleCount: ability.rules.length,
+        })
+      } catch (error) {
+        // Non-fatal: ability will be built on-demand if not cached
+        log.error('Failed to wire ability on login', {
+          error: error instanceof Error ? error.message : String(error),
+          userId: user.id,
+        })
+      }
+    }
+
     /**
      * @description Return public authentication configuration for frontend MSAL initialization
      * @param {Request} req - Express request object
@@ -147,6 +221,9 @@ export class AuthController {
             req.session.tokenExpiresAt = (Date.now() + (tokens.expires_in * 1000)) as any
 
             updateAuthTimestamp(req, false)
+
+            // Resolve org membership and build/cache CASL ability
+            await this.wireAbilityOnLogin(req)
 
             // Save session and redirect
             req.session.save((err) => {
@@ -342,6 +419,10 @@ export class AuthController {
                 updated_at: new Date()
             }
             updateAuthTimestamp(req, false)
+
+            // Resolve org membership and build/cache CASL ability
+            await this.wireAbilityOnLogin(req)
+
             // Save session
             req.session.save(() => {
                 res.json(result)
@@ -369,5 +450,155 @@ export class AuthController {
      */
     async callback(req: Request, res: Response): Promise<void> {
         await this.handleCallback(req, res);
+    }
+
+    /**
+     * @description Return serialized CASL rules for the current session.
+     * Loads from Valkey cache or builds fresh if cache misses.
+     * Called by the frontend AbilityProvider on app load.
+     * @route GET /api/auth/abilities
+     * @access Private (requireAuth)
+     * @param {Request} req - Express request object
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
+     */
+    async getAbilities(req: Request, res: Response): Promise<void> {
+        const user = getCurrentUser(req)
+        if (!user) {
+            res.status(401).json({ error: 'Not authenticated' })
+            return
+        }
+
+        try {
+            // Try cached ability first for performance
+            let ability = await abilityService.loadCachedAbility(req.sessionID)
+
+            if (!ability) {
+                // Cache miss — build fresh ability and cache it
+                ability = abilityService.buildAbilityFor({
+                    id: user.id,
+                    role: user.role,
+                    is_superuser: user.is_superuser ?? null,
+                    current_org_id: req.session.currentOrgId || '',
+                    department: user.department ?? null,
+                })
+                await abilityService.cacheAbility(req.sessionID, ability)
+            }
+
+            res.json({ rules: ability.rules })
+        } catch (error) {
+            log.error('Failed to get abilities', {
+                error: error instanceof Error ? error.message : String(error),
+                userId: user.id,
+            })
+            res.status(500).json({ error: 'Internal server error' })
+        }
+    }
+
+    /**
+     * @description Return the user's organization memberships with roles.
+     * Joins user_tenant with tenant to include org display names.
+     * @route GET /api/auth/orgs
+     * @access Private (requireAuth)
+     * @param {Request} req - Express request object
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
+     */
+    async getOrgs(req: Request, res: Response): Promise<void> {
+        const user = getCurrentUser(req)
+        if (!user) {
+            res.status(401).json({ error: 'Not authenticated' })
+            return
+        }
+
+        try {
+            // Query user_tenant joined with tenant for display names
+            const memberships = await db('user_tenant')
+                .join('tenant', 'user_tenant.tenant_id', 'tenant.id')
+                .where({ 'user_tenant.user_id': user.id })
+                .select(
+                    'user_tenant.tenant_id as id',
+                    db.raw("COALESCE(tenant.display_name, tenant.name, tenant.id) as name"),
+                    'user_tenant.role',
+                )
+
+            res.json({
+                orgs: memberships,
+                currentOrgId: req.session.currentOrgId || null,
+            })
+        } catch (error) {
+            log.error('Failed to get orgs', {
+                error: error instanceof Error ? error.message : String(error),
+                userId: user.id,
+            })
+            res.status(500).json({ error: 'Internal server error' })
+        }
+    }
+
+    /**
+     * @description Switch the user's active organization and recompute CASL abilities.
+     * Verifies the user has a membership in the requested org before switching.
+     * @route POST /api/auth/switch-org
+     * @access Private (requireAuth)
+     * @param {Request} req - Express request object with { orgId } in body
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
+     */
+    async switchOrg(req: Request, res: Response): Promise<void> {
+        const user = getCurrentUser(req)
+        if (!user) {
+            res.status(401).json({ error: 'Not authenticated' })
+            return
+        }
+
+        const { orgId } = req.body
+        if (!orgId || typeof orgId !== 'string') {
+            res.status(400).json({ error: 'orgId is required' })
+            return
+        }
+
+        try {
+            // Verify user has a membership in the requested org
+            const membership = await db('user_tenant')
+                .where({ user_id: user.id, tenant_id: orgId })
+                .first()
+
+            if (!membership) {
+                res.status(403).json({ error: 'You are not a member of this organization' })
+                return
+            }
+
+            // Update session with new org context
+            req.session.currentOrgId = orgId
+            if (req.session.user) {
+                req.session.user.role = membership.role
+            }
+
+            // Invalidate old ability and build/cache fresh one with new org context
+            await abilityService.invalidateAbility(req.sessionID)
+            const ability = abilityService.buildAbilityFor({
+                id: user.id,
+                role: membership.role,
+                is_superuser: user.is_superuser ?? null,
+                current_org_id: orgId,
+                department: user.department ?? null,
+            })
+            await abilityService.cacheAbility(req.sessionID, ability)
+
+            log.info('User switched org', {
+                userId: user.id,
+                newOrgId: orgId,
+                newRole: membership.role,
+            })
+
+            res.json({ success: true, currentOrgId: orgId })
+        } catch (error) {
+            log.error('Failed to switch org', {
+                error: error instanceof Error ? error.message : String(error),
+                userId: user.id,
+                orgId,
+            })
+            res.status(500).json({ error: 'Internal server error' })
+        }
     }
 }

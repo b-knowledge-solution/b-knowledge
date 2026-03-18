@@ -38,13 +38,13 @@ export interface AbilityUserContext {
   /** User's role within the current org (e.g., 'admin', 'leader', 'user') */
   role: string
   /** Whether the user is a platform-level super admin */
-  is_superuser?: boolean | null
+  is_superuser?: boolean | null | undefined
   /** Current active org/tenant ID for tenant-scoped rules */
   current_org_id: string
   /** User's department from identity provider */
-  department?: string | null
+  department?: string | null | undefined
   /** Additional attributes for ABAC policy evaluation */
-  attributes?: Record<string, unknown>
+  attributes?: Record<string, unknown> | undefined
 }
 
 /**
