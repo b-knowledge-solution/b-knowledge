@@ -9,12 +9,11 @@
  */
 
 import { db } from '@/shared/db/knex.js'
+import { config } from '@/shared/config/index.js'
 import { DocumentRow } from '@/shared/models/types.js'
 
-// RAGFlow stores tenant_id as a 32-char hex string (UUID without hyphens)
-const SYSTEM_TENANT_ID = (
-    process.env['SYSTEM_TENANT_ID'] || '00000000000000000000000000000001'
-).replace(/-/g, '');
+// Centralized tenant ID from config
+const SYSTEM_TENANT_ID = config.opensearch.systemTenantId
 
 /**
  * @description Get current Unix timestamp in milliseconds

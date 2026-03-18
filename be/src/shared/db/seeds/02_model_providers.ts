@@ -11,10 +11,9 @@
  * Run seed: npm run db:seed
  */
 import { Knex } from 'knex'
+import { config } from '@/shared/config/index.js'
 
-const SYSTEM_TENANT_ID = (
-  process.env['SYSTEM_TENANT_ID'] || '00000000000000000000000000000001'
-).replace(/-/g, '')
+const SYSTEM_TENANT_ID = config.opensearch.systemTenantId
 
 export async function seed(knex: Knex): Promise<void> {
   const providers = [

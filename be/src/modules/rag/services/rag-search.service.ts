@@ -22,11 +22,13 @@ const ES_HOST = config.opensearch.host
 const ES_PASSWORD = config.opensearch.password
 
 /**
- * Get the OpenSearch index name based on the system tenant ID.
- * @returns The index name string
+ * Get the OpenSearch index name for a given tenant.
+ * Defaults to the system tenant when no tenantId is provided.
+ * @param {string} [tenantId] - Optional tenant ID to resolve a per-org index
+ * @returns {string} The index name string
  */
-function getIndexName(): string {
-    return `knowledge_${SYSTEM_TENANT_ID}`
+function getIndexName(tenantId?: string): string {
+    return `knowledge_${tenantId || SYSTEM_TENANT_ID}`
 }
 
 let osClient: Client | null = null
@@ -96,7 +98,7 @@ export class RagSearchService {
                 query: {
                     bool: {
                         must: [
-                            { term: { kb_id: datasetId } },
+                            { term: { kb_id: datasetId.replace(/-/g, '') } },
                             { match: { content_with_weight: { query, minimum_should_match: '30%' } } },
                         ],
                         filter: [
@@ -146,7 +148,7 @@ export class RagSearchService {
                 query: {
                     bool: {
                         must: [
-                            { term: { kb_id: datasetId } },
+                            { term: { kb_id: datasetId.replace(/-/g, '') } },
                         ],
                         filter: [
                             { term: { available_int: 1 } },
@@ -321,9 +323,10 @@ export class RagSearchService {
         const limit = options.limit || 20
         const offset = (page - 1) * limit
 
-        const must: Record<string, unknown>[] = [{ term: { kb_id: datasetId } }]
+        // OpenSearch stores kb_id and doc_id as 32-char hex (no hyphens)
+        const must: Record<string, unknown>[] = [{ term: { kb_id: datasetId.replace(/-/g, '') } }]
         if (options.doc_id) {
-            must.push({ term: { doc_id: options.doc_id } })
+            must.push({ term: { doc_id: options.doc_id.replace(/-/g, '') } })
         }
         // Filter by availability status when explicitly specified
         if (options.available !== undefined) {
@@ -336,7 +339,11 @@ export class RagSearchService {
                 query: { bool: { must } },
                 from: offset,
                 size: limit,
-                sort: [{ create_time: { order: 'desc' as const } }],
+                sort: [
+                    { page_num_int: { order: 'asc' as const, unmapped_type: 'float' } },
+                    { top_int: { order: 'asc' as const, unmapped_type: 'float' } },
+                    { create_time: { order: 'asc' as const } },
+                ],
                 _source: ['content_with_weight', 'content_ltks', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
             },
         })
@@ -362,10 +369,10 @@ export class RagSearchService {
     async addChunk(datasetId: string, data: { content: string; doc_id?: string; important_keywords?: string[]; question_keywords?: string[] }): Promise<{ chunk_id: string }> {
         const client = getClient()
         const body: Record<string, unknown> = {
-            kb_id: datasetId,
+            kb_id: datasetId.replace(/-/g, ''),
             content_with_weight: data.content,
             content_ltks: data.content,
-            doc_id: data.doc_id || '',
+            doc_id: (data.doc_id || '').replace(/-/g, ''),
             docnm_kwd: '',
             create_time: new Date().toISOString(),
             create_timestamp_flt: Date.now() / 1000,
@@ -474,7 +481,7 @@ export class RagSearchService {
                 query: {
                     bool: {
                         must: [
-                            { term: { kb_id: datasetId } },
+                            { term: { kb_id: datasetId.replace(/-/g, '') } },
                             { term: { doc_id: docId.replace(/-/g, '') } },
                         ],
                     },
@@ -507,7 +514,7 @@ export class RagSearchService {
                 query: {
                     bool: {
                         must: [
-                            { term: { kb_id: datasetId } },
+                            { term: { kb_id: datasetId.replace(/-/g, '') } },
                             { term: { doc_id: docId } },
                         ],
                     },

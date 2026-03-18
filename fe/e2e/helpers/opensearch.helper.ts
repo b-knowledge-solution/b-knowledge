@@ -15,7 +15,7 @@
 /** OpenSearch base URL for direct queries */
 const OPENSEARCH_URL = process.env.OPENSEARCH_URL || 'http://localhost:9201'
 
-/** System tenant ID used to derive the index name (32-char hex, no hyphens) */
+// E2E helper reads from env directly -- backend uses config.opensearch.systemTenantId
 const SYSTEM_TENANT_ID = (
   process.env.SYSTEM_TENANT_ID || '00000000000000000000000000000001'
 ).replace(/-/g, '')

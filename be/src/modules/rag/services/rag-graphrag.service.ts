@@ -12,17 +12,16 @@ import { Client } from '@opensearch-project/opensearch'
 import { llmClientService, LlmMessage } from '@/shared/services/llm-client.service.js'
 import { graphragPrompt } from '@/shared/prompts/index.js'
 import { log } from '@/shared/services/logger.service.js'
+import { config } from '@/shared/config/index.js'
 
 // ---------------------------------------------------------------------------
 // Constants & OpenSearch client (reuse same pattern as rag-search.service)
 // ---------------------------------------------------------------------------
 
-// RAGFlow stores tenant_id as a 32-char hex string (UUID without hyphens)
-const SYSTEM_TENANT_ID = (
-    process.env['SYSTEM_TENANT_ID'] || '00000000000000000000000000000001'
-).replace(/-/g, '')
-const ES_HOST = process.env['ES_HOST'] || 'http://localhost:9200'
-const ES_PASSWORD = process.env['ES_PASSWORD'] || ''
+// Centralized tenant ID and OpenSearch connection from config
+const SYSTEM_TENANT_ID = config.opensearch.systemTenantId
+const ES_HOST = config.opensearch.host
+const ES_PASSWORD = config.opensearch.password
 
 /**
  * Get the OpenSearch index name based on the system tenant ID.
