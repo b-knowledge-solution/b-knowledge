@@ -70,12 +70,12 @@ Plans:
   3. Each document version displays its author, upload timestamp, and change summary
   4. User can apply custom metadata tags to documents (e.g., sdlc_phase=design, department=clinical) that can be used to filter search results
   5. Metadata fields are automatically populated from document content during parsing; user can bulk-edit tags across multiple documents
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: Implement document version history — DB schema additions, upload-new-version endpoint, atomic OpenSearch is_current flip (DOCM-01, DOCM-03)
-- [ ] 03-02: Implement version-aware search — is_current filter and historical version opt-in in retrieval (DOCM-02)
-- [ ] 03-03: Implement document metadata and tagging — custom attribute schema, filter integration, bulk operations (DOCM-04, DOCM-05, DOCM-06)
+- [ ] 03-01-PLAN.md — Document version history: DB schema extensions, version creation service, upload API, FE version dialog and badges (DOCM-01, DOCM-03)
+- [ ] 03-02-PLAN.md — Version-aware search with rank_feature boost, chunk detail page, three document viewer patterns (DOCM-02)
+- [ ] 03-03-PLAN.md — Metadata tagging, auto-extraction UI, bulk operations, search filter chips, cron parsing scheduler (DOCM-04, DOCM-05, DOCM-06)
 
 ### Phase 4: Domain-Specific Parsers
 **Goal**: Documents from SDLC workflows (code files, API specs, ADRs) and healthcare corpora (clinical documents) are parsed into semantically meaningful chunks that preserve the structure unique to each document type
@@ -147,4 +147,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 ---
 *Roadmap created: 2026-03-18*
-*Last updated: 2026-03-18 after Phase 2 plan revision*
+*Last updated: 2026-03-18 after Phase 3 planning*
