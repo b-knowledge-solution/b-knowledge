@@ -9,6 +9,7 @@
 import { Request, Response } from 'express'
 import { log } from '@/shared/services/logger.service.js'
 import { searchService } from '../services/search.service.js'
+import { feedbackService } from '@/modules/feedback/services/feedback.service.js'
 import { ModelFactory } from '@/shared/models/factory.js'
 
 /**
@@ -310,6 +311,50 @@ export class SearchController {
       }
 
       log.error('Error in retrieval test', { error: errMsg })
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+
+  /**
+   * @description Submit thumbs up/down feedback on a search answer.
+   * Creates a feedback record with source='search' in the answer_feedback table.
+   * @param {Request} req - Express request with :id param and feedback data in body
+   * @param {Response} res - Express response
+   * @returns {Promise<void>} 201 with created feedback record
+   */
+  async sendFeedback(req: Request, res: Response): Promise<void> {
+    try {
+      // Guard: ensure authenticated user context
+      const userId = req.user?.id
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' })
+        return
+      }
+
+      const searchAppId = req.params.id!
+      const { thumbup, comment, query, answer, chunks_used, trace_id } = req.body
+
+      // Extract tenant_id from user context (defaults to system tenant)
+      const tenantId = (req.user as any)?.tenant_id || 'default'
+
+      // Create feedback with source='search' and the search app ID
+      const feedback = await feedbackService.createFeedback({
+        source: 'search',
+        source_id: searchAppId,
+        message_id: null,
+        user_id: userId,
+        thumbup,
+        comment: comment || null,
+        query,
+        answer,
+        chunks_used: chunks_used || null,
+        trace_id: trace_id || null,
+        tenant_id: tenantId,
+      })
+
+      res.status(201).json(feedback)
+    } catch (error) {
+      log.error('Error sending search feedback', { error: (error as Error).message })
       res.status(500).json({ error: 'Internal server error' })
     }
   }

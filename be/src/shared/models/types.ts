@@ -1374,3 +1374,44 @@ export interface TaskMessage {
     doc_ids?: string[];
     [key: string]: unknown;
 }
+
+/**
+ * @description AnswerFeedback interface representing a record in the 'answer_feedback' table.
+ * Stores user feedback (thumbs up/down) on chat and search answers with retrieval context.
+ */
+export interface AnswerFeedback {
+    /** Unique UUID for the feedback record */
+    id: string
+    /** Source of the answer: 'chat' or 'search' */
+    source: 'chat' | 'search'
+    /** conversation_id for chat, search_app_id for search */
+    source_id: string
+    /** Chat message ID; null for search feedback */
+    message_id: string | null
+    /** ID of the user who submitted feedback */
+    user_id: string
+    /** True for positive (thumbs up), false for negative (thumbs down) */
+    thumbup: boolean
+    /** Optional text comment from the user */
+    comment: string | null
+    /** The original query that produced the answer */
+    query: string
+    /** The answer text that was evaluated */
+    answer: string
+    /** Array of chunk references used in retrieval: { chunk_id, doc_id, score } */
+    chunks_used: Array<{ chunk_id: string; doc_id: string; score: number }> | null
+    /** Langfuse trace ID for observability linking */
+    trace_id: string | null
+    /** Tenant ID for multi-tenancy isolation */
+    tenant_id: string
+    /** Timestamp of record creation */
+    created_at: Date
+    /** Timestamp of last update */
+    updated_at: Date
+}
+
+/**
+ * @description Data required to create a new answer feedback record.
+ * Omits auto-generated fields (id, created_at, updated_at).
+ */
+export type CreateAnswerFeedback = Omit<AnswerFeedback, 'id' | 'created_at' | 'updated_at'>

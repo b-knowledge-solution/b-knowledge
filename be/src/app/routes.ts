@@ -38,6 +38,7 @@ import llmProviderRoutes from '@/modules/llm-provider/routes/llm-provider.routes
 import llmProviderPublicRoutes from '@/modules/llm-provider/routes/llm-provider-public.routes.js';
 import syncRoutes from '@/modules/sync/routes/sync.routes.js';
 import projectRoutes from '@/modules/projects/routes/projects.routes.js';
+import feedbackRoutes from '@/modules/feedback/routes/feedback.routes.js';
 
 // ============================================================================
 // Rate Limiters
@@ -171,6 +172,9 @@ function registerRoutes(apiRouter: Router): void {
 
     // Data source sync (connectors → MinIO → parse)
     apiRouter.use('/sync', syncRoutes);
+
+    // Answer feedback (chat and search quality tracking)
+    apiRouter.use('/feedback', feedbackRoutes);
 
     // Projects (multi-category document management)
     apiRouter.use('/projects', projectRoutes);

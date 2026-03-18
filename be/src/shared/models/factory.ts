@@ -39,6 +39,7 @@ import { SearchAppAccessModel } from '@/modules/search/models/search-app-access.
 import { DocumentVersionModel } from '@/modules/rag/models/document-version.model.js';
 import { DocumentVersionFileModel } from '@/modules/rag/models/document-version-file.model.js';
 import { ConverterJobModel } from '@/modules/rag/models/converter-job.model.js';
+import { AnswerFeedbackModel } from '@/modules/feedback/models/answer-feedback.model.js';
 
 // Project Models
 import { ProjectModel } from '@/modules/projects/models/project.model.js';
@@ -138,6 +139,8 @@ export class ModelFactory {
   private static documentVersionFileModel: DocumentVersionFileModel;
   /** ConverterJob model singleton instance */
   private static converterJobModel: ConverterJobModel;
+  /** AnswerFeedback model singleton instance */
+  private static answerFeedbackModel: AnswerFeedbackModel;
 
   // Project Models
   /** Project model singleton instance */
@@ -512,6 +515,16 @@ export class ModelFactory {
   static get converterJob() {
     if (!this.converterJobModel) this.converterJobModel = new ConverterJobModel();
     return this.converterJobModel;
+  }
+
+  /**
+   * Get the AnswerFeedback model singleton.
+   * Manages user feedback on chat and search answers.
+   * @returns AnswerFeedbackModel instance for feedback CRUD and queries
+   */
+  static get answerFeedback() {
+    if (!this.answerFeedbackModel) this.answerFeedbackModel = new AnswerFeedbackModel();
+    return this.answerFeedbackModel;
   }
 
   // -------------------------------------------------------------------------

@@ -21,6 +21,7 @@ import {
   listSearchAppsSchema,
   retrievalTestSchema,
 } from '../schemas/search.schemas.js'
+import { searchFeedbackSchema } from '@/modules/feedback/schemas/feedback.schemas.js'
 
 const router = Router()
 const controller = new SearchController()
@@ -124,6 +125,18 @@ router.post(
   requireAuth,
   validate({ body: retrievalTestSchema, params: searchAppIdParamSchema }),
   controller.retrievalTest.bind(controller)
+)
+
+/**
+ * @route POST /api/search/apps/:id/feedback
+ * @description Submit thumbs up/down feedback on a search answer.
+ * @access Private
+ */
+router.post(
+  '/apps/:id/feedback',
+  requireAuth,
+  validate({ body: searchFeedbackSchema, params: searchAppIdParamSchema }),
+  controller.sendFeedback.bind(controller)
 )
 
 /**

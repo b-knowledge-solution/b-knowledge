@@ -602,6 +602,26 @@ export class ChatConversationService {
     }
 
     await ModelFactory.chatMessage.update(messageId, { citations: updated } as any)
+
+    // Dual-write to answer_feedback table for structured analytics
+    try {
+      await ModelFactory.answerFeedback.create({
+        source: 'chat',
+        source_id: message.session_id,
+        message_id: messageId,
+        user_id: message.created_by || 'unknown',
+        thumbup,
+        comment: feedback || null,
+        query: message.content || '',
+        answer: message.content || '',
+        chunks_used: null,
+        trace_id: null,
+        tenant_id: 'default',
+      })
+    } catch (err) {
+      // Non-critical: log but don't fail the primary feedback write
+      log.warn('Failed to dual-write chat feedback to answer_feedback table', { error: (err as Error).message })
+    }
   }
 
   /**
