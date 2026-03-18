@@ -21,7 +21,7 @@ created: 2026-03-18
 | Preset | new-york, slate base, CSS variables |
 | Component library | Radix UI (via shadcn) |
 | Icon library | lucide-react |
-| Font | Inter (300, 400, 500, 600, 700) |
+| Font | Inter (400, 600) |
 
 ---
 
@@ -52,7 +52,7 @@ Exceptions:
 |------|------|--------|-------------|-------|
 | Body | 14px (text-sm) | 400 (normal) | 1.43 (20px) | Table cells, chunk text, metadata values |
 | Label | 12px (text-xs) | 600 (semibold) | 1.33 (16px) | Badge text, filter chip labels, form labels |
-| Heading | 18px (text-lg) | 500 (medium) | 1.33 (24px) | Page titles (chunk detail, dataset overview) |
+| Heading | 18px (text-lg) | 400 (normal) | 1.33 (24px) | Page titles (chunk detail, dataset overview) |
 | Display | 24px (text-2xl) | 600 (semibold) | 1.2 (28.8px) | Not used in this phase |
 
 ---
@@ -68,12 +68,27 @@ Exceptions:
 
 Accent reserved for:
 - "Upload New Version" primary CTA button
-- "Save" button on metadata bulk edit dialog
+- "Apply Tag Changes" button on metadata bulk edit dialog
 - Active filter chip border/background tint
 - Version badge on current/latest version (Badge variant="default" uses primary)
 - Document name hover link color in table
 - Chunk highlight overlay on PDF preview
 - "Add Chunk" button on chunk detail page
+
+---
+
+## Focal Points
+
+| Screen | Focal Point | Rationale |
+|--------|-------------|-----------|
+| ChunkDetailPage | Document preview panel (left 50%) with highlighted chunk | User's primary task is reviewing parsed content against source |
+| DocumentTable | Document name column (first data column) | Entry point to chunk detail; name is the navigational anchor |
+
+---
+
+## Accessibility
+
+- All icon-only actions use `aria-label` + `Tooltip` as fallback. Example: edit icon button gets `aria-label="Edit chunk"` and wraps in `<Tooltip content="Edit chunk">`.
 
 ---
 
@@ -144,7 +159,7 @@ All three patterns reuse the same `DocumentPreviewer` rendering component. Only 
 1. User selects multiple documents via checkboxes in DocumentTable
 2. Bulk action bar appears with "Edit Tags" button
 3. MetadataManageDialog opens in bulk mode with merge/overwrite toggle
-4. User edits key-value pairs; on save, all selected documents updated
+4. User edits key-value pairs; on confirm, all selected documents updated
 
 ### Filter Chip Interaction
 
@@ -171,6 +186,7 @@ All three patterns reuse the same `DocumentPreviewer` rendering component. Only 
 | Primary CTA (version upload) | "Upload New Version" |
 | Primary CTA (add chunk) | "Add Chunk" |
 | Primary CTA (bulk metadata) | "Edit Tags" |
+| Bulk metadata save action | "Apply Tag Changes" |
 | Empty state heading (no chunks) | "No chunks yet" |
 | Empty state body (no chunks) | "This document has not been parsed. Click Parse to generate chunks." |
 | Empty state heading (no versions) | "Original version" |
