@@ -6,8 +6,8 @@
  * Also provides chunk CRUD operations (manual add/edit/delete) and
  * document-level chunk toggling.
  *
- * Index naming: "knowledge_{SYSTEM_TENANT_ID}"
- * Chunks are filtered by kb_id (dataset_id).
+ * Index naming: "knowledge_{tenantId}"
+ * Chunks are filtered by kb_id (dataset_id) and tenant_id (mandatory isolation).
  *
  * @module modules/rag/services/rag-search
  */
@@ -56,8 +56,25 @@ function getClient(): Client {
  * @description Service for searching and managing chunks in OpenSearch.
  * Provides full-text, semantic, and hybrid search, as well as manual
  * chunk CRUD and document-level availability toggling.
+ *
+ * All search methods require a tenantId parameter for mandatory tenant isolation.
+ * Every OpenSearch query includes a `{ term: { tenant_id: tenantId } }` filter.
  */
 export class RagSearchService {
+    /**
+     * @description Build combined access filters including mandatory tenant isolation and optional ABAC filters.
+     * This helper ensures tenant_id filtering is NEVER skipped in any search path.
+     * @param {string} tenantId - Tenant ID for mandatory isolation
+     * @param {Record<string, unknown>[]} abacFilters - Optional ABAC filter clauses
+     * @returns {Record<string, unknown>[]} Array of OpenSearch filter clauses
+     */
+    private getFilters(tenantId: string, abacFilters: Record<string, unknown>[] = []): Record<string, unknown>[] {
+        return [
+            { term: { tenant_id: tenantId } },
+            ...abacFilters,
+        ]
+    }
+
     /**
      * Build OpenSearch filter clauses from metadata filter conditions.
      * @param filter - Optional metadata filter with logic and conditions
@@ -84,16 +101,25 @@ export class RagSearchService {
 
     /**
      * Full-text search over chunks in a dataset.
-     * @param datasetId - The dataset (kb_id) to search within
-     * @param query - The search query string
-     * @param topK - Maximum number of results to return
-     * @param extraFilters - Optional additional OpenSearch filter clauses
+     * @param {string} tenantId - Tenant ID for mandatory isolation (from request context)
+     * @param {string} datasetId - The dataset (kb_id) to search within
+     * @param {string} query - The search query string
+     * @param {number} topK - Maximum number of results to return
+     * @param {Record<string, unknown>[]} extraFilters - Optional additional OpenSearch filter clauses
+     * @param {Record<string, unknown>[]} abacFilters - Optional ABAC filter clauses
      * @returns Object with matching chunk results and total hit count from OpenSearch
      */
-    async fullTextSearch(datasetId: string, query: string, topK: number, extraFilters: Record<string, unknown>[] = []): Promise<{ chunks: ChunkResult[]; total: number }> {
+    async fullTextSearch(
+        tenantId: string,
+        datasetId: string,
+        query: string,
+        topK: number,
+        extraFilters: Record<string, unknown>[] = [],
+        abacFilters: Record<string, unknown>[] = [],
+    ): Promise<{ chunks: ChunkResult[]; total: number }> {
         const client = getClient()
         const res = await client.search({
-            index: getIndexName(),
+            index: getIndexName(tenantId),
             body: {
                 query: {
                     bool: {
@@ -103,6 +129,7 @@ export class RagSearchService {
                         ],
                         filter: [
                             { term: { available_int: 1 } },
+                            ...this.getFilters(tenantId, abacFilters),
                             ...extraFilters,
                         ],
                     },
@@ -127,23 +154,27 @@ export class RagSearchService {
     /**
      * Semantic (vector) search over chunks.
      * Requires the query to already be embedded as a vector.
-     * @param datasetId - The dataset (kb_id) to search within
-     * @param queryVector - The query embedding vector
-     * @param topK - Maximum number of results to return
-     * @param threshold - Minimum similarity score threshold
-     * @param extraFilters - Optional additional OpenSearch filter clauses
+     * @param {string} tenantId - Tenant ID for mandatory isolation (from request context)
+     * @param {string} datasetId - The dataset (kb_id) to search within
+     * @param {number[]} queryVector - The query embedding vector
+     * @param {number} topK - Maximum number of results to return
+     * @param {number} threshold - Minimum similarity score threshold
+     * @param {Record<string, unknown>[]} extraFilters - Optional additional OpenSearch filter clauses
+     * @param {Record<string, unknown>[]} abacFilters - Optional ABAC filter clauses
      * @returns Object with matching chunk results above the threshold and total hit count
      */
     async semanticSearch(
+        tenantId: string,
         datasetId: string,
         queryVector: number[],
         topK: number,
         threshold: number,
         extraFilters: Record<string, unknown>[] = [],
+        abacFilters: Record<string, unknown>[] = [],
     ): Promise<{ chunks: ChunkResult[]; total: number }> {
         const client = getClient()
         const res = await client.search({
-            index: getIndexName(),
+            index: getIndexName(tenantId),
             body: {
                 query: {
                     bool: {
@@ -152,6 +183,7 @@ export class RagSearchService {
                         ],
                         filter: [
                             { term: { available_int: 1 } },
+                            ...this.getFilters(tenantId, abacFilters),
                             ...extraFilters,
                         ],
                         should: [
@@ -185,15 +217,19 @@ export class RagSearchService {
 
     /**
      * Hybrid search: combine full-text and semantic results with weighted scoring.
-     * @param datasetId - The dataset (kb_id) to search within
-     * @param query - The search query string
-     * @param queryVector - The query embedding vector (optional)
-     * @param topK - Maximum number of results to return
-     * @param threshold - Minimum similarity score threshold for semantic results
-     * @param vectorWeight - Weight for semantic scores (0-1). 0 = pure text, 1 = pure semantic. Default 0.5
+     * @param {string} tenantId - Tenant ID for mandatory isolation (from request context)
+     * @param {string} datasetId - The dataset (kb_id) to search within
+     * @param {string} query - The search query string
+     * @param {number[] | null} queryVector - The query embedding vector (optional)
+     * @param {number} topK - Maximum number of results to return
+     * @param {number} threshold - Minimum similarity score threshold for semantic results
+     * @param {number} vectorWeight - Weight for semantic scores (0-1). 0 = pure text, 1 = pure semantic. Default 0.5
+     * @param {Record<string, unknown>[]} extraFilters - Optional additional OpenSearch filter clauses
+     * @param {Record<string, unknown>[]} abacFilters - Optional ABAC filter clauses
      * @returns Object with merged chunk results sorted by weighted score and total hit count
      */
     async hybridSearch(
+        tenantId: string,
         datasetId: string,
         query: string,
         queryVector: number[] | null,
@@ -201,14 +237,15 @@ export class RagSearchService {
         threshold: number,
         vectorWeight: number = 0.5,
         extraFilters: Record<string, unknown>[] = [],
+        abacFilters: Record<string, unknown>[] = [],
     ): Promise<{ chunks: ChunkResult[]; total: number }> {
-        const textResult = await this.fullTextSearch(datasetId, query, topK, extraFilters)
+        const textResult = await this.fullTextSearch(tenantId, datasetId, query, topK, extraFilters, abacFilters)
 
         if (!queryVector || queryVector.length === 0) {
             return textResult
         }
 
-        const semanticResult = await this.semanticSearch(datasetId, queryVector, topK, threshold, extraFilters)
+        const semanticResult = await this.semanticSearch(tenantId, datasetId, queryVector, topK, threshold, extraFilters, abacFilters)
 
         // Apply weighted scoring: vectorWeight controls the balance
         const textWeight = 1 - vectorWeight
@@ -251,15 +288,19 @@ export class RagSearchService {
     /**
      * Search dispatcher — handles method routing.
      * For semantic/hybrid, embedding must be done externally.
-     * @param datasetId - The dataset (kb_id) to search within
-     * @param req - The search request parameters
-     * @param queryVector - Optional pre-computed query embedding
+     * @param {string} tenantId - Tenant ID for mandatory isolation (from request context)
+     * @param {string} datasetId - The dataset (kb_id) to search within
+     * @param {SearchRequest} req - The search request parameters
+     * @param {number[] | null} [queryVector] - Optional pre-computed query embedding
+     * @param {Record<string, unknown>[]} [abacFilters] - Optional ABAC filter clauses
      * @returns Object with chunks array and total count
      */
     async search(
+        tenantId: string,
         datasetId: string,
         req: SearchRequest,
         queryVector?: number[] | null,
+        abacFilters: Record<string, unknown>[] = [],
     ): Promise<{ chunks: ChunkResult[]; total: number }> {
         const method = req.method || 'full_text'
         const topK = req.top_k || 10
@@ -279,19 +320,19 @@ export class RagSearchService {
         // Route to the appropriate search method
         switch (method) {
             case 'full_text':
-                result = await this.fullTextSearch(datasetId, req.query, topK, extraFilters)
+                result = await this.fullTextSearch(tenantId, datasetId, req.query, topK, extraFilters, abacFilters)
                 break
             case 'semantic':
                 // Fall back to full-text if no query vector is available
                 if (!queryVector?.length) {
-                    result = await this.fullTextSearch(datasetId, req.query, topK, extraFilters)
+                    result = await this.fullTextSearch(tenantId, datasetId, req.query, topK, extraFilters, abacFilters)
                 } else {
-                    result = await this.semanticSearch(datasetId, queryVector, topK, threshold, extraFilters)
+                    result = await this.semanticSearch(tenantId, datasetId, queryVector, topK, threshold, extraFilters, abacFilters)
                 }
                 break
             case 'hybrid':
             default:
-                result = await this.hybridSearch(datasetId, req.query, queryVector ?? null, topK, threshold, vectorWeight, extraFilters)
+                result = await this.hybridSearch(tenantId, datasetId, req.query, queryVector ?? null, topK, threshold, vectorWeight, extraFilters, abacFilters)
                 break
         }
 
@@ -310,11 +351,13 @@ export class RagSearchService {
 
     /**
      * List chunks for a dataset, optionally filtered by document.
-     * @param datasetId - The dataset (kb_id) to list chunks from
-     * @param options - Pagination and filtering options
+     * @param {string} tenantId - Tenant ID for mandatory isolation (from request context)
+     * @param {string} datasetId - The dataset (kb_id) to list chunks from
+     * @param {object} options - Pagination and filtering options
      * @returns Paginated chunk results with total count
      */
     async listChunks(
+        tenantId: string,
         datasetId: string,
         options: { doc_id?: string; page?: number; limit?: number; available?: boolean } = {},
     ): Promise<{ chunks: ChunkResult[]; total: number; page: number; limit: number }> {
@@ -324,7 +367,9 @@ export class RagSearchService {
         const offset = (page - 1) * limit
 
         // OpenSearch stores kb_id and doc_id as 32-char hex (no hyphens)
-        const must: Record<string, unknown>[] = [{ term: { kb_id: datasetId.replace(/-/g, '') } }]
+        const must: Record<string, unknown>[] = [
+            { term: { kb_id: datasetId.replace(/-/g, '') } },
+        ]
         if (options.doc_id) {
             must.push({ term: { doc_id: options.doc_id.replace(/-/g, '') } })
         }
@@ -334,9 +379,14 @@ export class RagSearchService {
         }
 
         const res = await client.search({
-            index: getIndexName(),
+            index: getIndexName(tenantId),
             body: {
-                query: { bool: { must } },
+                query: {
+                    bool: {
+                        must,
+                        filter: this.getFilters(tenantId),
+                    },
+                },
                 from: offset,
                 size: limit,
                 sort: [
@@ -362,14 +412,16 @@ export class RagSearchService {
 
     /**
      * Add a manual chunk to a dataset's OpenSearch index.
-     * @param datasetId - UUID of the dataset
-     * @param data - Chunk data with content and optional metadata
+     * @param {string} tenantId - Tenant ID for index resolution
+     * @param {string} datasetId - UUID of the dataset
+     * @param {object} data - Chunk data with content and optional metadata
      * @returns Created chunk info with ID
      */
-    async addChunk(datasetId: string, data: { content: string; doc_id?: string; important_keywords?: string[]; question_keywords?: string[] }): Promise<{ chunk_id: string }> {
+    async addChunk(tenantId: string, datasetId: string, data: { content: string; doc_id?: string; important_keywords?: string[]; question_keywords?: string[] }): Promise<{ chunk_id: string }> {
         const client = getClient()
         const body: Record<string, unknown> = {
             kb_id: datasetId.replace(/-/g, ''),
+            tenant_id: tenantId,
             content_with_weight: data.content,
             content_ltks: data.content,
             doc_id: (data.doc_id || '').replace(/-/g, ''),
@@ -386,7 +438,7 @@ export class RagSearchService {
         }
 
         const res = await client.index({
-            index: getIndexName(),
+            index: getIndexName(tenantId),
             body,
             refresh: 'true',
         })
@@ -396,12 +448,14 @@ export class RagSearchService {
 
     /**
      * Update an existing chunk in OpenSearch.
-     * @param datasetId - UUID of the dataset (for validation)
-     * @param chunkId - OpenSearch document ID of the chunk
-     * @param data - Partial update data
+     * @param {string} tenantId - Tenant ID for index resolution
+     * @param {string} datasetId - UUID of the dataset (for validation)
+     * @param {string} chunkId - OpenSearch document ID of the chunk
+     * @param {object} data - Partial update data
      * @returns Updated chunk info
      */
     async updateChunk(
+        tenantId: string,
         datasetId: string,
         chunkId: string,
         data: { content?: string; important_keywords?: string[]; question_keywords?: string[]; available?: boolean },
@@ -424,7 +478,7 @@ export class RagSearchService {
         }
 
         await client.update({
-            index: getIndexName(),
+            index: getIndexName(tenantId),
             id: chunkId,
             body: { doc },
             refresh: 'true',
@@ -435,13 +489,14 @@ export class RagSearchService {
 
     /**
      * Delete a chunk from OpenSearch.
-     * @param datasetId - UUID of the dataset (for validation)
-     * @param chunkId - OpenSearch document ID of the chunk
+     * @param {string} tenantId - Tenant ID for index resolution
+     * @param {string} datasetId - UUID of the dataset (for validation)
+     * @param {string} chunkId - OpenSearch document ID of the chunk
      */
-    async deleteChunk(datasetId: string, chunkId: string): Promise<void> {
+    async deleteChunk(tenantId: string, datasetId: string, chunkId: string): Promise<void> {
         const client = getClient()
         await client.delete({
-            index: getIndexName(),
+            index: getIndexName(tenantId),
             id: chunkId,
             refresh: 'true',
         })
@@ -449,17 +504,18 @@ export class RagSearchService {
 
     /**
      * @description Bulk update availability status for multiple chunks
+     * @param {string} tenantId - Tenant ID for index resolution
      * @param {string} datasetId - The dataset ID the chunks belong to
      * @param {string[]} chunkIds - Array of chunk IDs to update
      * @param {boolean} available - Whether chunks should be enabled or disabled
      * @returns {Promise<{ updated: number }>} Count of updated chunks
      */
-    async bulkSwitchChunks(datasetId: string, chunkIds: string[], available: boolean): Promise<{ updated: number }> {
+    async bulkSwitchChunks(tenantId: string, datasetId: string, chunkIds: string[], available: boolean): Promise<{ updated: number }> {
         const client = getClient()
         const availableInt = available ? 1 : 0
         // Build bulk update request with one update action per chunk
         const body = chunkIds.flatMap((id) => [
-            { update: { _index: getIndexName(), _id: id } },
+            { update: { _index: getIndexName(tenantId), _id: id } },
             { doc: { available_int: availableInt } },
         ])
         const res = await client.bulk({ body, refresh: 'true' })
@@ -469,20 +525,22 @@ export class RagSearchService {
 
     /**
      * @description Delete all chunks belonging to a specific document
+     * @param {string} tenantId - Tenant ID for index resolution
      * @param {string} datasetId - Dataset ID
      * @param {string} docId - Document ID whose chunks to delete
      * @returns {Promise<{ deleted: number }>} Count of deleted chunks
      */
-    async deleteChunksByDocId(datasetId: string, docId: string): Promise<{ deleted: number }> {
+    async deleteChunksByDocId(tenantId: string, datasetId: string, docId: string): Promise<{ deleted: number }> {
         const client = getClient()
         const res = await client.deleteByQuery({
-            index: getIndexName(),
+            index: getIndexName(tenantId),
             body: {
                 query: {
                     bool: {
                         must: [
                             { term: { kb_id: datasetId.replace(/-/g, '') } },
                             { term: { doc_id: docId.replace(/-/g, '') } },
+                            { term: { tenant_id: tenantId } },
                         ],
                     },
                 },
@@ -497,25 +555,28 @@ export class RagSearchService {
     /**
      * Toggle availability of all chunks belonging to a document.
      * Updates the available_int field in OpenSearch for all chunks with the given doc_id.
-     * @param datasetId - UUID of the dataset (kb_id) the document belongs to
-     * @param docId - The document ID whose chunks should be toggled
-     * @param available - True to enable, false to disable
+     * @param {string} tenantId - Tenant ID for index resolution
+     * @param {string} datasetId - UUID of the dataset (kb_id) the document belongs to
+     * @param {string} docId - The document ID whose chunks should be toggled
+     * @param {boolean} available - True to enable, false to disable
      * @returns Number of chunks updated
      */
     async toggleDocumentAvailability(
+        tenantId: string,
         datasetId: string,
         docId: string,
         available: boolean,
     ): Promise<number> {
         const client = getClient()
         const res = await client.updateByQuery({
-            index: getIndexName(),
+            index: getIndexName(tenantId),
             body: {
                 query: {
                     bool: {
                         must: [
                             { term: { kb_id: datasetId.replace(/-/g, '') } },
                             { term: { doc_id: docId } },
+                            { term: { tenant_id: tenantId } },
                         ],
                     },
                 },
@@ -534,17 +595,23 @@ export class RagSearchService {
 
     /**
      * Delete all chunks for a document from OpenSearch.
-     * @param docId - The document ID whose chunks should be removed
+     * @param {string} tenantId - Tenant ID for index resolution
+     * @param {string} docId - The document ID whose chunks should be removed
      * @returns Number of chunks deleted
      */
-    async deleteDocumentChunks(docId: string): Promise<number> {
+    async deleteDocumentChunks(tenantId: string, docId: string): Promise<number> {
         try {
             const client = getClient()
             const res = await client.deleteByQuery({
-                index: getIndexName(),
+                index: getIndexName(tenantId),
                 body: {
                     query: {
-                        term: { doc_id: docId.replace(/-/g, '') },
+                        bool: {
+                            must: [
+                                { term: { doc_id: docId.replace(/-/g, '') } },
+                                { term: { tenant_id: tenantId } },
+                            ],
+                        },
                     },
                 },
                 refresh: true,

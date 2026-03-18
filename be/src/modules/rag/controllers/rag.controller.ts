@@ -21,6 +21,7 @@ import { ModelFactory } from '@/shared/models/factory.js';
 import { getClientIp } from '@/shared/utils/ip.js';
 import { getRedisClient } from '@/shared/services/redis.service.js';
 import { db } from '@/shared/db/knex.js';
+import { getTenantId } from '@/shared/middleware/tenant.middleware.js';
 
 /**
  * @description Resolve model_providers.id for an embedding model name
@@ -245,7 +246,9 @@ export class RagController {
             // Update chunk availability in OpenSearch
             let chunksUpdated = 0;
             try {
-                chunksUpdated = await ragSearchService.toggleDocumentAvailability(datasetId, docId!, available);
+                // Extract tenant ID from request context for OpenSearch isolation
+                const tenantId = getTenantId(req) || ''
+                chunksUpdated = await ragSearchService.toggleDocumentAvailability(tenantId, datasetId, docId!, available);
             } catch {
                 // OpenSearch update may fail if no chunks exist yet — that's OK
             }
@@ -527,7 +530,9 @@ export class RagController {
             }
 
             // 3. Delete chunks from OpenSearch
-            try { await ragSearchService.deleteDocumentChunks(docId!); } catch { /* best-effort */ }
+            // Extract tenant ID from request context for OpenSearch isolation
+            const tenantIdForDelete = getTenantId(req) || ''
+            try { await ragSearchService.deleteDocumentChunks(tenantIdForDelete, docId!); } catch { /* best-effort */ }
 
             // 4. Delete file and file2document records from PostgreSQL
             try { await ragDocumentService.deleteFileRecords(docId!); } catch { /* best-effort */ }
@@ -638,8 +643,9 @@ export class RagController {
                 if (doc.location) {
                     try { await ragStorageService.deleteFile(doc.location); } catch { /* best-effort */ }
                 }
-                // OpenSearch chunks
-                try { await ragSearchService.deleteDocumentChunks(docId); } catch { /* best-effort */ }
+                // OpenSearch chunks — use tenant context for index resolution
+                const bulkDelTenantId = getTenantId(req) || ''
+                try { await ragSearchService.deleteDocumentChunks(bulkDelTenantId, docId); } catch { /* best-effort */ }
                 // file + file2document PG records
                 try { await ragDocumentService.deleteFileRecords(docId); } catch { /* best-effort */ }
                 // document row
@@ -817,7 +823,8 @@ export class RagController {
 
         try {
             // Delegate to search service which handles ES indexing
-            const result = await ragSearchService.addChunk(datasetId, req.body);
+            const tenantId = getTenantId(req) || ''
+            const result = await ragSearchService.addChunk(tenantId, datasetId, req.body);
             res.status(201).json(result);
         } catch (error) {
             log.error('Failed to create chunk', { error: String(error) });
@@ -838,7 +845,8 @@ export class RagController {
         }
 
         try {
-            const result = await ragSearchService.updateChunk(datasetId, chunkId, req.body);
+            const tenantId = getTenantId(req) || ''
+            const result = await ragSearchService.updateChunk(tenantId, datasetId, chunkId, req.body);
             res.json(result);
         } catch (error) {
             log.error('Failed to update chunk', { error: String(error) });
@@ -859,7 +867,8 @@ export class RagController {
         }
 
         try {
-            await ragSearchService.deleteChunk(datasetId, chunkId);
+            const tenantId = getTenantId(req) || ''
+            await ragSearchService.deleteChunk(tenantId, datasetId, chunkId);
             res.status(204).send();
         } catch (error) {
             log.error('Failed to delete chunk', { error: String(error) });
@@ -878,7 +887,8 @@ export class RagController {
         if (!datasetId) { res.status(400).json({ error: 'Dataset ID is required' }); return; }
         try {
             const { chunk_ids, available } = req.body;
-            const result = await ragSearchService.bulkSwitchChunks(datasetId, chunk_ids, available);
+            const tenantId = getTenantId(req) || ''
+            const result = await ragSearchService.bulkSwitchChunks(tenantId, datasetId, chunk_ids, available);
             res.json(result);
         } catch (error) {
             log.error('Failed to bulk switch chunks', { error: String(error) });
@@ -900,7 +910,9 @@ export class RagController {
         if (!datasetId) { res.status(400).json({ error: 'Dataset ID is required' }); return; }
 
         try {
-            const result = await ragSearchService.search(datasetId, {
+            // Extract tenant ID from request context for OpenSearch isolation
+            const tenantId = getTenantId(req) || ''
+            const result = await ragSearchService.search(tenantId, datasetId, {
                 query: req.body.query,
                 method: req.body.method || 'hybrid',
                 top_k: req.body.top_k || 5,
@@ -931,9 +943,11 @@ export class RagController {
         if (!datasetId) { res.status(400).json({ error: 'Dataset ID is required' }); return; }
 
         try {
+            // Extract tenant ID from request context for OpenSearch isolation
+            const tenantId = getTenantId(req) || ''
             // For now, use full-text search only from Node.js.
             // Semantic search requires embedding inference which stays in Python.
-            const result = await ragSearchService.search(datasetId, req.body);
+            const result = await ragSearchService.search(tenantId, datasetId, req.body);
             res.json(result);
         } catch (error) {
             log.error('Failed to search chunks', { error: String(error) });
@@ -960,7 +974,9 @@ export class RagController {
             if (req.query['available'] !== undefined) {
                 options.available = req.query['available'] === '1' || req.query['available'] === 'true';
             }
-            const result = await ragSearchService.listChunks(datasetId, options);
+            // Extract tenant ID from request context for OpenSearch isolation
+            const tenantId = getTenantId(req) || ''
+            const result = await ragSearchService.listChunks(tenantId, datasetId, options);
             res.json(result);
         } catch (error) {
             log.error('Failed to list chunks', { error: String(error) });
@@ -1377,7 +1393,8 @@ export class RagController {
         }
 
         try {
-            const result = await ragDocumentService.changeDocumentParser(id, docId, req.body)
+            const tenantId = getTenantId(req) || ''
+            const result = await ragDocumentService.changeDocumentParser(id, docId, req.body, tenantId)
             res.json(result)
         } catch (error: any) {
             // Return 409 when document is currently being parsed

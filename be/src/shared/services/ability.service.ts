@@ -266,6 +266,128 @@ export async function invalidateAllAbilities(): Promise<void> {
 }
 
 // ============================================================================
+// OPENSEARCH ABAC FILTER TRANSLATION
+// ============================================================================
+
+/**
+ * @description Translates ABAC policy conditions into OpenSearch bool/filter clauses.
+ * Converts allow rules to bool.should (OR — user matches ANY allow rule) and
+ * deny rules to bool.must_not. Only processes rules targeting 'read' action on 'Document' subject.
+ *
+ * @param {AbacPolicyRule[]} policies - ABAC policy rules to translate
+ * @param {Record<string, unknown>} _userAttributes - User attributes for future condition evaluation
+ * @returns {Record<string, unknown>[]} Array of OpenSearch filter clauses
+ *
+ * @example
+ * const filters = buildOpenSearchAbacFilters([
+ *   { id: '1', effect: 'allow', action: 'read', subject: 'Document', conditions: { department: 'clinical' } }
+ * ])
+ * // Returns: [{ bool: { should: [{ term: { department: 'clinical' } }], minimum_should_match: 1 } }]
+ */
+export function buildOpenSearchAbacFilters(
+  policies: AbacPolicyRule[],
+  _userAttributes: Record<string, unknown> = {}
+): Record<string, unknown>[] {
+  const allowFilters: Record<string, unknown>[] = []
+  const denyFilters: Record<string, unknown>[] = []
+
+  for (const policy of policies) {
+    // Only translate Document read rules to OpenSearch filters
+    if (policy.subject !== 'Document' || (policy.action !== 'read' && policy.action !== 'manage')) {
+      continue
+    }
+
+    const conditionFilters = translateConditions(policy.conditions)
+
+    if (policy.effect === 'allow') {
+      // Each allow rule contributes to a should clause (OR logic)
+      if (conditionFilters.length > 0) {
+        allowFilters.push(...conditionFilters)
+      }
+    } else if (policy.effect === 'deny') {
+      // Deny rules become must_not filters
+      denyFilters.push(...conditionFilters)
+    }
+  }
+
+  const result: Record<string, unknown>[] = []
+
+  // Wrap allow conditions in bool.should (user matches ANY allow rule)
+  if (allowFilters.length > 0) {
+    result.push({
+      bool: {
+        should: allowFilters,
+        minimum_should_match: 1,
+      },
+    })
+  }
+
+  // Deny conditions become must_not
+  if (denyFilters.length > 0) {
+    result.push({
+      bool: {
+        must_not: denyFilters,
+      },
+    })
+  }
+
+  return result
+}
+
+/**
+ * @description Translates CASL condition key-value pairs to OpenSearch query clauses.
+ * Handles simple equality (term), $in operator (terms), and $nin operator (must_not terms).
+ *
+ * @param {Record<string, unknown>} conditions - CASL-style conditions object
+ * @returns {Record<string, unknown>[]} Array of OpenSearch query clauses
+ */
+function translateConditions(conditions: Record<string, unknown>): Record<string, unknown>[] {
+  const filters: Record<string, unknown>[] = []
+
+  for (const [key, value] of Object.entries(conditions)) {
+    if (value === null || value === undefined) continue
+
+    // Handle operator objects ($in, $nin, etc.)
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      const ops = value as Record<string, unknown>
+      if (Array.isArray(ops['$in'])) {
+        // $in operator maps to OpenSearch terms query
+        filters.push({ terms: { [key]: ops['$in'] } })
+      }
+      if (Array.isArray(ops['$nin'])) {
+        // $nin operator maps to must_not terms query
+        filters.push({ bool: { must_not: [{ terms: { [key]: ops['$nin'] } }] } })
+      }
+    } else {
+      // Simple equality maps to OpenSearch term query
+      filters.push({ term: { [key]: value } })
+    }
+  }
+
+  return filters
+}
+
+/**
+ * @description Builds the complete access filter array for OpenSearch queries.
+ * Combines mandatory tenant isolation with optional ABAC filters.
+ * The tenant_id filter is ALWAYS present to ensure zero cross-tenant data leakage.
+ *
+ * @param {string} tenantId - The tenant ID for mandatory isolation
+ * @param {Record<string, unknown>[]} abacFilters - Optional ABAC filter clauses from buildOpenSearchAbacFilters
+ * @returns {Record<string, unknown>[]} Combined filter array for OpenSearch bool.filter
+ */
+export function buildAccessFilters(
+  tenantId: string,
+  abacFilters: Record<string, unknown>[] = []
+): Record<string, unknown>[] {
+  return [
+    // Mandatory tenant isolation — never omit this filter
+    { term: { tenant_id: tenantId } },
+    ...abacFilters,
+  ]
+}
+
+// ============================================================================
 // SINGLETON EXPORT
 // ============================================================================
 
@@ -279,4 +401,6 @@ export const abilityService = {
   loadCachedAbility,
   invalidateAbility,
   invalidateAllAbilities,
+  buildOpenSearchAbacFilters,
+  buildAccessFilters,
 }

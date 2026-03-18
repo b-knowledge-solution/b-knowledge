@@ -11,6 +11,7 @@ import { Request, Response } from 'express'
 import { log } from '@/shared/services/logger.service.js'
 import { chatConversationService } from '../services/chat-conversation.service.js'
 import { ttsService } from '@/shared/services/tts.service.js'
+import { getTenantId } from '@/shared/middleware/tenant.middleware.js'
 
 /**
  * @description Controller class for chat conversation endpoints.
@@ -220,7 +221,9 @@ export class ChatConversationController {
         : undefined
 
       // Delegate to service which handles RAG retrieval, LLM streaming, and local storage
-      await chatConversationService.streamChat(id!, content, dialog_id, userId, res, overrides)
+      // Extract tenant ID from request context for OpenSearch tenant isolation
+      const tenantId = getTenantId(req) || ''
+      await chatConversationService.streamChat(id!, content, dialog_id, userId, res, overrides, tenantId)
     } catch (error) {
       log.error('Error in stream chat', { error: (error as Error).message })
       // Only send error if headers haven't been sent yet

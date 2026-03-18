@@ -97,12 +97,15 @@ export class ChatOpenaiController {
           fullAnswer += delta
         })
 
+        // TODO(ACCS): Resolve tenant from embed token for full multi-tenant isolation
         await chatConversationService.streamChat(
           session.id,
           userMessage,
           dialogId,
           tokenRecord.created_by || 'api',
-          mockRes as any
+          mockRes as any,
+          undefined,
+          '',
         )
       } else {
         // ── Non-streaming mode: single JSON response ─────────────────────
@@ -120,12 +123,15 @@ export class ChatOpenaiController {
           fullAnswer += delta
         })
 
+        // TODO(ACCS): Resolve tenant from embed token for full multi-tenant isolation
         await chatConversationService.streamChat(
           session.id,
           userMessage,
           dialogId,
           tokenRecord.created_by || 'api',
-          bufferRes as any
+          bufferRes as any,
+          undefined,
+          '',
         )
 
         // Return the complete response in OpenAI format

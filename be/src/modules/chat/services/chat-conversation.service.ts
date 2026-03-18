@@ -655,7 +655,8 @@ export class ChatConversationService {
     dialogId: string | undefined,
     userId: string,
     res: ExpressResponse,
-    overrides?: Record<string, any>
+    overrides?: Record<string, any>,
+    tenantId: string = '',
   ): Promise<void> {
     // Set SSE headers
     res.setHeader('Content-Type', 'text/event-stream')
@@ -830,7 +831,7 @@ Requirements and restriction:
 
         // Search all knowledge bases in parallel
         const searchPromises = kbIds.map(kbId =>
-          ragSearchService.search(kbId, (() => {
+          ragSearchService.search(tenantId, kbId, (() => {
             const req: import('@/shared/models/types.js').SearchRequest = {
               query: searchQuery,
               method: 'hybrid',
@@ -883,6 +884,7 @@ Requirements and restriction:
         res.write(`data: ${JSON.stringify({ status: 'deep_research' })}\n\n`)
         try {
           const deepChunks = await ragDeepResearchService.research(
+            tenantId,
             searchQuery,
             kbIds,
             {

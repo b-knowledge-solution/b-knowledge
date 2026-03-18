@@ -279,12 +279,14 @@ export class SearchService {
   /**
    * Execute a search query against datasets configured in a search app.
    * Searches across all dataset IDs and merges results.
-   * @param searchId - UUID of the search app
-   * @param query - The search query string
-   * @param options - Pagination and search configuration parameters
+   * @param {string} tenantId - Tenant ID for mandatory OpenSearch isolation (from request context)
+   * @param {string} searchId - UUID of the search app
+   * @param {string} query - The search query string
+   * @param {object} [options] - Pagination and search configuration parameters
    * @returns Object with chunks array and total count
    */
   async executeSearch(
+    tenantId: string,
     searchId: string,
     query: string,
     options?: {
@@ -309,7 +311,7 @@ export class SearchService {
 
     // Use shared retrieveChunks (applies embedding + reranking)
     const { chunks: allChunks, total: totalHits } = await this.retrieveChunks(
-      app, query, topK, method, similarityThreshold, vectorSimilarityWeight,
+      tenantId, app, query, topK, method, similarityThreshold, vectorSimilarityWeight,
     )
 
     // Apply pagination if provided
@@ -336,11 +338,11 @@ export class SearchService {
    * @returns {Promise<{ chunks: any[], doc_aggs: any[] }>} Raw chunks with scores and document aggregations
    * @throws {Error} If search app not found
    */
-  async retrievalTest(searchId: string, data: any): Promise<{ chunks: any[], doc_aggs: any[] }> {
+  async retrievalTest(tenantId: string, searchId: string, data: any): Promise<{ chunks: any[], doc_aggs: any[] }> {
     const app = await ModelFactory.searchApp.findById(searchId)
     if (!app) throw new Error('Search app not found')
-    
-    const { chunks } = await this.retrieveChunks(app, data.query, data.top_k, data.method, data.similarity_threshold)
+
+    const { chunks } = await this.retrieveChunks(tenantId, app, data.query, data.top_k, data.method, data.similarity_threshold)
     return {
       chunks: chunks.map((c, i) => ({
         ...c,
@@ -383,6 +385,7 @@ export class SearchService {
    * @description Shared retrieval logic used by askSearch, executeSearch, and mindmap
    */
   private async retrieveChunks(
+    tenantId: string,
     app: SearchApp,
     query: string,
     topK: number = 10,
@@ -416,6 +419,7 @@ export class SearchService {
       if (metadataFilter) searchReq.metadata_filter = metadataFilter as NonNullable<SearchRequest['metadata_filter']>
 
       const result = await ragSearchService.search(
+        tenantId,
         datasetId,
         searchReq,
         queryVector,
@@ -483,6 +487,7 @@ export class SearchService {
    *   and optionally generates related questions. Uses SSE protocol for real-time streaming.
    */
   async askSearch(
+    tenantId: string,
     searchId: string,
     params: {
       query: string
@@ -528,7 +533,7 @@ export class SearchService {
     }
 
     // Retrieve and optionally rerank chunks
-    const { chunks } = await this.retrieveChunks(app, query, top_k, method, similarity_threshold, vector_similarity_weight, metadata_filter as any)
+    const { chunks } = await this.retrieveChunks(tenantId, app, query, top_k, method, similarity_threshold, vector_similarity_weight, metadata_filter as any)
 
     // End retrieval span with chunk texts
     if (retrievalSpan) {
@@ -687,6 +692,7 @@ export class SearchService {
    *   to produce a hierarchical mind map structure
    */
   async mindmap(
+    tenantId: string,
     searchId: string,
     params: {
       query: string
@@ -705,7 +711,7 @@ export class SearchService {
     const { query, top_k = 10, method = 'full_text', similarity_threshold = 0 } = params
 
     // Retrieve chunks for context
-    const { chunks } = await this.retrieveChunks(app, query, top_k, method, similarity_threshold)
+    const { chunks } = await this.retrieveChunks(tenantId, app, query, top_k, method, similarity_threshold)
 
     // Build knowledge context
     const knowledge = this.buildKnowledgeContext(chunks)

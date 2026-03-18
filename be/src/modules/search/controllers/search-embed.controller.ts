@@ -172,7 +172,8 @@ export class SearchEmbedController {
       res.flushHeaders()
 
       // Delegate to the search service (same pipeline as authenticated search)
-      await searchService.askSearch(tokenRow.app_id as string, req.body, res)
+      // TODO(ACCS): Resolve tenant from embed token for full multi-tenant isolation
+      await searchService.askSearch('', tokenRow.app_id as string, req.body, res)
     } catch (error) {
       const errMsg = (error as Error).message
 

@@ -150,6 +150,7 @@ export class RagDeepResearchService {
    * @returns All retrieved chunks merged and deduplicated
    */
   async research(
+    tenantId: string,
     question: string,
     kbIds: string[],
     options: DeepResearchOptions = {},
@@ -169,7 +170,7 @@ export class RagDeepResearchService {
       onProgress?.(`${depthLabel} search: "${query}"`)
 
       // ── Retrieve from knowledge bases ──
-      const kbResults = await this.retrieveFromKbs(kbIds, query, topN)
+      const kbResults = await this.retrieveFromKbs(tenantId, kbIds, query, topN)
       for (const chunk of kbResults) {
         if (!allChunks.has(chunk.chunk_id)) {
           allChunks.set(chunk.chunk_id, chunk)
@@ -263,6 +264,7 @@ export class RagDeepResearchService {
    * @returns Merged chunk results
    */
   private async retrieveFromKbs(
+    tenantId: string,
     kbIds: string[],
     query: string,
     topN: number
@@ -272,7 +274,7 @@ export class RagDeepResearchService {
     // Search all KBs in parallel
     const results = await Promise.all(
       kbIds.map(kbId =>
-        ragSearchService.search(kbId, {
+        ragSearchService.search(tenantId, kbId, {
           query,
           method: 'hybrid',
           top_k: topN,

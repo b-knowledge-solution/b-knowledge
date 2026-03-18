@@ -327,6 +327,7 @@ export class RagDocumentService {
         datasetId: string,
         docId: string,
         data: { parser_id: string; parser_config?: Record<string, unknown> },
+        tenantId: string = '',
     ): Promise<any> {
         const doc = await this.getDocument(docId)
         // Guard: document must exist and belong to this dataset
@@ -340,7 +341,7 @@ export class RagDocumentService {
         // Skip if parser is unchanged and no new config provided
         if (doc.parser_id === data.parser_id && !data.parser_config) return doc
         // Delete existing chunks from OpenSearch before resetting
-        await ragSearchService.deleteChunksByDocId(datasetId, docId)
+        await ragSearchService.deleteChunksByDocId(tenantId, datasetId, docId)
         // Reset document metadata for re-parsing
         const updateData: Record<string, unknown> = {
             parser_id: data.parser_id,

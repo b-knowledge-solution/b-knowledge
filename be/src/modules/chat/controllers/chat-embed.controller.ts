@@ -215,12 +215,15 @@ export class ChatEmbedController {
       }
 
       // Delegate to the existing streaming chat pipeline
+      // TODO(ACCS): Resolve tenant from embed token for full multi-tenant isolation
       await chatConversationService.streamChat(
         sessionId,
         content,
         dialogId,
         syntheticUserId,
         res,
+        undefined,
+        '',
       )
     } catch (error) {
       log.error('Error in embed stream completion', { error: (error as Error).message })

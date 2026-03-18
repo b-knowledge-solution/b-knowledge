@@ -11,6 +11,7 @@ import { log } from '@/shared/services/logger.service.js'
 import { searchService } from '../services/search.service.js'
 import { feedbackService } from '@/modules/feedback/services/feedback.service.js'
 import { ModelFactory } from '@/shared/models/factory.js'
+import { getTenantId } from '@/shared/middleware/tenant.middleware.js'
 
 /**
  * @description Controller handling search app CRUD, search execution,
@@ -220,7 +221,9 @@ export class SearchController {
       res.flushHeaders()
 
       // Delegate streaming to service
-      await searchService.askSearch(req.params.id!, req.body, res)
+      // Extract tenant ID from request context for OpenSearch isolation
+      const tenantId = getTenantId(req) || ''
+      await searchService.askSearch(tenantId, req.params.id!, req.body, res)
     } catch (error) {
       const errMsg = (error as Error).message
 
@@ -277,7 +280,9 @@ export class SearchController {
   async mindmap(req: Request, res: Response): Promise<void> {
     try {
       // Generate mindmap from search results
-      const tree = await searchService.mindmap(req.params.id!, req.body)
+      // Extract tenant ID from request context for OpenSearch isolation
+      const tenantId = getTenantId(req) || ''
+      const tree = await searchService.mindmap(tenantId, req.params.id!, req.body)
       res.json({ mindmap: tree })
     } catch (error) {
       const errMsg = (error as Error).message
@@ -300,7 +305,9 @@ export class SearchController {
    */
   async retrievalTest(req: Request, res: Response): Promise<void> {
     try {
-      const result = await searchService.retrievalTest(req.params.id!, req.body)
+      // Extract tenant ID from request context for OpenSearch isolation
+      const tenantId = getTenantId(req) || ''
+      const result = await searchService.retrievalTest(tenantId, req.params.id!, req.body)
       res.json(result)
     } catch (error) {
       const errMsg = (error as Error).message
@@ -370,7 +377,10 @@ export class SearchController {
       const { query, top_k, method, similarity_threshold, vector_similarity_weight, page, page_size } = req.body
 
       // Execute search across configured datasets with pagination
+      // Extract tenant ID from request context for OpenSearch isolation
+      const tenantIdForSearch = getTenantId(req) || ''
       const result = await searchService.executeSearch(
+        tenantIdForSearch,
         req.params.id!,
         query,
         {

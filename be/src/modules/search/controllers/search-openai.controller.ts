@@ -87,7 +87,8 @@ export class SearchOpenaiController {
           fullAnswer += delta
         })
 
-        await searchService.askSearch(appId, { query: userMessage }, mockRes as any)
+        // TODO(ACCS): Resolve tenant from embed token for full multi-tenant isolation
+        await searchService.askSearch('', appId, { query: userMessage }, mockRes as any)
       } else {
         // ── Non-streaming mode: buffer the answer and return JSON ─────────
         let fullAnswer = ''
@@ -95,7 +96,8 @@ export class SearchOpenaiController {
           fullAnswer += delta
         })
 
-        await searchService.askSearch(appId, { query: userMessage }, bufferRes as any)
+        // TODO(ACCS): Resolve tenant from embed token for full multi-tenant isolation
+        await searchService.askSearch('', appId, { query: userMessage }, bufferRes as any)
 
         // Return the complete response in OpenAI format
         const response = buildOaiCompletion(fullAnswer, resolvedModel)
