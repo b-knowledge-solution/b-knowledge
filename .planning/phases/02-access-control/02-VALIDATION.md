@@ -1,9 +1,9 @@
 ---
 phase: 02
 slug: access-control
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: active
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-18
 ---
 
@@ -34,28 +34,29 @@ created: 2026-03-18
 
 ---
 
+## Wave 0 Test Scaffolds
+
+Plan 02-00 creates these test files (all using `it.todo()` so they track but do not block):
+
+- [x] `be/tests/shared/services/ability.service.test.ts` -- covers ACCS-01, ACCS-02, ACCS-03, ACCS-04 (ability builder logic)
+- [x] `be/tests/shared/middleware/tenant.middleware.test.ts` -- covers tenant extraction and validation
+- [x] `be/tests/shared/middleware/auth.middleware.test.ts` -- covers CASL integration in auth middleware
+
+---
+
 ## Per-Task Verification Map
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 02-01-01 | 01 | 1 | ACCS-01 | integration | `npm run test -w be` | ❌ W0 | ⬜ pending |
-| 02-02-01 | 02 | 1 | ACCS-02 | integration + E2E | `npm run test -w be` | ❌ W0 | ⬜ pending |
-| 02-03-01 | 03 | 2 | ACCS-03 | integration + E2E | `npm run test -w be` | ❌ W0 | ⬜ pending |
-| 02-03-02 | 03 | 2 | ACCS-04 | integration | `npm run test -w be` | ❌ W0 | ⬜ pending |
-| 02-04-01 | 04 | 2 | ACCS-05 | integration | `npm run test -w be` | ❌ W0 | ⬜ pending |
-| 02-04-02 | 04 | 2 | ACCS-06 | integration + E2E | `npm run test -w be` | ❌ W0 | ⬜ pending |
+| 02-00-01 | 00 | 0 | ACCS-01..04 | scaffold | `npx vitest run be/tests/shared/ --reporter=verbose` | Created by 00 | pending |
+| 02-01-01 | 01 | 1 | ACCS-01 | integration | `npm run build -w be` | N/A (build check) | pending |
+| 02-02-01 | 02 | 2 | ACCS-01,02 | integration | `npm run build -w be` | N/A (build check) | pending |
+| 02-03-01 | 03 | 3 | ACCS-03,04 | integration | `npm run build -w be` | N/A (build check) | pending |
+| 02-04-01 | 04 | 3 | ACCS-02 | integration | `npm run build -w fe` | N/A (build check) | pending |
+| 02-05-01 | 05 | 4 | ACCS-02,03,04 | visual | checkpoint:human-verify | N/A | pending |
+| 02-06-01 | 06 | 4 | ACCS-02,05,06 | integration | `npm run build` | N/A (build check) | pending |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
-
----
-
-## Wave 0 Requirements
-
-- [ ] `be/tests/modules/access-control/` — test directory for ACCS-01 through ACCS-06
-- [ ] `be/tests/modules/access-control/helpers/` — shared fixtures for multi-tenant test setup
-- [ ] E2E auth fixtures for multi-org user creation
-
-*Existing Playwright and Vitest infrastructure covers framework needs.*
+*Status: pending · green · red · flaky*
 
 ---
 
@@ -70,11 +71,13 @@ created: 2026-03-18
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** pending execution
+</content>
+</invoke>

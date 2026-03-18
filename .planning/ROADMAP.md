@@ -49,15 +49,16 @@ Plans:
   3. An attribute-based rule (e.g., "department=clinical sees clinical docs") correctly restricts which documents appear in chat and search results for that user
   4. Document permissions inherit from their parent dataset by default; an admin can override permissions on individual documents
   5. Every document access, search query, and generated answer is written to the audit log with user identity and timestamp
-**Plans**: 6 plans
+**Plans**: 7 plans
 
 Plans:
+- [ ] 02-00-PLAN.md — Wave 0 test scaffolds for ability service, tenant middleware, auth middleware (ACCS-01, ACCS-02, ACCS-03, ACCS-04)
 - [ ] 02-01-PLAN.md — Consolidate SYSTEM_TENANT_ID reads into config; create access control schema migration (ACCS-01)
-- [ ] 02-02-PLAN.md — Install CASL, build ability service with Valkey caching, evolve RBAC to 4 roles, create tenant middleware (ACCS-01, ACCS-02)
-- [ ] 02-03-PLAN.md — Add mandatory tenant_id filter on OpenSearch queries; implement ABAC policy CRUD on datasets (ACCS-03, ACCS-04)
+- [ ] 02-02-PLAN.md — Install CASL, build ability service with Valkey caching, evolve RBAC to 4 roles, create tenant middleware, add auth API endpoints (ACCS-01, ACCS-02)
+- [ ] 02-03-PLAN.md — Add mandatory tenant_id filter on OpenSearch queries, update all callers; implement ABAC policy CRUD on datasets (ACCS-03, ACCS-04)
 - [ ] 02-04-PLAN.md — Install CASL React, create AbilityProvider, RoleBadge, OrgSwitcher, permission-gated sidebar (ACCS-02)
 - [ ] 02-05-PLAN.md — Build PolicyRuleEditor and RoleManagementTable UI components (ACCS-02, ACCS-03, ACCS-04)
-- [ ] 02-06-PLAN.md — Extend audit logging with new events and tenant scoping; add ABAC to project routes (ACCS-05, ACCS-06)
+- [ ] 02-06-PLAN.md — Create role assignment API, extend audit logging, add ABAC to project routes (ACCS-02, ACCS-05, ACCS-06)
 
 ### Phase 3: Document Management
 **Goal**: Users can manage the full lifecycle of a document including uploading new versions, searching across version history, tagging documents with custom metadata, and having metadata extracted automatically during parsing
@@ -138,7 +139,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Migration Stabilization | 4/4 | Complete |  |
-| 2. Access Control | 0/6 | In Progress | - |
+| 2. Access Control | 0/7 | In Progress | - |
 | 3. Document Management | 0/3 | Not started | - |
 | 4. Domain-Specific Parsers | 0/4 | Not started | - |
 | 5. Advanced Retrieval | 0/4 | Not started | - |
@@ -146,4 +147,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 ---
 *Roadmap created: 2026-03-18*
-*Last updated: 2026-03-18 after Phase 2 planning complete*
+*Last updated: 2026-03-18 after Phase 2 plan revision*
