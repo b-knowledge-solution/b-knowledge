@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 2 UI-SPEC approved
-last_updated: "2026-03-18T12:14:51.521Z"
-last_activity: 2026-03-18 — Plan 01-04 complete (Chat/search E2E tests and answer feedback)
+status: in-progress
+stopped_at: Completed 02-00-PLAN.md
+last_updated: "2026-03-18T13:18:34.602Z"
+last_activity: 2026-03-18 — Plan 02-00 complete (Wave 0 test scaffolds for access control)
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
-  percent: 100
+  total_plans: 11
+  completed_plans: 5
+  percent: 45
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** Users can ask questions in natural language and get accurate, cited answers from their organization's knowledge base — with strict access control ensuring each team only sees what they're authorized to access.
-**Current focus:** Phase 1 — Migration Stabilization
+**Current focus:** Phase 2 — Access Control
 
 ## Current Position
 
-Phase: 1 of 6 (Migration Stabilization)
-Plan: 4 of 4 in current phase
-Status: Phase Complete
-Last activity: 2026-03-18 — Plan 01-04 complete (Chat/search E2E tests and answer feedback)
+Phase: 2 of 6 (Access Control)
+Plan: 1 of 7 in current phase
+Status: In Progress
+Last activity: 2026-03-18 — Plan 02-00 complete (Wave 0 test scaffolds for access control)
 
-Progress: [██████████] 100%
+Progress: [█████░░░░░] 45%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
+- Total plans completed: 5
 - Average duration: 5 min
-- Total execution time: 0.33 hours
+- Total execution time: 0.38 hours
 
 **By Phase:**
 
@@ -46,7 +46,7 @@ Progress: [██████████] 100%
 | 1 | 4 | 20 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (5 min), 01-02 (3 min), 01-03 (2 min), 01-04 (10 min)
+- Last 5 plans: 01-01 (5 min), 01-02 (3 min), 01-03 (2 min), 01-04 (10 min), 02-00 (3 min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -54,6 +54,7 @@ Progress: [██████████] 100%
 | Phase 01 P02 | 3min | 2 tasks | 2 files |
 | Phase 01 P03 | 2min | 1 tasks | 2 files |
 | Phase 01 P04 | 10min | 2 tasks | 23 files |
+| Phase 02 P00 | 3min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,7 @@ Recent decisions affecting current work:
 - [Phase 1, Plan 04]: Dual-write chat feedback to answer_feedback table with non-blocking try/catch for backward compatibility
 - [Phase 1, Plan 04]: Search feedback uses dedicated POST /apps/:id/feedback endpoint for cleaner REST semantics
 - [Phase 1, Plan 03]: Direct OpenSearch fetch (not client library) for E2E helper -- simpler, no extra dependency; UUID normalization centralized in helper
+- [Phase 2, Plan 00]: CASL auth middleware tests in separate file (auth.middleware.casl.test.ts) to preserve existing RBAC middleware tests
 
 ### Pending Todos
 
@@ -87,6 +89,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T12:14:51.513Z
-Stopped at: Phase 2 UI-SPEC approved
-Resume file: .planning/phases/02-access-control/02-UI-SPEC.md
+Last session: 2026-03-18T13:18:00Z
+Stopped at: Completed 02-00-PLAN.md
+Resume file: .planning/phases/02-access-control/02-00-SUMMARY.md

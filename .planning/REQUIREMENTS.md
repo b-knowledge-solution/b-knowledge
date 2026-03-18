@@ -17,10 +17,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Access Control
 
-- [ ] **ACCS-01**: Org-level tenant isolation — each organization's data fully isolated with zero data leakage
-- [ ] **ACCS-02**: RBAC with admin, editor, and viewer roles within each org
-- [ ] **ACCS-03**: ABAC — attribute-based access rules (e.g., "doctors see clinical docs", "project members see project specs")
-- [ ] **ACCS-04**: Document-level permission inheritance from dataset/project with override capability
+- [x] **ACCS-01**: Org-level tenant isolation — each organization's data fully isolated with zero data leakage
+- [x] **ACCS-02**: RBAC with admin, editor, and viewer roles within each org
+- [x] **ACCS-03**: ABAC — attribute-based access rules (e.g., "doctors see clinical docs", "project members see project specs")
+- [x] **ACCS-04**: Document-level permission inheritance from dataset/project with override capability
 - [ ] **ACCS-05**: Audit logging — who accessed what document, when, and what answer was generated
 - [ ] **ACCS-06**: Project-scoped access — project-level isolation within orgs for SDLC teams
 
@@ -118,10 +118,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CHAT-01 | Phase 1 | Complete |
 | CHAT-02 | Phase 1 | Complete |
 | CHAT-03 | Phase 1 | Complete |
-| ACCS-01 | Phase 2 | Pending |
-| ACCS-02 | Phase 2 | Pending |
-| ACCS-03 | Phase 2 | Pending |
-| ACCS-04 | Phase 2 | Pending |
+| ACCS-01 | Phase 2 | Complete |
+| ACCS-02 | Phase 2 | Complete |
+| ACCS-03 | Phase 2 | Complete |
+| ACCS-04 | Phase 2 | Complete |
 | ACCS-05 | Phase 2 | Pending |
 | ACCS-06 | Phase 2 | Pending |
 | DOCM-01 | Phase 3 | Pending |
