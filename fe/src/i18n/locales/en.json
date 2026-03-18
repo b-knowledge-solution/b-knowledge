@@ -556,6 +556,57 @@
     "internalServerError": "Internal Server Error",
     "internalServerErrorMessage": "Something went wrong on our end. Please try again later."
   },
+  "accessControl": {
+    "roles": {
+      "superAdmin": "Super Admin",
+      "admin": "Admin",
+      "leader": "Leader",
+      "user": "User"
+    },
+    "roleManagement": {
+      "title": "User Management",
+      "changeRole": "Update Role",
+      "confirmChange": "Change {{user}}'s role from {{oldRole}} to {{newRole}}?",
+      "confirmDowngrade": "Change {{user}}'s role from {{oldRole}} to {{newRole}}? This will reduce their access level.",
+      "confirmSelfChange": "You are about to change your own role. You may lose access to this page. Continue?",
+      "updateSuccess": "Role updated successfully",
+      "updateError": "Failed to update role. Please try again.",
+      "noMembers": "No Members",
+      "noMembersDesc": "No members found in this organization. Invite users to get started."
+    },
+    "policy": {
+      "title": "Access Policy",
+      "save": "Save Access Policy",
+      "addRule": "Add Rule",
+      "removeRule": "Remove Rule",
+      "removeConfirm": "Are you sure you want to remove this access rule? Users who currently rely on this rule may lose access.",
+      "noRules": "No Access Rules",
+      "noRulesDesc": "All org members with appropriate roles can access this dataset. Add rules to restrict access by attributes.",
+      "saveSuccess": "Access policy saved successfully",
+      "saveError": "Failed to save access policy. Please try again.",
+      "inheritanceTooltip": "Documents inherit access from their parent dataset. Document-level overrides can only restrict access further, never expand it.",
+      "effect": "Effect",
+      "effectAllow": "Allow",
+      "effectDeny": "Deny",
+      "action": "Action",
+      "conditions": "Conditions",
+      "attributeName": "Attribute",
+      "operator": "Operator",
+      "value": "Value",
+      "operatorEquals": "equals",
+      "operatorIn": "in",
+      "operatorNotEquals": "not equals"
+    },
+    "orgSwitcher": {
+      "label": "Organization",
+      "switching": "Switching organization..."
+    },
+    "accessDenied": {
+      "title": "Access Denied",
+      "message": "You do not have permission to access this page. Contact your organization administrator for access.",
+      "logged": "Access denied. This attempt has been logged."
+    }
+  },
   "auditLog": {
     "title": "Audit Logs",
     "description": "View all system audit logs and user activities",
@@ -610,7 +661,15 @@
       "batch_delete": "Batch Delete",
       "create_prompt": "Create Prompt",
       "update_prompt": "Update Prompt",
-      "delete_prompt": "Delete Prompt"
+      "delete_prompt": "Delete Prompt",
+      "view_document": "View Document",
+      "download_document": "Download Document",
+      "search_query": "Search Query",
+      "chat_answer": "Chat Answer",
+      "create_policy": "Create Policy",
+      "update_policy": "Update Policy",
+      "delete_policy": "Delete Policy",
+      "access_denied": "Access Denied"
     },
     "resourceTypes": {
       "user": "User",
@@ -624,7 +683,11 @@
       "broadcast_message": "Broadcast Message",
       "permission": "Permission",
       "knowledge_base_source": "Knowledge Base Source",
-      "prompt": "Prompt"
+      "prompt": "Prompt",
+      "policy": "Policy",
+      "search": "Search",
+      "chat": "Chat",
+      "org": "Organization"
     }
   },
   "storage": {
@@ -1411,6 +1474,7 @@
     "docSize": "Size",
     "docStatus": "Status",
     "docUploadDate": "Upload Date",
+    "docUpdateDate": "Updated",
     "parse": "Parse",
     "createSuccess": "Dataset created successfully",
     "updateSuccess": "Dataset updated successfully",

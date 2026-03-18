@@ -559,6 +559,57 @@
     "internalServerError": "内部サーバーエラー",
     "internalServerErrorMessage": "サーバー側で問題が発生しました。しばらくしてからもう一度お試しください。"
   },
+  "accessControl": {
+    "roles": {
+      "superAdmin": "スーパー管理者",
+      "admin": "管理者",
+      "leader": "リーダー",
+      "user": "ユーザー"
+    },
+    "roleManagement": {
+      "title": "ユーザー管理",
+      "changeRole": "ロールを更新",
+      "confirmChange": "{{user}}のロールを{{oldRole}}から{{newRole}}に変更しますか？",
+      "confirmDowngrade": "{{user}}のロールを{{oldRole}}から{{newRole}}に変更しますか？アクセスレベルが低下します。",
+      "confirmSelfChange": "自分のロールを変更しようとしています。このページへのアクセスを失う可能性があります。続行しますか？",
+      "updateSuccess": "ロールが正常に更新されました",
+      "updateError": "ロールの更新に失敗しました。もう一度お試しください。",
+      "noMembers": "メンバーなし",
+      "noMembersDesc": "この組織にメンバーが見つかりません。ユーザーを招待して始めましょう。"
+    },
+    "policy": {
+      "title": "アクセスポリシー",
+      "save": "アクセスポリシーを保存",
+      "addRule": "ルールを追加",
+      "removeRule": "ルールを削除",
+      "removeConfirm": "このアクセスルールを削除してもよろしいですか？このルールに依存しているユーザーのアクセスが失われる可能性があります。",
+      "noRules": "アクセスルールなし",
+      "noRulesDesc": "適切なロールを持つ組織メンバー全員がこのデータセットにアクセスできます。属性でアクセスを制限するにはルールを追加してください。",
+      "saveSuccess": "アクセスポリシーが正常に保存されました",
+      "saveError": "アクセスポリシーの保存に失敗しました。もう一度お試しください。",
+      "inheritanceTooltip": "ドキュメントは親データセットからアクセス権を継承します。ドキュメントレベルのオーバーライドはアクセスをさらに制限することのみ可能で、拡張はできません。",
+      "effect": "効果",
+      "effectAllow": "許可",
+      "effectDeny": "拒否",
+      "action": "アクション",
+      "conditions": "条件",
+      "attributeName": "属性",
+      "operator": "演算子",
+      "value": "値",
+      "operatorEquals": "等しい",
+      "operatorIn": "含む",
+      "operatorNotEquals": "等しくない"
+    },
+    "orgSwitcher": {
+      "label": "組織",
+      "switching": "組織を切り替え中..."
+    },
+    "accessDenied": {
+      "title": "アクセスが拒否されました",
+      "message": "このページにアクセスする権限がありません。アクセスについては組織の管理者にお問い合わせください。",
+      "logged": "アクセスが拒否されました。この試みは記録されました。"
+    }
+  },
   "auditLog": {
     "title": "監査ログ",
     "description": "すべてのシステム監査ログとユーザーアクティビティを表示",
@@ -613,7 +664,15 @@
       "batch_delete": "一括削除",
       "create_prompt": "Create Prompt",
       "update_prompt": "Update Prompt",
-      "delete_prompt": "Delete Prompt"
+      "delete_prompt": "Delete Prompt",
+      "view_document": "ドキュメント閲覧",
+      "download_document": "ドキュメントダウンロード",
+      "search_query": "検索クエリ",
+      "chat_answer": "チャット回答",
+      "create_policy": "ポリシー作成",
+      "update_policy": "ポリシー更新",
+      "delete_policy": "ポリシー削除",
+      "access_denied": "アクセス拒否"
     },
     "resourceTypes": {
       "user": "ユーザー",
@@ -627,7 +686,11 @@
       "broadcast_message": "一斉通知",
       "permission": "権限",
       "knowledge_base_source": "ナレッジベースソース",
-      "prompt": "Prompt"
+      "prompt": "Prompt",
+      "policy": "ポリシー",
+      "search": "検索",
+      "chat": "チャット",
+      "org": "組織"
     }
   },
   "storage": {
@@ -1399,6 +1462,7 @@
     "docSize": "サイズ",
     "docStatus": "ステータス",
     "docUploadDate": "アップロード日",
+    "docUpdateDate": "更新日",
     "parse": "解析",
     "createSuccess": "データセットが正常に作成されました",
     "updateSuccess": "データセットが正常に更新されました",

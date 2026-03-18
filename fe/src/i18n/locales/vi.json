@@ -559,6 +559,57 @@
     "internalServerError": "Lỗi máy chủ nội bộ",
     "internalServerErrorMessage": "Đã xảy ra lỗi ở phía chúng tôi. Vui lòng thử lại sau."
   },
+  "accessControl": {
+    "roles": {
+      "superAdmin": "Quản trị viên cấp cao",
+      "admin": "Quản trị viên",
+      "leader": "Trưởng nhóm",
+      "user": "Người dùng"
+    },
+    "roleManagement": {
+      "title": "Quản lý người dùng",
+      "changeRole": "Cập nhật vai trò",
+      "confirmChange": "Thay đổi vai trò của {{user}} từ {{oldRole}} sang {{newRole}}?",
+      "confirmDowngrade": "Thay đổi vai trò của {{user}} từ {{oldRole}} sang {{newRole}}? Điều này sẽ giảm quyền truy cập của họ.",
+      "confirmSelfChange": "Bạn đang thay đổi vai trò của chính mình. Bạn có thể mất quyền truy cập trang này. Tiếp tục?",
+      "updateSuccess": "Cập nhật vai trò thành công",
+      "updateError": "Cập nhật vai trò thất bại. Vui lòng thử lại.",
+      "noMembers": "Không có thành viên",
+      "noMembersDesc": "Không tìm thấy thành viên trong tổ chức này. Mời người dùng để bắt đầu."
+    },
+    "policy": {
+      "title": "Chính sách truy cập",
+      "save": "Lưu chính sách truy cập",
+      "addRule": "Thêm quy tắc",
+      "removeRule": "Xóa quy tắc",
+      "removeConfirm": "Bạn có chắc muốn xóa quy tắc truy cập này? Người dùng hiện đang dựa vào quy tắc này có thể mất quyền truy cập.",
+      "noRules": "Không có quy tắc truy cập",
+      "noRulesDesc": "Tất cả thành viên tổ chức có vai trò phù hợp đều có thể truy cập tập dữ liệu này. Thêm quy tắc để hạn chế truy cập theo thuộc tính.",
+      "saveSuccess": "Lưu chính sách truy cập thành công",
+      "saveError": "Lưu chính sách truy cập thất bại. Vui lòng thử lại.",
+      "inheritanceTooltip": "Tài liệu kế thừa quyền truy cập từ tập dữ liệu cha. Ghi đè cấp tài liệu chỉ có thể hạn chế thêm, không mở rộng.",
+      "effect": "Hiệu lực",
+      "effectAllow": "Cho phép",
+      "effectDeny": "Từ chối",
+      "action": "Hành động",
+      "conditions": "Điều kiện",
+      "attributeName": "Thuộc tính",
+      "operator": "Toán tử",
+      "value": "Giá trị",
+      "operatorEquals": "bằng",
+      "operatorIn": "trong",
+      "operatorNotEquals": "không bằng"
+    },
+    "orgSwitcher": {
+      "label": "Tổ chức",
+      "switching": "Đang chuyển tổ chức..."
+    },
+    "accessDenied": {
+      "title": "Truy cập bị từ chối",
+      "message": "Bạn không có quyền truy cập trang này. Liên hệ quản trị viên tổ chức để được cấp quyền.",
+      "logged": "Truy cập bị từ chối. Hành động này đã được ghi nhận."
+    }
+  },
   "auditLog": {
     "title": "Nhật ký Kiểm toán",
     "description": "Xem tất cả nhật ký kiểm toán hệ thống và hoạt động người dùng",
@@ -613,7 +664,15 @@
       "batch_delete": "Xóa Hàng Loạt",
       "create_prompt": "Create Prompt",
       "update_prompt": "Update Prompt",
-      "delete_prompt": "Delete Prompt"
+      "delete_prompt": "Delete Prompt",
+      "view_document": "Xem tài liệu",
+      "download_document": "Tải xuống tài liệu",
+      "search_query": "Truy vấn tìm kiếm",
+      "chat_answer": "Trả lời trò chuyện",
+      "create_policy": "Tạo chính sách",
+      "update_policy": "Cập nhật chính sách",
+      "delete_policy": "Xóa chính sách",
+      "access_denied": "Truy cập bị từ chối"
     },
     "resourceTypes": {
       "user": "Người dùng",
@@ -627,7 +686,11 @@
       "broadcast_message": "Thông Báo Hệ Thống",
       "permission": "Quyền Hạn",
       "knowledge_base_source": "Nguồn Kiến Thức",
-      "prompt": "Prompt"
+      "prompt": "Prompt",
+      "policy": "Chính sách",
+      "search": "Tìm kiếm",
+      "chat": "Trò chuyện",
+      "org": "Tổ chức"
     }
   },
   "storage": {
@@ -1413,6 +1476,7 @@
     "docSize": "Kích thước",
     "docStatus": "Trạng thái",
     "docUploadDate": "Ngày tải lên",
+    "docUpdateDate": "Cập nhật",
     "parse": "Phân tích",
     "createSuccess": "Tạo bộ dữ liệu thành công",
     "updateSuccess": "Cập nhật bộ dữ liệu thành công",

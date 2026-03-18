@@ -117,11 +117,11 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
     featureFlag: 'enableAiSearch',
   },
 
-  // ── Data Studio (admin / leader) ───────────────────────────────
+  // ── Data Studio (super-admin / admin / leader) ─────────────────
   {
     labelKey: 'nav.dataStudio',
     icon: LayoutDashboard,
-    roles: ['admin', 'leader'],
+    roles: ['super-admin', 'admin', 'leader'],
     children: [
 
       {
@@ -138,13 +138,13 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
         path: '/data-studio/chat-assistants',
         labelKey: 'nav.chatAssistants',
         icon: MessageSquare,
-        roles: ['admin'],
+        roles: ['super-admin', 'admin'],
       },
       {
         path: '/data-studio/search-apps',
         labelKey: 'nav.searchApps',
         icon: Search,
-        roles: ['admin'],
+        roles: ['super-admin', 'admin'],
       },
       {
         path: '/data-studio/datasets',
@@ -155,22 +155,22 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
         path: '/data-studio/llm-providers',
         labelKey: 'nav.llmProviders',
         icon: BrainCircuit,
-        roles: ['admin'],
+        roles: ['super-admin', 'admin'],
       },
       {
         path: '/data-studio/histories',
         labelKey: 'nav.histories',
         icon: History,
-        roles: ['admin'],
+        roles: ['super-admin', 'admin'],
       },
     ],
   },
 
-  // ── IAM (admin) ────────────────────────────────────────────────
+  // ── IAM (super-admin / admin) ───────────────────────────────────
   {
     labelKey: 'nav.iam',
     icon: UserCog,
-    roles: ['admin'],
+    roles: ['super-admin', 'admin'],
     children: [
       {
         path: '/iam/users',
@@ -185,11 +185,11 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
     ],
   },
 
-  // ── Administration (admin) ─────────────────────────────────────
+  // ── Administration (super-admin / admin) ────────────────────────
   {
     labelKey: 'nav.administrators',
     icon: Shield,
-    roles: ['admin'],
+    roles: ['super-admin', 'admin'],
     children: [
       {
         path: '/admin/dashboard',
