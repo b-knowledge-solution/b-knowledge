@@ -12,6 +12,7 @@ import type {
   DatasetSettings, RetrievalTestResult,
   DocumentLogsResponse, DatasetOverviewStats, DatasetLogsResponse,
   GraphDataResponse, MetadataResponse, MetadataField,
+  AbacPolicyRule,
 } from '../types';
 
 /**
@@ -213,6 +214,17 @@ export const datasetApi = {
     data: { public?: boolean; team_ids?: string[]; user_ids?: string[] },
   ): Promise<void> => {
     return api.put<void>(`${BASE_URL}/datasets/${datasetId}/access`, data);
+  },
+
+  /**
+   * @description Update ABAC policy rules for a dataset's access control.
+   * Replaces all existing policy rules with the provided set.
+   * @param {string} datasetId - Dataset UUID
+   * @param {AbacPolicyRule[]} policyRules - Complete list of policy rules to save
+   * @returns {Promise<void>}
+   */
+  updateDatasetPolicy: async (datasetId: string, policyRules: AbacPolicyRule[]): Promise<void> => {
+    return api.put<void>(`/api/knowledge-base/${datasetId}/policy`, { policy_rules: policyRules });
   },
 
   // ============================================================================

@@ -17,6 +17,7 @@ import type {
   Document,
   DatasetSettings,
   Chunk,
+  AbacPolicyRule,
 } from '../types'
 import { globalMessage } from '@/app/App'
 import { queryKeys } from '@/lib/queryKeys'
@@ -869,6 +870,34 @@ export function useWebCrawl(datasetId: string) {
     meta: { successMessage: t('datasets.webCrawlSuccess') },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.datasets.documents(datasetId) })
+    },
+  })
+}
+
+// ============================================================================
+// Dataset Policy
+// ============================================================================
+
+/**
+ * @description Mutation hook to update ABAC policy rules for a dataset.
+ * Invalidates the dataset list and detail queries on success.
+ * @param {string} datasetId - Dataset UUID
+ * @returns Mutation hook for updating dataset policy rules
+ */
+export function useUpdateDatasetPolicy(datasetId: string) {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (policyRules: AbacPolicyRule[]) =>
+      datasetApi.updateDatasetPolicy(datasetId, policyRules),
+    meta: { successMessage: t('accessControl.policy.saveSuccess') },
+    onSuccess: () => {
+      // Invalidate dataset queries to reflect updated policy rules
+      queryClient.invalidateQueries({ queryKey: queryKeys.datasets.all })
+    },
+    onError: () => {
+      // Error toast handled by global mutation handler via meta
     },
   })
 }

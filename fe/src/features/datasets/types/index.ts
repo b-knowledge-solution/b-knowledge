@@ -16,6 +16,26 @@ export interface AccessControl {
   team_ids?: string[];
 }
 
+/**
+ * @description A single ABAC policy rule for fine-grained dataset access control.
+ * Each rule specifies an effect (allow/deny), an action, a subject type,
+ * and conditions that must match for the rule to apply.
+ */
+export interface AbacPolicyRule {
+  /** Unique identifier for this rule */
+  id: string
+  /** Whether this rule allows or denies access */
+  effect: 'allow' | 'deny'
+  /** The action this rule governs (e.g. read, update, delete) */
+  action: string
+  /** The subject type this rule applies to (e.g. Document) */
+  subject: string
+  /** Attribute conditions that must match for this rule to apply */
+  conditions: Record<string, unknown>
+  /** Optional human-readable description of the rule */
+  description?: string
+}
+
 /** @description Core dataset entity with metadata, counts, and access control */
 export interface Dataset {
   id: string;
@@ -89,6 +109,10 @@ export interface Document {
   source_type?: 'local' | 'web_crawl';
   /** Original source URL for web-crawled documents */
   source_url?: string;
+  /** Update timestamp as Unix milliseconds (RAGflow) */
+  update_time?: number;
+  /** Update date as datetime string (RAGflow) */
+  update_date?: string;
 }
 
 /** @description Possible document processing status values */
@@ -350,6 +374,7 @@ export interface ProcessLogDocument {
   token_num: number;
   create_time?: number;
   create_date?: string;
+  update_time?: number;
   update_date?: string;
 }
 
