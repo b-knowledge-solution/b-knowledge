@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-03-18T13:19:21Z"
-last_activity: 2026-03-18 — Plan 02-01 complete (Config consolidation + access control schema)
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-03-18T13:32:18Z"
+last_activity: 2026-03-18 — Plan 02-02 complete (CASL ability service + auth endpoints)
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 11
-  completed_plans: 6
-  percent: 55
+  completed_plans: 7
+  percent: 59
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 2 of 6 (Access Control)
-Plan: 2 of 7 in current phase
+Plan: 3 of 7 in current phase
 Status: In Progress
-Last activity: 2026-03-18 — Plan 02-01 complete (Config consolidation + access control schema)
+Last activity: 2026-03-18 — Plan 02-02 complete (CASL ability service + auth endpoints)
 
-Progress: [██████░░░░] 55%
+Progress: [██████░░░░] 59%
 
 ## Performance Metrics
 
@@ -46,7 +46,7 @@ Progress: [██████░░░░] 55%
 | 1 | 4 | 20 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (3 min), 01-03 (2 min), 01-04 (10 min), 02-00 (3 min), 02-01 (4 min)
+- Last 5 plans: 01-03 (2 min), 01-04 (10 min), 02-00 (3 min), 02-01 (4 min), 02-02 (9 min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -56,6 +56,7 @@ Progress: [██████░░░░] 55%
 | Phase 01 P04 | 10min | 2 tasks | 23 files |
 | Phase 02 P00 | 3min | 2 tasks | 3 files |
 | Phase 02 P01 | 4min | 2 tasks | 9 files |
+| Phase 02 P02 | 9min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,9 @@ Recent decisions affecting current work:
 - [Phase 2, Plan 00]: CASL auth middleware tests in separate file (auth.middleware.casl.test.ts) to preserve existing RBAC middleware tests
 - [Phase 2, Plan 01]: Migration uses process.env directly (not config import) since migrations are standalone scripts
 - [Phase 2, Plan 01]: Backfill uses LEFT JOIN to only insert user_tenant rows for users missing system tenant mapping
+- [Phase 2, Plan 02]: Raw Knex queries for user_tenant operations instead of dedicated model (simple junction table)
+- [Phase 2, Plan 02]: Ability wired in AuthController (not AuthService) since session context is only available in the request
+- [Phase 2, Plan 02]: ABAC policy conditions use 'as any' cast for CASL type compatibility with exactOptionalPropertyTypes
 
 ### Pending Todos
 
@@ -92,6 +96,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T13:19:21Z
-Stopped at: Completed 02-01-PLAN.md
-Resume file: .planning/phases/02-access-control/02-01-SUMMARY.md
+Last session: 2026-03-18T13:32:18Z
+Stopped at: Completed 02-02-PLAN.md
+Resume file: .planning/phases/02-access-control/02-02-SUMMARY.md
