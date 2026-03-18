@@ -533,6 +533,61 @@ class RedisDB:
                 )
         return []
 
+    def get_pending_messages_with_payload(self, queue: str, group_name: str,
+                                          count: int = 50) -> list[tuple[str, dict]]:
+        """Read pending message IDs and their payloads from the stream.
+
+        Uses XPENDING to get pending message IDs, then XRANGE to read their content.
+
+        Args:
+            queue: Redis Stream key name.
+            group_name: Consumer group name.
+            count: Maximum number of pending messages to return.
+
+        Returns:
+            List of (msg_id, parsed_payload_dict) tuples.
+        """
+        result = []
+        try:
+            pending = self.REDIS.xpending_range(queue, group_name, '-', '+', count)
+            if not pending:
+                return result
+            for entry in pending:
+                msg_id = entry.get("message_id") or entry.get("msg_id")
+                if not msg_id:
+                    continue
+                # Read the actual message payload via XRANGE
+                messages = self.REDIS.xrange(queue, msg_id, msg_id)
+                if messages:
+                    _, payload = messages[0]
+                    try:
+                        parsed = json.loads(payload.get(b"message") or payload.get("message", "{}"))
+                    except (json.JSONDecodeError, TypeError):
+                        parsed = {}
+                    result.append((msg_id, parsed))
+        except Exception as e:
+            if 'no such key' not in str(e).lower():
+                logging.warning(f"RedisDB.get_pending_messages_with_payload {queue} exception: {e}")
+        return result
+
+    def ack_message(self, queue: str, group_name: str, msg_id) -> bool:
+        """Acknowledge a single message in the consumer group.
+
+        Args:
+            queue: Redis Stream key name.
+            group_name: Consumer group name.
+            msg_id: Message ID to acknowledge.
+
+        Returns:
+            True on success, False on failure.
+        """
+        try:
+            self.REDIS.xack(queue, group_name, msg_id)
+            return True
+        except Exception as e:
+            logging.warning(f"RedisDB.ack_message {queue} {msg_id} exception: {e}")
+            return False
+
     def requeue_msg(self, queue: str, group_name: str, msg_id: str):
         for _ in range(3):
             try:

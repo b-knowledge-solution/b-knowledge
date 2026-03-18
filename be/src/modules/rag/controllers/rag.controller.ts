@@ -20,6 +20,24 @@ import { log } from '@/shared/services/logger.service.js';
 import { ModelFactory } from '@/shared/models/factory.js';
 import { getClientIp } from '@/shared/utils/ip.js';
 import { getRedisClient } from '@/shared/services/redis.service.js';
+import { db } from '@/shared/db/knex.js';
+
+/**
+ * @description Resolve model_providers.id for an embedding model name
+ * @param {string} modelName - The embedding model name (e.g., "text-embedding-3-small")
+ * @returns {Promise<string | null>} The provider UUID or null if not found
+ */
+async function resolveEmbeddingProviderId(modelName: string): Promise<string | null> {
+    if (!modelName) return null;
+    // Look up the active embedding provider by model name
+    const provider = await db('model_providers')
+        .select('id')
+        .where('model_name', modelName)
+        .where('model_type', 'embedding')
+        .where('status', 'active')
+        .first();
+    return provider?.id || null;
+}
 
 /**
  * @description Controller for all RAG module endpoints including dataset CRUD,
@@ -85,7 +103,7 @@ export class RagController {
 
             const dataset = await ragService.createDataset(req.body, user);
 
-            // Sync to shared knowledgebase table (used by task executors)
+            // Sync to shared knowledgebase table (used by Python task executors)
             try {
                 const kbData: Parameters<typeof ragDocumentService.createKnowledgebase>[0] = {
                     id: dataset.id,
@@ -93,7 +111,12 @@ export class RagController {
                 };
                 if (dataset.description) kbData.description = dataset.description;
                 if (dataset.language) kbData.language = dataset.language;
-                if (dataset.embedding_model) kbData.embedding_model = dataset.embedding_model;
+                if (dataset.embedding_model) {
+                    kbData.embedding_model = dataset.embedding_model;
+                    // Resolve provider UUID so the Python worker can look up the model config directly
+                    const providerId = await resolveEmbeddingProviderId(dataset.embedding_model);
+                    if (providerId) kbData.tenant_embd_id = providerId;
+                }
                 if (dataset.parser_id) kbData.parser_id = dataset.parser_id;
                 if (dataset.parser_config) {
                     kbData.parser_config = typeof dataset.parser_config === 'string'
@@ -139,7 +162,12 @@ export class RagController {
                 if (req.body.name !== undefined) kbData.name = req.body.name;
                 if (req.body.description !== undefined) kbData.description = req.body.description;
                 if (req.body.language !== undefined) kbData.language = req.body.language;
-                if (req.body.embedding_model !== undefined) kbData.embedding_model = req.body.embedding_model;
+                if (req.body.embedding_model !== undefined) {
+                    kbData.embedding_model = req.body.embedding_model;
+                    // Resolve provider UUID so the Python worker can look up the model config directly
+                    const providerId = await resolveEmbeddingProviderId(req.body.embedding_model);
+                    kbData.tenant_embd_id = providerId;
+                }
                 if (req.body.parser_id !== undefined) kbData.parser_id = req.body.parser_id;
                 if (req.body.parser_config !== undefined) kbData.parser_config = req.body.parser_config;
                 if (req.body.pagerank !== undefined) kbData.pagerank = req.body.pagerank;
@@ -750,11 +778,16 @@ export class RagController {
                 if (req.body.name !== undefined) kbData.name = req.body.name;
                 if (req.body.description !== undefined) kbData.description = req.body.description;
                 if (req.body.language !== undefined) kbData.language = req.body.language;
-                if (req.body.embedding_model !== undefined) kbData.embedding_model = req.body.embedding_model;
+                if (req.body.embedding_model !== undefined) {
+                    kbData.embedding_model = req.body.embedding_model;
+                    // Resolve provider UUID so the Python worker can look up the model config directly
+                    const providerId = await resolveEmbeddingProviderId(req.body.embedding_model);
+                    kbData.tenant_embd_id = providerId;
+                }
                 if (req.body.parser_id !== undefined) kbData.parser_id = req.body.parser_id;
                 if (req.body.parser_config !== undefined) kbData.parser_config = req.body.parser_config;
                 if (req.body.pagerank !== undefined) kbData.pagerank = req.body.pagerank;
-                
+
                 if (Object.keys(kbData).length > 0) {
                     await ragDocumentService.updateKnowledgebase(id, kbData);
                 }

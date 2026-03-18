@@ -97,6 +97,11 @@ class JSONField(LongTextField):
     def python_value(self, value):
         if not value:
             return self.default_value
+        # PostgreSQL + psycopg2 auto-deserializes JSON/JSONB columns to
+        # Python dicts/lists.  Only call json_loads when the value is still
+        # a string (e.g. coming from MySQL or raw SQL).
+        if isinstance(value, (dict, list)):
+            return value
         return json_loads(value, object_hook=self._object_hook, object_pairs_hook=self._object_pairs_hook)
 
 

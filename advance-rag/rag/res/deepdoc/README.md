@@ -2,4 +2,18 @@
 license: apache-2.0
 ---
 
-Please refer to [this](https://github.com/infiniflow/ragflow/blob/main/deepdoc/README.md).
+### Model Loading
+```python
+import xgboost as xgb
+import torch
+
+model = xgb.Booster()
+if torch.cuda.is_available():
+model.set_param({"device": "cuda"})
+model.load_model('InfiniFlow/text_concat_xgb_v1.0')
+```
+
+### Prediction
+```python
+model.predict(xgb.DMatrix([feature]))[0]
+```

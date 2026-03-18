@@ -59,6 +59,7 @@ export class KnowledgebaseModel {
         description?: string;
         language?: string;
         embedding_model?: string;
+        tenant_embd_id?: string;
         parser_id?: string;
         parser_config?: Record<string, unknown>;
         pagerank?: number;
@@ -71,6 +72,7 @@ export class KnowledgebaseModel {
             description: data.description || '',
             language: data.language || 'English',
             embd_id: data.embedding_model || '',
+            tenant_embd_id: data.tenant_embd_id || null,
             parser_id: data.parser_id || 'naive',
             parser_config: JSON.stringify(data.parser_config || { pages: [[1, 1000000]] }),
             pagerank: data.pagerank || 0,
@@ -103,7 +105,7 @@ export class KnowledgebaseModel {
         };
         // Map field names from Node.js convention to Peewee column names
         if ('embedding_model' in updateData) {
-            updateData['embd_id'] = updateData['embedding_model'];
+            updateData['embd_id'] = updateData['embedding_model'] || '';
             delete updateData['embedding_model'];
         }
         // Serialize parser_config object to JSON string for storage

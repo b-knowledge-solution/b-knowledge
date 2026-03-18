@@ -79,7 +79,7 @@ from db.services.doc_metadata_service import DocMetadataService
 from db.services.llm_service import LLMBundle
 from db.services.task_service import TaskService, has_canceled, CANVAS_DEBUG_DOC_ID, GRAPH_RAPTOR_FAKE_DOC_ID
 from db.services.file2document_service import File2DocumentService
-from db.joint_services.tenant_model_service import get_model_config_by_type_and_name, get_tenant_default_model_by_type
+from db.joint_services.tenant_model_service import get_model_config_by_id, get_model_config_by_type_and_name, get_tenant_default_model_by_type
 from common.versions import get_ragflow_version
 from db.db_models import close_connection
 from rag.app import laws, paper, presentation, manual, qa, table, book, resume, picture, naive, one, audio, \
@@ -211,11 +211,12 @@ def set_progress(task_id, from_page=0, to_page=-1, prog=None, msg="Processing...
 
 
 async def collect():
-    """Consume the next task message from Redis queues.
+    """Consume the next actionable task message from Redis queues.
 
+    Drains stale messages (parse_init for missing docs, unknown/cancelled tasks)
+    in a tight loop without sleeping, so new real tasks are reached quickly.
     First processes any unacknowledged messages from previous runs,
-    then polls for new messages. Handles special task types like
-    'parse_init' (which splits into sub-tasks) and validates task state.
+    then polls for new messages.
 
     Returns:
         Tuple of (redis_msg, task_dict), or (None, None) if no task available.
@@ -224,91 +225,136 @@ async def collect():
     global UNACKED_ITERATOR
 
     svr_queue_names = settings.get_svr_queue_names()
-    redis_msg = None
+
+    # Loop until we find an actionable task or exhaust all queues.
+    # Stale messages (parse_init for deleted docs, unknown tasks) are ACKed
+    # and skipped immediately — no 5-second sleep between them.
+    MAX_DRAIN_PER_CALL = 100
+    # Track whether unacked iterator already exhausted this call
+    unacked_exhausted = False
+    for _drain_count in range(MAX_DRAIN_PER_CALL):
+        redis_msg = None
+        try:
+            if not unacked_exhausted:
+                if not UNACKED_ITERATOR:
+                    UNACKED_ITERATOR = REDIS_CONN.get_unacked_iterator(
+                        svr_queue_names, SVR_CONSUMER_GROUP_NAME, CONSUMER_NAME
+                    )
+                try:
+                    redis_msg = next(UNACKED_ITERATOR)
+                except StopIteration:
+                    # All pending (unacked) messages processed — reset iterator so
+                    # future calls can detect new pending messages after restarts
+                    UNACKED_ITERATOR = None
+                    unacked_exhausted = True
+
+            if not redis_msg:
+                # Poll for new (undelivered) messages
+                for svr_queue_name in svr_queue_names:
+                    redis_msg = REDIS_CONN.queue_consumer(
+                        svr_queue_name, SVR_CONSUMER_GROUP_NAME, CONSUMER_NAME
+                    )
+                    if redis_msg:
+                        break
+        except Exception as e:
+            logging.exception(f"collect got exception: {e}")
+            return None, None
+
+        if not redis_msg:
+            return None, None
+
+        msg = redis_msg.get_message()
+        if not msg:
+            logging.error(f"collect got empty message of {redis_msg.get_msg_id()}")
+            redis_msg.ack()
+            # Drain: skip empty messages immediately
+            continue
+
+        # parse_init: Node.js requests parsing — we split into sub-tasks here.
+        # Always ACK and continue immediately so sub-tasks or next messages
+        # are picked up without a 5s sleep gap.
+        if msg.get("task_type") == "parse_init":
+            _handle_parse_init(msg)
+            redis_msg.ack()
+            continue
+
+        canceled = False
+        if msg.get("doc_id", "") in [GRAPH_RAPTOR_FAKE_DOC_ID, CANVAS_DEBUG_DOC_ID]:
+            task = msg
+            if task["task_type"] in PIPELINE_SPECIAL_PROGRESS_FREEZE_TASK_TYPES:
+                task = TaskService.get_task(msg["id"], msg["doc_ids"])
+                if task:
+                    task["doc_id"] = msg["doc_id"]
+                    task["doc_ids"] = msg.get("doc_ids", []) or []
+        elif msg.get("task_type") == PipelineTaskType.MEMORY.lower():
+            _, task_obj = TaskService.get_by_id(msg["id"])
+            task = task_obj.to_dict()
+        else:
+            task = TaskService.get_task(msg["id"])
+
+        if task:
+            canceled = has_canceled(task["id"])
+        if not task or canceled:
+            state = "is unknown" if not task else "has been cancelled"
+            FAILED_TASKS += 1
+            logging.warning(f"collect: task {msg['id']} {state}, draining stale message")
+            redis_msg.ack()
+            # Drain: skip stale/cancelled tasks immediately
+            continue
+
+        # Found an actionable task — return it for processing
+        task_type = msg.get("task_type", "")
+        task["task_type"] = task_type
+        if task_type[:8] == "dataflow":
+            task["tenant_id"] = msg["tenant_id"]
+            task["dataflow_id"] = msg["dataflow_id"]
+            task["kb_id"] = msg.get("kb_id", "")
+        if task_type[:6] == "memory":
+            task["memory_id"] = msg["memory_id"]
+            task["source_id"] = msg["source_id"]
+            task["message_dict"] = msg["message_dict"]
+        return redis_msg, task
+
+    # Safety: drained MAX_DRAIN_PER_CALL messages without finding a real task
+    logging.warning(f"collect: drained {MAX_DRAIN_PER_CALL} stale messages without finding an actionable task")
+    return None, None
+
+
+def _handle_parse_init(msg: dict) -> bool:
+    """Handle a parse_init message by looking up the document and queuing sub-tasks.
+
+    Args:
+        msg: Redis message dict containing doc_id and priority.
+
+    Returns:
+        True if sub-tasks were queued successfully, False if document not found.
+    """
+    from db.services.task_service import queue_tasks
+    from db.services.file2document_service import File2DocumentService
+
+    doc_id = msg.get("doc_id", "")
     try:
-        if not UNACKED_ITERATOR:
-            UNACKED_ITERATOR = REDIS_CONN.get_unacked_iterator(svr_queue_names, SVR_CONSUMER_GROUP_NAME, CONSUMER_NAME)
+        e, doc = DocumentService.get_by_id(doc_id)
+        if e and doc:
+            bucket, name = File2DocumentService.get_storage_address(doc_id=doc_id)
+            queue_tasks(doc.to_dict(), bucket, name, msg.get("priority", 0))
+            logging.info(f"parse_init: queued sub-tasks for doc {doc_id}")
+            return True
+        else:
+            logging.warning(f"parse_init: document {doc_id} not found in DB, discarding stale message")
+            return False
+    except Exception as ex:
+        logging.exception(f"parse_init failed for doc {doc_id}: {ex}")
+        # Mark document as failed so user sees the error in UI
         try:
-            redis_msg = next(UNACKED_ITERATOR)
-        except StopIteration:
-            for svr_queue_name in svr_queue_names:
-                redis_msg = REDIS_CONN.queue_consumer(svr_queue_name, SVR_CONSUMER_GROUP_NAME, CONSUMER_NAME)
-                if redis_msg:
-                    break
-    except Exception as e:
-        logging.exception(f"collect got exception: {e}")
-        return None, None
-
-    if not redis_msg:
-        return None, None
-    msg = redis_msg.get_message()
-    if not msg:
-        logging.error(f"collect got empty message of {redis_msg.get_msg_id()}")
-        redis_msg.ack()
-        return None, None
-
-    # parse_init: Node.js requests parsing — we split into sub-tasks here
-    if msg.get("task_type") == "parse_init":
-        try:
-            from db.services.task_service import queue_tasks
-            from db.services.document_service import DocumentService
-            from db.services.file2document_service import File2DocumentService
-            doc_id = msg["doc_id"]
-            e, doc = DocumentService.get_by_id(doc_id)
-            if e and doc:
-                bucket, name = File2DocumentService.get_storage_address(doc_id=doc_id)
-                queue_tasks(doc.to_dict(), bucket, name, msg.get("priority", 0))
-                logging.info(f"parse_init: queued sub-tasks for doc {doc_id}")
-            else:
-                logging.warning(f"parse_init: document {doc_id} not found")
-        except Exception as ex:
-            logging.exception(f"parse_init failed for doc {msg.get('doc_id')}: {ex}")
-            # Mark document as failed so user sees the error in UI
-            try:
-                DocumentService.update_by_id(doc_id, {
-                    "run": TaskStatus.FAIL.value,
-                    "progress_msg": f"Parse initialization failed: {ex}",
-                    "progress": -1,
-                })
-            except Exception:
-                logging.exception(f"parse_init: failed to update doc {doc_id} status after error")
-        redis_msg.ack()
-        return None, None
-
-    canceled = False
-    if msg.get("doc_id", "") in [GRAPH_RAPTOR_FAKE_DOC_ID, CANVAS_DEBUG_DOC_ID]:
-        task = msg
-        if task["task_type"] in PIPELINE_SPECIAL_PROGRESS_FREEZE_TASK_TYPES:
-            task = TaskService.get_task(msg["id"], msg["doc_ids"])
-            if task:
-                task["doc_id"] = msg["doc_id"]
-                task["doc_ids"] = msg.get("doc_ids", []) or []
-    elif msg.get("task_type") == PipelineTaskType.MEMORY.lower():
-        _, task_obj = TaskService.get_by_id(msg["id"])
-        task = task_obj.to_dict()
-    else:
-        task = TaskService.get_task(msg["id"])
-
-    if task:
-        canceled = has_canceled(task["id"])
-    if not task or canceled:
-        state = "is unknown" if not task else "has been cancelled"
-        FAILED_TASKS += 1
-        logging.warning(f"collect task {msg['id']} {state}")
-        redis_msg.ack()
-        return None, None
-
-    task_type = msg.get("task_type", "")
-    task["task_type"] = task_type
-    if task_type[:8] == "dataflow":
-        task["tenant_id"] = msg["tenant_id"]
-        task["dataflow_id"] = msg["dataflow_id"]
-        task["kb_id"] = msg.get("kb_id", "")
-    if task_type[:6] == "memory":
-        task["memory_id"] = msg["memory_id"]
-        task["source_id"] = msg["source_id"]
-        task["message_dict"] = msg["message_dict"]
-    return redis_msg, task
+            DocumentService.update_by_id(doc_id, {
+                "run": TaskStatus.FAIL.value,
+                "progress_msg": f"Parse initialization failed: {ex}",
+                "progress": -1,
+            })
+        except Exception:
+            logging.exception(f"parse_init: failed to update doc {doc_id} status after error")
+        return False
 
 
 async def get_storage_binary(bucket, name):
@@ -1129,6 +1175,7 @@ async def do_handle_task(task):
     task_to_page = task["to_page"]
     task_tenant_id = task["tenant_id"]
     task_embedding_id = task["embd_id"]
+    task_tenant_embd_id = task.get("tenant_embd_id")
     task_language = task["language"]
     doc_task_llm_id = task["parser_config"].get("llm_id") or task["llm_id"]
     kb_task_llm_id = task['kb_parser_config'].get("llm_id") or task["llm_id"]
@@ -1150,10 +1197,15 @@ async def do_handle_task(task):
         return
 
     try:
-        # bind embedding model
-        if task_embedding_id:
+        # Bind embedding model: prefer provider UUID (tenant_embd_id), then model name (embd_id), then tenant default
+        if task_tenant_embd_id:
+            # Direct lookup by provider ID — most reliable when dataset has a configured provider
+            embd_model_config = get_model_config_by_id(task_tenant_embd_id)
+        elif task_embedding_id:
+            # Lookup by model name string (e.g., "text-embedding-3-small@OpenAI")
             embd_model_config = get_model_config_by_type_and_name(task_tenant_id, LLMType.EMBEDDING, task_embedding_id)
         else:
+            # Fall back to tenant's default embedding model
             embd_model_config = get_tenant_default_model_by_type(task_tenant_id, LLMType.EMBEDDING)
         embedding_model = LLMBundle(task_tenant_id, embd_model_config, lang=task_language)
         vts, _ = embedding_model.encode(["ok"])
@@ -1433,6 +1485,61 @@ async def handle_task():
     redis_msg.ack()
 
 
+def _clean_stale_pending_messages():
+    """Clean up stale pending messages from Redis consumer group PEL.
+
+    Scans all priority queues for pending messages whose documents no longer exist
+    in the database. ACKs and discards these orphaned messages so they don't block
+    new task processing.
+    """
+    svr_queue_names = settings.get_svr_queue_names()
+    total_cleaned = 0
+
+    for queue_name in svr_queue_names:
+        pending_msgs = REDIS_CONN.get_pending_messages_with_payload(
+            queue_name, SVR_CONSUMER_GROUP_NAME, count=50
+        )
+        if not pending_msgs:
+            continue
+
+        for msg_id, payload in pending_msgs:
+            doc_id = payload.get("doc_id", "")
+            task_type = payload.get("task_type", "")
+
+            # For parse_init messages, check if the document exists
+            if task_type == "parse_init" and doc_id:
+                try:
+                    found, doc = DocumentService.get_by_id(doc_id)
+                    if not found or not doc:
+                        REDIS_CONN.ack_message(queue_name, SVR_CONSUMER_GROUP_NAME, msg_id)
+                        total_cleaned += 1
+                        logging.info(
+                            f"Cleaned stale parse_init for missing doc {doc_id} "
+                            f"(msg_id={msg_id}, queue={queue_name})"
+                        )
+                except Exception:
+                    logging.exception(f"Error checking doc {doc_id} during stale cleanup")
+                continue
+
+            # For regular tasks, check if the task record exists in DB
+            task_id = payload.get("id", "")
+            if task_id and doc_id:
+                try:
+                    task = TaskService.get_task(task_id)
+                    if not task:
+                        REDIS_CONN.ack_message(queue_name, SVR_CONSUMER_GROUP_NAME, msg_id)
+                        total_cleaned += 1
+                        logging.info(
+                            f"Cleaned stale task {task_id} for doc {doc_id} "
+                            f"(msg_id={msg_id}, queue={queue_name})"
+                        )
+                except Exception:
+                    logging.exception(f"Error checking task {task_id} during stale cleanup")
+
+    if total_cleaned > 0:
+        logging.info(f"Stale pending cleanup: removed {total_cleaned} orphaned messages")
+
+
 async def get_server_ip() -> str:
     """Detect the server's IP address using a UDP socket connection.
 
@@ -1450,8 +1557,10 @@ async def get_server_ip() -> str:
 
 
 async def report_status():
-    """
-    Periodically reports the executor's heartbeat
+    """Periodically reports the executor's heartbeat and cleans stale state.
+
+    Aggregates pending/lag counts across all priority queues (not just priority-0).
+    Periodically cleans up stale pending messages for documents that no longer exist.
     """
     global PENDING_TASKS, LAG_TASKS, DONE_TASKS, FAILED_TASKS
 
@@ -1462,13 +1571,30 @@ async def report_status():
     REDIS_CONN.sadd("TASKEXE", CONSUMER_NAME)
     redis_lock = RedisDistributedLock("clean_task_executor", lock_value=CONSUMER_NAME, timeout=60)
 
+    # Run stale cleanup on first heartbeat, then every 10 cycles (~5 min)
+    heartbeat_count = 0
+
     while True:
         now = datetime.now()
         now_ts = now.timestamp()
 
-        group_info = REDIS_CONN.queue_info(settings.get_svr_queue_name(0), SVR_CONSUMER_GROUP_NAME) or {}
-        PENDING_TASKS = int(group_info.get("pending", 0))
-        LAG_TASKS = int(group_info.get("lag", 0))
+        # Aggregate pending/lag across ALL priority queues
+        total_pending = 0
+        total_lag = 0
+        for queue_name in settings.get_svr_queue_names():
+            group_info = REDIS_CONN.queue_info(queue_name, SVR_CONSUMER_GROUP_NAME) or {}
+            total_pending += int(group_info.get("pending", 0))
+            total_lag += int(group_info.get("lag", 0))
+        PENDING_TASKS = total_pending
+        LAG_TASKS = total_lag
+
+        # Periodically clean stale pending messages (first run + every ~5 min)
+        if heartbeat_count % 10 == 0:
+            try:
+                _clean_stale_pending_messages()
+            except Exception:
+                logging.exception("Failed to clean stale pending messages")
+        heartbeat_count += 1
 
         current = copy.deepcopy(CURRENT_TASKS)
         heartbeat = json.dumps({

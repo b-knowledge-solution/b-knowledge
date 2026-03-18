@@ -35,6 +35,7 @@ export class RagDocumentService {
         description?: string;
         language?: string;
         embedding_model?: string;
+        tenant_embd_id?: string;
         parser_id?: string;
         parser_config?: Record<string, unknown>;
         pagerank?: number;
