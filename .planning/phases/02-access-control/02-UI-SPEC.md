@@ -50,11 +50,13 @@ Exceptions: Touch targets for role dropdown selectors use min-height 36px (h-9, 
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Body | 14px | 400 (regular) | 1.5 |
-| Label | 14px | 500 (medium) | 1.4 |
+| Label | 14px | 600 (semibold) | 1.4 |
 | Heading | 20px | 600 (semibold) | 1.2 |
 | Display | 28px | 600 (semibold) | 1.2 |
 
-Source: Existing codebase uses `text-sm` (14px) for body/labels, `text-xs` (12px) for badges. Inter font loaded with weights 300-700. This phase uses 400, 500, 600 only.
+This phase uses 2 weights only: 400 and 600. Labels use 600 to create clear visual distinction from body text at the same font size.
+
+Source: Existing codebase uses `text-sm` (14px) for body/labels, `text-xs` (12px) for badges. Inter font loaded with weights 300-700. This phase uses 400, 600 only.
 
 ---
 
@@ -134,6 +136,20 @@ Follows the existing AuditActionBadge color-coding convention:
 Components already installed (from glob scan): Badge, Button, Card, Dialog, Input, Label, Select, Separator, Sheet, Switch, Table, Tabs, Tooltip
 
 No additional shadcn components needed for this phase.
+
+---
+
+## Visual Hierarchy Anchors
+
+Each primary screen declares its focal point to guide layout and visual weight decisions.
+
+| Screen | Primary Visual Anchor |
+|--------|-----------------------|
+| RoleManagementTable (User Management page) | The role assignment Select dropdown in each table row -- it is the only interactive element per row and the primary action on this page. |
+| PolicyRuleEditor (Dataset Access Policy section) | The policy rule list with the "Add Rule" CTA button as the dominant action, drawing the eye to rule creation. |
+| OrgSwitcher (Header bar) | The org name Select in the header bar -- compact but visually distinct from surrounding nav elements via border treatment. |
+| AuditLogPage (extended) | The data table body with action badges providing color-coded scanning anchors across rows. |
+| AccessDenied page | Centered icon + heading block (existing EmptyState pattern) as the single visual focus. |
 
 ---
 
