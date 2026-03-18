@@ -44,6 +44,10 @@ export interface User {
     avatar?: string | undefined;
     /** Bcrypt-hashed password for local account login. Azure AD users have null. */
     password_hash?: string | null;
+    /** Whether the user is a platform-level super admin */
+    is_superuser?: boolean | null;
+    /** Current active org/tenant ID from session context */
+    current_org_id?: string;
 }
 
 /**

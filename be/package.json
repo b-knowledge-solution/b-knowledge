@@ -29,6 +29,7 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@casl/ability": "^6.8.0",
     "@opensearch-project/opensearch": "^3.5.1",
     "@types/socket.io": "^3.0.1",
     "bcryptjs": "^2.4.3",
