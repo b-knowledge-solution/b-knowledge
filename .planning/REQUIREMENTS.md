@@ -11,7 +11,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **STAB-01**: Fix known bugs in dataset creation workflow (create, update, delete knowledge bases)
 - [x] **STAB-02**: Fix known bugs in document parsing pipeline (file upload, parser selection, parse execution)
-- [ ] **STAB-03**: Fix known bugs in chunking pipeline (chunk generation, embedding, OpenSearch indexing)
+- [x] **STAB-03**: Fix known bugs in chunking pipeline (chunk generation, embedding, OpenSearch indexing)
 - [x] **STAB-04**: Systematic testing to discover and fix undocumented bugs across the RAG pipeline
 - [x] **STAB-05**: Complete migration of remaining document type parsers from RAGFlow
 
@@ -112,7 +112,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | STAB-01 | Phase 1 | Complete |
 | STAB-02 | Phase 1 | Complete |
-| STAB-03 | Phase 1 | Pending |
+| STAB-03 | Phase 1 | Complete |
 | STAB-04 | Phase 1 | Complete |
 | STAB-05 | Phase 1 | Complete |
 | CHAT-01 | Phase 1 | Pending |
