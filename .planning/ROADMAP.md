@@ -31,13 +31,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. User can trigger chunking and embedding and search results reflect the indexed content
   4. User can chat with an assistant and receive streamed, cited answers with working conversation history and no broken citation display
   5. User can perform a search and receive filtered, paginated results; user can submit a thumbs-up or thumbs-down on any answer
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 01-01: Fix dataset creation, update, and delete bugs (STAB-01)
-- [ ] 01-02: Fix document parsing pipeline bugs including remaining parser migration (STAB-02, STAB-05)
-- [ ] 01-03: Fix chunking, embedding, and OpenSearch indexing bugs (STAB-03, STAB-04)
-- [ ] 01-04: Stabilize chat streaming, citations, and conversation management; add answer quality feedback (CHAT-01, CHAT-02, CHAT-03)
+- [ ] 01-01-PLAN.md — Set up Playwright E2E infrastructure; write and fix dataset CRUD tests (STAB-01, STAB-04)
+- [ ] 01-02-PLAN.md — Write document upload and parsing E2E tests; fix pipeline bugs (STAB-02, STAB-05)
+- [ ] 01-03-PLAN.md — Write chunk/embedding/indexing E2E tests; verify OpenSearch (STAB-03, STAB-04)
+- [ ] 01-04-PLAN.md — Stabilize chat and search E2E; add answer feedback table and UI (CHAT-01, CHAT-02, CHAT-03)
 
 ### Phase 2: Access Control
 **Goal**: Every user in the system operates within a strictly isolated org and project scope — access to documents, datasets, and retrieval results is enforced by role and attribute at both the API layer and the data (OpenSearch query) layer
@@ -135,7 +135,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Migration Stabilization | 0/4 | Not started | - |
+| 1. Migration Stabilization | 0/4 | Planning complete | - |
 | 2. Access Control | 0/4 | Not started | - |
 | 3. Document Management | 0/3 | Not started | - |
 | 4. Domain-Specific Parsers | 0/4 | Not started | - |
@@ -144,4 +144,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 ---
 *Roadmap created: 2026-03-18*
-*Last updated: 2026-03-18 after initial roadmap creation*
+*Last updated: 2026-03-18 after Phase 1 planning complete*
