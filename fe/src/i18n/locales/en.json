@@ -2075,7 +2075,10 @@
     "searchDocuments": "Search documents...",
     "selectAll": "Select All",
     "clearAll": "Clear All",
-    "selectApp": "Select search app"
+    "selectApp": "Select search app",
+    "feedbackThankYou": "Thank you for your feedback",
+    "helpful": "Helpful",
+    "notHelpful": "Not helpful"
   },
   "searchAdmin": {
     "title": "Search Apps",

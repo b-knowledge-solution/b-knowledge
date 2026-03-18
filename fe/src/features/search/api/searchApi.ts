@@ -234,6 +234,37 @@ export const searchApi = {
   },
 
   // ============================================================================
+  // Feedback
+  // ============================================================================
+
+  /**
+   * @description Submit thumbs up/down feedback on a search answer.
+   * @param {string} searchAppId - Search application ID
+   * @param {boolean} thumbup - True for positive, false for negative feedback
+   * @param {string} query - The original search query
+   * @param {string} answer - The answer text being evaluated
+   * @param {string} [comment] - Optional text comment
+   * @param {Array<{chunk_id: string; doc_id: string; score: number}>} [chunksUsed] - Chunk references
+   * @returns {Promise<void>}
+   */
+  sendFeedback: async (
+    searchAppId: string,
+    thumbup: boolean,
+    query: string,
+    answer: string,
+    comment?: string,
+    chunksUsed?: Array<{ chunk_id: string; doc_id: string; score: number }>,
+  ): Promise<void> => {
+    await api.post(`/api/search/apps/${searchAppId}/feedback`, {
+      thumbup,
+      query,
+      answer,
+      ...(comment ? { comment } : {}),
+      ...(chunksUsed ? { chunks_used: chunksUsed } : {}),
+    })
+  },
+
+  // ============================================================================
   // Retrieval Test
   // ============================================================================
 

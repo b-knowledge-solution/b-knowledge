@@ -98,6 +98,35 @@ export function useSearch(): UseSearchReturn {
 }
 
 // ============================================================================
+// Search Feedback
+// ============================================================================
+
+/**
+ * @description Mutation hook to send thumbs up/down feedback on a search answer.
+ * @returns Mutation object for submitting search feedback
+ */
+export function useSendSearchFeedback() {
+  return useMutation({
+    mutationFn: (params: {
+      searchAppId: string
+      thumbup: boolean
+      query: string
+      answer: string
+      comment?: string
+      chunksUsed?: Array<{ chunk_id: string; doc_id: string; score: number }>
+    }) =>
+      searchApi.sendFeedback(
+        params.searchAppId,
+        params.thumbup,
+        params.query,
+        params.answer,
+        params.comment,
+        params.chunksUsed,
+      ),
+  })
+}
+
+// ============================================================================
 // Search App Hooks
 // ============================================================================
 

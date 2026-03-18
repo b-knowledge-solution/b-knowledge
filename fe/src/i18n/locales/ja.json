@@ -2058,7 +2058,10 @@
     "greeting": "Hello",
     "title": "AI Search",
     "description": "Search across your knowledge base with AI-powered semantic understanding",
-    "searchAcrossDatasets": "Search across all datasets"
+    "searchAcrossDatasets": "Search across all datasets",
+    "feedbackThankYou": "フィードバックありがとうございます",
+    "helpful": "役に立った",
+    "notHelpful": "役に立たなかった"
   },
   "searchAdmin": {
     "title": "検索アプリ",

@@ -244,6 +244,130 @@ export class ApiHelper {
   }
 }
 
+  // ==========================================================================
+  // Chat assistant operations
+  // ==========================================================================
+
+  /**
+   * @description Create a new chat assistant via the backend API.
+   * @param {string} name - Assistant name
+   * @param {string[]} datasetIds - Array of dataset IDs to link to the assistant
+   * @returns {Promise<{ id: string; name: string }>} Created assistant
+   */
+  async createChatAssistant(name: string, datasetIds: string[]): Promise<{ id: string; name: string }> {
+    const response = await this.request.post(`${API_BASE}/api/chat/assistants`, {
+      data: {
+        name,
+        dataset_ids: datasetIds,
+        llm_setting: {},
+      },
+    })
+
+    if (!response.ok()) {
+      const body = await response.text()
+      throw new Error(`createChatAssistant failed (${response.status()}): ${body}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * @description Delete a chat assistant by ID.
+   * @param {string} id - Assistant UUID
+   * @returns {Promise<void>}
+   */
+  async deleteChatAssistant(id: string): Promise<void> {
+    const response = await this.request.delete(`${API_BASE}/api/chat/assistants/${id}`)
+
+    // Ignore 404 -- assistant may already be deleted
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text()
+      throw new Error(`deleteChatAssistant failed (${response.status()}): ${body}`)
+    }
+  }
+
+  // ==========================================================================
+  // Conversation operations
+  // ==========================================================================
+
+  /**
+   * @description Create a new chat conversation via the backend API.
+   * @param {string} dialogId - Assistant (dialog) ID
+   * @param {string} name - Conversation name
+   * @returns {Promise<{ id: string; name: string }>} Created conversation
+   */
+  async createConversation(dialogId: string, name: string): Promise<{ id: string; name: string }> {
+    const response = await this.request.post(`${API_BASE}/api/chat/conversations`, {
+      data: { name, dialog_id: dialogId },
+    })
+
+    if (!response.ok()) {
+      const body = await response.text()
+      throw new Error(`createConversation failed (${response.status()}): ${body}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * @description Delete a conversation by ID.
+   * @param {string} id - Conversation UUID
+   * @returns {Promise<void>}
+   */
+  async deleteConversation(id: string): Promise<void> {
+    const response = await this.request.delete(`${API_BASE}/api/chat/conversations`, {
+      data: { ids: [id] },
+    })
+
+    // Ignore 404 -- conversation may already be deleted
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text()
+      throw new Error(`deleteConversation failed (${response.status()}): ${body}`)
+    }
+  }
+
+  // ==========================================================================
+  // Search app operations
+  // ==========================================================================
+
+  /**
+   * @description Create a new search app via the backend API.
+   * @param {string} name - Search app name
+   * @param {string[]} datasetIds - Array of dataset IDs to link
+   * @returns {Promise<{ id: string; name: string }>} Created search app
+   */
+  async createSearchApp(name: string, datasetIds: string[]): Promise<{ id: string; name: string }> {
+    const response = await this.request.post(`${API_BASE}/api/search/apps`, {
+      data: {
+        name,
+        dataset_ids: datasetIds,
+      },
+    })
+
+    if (!response.ok()) {
+      const body = await response.text()
+      throw new Error(`createSearchApp failed (${response.status()}): ${body}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * @description Delete a search app by ID.
+   * @param {string} id - Search app UUID
+   * @returns {Promise<void>}
+   */
+  async deleteSearchApp(id: string): Promise<void> {
+    const response = await this.request.delete(`${API_BASE}/api/search/apps/${id}`)
+
+    // Ignore 404 -- app may already be deleted
+    if (!response.ok() && response.status() !== 404) {
+      const body = await response.text()
+      throw new Error(`deleteSearchApp failed (${response.status()}): ${body}`)
+    }
+  }
+}
+
 /**
  * @description Factory function to create an ApiHelper from a Playwright request context.
  * @param {APIRequestContext} request - Playwright API request context

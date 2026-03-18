@@ -2072,7 +2072,10 @@
     "greeting": "Hello",
     "title": "AI Search",
     "description": "Search across your knowledge base with AI-powered semantic understanding",
-    "searchAcrossDatasets": "Search across all datasets"
+    "searchAcrossDatasets": "Search across all datasets",
+    "feedbackThankYou": "Cam on ban da gop y",
+    "helpful": "Huu ich",
+    "notHelpful": "Khong huu ich"
   },
   "searchAdmin": {
     "title": "Ứng dụng tìm kiếm",

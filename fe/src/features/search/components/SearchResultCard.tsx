@@ -1,12 +1,13 @@
 /**
- * @fileoverview Single search result card component.
+ * @fileoverview Single search result card component with optional feedback buttons.
  * @module features/ai/components/SearchResultCard
  */
 
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FileText, FileSpreadsheet, FileImage, File, ExternalLink } from 'lucide-react'
+import { FileText, FileSpreadsheet, FileImage, File, ExternalLink, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import type { SearchResult } from '../types/search.types'
@@ -27,6 +28,8 @@ interface SearchResultCardProps {
   onClick?: ((result: SearchResult) => void) | undefined
   /** Optional CSS class name */
   className?: string
+  /** Callback to send feedback on this result */
+  onFeedback?: ((thumbup: boolean, result: SearchResult) => void) | undefined
 }
 
 // ============================================================================
@@ -62,14 +65,17 @@ function getFileIcon(fileType?: string) {
 // ============================================================================
 
 /**
- * @description A single search result card with document info, snippet, and score.
+ * @description A single search result card with document info, snippet, score,
+ *   and optional thumbs up/down feedback buttons.
  *
  * @param {SearchResultCardProps} props - Component properties
  * @returns {JSX.Element} The rendered search result card
  */
-function SearchResultCard({ result, query, onClick, className }: SearchResultCardProps) {
+function SearchResultCard({ result, query, onClick, className, onFeedback }: SearchResultCardProps) {
   const { t } = useTranslation()
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  // Track feedback state: null = no feedback, 'up' = thumbs up, 'down' = thumbs down
+  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null)
 
   // Extract file extension from doc name
   const fileExt = result.doc_name?.split('.').pop() || result.file_type
@@ -79,12 +85,29 @@ function SearchResultCard({ result, query, onClick, className }: SearchResultCar
     || (result.img_id ? `/api/documents/images/${result.img_id}` : undefined)
 
   /**
-   * Handle thumbnail click — open lightbox and prevent card click propagation.
+   * Handle thumbnail click -- open lightbox and prevent card click propagation.
    * @param e - The mouse event
    */
   function handleThumbnailClick(e: React.MouseEvent) {
     e.stopPropagation()
     setLightboxOpen(true)
+  }
+
+  /**
+   * @description Handle feedback button click, toggle state, and notify parent.
+   * @param {React.MouseEvent} e - Mouse event to stop propagation
+   * @param {'up' | 'down'} type - Feedback type
+   */
+  function handleFeedback(e: React.MouseEvent, type: 'up' | 'down') {
+    // Prevent card click when clicking feedback buttons
+    e.stopPropagation()
+    const newValue = feedback === type ? null : type
+    setFeedback(newValue)
+
+    // Only send feedback when toggling on (not when un-toggling)
+    if (newValue && onFeedback) {
+      onFeedback(type === 'up', result)
+    }
   }
 
   return (
@@ -155,6 +178,36 @@ function SearchResultCard({ result, query, onClick, className }: SearchResultCar
             query={query || ''}
           />
         </p>
+
+        {/* Feedback buttons -- shown when onFeedback callback is provided */}
+        {onFeedback && (
+          <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn('h-6 w-6', feedback === 'up' && 'text-green-500')}
+              onClick={(e) => handleFeedback(e, 'up')}
+              title={t('search.helpful')}
+            >
+              <ThumbsUp className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn('h-6 w-6', feedback === 'down' && 'text-red-500')}
+              onClick={(e) => handleFeedback(e, 'down')}
+              title={t('search.notHelpful')}
+            >
+              <ThumbsDown className="h-3 w-3" />
+            </Button>
+            {/* Show thank-you text after submitting feedback */}
+            {feedback && (
+              <span className="text-[10px] text-muted-foreground ml-1">
+                {t('search.feedbackThankYou')}
+              </span>
+            )}
+          </div>
+        )}
       </button>
 
       {/* Image lightbox for full-size preview */}
