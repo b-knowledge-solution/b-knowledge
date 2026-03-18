@@ -5,31 +5,14 @@
  */
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Mail, ShieldCheck, Globe, Pencil, Trash2 } from 'lucide-react'
-import { useAuth, User } from '@/features/auth'
+import { useAuth } from '@/features/auth'
+import { useAppAbility } from '@/lib/ability'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Pagination } from '@/components/ui/pagination'
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip'
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table'
-import { useConfirm } from '@/components/ConfirmDialog'
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
-import { useUserManagement, useDeleteUser } from '../api/userQueries'
+import { useUserManagement } from '../api/userQueries'
 import { UserToolbar } from '../components/UserToolbar'
+import { RoleManagementTable } from '../components/RoleManagementTable'
 import { EditRoleDialog } from '../components/EditRoleDialog'
 import { IpHistoryDialog } from '../components/IpHistoryDialog'
 import { GrantPermissionsDialog } from '../components/GrantPermissionsDialog'
@@ -43,7 +26,7 @@ import { EditUserDialog } from '../components/EditUserDialog'
 export default function UserManagementPage() {
     const { t } = useTranslation()
     const { user: currentUser } = useAuth()
-    const confirm = useConfirm()
+    const ability = useAppAbility()
 
     // Guideline dialog
     const { isFirstVisit } = useFirstVisit('users')
@@ -52,20 +35,14 @@ export default function UserManagementPage() {
         if (isFirstVisit) setShowGuide(true)
     }, [isFirstVisit])
 
-    // Hook
+    // Hook for user management with filtering, pagination, and role mutation
     const mgmt = useUserManagement()
 
-    // Delete mutation
-    const deleteUser = useDeleteUser()
-
-    // Dialog state
-    const [selectedUser, setSelectedUser] = useState<User | null>(null)
+    // Dialog state for create user
     const [isCreateOpen, setIsCreateOpen] = useState(false)
-    const [isEditUserOpen, setIsEditUserOpen] = useState(false)
-    const [isEditRoleOpen, setIsEditRoleOpen] = useState(false)
-    const [isIpHistoryOpen, setIsIpHistoryOpen] = useState(false)
-    const [isPermissionsOpen, setIsPermissionsOpen] = useState(false)
-    const [saveError, setSaveError] = useState<string | null>(null)
+
+    // Suppress unused variable warning -- currentUser is used by ability context
+    void currentUser
 
     // Loading / error early returns
     if (mgmt.isLoading) {
@@ -78,36 +55,14 @@ export default function UserManagementPage() {
     if (mgmt.error) {
         return <div className="text-center text-red-600 p-4">{mgmt.error}</div>
     }
-    if (currentUser?.role !== 'admin') {
-        return <div className="text-center text-slate-600 dark:text-slate-400 p-8">{t('userManagement.noPermission')}</div>
-    }
-
-    /** Role color helper */
-    const roleBadgeVariant = (role: string) => {
-        if (role === 'admin') return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-        if (role === 'leader') return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-        return ''
-    }
-
-    /** Role labels */
-    const roleLabels: Record<string, string> = {
-        admin: t('userManagement.admin'),
-        leader: t('userManagement.leader'),
-        user: t('userManagement.userRole'),
-    }
-
-    /** Handle delete with confirmation dialog */
-    const handleDelete = async (record: User) => {
-        const name = record.displayName || record.email || ''
-        const confirmed = await confirm({
-            title: t('userManagement.deleteUser', 'Delete User'),
-            message: t('userManagement.confirmDeleteUserMessage', 'Are you sure you want to delete {{name}}? This action cannot be undone.', { name }),
-            confirmText: t('common.delete', 'Delete'),
-            variant: 'danger',
-        })
-        if (confirmed) {
-            deleteUser.mutate(record.id)
-        }
+    // Guard with CASL ability -- only admins and super-admins can manage users
+    if (!ability.can('manage', 'User')) {
+        return (
+            <div className="flex flex-col items-center justify-center h-full py-16 text-center">
+                <h3 className="text-lg font-semibold text-foreground">{t('accessControl.accessDenied.title')}</h3>
+                <p className="text-sm text-muted-foreground mt-1">{t('accessControl.accessDenied.message')}</p>
+            </div>
+        )
     }
 
     return (
@@ -126,128 +81,14 @@ export default function UserManagementPage() {
                             onCreateUser={() => setIsCreateOpen(true)}
                         />
 
+                        {/* Role management table with inline role assignment dropdowns */}
                         <div className="flex-1 overflow-auto p-4">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>{t('userManagement.user')}</TableHead>
-                                        <TableHead>{t('userManagement.email')}</TableHead>
-                                        <TableHead>{t('userManagement.department')}</TableHead>
-                                        <TableHead>{t('userManagement.role')}</TableHead>
-                                        <TableHead className="text-right">{t('userManagement.actions')}</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {mgmt.paginatedUsers.map((record) => {
-                                        const hasIpHistory = (mgmt.ipHistoryMap[record.id] || []).length > 0
-                                        return (
-                                            <TableRow key={record.id}>
-                                                <TableCell>
-                                                    <div className="flex items-center gap-2">
-                                                        <Avatar className="h-8 w-8">
-                                                            <AvatarFallback className="bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium text-sm">
-                                                                {(record.displayName || record.email || '?').charAt(0).toUpperCase()}
-                                                            </AvatarFallback>
-                                                        </Avatar>
-                                                        <span className="font-medium text-slate-900 dark:text-white">{record.displayName || record.email}</span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex items-center gap-2">
-                                                        <Mail className="w-4 h-4 text-slate-400" />
-                                                        <span className="text-slate-600 dark:text-slate-300">{record.email}</span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <span className="text-slate-600 dark:text-slate-300">{record.department || '-'}</span>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge
-                                                        variant={record.role === 'admin' || record.role === 'leader' ? 'default' : 'secondary'}
-                                                        className={`capitalize ${roleBadgeVariant(record.role || '')}`}
-                                                    >
-                                                        {roleLabels[record.role || ''] || record.role}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex items-center justify-end gap-1">
-                                                        {/* IP History */}
-                                                        <TooltipProvider>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        onClick={() => { setSelectedUser(record); setIsIpHistoryOpen(true) }}
-                                                                        disabled={!hasIpHistory}
-                                                                        className={hasIpHistory ? 'text-slate-400 hover:text-primary-600' : ''}
-                                                                    >
-                                                                        <Globe className="w-4 h-4" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>{t('userManagement.viewIpHistory')}</TooltipContent>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
-
-                                                        {/* Edit Profile */}
-                                                        <TooltipProvider>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        onClick={() => { setSelectedUser(record); setIsEditUserOpen(true) }}
-                                                                        className="text-slate-400 hover:text-blue-600"
-                                                                    >
-                                                                        <Pencil className="w-4 h-4" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>{t('userManagement.editUser', 'Edit User')}</TooltipContent>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
-
-                                                        {/* Edit Role */}
-                                                        <TooltipProvider>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        onClick={() => { setSelectedUser(record); setSaveError(null); setIsEditRoleOpen(true) }}
-                                                                        className="text-slate-400 hover:text-primary-600"
-                                                                    >
-                                                                        <ShieldCheck className="w-4 h-4" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>{t('userManagement.editRole')}</TooltipContent>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
-
-                                                        {/* Delete User — prevent self-deletion */}
-                                                        {record.id !== currentUser?.id && (
-                                                            <TooltipProvider>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            onClick={() => handleDelete(record)}
-                                                                            className="text-slate-400 hover:text-red-600"
-                                                                        >
-                                                                            <Trash2 className="w-4 h-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>{t('userManagement.deleteUser', 'Delete User')}</TooltipContent>
-                                                                </Tooltip>
-                                                            </TooltipProvider>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        )
-                                    })}
-                                </TableBody>
-                            </Table>
+                            <RoleManagementTable
+                                members={mgmt.paginatedUsers}
+                                isLoading={mgmt.isLoading}
+                                onRoleChange={(userId, role) => mgmt.updateRole(userId, role)}
+                                updatingUserId={mgmt.isUpdatingRole ? undefined : null}
+                            />
                         </div>
 
                         {mgmt.filteredCount > mgmt.pageSize && (

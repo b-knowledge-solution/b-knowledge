@@ -53,6 +53,14 @@ export function getActionBadge(action: string, t: (key: string, opts?: any) => s
         create_prompt: { label: t('auditLog.actions.create_prompt'), className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
         update_prompt: { label: t('auditLog.actions.update_prompt'), className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' },
         delete_prompt: { label: t('auditLog.actions.delete_prompt'), className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
+        // Access control events (Phase 2)
+        view_document: { label: t('auditLog.actions.view_document'), className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
+        search_query: { label: t('auditLog.actions.search_query'), className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
+        chat_answer: { label: t('auditLog.actions.chat_answer'), className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
+        create_policy: { label: t('auditLog.actions.create_policy'), className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
+        update_policy: { label: t('auditLog.actions.update_policy'), className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' },
+        delete_policy: { label: t('auditLog.actions.delete_policy'), className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
+        access_denied: { label: t('auditLog.actions.access_denied'), className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
     }
 
     // Fall back to a generic slate badge for unknown actions, converting snake_case to Title Case
@@ -82,6 +90,14 @@ export function formatResourceType(type: string, t: (key: string, opts?: any) =>
         permission: t('auditLog.resourceTypes.permission'),
         knowledge_base_source: t('auditLog.resourceTypes.knowledge_base_source'),
         prompt: t('auditLog.resourceTypes.prompt'),
+        // Access control resource types (Phase 2)
+        policy: t('auditLog.resourceTypes.policy', { defaultValue: 'Policy' }),
+        search: t('auditLog.resourceTypes.search', { defaultValue: 'Search' }),
+        chat: t('auditLog.resourceTypes.chat', { defaultValue: 'Chat' }),
+        org: t('auditLog.resourceTypes.org', { defaultValue: 'Organization' }),
+        dataset: t('auditLog.resourceTypes.dataset', { defaultValue: 'Dataset' }),
+        document: t('auditLog.resourceTypes.document', { defaultValue: 'Document' }),
+        model_provider: t('auditLog.resourceTypes.model_provider', { defaultValue: 'Model Provider' }),
     }
     // Fall back to i18n key lookup or formatted snake_case for unknown resource types
     return typeMap[type] || t(`auditLog.resourceTypes.${type}`, { defaultValue: type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) })

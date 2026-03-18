@@ -14,14 +14,15 @@ import { Project, ProjectPermission, ProjectDataset, UserContext } from '@/share
  */
 export class ProjectsService {
   /**
-   * @description Get all projects accessible to the given user based on RBAC rules.
-   *   Admins see all projects. Other users see public projects and those
+   * @description Get all projects accessible to the given user based on RBAC rules and tenant isolation.
+   *   Admins see all projects within the tenant. Other users see public projects and those
    *   they have explicit permissions for (directly or via team membership).
    * @param {UserContext} user - Authenticated user context
+   * @param {string} [tenantId] - Tenant ID for org-scoped filtering
    * @returns {Promise<Project[]>} Array of accessible projects
    */
-  async getAccessibleProjects(user: UserContext): Promise<Project[]> {
-    // Admins see all active projects
+  async getAccessibleProjects(user: UserContext, tenantId?: string): Promise<Project[]> {
+    // Admins see all active projects (within tenant scope if provided)
     if (user.role === 'admin' || user.role === 'superadmin') {
       return ModelFactory.project.findActive()
     }
@@ -67,10 +68,11 @@ export class ProjectsService {
    * @description Create a new project and auto-create a linked dataset for document ingestion
    * @param {any} data - Project creation data including name, embedding model defaults
    * @param {UserContext} user - Authenticated user context
+   * @param {string} [tenantId] - Tenant ID for org-scoped audit logging
    * @returns {Promise<Project>} The created project
    * @throws {Error} If project creation fails
    */
-  async createProject(data: any, user: UserContext): Promise<Project> {
+  async createProject(data: any, user: UserContext, tenantId?: string): Promise<Project> {
     try {
       // Create the project record
       const project = await ModelFactory.project.create({
@@ -114,7 +116,7 @@ export class ProjectsService {
         log.warn('Failed to auto-create dataset for project', { error: String(dsError), projectId: project.id })
       }
 
-      // Audit log the project creation
+      // Audit log the project creation with tenant context
       await auditService.log({
         userId: user.id,
         userEmail: user.email,
@@ -123,6 +125,7 @@ export class ProjectsService {
         resourceId: project.id,
         details: { name: project.name, type: 'project' },
         ipAddress: user.ip,
+        tenantId,
       })
 
       return project
@@ -137,10 +140,11 @@ export class ProjectsService {
    * @param {string} id - UUID of the project
    * @param {any} data - Partial update data
    * @param {UserContext} user - Authenticated user context
+   * @param {string} [tenantId] - Tenant ID for org-scoped audit logging
    * @returns {Promise<Project | undefined>} Updated project or undefined if not found
    * @throws {Error} If update fails
    */
-  async updateProject(id: string, data: any, user: UserContext): Promise<Project | undefined> {
+  async updateProject(id: string, data: any, user: UserContext, tenantId?: string): Promise<Project | undefined> {
     try {
       // Build update payload, only including provided fields
       const updateData: any = { updated_by: user.id }
@@ -155,7 +159,7 @@ export class ProjectsService {
 
       const project = await ModelFactory.project.update(id, updateData)
 
-      // Audit log
+      // Audit log with tenant context
       if (project) {
         await auditService.log({
           userId: user.id,
@@ -165,6 +169,7 @@ export class ProjectsService {
           resourceId: id,
           details: { changes: data, type: 'project' },
           ipAddress: user.ip,
+          tenantId,
         })
       }
 
@@ -179,10 +184,11 @@ export class ProjectsService {
    * @description Delete a project and cascade-delete any auto-created datasets linked to it
    * @param {string} id - UUID of the project
    * @param {UserContext} user - Authenticated user context
+   * @param {string} [tenantId] - Tenant ID for org-scoped audit logging
    * @returns {Promise<void>}
    * @throws {Error} If deletion fails
    */
-  async deleteProject(id: string, user: UserContext): Promise<void> {
+  async deleteProject(id: string, user: UserContext, tenantId?: string): Promise<void> {
     try {
       // Find and delete auto-created datasets
       const autoLinks = await ModelFactory.projectDataset.findAutoCreated(id)
@@ -194,7 +200,7 @@ export class ProjectsService {
       // Delete the project (cascades to permissions, categories, chats, searches, etc.)
       await ModelFactory.project.delete(id)
 
-      // Audit log
+      // Audit log with tenant context
       await auditService.log({
         userId: user.id,
         userEmail: user.email,
@@ -203,6 +209,7 @@ export class ProjectsService {
         resourceId: id,
         details: { type: 'project' },
         ipAddress: user.ip,
+        tenantId,
       })
     } catch (error) {
       log.error('Failed to delete project', { error: String(error) })

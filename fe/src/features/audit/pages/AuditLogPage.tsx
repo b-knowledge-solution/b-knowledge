@@ -5,7 +5,7 @@
  * @module features/audit/pages/AuditLogPage
  */
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/features/auth'
+import { useAppAbility } from '@/lib/ability'
 import { useTranslation } from 'react-i18next'
 import {
     Search,
@@ -49,7 +49,7 @@ import {
  */
 function AuditLogPageContent() {
     const { t } = useTranslation()
-    const { user: currentUser } = useAuth()
+    const ability = useAppAbility()
     const { filters, setFilter, showFilters, toggleFilters, hasActiveFilters } = useAuditFilters()
     const {
         logs,
@@ -69,8 +69,8 @@ function AuditLogPageContent() {
         if (isFirstVisit) setShowGuide(true)
     }, [isFirstVisit])
 
-    // Admin-only guard
-    if (currentUser?.role !== 'admin') {
+    // CASL-based access guard: only users with 'read AuditLog' ability can view
+    if (!ability.can('read', 'AuditLog')) {
         return (
             <div className="text-center text-slate-600 dark:text-slate-400 p-8">
                 {t('auditLog.noPermission')}
