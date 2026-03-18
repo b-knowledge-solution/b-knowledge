@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: in-progress
-stopped_at: Completed 02-00-PLAN.md
-last_updated: "2026-03-18T13:18:34.602Z"
-last_activity: 2026-03-18 — Plan 02-00 complete (Wave 0 test scaffolds for access control)
+status: executing
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-03-18T13:19:21Z"
+last_activity: 2026-03-18 — Plan 02-01 complete (Config consolidation + access control schema)
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 11
-  completed_plans: 5
-  percent: 45
+  completed_plans: 6
+  percent: 55
 ---
 
 # Project State
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 2 of 6 (Access Control)
-Plan: 1 of 7 in current phase
+Plan: 2 of 7 in current phase
 Status: In Progress
-Last activity: 2026-03-18 — Plan 02-00 complete (Wave 0 test scaffolds for access control)
+Last activity: 2026-03-18 — Plan 02-01 complete (Config consolidation + access control schema)
 
-Progress: [█████░░░░░] 45%
+Progress: [██████░░░░] 55%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
+- Total plans completed: 6
 - Average duration: 5 min
-- Total execution time: 0.38 hours
+- Total execution time: 0.45 hours
 
 **By Phase:**
 
@@ -46,7 +46,7 @@ Progress: [█████░░░░░] 45%
 | 1 | 4 | 20 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (5 min), 01-02 (3 min), 01-03 (2 min), 01-04 (10 min), 02-00 (3 min)
+- Last 5 plans: 01-02 (3 min), 01-03 (2 min), 01-04 (10 min), 02-00 (3 min), 02-01 (4 min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -55,6 +55,7 @@ Progress: [█████░░░░░] 45%
 | Phase 01 P03 | 2min | 1 tasks | 2 files |
 | Phase 01 P04 | 10min | 2 tasks | 23 files |
 | Phase 02 P00 | 3min | 2 tasks | 3 files |
+| Phase 02 P01 | 4min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,8 @@ Recent decisions affecting current work:
 - [Phase 1, Plan 04]: Search feedback uses dedicated POST /apps/:id/feedback endpoint for cleaner REST semantics
 - [Phase 1, Plan 03]: Direct OpenSearch fetch (not client library) for E2E helper -- simpler, no extra dependency; UUID normalization centralized in helper
 - [Phase 2, Plan 00]: CASL auth middleware tests in separate file (auth.middleware.casl.test.ts) to preserve existing RBAC middleware tests
+- [Phase 2, Plan 01]: Migration uses process.env directly (not config import) since migrations are standalone scripts
+- [Phase 2, Plan 01]: Backfill uses LEFT JOIN to only insert user_tenant rows for users missing system tenant mapping
 
 ### Pending Todos
 
@@ -82,13 +85,13 @@ None yet.
 
 ### Blockers/Concerns
 
-- **Phase 2 prerequisite (Pitfall 1):** SYSTEM_TENANT_ID hardcoded in 5 files — must consolidate OpenSearch client construction into shared service before multi-tenant feature work begins. Tracked as Plan 02-01.
+- ~~**Phase 2 prerequisite (Pitfall 1):** SYSTEM_TENANT_ID hardcoded in 5 files~~ -- RESOLVED in Plan 02-01: consolidated to config.opensearch.systemTenantId
 - **Phase 5 risk (Pitfall 5):** Deep Research token cost spiral — existing maxDepth:3 guard is insufficient; hard caps on LLM calls (10-15) and token budget (50K default) are mandatory before shipping.
 - **Phase 4 research flag:** GraphRAG indexing cost — LazyGraphRAG vs full GraphRAG tradeoff needs validation during Phase 4 planning before committing to default mode.
 - **Phase 5 research flag:** Token budget sizing and semantic similarity caching strategy for Deep Research needs validation during Phase 5 planning.
 
 ## Session Continuity
 
-Last session: 2026-03-18T13:18:00Z
-Stopped at: Completed 02-00-PLAN.md
-Resume file: .planning/phases/02-access-control/02-00-SUMMARY.md
+Last session: 2026-03-18T13:19:21Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: .planning/phases/02-access-control/02-01-SUMMARY.md
