@@ -19,6 +19,8 @@
     "test:e2e:setup": "playwright install chromium"
   },
   "dependencies": {
+    "@casl/ability": "^6.8.0",
+    "@casl/react": "^5.0.1",
     "@headlessui/react": "^2.2.9",
     "@js-preview/excel": "^1.7.14",
     "@radix-ui/react-avatar": "^1.1.10",

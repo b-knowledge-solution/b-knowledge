@@ -11,6 +11,7 @@ import { ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/features/auth';
+import { AbilityProvider } from '@/lib/ability';
 import { SettingsProvider } from '@/app/contexts/SettingsContext';
 
 import { GuidelineProvider } from '@/features/guideline';
@@ -73,11 +74,12 @@ interface ProvidersProps {
  *
  * Provider order matters – outer providers are available to inner ones:
  * 1. AuthProvider (user session)
- * 2. SettingsProvider (theme, language)
- * 3. GuidelineProvider (in-app help)
- * 4. ConfirmProvider (confirmation dialogs)
- * 5. HeaderActionsProvider (page-level header actions)
- * 6. NavigationProvider (loading overlay)
+ * 2. AbilityProvider (CASL permissions)
+ * 3. SettingsProvider (theme, language)
+ * 4. GuidelineProvider (in-app help)
+ * 5. ConfirmProvider (confirmation dialogs)
+ * 6. HeaderActionsProvider (page-level header actions)
+ * 7. NavigationProvider (loading overlay)
  */
 /**
  * @description Composes all application-wide context providers into a flat structure
@@ -87,7 +89,8 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   return (
     <AuthProvider>
-      <SettingsProvider>
+      <AbilityProvider>
+        <SettingsProvider>
         <GuidelineProvider>
           <ConfirmProvider>
             <HeaderActionsProvider>
@@ -100,7 +103,8 @@ export function Providers({ children }: ProvidersProps) {
             </HeaderActionsProvider>
           </ConfirmProvider>
         </GuidelineProvider>
-      </SettingsProvider>
+        </SettingsProvider>
+      </AbilityProvider>
     </AuthProvider>
   );
 }
