@@ -52,9 +52,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Chat & Search Experience
 
-- [ ] **CHAT-01**: Chat experience stabilization — fix bugs in streaming, citation display, and conversation management
-- [ ] **CHAT-02**: Search experience stabilization — fix bugs in search results, filtering, and pagination
-- [ ] **CHAT-03**: Answer quality feedback — thumbs up/down on AI-generated answers linked to query + chunks + response
+- [x] **CHAT-01**: Chat experience stabilization — fix bugs in streaming, citation display, and conversation management
+- [x] **CHAT-02**: Search experience stabilization — fix bugs in search results, filtering, and pagination
+- [x] **CHAT-03**: Answer quality feedback — thumbs up/down on AI-generated answers linked to query + chunks + response
 
 ### Observability
 
@@ -115,9 +115,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | STAB-03 | Phase 1 | Complete |
 | STAB-04 | Phase 1 | Complete |
 | STAB-05 | Phase 1 | Complete |
-| CHAT-01 | Phase 1 | Pending |
-| CHAT-02 | Phase 1 | Pending |
-| CHAT-03 | Phase 1 | Pending |
+| CHAT-01 | Phase 1 | Complete |
+| CHAT-02 | Phase 1 | Complete |
+| CHAT-03 | Phase 1 | Complete |
 | ACCS-01 | Phase 2 | Pending |
 | ACCS-02 | Phase 2 | Pending |
 | ACCS-03 | Phase 2 | Pending |
