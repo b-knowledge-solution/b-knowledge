@@ -326,6 +326,8 @@ export interface AuditLog {
     details: any;
     /** IP address of the client */
     ip_address?: string | null;
+    /** Tenant ID for multi-org isolation and scoped audit queries */
+    tenant_id?: string | null;
     /** Timestamp when the action occurred */
     created_at: Date;
     /** User ID who created this record */

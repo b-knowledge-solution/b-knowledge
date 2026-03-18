@@ -48,6 +48,17 @@ export const AuditAction = {
     CREATE_PROMPT: 'create_prompt',
     UPDATE_PROMPT: 'update_prompt',
     DELETE_PROMPT: 'delete_prompt',
+
+    // Access control events (Phase 2)
+    VIEW_DOCUMENT: 'view_document',
+    SEARCH_QUERY: 'search_query',
+    CHAT_ANSWER: 'chat_answer',
+    CREATE_POLICY: 'create_policy',
+    UPDATE_POLICY: 'update_policy',
+    DELETE_POLICY: 'delete_policy',
+    LOGIN: 'login',
+    LOGOUT: 'logout',
+    ACCESS_DENIED: 'access_denied',
 } as const;
 
 /** @description Union type of all valid audit action string values */
@@ -72,6 +83,12 @@ export const AuditResourceType = {
     DATASET: 'dataset',
     DOCUMENT: 'document',
     MODEL_PROVIDER: 'model_provider',
+
+    // Access control resource types (Phase 2)
+    POLICY: 'policy',
+    SEARCH: 'search',
+    CHAT: 'chat',
+    ORG: 'org',
 } as const;
 
 /** @description Union type of all valid audit resource type string values */
@@ -88,6 +105,7 @@ export interface AuditLogParams {
     resourceId?: string | null | undefined;
     details?: Record<string, any>;
     ipAddress?: string | null | undefined;
+    tenantId?: string | null | undefined;
 }
 
 /**
@@ -137,9 +155,10 @@ class AuditService {
                 resourceId = null,
                 details = {},
                 ipAddress = null,
+                tenantId = null,
             } = params;
 
-            // Create audit log entry using model factory
+            // Create audit log entry using model factory (includes tenant_id for org-scoped filtering)
             const logEntry = await ModelFactory.auditLog.create({
                 user_id: userId,
                 user_email: userEmail,
@@ -148,6 +167,7 @@ class AuditService {
                 resource_id: resourceId,
                 details: JSON.stringify(details),
                 ip_address: ipAddress,
+                tenant_id: tenantId || null,
             });
 
             // Log debug info for successful creation
@@ -184,6 +204,8 @@ class AuditService {
         if (filters.userId) whereClause.user_id = filters.userId;
         if (filters.action) whereClause.action = filters.action;
         if (filters.resourceType) whereClause.resource_type = filters.resourceType;
+        // Tenant-scoped filtering for org isolation
+        if (filters.tenantId) whereClause.tenant_id = filters.tenantId;
 
         // Run data fetch and count in parallel for efficiency
         const [data, total] = await Promise.all([

@@ -5,6 +5,7 @@
 import { Request, Response } from 'express'
 import { auditService } from '@/modules/audit/services/audit.service.js'
 import { log } from '@/shared/services/logger.service.js'
+import { getTenantId } from '@/shared/middleware/tenant.middleware.js'
 
 /**
  * @description Exposes paginated audit logs and metadata (actions/resource types) for the admin UI
@@ -42,6 +43,18 @@ export class AuditController {
       if (startDate) filters.startDate = startDate;
       if (endDate) filters.endDate = endDate;
       if (search) filters.search = search;
+
+      // Tenant scoping: super-admins can optionally filter by org, admins see only their org
+      const user = req.session?.user
+      if (user?.is_superuser) {
+        // Super-admin can optionally filter by a specific tenant via query param
+        const tenantFilter = this.getStringParam(req.query.tenantId)
+        if (tenantFilter) filters.tenantId = tenantFilter
+      } else {
+        // Non-super-admin users are forced to see only their own org's audit logs
+        const tenantId = getTenantId(req)
+        if (tenantId) filters.tenantId = tenantId
+      }
 
       // Fetch logs from service with filters (pass limit and offset as separate params)
       const result = await auditService.getLogs(filters, limitNum, offset);
