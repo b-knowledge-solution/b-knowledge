@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-02-PLAN.md
+stopped_at: Completed 02-04-PLAN.md
 last_updated: "2026-03-18T13:32:18Z"
-last_activity: 2026-03-18 — Plan 02-02 complete (CASL ability service + auth endpoints)
+last_activity: 2026-03-18 — Plan 02-04 complete (Frontend CASL integration + sidebar gating)
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 11
-  completed_plans: 7
-  percent: 59
+  completed_plans: 8
+  percent: 64
 ---
 
 # Project State
@@ -26,16 +26,16 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 2 of 6 (Access Control)
-Plan: 3 of 7 in current phase
+Plan: 5 of 7 in current phase
 Status: In Progress
-Last activity: 2026-03-18 — Plan 02-02 complete (CASL ability service + auth endpoints)
+Last activity: 2026-03-18 — Plan 02-04 complete (Frontend CASL integration + sidebar gating)
 
-Progress: [██████░░░░] 59%
+Progress: [██████▓░░░] 64%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
+- Total plans completed: 8
 - Average duration: 5 min
 - Total execution time: 0.45 hours
 
@@ -46,7 +46,7 @@ Progress: [██████░░░░] 59%
 | 1 | 4 | 20 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-03 (2 min), 01-04 (10 min), 02-00 (3 min), 02-01 (4 min), 02-02 (9 min)
+- Last 5 plans: 01-04 (10 min), 02-00 (3 min), 02-01 (4 min), 02-02 (9 min), 02-04 (10 min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -57,6 +57,7 @@ Progress: [██████░░░░] 59%
 | Phase 02 P00 | 3min | 2 tasks | 3 files |
 | Phase 02 P01 | 4min | 2 tasks | 9 files |
 | Phase 02 P02 | 9min | 2 tasks | 11 files |
+| Phase 02 P04 | 10min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,7 @@ Recent decisions affecting current work:
 - [Phase 2, Plan 02]: Raw Knex queries for user_tenant operations instead of dedicated model (simple junction table)
 - [Phase 2, Plan 02]: Ability wired in AuthController (not AuthService) since session context is only available in the request
 - [Phase 2, Plan 02]: ABAC policy conditions use 'as any' cast for CASL type compatibility with exactOptionalPropertyTypes
+- [Phase 2, Plan 04]: AbilityProvider placed inside AuthProvider to access user state; sidebar uses CASL ability.can() checks per nav group labelKey
 
 ### Pending Todos
 
@@ -96,6 +98,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T13:32:18Z
-Stopped at: Completed 02-02-PLAN.md
-Resume file: .planning/phases/02-access-control/02-02-SUMMARY.md
+Last session: 2026-03-18T13:46:17Z
+Stopped at: Completed 02-04-PLAN.md
+Resume file: .planning/phases/02-access-control/02-04-SUMMARY.md
