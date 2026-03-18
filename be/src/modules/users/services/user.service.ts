@@ -8,6 +8,7 @@ import { config } from '@/shared/config/index.js';
 import { log } from '@/shared/services/logger.service.js';
 import { AzureAdUser } from '@/modules/auth/auth.service.js';
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js';
+import { abilityService } from '@/shared/services/ability.service.js';
 import { User, UserIpHistory } from '@/shared/models/types.js';
 
 /**
@@ -301,15 +302,14 @@ export class UserService {
     }
 
     /**
-     * Update a user's global role.
-     * @param userId - User ID to update.
-     * @param role - New role: 'admin', 'leader', or 'user'.
-     * @param actor - The user performing the action.
-     * @returns Promise<User | undefined> - Updated User.
-     * @throws Error if validation or security checks fail.
-     * @description Includes security checks to prevent self-modification and unauthorized admin promotion.
+     * @description Update a user's global role with security checks, audit logging, and CASL ability cache invalidation
+     * @param {string} userId - User ID to update
+     * @param {string} role - New role: 'admin', 'leader', or 'user'
+     * @param {object} actor - The user performing the action including id, role, email, ip, and tenantId
+     * @returns {Promise<User | undefined>} Updated User record
+     * @throws {Error} If validation or security checks fail (self-modification, unauthorized promotion)
      */
-    async updateUserRole(userId: string, role: string, actor: { id: string, role: string, email: string, ip?: string }): Promise<User | undefined> {
+    async updateUserRole(userId: string, role: string, actor: { id: string, role: string, email: string, ip?: string | undefined, tenantId?: string | undefined }): Promise<User | undefined> {
         // Validate UUID format for id (unless it's a special system user)
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
         if (!uuidRegex.test(userId) && userId !== 'root-user' && userId !== 'dev-user-001') {
@@ -345,7 +345,10 @@ export class UserService {
         const updatedUser = await ModelFactory.user.update(userId, { role, updated_by: actor.id });
 
         if (updatedUser) {
-            // Log audit event for role change
+            // Invalidate all cached CASL abilities so the target user picks up new role permissions
+            await abilityService.invalidateAllAbilities()
+
+            // Log audit event for role change with tenant context
             await auditService.log({
                 userId: actor.id,
                 userEmail: actor.email || 'unknown',
@@ -355,8 +358,10 @@ export class UserService {
                 details: {
                     targetEmail: updatedUser.email,
                     newRole: role,
+                    tenantId: actor.tenantId,
                 },
                 ipAddress: actor.ip,
+                tenantId: actor.tenantId,
             });
 
             log.debug('User role updated', {

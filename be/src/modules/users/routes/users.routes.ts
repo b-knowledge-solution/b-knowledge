@@ -23,7 +23,8 @@
 
 import { Router } from 'express';
 import { UserController } from '../controllers/users.controller.js';
-import { requireAuth, requirePermission, requireRecentAuth } from '@/shared/middleware/auth.middleware.js';
+import { requireAuth, requirePermission, requireRecentAuth, requireAbility } from '@/shared/middleware/auth.middleware.js';
+import { requireTenant } from '@/shared/middleware/tenant.middleware.js';
 import { validate } from '@/shared/middleware/validate.middleware.js';
 import {
   updateRoleSchema,
@@ -75,12 +76,14 @@ router.get('/:id/ip-history', requirePermission('manage_users'), controller.getU
 
 /**
  * PUT /api/users/:id/role
- * Update a user's role.
- * @requires manage_users permission + recent auth
+ * Update a user's role within the current tenant.
+ * @requires authentication + tenant context + CASL manage User ability + recent auth
  */
 router.put(
   '/:id/role',
-  requirePermission('manage_users'),
+  requireAuth,
+  requireTenant,
+  requireAbility('manage', 'User'),
   requireRecentAuth(15),
   validate({ params: uuidParamSchema, body: updateRoleSchema }),
   controller.updateUserRole.bind(controller)

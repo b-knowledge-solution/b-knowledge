@@ -7,6 +7,7 @@ import { userService } from '@/modules/users/services/user.service.js'
 import { authService } from '@/modules/auth/auth.service.js'
 import { log } from '@/shared/services/logger.service.js'
 import { getClientIp } from '@/shared/utils/ip.js'
+import { getTenantId } from '@/shared/middleware/tenant.middleware.js'
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js'
 
 /**
@@ -104,12 +105,13 @@ export class UserController {
     }
 
     try {
-      // Validate actor (must be authenticated)
+      // Validate actor (must be authenticated) and include tenant context
       const actor = req.session.user ? {
         id: req.session.user.id,
         role: req.session.user.role,
         email: req.session.user.email,
-        ip: getClientIp(req)
+        ip: getClientIp(req),
+        tenantId: getTenantId(req) ?? undefined,
       } : undefined;
 
       if (!actor) {
