@@ -37,12 +37,12 @@ Declared values (must be multiples of 4):
 | xs | 4px | Icon gaps, inline padding, badge internal padding |
 | sm | 8px | Compact element spacing, table cell padding |
 | md | 16px | Default element spacing, card internal padding |
-| lg | 24px | Section padding, card content padding (matches existing `p-6`) |
+| lg | 24px | Section padding, card content padding, stat card content padding (`p-6`) |
 | xl | 32px | Layout gaps between major sections |
 | 2xl | 48px | Major section breaks |
 | 3xl | 64px | Page-level spacing |
 
-Exceptions: Stat card content uses `p-5` (20px) matching existing `StatCards.tsx` pattern. Chart container height fixed at 300px matching existing `ActivityTrendChart.tsx`.
+Exceptions: Chart container height fixed at 300px matching existing `ActivityTrendChart.tsx`.
 
 Source: Existing dashboard components (`p-6`, `gap-4`, `mb-6` patterns in `AdminDashboardPage.tsx`)
 
@@ -152,6 +152,14 @@ Source: `fe/src/index.css` CSS custom properties, `StatCards.tsx` gradient patte
 ---
 
 ## Layout Contract
+
+### Page Focal Points
+
+| Page | Focal Point |
+|------|-------------|
+| Project List | The "Create Project" accent button in the top-right corner draws the eye first, then the project card grid below |
+| Query Analytics | The 4 gradient stat cards row is the immediate focal point, anchoring key metrics before the user scans charts below |
+| RAG Quality | The "Satisfaction Rate" stat card (first gradient card, top-left) is the focal point, summarizing overall RAG health at a glance |
 
 ### Dashboard Analytics Page
 
