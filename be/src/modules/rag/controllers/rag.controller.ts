@@ -220,6 +220,155 @@ export class RagController {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Dataset Versioning
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description POST /datasets/:id/versions — Create a new version dataset and optionally upload files.
+     * Creates a version dataset inheriting parent settings, then uploads provided files
+     * to the new version dataset using the existing document upload flow.
+     * @param {Request} req - Express request with parent dataset ID param, optional files, and body
+     * @param {Response} res - Express response with the created version dataset and uploaded documents (201)
+     * @returns {Promise<void>}
+     */
+    async uploadVersionDocuments(req: Request, res: Response): Promise<void> {
+        const parentDatasetId = req.params['id']
+        // Guard: require parent dataset ID
+        if (!parentDatasetId) { res.status(400).json({ error: 'Dataset ID is required' }); return }
+
+        try {
+            const userId = req.user?.id
+            if (!userId) { res.status(401).json({ error: 'Authentication required' }); return }
+
+            const tenantId = getTenantId(req) || ''
+            const changeSummary = req.body?.change_summary || null
+
+            // Create the version dataset with inherited parent settings
+            const versionDataset = await ragService.createVersionDataset(
+                parentDatasetId,
+                changeSummary,
+                userId,
+                tenantId,
+            )
+
+            // Sync version dataset to Peewee knowledgebase table (used by Python task executors)
+            try {
+                const kbData: Parameters<typeof ragDocumentService.createKnowledgebase>[0] = {
+                    id: versionDataset.id,
+                    name: versionDataset.name,
+                }
+                if (versionDataset.description) kbData.description = versionDataset.description
+                if (versionDataset.language) kbData.language = versionDataset.language
+                if (versionDataset.embedding_model) {
+                    kbData.embedding_model = versionDataset.embedding_model
+                    // Resolve provider UUID for Python worker model config lookup
+                    const providerId = await resolveEmbeddingProviderId(versionDataset.embedding_model)
+                    if (providerId) kbData.tenant_embd_id = providerId
+                }
+                if (versionDataset.parser_id) kbData.parser_id = versionDataset.parser_id
+                if (versionDataset.parser_config) {
+                    kbData.parser_config = typeof versionDataset.parser_config === 'string'
+                        ? JSON.parse(versionDataset.parser_config) : versionDataset.parser_config
+                }
+                if (versionDataset.pagerank !== undefined) kbData.pagerank = versionDataset.pagerank
+                await ragDocumentService.createKnowledgebase(kbData)
+            } catch (syncErr) {
+                log.warn('Failed to sync version dataset to knowledgebase table (non-blocking)', { error: String(syncErr) })
+            }
+
+            // Upload files to the version dataset if any were provided
+            const files = req.files as Express.Multer.File[] | undefined
+            const uploadedDocs = []
+
+            if (files && files.length > 0) {
+                for (const file of files) {
+                    const fileId = getUuid()
+                    const docId = getUuid()
+                    const filename = file.originalname || 'unknown'
+                    const suffix = path.extname(filename).toLowerCase().replace('.', '')
+                    const fileType = ragStorageService.getFileType(suffix)
+
+                    // Store file in MinIO under the version dataset's storage path
+                    const storagePath = ragStorageService.buildStoragePath(versionDataset.id, fileId, filename)
+                    await ragStorageService.putFile(storagePath, file.buffer)
+
+                    // Create File record
+                    await ragDocumentService.createFile({
+                        id: fileId,
+                        name: filename,
+                        location: storagePath,
+                        size: file.size,
+                        type: fileType,
+                    })
+
+                    // Create Document record using parser settings inherited from parent
+                    const parserConfig = typeof versionDataset.parser_config === 'string'
+                        ? JSON.parse(versionDataset.parser_config)
+                        : versionDataset.parser_config
+                    await ragDocumentService.createDocument({
+                        id: docId,
+                        kb_id: versionDataset.id.replace(/-/g, ''),
+                        parser_id: versionDataset.parser_id || 'naive',
+                        parser_config: parserConfig || { pages: [[1, 1000000]] },
+                        name: filename,
+                        location: storagePath,
+                        size: file.size,
+                        suffix,
+                        type: fileType,
+                    })
+
+                    // Create File2Document link
+                    await ragDocumentService.createFile2Document(fileId, docId)
+
+                    uploadedDocs.push({
+                        id: docId,
+                        name: filename,
+                        size: file.size,
+                        type: fileType,
+                        status: '1',
+                        run: '0',
+                    })
+                }
+
+                // Update doc count on the version dataset
+                await ModelFactory.dataset.getKnex()
+                    .where({ id: versionDataset.id })
+                    .increment('doc_count', uploadedDocs.length)
+            }
+
+            res.status(201).json({
+                dataset: versionDataset,
+                documents: uploadedDocs,
+            })
+        } catch (error: any) {
+            log.error('Failed to create version dataset', { error: String(error) })
+            // Return 404 for parent-not-found errors
+            const status = error.message?.includes('not found') ? 404 : 500
+            res.status(status).json({ error: error.message || 'Failed to create version dataset' })
+        }
+    }
+
+    /**
+     * @description GET /datasets/:id/versions — List all version datasets for a parent dataset.
+     * Returns versions ordered by version_number ascending.
+     * @param {Request} req - Express request with parent dataset ID param
+     * @param {Response} res - Express response with array of version datasets
+     * @returns {Promise<void>}
+     */
+    async listVersions(req: Request, res: Response): Promise<void> {
+        const parentDatasetId = req.params['id']
+        if (!parentDatasetId) { res.status(400).json({ error: 'Dataset ID is required' }); return }
+
+        try {
+            const versions = await ragService.getVersionDatasets(parentDatasetId)
+            res.json(versions)
+        } catch (error) {
+            log.error('Failed to list version datasets', { error: String(error) })
+            res.status(500).json({ error: 'Failed to list versions' })
+        }
+    }
+
     /**
      * PATCH /datasets/:id/documents/:docId/toggle — toggle document chunk availability.
      * Sets available_int to 0 (disabled) or 1 (enabled) for all chunks of the document.

@@ -80,10 +80,12 @@ export const versionParamSchema = z.object({
   versionId: z.string().uuid('Invalid version UUID'),
 })
 
-/** @description POST /api/rag/datasets/:id/versions — body schema for version creation */
+/** @description POST /api/rag/datasets/:id/versions — body schema for version creation with optional file upload */
 export const createVersionSchema = z.object({
-  version_label: z.string().min(1, 'Version label is required').max(128),
-  metadata: z.record(z.unknown()).optional(),
+  /** Optional user-provided description of what changed in this version */
+  change_summary: z.string().max(2000).optional(),
+  /** Whether to auto-parse uploaded files immediately */
+  auto_parse: z.boolean().optional().default(false),
 })
 
 /** @description PUT /api/rag/datasets/:id/versions/:versionId — body schema for version update */

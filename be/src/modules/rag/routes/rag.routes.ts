@@ -24,6 +24,7 @@ import {
   bulkChunkSwitchSchema,
   changeDocumentParserSchema, webCrawlSchema,
   updateDatasetPolicySchema,
+  createVersionSchema,
 } from '../schemas/rag.schemas.js';
 
 const router = Router();
@@ -37,6 +38,10 @@ router.get('/datasets/:id', requireAuth, controller.getDataset.bind(controller))
 router.post('/datasets', requirePermission('manage_datasets'), validate(createDatasetSchema), controller.createDataset.bind(controller));
 router.put('/datasets/:id', requirePermission('manage_datasets'), validate({ params: uuidParamSchema, body: updateDatasetSchema }), controller.updateDataset.bind(controller));
 router.delete('/datasets/:id', requirePermission('manage_datasets'), controller.deleteDataset.bind(controller));
+
+// Dataset versioning endpoints
+router.post('/datasets/:id/versions', requirePermission('manage_datasets'), upload.array('files'), controller.uploadVersionDocuments.bind(controller));
+router.get('/datasets/:id/versions', requireAuth, controller.listVersions.bind(controller));
 
 // Dataset RBAC access control endpoints
 router.get('/datasets/:id/access', requirePermission('manage_datasets'), controller.getDatasetAccess.bind(controller));

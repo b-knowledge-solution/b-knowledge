@@ -455,6 +455,103 @@ export class RagService {
     }
 
     // -------------------------------------------------------------------------
+    // Dataset Versioning
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description Create a new version dataset that inherits settings from a parent dataset.
+     * Each version is a full dataset with pagerank = version_number for recency boost.
+     * The version auto-inherits parser_config, access_control, embedding_model, language,
+     * and policy_rules from the parent dataset.
+     * @param {string} parentDatasetId - UUID of the parent dataset to version
+     * @param {string | null} changeSummary - User-provided change summary, or null for auto-generated
+     * @param {string} userId - ID of the user creating the version
+     * @param {string} tenantId - Tenant ID for multi-org isolation
+     * @returns {Promise<Dataset>} The newly created version dataset
+     * @throws {Error} If parent dataset is not found
+     */
+    async createVersionDataset(
+        parentDatasetId: string,
+        changeSummary: string | null,
+        userId: string,
+        tenantId: string,
+    ): Promise<Dataset> {
+        // Fetch parent dataset to inherit settings
+        const parent = await ModelFactory.dataset.findById(parentDatasetId)
+        if (!parent || parent.status === 'deleted') {
+            throw new Error('Parent dataset not found')
+        }
+
+        // Determine next version number by finding the max existing version
+        const maxResult = await db('datasets')
+            .where('parent_dataset_id', parentDatasetId)
+            .max('version_number as max')
+            .first()
+        const versionNumber = ((maxResult?.max as number) ?? 0) + 1
+
+        // Build default change summary if none provided
+        const summary = changeSummary || `Version ${versionNumber} uploaded by user`
+
+        // Create version dataset inheriting parent config
+        const versionDataset = await ModelFactory.dataset.create({
+            name: `${parent.name} (v${versionNumber})`,
+            description: parent.description || null,
+            language: parent.language,
+            embedding_model: parent.embedding_model || null,
+            parser_id: parent.parser_id || 'naive',
+            parser_config: typeof parent.parser_config === 'string'
+                ? parent.parser_config
+                : JSON.stringify(parent.parser_config || {}),
+            access_control: typeof parent.access_control === 'string'
+                ? parent.access_control
+                : JSON.stringify(parent.access_control || { public: true }),
+            policy_rules: typeof parent.policy_rules === 'string'
+                ? parent.policy_rules
+                : JSON.stringify(parent.policy_rules || []),
+            // Pagerank = version_number for recency boost in OpenSearch rank_feature queries
+            pagerank: versionNumber,
+            status: 'active',
+            tenant_id: tenantId || parent.tenant_id || null,
+            parent_dataset_id: parentDatasetId,
+            version_number: versionNumber,
+            change_summary: summary,
+            version_created_by: userId,
+            created_by: userId,
+            updated_by: userId,
+        } as Partial<Dataset>)
+
+        // Log audit event for version creation
+        await auditService.log({
+            userId,
+            userEmail: '',
+            action: AuditAction.CREATE_SOURCE,
+            resourceType: AuditResourceType.DATASET,
+            resourceId: versionDataset.id,
+            details: { parentDatasetId, versionNumber, changeSummary: summary },
+        })
+
+        log.info('Version dataset created', {
+            parentDatasetId,
+            versionDatasetId: versionDataset.id,
+            versionNumber,
+        })
+
+        return versionDataset
+    }
+
+    /**
+     * @description Get all version datasets for a given parent dataset, ordered by version number ascending.
+     * @param {string} parentDatasetId - UUID of the parent dataset
+     * @returns {Promise<Dataset[]>} Array of version datasets ordered by version_number
+     */
+    async getVersionDatasets(parentDatasetId: string): Promise<Dataset[]> {
+        return db('datasets')
+            .where('parent_dataset_id', parentDatasetId)
+            .where('status', '!=', 'deleted')
+            .orderBy('version_number', 'asc')
+    }
+
+    // -------------------------------------------------------------------------
     // Document operations (metadata only — actual files managed by advance-rag)
     // -------------------------------------------------------------------------
 
