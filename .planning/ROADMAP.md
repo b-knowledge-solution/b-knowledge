@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: Migration Stabilization** - Fix known and discovered bugs in the RAG pipeline and user-facing chat/search experience
 - [ ] **Phase 2: Access Control** - Implement org-level tenant isolation, RBAC, ABAC, document-level permissions, and audit logging
-- [ ] **Phase 3: Document Management** - Add document version history, metadata tagging, auto-extraction, and bulk operations
+- [x] **Phase 3: Document Management** - Add document version history, metadata tagging, auto-extraction, and bulk operations (completed 2026-03-19)
 - [ ] **Phase 4: Domain-Specific Parsers** - Add code-aware, API spec, ADR, and clinical document parsers for SDLC and healthcare corpora
 - [ ] **Phase 5: Advanced Retrieval** - Wire GraphRAG and Deep Research pipelines with cross-dataset retrieval and cost controls
 - [ ] **Phase 6: Projects and Observability** - Complete multi-tenant project scoping and surface RAG quality analytics
@@ -143,7 +143,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 |-------|----------------|--------|-----------|
 | 1. Migration Stabilization | 4/4 | Complete |  |
 | 2. Access Control | 6/7 | In Progress|  |
-| 3. Document Management | 3/6 | In Progress|  |
+| 3. Document Management | 6/6 | Complete   | 2026-03-19 |
 | 4. Domain-Specific Parsers | 0/4 | Not started | - |
 | 5. Advanced Retrieval | 0/4 | Not started | - |
 | 6. Projects and Observability | 0/5 | Not started | - |

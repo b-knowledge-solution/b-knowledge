@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-03-19T03:19:22.289Z"
-last_activity: 2026-03-19 — Plan 03-04 complete (bulk metadata API, tag aggregation, parsing scheduler)
+stopped_at: Completed 03-05-PLAN.md
+last_updated: "2026-03-19T03:36:14.000Z"
+last_activity: 2026-03-19 — Plan 03-05 complete (metadata management UI, tag filter chips, cron scheduler settings)
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 17
-  completed_plans: 15
-  percent: 82
+  completed_plans: 16
+  percent: 88
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 3 of 6 (Document Management)
-Plan: 5 of 6 in current phase
+Plan: 6 of 6 in current phase
 Status: In Progress
-Last activity: 2026-03-19 — Plan 03-03 complete (rank_feature boost, chunk detail page, document viewer patterns)
+Last activity: 2026-03-19 — Plan 03-05 complete (metadata management UI, tag filter chips, cron scheduler settings)
 
-Progress: [████████░░] 82%
+Progress: [████████░░] 88%
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Progress: [████████░░] 82%
 | Phase 03 P00 | 2min | 1 tasks | 2 files |
 | Phase 03 P04 | 12min | 2 tasks | 8 files |
 | Phase 03 P03 | 13min | 2 tasks | 12 files |
+| Phase 03 P05 | 14min | 2 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -109,6 +110,8 @@ Recent decisions affecting current work:
 - [Phase 03]: System config API for parsing scheduler placed under /rag/system/config namespace
 - [Phase 3, Plan 03]: rank_feature in should clause (not must/filter) for proportional version boost without excluding non-versioned docs
 - [Phase 3, Plan 03]: Reused DocumentPreviewer in three viewer patterns (full page, Sheet drawer, Dialog)
+- [Phase 3, Plan 05]: Toggle+count pattern for auto_keywords/auto_questions replaces slider (cleaner on/off semantics)
+- [Phase 3, Plan 05]: TagFilterChips use tag_kwd field in metadata_filter conditions matching rag-search.service.ts buildMetadataFilters()
 
 ### Pending Todos
 
@@ -123,6 +126,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T03:18:47Z
-Stopped at: Completed 03-03-PLAN.md
+Last session: 2026-03-19T03:36:14Z
+Stopped at: Completed 03-05-PLAN.md
 Resume file: None
