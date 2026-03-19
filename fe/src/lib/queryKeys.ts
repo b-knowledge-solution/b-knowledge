@@ -51,6 +51,16 @@ export const queryKeys = {
     graphragStatus: (datasetId: string) => [...queryKeys.datasets.all, datasetId, 'graphrag-status'] as const,
     raptorStatus: (datasetId: string) => [...queryKeys.datasets.all, datasetId, 'raptor-status'] as const,
     metadata: (datasetId: string) => [...queryKeys.datasets.all, datasetId, 'metadata'] as const,
+    tagAggregations: (datasetIds?: string[]) =>
+      [...queryKeys.datasets.all, 'tags', 'aggregations', datasetIds] as const,
+  },
+
+  // --------------------------------------------------------------------------
+  // Parsing Scheduler (System Config)
+  // --------------------------------------------------------------------------
+  parsingScheduler: {
+    all: ['parsing-scheduler'] as const,
+    config: () => ['parsing-scheduler', 'config'] as const,
   },
 
   // --------------------------------------------------------------------------

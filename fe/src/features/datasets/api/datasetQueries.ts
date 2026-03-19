@@ -845,6 +845,48 @@ export function useUpdateMetadata(datasetId: string) {
 }
 
 // ============================================================================
+// Bulk Metadata Tags
+// ============================================================================
+
+/**
+ * @description Mutation hook to bulk update metadata tags across multiple datasets.
+ * Writes to parser_config.metadata_tags (free-form key-value tags).
+ * Invalidates dataset list on success to reflect tag changes.
+ * @returns Mutation hook for bulk metadata tag updates
+ */
+export function useBulkUpdateMetadata() {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ datasetIds, metadataTags, mode }: {
+      datasetIds: string[]
+      metadataTags: Record<string, string>
+      mode: 'merge' | 'overwrite'
+    }) => datasetApi.bulkUpdateMetadata(datasetIds, metadataTags, mode),
+    meta: { successMessage: t('datasets.applyTagChanges') },
+    onSuccess: () => {
+      // Invalidate dataset list and tag aggregations to reflect changes
+      queryClient.invalidateQueries({ queryKey: queryKeys.datasets.list() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.datasets.tagAggregations() })
+    },
+  })
+}
+
+/**
+ * @description Query hook to fetch aggregated tag keys and values from datasets.
+ * Used by TagFilterChips to discover available metadata filter options.
+ * @param {string[]} [datasetIds] - Optional dataset UUIDs to scope aggregation
+ * @returns Query result with tag aggregation data
+ */
+export function useTagAggregations(datasetIds?: string[]) {
+  return useQuery({
+    queryKey: queryKeys.datasets.tagAggregations(datasetIds),
+    queryFn: () => datasetApi.getTagAggregations(datasetIds),
+  })
+}
+
+// ============================================================================
 // Per-Document Parser Change
 // ============================================================================
 

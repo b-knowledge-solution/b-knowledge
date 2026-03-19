@@ -10,7 +10,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Play, Trash2, XCircle, Settings2, Globe, MoreHorizontal, Upload } from 'lucide-react'
+import { Play, Trash2, XCircle, Settings2, Globe, MoreHorizontal, Upload, Tags } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -29,6 +29,7 @@ import {
 import { Checkbox } from '@/components/Checkbox'
 import ProcessLogDialog from './ProcessLogDialog'
 import UploadNewVersionDialog from './UploadNewVersionDialog'
+import MetadataManageDialog from './MetadataManageDialog'
 import type { Document } from '../types'
 
 // ============================================================================
@@ -146,6 +147,8 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
   const [logOpen, setLogOpen] = useState(false)
   // Version upload dialog state — tracks which document triggered the dialog
   const [versionDoc, setVersionDoc] = useState<Document | null>(null)
+  // Bulk metadata dialog state — open when "Edit Tags" is clicked with selected docs
+  const [bulkMetadataOpen, setBulkMetadataOpen] = useState(false)
 
   // Derived selection state
   const allSelected = documents.length > 0 && selectedIds.size === documents.length
@@ -218,6 +221,15 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
                 </Button>
               </>
             )}
+            {/* Edit Tags — opens MetadataManageDialog in bulk mode */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setBulkMetadataOpen(true)}
+            >
+              <Tags size={14} className="mr-1" />
+              {t('datasets.editTags', 'Edit Tags')}
+            </Button>
             {onBulkDelete && (
               <Button
                 variant="destructive"
@@ -438,6 +450,14 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
           onOpenChange={(open) => { if (!open) setVersionDoc(null) }}
         />
       )}
+
+      {/* Bulk Metadata Dialog — edits metadata_tags for selected documents */}
+      <MetadataManageDialog
+        open={bulkMetadataOpen}
+        onClose={() => { setBulkMetadataOpen(false); setSelectedIds(new Set()) }}
+        datasetId={datasetId}
+        datasetIds={selectedArray}
+      />
     </div>
   )
 }

@@ -15,10 +15,13 @@ import { Info } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Separator } from '@/components/ui/separator'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { PDF_PARSER_OPTIONS, PARSER_DESCRIPTIONS } from '../types'
+import MetadataSchemaBuilder from './MetadataSchemaBuilder'
+import type { MetadataSchemaField } from './MetadataSchemaBuilder'
 
 // ============================================================================
 // Validation constants (sourced from RAGFlow)
@@ -164,6 +167,8 @@ const ParserSettingsFields: React.FC<ParserSettingsFieldsProps> = ({
   const imageTableContext = Number(parserConfig.image_table_context ?? IMG_TABLE_CTX_DEFAULT)
   const autoKeywords = Number(parserConfig.auto_keywords ?? AUTO_KEYWORDS_DEFAULT)
   const autoQuestions = Number(parserConfig.auto_questions ?? AUTO_QUESTIONS_DEFAULT)
+  const enableMetadata = Boolean(parserConfig.enable_metadata)
+  const metadataFields = (parserConfig.metadata ?? []) as MetadataSchemaField[]
 
   // Whether this parser supports chunking settings
   const showChunkSettings = !NO_CHUNK_SETTINGS_PARSERS.has(parserId)
@@ -325,25 +330,109 @@ const ParserSettingsFields: React.FC<ParserSettingsFieldsProps> = ({
             tooltip="Percentage of overlap between adjacent chunks"
           />
 
-          {/* Auto-keyword */}
-          <SliderField
-            label={t('datasets.autoKeyword', 'Auto-keyword')}
-            value={autoKeywords}
-            onChange={(v) => onConfigChange('auto_keywords', v)}
-            min={AUTO_KEYWORDS_MIN}
-            max={AUTO_KEYWORDS_MAX}
-            tooltip="Automatically extract N keywords per chunk (recommended: 3–5)"
-          />
+          {/* ================================================================ */}
+          {/* Auto-Extraction Section                                        */}
+          {/* ================================================================ */}
+          <Separator className="my-2" />
+          <Label className="text-sm font-medium">
+            {t('datasets.autoExtraction', 'Auto-Extraction')}
+          </Label>
 
-          {/* Auto-question */}
-          <SliderField
-            label={t('datasets.autoQuestion', 'Auto-question')}
-            value={autoQuestions}
-            onChange={(v) => onConfigChange('auto_questions', v)}
-            min={AUTO_QUESTIONS_MIN}
-            max={AUTO_QUESTIONS_MAX}
-            tooltip="Automatically generate N questions per chunk (recommended: 1–2)"
-          />
+          {/* Auto-keywords toggle + count */}
+          <div className="grid grid-cols-[140px_1fr] items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <Label className="text-sm">{t('datasets.autoKeywords', 'Auto-keywords')}</Label>
+              <span title={t('datasets.autoKeywordsDesc', 'Automatically extract keywords per chunk')} className="text-muted-foreground cursor-help">
+                <Info className="w-3.5 h-3.5" />
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={autoKeywords > 0}
+                onCheckedChange={(checked: boolean) =>
+                  onConfigChange('auto_keywords', checked ? 5 : 0)
+                }
+              />
+              {/* Count input — only shown when toggle is on */}
+              {autoKeywords > 0 && (
+                <Input
+                  type="number"
+                  min={AUTO_KEYWORDS_MIN + 1}
+                  max={AUTO_KEYWORDS_MAX}
+                  value={autoKeywords}
+                  onChange={(e) => onConfigChange('auto_keywords', Number(e.target.value))}
+                  onBlur={(e) =>
+                    onConfigChange(
+                      'auto_keywords',
+                      Math.max(1, Math.min(AUTO_KEYWORDS_MAX, Number(e.target.value))),
+                    )
+                  }
+                  className="w-16 h-8 text-center text-sm"
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Auto-questions toggle + count */}
+          <div className="grid grid-cols-[140px_1fr] items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <Label className="text-sm">{t('datasets.autoQuestions', 'Auto-questions')}</Label>
+              <span title={t('datasets.autoQuestionsDesc', 'Automatically generate questions per chunk')} className="text-muted-foreground cursor-help">
+                <Info className="w-3.5 h-3.5" />
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={autoQuestions > 0}
+                onCheckedChange={(checked: boolean) =>
+                  onConfigChange('auto_questions', checked ? 3 : 0)
+                }
+              />
+              {/* Count input — only shown when toggle is on */}
+              {autoQuestions > 0 && (
+                <Input
+                  type="number"
+                  min={AUTO_QUESTIONS_MIN + 1}
+                  max={AUTO_QUESTIONS_MAX}
+                  value={autoQuestions}
+                  onChange={(e) => onConfigChange('auto_questions', Number(e.target.value))}
+                  onBlur={(e) =>
+                    onConfigChange(
+                      'auto_questions',
+                      Math.max(1, Math.min(AUTO_QUESTIONS_MAX, Number(e.target.value))),
+                    )
+                  }
+                  className="w-16 h-8 text-center text-sm"
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Enable metadata extraction toggle */}
+          <div className="grid grid-cols-[140px_1fr] items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <Label className="text-sm">{t('datasets.enableMetadata', 'Metadata extraction')}</Label>
+              <span title={t('datasets.enableMetadataDesc', 'Enable LLM-based metadata extraction using the schema below')} className="text-muted-foreground cursor-help">
+                <Info className="w-3.5 h-3.5" />
+              </span>
+            </div>
+            <Switch
+              checked={enableMetadata}
+              onCheckedChange={(checked: boolean) =>
+                onConfigChange('enable_metadata', checked)
+              }
+            />
+          </div>
+
+          {/* MetadataSchemaBuilder — only shown when metadata extraction is enabled */}
+          {enableMetadata && (
+            <div className="ml-4 border-l-2 border-primary/20 pl-3">
+              <MetadataSchemaBuilder
+                fields={metadataFields}
+                onChange={(fields) => onConfigChange('metadata', fields)}
+              />
+            </div>
+          )}
         </>
       )}
     </div>

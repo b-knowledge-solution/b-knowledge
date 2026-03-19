@@ -490,6 +490,70 @@ export const datasetApi = {
   },
 
   // ============================================================================
+  // Bulk Metadata Tags
+  // ============================================================================
+
+  /**
+   * @description Bulk update metadata tags for multiple datasets.
+   * Uses parser_config.metadata_tags (free-form key-value tags), NOT parser_config.metadata (schema).
+   * @param {string[]} datasetIds - Array of dataset UUIDs to update
+   * @param {Record<string, string>} metadataTags - Key-value tag pairs
+   * @param {'merge' | 'overwrite'} mode - Whether to merge with or overwrite existing tags
+   * @returns {Promise<void>}
+   */
+  bulkUpdateMetadata: async (
+    datasetIds: string[],
+    metadataTags: Record<string, string>,
+    mode: 'merge' | 'overwrite',
+  ): Promise<void> => {
+    return api.post<void>(`${BASE_URL}/datasets/bulk-metadata`, {
+      dataset_ids: datasetIds,
+      metadata_tags: metadataTags,
+      mode,
+    })
+  },
+
+  /**
+   * @description Fetch aggregated tag keys and values across datasets.
+   * Used by TagFilterChips to discover available filter options.
+   * @param {string[]} [datasetIds] - Optional dataset UUIDs to scope aggregation
+   * @returns {Promise<{ key: string; values: string[] }[]>} Aggregated tag keys with their values
+   */
+  getTagAggregations: async (
+    datasetIds?: string[],
+  ): Promise<{ key: string; values: string[] }[]> => {
+    const query = new URLSearchParams()
+    if (datasetIds?.length) query.set('dataset_ids', datasetIds.join(','))
+    const qs = query.toString()
+    return api.get<{ key: string; values: string[] }[]>(
+      `${BASE_URL}/tags/aggregations${qs ? `?${qs}` : ''}`,
+    )
+  },
+
+  // ============================================================================
+  // Parsing Scheduler (System Config)
+  // ============================================================================
+
+  /**
+   * @description Fetch parsing scheduler configuration.
+   * @returns {Promise<{ schedule: string; enabled: boolean }>} Current scheduler settings
+   */
+  getParsingScheduler: async (): Promise<{ schedule: string; enabled: boolean }> => {
+    return api.get<{ schedule: string; enabled: boolean }>(`${BASE_URL}/system/config/parsing_scheduler`)
+  },
+
+  /**
+   * @description Update parsing scheduler configuration.
+   * @param {{ schedule: string; enabled: boolean }} data - New scheduler settings
+   * @returns {Promise<{ schedule: string; enabled: boolean }>} Updated scheduler settings
+   */
+  updateParsingScheduler: async (
+    data: { schedule: string; enabled: boolean },
+  ): Promise<{ schedule: string; enabled: boolean }> => {
+    return api.put<{ schedule: string; enabled: boolean }>(`${BASE_URL}/system/config/parsing_scheduler`, data)
+  },
+
+  // ============================================================================
   // Per-Document Parser Change
   // ============================================================================
 

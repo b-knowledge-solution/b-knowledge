@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
 import {
@@ -26,7 +27,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Plus, Trash2, Pencil, X, Save } from 'lucide-react'
-import { useMetadata, useUpdateMetadata } from '../api/datasetQueries'
+import { Switch } from '@/components/ui/switch'
+import { useMetadata, useUpdateMetadata, useBulkUpdateMetadata } from '../api/datasetQueries'
 import type { MetadataField, MetadataValueType } from '../types'
 
 /**
@@ -37,8 +39,10 @@ interface MetadataManageDialogProps {
   open: boolean
   /** Callback to close the dialog */
   onClose: () => void
-  /** Dataset UUID whose metadata fields to manage */
+  /** Dataset UUID whose metadata fields to manage (single mode) */
   datasetId: string
+  /** Optional array of dataset IDs for bulk tag editing mode */
+  datasetIds?: string[]
 }
 
 const VALUE_TYPES: { value: MetadataValueType; label: string }[] = [
@@ -60,10 +64,15 @@ const MetadataManageDialog: React.FC<MetadataManageDialogProps> = ({
   open,
   onClose,
   datasetId,
+  datasetIds,
 }) => {
   const { t } = useTranslation()
-  const { data, isLoading } = useMetadata(open ? datasetId : undefined)
+
+  // Determine if we're in bulk mode (editing tags for multiple datasets)
+  const isBulkMode = !!datasetIds && datasetIds.length > 0
+  const { data, isLoading } = useMetadata(open && !isBulkMode ? datasetId : undefined)
   const updateMutation = useUpdateMetadata(datasetId)
+  const bulkMutation = useBulkUpdateMetadata()
 
   // Local state for editing
   const [fields, setFields] = useState<MetadataField[]>([])
@@ -71,6 +80,12 @@ const MetadataManageDialog: React.FC<MetadataManageDialogProps> = ({
   const [newFieldName, setNewFieldName] = useState('')
   const [newFieldType, setNewFieldType] = useState<MetadataValueType>('string')
   const [newValueInput, setNewValueInput] = useState('')
+
+  // Bulk mode state: key-value tag pairs and merge/overwrite mode
+  const [bulkTags, setBulkTags] = useState<Record<string, string>>({})
+  const [bulkMode, setBulkMode] = useState<'merge' | 'overwrite'>('merge')
+  const [bulkNewKey, setBulkNewKey] = useState('')
+  const [bulkNewValue, setBulkNewValue] = useState('')
 
   // Sync fields from server data
   useEffect(() => {
@@ -128,21 +143,122 @@ const MetadataManageDialog: React.FC<MetadataManageDialogProps> = ({
   }
 
   /**
-   * @description Save all metadata fields to the server.
+   * @description Add a key-value tag pair in bulk mode.
+   */
+  const addBulkTag = () => {
+    if (!bulkNewKey.trim() || !bulkNewValue.trim()) return
+    setBulkTags((prev) => ({ ...prev, [bulkNewKey.trim()]: bulkNewValue.trim() }))
+    setBulkNewKey('')
+    setBulkNewValue('')
+  }
+
+  /**
+   * @description Remove a bulk tag by key.
+   */
+  const removeBulkTag = (key: string) => {
+    setBulkTags((prev) => {
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+  }
+
+  /**
+   * @description Save metadata — single mode saves fields, bulk mode saves tags.
    */
   const handleSave = async () => {
-    await updateMutation.mutateAsync(fields)
+    if (isBulkMode) {
+      // Bulk mode: write to parser_config.metadata_tags via bulk API
+      await bulkMutation.mutateAsync({
+        datasetIds: datasetIds!,
+        metadataTags: bulkTags,
+        mode: bulkMode,
+      })
+    } else {
+      // Single mode: save metadata field definitions
+      await updateMutation.mutateAsync(fields)
+    }
     onClose()
   }
+
+  const isSaving = isBulkMode ? bulkMutation.isPending : updateMutation.isPending
 
   return (
     <Dialog open={open} onOpenChange={(o: boolean) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>{t('datasets.manageMetadata')}</DialogTitle>
+          <DialogTitle>
+            {isBulkMode
+              ? t('datasets.editTags', 'Edit Tags for {{count}} documents', { count: datasetIds!.length })
+              : t('datasets.manageMetadata')}
+          </DialogTitle>
         </DialogHeader>
 
-        {isLoading ? (
+        {/* Bulk mode UI for editing metadata_tags */}
+        {isBulkMode ? (
+          <div className="flex-1 overflow-auto space-y-4">
+            {/* Merge/Overwrite toggle */}
+            <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+              <Label className="text-sm">{t('datasets.mergeMode', 'Merge')}</Label>
+              <Switch
+                checked={bulkMode === 'overwrite'}
+                onCheckedChange={(checked: boolean) => setBulkMode(checked ? 'overwrite' : 'merge')}
+              />
+              <Label className="text-sm">{t('datasets.overwriteMode', 'Overwrite')}</Label>
+            </div>
+
+            {/* Add new tag pair */}
+            <div className="flex items-end gap-2 p-3 rounded-lg border bg-muted/30">
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">
+                  {t('datasets.fieldKey', 'Key')}
+                </label>
+                <Input
+                  value={bulkNewKey}
+                  onChange={(e) => setBulkNewKey(e.target.value)}
+                  placeholder="e.g., department"
+                  onKeyDown={(e) => e.key === 'Enter' && addBulkTag()}
+                />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">
+                  {t('datasets.addValue', 'Value')}
+                </label>
+                <Input
+                  value={bulkNewValue}
+                  onChange={(e) => setBulkNewValue(e.target.value)}
+                  placeholder="e.g., engineering"
+                  onKeyDown={(e) => e.key === 'Enter' && addBulkTag()}
+                />
+              </div>
+              <Button size="sm" onClick={addBulkTag} disabled={!bulkNewKey.trim() || !bulkNewValue.trim()}>
+                <Plus className="h-4 w-4 mr-1" />
+                {t('common.add')}
+              </Button>
+            </div>
+
+            {/* Current tag pairs */}
+            {Object.keys(bulkTags).length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                {t('datasets.noMetadata', 'No metadata')}
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(bulkTags).map(([key, value]) => (
+                  <Badge key={key} variant="secondary" className="gap-1 pr-1">
+                    {key}: {value}
+                    <button
+                      onClick={() => removeBulkTag(key)}
+                      className="ml-0.5 hover:text-destructive"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Spinner size={32} />
           </div>
@@ -268,9 +384,11 @@ const MetadataManageDialog: React.FC<MetadataManageDialogProps> = ({
           <Button variant="outline" onClick={onClose}>
             {t('common.cancel')}
           </Button>
-          <Button onClick={handleSave} disabled={updateMutation.isPending}>
-            {updateMutation.isPending ? <Spinner size={16} className="mr-2" /> : <Save className="h-4 w-4 mr-1" />}
-            {t('common.save')}
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving ? <Spinner size={16} className="mr-2" /> : <Save className="h-4 w-4 mr-1" />}
+            {isBulkMode
+              ? t('datasets.applyTagChanges', 'Apply Tag Changes')
+              : t('common.save')}
           </Button>
         </DialogFooter>
       </DialogContent>
