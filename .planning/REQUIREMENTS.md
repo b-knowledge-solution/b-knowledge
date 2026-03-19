@@ -59,8 +59,8 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Observability
 
 - [x] **OBSV-01**: Query analytics — most common queries, failed retrievals, low-confidence answers
-- [ ] **OBSV-02**: RAG quality metrics dashboard — track retrieval precision, answer faithfulness, hallucination rate
-- [ ] **OBSV-03**: Answer feedback analytics — aggregate feedback signals for retrieval tuning insights
+- [x] **OBSV-02**: RAG quality metrics dashboard — track retrieval precision, answer faithfulness, hallucination rate
+- [x] **OBSV-03**: Answer feedback analytics — aggregate feedback signals for retrieval tuning insights
 
 ### Multi-Tenant Project Management
 
@@ -142,8 +142,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RETR-06 | Phase 5 | Complete |
 | RETR-07 | Phase 5 | Complete |
 | OBSV-01 | Phase 6 | Complete |
-| OBSV-02 | Phase 6 | Pending |
-| OBSV-03 | Phase 6 | Pending |
+| OBSV-02 | Phase 6 | Complete |
+| OBSV-03 | Phase 6 | Complete |
 | PROJ-01 | Phase 6 | Complete |
 | PROJ-02 | Phase 6 | Complete |
 | PROJ-03 | Phase 6 | Complete |
