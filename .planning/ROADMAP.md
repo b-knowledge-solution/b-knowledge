@@ -108,13 +108,13 @@ Plans:
   3. A user can enable "Deep Research" mode on an assistant; a complex question triggers recursive sub-queries and the user sees intermediate results streamed progressively before the final answer
   4. Deep Research respects a configurable per-tenant token budget — a query that would exceed the cap truncates gracefully with a partial answer rather than failing or running uncapped
   5. Cross-dataset search across multiple authorized knowledge bases returns results that respect ABAC rules — a user cannot receive chunks from a KB they are not authorized to access
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 05-01: Wire GraphRAG indexing pipeline — backend service integration, task type routing, entity resolution as auditable stage (RETR-01, RETR-02)
-- [ ] 05-02: Wire GraphRAG retrieval — graph+vector hybrid retrieval at query time, assistant toggle in Data Studio (RETR-03)
-- [ ] 05-03: Wire Deep Research pipeline — recursive query decomposition, SSE streaming of intermediate results (RETR-04, RETR-05)
-- [ ] 05-04: Implement cross-dataset retrieval with ABAC enforcement; add token budget and call limits for Deep Research (RETR-06, RETR-07)
+- [ ] 05-01-PLAN.md — GraphRAG metrics API, task trigger with Light/Full mode, language detection utility, franc install (RETR-01, RETR-02)
+- [ ] 05-02-PLAN.md — Deep Research BudgetTracker (50K tokens + 15 calls), structured SSE events, cross-dataset multi-KB search (RETR-04, RETR-05, RETR-07)
+- [ ] 05-03-PLAN.md — Wire language detection + budget-aware Deep Research + cross-dataset ABAC search into chat pipeline (RETR-03, RETR-06)
+- [ ] 05-04-PLAN.md — FE: KG metrics panel, Light/Full mode selector, assistant config toggles, Deep Research SSE handling, i18n (RETR-01..07)
 
 ### Phase 6: Projects and Observability
 **Goal**: SDLC teams can organize knowledge bases into access-controlled projects with team-scoped membership, and platform administrators can view query analytics and RAG quality metrics that surface retrieval gaps and answer quality trends
@@ -151,4 +151,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 ---
 *Roadmap created: 2026-03-18*
-*Last updated: 2026-03-19 after Phase 4 planning*
+*Last updated: 2026-03-19 after Phase 5 planning*
