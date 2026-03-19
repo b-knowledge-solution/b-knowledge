@@ -27,6 +27,7 @@ import { ragCitationService } from '@/modules/rag/services/rag-citation.service.
 import { ragSqlService } from '@/modules/rag/services/rag-sql.service.js'
 import { ragGraphragService } from '@/modules/rag/services/rag-graphrag.service.js'
 import { ragDeepResearchService } from '@/modules/rag/services/rag-deep-research.service.js'
+import type { DeepResearchProgressEvent } from '@/modules/rag/services/rag-deep-research.service.js'
 import { searchWeb } from '@/shared/services/web-search.service.js'
 import {
   fullQuestionPrompt,
@@ -35,6 +36,8 @@ import {
   citationPrompt,
   askSummaryPrompt,
 } from '@/shared/prompts/index.js'
+import { detectLanguage, buildLanguageInstruction } from '@/shared/utils/language-detect.js'
+import { abilityService, buildOpenSearchAbacFilters } from '@/shared/services/ability.service.js'
 import { log } from '@/shared/services/logger.service.js'
 import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
 import type { LangfuseTraceClient } from 'langfuse'
@@ -88,6 +91,8 @@ interface PromptConfig {
   similarity_threshold?: number
   /** Vector vs keyword weight (0-1, higher = more vector) */
   vector_similarity_weight?: number
+  /** When true, expand search to user's RBAC-accessible datasets beyond the explicitly linked ones */
+  allow_rbac_datasets?: boolean
 }
 
 /** @description Timing metrics collected during the RAG pipeline execution */
@@ -716,6 +721,12 @@ Requirements and restriction:
       const useInternet = overrides?.use_internet ?? (cfg.tavily_api_key ? true : false)
       const variableValues: Record<string, string> = overrides?.variables ?? {}
 
+      // ── Step 2b: Detect user input language for response language matching ──
+      // Runs before prompt assembly so the language instruction can be prepended to the system prompt.
+      // This ensures the LLM responds in the same language as the user's question.
+      const detectedLang = detectLanguage(content)
+      const langInstruction = buildLanguageInstruction(detectedLang)
+
       // ── Step 3: Load conversation history ───────────────────────────────
       const history = await ModelFactory.chatMessage.getKnex()
         .where('session_id', conversationId)
@@ -826,36 +837,85 @@ Requirements and restriction:
         log.warn('Query embedding failed, falling back to full-text', { error: String(err) })
       }
 
-      if (kbIds.length > 0) {
+      // ── Step 7a: Expand to RBAC-accessible datasets if enabled ──────────
+      // SECURITY-CRITICAL: When allow_rbac_datasets is enabled, resolve the user's
+      // RBAC-accessible datasets using per-user ABAC filtering. Do NOT use a tenant-wide
+      // findAll — that would bypass per-user ABAC rules and leak unauthorized data.
+      let allKbIds = [...kbIds]
+      let userAbacFilters: Record<string, unknown>[] = []
+      if (cfg.allow_rbac_datasets && userId && tenantId) {
+        try {
+          const userContext = {
+            id: userId,
+            role: 'user',
+            current_org_id: tenantId,
+          }
+          // Build CASL ability for this specific user to determine authorized datasets
+          const userAbility = abilityService.buildAbilityFor(userContext)
+          // Fetch all tenant datasets, then filter by what the user's ABAC rules permit
+          const allTenantDatasets = await ModelFactory.dataset.getKnex()
+            .where('tenant_id', tenantId)
+            .select('id', 'name', 'tenant_id')
+
+          // Only include datasets the user is authorized to read via CASL ability check
+          const authorizedKbIds = allTenantDatasets
+            .filter((d: any) => userAbility.can('read', { __caslSubjectType__: 'Dataset', ...d } as any))
+            .map((d: any) => d.id as string)
+            .filter((id: string) => !kbIds.includes(id))
+
+          if (authorizedKbIds.length > 0) {
+            allKbIds = [...kbIds, ...authorizedKbIds]
+            log.info('Expanded KB search with RBAC-accessible datasets', {
+              original: kbIds.length,
+              expanded: allKbIds.length,
+            })
+          }
+        } catch (err) {
+          log.warn('RBAC dataset expansion failed, using original kbIds', { error: String(err) })
+        }
+      }
+
+      if (allKbIds.length > 0) {
         res.write(`data: ${JSON.stringify({ status: 'retrieving' })}\n\n`)
 
-        // Search all knowledge bases in parallel
-        const searchPromises = kbIds.map(kbId =>
-          ragSearchService.search(tenantId, kbId, (() => {
-            const req: import('@/shared/models/types.js').SearchRequest = {
-              query: searchQuery,
-              method: 'hybrid',
-              top_k: topN * 2,
-              similarity_threshold: cfg.similarity_threshold ?? 0.2,
-            }
-            if (cfg.vector_similarity_weight != null) req.vector_similarity_weight = cfg.vector_similarity_weight
-            return req
-          })(), queryVector).catch(err => {
-            log.warn('Search failed for dataset', { kbId, error: String(err) })
+        // Build search request shared by both paths
+        const searchReq: import('@/shared/models/types.js').SearchRequest = {
+          query: searchQuery,
+          method: 'hybrid',
+          top_k: topN * 2,
+          similarity_threshold: cfg.similarity_threshold ?? 0.2,
+        }
+        if (cfg.vector_similarity_weight != null) searchReq.vector_similarity_weight = cfg.vector_similarity_weight
+
+        // When RBAC expansion produced multiple datasets, use cross-dataset single-query search
+        if (cfg.allow_rbac_datasets && allKbIds.length > kbIds.length) {
+          const crossResult = await ragSearchService.searchMultipleDatasets(
+            tenantId, allKbIds, searchReq, queryVector, userAbacFilters
+          ).catch(err => {
+            log.warn('Cross-dataset search failed', { error: String(err) })
             return { chunks: [] as ChunkResult[], total: 0 }
           })
-        )
+          allChunks = crossResult.chunks
+        } else {
+          // Standard per-KB parallel search (no RBAC expansion)
+          const searchPromises = allKbIds.map(kbId =>
+            ragSearchService.search(tenantId, kbId, searchReq, queryVector).catch(err => {
+              log.warn('Search failed for dataset', { kbId, error: String(err) })
+              return { chunks: [] as ChunkResult[], total: 0 }
+            })
+          )
 
-        const results = await Promise.all(searchPromises)
+          const results = await Promise.all(searchPromises)
 
-        // Log warnings for datasets that returned no results (may have been deleted)
-        for (let i = 0; i < kbIds.length; i++) {
-          if (results[i]!.chunks.length === 0) {
-            log.warn(`Dataset ${kbIds[i]} returned no results — it may have been deleted`)
+          // Log warnings for datasets that returned no results (may have been deleted)
+          for (let i = 0; i < allKbIds.length; i++) {
+            if (results[i]!.chunks.length === 0) {
+              log.warn(`Dataset ${allKbIds[i]} returned no results — it may have been deleted`)
+            }
           }
-        }
 
-        allChunks = results.flatMap(r => r.chunks)
+          allChunks = results.flatMap(r => r.chunks)
+        }
 
         // Sort by score desc
         allChunks.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
@@ -868,9 +928,13 @@ Requirements and restriction:
         allChunks.push(...webResults)
       }
 
-      // ── Step 8a: Knowledge graph retrieval (if enabled) ────────────────
+      // ── Step 8a: Knowledge graph retrieval (graph+vector hybrid) ───────
+      // When use_kg is enabled, retrieve structured graph context (entities + relations)
+      // from the knowledge graph. This context is merged with vector chunks in Step 11
+      // to produce a richer answer combining structured and unstructured knowledge.
       let kgContext = ''
       if (cfg.use_kg && kbIds.length > 0) {
+        log.info('Using graph+vector hybrid retrieval', { kbCount: kbIds.length })
         res.write(`data: ${JSON.stringify({ status: 'searching_knowledge_graph' })}\n\n`)
         try {
           kgContext = await ragGraphragService.retrieval(kbIds, searchQuery, providerId)
@@ -963,10 +1027,12 @@ Requirements and restriction:
       }
 
       // ── Step 11: Build prompt with context and citations ────────────────
-      // Append knowledge graph context to the system prompt if available
+      // Prepend language instruction so the LLM responds in the user's detected language.
+      // Then append knowledge graph context (graph+vector merge point) if available.
+      const langAwarePrompt = `${langInstruction}\n\n${systemPrompt}`
       const basePrompt = kgContext
-        ? `${systemPrompt}\n\n${kgContext}`
-        : systemPrompt
+        ? `${langAwarePrompt}\n\n${kgContext}`
+        : langAwarePrompt
 
       const contextSystemPrompt = buildContextPrompt(
         basePrompt,
