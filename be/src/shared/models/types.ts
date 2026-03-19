@@ -643,6 +643,16 @@ export interface Dataset {
     policy_rules?: any;
     /** Tenant ID for multi-org isolation */
     tenant_id?: string | null;
+    /** Parent dataset UUID — NULL for parent datasets, set for version datasets */
+    parent_dataset_id?: string | null;
+    /** Version number — NULL for parent datasets, 1+ for version datasets */
+    version_number?: number | null;
+    /** User-provided or auto-generated description of what changed in this version */
+    change_summary?: string | null;
+    /** User ID who created this version — tracks authorship for version metadata display */
+    version_created_by?: string | null;
+    /** Document-level metadata extraction schema template (JSONB) */
+    metadata_config?: any;
     /** Timestamp of record creation */
     created_at: Date;
     /** Timestamp of last update */
