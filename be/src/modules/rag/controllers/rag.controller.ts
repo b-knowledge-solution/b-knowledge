@@ -244,11 +244,14 @@ export class RagController {
 
             const tenantId = getTenantId(req) || ''
             const changeSummary = req.body?.change_summary || null
+            // Extract optional custom version label (e.g., '1.2.0', 'Q1 Release')
+            const versionLabel = req.body?.version_label || null
 
             // Create the version dataset with inherited parent settings
             const versionDataset = await ragService.createVersionDataset(
                 parentDatasetId,
                 changeSummary,
+                versionLabel,
                 userId,
                 tenantId,
             )

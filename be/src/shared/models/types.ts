@@ -647,6 +647,8 @@ export interface Dataset {
     parent_dataset_id?: string | null;
     /** Version number — NULL for parent datasets, 1+ for version datasets */
     version_number?: number | null;
+    /** Custom display label for this version (e.g., '1.2.0', 'Q1 Release'). Falls back to v{version_number} in UI. */
+    version_label?: string | null;
     /** User-provided or auto-generated description of what changed in this version */
     change_summary?: string | null;
     /** User ID who created this version — tracks authorship for version metadata display */

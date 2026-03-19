@@ -82,6 +82,8 @@ export const versionParamSchema = z.object({
 
 /** @description POST /api/rag/datasets/:id/versions — body schema for version creation with optional file upload */
 export const createVersionSchema = z.object({
+  /** Optional custom display label for this version (e.g., '1.2.0', 'Q1 Release') */
+  version_label: z.string().min(1).max(128).optional(),
   /** Optional user-provided description of what changed in this version */
   change_summary: z.string().max(2000).optional(),
   /** Whether to auto-parse uploaded files immediately */

@@ -473,6 +473,7 @@ export class RagService {
     async createVersionDataset(
         parentDatasetId: string,
         changeSummary: string | null,
+        versionLabel: string | null,
         userId: string,
         tenantId: string,
     ): Promise<Dataset> {
@@ -514,6 +515,8 @@ export class RagService {
             tenant_id: tenantId || parent.tenant_id || null,
             parent_dataset_id: parentDatasetId,
             version_number: versionNumber,
+            // Store custom version label if provided (e.g., '1.2.0', 'Q1 Release')
+            version_label: versionLabel || null,
             change_summary: summary,
             version_created_by: userId,
             created_by: userId,
@@ -527,7 +530,7 @@ export class RagService {
             action: AuditAction.CREATE_SOURCE,
             resourceType: AuditResourceType.DATASET,
             resourceId: versionDataset.id,
-            details: { parentDatasetId, versionNumber, changeSummary: summary },
+            details: { parentDatasetId, versionNumber, versionLabel, changeSummary: summary },
         })
 
         log.info('Version dataset created', {
