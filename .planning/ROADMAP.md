@@ -91,13 +91,12 @@ Plans:
   2. An OpenAPI/Swagger spec is parsed into per-endpoint chunks; a user asking "how do I call the /users endpoint?" gets the correct request/response schema
   3. An ADR document is parsed with context, decision, and consequences sections as distinct chunk types; searching for "why we chose PostgreSQL" surfaces the decision section
   4. Uploading a clinical document triggers automatic classification into one of regulatory, protocol, research, or administrative categories
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: Implement code-aware parser — function/class boundary chunking with import context (PRSR-01)
-- [ ] 04-02: Implement API documentation parser for OpenAPI/Swagger specs (PRSR-02)
-- [ ] 04-03: Implement ADR parser with template-aware section detection (PRSR-03)
-- [ ] 04-04: Implement clinical document classification auto-tagger (PRSR-04)
+- [ ] 04-01-PLAN.md — Infrastructure setup (deps, ParserType enum, FACTORY) + code-aware parser with tree-sitter AST chunking (PRSR-01)
+- [ ] 04-02-PLAN.md — OpenAPI/Swagger endpoint parser + ADR template-aware section parser (PRSR-02, PRSR-03)
+- [ ] 04-03-PLAN.md — Clinical document LLM classifier + FE registration of all four parser types (PRSR-04)
 
 ### Phase 5: Advanced Retrieval
 **Goal**: Users can pose complex multi-hop questions that require reasoning across entities and relationships in a knowledge graph, and can trigger deep recursive research queries that retrieve iteratively — all with cross-dataset scope and hard cost controls
@@ -146,10 +145,10 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 1. Migration Stabilization | 4/4 | Complete |  |
 | 2. Access Control | 6/7 | In Progress|  |
 | 3. Document Management | 8/8 | Complete   | 2026-03-19 |
-| 4. Domain-Specific Parsers | 0/4 | Not started | - |
+| 4. Domain-Specific Parsers | 0/3 | Not started | - |
 | 5. Advanced Retrieval | 0/4 | Not started | - |
 | 6. Projects and Observability | 0/5 | Not started | - |
 
 ---
 *Roadmap created: 2026-03-18*
-*Last updated: 2026-03-19 after Phase 3 gap closure plans*
+*Last updated: 2026-03-19 after Phase 4 planning*
