@@ -58,6 +58,7 @@ dependencies = [
 
     # OpenAPI/Swagger spec parsing
     "prance>=25.4.8.0",
+    "openapi-spec-validator>=0.8.0",
 
     # Document parsing
     "pdfplumber>=0.10.0",
