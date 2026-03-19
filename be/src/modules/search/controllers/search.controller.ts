@@ -379,6 +379,7 @@ export class SearchController {
       // Execute search across configured datasets with pagination
       // Extract tenant ID from request context for OpenSearch isolation
       const tenantIdForSearch = getTenantId(req) || ''
+      // Pass userId for analytics query logging (fire-and-forget)
       const result = await searchService.executeSearch(
         tenantIdForSearch,
         req.params.id!,
@@ -390,6 +391,7 @@ export class SearchController {
           vectorSimilarityWeight: vector_similarity_weight,
           page,
           pageSize: page_size,
+          ...(req.session?.user?.id ? { userId: req.session.user.id } : {}),
         }
       )
       res.json(result)

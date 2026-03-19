@@ -18,6 +18,7 @@ import { llmClientService } from '@/shared/services/llm-client.service.js'
 import { askSummaryPrompt, citationPrompt, relatedQuestionPrompt } from '@/shared/prompts/index.js'
 import { log } from '@/shared/services/logger.service.js'
 import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
+import { queryLogService } from '@/modules/rag/index.js'
 import type { LangfuseTraceClient } from 'langfuse'
 
 /**
@@ -296,8 +297,12 @@ export class SearchService {
       vectorSimilarityWeight?: number
       page?: number
       pageSize?: number
+      /** User ID for analytics logging (optional for backward compatibility) */
+      userId?: string
     }
   ): Promise<{ chunks: any[]; total: number; doc_aggs?: any[] }> {
+    const searchStart = Date.now()
+
     // Load the search app to get dataset IDs
     const app = await ModelFactory.searchApp.findById(searchId)
     if (!app) {
@@ -327,6 +332,29 @@ export class SearchService {
       content: c.text,
       content_with_weight: c.text,
     }))
+
+    // Async analytics logging — fire-and-forget, non-blocking
+    // Uses the highest chunk score as confidence proxy
+    if (options?.userId && tenantId) {
+      const topScore = allChunks.length > 0
+        ? Math.max(...allChunks.map(c => c.score ?? 0))
+        : null
+      const datasetIds = Array.isArray(app.dataset_ids)
+        ? app.dataset_ids
+        : JSON.parse(app.dataset_ids as unknown as string)
+      queryLogService.logQuery({
+        source: 'search',
+        source_id: searchId,
+        user_id: options.userId,
+        tenant_id: tenantId,
+        query,
+        dataset_ids: datasetIds,
+        result_count: allChunks.length,
+        ...(topScore != null ? { confidence_score: topScore } : {}),
+        response_time_ms: Date.now() - searchStart,
+        failed_retrieval: allChunks.length === 0,
+      })
+    }
 
     return { chunks: mappedChunks, total: totalHits, doc_aggs: this.buildDocAggs(limited) }
   }

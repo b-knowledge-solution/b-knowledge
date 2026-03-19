@@ -40,6 +40,7 @@ import { detectLanguage, buildLanguageInstruction } from '@/shared/utils/languag
 import { abilityService, buildOpenSearchAbacFilters } from '@/shared/services/ability.service.js'
 import { log } from '@/shared/services/logger.service.js'
 import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
+import { queryLogService } from '@/modules/rag/index.js'
 import type { LangfuseTraceClient } from 'langfuse'
 import { ChunkResult, ChatAssistant } from '@/shared/models/types.js'
 import { Response as ExpressResponse } from 'express'
@@ -1185,6 +1186,24 @@ Requirements and restriction:
         const title = content.length > 100 ? content.slice(0, 100) + '...' : content
         await ModelFactory.chatSession.update(conversationId, { title } as any)
       }
+
+      // Async analytics logging — fire-and-forget, non-blocking (never awaited)
+      // Uses the highest chunk similarity score as confidence proxy
+      const topChunkScore = allChunks.length > 0
+        ? Math.max(...allChunks.map(c => c.score ?? 0))
+        : null
+      queryLogService.logQuery({
+        source: 'chat',
+        source_id: conversationId,
+        user_id: userId,
+        tenant_id: tenantId,
+        query: content,
+        dataset_ids: kbIds,
+        result_count: allChunks.length,
+        ...(topChunkScore != null ? { confidence_score: topChunkScore } : {}),
+        response_time_ms: Date.now() - metrics.startTime,
+        failed_retrieval: allChunks.length === 0,
+      })
 
       // Update Langfuse trace with final output and flush (fire-and-forget)
       if (trace) {
