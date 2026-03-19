@@ -27,7 +27,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Document Management
 
 - [x] **DOCM-01**: Document version history — upload new version, keep all previous versions stored
-- [ ] **DOCM-02**: Search across document versions — query current or historical versions
+- [x] **DOCM-02**: Search across document versions — query current or historical versions
 - [x] **DOCM-03**: Version metadata — track author, timestamp, and change summary per version
 - [x] **DOCM-04**: Document metadata and tagging — custom attributes on documents for filtering and ABAC
 - [x] **DOCM-05**: Auto-metadata extraction during document parsing
@@ -45,9 +45,9 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **RETR-01**: GraphRAG entity and relationship extraction — build knowledge graphs from documents during indexing
 - [x] **RETR-02**: GraphRAG community detection and summarization — group related entities with auto-generated summaries
 - [x] **RETR-03**: Graph + vector hybrid retrieval — combine structured graph traversal with semantic vector search
-- [ ] **RETR-04**: Deep Research recursive query decomposition — break complex questions into sub-queries
+- [x] **RETR-04**: Deep Research recursive query decomposition — break complex questions into sub-queries
 - [x] **RETR-05**: Deep Research iterative retrieval with reasoning — retrieve, reason about gaps, retrieve more
-- [ ] **RETR-06**: Cross-dataset retrieval — search across multiple knowledge bases respecting ABAC rules
+- [x] **RETR-06**: Cross-dataset retrieval — search across multiple knowledge bases respecting ABAC rules
 - [x] **RETR-07**: Deep Research token budget and call limits — hard caps on LLM calls and tokens per research session
 
 ### Chat & Search Experience
@@ -125,7 +125,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ACCS-05 | Phase 2 | Complete |
 | ACCS-06 | Phase 2 | Complete |
 | DOCM-01 | Phase 3 | Complete |
-| DOCM-02 | Phase 7 | Pending |
+| DOCM-02 | Phase 7 | Complete |
 | DOCM-03 | Phase 3 | Complete |
 | DOCM-04 | Phase 3 | Complete |
 | DOCM-05 | Phase 3 | Complete |
@@ -137,9 +137,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RETR-01 | Phase 5 | Complete |
 | RETR-02 | Phase 5 | Complete |
 | RETR-03 | Phase 5 | Complete |
-| RETR-04 | Phase 7 | Pending |
+| RETR-04 | Phase 7 | Complete |
 | RETR-05 | Phase 5 | Complete |
-| RETR-06 | Phase 7 | Pending |
+| RETR-06 | Phase 7 | Complete |
 | RETR-07 | Phase 7 | Complete |
 | OBSV-01 | Phase 6 | Complete |
 | OBSV-02 | Phase 6 | Complete |
