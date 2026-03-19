@@ -46,8 +46,8 @@ export interface ModelProvider {
 // Model Type Constants
 // ============================================================================
 
-/** All supported model types (vision is a flag on chat, not a separate type) */
-export const MODEL_TYPES = ['chat', 'embedding', 'speech2text', 'rerank', 'tts'] as const
+/** All supported model types. Vision-capable chat models get a paired `image2text` row. */
+export const MODEL_TYPES = ['chat', 'embedding', 'image2text', 'speech2text', 'rerank', 'tts'] as const
 
 /** Union type for all supported model types */
 export type ModelType = typeof MODEL_TYPES[number]

@@ -1742,6 +1742,7 @@
     "modelTypes": {
       "chat": "LLM",
       "embedding": "Embedding",
+      "image2text": "ビジョン (VLM)",
       "vision": "VLM",
       "speech2text": "ASR",
       "rerank": "Rerank",

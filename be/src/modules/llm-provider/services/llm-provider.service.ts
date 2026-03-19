@@ -127,6 +127,9 @@ export class LlmProviderService {
             });
         }
 
+        // Auto-create/update paired image2text row for vision-capable chat models
+        await this.syncVisionCompanion(provider, data, user);
+
         return provider;
     }
 
@@ -158,6 +161,9 @@ export class LlmProviderService {
         const provider = await ModelFactory.modelProvider.update(id, updateData);
         if (!provider) return undefined;
 
+        // Auto-sync paired image2text companion when vision flag changes
+        await this.syncVisionCompanion(provider, data, user);
+
         if (user) {
             await auditService.log({
                 userId: user.id,
@@ -180,8 +186,24 @@ export class LlmProviderService {
      * @returns {Promise<void>}
      */
     async delete(id: string, user?: UserContext): Promise<void> {
+        // Look up the provider before deleting to sync companion
+        const provider = await ModelFactory.modelProvider.findById(id);
+
         // Soft-delete the model_providers row
         await ModelFactory.modelProvider.update(id, { status: 'deleted' });
+
+        // Also soft-delete any paired image2text companion
+        if (provider && provider.model_type === 'chat') {
+            const [companion] = await ModelFactory.modelProvider.findAll({
+                factory_name: provider.factory_name,
+                model_name: provider.model_name,
+                model_type: 'image2text',
+                status: 'active',
+            });
+            if (companion) {
+                await ModelFactory.modelProvider.update(companion.id, { status: 'deleted' });
+            }
+        }
 
         if (user) {
             await auditService.log({
@@ -343,6 +365,19 @@ export class LlmProviderService {
                     },
                 };
             }
+            case 'image2text': {
+                // Image2text probe: same as chat (vision-capable chat model)
+                return {
+                    endpoint: 'chat/completions',
+                    method: 'POST',
+                    body: {
+                        model: provider.model_name,
+                        messages: [{ role: 'user', content: 'hello' }],
+                        max_tokens: 5,
+                        stream: false,
+                    },
+                };
+            }
             default: {
                 // For rerank, speech2text, tts — list models as a connectivity check
                 return {
@@ -373,6 +408,84 @@ export class LlmProviderService {
         }
 
         return query;
+    }
+
+    // =========================================================================
+    // Vision companion sync
+    // =========================================================================
+
+    /**
+     * @description Auto-create, update, or soft-delete a paired `image2text` row
+     * for vision-capable chat models. The companion shares the same credentials
+     * (api_key, api_base, factory_name, model_name) so advance-rag can query
+     * `model_providers` directly for IMAGE2TEXT defaults.
+     * @param {ModelProvider} provider - The chat provider that was just created/updated
+     * @param {any} data - The original request data (to check vision flag)
+     * @param {UserContext} user - Optional user context for audit trail
+     */
+    private async syncVisionCompanion(provider: ModelProvider, data: any, user?: UserContext): Promise<void> {
+        // Only applies to chat models
+        if (provider.model_type !== 'chat') return;
+
+        const isVision = data.vision ?? provider.vision ?? false;
+
+        if (isVision) {
+            // Upsert the image2text companion with shared credentials
+            const [existing] = await ModelFactory.modelProvider.findAll({
+                factory_name: provider.factory_name,
+                model_name: provider.model_name,
+                model_type: 'image2text',
+            });
+
+            if (existing && existing.status === 'active') {
+                // Update existing active companion
+                await ModelFactory.modelProvider.update(existing.id, {
+                    api_key: provider.api_key ?? null,
+                    api_base: provider.api_base ?? null,
+                    max_tokens: provider.max_tokens ?? null,
+                    is_default: provider.is_default,
+                    vision: true,
+                    updated_by: user?.id || null,
+                });
+            } else if (existing) {
+                // Reactivate soft-deleted companion
+                await ModelFactory.modelProvider.update(existing.id, {
+                    api_key: provider.api_key ?? null,
+                    api_base: provider.api_base ?? null,
+                    max_tokens: provider.max_tokens ?? null,
+                    status: 'active',
+                    is_default: provider.is_default,
+                    vision: true,
+                    updated_by: user?.id || null,
+                });
+            } else {
+                // Create new companion
+                await ModelFactory.modelProvider.create({
+                    factory_name: provider.factory_name,
+                    model_type: 'image2text',
+                    model_name: provider.model_name,
+                    api_key: provider.api_key ?? null,
+                    api_base: provider.api_base ?? null,
+                    max_tokens: provider.max_tokens ?? null,
+                    vision: true,
+                    status: 'active',
+                    is_default: provider.is_default,
+                    created_by: user?.id || null,
+                    updated_by: user?.id || null,
+                });
+            }
+        } else {
+            // Vision disabled — soft-delete any existing image2text companion
+            const [existing] = await ModelFactory.modelProvider.findAll({
+                factory_name: provider.factory_name,
+                model_name: provider.model_name,
+                model_type: 'image2text',
+                status: 'active',
+            });
+            if (existing) {
+                await ModelFactory.modelProvider.update(existing.id, { status: 'deleted' });
+            }
+        }
     }
 }
 

@@ -1756,6 +1756,7 @@
     "modelTypes": {
       "chat": "LLM",
       "embedding": "Embedding",
+      "image2text": "Thị giác (VLM)",
       "vision": "VLM",
       "speech2text": "ASR",
       "rerank": "Rerank",

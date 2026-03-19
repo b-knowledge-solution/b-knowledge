@@ -38,6 +38,7 @@ import type { ModelProvider, ModelType } from '../types/llmProvider.types'
 const MODEL_TYPE_ICONS: Record<ModelType, LucideIcon> = {
   chat: MessageSquare,
   embedding: Layers,
+  image2text: Eye,
   speech2text: Mic,
   rerank: ArrowUpDown,
   tts: Volume2,
@@ -47,6 +48,7 @@ const MODEL_TYPE_ICONS: Record<ModelType, LucideIcon> = {
 const ICON_COLORS: Record<ModelType, string> = {
   chat: 'text-blue-600 dark:text-blue-400',
   embedding: 'text-green-600 dark:text-green-400',
+  image2text: 'text-purple-600 dark:text-purple-400',
   speech2text: 'text-orange-600 dark:text-orange-400',
   rerank: 'text-teal-600 dark:text-teal-400',
   tts: 'text-pink-600 dark:text-pink-400',
@@ -96,9 +98,9 @@ export function DefaultModelsPanel({ providers, onDefaultChanged }: DefaultModel
     }
   }
 
-  // VLM providers: chat models with vision=true
-  const vlmProviders = providers.filter((p) => p.model_type === 'chat' && p.vision === true)
-  // Current VLM default (among vision-enabled chat providers)
+  // VLM providers: models with model_type 'image2text' (auto-created companions)
+  const vlmProviders = providers.filter((p) => p.model_type === 'image2text')
+  // Current VLM default (among image2text providers)
   const currentVlmDefault = vlmProviders.find((p) => p.is_default)
 
   return (

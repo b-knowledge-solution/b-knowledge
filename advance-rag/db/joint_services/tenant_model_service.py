@@ -111,10 +111,12 @@ def get_model_config_by_type_and_name(tenant_id: str, model_type: str, model_nam
 def get_tenant_default_model_by_type(tenant_id: str, model_type: str|enum.Enum):
     """Retrieve the tenant's default model configuration for a given type.
 
-    Looks up the tenant's default model name for the specified type (chat,
-    embedding, rerank, etc.) from the Tenant record, then resolves the full
-    model configuration. For IMAGE2TEXT type, if the resolved model is actually
-    a chat model with vision capability, the config is annotated accordingly.
+    Queries model_providers (TenantLLM) directly for the default model
+    with is_default=True and the matching model_type. This uses the same
+    table as the BE, making model_providers the single source of truth.
+
+    Falls back to the legacy tenant.*_id columns if no default is found
+    in model_providers, for backward compatibility during migration.
 
     Args:
         tenant_id (str): The tenant ID to look up.
@@ -129,36 +131,51 @@ def get_tenant_default_model_by_type(tenant_id: str, model_type: str|enum.Enum):
         Exception: If no default model is set for the given type, or if
                   the model type is unknown or requires a name (OCR).
     """
-    exist, tenant = TenantService.get_by_id(tenant_id)
-    if not exist:
-        raise LookupError("Tenant not found")
+    from db.db_models import TenantLLM
+
     model_type_val = model_type if isinstance(model_type, str) else model_type.value
+
+    if model_type_val == LLMType.OCR.value:
+        raise Exception("OCR model name is required")
+
+    # Primary lookup: query model_providers directly for the default
+    default_model = (TenantLLM.select()
+        .where(TenantLLM.tenant_id == tenant_id,
+               TenantLLM.model_type == model_type_val,
+               TenantLLM.status == "active",
+               TenantLLM.is_default == True)
+        .first())
+
     model_name: str = ""
-    # Map model type to the corresponding tenant field
-    match model_type_val:
-        case LLMType.EMBEDDING.value:
-            model_name = tenant.embd_id
-        case LLMType.SPEECH2TEXT.value:
-            model_name =  tenant.asr_id
-        case LLMType.IMAGE2TEXT.value:
-            # VLM default: resolve from img2txt_id which now points to a
-            # chat model with vision=true (no separate image2text rows)
-            model_name = tenant.img2txt_id
-        case LLMType.CHAT.value:
-            model_name = tenant.llm_id
-        case LLMType.RERANK.value:
-            model_name = tenant.rerank_id
-        case LLMType.TTS.value:
-            model_name = tenant.tts_id
-        case LLMType.OCR.value:
-            raise Exception("OCR model name is required")
-        case _:
-            raise Exception(f"Unknown model type {model_type}")
+
+    if default_model:
+        model_name = f"{default_model.llm_name}@{default_model.llm_factory}"
+    else:
+        # Fallback: read from legacy tenant.*_id columns
+        exist, tenant = TenantService.get_by_id(tenant_id)
+        if not exist:
+            raise LookupError("Tenant not found")
+        match model_type_val:
+            case LLMType.EMBEDDING.value:
+                model_name = tenant.embd_id
+            case LLMType.SPEECH2TEXT.value:
+                model_name = tenant.asr_id
+            case LLMType.IMAGE2TEXT.value:
+                model_name = tenant.img2txt_id
+            case LLMType.CHAT.value:
+                model_name = tenant.llm_id
+            case LLMType.RERANK.value:
+                model_name = tenant.rerank_id
+            case LLMType.TTS.value:
+                model_name = tenant.tts_id
+            case _:
+                raise Exception(f"Unknown model type {model_type}")
+
     if not model_name:
         raise Exception(f"No default {model_type} model is set.")
+
     config = get_model_config_by_type_and_name(tenant_id, model_type, model_name)
-    # For IMAGE2TEXT, the resolved model may be a chat model with vision=true.
-    # Ensure the config reflects vision capability so model_instance() uses CvModel.
-    if model_type_val == LLMType.IMAGE2TEXT.value and config.get("model_type") == LLMType.CHAT.value:
+    # For IMAGE2TEXT, annotate with vision=True so model_instance() uses CvModel
+    if model_type_val == LLMType.IMAGE2TEXT.value:
         config["vision"] = True
     return config

@@ -5,12 +5,14 @@
 import { z } from 'zod';
 
 /**
- * @description All supported model types. Vision support is handled via the `vision` boolean flag on chat models.
+ * @description All supported model types. Vision-capable chat models get a
+ * paired `image2text` row auto-created by the service layer.
  * @see https://ragflow.io/docs/references/model-providers
  */
 export const MODEL_TYPES = [
   'chat',
   'embedding',
+  'image2text',
   'speech2text',
   'rerank',
   'tts',

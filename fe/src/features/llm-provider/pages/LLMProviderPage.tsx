@@ -54,6 +54,7 @@ const TYPE_FILTERS = ['all', ...MODEL_TYPES] as const
 const MODEL_TYPE_BADGE_CLASSES: Record<string, string> = {
   chat: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
   embedding: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  image2text: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   speech2text: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
   rerank: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
   tts: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
@@ -106,19 +107,41 @@ export function LLMProviderPage() {
 
   // -- Derived data ----------------------------------------------------------
 
-  // Apply model_type filter
+  // Apply model_type filter (include image2text companions when filtering chat)
   const filtered = typeFilter === 'all'
     ? providers
-    : providers.filter((p) => p.model_type === typeFilter)
+    : typeFilter === 'chat'
+      ? providers.filter((p) => p.model_type === 'chat' || p.model_type === 'image2text')
+      : providers.filter((p) => p.model_type === typeFilter)
+
+  // Group providers by factory_name + model_name for display
+  // Same-name + same-factory shows as one row with multiple type badges
+  const grouped = (() => {
+    const map = new Map<string, { primary: ModelProvider; types: ModelProvider[] }>()
+    for (const p of filtered) {
+      const key = `${p.factory_name}::${p.model_name}`
+      if (!map.has(key)) {
+        map.set(key, { primary: p, types: [p] })
+      } else {
+        const group = map.get(key)!
+        group.types.push(p)
+        // Prefer chat as primary (for edit/delete actions)
+        if (p.model_type === 'chat') {
+          group.primary = p
+        }
+      }
+    }
+    return Array.from(map.values())
+  })()
 
   // Total pages for pagination
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const totalPages = Math.max(1, Math.ceil(grouped.length / PAGE_SIZE))
 
   // Clamp current page
   const safePage = Math.min(page, totalPages)
 
-  // Slice for current page
-  const pageData = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+  // Slice grouped rows for current page
+  const pageData = grouped.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   // -- Handlers --------------------------------------------------------------
 
@@ -273,54 +296,51 @@ export function LLMProviderPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                pageData.map((p) => (
-                  <TableRow key={p.id}>
+              pageData.map((row) => (
+                  <TableRow key={row.primary.id}>
                     {/* Factory name badge */}
                     <TableCell>
                       <Badge variant="outline" className="font-medium">
-                        {p.factory_name}
+                        {row.primary.factory_name}
                       </Badge>
                     </TableCell>
-                    {/* Color-coded model type badge + vision tag */}
+                    {/* Color-coded model type badges — shows all types for grouped row */}
                     <TableCell>
-                      <div className="flex items-center gap-1">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${MODEL_TYPE_BADGE_CLASSES[p.model_type] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}>
-                          {t(`llmProviders.modelTypes.${p.model_type}`)}
-                        </span>
-                        {p.vision && (
-                          <span className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                            <Eye size={10} />
-                            {t('llmProviders.modelTypes.vision')}
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {row.types.map((p) => (
+                          <span key={p.model_type} className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${MODEL_TYPE_BADGE_CLASSES[p.model_type] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}>
+                            {p.model_type === 'image2text' && <Eye size={10} className="mr-0.5" />}
+                            {t(`llmProviders.modelTypes.${p.model_type}`)}
                           </span>
-                        )}
+                        ))}
                       </div>
                     </TableCell>
                     {/* Model name */}
-                    <TableCell>{p.model_name}</TableCell>
+                    <TableCell>{row.primary.model_name}</TableCell>
                     {/* API base URL */}
                     <TableCell className="max-w-[200px] truncate text-gray-500 dark:text-gray-400">
-                      {p.api_base || '\u2014'}
+                      {row.primary.api_base || '\u2014'}
                     </TableCell>
                     {/* Max tokens */}
-                    <TableCell>{p.max_tokens ?? '\u2014'}</TableCell>
+                    <TableCell>{row.primary.max_tokens ?? '\u2014'}</TableCell>
                     {/* Action buttons */}
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleTestConnection(p)}
-                          disabled={testingIds.has(p.id)}
+                          onClick={() => handleTestConnection(row.primary)}
+                          disabled={testingIds.has(row.primary.id)}
                           title={t('llmProviders.testConnection')}
                         >
-                          {testingIds.has(p.id)
+                          {testingIds.has(row.primary.id)
                             ? <Loader2 size={14} className="animate-spin" />
                             : <Plug size={14} />}
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(p)}>
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(row.primary)}>
                           <Pencil size={14} />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(p)}>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(row.primary)}>
                           <Trash2 size={14} className="text-red-500" />
                         </Button>
                       </div>
@@ -336,7 +356,7 @@ export function LLMProviderPage() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between pt-4">
             <span className="text-sm text-gray-500 dark:text-gray-400">
-              {t('common.totalItems', { total: filtered.length })}
+              {t('common.totalItems', { total: grouped.length })}
             </span>
             <div className="flex items-center gap-2">
               <Button
