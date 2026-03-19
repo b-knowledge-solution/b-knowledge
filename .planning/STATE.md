@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-05-PLAN.md
-last_updated: "2026-03-19T03:36:14.000Z"
+stopped_at: Completed 03-07-PLAN.md
+last_updated: "2026-03-19T04:12:13.715Z"
 last_activity: 2026-03-19 — Plan 03-05 complete (metadata management UI, tag filter chips, cron scheduler settings)
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 17
-  completed_plans: 16
+  total_plans: 19
+  completed_plans: 18
   percent: 88
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 3 of 6 (Document Management)
-Plan: 6 of 6 in current phase
+Plan: 7 of 8 in current phase
 Status: In Progress
-Last activity: 2026-03-19 — Plan 03-05 complete (metadata management UI, tag filter chips, cron scheduler settings)
+Last activity: 2026-03-19 — Plan 03-07 complete (dataset-aware FIFO parsing scheduler)
 
-Progress: [████████░░] 88%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: [████████░░] 88%
 | Phase 03 P04 | 12min | 2 tasks | 8 files |
 | Phase 03 P03 | 13min | 2 tasks | 12 files |
 | Phase 03 P05 | 14min | 2 tasks | 16 files |
+| Phase 03 P07 | 2min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -112,6 +113,7 @@ Recent decisions affecting current work:
 - [Phase 3, Plan 03]: Reused DocumentPreviewer in three viewer patterns (full page, Sheet drawer, Dialog)
 - [Phase 3, Plan 05]: Toggle+count pattern for auto_keywords/auto_questions replaces slider (cleaner on/off semantics)
 - [Phase 3, Plan 05]: TagFilterChips use tag_kwd field in metadata_filter conditions matching rag-search.service.ts buildMetadataFilters()
+- [Phase 03]: PER_DATASET_LIMIT = 10 as class constant for per-dataset batch cap in parsing scheduler
 
 ### Pending Todos
 
@@ -126,6 +128,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T03:36:14Z
-Stopped at: Completed 03-05-PLAN.md
+Last session: 2026-03-19T04:12:13.707Z
+Stopped at: Completed 03-07-PLAN.md
 Resume file: None
