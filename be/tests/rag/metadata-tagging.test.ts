@@ -134,8 +134,8 @@ describe('Metadata Tagging - custom tags', () => {
     const rawCall = mockDbRaw.mock.calls[0]
     // Overwrite mode also uses metadata_tags path
     expect(rawCall[0]).toContain('{metadata_tags}')
-    // Verify the tags JSON is passed as parameter
-    expect(rawCall[1]).toBe(JSON.stringify({ category: 'internal' }))
+    // Verify the tags JSON is passed as parameter (db.raw receives [sql, [params]])
+    expect(rawCall[1]).toEqual([JSON.stringify({ category: 'internal' })])
   })
 })
 
