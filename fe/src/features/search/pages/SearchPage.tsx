@@ -17,7 +17,7 @@ import type { ChatChunk, ChatReference } from '@/features/chat/types/chat.types'
 import SearchBar from '../components/SearchBar'
 import SearchResults from '../components/SearchResults'
 import SearchFilters from '../components/SearchFilters'
-import SearchDocumentPreviewDrawer from '../components/SearchDocumentPreviewDrawer'
+import SearchResultDocDialog from '../components/SearchResultDocDialog'
 import SearchMindMapDrawer from '../components/SearchMindMapDrawer'
 import TagFilterChips from '../components/TagFilterChips'
 import { searchApi } from '../api/searchApi'
@@ -420,13 +420,12 @@ function DatasetSearchPage() {
         </div>
       </div>
 
-      {/* Document preview drawer */}
-      <SearchDocumentPreviewDrawer
+      {/* Document preview dialog */}
+      <SearchResultDocDialog
         open={previewDoc.open}
         onClose={() => setPreviewDoc({ open: false, result: null })}
         documentId={previewDoc.result?.doc_id}
         documentName={previewDoc.result?.doc_name}
-        chunk={previewDoc.result}
         datasetId={previewDoc.result?.dataset_id}
       />
 

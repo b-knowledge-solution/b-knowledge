@@ -1,6 +1,6 @@
 /**
  * @fileoverview Dataset Chat page - main chat interface.
- * Composes ChatSidebar, ChatMessageList, ChatInput, ChatReferencePanel, and ChatDocumentPreviewDrawer.
+ * Composes ChatSidebar, ChatMessageList, ChatInput, ChatReferencePanel, and CitationDocDrawer.
  * Shows a variable form when the assistant has required variables without defaults.
  * @module features/chat/pages/ChatPage
  */
@@ -15,7 +15,7 @@ import ChatMessageList from '../components/ChatMessageList'
 import ChatInput from '../components/ChatInput'
 import ChatFileUpload from '../components/ChatFileUpload'
 import ChatReferencePanel from '../components/ChatReferencePanel'
-import ChatDocumentPreviewDrawer from '../components/ChatDocumentPreviewDrawer'
+import CitationDocDrawer from '../components/CitationDocDrawer'
 import { useChatAssistants } from '../api/chatQueries'
 import { useChatConversations, useRenameConversation } from '../api/chatQueries'
 import { useChatStream } from '../hooks/useChatStream'
@@ -396,10 +396,11 @@ function DatasetChatPage() {
         })()
 
         return (
-          <ChatDocumentPreviewDrawer
+          <CitationDocDrawer
             open={showDocPreview}
             onClose={() => setShowDocPreview(false)}
-            chunk={previewChunk}
+            documentId={previewChunk?.doc_id}
+            documentName={previewChunk?.docnm_kwd}
             datasetId={previewDatasetId}
           />
         )
