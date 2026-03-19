@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 6 context gathered
-last_updated: "2026-03-19T08:54:42.617Z"
+stopped_at: Phase 6 UI-SPEC approved
+last_updated: "2026-03-19T09:17:18.165Z"
 last_activity: "2026-03-19 — Plan 05-04 complete (FE integration: KG metrics, mode selector, Deep Research/RBAC toggles, SSE handling)"
 progress:
   total_phases: 6
@@ -154,6 +154,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T08:54:42.599Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-projects-and-observability/06-CONTEXT.md
+Last session: 2026-03-19T09:17:18.151Z
+Stopped at: Phase 6 UI-SPEC approved
+Resume file: .planning/phases/06-projects-and-observability/06-UI-SPEC.md
