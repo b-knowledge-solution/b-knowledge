@@ -1015,7 +1015,45 @@
     "user": "User",
     "sessions": "Sessions",
     "noData": "No Data",
-    "usageBreakdown": "Usage Breakdown"
+    "usageBreakdown": "Usage Breakdown",
+    "lastUpdated": "最終更新",
+    "tabs": {
+      "activity": "アクティビティ",
+      "queryAnalytics": "クエリ分析",
+      "ragQuality": "RAG品質"
+    },
+    "analytics": {
+      "totalQueries": "総クエリ数",
+      "avgResponseTime": "平均応答時間",
+      "failedRate": "検索失敗率",
+      "lowConfRate": "低信頼度率",
+      "topQueries": "上位クエリ",
+      "queriesOverTime": "クエリ推移",
+      "failedQueries": "失敗クエリ",
+      "queryColumn": "クエリ",
+      "countColumn": "件数",
+      "confidenceColumn": "平均信頼度",
+      "empty": "クエリデータがありません",
+      "emptyDescription": "ユーザーが検索やチャットを開始すると、クエリ分析がここに表示されます。",
+      "error": "分析を読み込めませんでした。もう一度お試しください。"
+    },
+    "feedback": {
+      "satisfactionRate": "満足度",
+      "totalFeedback": "フィードバック合計",
+      "zeroResultRate": "結果なし率",
+      "worstDatasets": "最低満足度",
+      "trend": "フィードバック推移",
+      "negativeFeedback": "最近の否定的フィードバック",
+      "viewInLangfuse": "Langfuseで表示",
+      "langfuseUnavailable": "Langfuseトレースは利用できません",
+      "answerColumn": "回答",
+      "dateColumn": "日付",
+      "actionsColumn": "操作",
+      "totalLabel": "合計",
+      "positiveLabel": "肯定的",
+      "empty": "フィードバックがまだありません",
+      "emptyDescription": "ユーザーが回答を評価すると、フィードバックデータがここに表示されます。"
+    }
   },
   "glossary": {
     "title": "用語集管理",
@@ -1894,7 +1932,37 @@
       "chat": "チャット",
       "search": "検索",
       "settings": "設定",
-      "sync": "同期"
+      "sync": "同期",
+      "members": "メンバー",
+      "datasets": "データセット",
+      "activity": "アクティビティ"
+    },
+    "addMember": "メンバーを追加",
+    "removeMemberConfirm": "{{name}}をこのプロジェクトから削除しますか？すべてのプロジェクトデータセットへのアクセスが失われます。",
+    "bindDatasets": "データセットをバインド",
+    "unbindConfirm": "バインド解除すると、すべてのプロジェクトメンバーのアクセスが即座に取り消されます。",
+    "unbindConfirmTitle": "データセットのバインド解除",
+    "role": "ロール",
+    "docCount": "ドキュメント",
+    "loadMore": "もっと読み込む",
+    "deleteConfirmTitle": "プロジェクトを削除",
+    "deleteConfirmBody": "すべてのデータセットバインドとメンバーアクセスが削除されます。確認するには「{{name}}」と入力してください。",
+    "members": {
+      "empty": "メンバーがまだいません",
+      "emptyDescription": "チームメンバーを追加して、このプロジェクトのデータセットへのアクセスを付与します。"
+    },
+    "datasets": {
+      "empty": "バインドされたデータセットなし",
+      "emptyDescription": "データセットをバインドして、プロジェクトメンバーがアクセスできるようにします。"
+    },
+    "activity": {
+      "empty": "最近のアクティビティなし",
+      "emptyDescription": "チームメンバーがプロジェクトのデータセットで作業すると、アクティビティが表示されます。"
+    },
+    "error": {
+      "create": "プロジェクトの作成に失敗しました。もう一度お試しください。",
+      "removeMember": "メンバーの削除に失敗しました。もう一度お試しください。",
+      "bindDataset": "データセットバインドの更新に失敗しました。もう一度お試しください。"
     },
     "documents": {
       "title": "ドキュメント",

@@ -1029,7 +1029,45 @@
     "user": "User",
     "sessions": "Sessions",
     "noData": "No Data",
-    "usageBreakdown": "Usage Breakdown"
+    "usageBreakdown": "Usage Breakdown",
+    "lastUpdated": "Cập nhật lần cuối",
+    "tabs": {
+      "activity": "Hoạt động",
+      "queryAnalytics": "Phân tích truy vấn",
+      "ragQuality": "Chất lượng RAG"
+    },
+    "analytics": {
+      "totalQueries": "Tổng truy vấn",
+      "avgResponseTime": "Thời gian phản hồi TB",
+      "failedRate": "Tỷ lệ truy xuất thất bại",
+      "lowConfRate": "Tỷ lệ độ tin cậy thấp",
+      "topQueries": "Truy vấn hàng đầu",
+      "queriesOverTime": "Truy vấn theo thời gian",
+      "failedQueries": "Truy vấn thất bại",
+      "queryColumn": "Truy vấn",
+      "countColumn": "Số lượng",
+      "confidenceColumn": "Độ tin cậy TB",
+      "empty": "Chưa có dữ liệu truy vấn",
+      "emptyDescription": "Phân tích truy vấn sẽ xuất hiện khi người dùng bắt đầu tìm kiếm và trò chuyện.",
+      "error": "Không thể tải phân tích. Vui lòng thử lại."
+    },
+    "feedback": {
+      "satisfactionRate": "Tỷ lệ hài lòng",
+      "totalFeedback": "Tổng phản hồi",
+      "zeroResultRate": "Tỷ lệ không có kết quả",
+      "worstDatasets": "Mức hài lòng thấp nhất",
+      "trend": "Xu hướng phản hồi",
+      "negativeFeedback": "Phản hồi tiêu cực gần đây",
+      "viewInLangfuse": "Xem trong Langfuse",
+      "langfuseUnavailable": "Không có trace Langfuse",
+      "answerColumn": "Câu trả lời",
+      "dateColumn": "Ngày",
+      "actionsColumn": "Hành động",
+      "totalLabel": "Tổng",
+      "positiveLabel": "Tích cực",
+      "empty": "Chưa có phản hồi",
+      "emptyDescription": "Dữ liệu phản hồi sẽ xuất hiện khi người dùng đánh giá câu trả lời."
+    }
   },
   "glossary": {
     "title": "Quản lý Từ điển",
@@ -1908,7 +1946,37 @@
       "chat": "Trò chuyện",
       "search": "Tìm kiếm",
       "settings": "Cài đặt",
-      "sync": "Đồng bộ"
+      "sync": "Đồng bộ",
+      "members": "Thành viên",
+      "datasets": "Bộ dữ liệu",
+      "activity": "Hoạt động"
+    },
+    "addMember": "Thêm thành viên",
+    "removeMemberConfirm": "Xóa {{name}} khỏi dự án này? Họ sẽ mất quyền truy cập tất cả bộ dữ liệu của dự án.",
+    "bindDatasets": "Liên kết bộ dữ liệu",
+    "unbindConfirm": "Hủy liên kết sẽ ngay lập tức thu hồi quyền truy cập của tất cả thành viên dự án.",
+    "unbindConfirmTitle": "Hủy liên kết bộ dữ liệu",
+    "role": "Vai trò",
+    "docCount": "Tài liệu",
+    "loadMore": "Tải thêm",
+    "deleteConfirmTitle": "Xóa dự án",
+    "deleteConfirmBody": "Thao tác này sẽ xóa tất cả liên kết bộ dữ liệu và quyền truy cập thành viên. Nhập \"{{name}}\" để xác nhận.",
+    "members": {
+      "empty": "Chưa có thành viên",
+      "emptyDescription": "Thêm thành viên nhóm để cấp quyền truy cập bộ dữ liệu của dự án."
+    },
+    "datasets": {
+      "empty": "Chưa liên kết bộ dữ liệu",
+      "emptyDescription": "Liên kết bộ dữ liệu để các thành viên dự án có thể truy cập."
+    },
+    "activity": {
+      "empty": "Không có hoạt động gần đây",
+      "emptyDescription": "Hoạt động sẽ xuất hiện khi thành viên nhóm làm việc với bộ dữ liệu của dự án."
+    },
+    "error": {
+      "create": "Không thể tạo dự án. Vui lòng thử lại.",
+      "removeMember": "Không thể xóa thành viên. Vui lòng thử lại.",
+      "bindDataset": "Không thể cập nhật liên kết bộ dữ liệu. Vui lòng thử lại."
     },
     "documents": {
       "title": "Tài liệu",

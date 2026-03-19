@@ -1026,7 +1026,45 @@
     "user": "User",
     "sessions": "Sessions",
     "noData": "No Data",
-    "usageBreakdown": "Usage Breakdown"
+    "usageBreakdown": "Usage Breakdown",
+    "lastUpdated": "Last updated",
+    "tabs": {
+      "activity": "Activity",
+      "queryAnalytics": "Query Analytics",
+      "ragQuality": "RAG Quality"
+    },
+    "analytics": {
+      "totalQueries": "Total Queries",
+      "avgResponseTime": "Avg Response Time",
+      "failedRate": "Failed Retrieval Rate",
+      "lowConfRate": "Low Confidence Rate",
+      "topQueries": "Top Queries",
+      "queriesOverTime": "Queries Over Time",
+      "failedQueries": "Failed Queries",
+      "queryColumn": "Query",
+      "countColumn": "Count",
+      "confidenceColumn": "Avg Confidence",
+      "empty": "No query data yet",
+      "emptyDescription": "Query analytics will appear here once users start searching and chatting.",
+      "error": "Unable to load analytics. Please try again."
+    },
+    "feedback": {
+      "satisfactionRate": "Satisfaction Rate",
+      "totalFeedback": "Total Feedback",
+      "zeroResultRate": "Zero-Result Rate",
+      "worstDatasets": "Lowest Satisfaction",
+      "trend": "Feedback Trend",
+      "negativeFeedback": "Recent Negative Feedback",
+      "viewInLangfuse": "View in Langfuse",
+      "langfuseUnavailable": "Langfuse trace not available",
+      "answerColumn": "Answer",
+      "dateColumn": "Date",
+      "actionsColumn": "Actions",
+      "totalLabel": "Total",
+      "positiveLabel": "Positive",
+      "empty": "No feedback collected yet",
+      "emptyDescription": "Feedback data will appear here once users rate answers."
+    }
   },
   "glossary": {
     "title": "Glossary Management",
@@ -1924,7 +1962,37 @@
       "chat": "Chat",
       "search": "Search",
       "settings": "Settings",
-      "sync": "Sync"
+      "sync": "Sync",
+      "members": "Members",
+      "datasets": "Datasets",
+      "activity": "Activity"
+    },
+    "addMember": "Add Member",
+    "removeMemberConfirm": "Remove {{name}} from this project? They will lose access to all project datasets.",
+    "bindDatasets": "Bind Datasets",
+    "unbindConfirm": "Unbinding will immediately revoke access for all project members.",
+    "unbindConfirmTitle": "Unbind Dataset",
+    "role": "Role",
+    "docCount": "Documents",
+    "loadMore": "Load More",
+    "deleteConfirmTitle": "Delete Project",
+    "deleteConfirmBody": "This will remove all dataset bindings and member access. Type \"{{name}}\" to confirm.",
+    "members": {
+      "empty": "No members added yet",
+      "emptyDescription": "Add team members to grant access to this project's datasets."
+    },
+    "datasets": {
+      "empty": "No datasets bound",
+      "emptyDescription": "Bind datasets to make them accessible to project members."
+    },
+    "activity": {
+      "empty": "No recent activity",
+      "emptyDescription": "Activity will appear here as team members work with project datasets."
+    },
+    "error": {
+      "create": "Failed to create project. Please try again.",
+      "removeMember": "Failed to remove member. Please try again.",
+      "bindDataset": "Failed to update dataset bindings. Please try again."
     },
     "documents": {
       "title": "Documents",
