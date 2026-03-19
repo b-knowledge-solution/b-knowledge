@@ -120,8 +120,16 @@ export class CronService {
     }
 
     /**
-     * @description Execute the scheduled parsing run.
-     * Finds documents with 'pending' progress status and queues them for parsing.
+     * @description Maximum number of documents to enqueue per dataset in a single scheduling run.
+     * Prevents one large dataset from starving others by capping the batch size per kb_id.
+     */
+    private static readonly PER_DATASET_LIMIT = 10
+
+    /**
+     * @description Execute the scheduled parsing run with dataset-aware FIFO sequencing.
+     * Groups pending documents by dataset (kb_id), processes each dataset batch in FIFO
+     * order (oldest first by create_time), and enqueues up to PER_DATASET_LIMIT documents
+     * per dataset. This prevents a single large dataset from monopolizing the parse queue.
      * @returns {Promise<void>}
      */
     private async runParsingSchedule(): Promise<void> {
@@ -132,36 +140,64 @@ export class CronService {
             const { ragRedisService } = await import('@/modules/rag/services/rag-redis.service.js')
             const { ragDocumentService } = await import('@/modules/rag/services/rag-document.service.js')
 
-            // Query the Peewee document table for documents waiting to be parsed
+            // Query pending documents ordered by dataset, then by creation time (FIFO)
             // progress = 0 and run = '1' indicates documents queued for parsing
             const pendingDocs = await db('document')
-                .select('id', 'kb_id', 'parser_id', 'parser_config', 'name', 'run')
+                .select('id', 'kb_id', 'parser_id', 'parser_config', 'name', 'run', 'create_time')
                 .where('run', '1')
                 .where('progress', 0)
-                .limit(50)
+                .orderBy([
+                    { column: 'kb_id', order: 'asc' },
+                    { column: 'create_time', order: 'asc' },
+                ])
 
             if (pendingDocs.length === 0) {
                 log.debug('No pending documents found for scheduled parsing')
                 return
             }
 
-            // Queue each pending document for parsing
+            // Group pending documents by dataset for sequential dataset processing
+            const datasetGroups = new Map<string, typeof pendingDocs>()
             for (const doc of pendingDocs) {
-                try {
-                    // Mark the document as queued for parsing
-                    await ragDocumentService.beginParse(doc.id)
-                    // Queue the parse_init task to the Redis Stream
-                    await ragRedisService.queueParseInit(doc.id)
-                    log.debug('Scheduled parsing for document', { docId: doc.id, kbId: doc.kb_id })
-                } catch (err) {
-                    log.warn('Failed to queue document for scheduled parsing', {
-                        docId: doc.id,
-                        error: String(err),
-                    })
-                }
+                const group = datasetGroups.get(doc.kb_id) || []
+                group.push(doc)
+                datasetGroups.set(doc.kb_id, group)
             }
 
-            log.info('Scheduled parsing job completed', { queued: pendingDocs.length })
+            let totalQueued = 0
+
+            // Process one dataset batch at a time with per-dataset limit
+            for (const [kbId, group] of datasetGroups) {
+                // Take at most PER_DATASET_LIMIT documents from this dataset
+                const batch = group.slice(0, CronService.PER_DATASET_LIMIT)
+
+                for (const doc of batch) {
+                    try {
+                        // Mark the document as queued for parsing
+                        await ragDocumentService.beginParse(doc.id)
+                        // Queue the parse_init task to the Redis Stream
+                        await ragRedisService.queueParseInit(doc.id)
+                        totalQueued++
+                        log.debug('Scheduled parsing for document', { docId: doc.id, kbId: doc.kb_id })
+                    } catch (err) {
+                        log.warn('Failed to queue document for scheduled parsing', {
+                            docId: doc.id,
+                            error: String(err),
+                        })
+                    }
+                }
+
+                log.info('Scheduled parsing for dataset batch', {
+                    kbId,
+                    queued: batch.length,
+                    remaining: group.length - batch.length,
+                })
+            }
+
+            log.info('Scheduled parsing job completed', {
+                totalQueued,
+                datasetsProcessed: datasetGroups.size,
+            })
         } catch (error) {
             log.error('Critical error in parsing scheduler job', { error: String(error) })
         }
