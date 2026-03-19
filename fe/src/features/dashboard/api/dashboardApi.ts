@@ -3,7 +3,7 @@
  * @module features/dashboard/api/dashboardApi
  */
 import { apiFetch } from '@/lib/api'
-import type { DashboardStats } from '../types/dashboard.types'
+import type { DashboardStats, QueryAnalytics, FeedbackAnalytics } from '../types/dashboard.types'
 
 /**
  * @description Fetch dashboard statistics from the admin API.
@@ -25,4 +25,48 @@ export async function fetchDashboardStats(
     const url = `/api/admin/dashboard/stats${queryString ? `?${queryString}` : ''}`
 
     return apiFetch<DashboardStats>(url)
+}
+
+/**
+ * @description Fetch query analytics data from the admin analytics API.
+ * Includes total queries, response time, confidence metrics, and trend data.
+ * @param {string} [startDate] - Optional ISO date string for range start.
+ * @param {string} [endDate] - Optional ISO date string for range end.
+ * @returns {Promise<QueryAnalytics>} Query analytics payload.
+ */
+export async function fetchQueryAnalytics(
+    startDate?: string,
+    endDate?: string
+): Promise<QueryAnalytics> {
+    const params = new URLSearchParams()
+    // Only include date params when provided to allow unbounded queries
+    if (startDate) params.set('startDate', startDate)
+    if (endDate) params.set('endDate', endDate)
+
+    const queryString = params.toString()
+    const url = `/api/admin/dashboard/analytics/queries${queryString ? `?${queryString}` : ''}`
+
+    return apiFetch<QueryAnalytics>(url)
+}
+
+/**
+ * @description Fetch feedback analytics data from the admin feedback API.
+ * Includes satisfaction rate, feedback counts, trend, and negative feedback with Langfuse links.
+ * @param {string} [startDate] - Optional ISO date string for range start.
+ * @param {string} [endDate] - Optional ISO date string for range end.
+ * @returns {Promise<FeedbackAnalytics>} Feedback analytics payload.
+ */
+export async function fetchFeedbackAnalytics(
+    startDate?: string,
+    endDate?: string
+): Promise<FeedbackAnalytics> {
+    const params = new URLSearchParams()
+    // Only include date params when provided to allow unbounded queries
+    if (startDate) params.set('startDate', startDate)
+    if (endDate) params.set('endDate', endDate)
+
+    const queryString = params.toString()
+    const url = `/api/admin/dashboard/analytics/feedback${queryString ? `?${queryString}` : ''}`
+
+    return apiFetch<FeedbackAnalytics>(url)
 }

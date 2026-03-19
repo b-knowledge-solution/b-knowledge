@@ -101,6 +101,10 @@ export const queryKeys = {
     all: ['dashboard'] as const,
     stats: (startDate?: string, endDate?: string) =>
       [...queryKeys.dashboard.all, 'stats', { startDate, endDate }] as const,
+    analytics: (startDate?: string, endDate?: string) =>
+      [...queryKeys.dashboard.all, 'analytics', { startDate, endDate }] as const,
+    feedback: (startDate?: string, endDate?: string) =>
+      [...queryKeys.dashboard.all, 'feedback', { startDate, endDate }] as const,
   },
 
   // --------------------------------------------------------------------------
@@ -209,6 +213,16 @@ export const queryKeys = {
   sharedUser: {
     all: ['shared-user'] as const,
     me: () => [...queryKeys.sharedUser.all, 'me'] as const,
+  },
+
+  // --------------------------------------------------------------------------
+  // Projects (sub-resources)
+  // --------------------------------------------------------------------------
+  projects: {
+    all: ['projects'] as const,
+    members: (projectId: string) => [...queryKeys.projects.all, projectId, 'members'] as const,
+    datasets: (projectId: string) => [...queryKeys.projects.all, projectId, 'datasets'] as const,
+    activity: (projectId: string) => [...queryKeys.projects.all, projectId, 'activity'] as const,
   },
 
   // --------------------------------------------------------------------------

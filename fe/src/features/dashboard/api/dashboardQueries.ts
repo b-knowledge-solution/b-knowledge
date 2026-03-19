@@ -6,7 +6,7 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { DashboardStats } from '../types/dashboard.types'
-import { fetchDashboardStats } from './dashboardApi'
+import { fetchDashboardStats, fetchQueryAnalytics, fetchFeedbackAnalytics } from './dashboardApi'
 import { format } from 'date-fns'
 import { queryKeys } from '@/lib/queryKeys'
 
@@ -88,4 +88,44 @@ export const useDashboardStats = (): UseDashboardStatsReturn => {
         setTopUsersLimit,
         refresh,
     }
+}
+
+// ============================================================================
+// Query Analytics Hook
+// ============================================================================
+
+/**
+ * @description Hook for fetching query analytics data with date range filtering.
+ * Uses 5-minute staleTime for manual refresh pattern (data considered fresh for 5 min).
+ * @param {string} [startDate] - Optional start date string (yyyy-MM-dd).
+ * @param {string} [endDate] - Optional end date string (yyyy-MM-dd).
+ * @returns TanStack Query result with query analytics data.
+ */
+export const useQueryAnalytics = (startDate?: string, endDate?: string) => {
+    return useQuery({
+        queryKey: queryKeys.dashboard.analytics(startDate, endDate),
+        queryFn: () => fetchQueryAnalytics(startDate, endDate),
+        // 5-minute staleTime for manual refresh pattern per CONTEXT.md
+        staleTime: 5 * 60 * 1000,
+    })
+}
+
+// ============================================================================
+// Feedback Analytics Hook
+// ============================================================================
+
+/**
+ * @description Hook for fetching feedback analytics data with date range filtering.
+ * Uses 5-minute staleTime for manual refresh pattern (data considered fresh for 5 min).
+ * @param {string} [startDate] - Optional start date string (yyyy-MM-dd).
+ * @param {string} [endDate] - Optional end date string (yyyy-MM-dd).
+ * @returns TanStack Query result with feedback analytics data.
+ */
+export const useFeedbackAnalytics = (startDate?: string, endDate?: string) => {
+    return useQuery({
+        queryKey: queryKeys.dashboard.feedback(startDate, endDate),
+        queryFn: () => fetchFeedbackAnalytics(startDate, endDate),
+        // 5-minute staleTime for manual refresh pattern per CONTEXT.md
+        staleTime: 5 * 60 * 1000,
+    })
 }
