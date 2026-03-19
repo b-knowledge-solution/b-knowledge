@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Document Management** - Add document version history, metadata tagging, auto-extraction, and bulk operations (completed 2026-03-19)
 - [ ] **Phase 4: Domain-Specific Parsers** - Add code-aware, API spec, ADR, and clinical document parsers for SDLC and healthcare corpora
 - [ ] **Phase 5: Advanced Retrieval** - Wire GraphRAG and Deep Research pipelines with cross-dataset retrieval and cost controls
-- [ ] **Phase 6: Projects and Observability** - Complete multi-tenant project scoping and surface RAG quality analytics
+- [x] **Phase 6: Projects and Observability** - Complete multi-tenant project scoping and surface RAG quality analytics (completed 2026-03-19)
 
 ## Phase Details
 
@@ -147,7 +147,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 3. Document Management | 8/8 | Complete   | 2026-03-19 |
 | 4. Domain-Specific Parsers | 2/3 | In Progress|  |
 | 5. Advanced Retrieval | 3/4 | In Progress|  |
-| 6. Projects and Observability | 3/5 | In Progress|  |
+| 6. Projects and Observability | 5/5 | Complete   | 2026-03-19 |
 
 ---
 *Roadmap created: 2026-03-18*
