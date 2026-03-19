@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 4 context gathered
-last_updated: "2026-03-19T05:00:48.543Z"
-last_activity: 2026-03-19 — Plan 03-06 complete (version label column, FE input, VersionBadge label-first rendering)
+status: executing
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-03-19T05:57:35.164Z"
+last_activity: 2026-03-19 — Plan 04-02 complete (OpenAPI endpoint parser and ADR section parser)
 progress:
   total_phases: 6
-  completed_phases: 3
-  total_plans: 19
-  completed_plans: 19
+  completed_phases: 4
+  total_plans: 22
+  completed_plans: 22
   percent: 100
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 4 of 6 (Domain-Specific Parsers)
-Plan: 3 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In Progress
-Last activity: 2026-03-19 — Plan 04-03 complete (clinical classifier and FE parser registration)
+Last activity: 2026-03-19 — Plan 04-02 complete (OpenAPI endpoint parser and ADR section parser)
 
 Progress: [██████████] 100%
 
@@ -70,7 +70,7 @@ Progress: [██████████] 100%
 | Phase 03 P07 | 2min | 1 tasks | 1 files |
 | Phase 03 P06 | 6min | 2 tasks | 15 files |
 | Phase 04 P01 | 10min | 2 tasks | 11 files |
-| Phase 04 P03 | 8min | 2 tasks | 9 files |
+| Phase 04 P02 | 9min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -121,6 +121,9 @@ Recent decisions affecting current work:
 - [Phase 4, Plan 01]: Mock rag_tokenizer in tests via sys.modules patching to avoid heavy NLP dependency chain
 - [Phase 4, Plan 01]: decorated_definition wrapping class_definition treated as class scope, recursive container traversal for nested methods
 - [Phase 4, Plan 03]: Clinical classification runs as post-parse step in task_executor (not inside chunk()) following auto_keywords async pattern
+- [Phase 04]: Added openapi-spec-validator as explicit prance validation backend dependency
+- [Phase 04]: ADR options pattern checked before consequences for correct MADR 'Pros and Cons of the Options' classification
+- [Phase 04]: ADR sub-headings (H3+) merged into parent H2 section to preserve section integrity
 
 ### Pending Todos
 
@@ -135,6 +138,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T05:55:20Z
-Stopped at: Completed 04-03-PLAN.md
-Resume file: .planning/phases/04-domain-specific-parsers/04-03-SUMMARY.md
+Last session: 2026-03-19T05:57:35.150Z
+Stopped at: Completed 04-02-PLAN.md
+Resume file: None

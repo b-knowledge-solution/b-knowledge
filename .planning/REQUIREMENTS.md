@@ -36,8 +36,8 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Domain-Specific Parsers
 
 - [x] **PRSR-01**: Code-aware document parsing — chunk by function/class boundaries with import context preserved
-- [ ] **PRSR-02**: API documentation parser — parse OpenAPI/Swagger specs into structured endpoint chunks
-- [ ] **PRSR-03**: Technical decision record (ADR) parser — template-aware parsing of context/decision/consequences
+- [x] **PRSR-02**: API documentation parser — parse OpenAPI/Swagger specs into structured endpoint chunks
+- [x] **PRSR-03**: Technical decision record (ADR) parser — template-aware parsing of context/decision/consequences
 - [x] **PRSR-04**: Clinical document classification — auto-classify documents as regulatory, protocol, research, administrative
 
 ### Advanced Retrieval
@@ -131,8 +131,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DOCM-05 | Phase 3 | Complete |
 | DOCM-06 | Phase 3 | Complete |
 | PRSR-01 | Phase 4 | Complete |
-| PRSR-02 | Phase 4 | Pending |
-| PRSR-03 | Phase 4 | Pending |
+| PRSR-02 | Phase 4 | Complete |
+| PRSR-03 | Phase 4 | Complete |
 | PRSR-04 | Phase 4 | Complete |
 | RETR-01 | Phase 5 | Pending |
 | RETR-02 | Phase 5 | Pending |
