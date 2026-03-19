@@ -70,7 +70,7 @@ Plans:
   3. Each document version displays its author, upload timestamp, and change summary
   4. User can apply custom metadata tags to documents (e.g., sdlc_phase=design, department=clinical) that can be used to filter search results
   5. Metadata fields are automatically populated from document content during parsing; user can bulk-edit tags across multiple documents
-**Plans**: 6 plans
+**Plans**: 8 plans
 
 Plans:
 - [ ] 03-00-PLAN.md — Wave 0 test scaffolds: version-history and metadata-tagging test stubs (DOCM-01..06)
@@ -79,6 +79,8 @@ Plans:
 - [ ] 03-03-PLAN.md — Version-aware search with rank_feature boost, chunk detail page, three document viewer patterns (DOCM-02)
 - [ ] 03-04-PLAN.md — BE metadata: bulk metadata API, tag aggregation endpoint, cron parsing scheduler (DOCM-04, DOCM-05, DOCM-06)
 - [ ] 03-05-PLAN.md — FE metadata: parser settings, schema builder, bulk dialog, tag filter chips, cron UI, i18n (DOCM-04, DOCM-05, DOCM-06)
+- [ ] 03-06-PLAN.md — Gap closure: custom version_label support (DB migration, BE service/API, FE dialog/badge) (DOCM-01, DOCM-03)
+- [ ] 03-07-PLAN.md — Gap closure: dataset-aware FIFO parsing scheduler (DOCM-06)
 
 ### Phase 4: Domain-Specific Parsers
 **Goal**: Documents from SDLC workflows (code files, API specs, ADRs) and healthcare corpora (clinical documents) are parsed into semantically meaningful chunks that preserve the structure unique to each document type
@@ -143,11 +145,11 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 |-------|----------------|--------|-----------|
 | 1. Migration Stabilization | 4/4 | Complete |  |
 | 2. Access Control | 6/7 | In Progress|  |
-| 3. Document Management | 6/6 | Complete   | 2026-03-19 |
+| 3. Document Management | 6/8 | Gap Closure | - |
 | 4. Domain-Specific Parsers | 0/4 | Not started | - |
 | 5. Advanced Retrieval | 0/4 | Not started | - |
 | 6. Projects and Observability | 0/5 | Not started | - |
 
 ---
 *Roadmap created: 2026-03-18*
-*Last updated: 2026-03-18 after Phase 3 plan revision*
+*Last updated: 2026-03-19 after Phase 3 gap closure plans*
