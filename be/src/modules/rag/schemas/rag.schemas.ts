@@ -231,6 +231,18 @@ export const webCrawlSchema = z.object({
 })
 
 // ---------------------------------------------------------------------------
+// GraphRAG schemas
+// ---------------------------------------------------------------------------
+
+/**
+ * @description POST /api/rag/datasets/:id/graph/run — body schema for triggering GraphRAG indexing.
+ * Mode 'light' uses LazyGraphRAG (default); 'full' uses full GraphRAG with entity resolution and community detection.
+ */
+export const graphRunSchema = z.object({
+  mode: z.enum(['light', 'full']).default('light'),
+})
+
+// ---------------------------------------------------------------------------
 // ABAC Policy schemas
 // ---------------------------------------------------------------------------
 

@@ -26,6 +26,7 @@ import {
   updateDatasetPolicySchema,
   createVersionSchema,
   bulkMetadataSchema,
+  graphRunSchema,
 } from '../schemas/rag.schemas.js';
 
 const router = Router();
@@ -113,6 +114,10 @@ router.get('/datasets/:id/documents/:docId/logs', requireAuth, controller.getDoc
 
 // Knowledge graph data (visualization)
 router.get('/datasets/:id/graph', requireAuth, controller.getGraphData.bind(controller));
+
+// GraphRAG metrics and trigger endpoints
+router.get('/datasets/:datasetId/graph/metrics', requireAuth, controller.getGraphMetrics.bind(controller));
+router.post('/datasets/:datasetId/graph/run', requirePermission('manage_datasets'), validate(graphRunSchema), controller.triggerGraphRag.bind(controller));
 
 // Metadata management
 router.get('/datasets/:id/metadata', requireAuth, controller.getMetadata.bind(controller));

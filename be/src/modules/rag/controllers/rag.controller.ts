@@ -16,6 +16,7 @@ import { ragDocumentService } from '../services/rag-document.service.js';
 import { ragRedisService, getUuid } from '../services/rag-redis.service.js';
 import { ragStorageService } from '../services/rag-storage.service.js';
 import { ragSearchService } from '../services/rag-search.service.js';
+import { ragGraphragService } from '../services/rag-graphrag.service.js';
 import { cronService } from '@/shared/services/cron.service.js';
 import { log } from '@/shared/services/logger.service.js';
 import { ModelFactory } from '@/shared/models/factory.js';
@@ -1516,6 +1517,129 @@ export class RagController {
         } catch (error) {
             log.error('Failed to get graph data', { error: String(error) });
             res.status(500).json({ error: 'Failed to get graph data' });
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // GraphRAG Metrics & Trigger
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description GET /datasets/:datasetId/graph/metrics — Return graph entity, relation,
+     * and community counts plus the most recent build timestamp.
+     * Requires authentication.
+     * @param {Request} req - Express request with datasetId param
+     * @param {Response} res - Express response with graph metrics
+     * @returns {Promise<void>}
+     */
+    async getGraphMetrics(req: Request, res: Response): Promise<void> {
+        const { datasetId } = req.params
+        if (!datasetId) { res.status(400).json({ error: 'Dataset ID is required' }); return }
+
+        try {
+            // Strip dashes from UUID for OpenSearch kb_id format
+            const kbId = datasetId.replace(/-/g, '')
+            const metrics = await ragGraphragService.getGraphMetrics([kbId])
+
+            res.json({
+                entity_count: metrics.entityCount,
+                relation_count: metrics.relationCount,
+                community_count: metrics.communityCount,
+                last_built_at: metrics.lastBuiltAt,
+            })
+        } catch (error) {
+            log.error('Failed to get graph metrics', { error: String(error) })
+            res.status(500).json({ error: 'Failed to get graph metrics' })
+        }
+    }
+
+    /**
+     * @description POST /datasets/:datasetId/graph/run — Trigger GraphRAG indexing.
+     * Clears existing graph data (entities, relations, community reports) before
+     * creating a new task to prevent corrupted data from mixed Light/Full formats.
+     * Updates the dataset's parser_config.graphrag with the config shape expected
+     * by task_executor.py (use_graphrag, resolution, community, entity_types, method).
+     * LazyGraphRAG (light) is the default mode.
+     * Requires manage_datasets permission.
+     * @param {Request} req - Express request with datasetId param and mode body
+     * @param {Response} res - Express response with task info (202)
+     * @returns {Promise<void>}
+     */
+    async triggerGraphRag(req: Request, res: Response): Promise<void> {
+        const { datasetId } = req.params
+        if (!datasetId) { res.status(400).json({ error: 'Dataset ID is required' }); return }
+
+        try {
+            const mode: 'light' | 'full' = req.body.mode || 'light'
+            const kbId = datasetId.replace(/-/g, '')
+
+            // Check if a graphrag task is already running
+            const isRunning = await ragDocumentService.isAdvancedTaskRunning(datasetId, 'graphrag')
+            if (isRunning) {
+                res.status(409).json({ error: 'A GraphRAG task is already running for this dataset' })
+                return
+            }
+
+            // Clear existing graph data before rebuild to prevent mixed entity formats
+            await ragGraphragService.clearGraphData([kbId])
+
+            // Build graphrag config matching task_executor.py expectations
+            const graphragConfig = {
+                use_graphrag: true,
+                resolution: mode === 'full',
+                community: mode === 'full',
+                entity_types: ['organization', 'person', 'geo', 'event', 'category'],
+                method: mode === 'full' ? 'general' : 'light',
+            }
+
+            // Update dataset's parser_config.graphrag in the knowledgebase table
+            const kb = await ragDocumentService.getKnowledgebase(datasetId)
+            const parserConfig = typeof kb?.parser_config === 'string'
+                ? JSON.parse(kb.parser_config)
+                : (kb?.parser_config || {})
+            parserConfig.graphrag = graphragConfig
+
+            await ragDocumentService.updateKnowledgebase(datasetId, {
+                parser_config: JSON.stringify(parserConfig),
+            })
+
+            // Get documents to create task
+            const documents = await ragDocumentService.getDatasetDocuments(datasetId)
+            if (documents.length === 0) {
+                res.status(400).json({ error: 'No documents in dataset' })
+                return
+            }
+
+            // Create task record in PG
+            const taskId = getUuid()
+            await ragDocumentService.createTask({
+                id: taskId,
+                doc_id: documents[0]!.id,
+                from_page: 100000000,
+                to_page: 100000000,
+                task_type: 'graphrag',
+                progress: 0,
+                progress_msg: `${new Date().toLocaleTimeString('en-US', { hour12: false })} created GraphRAG task (${mode} mode)`,
+                begin_at: new Date().toISOString().replace('T', ' ').slice(0, 19),
+            })
+
+            // Update knowledgebase with task ID
+            await ragDocumentService.updateKnowledgebase(datasetId, {
+                graphrag_task_id: taskId,
+            })
+
+            // Queue to Redis Stream
+            const docIds = documents.map(d => d.id)
+            await ragRedisService.queueAdvancedTask('graphrag', documents[0]!.id, docIds)
+
+            res.status(202).json({
+                task_id: taskId,
+                mode,
+                message: 'GraphRAG indexing started',
+            })
+        } catch (error: any) {
+            log.error('Failed to trigger GraphRAG', { error: String(error) })
+            res.status(500).json({ error: error.message || 'Failed to trigger GraphRAG' })
         }
     }
 

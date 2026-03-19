@@ -562,6 +562,44 @@ export class RagGraphragService {
     }
   }
 
+  /**
+   * @description Delete all graph data (entities, relations, community reports)
+   * for the given knowledge base IDs. Used before rebuilding the graph to prevent
+   * corrupted data from mixed Light/Full entity formats.
+   * @param {string[]} kbIds - Knowledge base IDs to clear graph data for
+   * @returns {Promise<number>} Number of deleted documents
+   */
+  async clearGraphData(kbIds: string[]): Promise<number> {
+    if (kbIds.length === 0) return 0
+
+    const client = getClient()
+    const index = getIndexName()
+
+    try {
+      const res = await client.deleteByQuery({
+        index,
+        body: {
+          query: {
+            bool: {
+              must: [
+                { terms: { kb_id: kbIds } },
+                { terms: { knowledge_graph_kwd: ['entity', 'relation', 'community_report'] } },
+              ],
+            },
+          },
+        },
+        refresh: true,
+      })
+
+      const deleted = (res.body as Record<string, unknown>).deleted as number ?? 0
+      log.info('Cleared graph data for rebuild', { kbIds, deleted })
+      return deleted
+    } catch (err) {
+      log.warn('Failed to clear graph data', { error: String(err) })
+      return 0
+    }
+  }
+
   // ── Private helpers ──────────────────────────────────────────────────────
 
   /**
