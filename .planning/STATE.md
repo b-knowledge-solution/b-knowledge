@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 6 UI-SPEC approved
-last_updated: "2026-03-19T09:17:18.165Z"
-last_activity: "2026-03-19 — Plan 05-04 complete (FE integration: KG metrics, mode selector, Deep Research/RBAC toggles, SSE handling)"
+status: in_progress
+stopped_at: "Completed 06-01-PLAN.md"
+last_updated: "2026-03-19T11:02:20.000Z"
+last_activity: "2026-03-19 — Plan 06-01 complete (DB foundation: tenant_id on projects, query_log table, QueryLogService)"
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 26
-  completed_plans: 26
-  percent: 100
+  total_plans: 31
+  completed_plans: 27
+  percent: 87
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** Users can ask questions in natural language and get accurate, cited answers from their organization's knowledge base — with strict access control ensuring each team only sees what they're authorized to access.
-**Current focus:** Phase 5 — Advanced Retrieval
+**Current focus:** Phase 6 — Projects and Observability
 
 ## Current Position
 
-Phase: 5 of 6 (Advanced Retrieval)
-Plan: 4 of 4 in current phase
-Status: Phase Complete
-Last activity: 2026-03-19 — Plan 05-04 complete (FE integration: KG metrics, mode selector, Deep Research/RBAC toggles, SSE handling)
+Phase: 6 of 6 (Projects and Observability)
+Plan: 1 of 5 in current phase
+Status: Plan 06-01 Complete
+Last activity: 2026-03-19 — Plan 06-01 complete (DB foundation: tenant_id on projects, query_log table, QueryLogService)
 
-Progress: [██████████] 100%
+Progress: [████████░░] 87%
 
 ## Performance Metrics
 
@@ -75,6 +75,7 @@ Progress: [██████████] 100%
 | Phase 05 P02 | 8min | 2 tasks | 5 files |
 | Phase 05 P03 | 7min | 3 tasks | 3 files |
 | Phase 05 P04 | 14 | 2 tasks | 10 files |
+| Phase 06 P01 | 3min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,9 @@ Recent decisions affecting current work:
 - [Phase 05]: MetricCard as local component in KnowledgeGraphTab, not shared (KG-specific metrics display)
 - [Phase 05]: Deep Research events use ref+state sync pattern matching existing useChatStream approach
 - [Phase 05]: Existing reasoning state preserved in ChatAssistantConfig; only UI label changed to Deep Research
+- [Phase 06, Plan 01]: Backfill tenant_id from user_tenant with COALESCE 'default' fallback for orphaned projects
+- [Phase 06, Plan 01]: QueryLogService uses void promise + catch pattern for guaranteed non-blocking logging
+- [Phase 06, Plan 01]: getAccessibleProjects tenantId changed from optional to required for multi-tenant safety
 
 ### Pending Todos
 
@@ -154,6 +158,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T09:17:18.151Z
-Stopped at: Phase 6 UI-SPEC approved
-Resume file: .planning/phases/06-projects-and-observability/06-UI-SPEC.md
+Last session: 2026-03-19T11:02:20.000Z
+Stopped at: Completed 06-01-PLAN.md
+Resume file: .planning/phases/06-projects-and-observability/06-01-SUMMARY.md

@@ -58,13 +58,13 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Observability
 
-- [ ] **OBSV-01**: Query analytics — most common queries, failed retrievals, low-confidence answers
+- [x] **OBSV-01**: Query analytics — most common queries, failed retrievals, low-confidence answers
 - [ ] **OBSV-02**: RAG quality metrics dashboard — track retrieval precision, answer faithfulness, hallucination rate
 - [ ] **OBSV-03**: Answer feedback analytics — aggregate feedback signals for retrieval tuning insights
 
 ### Multi-Tenant Project Management
 
-- [ ] **PROJ-01**: Project CRUD — create, update, delete projects within an org
+- [x] **PROJ-01**: Project CRUD — create, update, delete projects within an org
 - [ ] **PROJ-02**: Project-dataset binding — map datasets to SDLC projects with team-level access
 - [ ] **PROJ-03**: Project member management — add/remove team members with project-scoped roles
 - [ ] **PROJ-04**: Cross-project search for authorized users — search across multiple projects with access enforcement
@@ -141,10 +141,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RETR-05 | Phase 5 | Complete |
 | RETR-06 | Phase 5 | Complete |
 | RETR-07 | Phase 5 | Complete |
-| OBSV-01 | Phase 6 | Pending |
+| OBSV-01 | Phase 6 | Complete |
 | OBSV-02 | Phase 6 | Pending |
 | OBSV-03 | Phase 6 | Pending |
-| PROJ-01 | Phase 6 | Pending |
+| PROJ-01 | Phase 6 | Complete |
 | PROJ-02 | Phase 6 | Pending |
 | PROJ-03 | Phase 6 | Pending |
 | PROJ-04 | Phase 6 | Pending |
