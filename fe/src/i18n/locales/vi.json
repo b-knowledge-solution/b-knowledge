@@ -500,7 +500,9 @@
     "toolsAvailable": "{{count}} công cụ có sẵn",
     "toolsAvailable_plural": "{{count}} công cụ có sẵn",
     "configInfo": "Cấu hình có thể được cập nhật trong",
-    "error": "Không thể tải công cụ hệ thống"
+    "error": "Không thể tải công cụ hệ thống",
+    "parsingSchedule": "Lịch phân tích",
+    "parsingScheduleDesc": "Tự động phân tích tài liệu đang chờ theo lịch trình. Hữu ích cho xử lý ngoài giờ."
   },
   "systemMonitor": {
     "title": "Giám sát Hệ thống",
@@ -1576,7 +1578,25 @@
     "originalVersion": "Phiên bản gốc",
     "originalVersionDesc": "Đây là phiên bản duy nhất. Tải lên phiên bản mới từ menu tài liệu.",
     "versionInfo": "Thông tin phiên bản",
-    "versionCreatedBy": "Tạo bởi {{user}}"
+    "versionCreatedBy": "Tạo bởi {{user}}",
+    "autoExtraction": "Trích xuất tự động",
+    "autoKeywords": "Từ khóa tự động",
+    "autoKeywordsDesc": "Tự động trích xuất từ khóa cho mỗi đoạn",
+    "autoQuestions": "Câu hỏi tự động",
+    "autoQuestionsDesc": "Tự động tạo câu hỏi cho mỗi đoạn",
+    "enableMetadata": "Trích xuất metadata",
+    "enableMetadataDesc": "Bật trích xuất metadata dựa trên LLM theo schema bên dưới",
+    "metadataSchema": "Schema Metadata",
+    "addField": "Thêm trường",
+    "fieldKey": "Khóa",
+    "fieldDescription": "Mô tả cho trích xuất LLM",
+    "fieldEnum": "Giá trị enum (phân cách bằng dấu phẩy, tùy chọn)",
+    "editTags": "Sửa nhãn",
+    "applyTagChanges": "Áp dụng thay đổi nhãn",
+    "mergeMode": "Gộp",
+    "overwriteMode": "Ghi đè",
+    "noMetadata": "Không có metadata",
+    "noMetadataDesc": "Thêm nhãn tùy chỉnh hoặc bật trích xuất tự động trong cài đặt parser."
   },
   "versions": {
     "title": "Phiên bản",
@@ -2159,7 +2179,9 @@
     "searchAcrossDatasets": "Search across all datasets",
     "feedbackThankYou": "Cam on ban da gop y",
     "helpful": "Huu ich",
-    "notHelpful": "Khong huu ich"
+    "notHelpful": "Khong huu ich",
+    "filterByTags": "Lọc theo nhãn",
+    "clearFilters": "Xóa bộ lọc"
   },
   "searchAdmin": {
     "title": "Ứng dụng tìm kiếm",

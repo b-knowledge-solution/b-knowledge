@@ -19,6 +19,7 @@ import SearchResults from '../components/SearchResults'
 import SearchFilters from '../components/SearchFilters'
 import SearchDocumentPreviewDrawer from '../components/SearchDocumentPreviewDrawer'
 import SearchMindMapDrawer from '../components/SearchMindMapDrawer'
+import TagFilterChips from '../components/TagFilterChips'
 import { searchApi } from '../api/searchApi'
 import { useAccessibleSearchApps } from '../api/searchQueries'
 import { useSearchStream } from '../hooks/useSearchStream'
@@ -59,6 +60,9 @@ function DatasetSearchPage() {
 
   // Document filter state
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([])
+
+  // Tag filter state for metadata filtering
+  const [tagFilters, setTagFilters] = useState<Record<string, string>>({})
 
   // Mind map drawer state
   const [mindMapOpen, setMindMapOpen] = useState(false)
@@ -129,6 +133,24 @@ function DatasetSearchPage() {
   }, [isFirstVisit])
 
   /**
+   * Build metadata_filter conditions from active tag filters.
+   * Each active tag becomes an 'eq' condition on 'tag_kwd' field.
+   * This format is consumed by buildMetadataFilters() in rag-search.service.ts.
+   */
+  const buildTagMetadataFilter = (tags: Record<string, string>) => {
+    const entries = Object.entries(tags)
+    if (entries.length === 0) return undefined
+    return {
+      logic: 'and' as const,
+      conditions: entries.map(([key, value]) => ({
+        name: 'tag_kwd',
+        comparison_operator: 'eq',
+        value: `${key}:${value}`,
+      })),
+    }
+  }
+
+  /**
    * Handle search submission.
    * @param query - Search query text
    */
@@ -141,6 +163,7 @@ function DatasetSearchPage() {
     setPaginatedTotal(0)
     searchStream.askSearch(searchAppId, query, {
       ...filters,
+      metadata_filter: buildTagMetadataFilter(tagFilters),
       page: 1,
       page_size: pageSize,
     })
@@ -157,6 +180,26 @@ function DatasetSearchPage() {
       setPage(1)
       searchStream.askSearch(searchAppId, searchStream.lastQuery, {
         ...newFilters,
+        metadata_filter: buildTagMetadataFilter(tagFilters),
+        page: 1,
+        page_size: pageSize,
+      })
+    }
+  }
+
+  /**
+   * Handle tag filter changes from TagFilterChips.
+   * Re-runs search with updated metadata_filter conditions.
+   * @param newTags - Updated tag filter key-value pairs
+   */
+  const handleTagFilterChange = (newTags: Record<string, string>) => {
+    setTagFilters(newTags)
+    // Re-run search with updated tag filters if a query exists
+    if (searchStream.lastQuery && searchAppId) {
+      setPage(1)
+      searchStream.askSearch(searchAppId, searchStream.lastQuery, {
+        ...filters,
+        metadata_filter: buildTagMetadataFilter(newTags),
         page: 1,
         page_size: pageSize,
       })
@@ -180,6 +223,7 @@ function DatasetSearchPage() {
     setPage(1)
     searchStream.askSearch(searchAppId, question, {
       ...filters,
+      metadata_filter: buildTagMetadataFilter(tagFilters),
       page: 1,
       page_size: pageSize,
     })
@@ -196,6 +240,7 @@ function DatasetSearchPage() {
       setPage(1)
       searchStream.askSearch(searchAppId, searchStream.lastQuery, {
         ...filters,
+        metadata_filter: buildTagMetadataFilter(tagFilters),
         page: 1,
         page_size: pageSize,
       })
@@ -274,6 +319,16 @@ function DatasetSearchPage() {
               defaultValue={searchStream.lastQuery}
               className={hasSearched ? 'max-w-xl' : 'max-w-2xl'}
             />
+
+            {/* Tag filter chips (only after search) */}
+            {hasSearched && (
+              <div className="mt-3 w-full max-w-xl px-4">
+                <TagFilterChips
+                  activeFilters={tagFilters}
+                  onFilterChange={handleTagFilterChange}
+                />
+              </div>
+            )}
 
             {/* Filter toggle, app badge, and mind map button (only after search) */}
             {hasSearched && (

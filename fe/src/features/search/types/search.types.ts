@@ -65,6 +65,15 @@ export interface SearchFilters {
   page?: number
   /** Pagination: results per page */
   page_size?: number
+  /** Metadata tag filter conditions for OpenSearch buildMetadataFilters() */
+  metadata_filter?: {
+    logic: 'and' | 'or'
+    conditions: Array<{
+      name: string
+      comparison_operator: string
+      value: string
+    }>
+  } | undefined
 }
 
 // ============================================================================

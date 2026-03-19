@@ -500,7 +500,9 @@
     "toolsAvailable": "{{count}}個のツールが利用可能",
     "toolsAvailable_plural": "{{count}}個のツールが利用可能",
     "configInfo": "設定は次の場所で更新できます",
-    "error": "システムツールの読み込みに失敗しました"
+    "error": "システムツールの読み込みに失敗しました",
+    "parsingSchedule": "パーススケジュール",
+    "parsingScheduleDesc": "キュー内のドキュメントをスケジュールに従って自動的にパースします。オフ時間の処理に便利です。"
   },
   "systemMonitor": {
     "title": "システムモニター",
@@ -1562,7 +1564,25 @@
     "originalVersion": "オリジナルバージョン",
     "originalVersionDesc": "これは唯一のバージョンです。ドキュメントメニューから新しいバージョンをアップロードしてください。",
     "versionInfo": "バージョン情報",
-    "versionCreatedBy": "{{user}}が作成"
+    "versionCreatedBy": "{{user}}が作成",
+    "autoExtraction": "自動抽出",
+    "autoKeywords": "自動キーワード",
+    "autoKeywordsDesc": "チャンクごとにキーワードを自動抽出",
+    "autoQuestions": "自動質問",
+    "autoQuestionsDesc": "チャンクごとに質問を自動生成",
+    "enableMetadata": "メタデータ抽出",
+    "enableMetadataDesc": "以下のスキーマに基づくLLMメタデータ抽出を有効にする",
+    "metadataSchema": "メタデータスキーマ",
+    "addField": "フィールド追加",
+    "fieldKey": "キー",
+    "fieldDescription": "LLM抽出用の説明",
+    "fieldEnum": "列挙値（カンマ区切り、任意）",
+    "editTags": "タグ編集",
+    "applyTagChanges": "タグ変更を適用",
+    "mergeMode": "マージ",
+    "overwriteMode": "上書き",
+    "noMetadata": "メタデータなし",
+    "noMetadataDesc": "カスタムタグを追加するか、パーサー設定で自動抽出を有効にしてください。"
   },
   "versions": {
     "title": "バージョン",
@@ -2145,7 +2165,9 @@
     "searchAcrossDatasets": "Search across all datasets",
     "feedbackThankYou": "フィードバックありがとうございます",
     "helpful": "役に立った",
-    "notHelpful": "役に立たなかった"
+    "notHelpful": "役に立たなかった",
+    "filterByTags": "タグでフィルター",
+    "clearFilters": "フィルターをクリア"
   },
   "searchAdmin": {
     "title": "検索アプリ",

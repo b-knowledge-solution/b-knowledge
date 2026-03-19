@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import { getSystemTools } from '../api/systemToolsApi';
 import SystemToolCard from '../components/SystemToolCard';
+import CronSchedulerSettings from '../components/CronSchedulerSettings';
 import { useAuth } from '@/features/auth';
 
 // ============================================================================
@@ -121,6 +122,11 @@ const SystemToolsPage = () => {
                             ))}
                         </div>
                     )}
+
+                    {/* Parsing Scheduler Section */}
+                    <div className="mt-8">
+                        <CronSchedulerSettings />
+                    </div>
 
                     {/* Footer info */}
                     {tools.length > 0 && (

@@ -497,7 +497,9 @@
     "toolsAvailable": "{{count}} tool available",
     "toolsAvailable_plural": "{{count}} tools available",
     "configInfo": "Configuration can be updated in",
-    "error": "Failed to load system tools"
+    "error": "Failed to load system tools",
+    "parsingSchedule": "Parsing Schedule",
+    "parsingScheduleDesc": "Automatically parse queued documents on a schedule. Useful for off-hours processing."
   },
   "systemMonitor": {
     "title": "System Monitor",
@@ -1592,7 +1594,25 @@
     "originalVersion": "Original version",
     "originalVersionDesc": "This is the only version. Upload a new version from the document menu.",
     "versionInfo": "Version Information",
-    "versionCreatedBy": "Created by {{user}}"
+    "versionCreatedBy": "Created by {{user}}",
+    "autoExtraction": "Auto-Extraction",
+    "autoKeywords": "Auto-keywords",
+    "autoKeywordsDesc": "Automatically extract keywords per chunk",
+    "autoQuestions": "Auto-questions",
+    "autoQuestionsDesc": "Automatically generate questions per chunk",
+    "enableMetadata": "Metadata extraction",
+    "enableMetadataDesc": "Enable LLM-based metadata extraction using the schema below",
+    "metadataSchema": "Metadata Schema",
+    "addField": "Add Field",
+    "fieldKey": "Key",
+    "fieldDescription": "Description for LLM extraction",
+    "fieldEnum": "Enum values (comma-separated, optional)",
+    "editTags": "Edit Tags",
+    "applyTagChanges": "Apply Tag Changes",
+    "mergeMode": "Merge",
+    "overwriteMode": "Overwrite",
+    "noMetadata": "No metadata",
+    "noMetadataDesc": "Add custom tags or enable auto-extraction in parser settings."
   },
   "versions": {
     "title": "Versions",
@@ -2162,7 +2182,9 @@
     "selectApp": "Select search app",
     "feedbackThankYou": "Thank you for your feedback",
     "helpful": "Helpful",
-    "notHelpful": "Not helpful"
+    "notHelpful": "Not helpful",
+    "filterByTags": "Filter by tags",
+    "clearFilters": "Clear filters"
   },
   "searchAdmin": {
     "title": "Search Apps",
