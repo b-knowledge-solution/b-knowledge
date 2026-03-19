@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** Users can ask questions in natural language and get accurate, cited answers from their organization's knowledge base — with strict access control ensuring each team only sees what they're authorized to access.
-**Current focus:** Phase 4 — Domain-Specific Parsers
+**Current focus:** Phase 5 — Advanced Retrieval
 
 ## Current Position
 
-Phase: 4 of 6 (Domain-Specific Parsers)
-Plan: 2 of 3 in current phase
+Phase: 5 of 6 (Advanced Retrieval)
+Plan: 2 of 4 in current phase
 Status: In Progress
-Last activity: 2026-03-19 — Plan 04-02 complete (OpenAPI endpoint parser and ADR section parser)
+Last activity: 2026-03-19 — Plan 05-02 complete (Budget-aware deep research and cross-dataset search)
 
 Progress: [██████████] 100%
 
@@ -71,6 +71,8 @@ Progress: [██████████] 100%
 | Phase 03 P06 | 6min | 2 tasks | 15 files |
 | Phase 04 P01 | 10min | 2 tasks | 11 files |
 | Phase 04 P02 | 9min | 2 tasks | 10 files |
+| Phase 05 P01 | 9min | 2 tasks | 10 files |
+| Phase 05 P02 | 8min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -124,6 +126,12 @@ Recent decisions affecting current work:
 - [Phase 04]: Added openapi-spec-validator as explicit prance validation backend dependency
 - [Phase 04]: ADR options pattern checked before consequences for correct MADR 'Pros and Cons of the Options' classification
 - [Phase 04]: ADR sub-headings (H3+) merged into parent H2 section to preserve section integrity
+- [Phase 05, Plan 01]: Vietnamese detection uses diacritical mark regex for short text, franc trigrams for long text
+- [Phase 05, Plan 01]: Graph data cleared before rebuild to prevent mixed Light/Full entity format corruption
+- [Phase 05, Plan 01]: GraphRAG config shape matches task_executor.py exactly: use_graphrag, resolution, community, entity_types, method
+- [Phase 05, Plan 02]: BudgetTracker records tokens via approxTokens (chars/4) after each LLM call -- simple heuristic avoids tokenizer dependency
+- [Phase 05, Plan 02]: Cross-dataset search uses OpenSearch terms filter with multiple kb_ids in single query (pool model shared index)
+- [Phase 05, Plan 02]: KB expansion capped at 20 to prevent OpenSearch query size limit issues (Pitfall 6)
 
 ### Pending Todos
 
@@ -138,6 +146,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T06:20:11.165Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-advanced-retrieval/05-CONTEXT.md
+Last session: 2026-03-19T07:21:00Z
+Stopped at: Completed 05-02-PLAN.md
+Resume file: .planning/phases/05-advanced-retrieval/05-02-SUMMARY.md
