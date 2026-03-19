@@ -8,6 +8,7 @@ import { projectCategoryService } from '../services/project-category.service.js'
 import { projectChatService } from '../services/project-chat.service.js'
 import { projectSearchService } from '../services/project-search.service.js'
 import { projectSyncService } from '../services/project-sync.service.js'
+import { ModelFactory } from '@/shared/models/factory.js'
 import { log } from '@/shared/services/logger.service.js'
 import { getClientIp } from '@/shared/utils/ip.js'
 import { getTenantId } from '@/shared/middleware/tenant.middleware.js'
@@ -747,6 +748,183 @@ export class ProjectsController {
     } catch (error) {
       log.error('Failed to delete entity permission', { error: String(error) })
       res.status(500).json({ error: 'Failed to delete entity permission' })
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Member Management (PROJ-03)
+  // -------------------------------------------------------------------------
+
+  /**
+   * @description GET /projects/:id/members - List all user members of a project with profile details
+   * @param {Request} req - Express request with project ID
+   * @param {Response} res - Express response with members array
+   * @returns {Promise<void>}
+   */
+  async getMembers(req: Request, res: Response): Promise<void> {
+    try {
+      const members = await projectsService.getProjectMembers(req.params['id']!)
+      res.json(members)
+    } catch (error) {
+      log.error('Failed to list project members', { error: String(error) })
+      res.status(500).json({ error: 'Failed to list project members' })
+    }
+  }
+
+  /**
+   * @description POST /projects/:id/members - Add a user as a project member with default view permissions
+   * @param {Request} req - Express request with project ID and { user_id } body
+   * @param {Response} res - Express response (201 with created permission)
+   * @returns {Promise<void>}
+   */
+  async addMember(req: Request, res: Response): Promise<void> {
+    try {
+      const user = getUserContext(req)
+      // Guard: require authentication for member management
+      if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
+      const tenantId = getTenantId(req) || ''
+      const permission = await projectsService.addMember(req.params['id']!, req.body.user_id, user.id, tenantId)
+      res.status(201).json(permission)
+    } catch (error: any) {
+      log.error('Failed to add project member', { error: String(error) })
+      // Return 404 for user-not-found errors, 500 otherwise
+      const status = error.message?.includes('not found') ? 404 : 500
+      res.status(status).json({ error: error.message || 'Failed to add member' })
+    }
+  }
+
+  /**
+   * @description DELETE /projects/:id/members/:userId - Remove a user from a project
+   * @param {Request} req - Express request with project ID and user ID params
+   * @param {Response} res - Express response (204 on success)
+   * @returns {Promise<void>}
+   */
+  async removeMember(req: Request, res: Response): Promise<void> {
+    try {
+      const user = getUserContext(req)
+      // Guard: require authentication for member removal
+      if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
+      const tenantId = getTenantId(req) || ''
+      await projectsService.removeMember(req.params['id']!, req.params['userId']!, user.id, tenantId)
+      res.status(204).send()
+    } catch (error: any) {
+      log.error('Failed to remove project member', { error: String(error) })
+      // Return 403 if trying to remove project creator
+      const status = error.message?.includes('Cannot remove') ? 403 : 500
+      res.status(status).json({ error: error.message || 'Failed to remove member' })
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Dataset Binding (PROJ-02)
+  // -------------------------------------------------------------------------
+
+  /**
+   * @description POST /projects/:id/datasets/bind - Bind multiple datasets to a project in one request
+   * @param {Request} req - Express request with project ID and { dataset_ids } body
+   * @param {Response} res - Express response (200 on success)
+   * @returns {Promise<void>}
+   */
+  async bindDatasets(req: Request, res: Response): Promise<void> {
+    try {
+      const user = getUserContext(req)
+      // Guard: require authentication for dataset binding
+      if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
+      const tenantId = getTenantId(req) || ''
+      await projectsService.bindDatasets(req.params['id']!, req.body.dataset_ids, user.id, tenantId)
+      res.json({ message: 'Datasets bound successfully' })
+    } catch (error: any) {
+      log.error('Failed to bind datasets', { error: String(error) })
+      res.status(500).json({ error: error.message || 'Failed to bind datasets' })
+    }
+  }
+
+  /**
+   * @description DELETE /projects/:id/datasets/:datasetId/unbind - Unbind a dataset from a project
+   * @param {Request} req - Express request with project ID and dataset ID params
+   * @param {Response} res - Express response (204 on success)
+   * @returns {Promise<void>}
+   */
+  async unbindDataset(req: Request, res: Response): Promise<void> {
+    try {
+      const user = getUserContext(req)
+      // Guard: require authentication for dataset unbinding
+      if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
+      const tenantId = getTenantId(req) || ''
+      await projectsService.unbindDataset(req.params['id']!, req.params['datasetId']!, user.id, tenantId)
+      res.status(204).send()
+    } catch (error) {
+      log.error('Failed to unbind dataset', { error: String(error) })
+      res.status(500).json({ error: 'Failed to unbind dataset' })
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Activity Feed
+  // -------------------------------------------------------------------------
+
+  /**
+   * @description GET /projects/:id/activity - Get paginated audit activity feed for a project
+   * @param {Request} req - Express request with project ID and optional limit/offset query params
+   * @param {Response} res - Express response with { data, total } payload
+   * @returns {Promise<void>}
+   */
+  async getActivity(req: Request, res: Response): Promise<void> {
+    try {
+      const tenantId = getTenantId(req) || ''
+      const limit = Number(req.query['limit']) || 20
+      const offset = Number(req.query['offset']) || 0
+      const result = await projectsService.getProjectActivity(req.params['id']!, tenantId, limit, offset)
+      res.json(result)
+    } catch (error) {
+      log.error('Failed to get project activity', { error: String(error) })
+      res.status(500).json({ error: 'Failed to get project activity' })
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Project Datasets (enhanced listing with dataset name)
+  // -------------------------------------------------------------------------
+
+  /**
+   * @description GET /projects/:id/datasets/details - Get project datasets with dataset name via JOIN.
+   *   Returns richer dataset info than the basic listDatasets endpoint.
+   * @param {Request} req - Express request with project ID
+   * @param {Response} res - Express response with enriched dataset link records
+   * @returns {Promise<void>}
+   */
+  async getProjectDatasets(req: Request, res: Response): Promise<void> {
+    try {
+      const datasets = await ModelFactory.projectDataset.findByProjectId(req.params['id']!)
+      res.json(datasets)
+    } catch (error) {
+      log.error('Failed to get project datasets', { error: String(error) })
+      res.status(500).json({ error: 'Failed to get project datasets' })
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Cross-Project Dataset Resolver (PROJ-04)
+  // -------------------------------------------------------------------------
+
+  /**
+   * @description GET /cross-project-datasets - Resolve all dataset IDs accessible to the current user
+   *   across all their projects. Used by search/chat to determine searchable scope.
+   * @param {Request} req - Express request with authenticated user
+   * @param {Response} res - Express response with { dataset_ids: string[] }
+   * @returns {Promise<void>}
+   */
+  async getCrossProjectDatasets(req: Request, res: Response): Promise<void> {
+    try {
+      const user = getUserContext(req)
+      // Guard: require authentication for cross-project resolution
+      if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
+      const tenantId = getTenantId(req) || ''
+      const datasetIds = await projectsService.resolveProjectDatasets(user.id, tenantId)
+      res.json({ dataset_ids: datasetIds })
+    } catch (error) {
+      log.error('Failed to resolve cross-project datasets', { error: String(error) })
+      res.status(500).json({ error: 'Failed to resolve cross-project datasets' })
     }
   }
 }

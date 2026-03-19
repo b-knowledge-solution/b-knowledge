@@ -4,7 +4,7 @@
  */
 import { Router } from 'express'
 import { ProjectsController } from '../controllers/projects.controller.js'
-import { requireAuth, requireAbility } from '@/shared/middleware/auth.middleware.js'
+import { requireAuth, requireAbility, requireRole } from '@/shared/middleware/auth.middleware.js'
 import { requireTenant } from '@/shared/middleware/tenant.middleware.js'
 import { validate } from '@/shared/middleware/validate.middleware.js'
 import {
@@ -32,10 +32,19 @@ import {
   createSyncConfigSchema,
   updateSyncConfigSchema,
   createEntityPermissionSchema,
+  addMemberSchema,
+  memberParamSchema,
+  bindDatasetsSchema,
+  activityQuerySchema,
 } from '../schemas/projects.schemas.js'
 
 const router = Router()
 const controller = new ProjectsController()
+
+// -------------------------------------------------------------------------
+// Cross-Project Dataset Resolver — must be before /:id to avoid param collision
+// -------------------------------------------------------------------------
+router.get('/cross-project-datasets', requireAuth, requireTenant, controller.getCrossProjectDatasets.bind(controller))
 
 // -------------------------------------------------------------------------
 // Projects CRUD — tenant-scoped with CASL ability checks
@@ -112,5 +121,23 @@ router.delete('/:id/sync-configs/:configId', requireAuth, requireTenant, require
 router.get('/:id/entity-permissions', requireAuth, requireTenant, requireAbility('read', 'Project'), controller.listEntityPermissions.bind(controller))
 router.post('/:id/entity-permissions', requireAuth, requireTenant, requireAbility('manage', 'Project'), validate({ params: projectIdParamSchema, body: createEntityPermissionSchema }), controller.createEntityPermission.bind(controller))
 router.delete('/:id/entity-permissions/:permId', requireAuth, requireTenant, requireAbility('manage', 'Project'), controller.deleteEntityPermission.bind(controller))
+
+// -------------------------------------------------------------------------
+// Members — admin/leader can add/remove, all auth users can list
+// -------------------------------------------------------------------------
+router.get('/:id/members', requireAuth, requireTenant, requireAbility('read', 'Project'), controller.getMembers.bind(controller))
+router.post('/:id/members', requireAuth, requireTenant, requireRole('admin', 'leader'), validate({ params: projectIdParamSchema, body: addMemberSchema }), controller.addMember.bind(controller))
+router.delete('/:id/members/:userId', requireAuth, requireTenant, requireRole('admin', 'leader'), controller.removeMember.bind(controller))
+
+// -------------------------------------------------------------------------
+// Dataset Binding — admin/leader can bind/unbind
+// -------------------------------------------------------------------------
+router.post('/:id/datasets/bind', requireAuth, requireTenant, requireRole('admin', 'leader'), validate({ params: projectIdParamSchema, body: bindDatasetsSchema }), controller.bindDatasets.bind(controller))
+router.delete('/:id/datasets/:datasetId/unbind', requireAuth, requireTenant, requireRole('admin', 'leader'), controller.unbindDataset.bind(controller))
+
+// -------------------------------------------------------------------------
+// Activity Feed — paginated audit log scoped to project
+// -------------------------------------------------------------------------
+router.get('/:id/activity', requireAuth, requireTenant, validate({ query: activityQuerySchema }), controller.getActivity.bind(controller))
 
 export default router
