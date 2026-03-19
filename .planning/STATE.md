@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 4 of 6 (Domain-Specific Parsers)
-Plan: 1 of 3 in current phase
+Plan: 3 of 3 in current phase
 Status: In Progress
-Last activity: 2026-03-19 — Plan 04-01 complete (code-aware parser with tree-sitter AST chunking)
+Last activity: 2026-03-19 — Plan 04-03 complete (clinical classifier and FE parser registration)
 
 Progress: [██████████] 100%
 
@@ -70,6 +70,7 @@ Progress: [██████████] 100%
 | Phase 03 P07 | 2min | 1 tasks | 1 files |
 | Phase 03 P06 | 6min | 2 tasks | 15 files |
 | Phase 04 P01 | 10min | 2 tasks | 11 files |
+| Phase 04 P03 | 8min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,7 @@ Recent decisions affecting current work:
 - [Phase 3, Plan 06]: version_label is nullable text (max 128), separate from integer version_number kept for pagerank boost
 - [Phase 4, Plan 01]: Mock rag_tokenizer in tests via sys.modules patching to avoid heavy NLP dependency chain
 - [Phase 4, Plan 01]: decorated_definition wrapping class_definition treated as class scope, recursive container traversal for nested methods
+- [Phase 4, Plan 03]: Clinical classification runs as post-parse step in task_executor (not inside chunk()) following auto_keywords async pattern
 
 ### Pending Todos
 
@@ -133,6 +135,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T05:43:38Z
-Stopped at: Completed 04-01-PLAN.md
-Resume file: .planning/phases/04-domain-specific-parsers/04-01-SUMMARY.md
+Last session: 2026-03-19T05:55:20Z
+Stopped at: Completed 04-03-PLAN.md
+Resume file: .planning/phases/04-domain-specific-parsers/04-03-SUMMARY.md
