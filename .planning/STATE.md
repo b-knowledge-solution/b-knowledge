@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3 UI-SPEC approved
-last_updated: "2026-03-19T02:55:37.921Z"
-last_activity: 2026-03-18 — Plan 02-06 complete (audit events, role API, project ABAC)
+stopped_at: Completed 03-04-PLAN.md
+last_updated: "2026-03-19T03:19:22.289Z"
+last_activity: 2026-03-19 — Plan 03-04 complete (bulk metadata API, tag aggregation, parsing scheduler)
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 17
-  completed_plans: 14
+  completed_plans: 15
   percent: 82
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 3 of 6 (Document Management)
-Plan: 3 of 6 in current phase
+Plan: 5 of 6 in current phase
 Status: In Progress
-Last activity: 2026-03-19 — Plan 03-02 complete (version upload UI, VersionBadge, i18n)
+Last activity: 2026-03-19 — Plan 03-04 complete (bulk metadata API, tag aggregation, parsing scheduler)
 
 Progress: [████████░░] 82%
 
@@ -64,6 +64,7 @@ Progress: [████████░░] 82%
 | Phase 03 P01 | 9min | 2 tasks | 7 files |
 | Phase 03 P02 | 12min | 2 tasks | 13 files |
 | Phase 03 P00 | 2min | 1 tasks | 2 files |
+| Phase 03 P04 | 12min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -102,6 +103,9 @@ Recent decisions affecting current work:
 - [Phase 3, Plan 00]: Followed existing rag.service.test.ts mock patterns (vi.hoisted, Proxy-based knex mock) for Wave 0 scaffolds
 - [Phase 3, Plan 02]: Kebab dropdown menu pattern for extensible per-row actions in DocumentTable
 - [Phase 3, Plan 02]: VersionBadge null-safe pattern: returns null for non-version datasets (no conditional wrapper needed)
+- [Phase 03]: Bulk metadata uses jsonb_set with COALESCE for merge mode to preserve existing tags
+- [Phase 03]: Parsing scheduler uses lazy dynamic imports to avoid circular dependency with rag modules
+- [Phase 03]: System config API for parsing scheduler placed under /rag/system/config namespace
 
 ### Pending Todos
 
@@ -116,6 +120,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T03:17:00Z
-Stopped at: Completed 03-02-PLAN.md
-Resume file: .planning/phases/03-document-management/03-03-PLAN.md
+Last session: 2026-03-19T03:19:22.281Z
+Stopped at: Completed 03-04-PLAN.md
+Resume file: None
