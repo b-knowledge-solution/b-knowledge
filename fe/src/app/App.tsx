@@ -52,6 +52,7 @@ const ProjectListPage = lazy(() => import('@/features/projects/pages/ProjectList
 const ProjectDetailPage = lazy(() => import('@/features/projects/pages/ProjectDetailPage'));
 const LLMProviderPage = lazy(() => import('@/features/llm-provider/pages/LLMProviderPage'));
 const DocumentReviewerPage = lazy(() => import('@/features/datasets/pages/DocumentReviewerPage'));
+const ChunkDetailPage = lazy(() => import('@/features/datasets/pages/ChunkDetailPage'));
 
 // ============================================================================
 // Loading Component
@@ -154,6 +155,13 @@ function App() {
                 <FeatureErrorBoundary>
                   <RoleRoute allowedRoles={['admin', 'leader']}>
                     <DocumentReviewerPage />
+                  </RoleRoute>
+                </FeatureErrorBoundary>
+              } />
+              <Route path="data-studio/datasets/:id/documents/:docId/chunks" element={
+                <FeatureErrorBoundary>
+                  <RoleRoute allowedRoles={['admin', 'leader']}>
+                    <ChunkDetailPage />
                   </RoleRoute>
                 </FeatureErrorBoundary>
               } />

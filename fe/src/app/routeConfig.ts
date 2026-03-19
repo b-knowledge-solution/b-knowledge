@@ -123,6 +123,10 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     titleKey: 'datasetSettings.chunks.title',
     fullBleed: true,
   },
+  '/data-studio/datasets/:id/documents/:docId/chunks': {
+    titleKey: 'datasets.chunkDetail',
+    fullBleed: true,
+  },
 };
 
 // ============================================================================
@@ -140,7 +144,10 @@ export function getRouteMetadata(pathname: string): RouteMetadata {
     return ROUTE_CONFIG[pathname]!;
   }
 
-  // Dynamic route prefix match
+  // Dynamic route prefix match — more specific paths checked first
+  if (pathname.match(/^\/data-studio\/datasets\/[^/]+\/documents\/[^/]+\/chunks$/)) {
+    return ROUTE_CONFIG['/data-studio/datasets/:id/documents/:docId/chunks']!;
+  }
   if (pathname.startsWith('/data-studio/datasets/')) {
     return ROUTE_CONFIG['/data-studio/datasets']!;
   }
