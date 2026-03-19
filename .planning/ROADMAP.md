@@ -145,10 +145,11 @@ Plans:
   2. Clicking a search result source opens SearchResultDocDialog with document preview
   3. During Deep Research, user sees progressive sub-query status and budget warnings in chat UI
   4. Cross-dataset search applies field-level ABAC policy conditions (buildOpenSearchAbacFilters called, not empty array)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 07-01: Wire document viewer components + ABAC filter fix + Deep Research progress UI (DOCM-02, RETR-04, RETR-06, RETR-07)
+- [ ] 07-01-PLAN.md — FE: Wire CitationDocDrawer into ChatPage, SearchResultDocDialog into SearchPage, create DeepResearchProgress component, i18n (DOCM-02, RETR-04, RETR-06)
+- [ ] 07-02-PLAN.md — BE: Call buildOpenSearchAbacFilters with dataset policy_rules in cross-dataset search (RETR-07)
 
 ## Progress
 
@@ -163,8 +164,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 4. Domain-Specific Parsers | 2/3 | In Progress|  |
 | 5. Advanced Retrieval | 3/4 | In Progress|  |
 | 6. Projects and Observability | 5/5 | Complete   | 2026-03-19 |
-| 7. Milestone Gap Closure | 0/1 | Not started | - |
+| 7. Milestone Gap Closure | 0/2 | Not started | - |
 
 ---
 *Roadmap created: 2026-03-18*
-*Last updated: 2026-03-19 after Phase 6 planning*
+*Last updated: 2026-03-19 after Phase 7 planning*
