@@ -171,6 +171,10 @@ export const PARSER_OPTIONS = [
   { value: 'picture', label: 'Picture' },
   { value: 'audio', label: 'Audio' },
   { value: 'email', label: 'Email' },
+  { value: 'code', label: 'Code' },
+  { value: 'openapi', label: 'API Spec' },
+  { value: 'adr', label: 'ADR' },
+  { value: 'clinical', label: 'Clinical' },
 ] as const;
 
 /** PDF layout recognition engine options */
@@ -285,6 +289,42 @@ export const PARSER_DESCRIPTIONS: Record<string, { title: string; description: s
       'This method parses email files.\n' +
       '• Extracts headers, body, and attachments as separate chunks.',
     formats: 'Supported: EML.',
+  },
+  code: {
+    title: '"Code" Chunking method description',
+    description:
+      'This method parses source code files using AST analysis.\n' +
+      '• Chunks at function and class boundaries.\n' +
+      '• Preserves import context as file-level metadata.\n' +
+      '• Extracts function name, class name, parameters, and return type as metadata.',
+    formats: 'Supported: PY, JS, TS, TSX, JSX, Java, Go, Rust, Ruby, C, C++, C#, PHP, Swift, Kotlin, Scala, Lua, Bash, R, Dart, Vue, Svelte.',
+  },
+  openapi: {
+    title: '"API Spec" Chunking method description',
+    description:
+      'This method parses OpenAPI and Swagger specification files.\n' +
+      '• Creates one chunk per API endpoint (path + method).\n' +
+      '• Resolves schema references and inlines them in each chunk.\n' +
+      '• Extracts endpoint path, method, operation ID, and tags as metadata.',
+    formats: 'Supported: YAML, JSON (OpenAPI 3.x, Swagger 2.0).',
+  },
+  adr: {
+    title: '"ADR" Chunking method description',
+    description:
+      'This method parses Architecture Decision Records.\n' +
+      '• Detects MADR, Nygard, and Y-statement formats.\n' +
+      '• Creates one chunk per section (Context, Decision, Consequences).\n' +
+      '• Extracts ADR status, title, and date as metadata.',
+    formats: 'Supported: MD, TXT.',
+  },
+  clinical: {
+    title: '"Clinical" Chunking method description',
+    description:
+      'This method parses clinical and healthcare documents.\n' +
+      '• Automatically classifies documents as regulatory, protocol, research, or administrative.\n' +
+      '• Classification stored as metadata tag for filtering and ABAC policies.\n' +
+      '• Uses general chunking with LLM-based classification.',
+    formats: 'Supported: PDF, DOCX, TXT, MD.',
   },
 };
 

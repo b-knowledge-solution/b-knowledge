@@ -132,7 +132,7 @@ const SliderField: React.FC<{
 // ============================================================================
 
 /** Parsers where chunk size / delimiter / overlap settings are irrelevant */
-const NO_CHUNK_SETTINGS_PARSERS = new Set(['one', 'picture', 'audio', 'email', 'resume', 'table'])
+const NO_CHUNK_SETTINGS_PARSERS = new Set(['one', 'picture', 'audio', 'email', 'resume', 'table', 'clinical'])
 
 // ============================================================================
 // Main Component

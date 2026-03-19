@@ -1614,7 +1614,11 @@
     "mergeMode": "Merge",
     "overwriteMode": "Overwrite",
     "noMetadata": "No metadata",
-    "noMetadataDesc": "Add custom tags or enable auto-extraction in parser settings."
+    "noMetadataDesc": "Add custom tags or enable auto-extraction in parser settings.",
+    "parserCode": "Code",
+    "parserOpenapi": "API Spec",
+    "parserAdr": "ADR",
+    "parserClinical": "Clinical"
   },
   "versions": {
     "title": "Versions",

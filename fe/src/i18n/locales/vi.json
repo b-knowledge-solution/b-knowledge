@@ -1598,7 +1598,11 @@
     "mergeMode": "Gộp",
     "overwriteMode": "Ghi đè",
     "noMetadata": "Không có metadata",
-    "noMetadataDesc": "Thêm nhãn tùy chỉnh hoặc bật trích xuất tự động trong cài đặt parser."
+    "noMetadataDesc": "Thêm nhãn tùy chỉnh hoặc bật trích xuất tự động trong cài đặt parser.",
+    "parserCode": "Ma nguon",
+    "parserOpenapi": "API Spec",
+    "parserAdr": "ADR",
+    "parserClinical": "Lam sang"
   },
   "versions": {
     "title": "Phiên bản",

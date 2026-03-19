@@ -1584,7 +1584,11 @@
     "mergeMode": "マージ",
     "overwriteMode": "上書き",
     "noMetadata": "メタデータなし",
-    "noMetadataDesc": "カスタムタグを追加するか、パーサー設定で自動抽出を有効にしてください。"
+    "noMetadataDesc": "カスタムタグを追加するか、パーサー設定で自動抽出を有効にしてください。",
+    "parserCode": "コード",
+    "parserOpenapi": "API仕様",
+    "parserAdr": "ADR",
+    "parserClinical": "臨床"
   },
   "versions": {
     "title": "バージョン",
