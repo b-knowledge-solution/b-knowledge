@@ -135,10 +135,25 @@ Plans:
 - [ ] 06-04-PLAN.md — FE project management: member list, dataset picker, activity feed, sidebar, i18n (PROJ-01, PROJ-02, PROJ-03, PROJ-04)
 - [ ] 06-05-PLAN.md — FE dashboard analytics: query analytics tab, RAG quality tab, Recharts charts, Langfuse links, i18n (OBSV-01, OBSV-02, OBSV-03)
 
+### Phase 7: Milestone Gap Closure
+**Goal**: Wire orphaned document viewer components into chat and search pages, add Deep Research progress display, and fix field-level ABAC filter application in cross-dataset search
+**Depends on**: Phase 5, Phase 6
+**Requirements**: DOCM-02, RETR-04, RETR-06, RETR-07
+**Gap Closure**: Closes gaps from v1.0 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. Clicking a citation in chat opens CitationDocDrawer with document preview
+  2. Clicking a search result source opens SearchResultDocDialog with document preview
+  3. During Deep Research, user sees progressive sub-query status and budget warnings in chat UI
+  4. Cross-dataset search applies field-level ABAC policy conditions (buildOpenSearchAbacFilters called, not empty array)
+**Plans**: TBD
+
+Plans:
+- [ ] 07-01: Wire document viewer components + ABAC filter fix + Deep Research progress UI (DOCM-02, RETR-04, RETR-06, RETR-07)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -148,6 +163,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 4. Domain-Specific Parsers | 2/3 | In Progress|  |
 | 5. Advanced Retrieval | 3/4 | In Progress|  |
 | 6. Projects and Observability | 5/5 | Complete   | 2026-03-19 |
+| 7. Milestone Gap Closure | 0/1 | Not started | - |
 
 ---
 *Roadmap created: 2026-03-18*
