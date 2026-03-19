@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-07-PLAN.md
-last_updated: "2026-03-19T04:12:13.715Z"
-last_activity: 2026-03-19 — Plan 03-05 complete (metadata management UI, tag filter chips, cron scheduler settings)
+stopped_at: Completed 03-06-PLAN.md
+last_updated: "2026-03-19T04:16:35Z"
+last_activity: 2026-03-19 — Plan 03-06 complete (version label column, FE input, VersionBadge label-first rendering)
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 19
-  completed_plans: 18
-  percent: 88
+  completed_plans: 19
+  percent: 100
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 3 of 6 (Document Management)
-Plan: 7 of 8 in current phase
-Status: In Progress
-Last activity: 2026-03-19 — Plan 03-07 complete (dataset-aware FIFO parsing scheduler)
+Plan: 8 of 8 in current phase
+Status: Phase Complete
+Last activity: 2026-03-19 — Plan 03-06 complete (version label column, FE input, VersionBadge label-first rendering)
 
-Progress: [██████████] 95%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [██████████] 95%
 | Phase 03 P03 | 13min | 2 tasks | 12 files |
 | Phase 03 P05 | 14min | 2 tasks | 16 files |
 | Phase 03 P07 | 2min | 1 tasks | 1 files |
+| Phase 03 P06 | 6min | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -114,6 +115,7 @@ Recent decisions affecting current work:
 - [Phase 3, Plan 05]: Toggle+count pattern for auto_keywords/auto_questions replaces slider (cleaner on/off semantics)
 - [Phase 3, Plan 05]: TagFilterChips use tag_kwd field in metadata_filter conditions matching rag-search.service.ts buildMetadataFilters()
 - [Phase 03]: PER_DATASET_LIMIT = 10 as class constant for per-dataset batch cap in parsing scheduler
+- [Phase 3, Plan 06]: version_label is nullable text (max 128), separate from integer version_number kept for pagerank boost
 
 ### Pending Todos
 
@@ -128,6 +130,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T04:12:13.707Z
-Stopped at: Completed 03-07-PLAN.md
+Last session: 2026-03-19T04:16:35Z
+Stopped at: Completed 03-06-PLAN.md
 Resume file: None
