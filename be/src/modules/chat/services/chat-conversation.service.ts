@@ -856,7 +856,7 @@ Requirements and restriction:
           // Fetch all tenant datasets, then filter by what the user's ABAC rules permit
           const allTenantDatasets = await ModelFactory.dataset.getKnex()
             .where('tenant_id', tenantId)
-            .select('id', 'name', 'tenant_id')
+            .select('id', 'name', 'tenant_id', 'policy_rules')
 
           // Only include datasets the user is authorized to read via CASL ability check
           const authorizedKbIds = allTenantDatasets
@@ -870,6 +870,18 @@ Requirements and restriction:
               original: kbIds.length,
               expanded: allKbIds.length,
             })
+          }
+
+          // Gather field-level ABAC policy rules from all datasets in the search set
+          const allPolicies = allKbIds.flatMap((id: string) => {
+            const ds = allTenantDatasets.find((d: any) => d.id === id)
+            const rules = ds?.policy_rules
+            // Guard against null/undefined/non-array policy_rules (most datasets have none)
+            return Array.isArray(rules) ? rules : []
+          })
+          // Build OpenSearch ABAC filters only when policies exist to avoid empty filter artifacts
+          if (allPolicies.length > 0) {
+            userAbacFilters = buildOpenSearchAbacFilters(allPolicies)
           }
         } catch (err) {
           log.warn('RBAC dataset expansion failed, using original kbIds', { error: String(err) })
