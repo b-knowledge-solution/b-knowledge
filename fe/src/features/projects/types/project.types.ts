@@ -21,6 +21,8 @@ export type {
   ProjectSearch,
   ProjectEntityPermission,
   VersionDocument,
+  ProjectMember,
+  ActivityEntry,
 } from '../api/projectApi'
 
 export type {

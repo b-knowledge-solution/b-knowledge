@@ -3,7 +3,8 @@
  * @module features/projects/api/projectQueries
  */
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/queryKeys'
 import {
   getProjects,
   getProjectById,
@@ -14,6 +15,13 @@ import {
   getProjectPermissions,
   getProjectDatasets,
   getVersionDocuments,
+  fetchProjectMembers,
+  addProjectMember,
+  removeProjectMember,
+  fetchProjectDatasets,
+  bindProjectDatasets,
+  unbindProjectDataset,
+  fetchProjectActivity,
 } from './projectApi'
 
 /**
@@ -137,5 +145,122 @@ export function useVersionDocuments(
     queryKey: ['projects', projectId, 'categories', categoryId, 'versions', versionId, 'documents', query],
     queryFn: () => getVersionDocuments(projectId, categoryId, versionId, query),
     enabled: !!projectId && !!categoryId && !!versionId,
+  })
+}
+
+// ============================================================================
+// Project Members Hooks
+// ============================================================================
+
+/**
+ * @description Fetch all members of a project with caching via queryKeys.projects.members
+ * @param {string} projectId - Project UUID
+ * @returns TanStack Query result with project member list
+ */
+export function useProjectMembers(projectId: string) {
+  return useQuery({
+    queryKey: queryKeys.projects.members(projectId),
+    queryFn: () => fetchProjectMembers(projectId),
+    enabled: !!projectId,
+  })
+}
+
+/**
+ * @description Mutation to add a user as a member to a project. Invalidates members query on success.
+ * @param {string} projectId - Project UUID
+ * @returns TanStack useMutation result for adding a member
+ */
+export function useAddMember(projectId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (userId: string) => addProjectMember(projectId, userId),
+    onSuccess: () => {
+      // Refresh member list after successful add
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.members(projectId) })
+    },
+  })
+}
+
+/**
+ * @description Mutation to remove a member from a project. Invalidates members query on success.
+ * @param {string} projectId - Project UUID
+ * @returns TanStack useMutation result for removing a member
+ */
+export function useRemoveMember(projectId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (userId: string) => removeProjectMember(projectId, userId),
+    onSuccess: () => {
+      // Refresh member list after successful removal
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.members(projectId) })
+    },
+  })
+}
+
+// ============================================================================
+// Project Dataset Binding Hooks
+// ============================================================================
+
+/**
+ * @description Fetch datasets bound to a project with caching via queryKeys.projects.datasets
+ * @param {string} projectId - Project UUID
+ * @returns TanStack Query result with bound dataset list
+ */
+export function useProjectBoundDatasets(projectId: string) {
+  return useQuery({
+    queryKey: queryKeys.projects.datasets(projectId),
+    queryFn: () => fetchProjectDatasets(projectId),
+    enabled: !!projectId,
+  })
+}
+
+/**
+ * @description Mutation to bind multiple datasets to a project. Invalidates datasets query on success.
+ * @param {string} projectId - Project UUID
+ * @returns TanStack useMutation result for binding datasets
+ */
+export function useBindDatasets(projectId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (datasetIds: string[]) => bindProjectDatasets(projectId, datasetIds),
+    onSuccess: () => {
+      // Refresh bound dataset list after binding
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.datasets(projectId) })
+    },
+  })
+}
+
+/**
+ * @description Mutation to unbind a dataset from a project. Invalidates datasets query on success.
+ * @param {string} projectId - Project UUID
+ * @returns TanStack useMutation result for unbinding a dataset
+ */
+export function useUnbindDataset(projectId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (datasetId: string) => unbindProjectDataset(projectId, datasetId),
+    onSuccess: () => {
+      // Refresh bound dataset list after unbinding
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.datasets(projectId) })
+    },
+  })
+}
+
+// ============================================================================
+// Project Activity Hook
+// ============================================================================
+
+/**
+ * @description Fetch paginated activity feed for a project with caching via queryKeys.projects.activity
+ * @param {string} projectId - Project UUID
+ * @param {number} [limit=20] - Number of items per page
+ * @param {number} [offset=0] - Pagination offset
+ * @returns TanStack Query result with paginated activity entries
+ */
+export function useProjectActivity(projectId: string, limit: number = 20, offset: number = 0) {
+  return useQuery({
+    queryKey: [...queryKeys.projects.activity(projectId), { limit, offset }],
+    queryFn: () => fetchProjectActivity(projectId, limit, offset),
+    enabled: !!projectId,
   })
 }

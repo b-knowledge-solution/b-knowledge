@@ -47,6 +47,31 @@ export interface ProjectDataset {
   dataset_doc_count?: number;
 }
 
+/**
+ * Represents a project member with user details and role.
+ */
+export interface ProjectMember {
+  id: string;
+  user_id: string;
+  email: string;
+  name: string;
+  role: string;
+  created_at: string;
+}
+
+/**
+ * Represents a single audit-log activity entry for a project.
+ */
+export interface ActivityEntry {
+  id: string;
+  action: string;
+  resource_type: string;
+  resource_id: string;
+  user_email: string;
+  details: Record<string, unknown>;
+  created_at: string;
+}
+
 /** Sync source type for datasync projects. */
 export type SyncSourceType = 'sharepoint' | 'jira' | 'confluence' | 'gitlab' | 'github';
 
@@ -864,6 +889,104 @@ export const unlinkProjectDataset = (
   datasetId: string,
 ): Promise<void> =>
   api.delete(`/api/projects/${projectId}/datasets/${datasetId}`);
+
+// ============================================================================
+// Project Members API
+// ============================================================================
+
+/**
+ * @description Fetch all members of a project
+ * @param {string} projectId - Project UUID
+ * @returns {Promise<ProjectMember[]>} Array of project member records
+ */
+export const fetchProjectMembers = (
+  projectId: string,
+): Promise<ProjectMember[]> =>
+  api.get(`/api/projects/${projectId}/members`);
+
+/**
+ * @description Add a user as a member to a project
+ * @param {string} projectId - Project UUID
+ * @param {string} userId - User UUID to add
+ * @returns {Promise<void>}
+ */
+export const addProjectMember = (
+  projectId: string,
+  userId: string,
+): Promise<void> =>
+  api.post(`/api/projects/${projectId}/members`, { user_id: userId });
+
+/**
+ * @description Remove a member from a project
+ * @param {string} projectId - Project UUID
+ * @param {string} userId - User UUID to remove
+ * @returns {Promise<void>}
+ */
+export const removeProjectMember = (
+  projectId: string,
+  userId: string,
+): Promise<void> =>
+  api.delete(`/api/projects/${projectId}/members/${userId}`);
+
+// ============================================================================
+// Project Dataset Binding API
+// ============================================================================
+
+/**
+ * @description Fetch datasets linked to a project (with dataset metadata)
+ * @param {string} projectId - Project UUID
+ * @returns {Promise<ProjectDataset[]>} Array of project dataset link records
+ */
+export const fetchProjectDatasets = (
+  projectId: string,
+): Promise<ProjectDataset[]> =>
+  api.get(`/api/projects/${projectId}/datasets`);
+
+/**
+ * @description Bind multiple datasets to a project in a single batch operation
+ * @param {string} projectId - Project UUID
+ * @param {string[]} datasetIds - Array of dataset UUIDs to bind
+ * @returns {Promise<void>}
+ */
+export const bindProjectDatasets = (
+  projectId: string,
+  datasetIds: string[],
+): Promise<void> =>
+  api.post(`/api/projects/${projectId}/datasets`, { dataset_ids: datasetIds });
+
+/**
+ * @description Unbind a dataset from a project
+ * @param {string} projectId - Project UUID
+ * @param {string} datasetId - Dataset UUID to unbind
+ * @returns {Promise<void>}
+ */
+export const unbindProjectDataset = (
+  projectId: string,
+  datasetId: string,
+): Promise<void> =>
+  api.delete(`/api/projects/${projectId}/datasets/${datasetId}`);
+
+// ============================================================================
+// Project Activity API
+// ============================================================================
+
+/**
+ * @description Fetch paginated activity feed for a project
+ * @param {string} projectId - Project UUID
+ * @param {number} [limit=20] - Number of items to fetch
+ * @param {number} [offset=0] - Offset for pagination
+ * @returns {Promise<{ items: ActivityEntry[], total: number }>} Paginated activity entries
+ */
+export const fetchProjectActivity = (
+  projectId: string,
+  limit: number = 20,
+  offset: number = 0,
+): Promise<{ items: ActivityEntry[]; total: number }> => {
+  const params = new URLSearchParams();
+  params.set("limit", String(limit));
+  params.set("offset", String(offset));
+  return api.get(`/api/projects/${projectId}/activity?${params.toString()}`);
+};
 
 // ============================================================================
 // Sync Configs API (datasync projects)
