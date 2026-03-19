@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import {
   useGraphData,
+  useGraphMetrics,
   useGraphRAGStatus,
   useRaptorStatus,
   useRunGraphRAG,
@@ -80,6 +81,45 @@ function TaskStatusBadge({
 }
 
 /**
+ * @description Simple metric display card with label and value.
+ * @param {{ label: string; value: string | number }} props - Label text and display value
+ * @returns {JSX.Element} Rendered metric card
+ */
+function MetricCard({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-lg border bg-card p-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-lg font-semibold">{value}</p>
+    </div>
+  )
+}
+
+/**
+ * @description Format an ISO date string to a human-readable relative time or "Never".
+ * @param {string | null | undefined} isoDate - ISO date string or null
+ * @returns {string} Relative time string or "Never"
+ */
+function formatLastBuilt(isoDate: string | null | undefined, neverLabel: string): string {
+  if (!isoDate) return neverLabel
+
+  const date = new Date(isoDate)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMinutes = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMinutes / 60)
+  const diffDays = Math.floor(diffHours / 24)
+
+  // Show relative time for recent dates
+  if (diffMinutes < 1) return 'Just now'
+  if (diffMinutes < 60) return `${diffMinutes}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffDays < 7) return `${diffDays}d ago`
+
+  // Show absolute date for older dates
+  return date.toLocaleDateString()
+}
+
+/**
  * @description Knowledge Graph Tab component.
  * Shows a force-directed graph using Canvas 2D when data exists,
  * or prompts user to run GraphRAG when no graph data is available.
@@ -95,6 +135,7 @@ const KnowledgeGraphTab: React.FC<KnowledgeGraphTabProps> = ({ datasetId }) => {
 
   // Data hooks
   const { data: graphData, isLoading: graphLoading, refetch: refetchGraph } = useGraphData(datasetId)
+  const { data: graphMetrics } = useGraphMetrics(datasetId)
   const graphRAGStatus = useGraphRAGStatus(datasetId)
   const raptorStatus = useRaptorStatus(datasetId)
   const runGraphRAG = useRunGraphRAG(datasetId)
@@ -286,9 +327,11 @@ const KnowledgeGraphTab: React.FC<KnowledgeGraphTabProps> = ({ datasetId }) => {
                 <RefreshCw className="h-4 w-4 mr-1" />
                 {t('common.refresh')}
               </Button>
+              {/* Light mode: faster/cheaper LazyGraphRAG */}
               <Button
+                variant="outline"
                 size="sm"
-                onClick={() => runGraphRAG.mutate(undefined)}
+                onClick={() => runGraphRAG.mutate({ mode: 'light' })}
                 disabled={runGraphRAG.isPending || graphRAGStatus.data?.status === 'running'}
               >
                 {runGraphRAG.isPending ? (
@@ -296,7 +339,20 @@ const KnowledgeGraphTab: React.FC<KnowledgeGraphTabProps> = ({ datasetId }) => {
                 ) : (
                   <Play className="h-4 w-4 mr-1" />
                 )}
-                {t('datasets.runGraphRAG')}
+                {t('datasets.buildLight')}
+              </Button>
+              {/* Full mode: entity resolution + community reports */}
+              <Button
+                size="sm"
+                onClick={() => runGraphRAG.mutate({ mode: 'full' })}
+                disabled={runGraphRAG.isPending || graphRAGStatus.data?.status === 'running'}
+              >
+                {runGraphRAG.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <Play className="h-4 w-4 mr-1" />
+                )}
+                {t('datasets.buildFull')}
               </Button>
             </>
           )}
@@ -316,6 +372,22 @@ const KnowledgeGraphTab: React.FC<KnowledgeGraphTabProps> = ({ datasetId }) => {
           )}
         </div>
       </div>
+
+      {/* GraphRAG Metrics Panel — always visible on graph tab */}
+      {activeTab === 'graph' && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-4 gap-3">
+            <MetricCard label={t('datasets.entityCount')} value={graphMetrics?.entity_count ?? 0} />
+            <MetricCard label={t('datasets.relationCount')} value={graphMetrics?.relation_count ?? 0} />
+            <MetricCard label={t('datasets.communityCount')} value={graphMetrics?.community_count ?? 0} />
+            <MetricCard label={t('datasets.lastBuilt')} value={formatLastBuilt(graphMetrics?.last_built_at, t('datasets.neverBuilt'))} />
+          </div>
+          {/* Mode explanation */}
+          <p className="text-xs text-muted-foreground">
+            {t('datasets.lightModeDesc')} · {t('datasets.fullModeDesc')}
+          </p>
+        </div>
+      )}
 
       {/* Graph content */}
       {activeTab === 'graph' ? (

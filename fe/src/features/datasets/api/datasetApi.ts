@@ -437,6 +437,30 @@ export const datasetApi = {
   },
 
   /**
+   * @description Fetch GraphRAG metrics (entity/relation/community counts and last-built timestamp).
+   * @param {string} datasetId - Dataset UUID
+   * @returns {Promise<{ entity_count: number; relation_count: number; community_count: number; last_built_at: string | null }>} Graph metrics
+   */
+  getGraphMetrics: async (datasetId: string): Promise<{ entity_count: number; relation_count: number; community_count: number; last_built_at: string | null }> => {
+    return api.get<{ entity_count: number; relation_count: number; community_count: number; last_built_at: string | null }>(
+      `${BASE_URL}/datasets/${datasetId}/graph/metrics`,
+    );
+  },
+
+  /**
+   * @description Trigger GraphRAG with explicit mode selection (light or full).
+   * @param {string} datasetId - Dataset UUID
+   * @param {'light' | 'full'} mode - GraphRAG mode: light (LazyGraphRAG) or full (entity resolution + community reports)
+   * @returns {Promise<{ task_id: string; mode: string; message: string }>} Task info with mode
+   */
+  runGraphRAGWithMode: async (datasetId: string, mode: 'light' | 'full'): Promise<{ task_id: string; mode: string; message: string }> => {
+    return api.post<{ task_id: string; mode: string; message: string }>(
+      `${BASE_URL}/datasets/${datasetId}/graph/run`,
+      { mode },
+    );
+  },
+
+  /**
    * @description Trigger a GraphRAG entity/relationship extraction task.
    * @param {string} datasetId - Dataset UUID
    * @param {string[]} [docIds] - Optional subset of document IDs to process

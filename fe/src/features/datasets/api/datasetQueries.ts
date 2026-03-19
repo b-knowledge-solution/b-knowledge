@@ -778,7 +778,24 @@ export function useRaptorStatus(datasetId: string | undefined) {
 }
 
 /**
+ * @description Hook to fetch GraphRAG metrics (entity/relation/community counts, last-built timestamp).
+ * Auto-refreshes every 30 seconds while the tab is open.
+ * @param datasetId - Dataset UUID
+ * @returns Query result with graph metrics
+ */
+export function useGraphMetrics(datasetId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.datasets.graphMetrics(datasetId ?? ''),
+    queryFn: () => datasetApi.getGraphMetrics(datasetId!),
+    enabled: !!datasetId,
+    // Refresh every 30s so metrics stay current while viewing
+    refetchInterval: 30000,
+  })
+}
+
+/**
  * @description Mutation to trigger a GraphRAG task.
+ * Accepts optional mode parameter for Light/Full mode selection.
  * @param datasetId - Dataset UUID
  */
 export function useRunGraphRAG(datasetId: string) {
@@ -786,10 +803,16 @@ export function useRunGraphRAG(datasetId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (docIds?: string[]) => datasetApi.runGraphRAG(datasetId, docIds),
+    mutationFn: async ({ docIds, mode }: { docIds?: string[]; mode?: 'light' | 'full' } = {}) => {
+      // Route to mode-aware endpoint when mode is specified, fallback to legacy endpoint
+      if (mode) return datasetApi.runGraphRAGWithMode(datasetId, mode)
+      return datasetApi.runGraphRAG(datasetId, docIds) as unknown as Promise<{ task_id: string; mode: string; message: string }>
+    },
     meta: { successMessage: t('datasets.graphRAGStarted') },
     onSuccess: () => {
+      // Invalidate both status and metrics after triggering build
       queryClient.invalidateQueries({ queryKey: queryKeys.datasets.graphragStatus(datasetId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.datasets.graphMetrics(datasetId) })
     },
   })
 }
