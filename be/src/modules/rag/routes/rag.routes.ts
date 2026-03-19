@@ -118,4 +118,8 @@ router.get('/datasets/:id/graph', requireAuth, controller.getGraphData.bind(cont
 router.get('/datasets/:id/metadata', requireAuth, controller.getMetadata.bind(controller));
 router.put('/datasets/:id/metadata', requirePermission('manage_datasets'), controller.updateMetadata.bind(controller));
 
+// Parsing scheduler system config
+router.get('/system/config/parsing_scheduler', requirePermission('manage_datasets'), controller.getParsingSchedulerConfig.bind(controller));
+router.put('/system/config/parsing_scheduler', requirePermission('manage_datasets'), controller.updateParsingSchedulerConfig.bind(controller));
+
 export default router;

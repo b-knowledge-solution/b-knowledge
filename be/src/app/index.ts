@@ -146,6 +146,9 @@ const startServer = async (): Promise<http.Server | https.Server> => {
     // Schedule recurring maintenance (temp file cleanup, etc.)
     cronService.startCleanupJob();
 
+    // Initialize parsing scheduler from system config (if enabled)
+    await cronService.initParsingSchedulerFromConfig();
+
 
     await systemToolsService.initialize();
 

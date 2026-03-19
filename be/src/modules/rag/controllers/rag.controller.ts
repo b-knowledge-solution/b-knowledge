@@ -16,6 +16,7 @@ import { ragDocumentService } from '../services/rag-document.service.js';
 import { ragRedisService, getUuid } from '../services/rag-redis.service.js';
 import { ragStorageService } from '../services/rag-storage.service.js';
 import { ragSearchService } from '../services/rag-search.service.js';
+import { cronService } from '@/shared/services/cron.service.js';
 import { log } from '@/shared/services/logger.service.js';
 import { ModelFactory } from '@/shared/models/factory.js';
 import { getClientIp } from '@/shared/utils/ip.js';
@@ -1699,6 +1700,50 @@ export class RagController {
         } catch (error) {
             log.error('Failed to get tag aggregations', { error: String(error) })
             res.status(500).json({ error: 'Failed to get tag aggregations' })
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Parsing Scheduler Config
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description GET /system/config/parsing_scheduler — Return current parsing scheduler settings.
+     * Returns schedule expression and enabled flag from system_configs.
+     * @param {Request} _req - Express request (unused, admin-only endpoint)
+     * @param {Response} res - Express response with schedule and enabled fields
+     * @returns {Promise<void>}
+     */
+    async getParsingSchedulerConfig(_req: Request, res: Response): Promise<void> {
+        try {
+            const config = await cronService.getParsingSchedulerConfig()
+            res.json(config)
+        } catch (error) {
+            log.error('Failed to get parsing scheduler config', { error: String(error) })
+            res.status(500).json({ error: 'Failed to get parsing scheduler config' })
+        }
+    }
+
+    /**
+     * @description PUT /system/config/parsing_scheduler — Update parsing scheduler settings.
+     * Requires admin role. Updates schedule expression and/or enabled flag.
+     * @param {Request} req - Express request with enabled (boolean) and optional schedule (string) in body
+     * @param {Response} res - Express response with updated config
+     * @returns {Promise<void>}
+     */
+    async updateParsingSchedulerConfig(req: Request, res: Response): Promise<void> {
+        try {
+            const { enabled, schedule } = req.body
+            const config = await cronService.setParsingSchedulerConfig(enabled, schedule)
+            res.json(config)
+        } catch (error: any) {
+            // Return 400 for invalid cron expression
+            if (error.message?.includes('Invalid cron expression')) {
+                res.status(400).json({ error: error.message })
+                return
+            }
+            log.error('Failed to update parsing scheduler config', { error: String(error) })
+            res.status(500).json({ error: 'Failed to update parsing scheduler config' })
         }
     }
 
