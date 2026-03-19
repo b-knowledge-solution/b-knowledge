@@ -943,7 +943,11 @@ Requirements and restriction:
         }
       }
 
-      // ── Step 8b: Deep research mode (if enabled) ──────────────────────
+      // ── Step 8b: Budget-aware deep research mode (if enabled) ─────────
+      // Deep research uses recursive question decomposition with hard budget caps
+      // (50K tokens / 15 LLM calls) to prevent cost spirals. The onProgress callback
+      // streams structured DeepResearchProgressEvent objects as SSE events so the
+      // frontend can render sub-query progress, budget status, and intermediate results.
       if (useReasoning && kbIds.length > 0) {
         res.write(`data: ${JSON.stringify({ status: 'deep_research' })}\n\n`)
         try {
@@ -957,13 +961,31 @@ Requirements and restriction:
               useKg: cfg.use_kg,
               maxDepth: 3,
               topN,
+              // Budget caps prevent token cost spirals (Phase 5 Pitfall 5)
+              maxTokens: 50_000,
+              maxCalls: 15,
             },
-            (msg) => {
-              // Stream progress updates to the client
-              res.write(`data: ${JSON.stringify({ status: 'deep_research', message: msg })}\n\n`)
+            (event: DeepResearchProgressEvent) => {
+              // Stream structured progress events for frontend rendering
+              res.write(`data: ${JSON.stringify({
+                status: 'deep_research',
+                subEvent: event.subEvent,
+                query: event.query,
+                depth: event.depth,
+                index: event.index,
+                total: event.total,
+                chunks: event.chunks,
+                message: event.message,
+                // Include budget status only when available
+                ...(event.tokensUsed !== undefined ? { tokensUsed: event.tokensUsed, tokensMax: event.tokensMax } : {}),
+                ...(event.callsUsed !== undefined ? { callsUsed: event.callsUsed, callsMax: event.callsMax } : {}),
+                ...(event.completed !== undefined ? { completed: event.completed } : {}),
+              })}\n\n`)
             }
           )
-          // Merge deep research chunks with existing chunks
+          // Merge deep research chunks with existing chunks, deduplicating by chunk_id.
+          // When budget is exhausted mid-recursion, research() returns partial results
+          // from completed sub-queries (not an empty array).
           for (const chunk of deepChunks) {
             const exists = allChunks.some(c => c.chunk_id === chunk.chunk_id)
             if (!exists) {
