@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 Phase: 3 of 6 (Document Management)
 Plan: 5 of 6 in current phase
 Status: In Progress
-Last activity: 2026-03-19 — Plan 03-04 complete (bulk metadata API, tag aggregation, parsing scheduler)
+Last activity: 2026-03-19 — Plan 03-03 complete (rank_feature boost, chunk detail page, document viewer patterns)
 
 Progress: [████████░░] 82%
 
@@ -65,6 +65,7 @@ Progress: [████████░░] 82%
 | Phase 03 P02 | 12min | 2 tasks | 13 files |
 | Phase 03 P00 | 2min | 1 tasks | 2 files |
 | Phase 03 P04 | 12min | 2 tasks | 8 files |
+| Phase 03 P03 | 13min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Bulk metadata uses jsonb_set with COALESCE for merge mode to preserve existing tags
 - [Phase 03]: Parsing scheduler uses lazy dynamic imports to avoid circular dependency with rag modules
 - [Phase 03]: System config API for parsing scheduler placed under /rag/system/config namespace
+- [Phase 3, Plan 03]: rank_feature in should clause (not must/filter) for proportional version boost without excluding non-versioned docs
+- [Phase 3, Plan 03]: Reused DocumentPreviewer in three viewer patterns (full page, Sheet drawer, Dialog)
 
 ### Pending Todos
 
@@ -120,6 +123,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T03:19:22.281Z
-Stopped at: Completed 03-04-PLAN.md
+Last session: 2026-03-19T03:18:47Z
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None
