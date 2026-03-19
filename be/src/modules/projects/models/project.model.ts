@@ -34,4 +34,17 @@ export class ProjectModel extends BaseModel<Project> {
       .where('status', 'active')
       .orderBy('created_at', 'desc')
   }
+
+  /**
+   * @description Find all active projects belonging to a specific tenant, ordered newest first.
+   *   Enforces multi-tenant isolation by filtering on tenant_id.
+   * @param {string} tenantId - UUID of the tenant/organization
+   * @returns {Promise<Project[]>} Array of active projects within the tenant
+   */
+  async findByTenant(tenantId: string): Promise<Project[]> {
+    return this.knex(this.tableName)
+      .where('tenant_id', tenantId)
+      .andWhere('status', 'active')
+      .orderBy('created_at', 'desc')
+  }
 }

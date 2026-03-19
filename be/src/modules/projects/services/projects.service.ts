@@ -18,17 +18,17 @@ export class ProjectsService {
    *   Admins see all projects within the tenant. Other users see public projects and those
    *   they have explicit permissions for (directly or via team membership).
    * @param {UserContext} user - Authenticated user context
-   * @param {string} [tenantId] - Tenant ID for org-scoped filtering
+   * @param {string} tenantId - Tenant ID for org-scoped filtering (required for multi-tenant isolation)
    * @returns {Promise<Project[]>} Array of accessible projects
    */
-  async getAccessibleProjects(user: UserContext, tenantId?: string): Promise<Project[]> {
-    // Admins see all active projects (within tenant scope if provided)
+  async getAccessibleProjects(user: UserContext, tenantId: string): Promise<Project[]> {
+    // Admins see all active projects within the tenant scope
     if (user.role === 'admin' || user.role === 'superadmin') {
-      return ModelFactory.project.findActive()
+      return ModelFactory.project.findByTenant(tenantId)
     }
 
-    // Fetch all active projects
-    const allProjects = await ModelFactory.project.findActive()
+    // Fetch all active projects scoped to this tenant
+    const allProjects = await ModelFactory.project.findByTenant(tenantId)
 
     // Get user's team IDs for team-based permission checks
     const userTeams = await teamService.getUserTeams(user.id)

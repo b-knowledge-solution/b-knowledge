@@ -21,4 +21,6 @@ export type { DeepResearchOptions } from './services/rag-deep-research.service.j
 export { ragRerankService } from './services/rag-rerank.service.js';
 export { ragCitationService } from './services/rag-citation.service.js';
 export { ragSqlService } from './services/rag-sql.service.js';
+export { queryLogService } from './services/query-log.service.js';
+export type { CreateQueryLogData } from './services/query-log.service.js';
 export type { AccessControl } from '@/shared/models/types.js';

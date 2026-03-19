@@ -10,6 +10,7 @@ import { projectSearchService } from '../services/project-search.service.js'
 import { projectSyncService } from '../services/project-sync.service.js'
 import { log } from '@/shared/services/logger.service.js'
 import { getClientIp } from '@/shared/utils/ip.js'
+import { getTenantId } from '@/shared/middleware/tenant.middleware.js'
 
 /**
  * @description Build a UserContext object from the Express request's authenticated user
@@ -43,7 +44,9 @@ export class ProjectsController {
       const user = getUserContext(req)
       // Guard: require authentication before listing projects
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
-      const projects = await projectsService.getAccessibleProjects(user)
+      // Extract tenant ID from request context for multi-tenant isolation
+      const tenantId = getTenantId(req) || ''
+      const projects = await projectsService.getAccessibleProjects(user, tenantId)
       res.json(projects)
     } catch (error) {
       log.error('Failed to list projects', { error: String(error) })

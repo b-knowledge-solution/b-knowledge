@@ -40,6 +40,7 @@ import { DocumentVersionModel } from '@/modules/rag/models/document-version.mode
 import { DocumentVersionFileModel } from '@/modules/rag/models/document-version-file.model.js';
 import { ConverterJobModel } from '@/modules/rag/models/converter-job.model.js';
 import { AnswerFeedbackModel } from '@/modules/feedback/models/answer-feedback.model.js';
+import { QueryLogModel } from '@/modules/rag/models/query-log.model.js';
 
 // Project Models
 import { ProjectModel } from '@/modules/projects/models/project.model.js';
@@ -141,6 +142,8 @@ export class ModelFactory {
   private static converterJobModel: ConverterJobModel;
   /** AnswerFeedback model singleton instance */
   private static answerFeedbackModel: AnswerFeedbackModel;
+  /** QueryLog model singleton instance */
+  private static queryLogModel: QueryLogModel;
 
   // Project Models
   /** Project model singleton instance */
@@ -525,6 +528,16 @@ export class ModelFactory {
   static get answerFeedback() {
     if (!this.answerFeedbackModel) this.answerFeedbackModel = new AnswerFeedbackModel();
     return this.answerFeedbackModel;
+  }
+
+  /**
+   * Get the QueryLog model singleton.
+   * Manages query event records for analytics and observability.
+   * @returns QueryLogModel instance for query log CRUD operations
+   */
+  static get queryLog() {
+    if (!this.queryLogModel) this.queryLogModel = new QueryLogModel();
+    return this.queryLogModel;
   }
 
   // -------------------------------------------------------------------------
