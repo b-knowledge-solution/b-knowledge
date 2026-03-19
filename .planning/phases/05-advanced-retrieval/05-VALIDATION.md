@@ -2,8 +2,8 @@
 phase: 05
 slug: advanced-retrieval
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-19
 ---
 
@@ -17,9 +17,9 @@ created: 2026-03-19
 
 | Property | Value |
 |----------|-------|
-| **Framework** | vitest (BE) + pytest (advance-rag) |
-| **Config file** | `be/vitest.config.ts`, `advance-rag/pyproject.toml` |
-| **Quick run command** | `npm run build -w be` |
+| **Framework** | vitest (BE) + vite build (FE) |
+| **Config file** | `be/vitest.config.ts`, `fe/vite.config.ts` |
+| **Quick run command** | `npm run test -w be -- --run` |
 | **Full suite command** | `npm run build && npm run test -w be` |
 | **Estimated runtime** | ~30 seconds |
 
@@ -27,7 +27,7 @@ created: 2026-03-19
 
 ## Sampling Rate
 
-- **After every task commit:** Run `npm run build -w be` or `npm run build -w fe`
+- **After every task commit:** Run task-specific `<automated>` command from plan
 - **After every plan wave:** Run `npm run build && npm run test -w be`
 - **Before `/gsd:verify-work`:** Full suite must be green
 - **Max feedback latency:** 30 seconds
@@ -38,18 +38,31 @@ created: 2026-03-19
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 05-01-T1 | 01 | 1 | RETR-01,02 | build | `npm run build -w be` | N/A | ⬜ pending |
-| 05-02-T1 | 02 | 2 | RETR-03 | build | `npm run build -w be` | N/A | ⬜ pending |
-| 05-03-T1 | 03 | 2 | RETR-04,05 | build | `npm run build -w be` | N/A | ⬜ pending |
-| 05-04-T1 | 04 | 3 | RETR-06,07 | build | `npm run build -w be` | N/A | ⬜ pending |
+| 05-01-T1 | 01 | 1 | RETR-01,02 | unit | `npm run test -w be -- --run be/tests/rag/language-detect.test.ts be/tests/rag/graphrag-indexing.test.ts` | Wave 0 | pending |
+| 05-01-T2 | 01 | 1 | RETR-01,02 | build | `npm run build -w be` | N/A | pending |
+| 05-02-T1 | 02 | 1 | RETR-04,05,07 | unit | `npm run test -w be -- --run be/tests/rag/deep-research-budget.test.ts` | Wave 0 | pending |
+| 05-02-T2 | 02 | 1 | RETR-06 | unit | `npm run test -w be -- --run be/tests/rag/cross-dataset-search.test.ts` | Wave 0 | pending |
+| 05-03-T1 | 03 | 2 | RETR-03,06 | build | `npm run build -w be` | N/A | pending |
+| 05-03-T2 | 03 | 2 | RETR-04,05,07 | build | `npm run build -w be` | N/A | pending |
+| 05-03-T3 | 03 | 2 | RETR-03,04,05 | unit | `npm run test -w be -- --run be/tests/rag/graphrag-retrieval.test.ts be/tests/rag/deep-research.test.ts` | Wave 0 | pending |
+| 05-04-T1 | 04 | 3 | RETR-01,02 | build | `npm run build -w fe` | N/A | pending |
+| 05-04-T2 | 04 | 3 | RETR-03..07 | build | `npm run build -w fe` | N/A | pending |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+*Status: pending / green / red / flaky*
 
 ---
 
 ## Wave 0 Requirements
 
-*Existing infrastructure covers all phase requirements. No Wave 0 test scaffolds needed — this is a wiring phase that integrates existing Python implementations with the TypeScript backend.*
+Test files created by plan tasks (TDD tasks create their own test files):
+
+- [ ] `be/tests/rag/language-detect.test.ts` -- Plan 01 Task 1 creates (RETR language detection)
+- [ ] `be/tests/rag/graphrag-indexing.test.ts` -- Plan 01 Task 1 creates (RETR-01, RETR-02 config propagation)
+- [ ] `be/tests/rag/deep-research-budget.test.ts` -- Plan 02 Task 1 creates (RETR-07 budget tracking)
+- [ ] `be/tests/rag/cross-dataset-search.test.ts` -- Plan 02 Task 2 creates (RETR-06 ABAC search)
+- [ ] `be/tests/rag/graphrag-retrieval.test.ts` -- Plan 03 Task 3 creates (RETR-03 hybrid retrieval)
+- [ ] `be/tests/rag/deep-research.test.ts` -- Plan 03 Task 3 creates (RETR-04, RETR-05 recursion)
+- [ ] Framework install: `npm install franc -w be` -- language detection library (Plan 01 Task 1)
 
 ---
 
@@ -67,11 +80,11 @@ created: 2026-03-19
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify commands
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (test files created by TDD tasks)
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved
