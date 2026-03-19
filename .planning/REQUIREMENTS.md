@@ -48,7 +48,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **RETR-04**: Deep Research recursive query decomposition — break complex questions into sub-queries
 - [x] **RETR-05**: Deep Research iterative retrieval with reasoning — retrieve, reason about gaps, retrieve more
 - [ ] **RETR-06**: Cross-dataset retrieval — search across multiple knowledge bases respecting ABAC rules
-- [ ] **RETR-07**: Deep Research token budget and call limits — hard caps on LLM calls and tokens per research session
+- [x] **RETR-07**: Deep Research token budget and call limits — hard caps on LLM calls and tokens per research session
 
 ### Chat & Search Experience
 
@@ -140,7 +140,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RETR-04 | Phase 7 | Pending |
 | RETR-05 | Phase 5 | Complete |
 | RETR-06 | Phase 7 | Pending |
-| RETR-07 | Phase 7 | Pending |
+| RETR-07 | Phase 7 | Complete |
 | OBSV-01 | Phase 6 | Complete |
 | OBSV-02 | Phase 6 | Complete |
 | OBSV-03 | Phase 6 | Complete |
