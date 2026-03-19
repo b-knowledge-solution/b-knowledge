@@ -23,7 +23,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useDatasetOverview, useDatasetLogs } from '../api/datasetQueries'
-import type { DatasetLogEntry } from '../types'
+import type { Dataset, DatasetLogEntry } from '../types'
+import VersionBadge from './VersionBadge'
 import ProcessLogModal from './ProcessLogModal'
 
 /**
@@ -32,6 +33,8 @@ import ProcessLogModal from './ProcessLogModal'
 interface DatasetOverviewTabProps {
   /** Dataset UUID to display overview for */
   datasetId: string
+  /** Full dataset object for version metadata display */
+  dataset?: Dataset
 }
 
 /**
@@ -79,7 +82,7 @@ function getLogStatus(progress: number): { label: string; variant: 'default' | '
  * @param {DatasetOverviewTabProps} props - Component properties
  * @returns {JSX.Element} Rendered overview tab
  */
-const DatasetOverviewTab: React.FC<DatasetOverviewTabProps> = ({ datasetId }) => {
+const DatasetOverviewTab: React.FC<DatasetOverviewTabProps> = ({ datasetId, dataset }) => {
   const { t } = useTranslation()
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -110,6 +113,31 @@ const DatasetOverviewTab: React.FC<DatasetOverviewTabProps> = ({ datasetId }) =>
 
   return (
     <div className="space-y-6">
+      {/* Version metadata section */}
+      <div className="rounded-lg border p-4 bg-card">
+        {dataset?.version_number != null ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold">{t('datasets.versionInfo')}</span>
+              <VersionBadge versionNumber={dataset.version_number} />
+            </div>
+            {dataset.change_summary && (
+              <p className="text-sm text-muted-foreground">{dataset.change_summary}</p>
+            )}
+            {dataset.version_created_by && (
+              <p className="text-xs text-muted-foreground">
+                {t('datasets.versionCreatedBy', { user: dataset.version_created_by })}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div>
+            <span className="text-sm font-semibold">{t('datasets.originalVersion')}</span>
+            <p className="text-sm text-muted-foreground mt-1">{t('datasets.originalVersionDesc')}</p>
+          </div>
+        )}
+      </div>
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard

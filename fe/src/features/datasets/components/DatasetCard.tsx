@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Database, FileText, Hash, Edit2, Trash2, Globe, Lock, Shield } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import VersionBadge from './VersionBadge';
 import type { Dataset } from '../types';
 
 /**
@@ -56,9 +57,13 @@ const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onEdit, onDelete, on
               <Database size={20} className="text-blue-600 dark:text-blue-400" />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100 truncate">
-                {dataset.name}
-              </h3>
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100 truncate">
+                  {dataset.name}
+                </h3>
+                {/* Show version badge for version datasets */}
+                <VersionBadge versionNumber={dataset.version_number} />
+              </div>
               <span className={`inline-block text-xs px-2 py-0.5 rounded-full mt-1 ${statusColor}`}>
                 {dataset.status}
               </span>
@@ -116,6 +121,13 @@ const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onEdit, onDelete, on
         {dataset.description && (
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 line-clamp-2">
             {dataset.description}
+          </p>
+        )}
+
+        {/* Version metadata — shown for version datasets */}
+        {dataset.version_number != null && dataset.change_summary && (
+          <p className="text-xs text-muted-foreground mb-3 line-clamp-1 italic">
+            {dataset.change_summary}
           </p>
         )}
 

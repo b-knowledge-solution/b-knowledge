@@ -286,6 +286,7 @@ const DatasetDetailPage: React.FC = () => {
           </CardHeader>
           <CardContent className="p-0">
             <DocumentTable
+              datasetId={id!}
               documents={documents}
               loading={loadingDocs}
               isAdmin={isAdmin}
@@ -301,7 +302,7 @@ const DatasetDetailPage: React.FC = () => {
       )}
 
       {activeTab === 'overview' && id && (
-        <DatasetOverviewTab datasetId={id} />
+        <DatasetOverviewTab datasetId={id} dataset={dataset ?? undefined} />
       )}
 
       {activeTab === 'graph' && id && (

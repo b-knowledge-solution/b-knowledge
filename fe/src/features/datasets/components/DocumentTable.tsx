@@ -8,8 +8,9 @@
  */
 
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Play, Trash2, XCircle, Settings2, Globe } from 'lucide-react'
+import { Play, Trash2, XCircle, Settings2, Globe, MoreHorizontal, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -17,10 +18,17 @@ import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { Checkbox } from '@/components/Checkbox'
 import ProcessLogDialog from './ProcessLogDialog'
+import UploadNewVersionDialog from './UploadNewVersionDialog'
 import type { Document } from '../types'
 
 // ============================================================================
@@ -31,6 +39,8 @@ import type { Document } from '../types'
  * @description Props for the DocumentTable component.
  */
 interface DocumentTableProps {
+  /** Dataset ID for building document detail navigation URLs */
+  datasetId: string
   /** Array of documents to display */
   documents: Document[]
   /** Whether documents are currently loading */
@@ -65,13 +75,22 @@ function formatFileSize(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
 
-/** Format document date from RAGFlow fields */
-function formatDocDate(doc: Document): string {
-  const raw = doc.create_time || doc.create_date || doc.created_at
+/** Format a raw timestamp (number or string) as a localized date string */
+function formatDate(raw: number | string | undefined | null): string {
   if (!raw) return '-'
   const d = typeof raw === 'number' ? new Date(raw) : new Date(raw)
   if (isNaN(d.getTime())) return '-'
   return d.toLocaleDateString()
+}
+
+/** Format document creation date from RAGFlow fields */
+function formatDocDate(doc: Document): string {
+  return formatDate(doc.create_time || doc.create_date || doc.created_at)
+}
+
+/** Format document update date — falls back to creation date if never updated */
+function formatDocUpdateDate(doc: Document): string {
+  return formatDate(doc.update_date || doc.update_time || doc.updated_at || doc.create_time || doc.create_date)
 }
 
 /**
@@ -109,6 +128,7 @@ function getStatusBadge(doc: Document): {
  * @returns {JSX.Element} Rendered document table with bulk action controls
  */
 const DocumentTable: React.FC<DocumentTableProps> = ({
+  datasetId,
   documents,
   loading,
   isAdmin,
@@ -120,9 +140,12 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
   onChangeParser,
 }) => {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [logDocument, setLogDocument] = useState<Document | null>(null)
   const [logOpen, setLogOpen] = useState(false)
+  // Version upload dialog state — tracks which document triggered the dialog
+  const [versionDoc, setVersionDoc] = useState<Document | null>(null)
 
   // Derived selection state
   const allSelected = documents.length > 0 && selectedIds.size === documents.length
@@ -229,13 +252,14 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
               {isAdmin && <TableHead className="w-[80px]">{t('datasets.enabled')}</TableHead>}
               <TableHead className="w-[100px] text-right">{t('datasets.chunkCount')}</TableHead>
               <TableHead className="w-[140px]">{t('datasets.docUploadDate')}</TableHead>
+              <TableHead className="w-[140px]">{t('datasets.docUpdateDate')}</TableHead>
               {isAdmin && <TableHead className="w-[100px]">{t('common.actions')}</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {documents.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={isAdmin ? 9 : 6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={isAdmin ? 10 : 7} className="text-center py-8 text-muted-foreground">
                   {t('common.noData')}
                 </TableCell>
               </TableRow>
@@ -272,7 +296,12 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="font-medium truncate block cursor-default">{doc.name}</span>
+                            <span
+                              className="font-medium truncate block cursor-pointer text-primary hover:underline transition-colors"
+                              onClick={() => navigate(`/data-studio/datasets/${datasetId}/documents/${doc.id}/chunks`)}
+                            >
+                              {doc.name}
+                            </span>
                           </TooltipTrigger>
                           <TooltipContent>{doc.name}</TooltipContent>
                         </Tooltip>
@@ -321,6 +350,9 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
                   {/* Upload date */}
                   <TableCell>{formatDocDate(doc)}</TableCell>
 
+                  {/* Update date */}
+                  <TableCell>{formatDocUpdateDate(doc)}</TableCell>
+
                   {/* Actions */}
                   {isAdmin && (
                     <TableCell>
@@ -365,6 +397,21 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
                             <TooltipContent>{t('common.delete')}</TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
+
+                        {/* Kebab menu with additional actions */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                              <MoreHorizontal size={14} />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setVersionDoc(doc)}>
+                              <Upload size={14} className="mr-2" />
+                              {t('datasets.uploadNewVersion')}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   )}
@@ -381,6 +428,16 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
         onClose={() => setLogOpen(false)}
         document={logDocument}
       />
+
+      {/* Upload New Version Dialog */}
+      {versionDoc && (
+        <UploadNewVersionDialog
+          datasetId={datasetId}
+          datasetName={versionDoc.name}
+          open={!!versionDoc}
+          onOpenChange={(open) => { if (!open) setVersionDoc(null) }}
+        />
+      )}
     </div>
   )
 }
