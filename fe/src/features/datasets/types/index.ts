@@ -59,6 +59,8 @@ export interface Dataset {
   parent_dataset_id?: string | null;
   /** Version number (1-based) when this is a version dataset */
   version_number?: number | null;
+  /** Custom display label for this version (e.g., '1.2.0'). Rendered by VersionBadge when present. */
+  version_label?: string | null;
   /** Human-readable description of changes in this version */
   change_summary?: string | null;
   /** User who created this version */

@@ -119,7 +119,7 @@ const DatasetOverviewTab: React.FC<DatasetOverviewTabProps> = ({ datasetId, data
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold">{t('datasets.versionInfo')}</span>
-              <VersionBadge versionNumber={dataset.version_number} />
+              <VersionBadge versionNumber={dataset.version_number} versionLabel={dataset.version_label} />
             </div>
             {dataset.change_summary && (
               <p className="text-sm text-muted-foreground">{dataset.change_summary}</p>

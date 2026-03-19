@@ -54,6 +54,7 @@ const UploadNewVersionDialog = ({
 }: UploadNewVersionDialogProps) => {
   const { t } = useTranslation()
   const [files, setFiles] = useState<File[]>([])
+  const [versionLabel, setVersionLabel] = useState('')
   const [changeSummary, setChangeSummary] = useState('')
   const [autoParse, setAutoParse] = useState(true)
 
@@ -63,6 +64,7 @@ const UploadNewVersionDialog = ({
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
       setFiles([])
+      setVersionLabel('')
       setChangeSummary('')
       setAutoParse(true)
     }
@@ -80,8 +82,10 @@ const UploadNewVersionDialog = ({
     if (files.length === 0) return
 
     try {
-      // Build mutation payload, omitting changeSummary when empty to satisfy exactOptionalPropertyTypes
-      const payload: { files: File[]; changeSummary?: string; autoParse?: boolean } = { files, autoParse }
+      // Build mutation payload, omitting optional fields when empty to satisfy exactOptionalPropertyTypes
+      const payload: { files: File[]; changeSummary?: string; versionLabel?: string; autoParse?: boolean } = { files, autoParse }
+      const trimmedLabel = versionLabel.trim()
+      if (trimmedLabel) payload.versionLabel = trimmedLabel
       const trimmed = changeSummary.trim()
       if (trimmed) payload.changeSummary = trimmed
       await createVersion.mutateAsync(payload)
@@ -110,6 +114,19 @@ const UploadNewVersionDialog = ({
             uploading={createVersion.isPending}
             onUpload={handleFilesSelected}
           />
+
+          {/* Version label input (optional custom display name like '1.2.0') */}
+          <div className="space-y-2">
+            <Label htmlFor="version-label">{t('datasets.versionLabel')}</Label>
+            <Input
+              id="version-label"
+              value={versionLabel}
+              onChange={(e) => setVersionLabel(e.target.value)}
+              placeholder={t('datasets.versionLabelPlaceholder')}
+              maxLength={128}
+              disabled={createVersion.isPending}
+            />
+          </div>
 
           {/* Change summary input */}
           <div className="space-y-2">

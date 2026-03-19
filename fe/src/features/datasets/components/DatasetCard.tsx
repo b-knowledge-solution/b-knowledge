@@ -62,7 +62,7 @@ const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onEdit, onDelete, on
                   {dataset.name}
                 </h3>
                 {/* Show version badge for version datasets */}
-                <VersionBadge versionNumber={dataset.version_number} />
+                <VersionBadge versionNumber={dataset.version_number} versionLabel={dataset.version_label} />
               </div>
               <span className={`inline-block text-xs px-2 py-0.5 rounded-full mt-1 ${statusColor}`}>
                 {dataset.status}

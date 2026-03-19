@@ -1557,6 +1557,8 @@
     "uploadNewVersionFailed": "バージョンのアップロードに失敗しました。再試行するか、ファイル形式を確認してください。",
     "changeSummary": "変更概要",
     "changeSummaryPlaceholder": "このバージョンの変更点を記述...",
+    "versionLabel": "バージョンラベル",
+    "versionLabelPlaceholder": "例: 1.0.0, Q1リリース (任意)",
     "autoParse": "アップロード後に自動解析",
     "versionBadge": "v{{number}}",
     "deleteVersion": "バージョンを削除",

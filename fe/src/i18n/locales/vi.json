@@ -1571,6 +1571,8 @@
     "uploadNewVersionFailed": "Tải phiên bản thất bại. Vui lòng thử lại hoặc kiểm tra định dạng tệp.",
     "changeSummary": "Tóm tắt thay đổi",
     "changeSummaryPlaceholder": "Mô tả những thay đổi trong phiên bản này...",
+    "versionLabel": "Nhãn phiên bản",
+    "versionLabelPlaceholder": "VD: 1.0.0, Phiên bản Q1 (tùy chọn)",
     "autoParse": "Tự động phân tích sau khi tải lên",
     "versionBadge": "v{{number}}",
     "deleteVersion": "Xóa phiên bản",

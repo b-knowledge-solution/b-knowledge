@@ -99,6 +99,7 @@ export const datasetApi = {
     datasetId: string,
     files: File[],
     changeSummary?: string,
+    versionLabel?: string,
     autoParse?: boolean,
   ): Promise<Dataset> => {
     const formData = new FormData()
@@ -108,6 +109,8 @@ export const datasetApi = {
     })
     // Attach optional metadata fields
     if (changeSummary) formData.append('change_summary', changeSummary)
+    // Attach custom version label when provided (e.g., '1.2.0', 'Q1 Release')
+    if (versionLabel) formData.append('version_label', versionLabel)
     if (autoParse !== undefined) formData.append('auto_parse', String(autoParse))
     return apiFetch<Dataset>(`${BASE_URL}/datasets/${datasetId}/versions`, {
       method: 'POST',

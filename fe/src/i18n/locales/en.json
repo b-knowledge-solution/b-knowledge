@@ -1587,6 +1587,8 @@
     "uploadNewVersionFailed": "Version upload failed. Please try again or check file format.",
     "changeSummary": "Change Summary",
     "changeSummaryPlaceholder": "Describe what changed in this version...",
+    "versionLabel": "Version Label",
+    "versionLabelPlaceholder": "e.g., 1.0.0, Q1 Release (optional)",
     "autoParse": "Auto-parse after upload",
     "versionBadge": "v{{number}}",
     "deleteVersion": "Delete Version",

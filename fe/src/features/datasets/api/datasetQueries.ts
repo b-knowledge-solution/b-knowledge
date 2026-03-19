@@ -255,11 +255,12 @@ export function useCreateDatasetVersion(datasetId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ files, changeSummary, autoParse }: {
+    mutationFn: ({ files, changeSummary, versionLabel, autoParse }: {
       files: File[]
       changeSummary?: string
+      versionLabel?: string
       autoParse?: boolean
-    }) => datasetApi.createDatasetVersion(datasetId, files, changeSummary, autoParse),
+    }) => datasetApi.createDatasetVersion(datasetId, files, changeSummary, versionLabel, autoParse),
     meta: { successMessage: t('datasets.uploadNewVersionSuccess') },
     onSuccess: () => {
       // Invalidate dataset list to show the new version dataset
