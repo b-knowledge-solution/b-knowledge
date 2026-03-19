@@ -126,14 +126,14 @@ Plans:
   3. A user with cross-project access can search across multiple authorized projects in a single query
   4. An admin can view a query analytics dashboard showing most common queries, failed retrievals, and low-confidence answer rates
   5. Answer feedback (thumbs up/down) is aggregated and visible in the RAG quality dashboard alongside retrieval precision metrics
-**Plans**: TBD
+**Plans**: 5 plans
 
 Plans:
-- [ ] 06-01: Complete project CRUD backend and Data Studio UI — create, update, delete projects (PROJ-01)
-- [ ] 06-02: Implement project-dataset binding and project member management with roles (PROJ-02, PROJ-03)
-- [ ] 06-03: Implement cross-project search with ABAC enforcement for authorized users (PROJ-04)
-- [ ] 06-04: Build query analytics dashboard — most common queries, failed retrievals, low-confidence rates (OBSV-01)
-- [ ] 06-05: Build RAG quality metrics dashboard; wire answer feedback aggregation into quality signals (OBSV-02, OBSV-03)
+- [ ] 06-01-PLAN.md — DB migrations (tenant_id on projects, query_log table), QueryLogService, tenant-scoped ProjectModel (PROJ-01, OBSV-01)
+- [ ] 06-02-PLAN.md — Project member management, dataset binding, cross-project search resolver, activity feed BE (PROJ-02, PROJ-03, PROJ-04)
+- [ ] 06-03-PLAN.md — Dashboard analytics + feedback aggregation BE endpoints, wire query logging into chat/search (OBSV-01, OBSV-02, OBSV-03)
+- [ ] 06-04-PLAN.md — FE project management: member list, dataset picker, activity feed, sidebar, i18n (PROJ-01, PROJ-02, PROJ-03, PROJ-04)
+- [ ] 06-05-PLAN.md — FE dashboard analytics: query analytics tab, RAG quality tab, Recharts charts, Langfuse links, i18n (OBSV-01, OBSV-02, OBSV-03)
 
 ## Progress
 
@@ -151,4 +151,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 ---
 *Roadmap created: 2026-03-18*
-*Last updated: 2026-03-19 after Phase 5 planning*
+*Last updated: 2026-03-19 after Phase 6 planning*
