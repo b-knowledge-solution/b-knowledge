@@ -608,6 +608,47 @@ async def build_chunks(task, progress_callback):
             DocMetadataService.update_document_metadata(task["doc_id"], metadata)
         progress_callback(msg="Question generation {} chunks completed in {:.2f}s".format(len(docs), timer() - st))
 
+    # Clinical document classification -- runs only for clinical parser
+    # Classifies the document into regulatory/protocol/research/administrative
+    # using LLM and stores the result as a tag on all chunks
+    if task["parser_id"] == ParserType.CLINICAL.value:
+        st = timer()
+        progress_callback(msg="Start clinical document classification ...")
+        chat_model_config = get_model_config_by_type_and_name(task["tenant_id"], LLMType.CHAT, task["llm_id"])
+        chat_mdl = LLMBundle(task["tenant_id"], chat_model_config, lang=task["language"])
+
+        # Combine all chunk text for classification (use first chunk or full text)
+        full_text = "\n\n".join(d["content_with_weight"] for d in docs)
+        doc_title = task.get("name", "")
+
+        # Cache-aware classification using same pattern as auto_keywords
+        cached = get_llm_cache(chat_mdl.llm_name, full_text[:4000], "clinical_classification", {})
+        if not cached:
+            if has_canceled(task["id"]):
+                progress_callback(-1, msg="Task has been canceled.")
+                return None
+            async with chat_limiter:
+                from rag.app.clinical import classify_document
+                cached = await classify_document(chat_mdl, full_text, doc_title)
+            set_llm_cache(chat_mdl.llm_name, full_text[:4000], cached, "clinical_classification", {})
+
+        if cached:
+            classification = cached.strip().lower()
+            # Add classification as tag to all chunks
+            for d in docs:
+                existing_tags = d.get("tag_kwd", [])
+                if classification not in existing_tags:
+                    d["tag_kwd"] = existing_tags + [classification]
+
+            # Store classification in document metadata
+            existing_meta = DocMetadataService.get_document_metadata(task["doc_id"])
+            existing_meta = existing_meta if isinstance(existing_meta, dict) else {}
+            existing_meta["clinical_classification"] = classification
+            DocMetadataService.update_document_metadata(task["doc_id"], existing_meta)
+
+        progress_callback(msg="Clinical classification completed in {:.2f}s: {}".format(
+            timer() - st, cached if cached else "skipped"))
+
     if task["kb_parser_config"].get("tag_kb_ids", []):
         progress_callback(msg="Start to tag for every chunk ...")
         kb_ids = task["kb_parser_config"]["tag_kb_ids"]
