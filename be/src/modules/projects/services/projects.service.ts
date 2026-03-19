@@ -3,6 +3,7 @@
  * @module services/projects
  */
 import { ModelFactory } from '@/shared/models/factory.js'
+import { db } from '@/shared/db/knex.js'
 import { log } from '@/shared/services/logger.service.js'
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js'
 import { teamService } from '@/modules/teams/services/team.service.js'
@@ -376,6 +377,263 @@ export class ProjectsService {
    */
   async deleteEntityPermission(permId: string): Promise<void> {
     await ModelFactory.projectEntityPermission.delete(permId)
+  }
+
+  // -------------------------------------------------------------------------
+  // Member Management (PROJ-03)
+  // -------------------------------------------------------------------------
+
+  /**
+   * @description Get all user members of a project with their profile details.
+   *   Queries project_permissions for grantee_type='user' and JOINs with users table.
+   * @param {string} projectId - UUID of the project
+   * @returns {Promise<Array<{ id: string; user_id: string; email: string; name: string; role: string; created_at: Date }>>}
+   *   Array of member objects with user profile info
+   */
+  async getProjectMembers(projectId: string): Promise<Array<{
+    id: string; user_id: string; email: string; name: string; role: string; created_at: Date
+  }>> {
+    // JOIN project_permissions with users to get member profile details in a single query
+    return db('project_permissions as pp')
+      .select(
+        'pp.id',
+        'pp.grantee_id as user_id',
+        'u.email',
+        db.raw("COALESCE(u.nickname, u.email) as name"),
+        'u.role',
+        'pp.created_at',
+      )
+      .innerJoin('users as u', 'u.id', 'pp.grantee_id')
+      .where('pp.project_id', projectId)
+      .andWhere('pp.grantee_type', 'user')
+      .orderBy('pp.created_at', 'desc')
+  }
+
+  /**
+   * @description Add a user as a member of a project with default view permissions.
+   *   Validates that the user exists within the same tenant before granting access.
+   * @param {string} projectId - UUID of the project
+   * @param {string} userId - UUID of the user to add
+   * @param {string} addedBy - UUID of the user performing the action
+   * @param {string} tenantId - Tenant ID for org-scoped validation and audit logging
+   * @returns {Promise<ProjectPermission>} The created permission record
+   * @throws {Error} If user not found in the same tenant
+   */
+  async addMember(projectId: string, userId: string, addedBy: string, tenantId: string): Promise<ProjectPermission> {
+    // Verify user exists within the same tenant for multi-tenant isolation
+    const user = await db('users as u')
+      .innerJoin('user_tenant as ut', 'ut.user_id', 'u.id')
+      .where('u.id', userId)
+      .andWhere('ut.tenant_id', tenantId)
+      .first()
+
+    if (!user) {
+      throw new Error('User not found in this organization')
+    }
+
+    // Create permission with default view access on documents and chat tabs
+    const permission = await ModelFactory.projectPermission.create({
+      project_id: projectId,
+      grantee_type: 'user',
+      grantee_id: userId,
+      tab_documents: 'view',
+      tab_chat: 'view',
+      tab_settings: 'none',
+      created_by: addedBy,
+    })
+
+    // Audit log the member addition
+    await auditService.log({
+      userId: addedBy,
+      userEmail: user.email || '',
+      action: AuditAction.SET_PERMISSION,
+      resourceType: AuditResourceType.PERMISSION,
+      resourceId: projectId,
+      details: { type: 'add_member', member_id: userId },
+      tenantId,
+    })
+
+    return permission
+  }
+
+  /**
+   * @description Remove a user from a project by deleting their permission entry.
+   *   Rejects removal of the project creator to prevent orphaned projects.
+   * @param {string} projectId - UUID of the project
+   * @param {string} userId - UUID of the user to remove
+   * @param {string} removedBy - UUID of the user performing the action
+   * @param {string} tenantId - Tenant ID for audit logging
+   * @returns {Promise<void>}
+   * @throws {Error} If trying to remove the project creator
+   */
+  async removeMember(projectId: string, userId: string, removedBy: string, tenantId: string): Promise<void> {
+    // Prevent removal of the project creator to avoid orphaned projects
+    const project = await ModelFactory.project.findById(projectId)
+    if (project && project.created_by === userId) {
+      throw new Error('Cannot remove the project creator')
+    }
+
+    // Delete the permission entry for this user
+    await ModelFactory.projectPermission.delete({
+      project_id: projectId,
+      grantee_type: 'user',
+      grantee_id: userId,
+    } as any)
+
+    // Audit log the member removal
+    await auditService.log({
+      userId: removedBy,
+      userEmail: '',
+      action: AuditAction.SET_PERMISSION,
+      resourceType: AuditResourceType.PERMISSION,
+      resourceId: projectId,
+      details: { type: 'remove_member', member_id: userId },
+      tenantId,
+    })
+  }
+
+  // -------------------------------------------------------------------------
+  // Dataset Binding (PROJ-02)
+  // -------------------------------------------------------------------------
+
+  /**
+   * @description Bind one or more datasets to a project using a single INSERT with ON CONFLICT DO NOTHING.
+   *   Avoids N+1 inserts by batching all dataset IDs into one query.
+   * @param {string} projectId - UUID of the project
+   * @param {string[]} datasetIds - Array of dataset UUIDs to bind
+   * @param {string} userId - UUID of the user performing the action
+   * @param {string} tenantId - Tenant ID for audit logging
+   * @returns {Promise<void>}
+   */
+  async bindDatasets(projectId: string, datasetIds: string[], userId: string, tenantId: string): Promise<void> {
+    // Build batch rows for a single INSERT with conflict handling
+    const rows = datasetIds.map(datasetId => ({
+      project_id: projectId,
+      dataset_id: datasetId,
+      auto_created: false,
+    }))
+
+    // Single INSERT with ON CONFLICT DO NOTHING to skip duplicates (Pitfall 3: no N+1)
+    await db('project_datasets')
+      .insert(rows)
+      .onConflict(['project_id', 'dataset_id'])
+      .ignore()
+
+    // Audit log the binding action
+    await auditService.log({
+      userId,
+      userEmail: '',
+      action: AuditAction.UPDATE_SOURCE,
+      resourceType: AuditResourceType.DATASET,
+      resourceId: projectId,
+      details: { type: 'bind_datasets', dataset_ids: datasetIds },
+      tenantId,
+    })
+  }
+
+  /**
+   * @description Unbind a single dataset from a project. Immediate access revocation.
+   * @param {string} projectId - UUID of the project
+   * @param {string} datasetId - UUID of the dataset to unbind
+   * @param {string} userId - UUID of the user performing the action
+   * @param {string} tenantId - Tenant ID for audit logging
+   * @returns {Promise<void>}
+   */
+  async unbindDataset(projectId: string, datasetId: string, userId: string, tenantId: string): Promise<void> {
+    // Delete the project-dataset link for immediate access revocation
+    await ModelFactory.projectDataset.delete({
+      project_id: projectId,
+      dataset_id: datasetId,
+    } as any)
+
+    // Audit log the unbinding action
+    await auditService.log({
+      userId,
+      userEmail: '',
+      action: AuditAction.UPDATE_SOURCE,
+      resourceType: AuditResourceType.DATASET,
+      resourceId: projectId,
+      details: { type: 'unbind_dataset', dataset_id: datasetId },
+      tenantId,
+    })
+  }
+
+  // -------------------------------------------------------------------------
+  // Cross-Project Dataset Resolver (PROJ-04)
+  // -------------------------------------------------------------------------
+
+  /**
+   * @description Resolve all unique dataset IDs accessible to a user across all their projects.
+   *   Uses a single JOIN query to avoid N+1 (Pitfall 3). Returns deduplicated dataset IDs.
+   * @param {string} userId - UUID of the user
+   * @param {string} tenantId - Tenant ID for org-scoped filtering
+   * @returns {Promise<string[]>} Deduplicated array of dataset UUIDs the user can access
+   */
+  async resolveProjectDatasets(userId: string, tenantId: string): Promise<string[]> {
+    // Single query with JOIN to resolve all datasets from user's projects (no N+1)
+    const rows = await db('project_datasets as pd')
+      .select('pd.dataset_id')
+      .distinct()
+      .innerJoin('project_permissions as pp', 'pd.project_id', 'pp.project_id')
+      .where('pp.grantee_type', 'user')
+      .andWhere('pp.grantee_id', userId)
+      .whereIn('pd.project_id', function () {
+        // Sub-select: only projects within the user's tenant
+        this.select('id').from('projects').where('tenant_id', tenantId)
+      })
+
+    return rows.map((r: any) => r.dataset_id)
+  }
+
+  // -------------------------------------------------------------------------
+  // Activity Feed
+  // -------------------------------------------------------------------------
+
+  /**
+   * @description Get paginated audit log entries scoped to a project and its bound datasets.
+   *   Includes both direct project actions and actions on datasets linked to the project.
+   * @param {string} projectId - UUID of the project
+   * @param {string} tenantId - Tenant ID for org-scoped filtering
+   * @param {number} limit - Maximum number of entries to return
+   * @param {number} offset - Pagination offset
+   * @returns {Promise<{ data: any[]; total: number }>} Paginated audit entries with total count
+   */
+  async getProjectActivity(projectId: string, tenantId: string, limit: number, offset: number): Promise<{ data: any[]; total: number }> {
+    // Build sub-query for dataset IDs linked to this project
+    const datasetIdsSub = db('project_datasets')
+      .select('dataset_id')
+      .where('project_id', projectId)
+
+    // Base query: audit logs for the project itself or its linked datasets
+    const baseQuery = db('audit_logs')
+      .where('tenant_id', tenantId)
+      .andWhere(function () {
+        // Include direct project actions and actions on bound datasets
+        this.where('resource_id', projectId)
+          .orWhereIn('resource_id', datasetIdsSub)
+      })
+
+    // Run data fetch and count in parallel for efficiency
+    const [data, countResult] = await Promise.all([
+      baseQuery.clone()
+        .select('*')
+        .orderBy('created_at', 'desc')
+        .limit(limit)
+        .offset(offset),
+      baseQuery.clone()
+        .count('* as cnt')
+        .first(),
+    ])
+
+    const total = Number((countResult as any)?.cnt ?? 0)
+
+    // Parse details JSON string back to object for each entry
+    const parsedData = data.map((entry: any) => ({
+      ...entry,
+      details: typeof entry.details === 'string' ? JSON.parse(entry.details) : entry.details,
+    }))
+
+    return { data: parsedData, total }
   }
 }
 

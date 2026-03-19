@@ -230,3 +230,37 @@ export const createEntityPermissionSchema = z.object({
   grantee_id: z.string().min(1, 'Grantee ID is required'),
   permission_level: z.enum(['none', 'view', 'create', 'edit', 'delete']).optional().default('view'),
 })
+
+// ---------------------------------------------------------------------------
+// Member Management schemas (PROJ-03)
+// ---------------------------------------------------------------------------
+
+/** @description Validates POST /api/projects/:id/members body for adding a project member */
+export const addMemberSchema = z.object({
+  user_id: z.string().uuid('Invalid user UUID'),
+})
+
+/** @description Validates project ID and user ID path parameters for member removal */
+export const memberParamSchema = z.object({
+  id: z.string().min(1, 'Project ID is required'),
+  userId: z.string().uuid('Invalid user UUID'),
+})
+
+// ---------------------------------------------------------------------------
+// Dataset Binding schemas (PROJ-02)
+// ---------------------------------------------------------------------------
+
+/** @description Validates POST /api/projects/:id/datasets/bind body for batch dataset binding */
+export const bindDatasetsSchema = z.object({
+  dataset_ids: z.array(z.string().uuid('Invalid dataset UUID')).min(1, 'At least one dataset required').max(50, 'Maximum 50 datasets per request'),
+})
+
+// ---------------------------------------------------------------------------
+// Activity Feed schemas
+// ---------------------------------------------------------------------------
+
+/** @description Validates GET /api/projects/:id/activity query params for pagination */
+export const activityQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  offset: z.coerce.number().int().min(0).default(0),
+})
