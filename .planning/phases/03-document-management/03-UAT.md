@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 03-document-management
 source: [03-01-SUMMARY.md, 03-02-SUMMARY.md, 03-03-SUMMARY.md, 03-04-SUMMARY.md, 03-05-SUMMARY.md]
 started: 2026-03-19T04:00:00Z
@@ -87,9 +87,23 @@ skipped: 0
   reason: "User reported: version may be base on semantic versioning or in custome"
   severity: major
   test: 2
-  root_cause: ""
-  artifacts: []
-  missing: []
+  root_cause: "version_number is integer-only across DB, service, API schema, and UI. No version_label text column exists. The integer serves dual duty as pagerank boost AND display label. Need separate version_label column for custom/semver strings while keeping integer version_number for pagerank."
+  artifacts:
+    - path: "be/src/shared/db/migrations/20260319000000_add_dataset_versioning.ts"
+      issue: "version_number is integer, no version_label column"
+    - path: "be/src/modules/rag/services/rag.service.ts"
+      issue: "createVersionDataset has no versionLabel parameter"
+    - path: "be/src/modules/rag/schemas/rag.schemas.ts"
+      issue: "createVersionSchema missing version_label field"
+    - path: "fe/src/features/datasets/components/UploadNewVersionDialog.tsx"
+      issue: "No version label input field"
+    - path: "fe/src/features/datasets/components/VersionBadge.tsx"
+      issue: "Prop typed as number only, renders v{N}"
+  missing:
+    - "Add version_label text column via new migration"
+    - "Accept versionLabel in createVersionDataset service and API schema"
+    - "Add version label input to UploadNewVersionDialog"
+    - "VersionBadge renders versionLabel when present, falls back to v{N}"
   debug_session: ""
 
 - truth: "Cron parsing scheduler processes queued documents on schedule"
@@ -97,7 +111,14 @@ skipped: 0
   reason: "User reported: is cron parsing for whole system, just queue 1st in 1 out"
   severity: major
   test: 14
-  root_cause: ""
-  artifacts: []
-  missing: []
+  root_cause: "runParsingSchedule() queries all pending docs across all datasets at once and pushes up to 50 into Redis Stream simultaneously. Python executor processes up to 5 concurrently via semaphore. No dataset-level sequencing, no FIFO gate, no per-dataset ordering."
+  artifacts:
+    - path: "be/src/shared/services/cron.service.ts"
+      issue: "runParsingSchedule queries all datasets at once, no ordering"
+    - path: "advance-rag/rag/svr/task_executor.py"
+      issue: "MAX_CONCURRENT_TASKS=5 allows parallel processing across datasets"
+  missing:
+    - "Dataset-aware sequencing: group by kb_id, enqueue one dataset batch at a time"
+    - "FIFO gate: process one dataset's documents before starting next"
+    - "Replace global LIMIT 50 with per-dataset limit"
   debug_session: ""
