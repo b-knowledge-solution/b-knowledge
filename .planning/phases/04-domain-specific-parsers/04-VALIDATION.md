@@ -38,21 +38,23 @@ created: 2026-03-19
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 04-01-01 | 01 | 1 | PRSR-01 | unit | `cd advance-rag && python -m pytest tests/test_code_parser.py -v` | ❌ W0 | ⬜ pending |
-| 04-02-01 | 02 | 1 | PRSR-02 | unit | `cd advance-rag && python -m pytest tests/test_api_parser.py -v` | ❌ W0 | ⬜ pending |
-| 04-03-01 | 03 | 1 | PRSR-03 | unit | `cd advance-rag && python -m pytest tests/test_adr_parser.py -v` | ❌ W0 | ⬜ pending |
-| 04-04-01 | 04 | 1 | PRSR-04 | unit | `cd advance-rag && python -m pytest tests/test_clinical_classifier.py -v` | ❌ W0 | ⬜ pending |
+| 04-01-T1 | 01 | 1 | PRSR-01 | unit | `cd advance-rag && python -m pytest tests/test_code_parser.py -v` | W0 | pending |
+| 04-01-T2 | 01 | 1 | PRSR-01 | unit | `cd advance-rag && python -m pytest tests/test_code_parser.py -v` | W0 | pending |
+| 04-02-T1 | 02 | 2 | PRSR-02 | unit | `cd advance-rag && python -m pytest tests/test_openapi_parser.py -v` | W0 | pending |
+| 04-02-T2 | 02 | 2 | PRSR-03 | unit | `cd advance-rag && python -m pytest tests/test_adr_parser.py -v` | W0 | pending |
+| 04-03-T1 | 03 | 2 | PRSR-04 | unit | `cd advance-rag && python -m pytest tests/test_clinical_parser.py -v` | W0 | pending |
+| 04-03-T2 | 03 | 2 | PRSR-04 | build | `npm run build -w fe` | n/a | pending |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+*Status: pending / green / red / flaky*
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `advance-rag/tests/test_code_parser.py` — covers PRSR-01 (code-aware chunking)
-- [ ] `advance-rag/tests/test_api_parser.py` — covers PRSR-02 (OpenAPI parsing)
-- [ ] `advance-rag/tests/test_adr_parser.py` — covers PRSR-03 (ADR parsing)
-- [ ] `advance-rag/tests/test_clinical_classifier.py` — covers PRSR-04 (clinical classification)
+- [ ] `advance-rag/tests/test_code_parser.py` -- covers PRSR-01 (code-aware chunking)
+- [ ] `advance-rag/tests/test_openapi_parser.py` -- covers PRSR-02 (OpenAPI parsing)
+- [ ] `advance-rag/tests/test_adr_parser.py` -- covers PRSR-03 (ADR parsing)
+- [ ] `advance-rag/tests/test_clinical_parser.py` -- covers PRSR-04 (clinical classification)
 
 ---
 
