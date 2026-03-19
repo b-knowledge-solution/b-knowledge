@@ -1218,7 +1218,10 @@
     "thumbsUp": "Thumbs Up",
     "thumbsDown": "Thumbs Down",
     "regenerate": "Regenerate",
-    "variableKeyPlaceholder": "Variable Key Placeholder"
+    "variableKeyPlaceholder": "Variable Key Placeholder",
+    "deepResearchSubquery": "Đang nghiên cứu: {{query}}",
+    "deepResearchBudgetWarning": "Gần đạt giới hạn ngân sách ({{tokensUsed}}/{{tokensMax}} token)",
+    "deepResearchBudgetExhausted": "Nghiên cứu bị giới hạn bởi ngân sách. {{completed}} / {{total}} truy vấn con hoàn thành."
   },
   "landing": {
     "nav": {
@@ -2308,7 +2311,13 @@
     "vectorSearch": "Vector",
     "keywordSearch": "Từ khóa",
     "reasoning": "Suy luận",
-    "reasoningDesc": "Bật chế độ suy nghĩ sâu và lập luận"
+    "reasoningDesc": "Bật chế độ suy nghĩ sâu và lập luận",
+    "knowledgeGraph": "Đồ thị tri thức",
+    "knowledgeGraphDesc": "Bật truy xuất tăng cường đồ thị tri thức cho câu hỏi nhiều bước",
+    "deepResearch": "Nghiên cứu sâu",
+    "deepResearchDesc": "Bật nghiên cứu đệ quy nhiều bước cho câu hỏi phức tạp",
+    "allowRbacDatasets": "Cho phép bộ dữ liệu người dùng có quyền truy cập",
+    "allowRbacDatasetsDesc": "Tìm kiếm cả bộ dữ liệu chuyên dụng và bộ dữ liệu người dùng được phép truy cập"
   },
   "metadataFilter": {
     "title": "Bộ lọc siêu dữ liệu",

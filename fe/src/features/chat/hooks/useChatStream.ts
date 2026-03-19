@@ -14,7 +14,7 @@
 
 import { useState, useRef } from 'react'
 import { chatApi } from '../api/chatApi'
-import type { ChatMessage, ChatReference, SendMessageOptions } from '../types/chat.types'
+import type { ChatMessage, ChatReference, SendMessageOptions, DeepResearchEvent } from '../types/chat.types'
 
 // ============================================================================
 // Types
@@ -73,6 +73,8 @@ export interface UseChatStreamReturn {
   clearMessages: () => void
   /** Regenerate the last assistant message by re-sending the last user message */
   regenerateLastMessage: () => void
+  /** Structured Deep Research sub-events (subquery progress, budget warnings) */
+  deepResearchEvents: DeepResearchEvent[]
 }
 
 // ============================================================================
@@ -97,6 +99,10 @@ export function useChatStream(
   const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus | null>(null)
   const [metrics, setMetrics] = useState<PipelineMetrics | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Deep Research structured events for subquery progress and budget tracking
+  const [deepResearchEvents, setDeepResearchEvents] = useState<DeepResearchEvent[]>([])
+  const deepResearchEventsRef = useRef<DeepResearchEvent[]>([])
 
   // Abort controller reference for cancelling streams
   const abortRef = useRef<AbortController | null>(null)
@@ -134,6 +140,9 @@ export function useChatStream(
     setReferences(null)
     answerRef.current = ''
     referencesRef.current = null
+    // Clear deep research events from previous message
+    deepResearchEventsRef.current = []
+    setDeepResearchEvents([])
 
     try {
       // Create a new abort controller for this request
@@ -191,6 +200,26 @@ export function useChatStream(
             // Handle pipeline status updates
             if (data.status !== undefined) {
               setPipelineStatus(data.status as PipelineStatus)
+
+              // Parse structured Deep Research sub-events (subquery progress, budget warnings)
+              if (data.status === 'deep_research' && data.subEvent) {
+                const event: DeepResearchEvent = {
+                  subEvent: data.subEvent,
+                  query: data.query,
+                  depth: data.depth,
+                  index: data.index,
+                  total: data.total,
+                  chunks: data.chunks,
+                  message: data.message,
+                  tokensUsed: data.tokensUsed,
+                  tokensMax: data.tokensMax,
+                  callsUsed: data.callsUsed,
+                  callsMax: data.callsMax,
+                  completed: data.completed,
+                }
+                deepResearchEventsRef.current = [...deepResearchEventsRef.current, event]
+                setDeepResearchEvents([...deepResearchEventsRef.current])
+              }
             }
 
             // Handle reference data (sent early for sidebar display)
@@ -306,6 +335,8 @@ export function useChatStream(
     setError(null)
     answerRef.current = ''
     referencesRef.current = null
+    deepResearchEventsRef.current = []
+    setDeepResearchEvents([])
   }
 
   /**
@@ -370,5 +401,6 @@ export function useChatStream(
     setMessages,
     clearMessages,
     regenerateLastMessage,
+    deepResearchEvents,
   }
 }

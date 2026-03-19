@@ -183,6 +183,8 @@ export interface PromptConfig {
   rerank_id?: string | undefined
   /** Enable reasoning / deep thinking mode */
   reasoning?: boolean | undefined
+  /** Allow cross-dataset search using RBAC-accessible datasets */
+  allow_rbac_datasets?: boolean | undefined
   /** Enable text-to-speech */
   tts?: boolean | undefined
   /** Chat language preference */
@@ -292,4 +294,40 @@ export interface SendMessagePayload {
   reasoning?: boolean | undefined
   /** Enable internet search via web search API */
   use_internet?: boolean | undefined
+}
+
+// ============================================================================
+// Deep Research SSE Event Types
+// ============================================================================
+
+/**
+ * @description Structured SSE event for Deep Research pipeline status updates.
+ * These events provide sub-query progress, budget warnings, and exhaustion signals
+ * during the recursive deep research process.
+ */
+export interface DeepResearchEvent {
+  /** Type of deep research sub-event */
+  subEvent: 'subquery_start' | 'subquery_result' | 'budget_warning' | 'budget_exhausted' | 'info'
+  /** The sub-query text being researched */
+  query?: string | undefined
+  /** Current recursion depth */
+  depth?: number | undefined
+  /** Sub-query index (1-based) within current depth */
+  index?: number | undefined
+  /** Total sub-queries at this depth */
+  total?: number | undefined
+  /** Number of chunks found for this sub-query */
+  chunks?: number | undefined
+  /** Human-readable status message */
+  message?: string | undefined
+  /** Tokens consumed so far */
+  tokensUsed?: number | undefined
+  /** Maximum token budget */
+  tokensMax?: number | undefined
+  /** LLM calls consumed so far */
+  callsUsed?: number | undefined
+  /** Maximum LLM call budget */
+  callsMax?: number | undefined
+  /** Number of completed sub-queries (for budget_exhausted) */
+  completed?: number | undefined
 }

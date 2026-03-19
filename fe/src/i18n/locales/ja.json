@@ -1204,7 +1204,10 @@
     "thumbsUp": "Thumbs Up",
     "thumbsDown": "Thumbs Down",
     "regenerate": "Regenerate",
-    "variableKeyPlaceholder": "Variable Key Placeholder"
+    "variableKeyPlaceholder": "Variable Key Placeholder",
+    "deepResearchSubquery": "調査中: {{query}}",
+    "deepResearchBudgetWarning": "予算上限に接近中（{{tokensUsed}}/{{tokensMax}}トークン）",
+    "deepResearchBudgetExhausted": "予算により研究が制限されました。{{completed}} / {{total}} のサブクエリが完了しました。"
   },
   "landing": {
     "nav": {
@@ -2294,7 +2297,13 @@
     "vectorSearch": "ベクトル",
     "keywordSearch": "キーワード",
     "reasoning": "推論",
-    "reasoningDesc": "深い思考と推論モードを有効にする"
+    "reasoningDesc": "深い思考と推論モードを有効にする",
+    "knowledgeGraph": "ナレッジグラフ",
+    "knowledgeGraphDesc": "マルチホップ質問のためのナレッジグラフ拡張検索を有効にする",
+    "deepResearch": "ディープリサーチ",
+    "deepResearchDesc": "複雑な質問のための再帰的マルチステップ研究を有効にする",
+    "allowRbacDatasets": "ユーザーのアクセス可能なデータセットを許可",
+    "allowRbacDatasetsDesc": "専用データセットとユーザーのRBACアクセス可能なデータセットの両方を検索"
   },
   "metadataFilter": {
     "title": "メタデータフィルター",

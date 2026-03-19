@@ -112,6 +112,7 @@ function ChatAssistantConfig({
   const [refineMultiturn, setRefineMultiturn] = useState(true)
   const [useKg, setUseKg] = useState(false)
   const [reasoning, setReasoning] = useState(false)
+  const [allowRbacDatasets, setAllowRbacDatasets] = useState(false)
 
   // ---- Retrieval parameters ----
   const [topN, setTopN] = useState(6)
@@ -165,6 +166,7 @@ function ChatAssistantConfig({
       setRefineMultiturn(pc.refine_multiturn ?? true)
       setUseKg(pc.use_kg ?? false)
       setReasoning(pc.reasoning ?? false)
+      setAllowRbacDatasets(pc.allow_rbac_datasets ?? false)
 
       // Retrieval parameters
       setTopN(pc.top_n ?? 6)
@@ -197,6 +199,7 @@ function ChatAssistantConfig({
       setRefineMultiturn(true)
       setUseKg(false)
       setReasoning(false)
+      setAllowRbacDatasets(false)
       setTopN(6)
       setSimilarityThreshold(0.2)
       setVectorWeight(0.3)
@@ -249,6 +252,7 @@ function ChatAssistantConfig({
       refine_multiturn: refineMultiturn,
       use_kg: useKg,
       reasoning,
+      allow_rbac_datasets: allowRbacDatasets,
       // Retrieval
       top_n: topN,
       top_k: topK,
@@ -430,13 +434,22 @@ function ChatAssistantConfig({
               <Switch checked={tocEnhance} onCheckedChange={setTocEnhance} />
             </div>
 
-            {/* Reasoning / Deep Thinking */}
+            {/* Deep Research mode (renamed from Reasoning) */}
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">{t('chatSettings.reasoning')}</p>
-                <p className="text-xs text-muted-foreground">{t('chatSettings.reasoningDesc')}</p>
+                <p className="text-sm font-medium">{t('chatSettings.deepResearch')}</p>
+                <p className="text-xs text-muted-foreground">{t('chatSettings.deepResearchDesc')}</p>
               </div>
               <Switch checked={reasoning} onCheckedChange={setReasoning} />
+            </div>
+
+            {/* Allow RBAC Datasets for cross-dataset search */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">{t('chatSettings.allowRbacDatasets')}</p>
+                <p className="text-xs text-muted-foreground">{t('chatSettings.allowRbacDatasetsDesc')}</p>
+              </div>
+              <Switch checked={allowRbacDatasets} onCheckedChange={setAllowRbacDatasets} />
             </div>
           </div>
 
@@ -522,11 +535,11 @@ function ChatAssistantConfig({
             <Switch checked={refineMultiturn} onCheckedChange={setRefineMultiturn} />
           </div>
 
-          {/* Knowledge Graph */}
+          {/* Knowledge Graph mode — labels existing use_kg toggle per CONTEXT.md */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium">{t('chatSettings.useKg')}</p>
-              <p className="text-xs text-muted-foreground">{t('chatSettings.useKgDesc')}</p>
+              <p className="text-sm font-medium">{t('chatSettings.knowledgeGraph')}</p>
+              <p className="text-xs text-muted-foreground">{t('chatSettings.knowledgeGraphDesc')}</p>
             </div>
             <Switch checked={useKg} onCheckedChange={setUseKg} />
           </div>

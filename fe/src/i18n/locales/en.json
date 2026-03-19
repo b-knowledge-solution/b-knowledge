@@ -1216,7 +1216,10 @@
     "thumbsUp": "Thumbs Up",
     "thumbsDown": "Thumbs Down",
     "regenerate": "Regenerate",
-    "variableKeyPlaceholder": "Variable Key Placeholder"
+    "variableKeyPlaceholder": "Variable Key Placeholder",
+    "deepResearchSubquery": "Researching: {{query}}",
+    "deepResearchBudgetWarning": "Approaching budget limit ({{tokensUsed}}/{{tokensMax}} tokens)",
+    "deepResearchBudgetExhausted": "Research limited by budget. {{completed}} of {{total}} sub-queries completed."
   },
   "landing": {
     "nav": {
@@ -2324,7 +2327,13 @@
     "vectorSearch": "Vector",
     "keywordSearch": "Keyword",
     "reasoning": "Reasoning",
-    "reasoningDesc": "Enable deep thinking and reasoning mode"
+    "reasoningDesc": "Enable deep thinking and reasoning mode",
+    "knowledgeGraph": "Knowledge Graph",
+    "knowledgeGraphDesc": "Enable knowledge graph-augmented retrieval for multi-hop questions",
+    "deepResearch": "Deep Research",
+    "deepResearchDesc": "Enable recursive multi-step research for complex questions",
+    "allowRbacDatasets": "Allow User's Accessible Datasets",
+    "allowRbacDatasetsDesc": "Search both dedicated datasets and the user's RBAC-accessible datasets"
   },
   "metadataFilter": {
     "title": "Metadata Filter",
