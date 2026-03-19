@@ -10,8 +10,8 @@ progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 17
-  completed_plans: 13
-  percent: 76
+  completed_plans: 14
+  percent: 82
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 3 of 6 (Document Management)
-Plan: 2 of 6 in current phase
+Plan: 3 of 6 in current phase
 Status: In Progress
-Last activity: 2026-03-19 — Plan 03-01 complete (dataset versioning migration, service, API, tests)
+Last activity: 2026-03-19 — Plan 03-02 complete (version upload UI, VersionBadge, i18n)
 
-Progress: [████████░░] 76%
+Progress: [████████░░] 82%
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Progress: [████████░░] 76%
 | Phase 02 P06 | 13min | 3 tasks | 10 files |
 | Phase 03 P00 | 3min | 1 tasks | 6 files |
 | Phase 03 P01 | 9min | 2 tasks | 7 files |
+| Phase 03 P02 | 12min | 2 tasks | 13 files |
 | Phase 03 P00 | 2min | 1 tasks | 2 files |
 
 ## Accumulated Context
@@ -99,6 +100,8 @@ Recent decisions affecting current work:
 - [Phase 3, Plan 01]: Pagerank = version_number (1+) for OpenSearch rank_feature recency boost; parent keeps 0
 - [Phase 3, Plan 01]: Default change_summary auto-generated as "Version N uploaded by user" when not provided
 - [Phase 3, Plan 00]: Followed existing rag.service.test.ts mock patterns (vi.hoisted, Proxy-based knex mock) for Wave 0 scaffolds
+- [Phase 3, Plan 02]: Kebab dropdown menu pattern for extensible per-row actions in DocumentTable
+- [Phase 3, Plan 02]: VersionBadge null-safe pattern: returns null for non-version datasets (no conditional wrapper needed)
 
 ### Pending Todos
 
@@ -113,6 +116,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T03:02:18Z
-Stopped at: Completed 03-01-PLAN.md
-Resume file: .planning/phases/03-document-management/03-02-PLAN.md
+Last session: 2026-03-19T03:17:00Z
+Stopped at: Completed 03-02-PLAN.md
+Resume file: .planning/phases/03-document-management/03-03-PLAN.md
