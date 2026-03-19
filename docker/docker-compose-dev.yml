@@ -31,6 +31,8 @@ services:
       - OPENSEARCH_HOSTS=["http://opensearch:9201"]
       # Disable security plugin to match OpenSearch config
       - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+      # Bind to all interfaces inside the container
+      - SERVER_HOST=0.0.0.0
       # Disable telemetry for enterprise/airgap environments
       - OPENSEARCH_DASHBOARDS_TELEMETRY_ENABLED=false
     depends_on:

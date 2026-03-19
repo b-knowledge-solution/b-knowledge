@@ -178,8 +178,8 @@ const DocumentPreviewer: React.FC<DocumentPreviewerProps> = ({
 
   return (
     <div className="flex h-full">
-      {/* Document Preview Panel */}
-      <div className={`${showChunks ? 'flex-1' : 'w-full'} bg-gray-100 dark:bg-gray-950 relative overflow-hidden`}>
+      {/* Document Preview Panel — 50% width when chunks shown */}
+      <div className={`${showChunks ? 'w-1/2' : 'w-full'} bg-muted/20 relative overflow-hidden`}>
         <FilePreviewPanel
           fileName={fileName}
           url={downloadUrl}
@@ -188,9 +188,9 @@ const DocumentPreviewer: React.FC<DocumentPreviewerProps> = ({
         />
       </div>
 
-      {/* Chunk List Panel */}
+      {/* Chunk List Panel — 50% width */}
       {showChunks && (
-        <div className="w-80 border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0 overflow-hidden">
+        <div className="w-1/2 border-l bg-background overflow-hidden">
           <ChunkList
             datasetId={datasetId}
             docId={docId}

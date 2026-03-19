@@ -681,7 +681,7 @@ class OSConnection(DocStoreConnection):
         for i in range(ATTEMPT_TIME):
             try:
                 res = self.os.sql.query(body={"query": sql, "fetch_size": fetch_size}, format=format,
-                                        request_timeout="2s")
+                                        request_timeout=2)
                 return res
             except ConnectionTimeout:
                 logger.exception("OSConnection.sql timeout")

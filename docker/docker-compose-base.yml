@@ -77,7 +77,7 @@ services:
       - node.name=opensearch01
       - bootstrap.memory_lock=false
       - plugins.security.ssl.http.enabled=false
-      - plugins.security.ssl.transport.enabled=true
+      - plugins.security.ssl.transport.enabled=false
       - cluster.routing.allocation.disk.watermark.low=5gb
       - cluster.routing.allocation.disk.watermark.high=3gb
       - cluster.routing.allocation.disk.watermark.flood_stage=2gb

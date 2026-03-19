@@ -464,6 +464,104 @@ export class RagGraphragService {
     return this.formatContext(allEntities, allRelations, maxTokens)
   }
 
+  /**
+   * @description Aggregate graph metrics for the given knowledge base IDs.
+   * Queries OpenSearch for entity, relation, and community report counts,
+   * plus the most recent creation timestamp.
+   * @param {string[]} kbIds - Knowledge base IDs to aggregate metrics for
+   * @returns {Promise<{ entityCount: number; relationCount: number; communityCount: number; lastBuiltAt: string | null }>}
+   */
+  async getGraphMetrics(kbIds: string[]): Promise<{
+    entityCount: number
+    relationCount: number
+    communityCount: number
+    lastBuiltAt: string | null
+  }> {
+    // Return zeros immediately for empty input
+    if (kbIds.length === 0) {
+      return { entityCount: 0, relationCount: 0, communityCount: 0, lastBuiltAt: null }
+    }
+
+    const client = getClient()
+    const index = getIndexName()
+
+    try {
+      // Count entities, relations, and community reports in parallel
+      const [entityRes, relationRes, communityRes] = await Promise.all([
+        client.count({
+          index,
+          body: {
+            query: {
+              bool: {
+                must: [
+                  { terms: { kb_id: kbIds } },
+                  { term: { knowledge_graph_kwd: 'entity' } },
+                ],
+              },
+            },
+          },
+        }),
+        client.count({
+          index,
+          body: {
+            query: {
+              bool: {
+                must: [
+                  { terms: { kb_id: kbIds } },
+                  { term: { knowledge_graph_kwd: 'relation' } },
+                ],
+              },
+            },
+          },
+        }),
+        client.count({
+          index,
+          body: {
+            query: {
+              bool: {
+                must: [
+                  { terms: { kb_id: kbIds } },
+                  { term: { knowledge_graph_kwd: 'community_report' } },
+                ],
+              },
+            },
+          },
+        }),
+      ])
+
+      // Get the most recent creation timestamp across all graph documents
+      const lastBuiltRes = await client.search({
+        index,
+        body: {
+          query: {
+            bool: {
+              must: [
+                { terms: { kb_id: kbIds } },
+                { terms: { knowledge_graph_kwd: ['entity', 'relation', 'community_report'] } },
+              ],
+            },
+          },
+          sort: [{ create_time: { order: 'desc' as const } }],
+          size: 1,
+          _source: ['create_time'],
+        },
+      })
+
+      const lastHit = lastBuiltRes.body.hits.hits?.[0]
+      const lastBuiltAt = lastHit?._source?.create_time ?? null
+
+      return {
+        entityCount: entityRes.body.count ?? 0,
+        relationCount: relationRes.body.count ?? 0,
+        communityCount: communityRes.body.count ?? 0,
+        lastBuiltAt,
+      }
+    } catch (err) {
+      log.warn('Failed to get graph metrics', { error: String(err) })
+      return { entityCount: 0, relationCount: 0, communityCount: 0, lastBuiltAt: null }
+    }
+  }
+
   // ── Private helpers ──────────────────────────────────────────────────────
 
   /**

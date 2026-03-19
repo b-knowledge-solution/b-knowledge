@@ -28,3 +28,5 @@ export { metaFilterPrompt } from './meta-filter.prompt.js'
 export { graphragPrompt } from './graphrag.prompt.js'
 /** @description SQL query generation for structured data retrieval */
 export { sqlGenerationPrompt } from './sql-generation.prompt.js'
+/** @description Language instruction builder for multilingual response generation */
+export { languageInstructionPrompt } from './language-instruction.prompt.js'

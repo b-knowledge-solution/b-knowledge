@@ -524,7 +524,7 @@ class ESConnection(ESConnectionBase):
             try:
                 res = []
                 r = self.es.bulk(index=index_name, body=operations,
-                                 refresh=False, timeout="60s")
+                                 refresh=False, timeout=60)
                 # Check if bulk operation reported no errors
                 if re.search(r"False", str(r["errors"]), re.IGNORECASE):
                     return res

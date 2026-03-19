@@ -132,10 +132,11 @@ class TaskService(CommonService):
         if not docs:
             return None
 
+        max_retries = int(os.environ.get('TASK_MAX_RETRIES', '3'))
         msg = f"\n{datetime.now().strftime('%H:%M:%S')} Task has been received."
         prog = random.random() / 10.0
-        if docs[0]["retry_count"] >= 3:
-            msg = "\nERROR: Task is abandoned after 3 times attempts."
+        if docs[0]["retry_count"] >= max_retries:
+            msg = f"\nERROR: Task is abandoned after {max_retries} attempts."
             prog = -1
 
         cls.model.update(
@@ -144,7 +145,7 @@ class TaskService(CommonService):
             retry_count=docs[0]["retry_count"] + 1,
         ).where(cls.model.id == docs[0]["id"]).execute()
 
-        if docs[0]["retry_count"] >= 3:
+        if docs[0]["retry_count"] >= max_retries:
             return None
 
         return docs[0]
@@ -322,10 +323,9 @@ class TaskService(CommonService):
                         - progress_msg (str, optional): Progress message to append
                         - progress (float, optional): Progress percentage (0.0 to 1.0)
         """
-        task = cls.model.get_by_id(id)
+        task = cls.model.get_or_none(cls.model.id == id)
         if not task:
-            logging.warning("Update_progress error: task not found")
-            return
+            raise cls.model.DoesNotExist(f"Task {id} not found")
 
         if os.environ.get("MACOS"):
             if info["progress_msg"]:

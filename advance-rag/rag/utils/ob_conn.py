@@ -657,7 +657,7 @@ class OBConnection(OBConnectionBase):
                 start_time = time.time()
                 res = self.es.search(index=index_name,
                                      body=q,
-                                     timeout="600s",
+                                     timeout=600,
                                      track_total_hits=True,
                                      _source=True)
                 elapsed_time = time.time() - start_time

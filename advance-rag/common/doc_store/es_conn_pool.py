@@ -22,6 +22,7 @@ and version (requires OpenSearch >= 2) during initialisation, retrying up
 to ``ATTEMPT_TIME`` attempts.
 """
 import logging
+import os
 import time
 from opensearchpy import OpenSearch
 
@@ -30,6 +31,8 @@ from common.decorator import singleton
 
 # Number of connection attempts before giving up
 ATTEMPT_TIME = 2
+# Max connections in the urllib3 pool — should be >= MAX_CONCURRENT_TASKS
+OPENSEARCH_POOL_MAXSIZE = int(os.environ.get('OPENSEARCH_POOL_MAXSIZE', '10'))
 
 
 @singleton
@@ -78,7 +81,8 @@ class ElasticSearchConnectionPool:
             http_auth=(self.ES_CONFIG["username"], self.ES_CONFIG[
                 "password"]) if "username" in self.ES_CONFIG and "password" in self.ES_CONFIG else None,
             verify_certs=self.ES_CONFIG.get("verify_certs", False),
-            timeout=600)
+            timeout=600,
+            pool_maxsize=OPENSEARCH_POOL_MAXSIZE)
         if self.es_conn:
             self.info = self.es_conn.info()
             return True

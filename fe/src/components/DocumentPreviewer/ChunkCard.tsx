@@ -122,8 +122,8 @@ const ChunkCard: React.FC<ChunkCardProps> = ({ chunk, index, isSelected, onClick
       className={cn(
         'p-3 rounded-lg border cursor-pointer transition-all hover:shadow-sm group flex flex-col',
         isSelected
-          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-400'
-          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600',
+          ? 'border-primary bg-primary/5 dark:bg-primary/10 ring-1 ring-primary/30'
+          : 'border-border hover:border-primary/50',
         chunk.available === false && 'opacity-50',
       )}
       onClick={() => onClick?.(chunk)}

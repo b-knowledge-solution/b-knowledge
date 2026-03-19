@@ -41,6 +41,7 @@
     "express": "^4.21.0",
     "express-rate-limit": "^8.2.1",
     "express-session": "^1.18.0",
+    "franc": "^6.2.0",
     "helmet": "^7.1.0",
     "hpp": "^0.2.3",
     "http-proxy-middleware": "^3.0.2",
