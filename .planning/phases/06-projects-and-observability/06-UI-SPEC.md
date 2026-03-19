@@ -53,15 +53,17 @@ Source: Existing dashboard components (`p-6`, `gap-4`, `mb-6` patterns in `Admin
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Body | 14px | 400 (regular) | 1.5 |
-| Label / Caption | 12px | 500 (medium) | 1.4 |
+| Label / Caption | 12px | 600 (semibold) | 1.4 |
 | Heading (card/section) | 16px | 600 (semibold) | 1.2 |
 | Display (page title) | 18px | 600 (semibold) | 1.2 |
 
-Phase-specific notes:
-- Stat card metric values: 30px (`text-3xl`), weight 700 (bold), tracking tight -- matches existing `StatCards.tsx`
-- Chart axis ticks: 11px, fill `#94a3b8` (slate-400) -- matches existing `ActivityTrendChart.tsx`
-- Chart legend: 12px -- matches existing Recharts legend config
-- Table cell text: 14px, weight 400 -- default body
+Phase-controlled scale: 4 sizes (12, 14, 16, 18) and 2 weights (400, 600).
+
+**Inherited from existing components — not phase-controlled:**
+- Stat card metric values: 30px (`text-3xl`), weight 700 (bold), tracking tight — defined by `StatCards.tsx`, not overridden by this phase
+- Chart axis ticks: 11px, fill `#94a3b8` (slate-400) — defined by `ActivityTrendChart.tsx` Recharts config, not overridden by this phase
+- Chart legend: 12px — matches existing Recharts legend config (uses phase-controlled 12px size)
+- Font weight 500 (medium) — used by existing shadcn Badge component internals, not directly specified in phase layouts
 
 Source: Existing `StatCards.tsx` (`text-3xl font-bold`), `ActivityTrendChart.tsx` (`text-base font-semibold`), `AdminDashboardPage.tsx` (`text-lg font-semibold`)
 
@@ -264,7 +266,7 @@ Source: Existing `AdminDashboardPage.tsx` responsive grid patterns
 |-------------|----------|
 | Tab switch (Activity / Query Analytics / RAG Quality) | Instant content swap via `Tabs` component. Each tab has independent TanStack Query cache. No URL state needed |
 | Date range change | Triggers TanStack Query refetch with new date params. Loading overlay appears during fetch |
-| Refresh button | Calls `queryClient.invalidateQueries` for current tab's query keys. `RefreshCw` icon spins while loading |
+| Refresh button | Icon-only button with `aria-label="Refresh data"` and tooltip "Refresh data". Calls `queryClient.invalidateQueries` for current tab's query keys. Uses `RefreshCw` Lucide icon that spins (`animate-spin`) while queries are fetching |
 | "View in Langfuse" link | Opens new browser tab to `{langfuseBaseUrl}/trace/{traceId}`. External link icon next to text |
 | Stale indicator | Show "Last updated: X minutes ago" below date range picker. Use `formatDistanceToNow` from date-fns |
 
@@ -387,6 +389,8 @@ All copy must be provided in 3 locales: `en`, `vi`, `ja`.
 | Tooltip | Custom tooltip matching `ActivityTrendChart.tsx` pattern: rounded-lg, border, shadow-lg, 12px text |
 | Legend | `iconType: "circle"`, `iconSize: 8`, `fontSize: 12`, `paddingTop: 8` |
 
+Note: Chart axis font size (11px) and stat card metric size (30px) / weight (700) are inherited from existing `ActivityTrendChart.tsx` and `StatCards.tsx` respectively. They are not part of this phase's typography scale.
+
 ### Color Resolution
 
 Use the `cssVar()` helper from existing `ActivityTrendChart.tsx` to resolve CSS custom properties at render time. This ensures dark mode compatibility without conditional logic.
@@ -416,6 +420,7 @@ No third-party registries declared. All components from shadcn official or custo
 | Color contrast | Stat card text is white on gradient backgrounds (existing tested pattern). Body text uses `foreground` on `background` (AAA compliant) |
 | External links | "View in Langfuse" opens in new tab -- include `rel="noopener noreferrer"` and visually indicate external link with `ExternalLink` icon from Lucide |
 | Destructive actions | Delete project requires typing project name (not just click confirm). Remove member requires explicit confirmation dialog |
+| Refresh button | Icon-only `Button` with `aria-label="Refresh data"`, includes tooltip via `Tooltip` component displaying "Refresh data" on hover/focus |
 
 ---
 
