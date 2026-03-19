@@ -1344,6 +1344,8 @@ export interface ChunkResult {
     question_kwd?: string[];
     /** Highlighted text with <mark> tags from OpenSearch */
     highlight?: string;
+    /** Source dataset (knowledgebase) ID for cross-dataset result attribution */
+    kb_id?: string;
     /** Approximate token count */
     token_count?: number;
     /** Vector/semantic search score component */

@@ -444,7 +444,8 @@ export class RagDeepResearchService {
           })
           return true
         }
-        const exhausted = await searchRound(followUps[i].query, depth + 1, i, followUps.length)
+        const followUp = followUps[i]!
+        const exhausted = await searchRound(followUp.query, depth + 1, i, followUps.length)
         if (exhausted) return true
       }
 

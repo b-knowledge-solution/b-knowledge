@@ -364,6 +364,121 @@ export class RagSearchService {
     }
 
     /**
+     * @description Search across multiple datasets (knowledge bases) in a single OpenSearch query.
+     * Uses a `terms` filter with multiple kb_ids instead of a single `term` filter.
+     * Enforces mandatory tenant isolation and optional ABAC filters.
+     *
+     * @param {string} tenantId - Tenant ID for mandatory isolation
+     * @param {string[]} datasetIds - Array of dataset UUIDs to search across
+     * @param {SearchRequest} req - Search request parameters (query, method, top_k, etc.)
+     * @param {number[] | null} [queryVector] - Optional pre-computed query embedding for hybrid/semantic search
+     * @param {Record<string, unknown>[]} [abacFilters] - Optional ABAC filter clauses
+     * @returns Object with merged chunk results sorted by score and total hit count
+     */
+    async searchMultipleDatasets(
+        tenantId: string,
+        datasetIds: string[],
+        req: SearchRequest,
+        queryVector?: number[] | null,
+        abacFilters: Record<string, unknown>[] = [],
+    ): Promise<{ chunks: ChunkResult[]; total: number }> {
+        // Return empty results when no datasets provided
+        if (datasetIds.length === 0) {
+            return { chunks: [], total: 0 }
+        }
+
+        // Cap to 20 KBs maximum to prevent query size limit issues (Pitfall 6)
+        const MAX_CROSS_DATASET_KBS = 20
+        let cappedIds = datasetIds
+        if (datasetIds.length > MAX_CROSS_DATASET_KBS) {
+            log.warn('Cross-dataset search exceeds 20 KB cap, truncating', {
+                requested: datasetIds.length,
+                max: MAX_CROSS_DATASET_KBS,
+            })
+            cappedIds = datasetIds.slice(0, MAX_CROSS_DATASET_KBS)
+        }
+
+        // Strip hyphens from UUIDs to match OpenSearch kb_id format (32-char hex)
+        const kbIds = cappedIds.map(id => id.replace(/-/g, ''))
+
+        const client = getClient()
+        const method = req.method || 'full_text'
+        const topK = req.top_k || 10
+
+        // Build extra OpenSearch filters from metadata_filter conditions
+        const extraFilters = this.buildMetadataFilters(req.metadata_filter)
+
+        // Filter by specific document IDs when provided
+        if (req.doc_ids?.length) {
+            extraFilters.push({ terms: { doc_id: req.doc_ids } })
+        }
+
+        // Build the multi-KB query using terms filter (searches all KBs in one query)
+        const mustClauses: Record<string, unknown>[] = [
+            { terms: { kb_id: kbIds } },
+        ]
+
+        // Add text match for full_text and hybrid methods
+        if (method === 'full_text' || method === 'hybrid') {
+            mustClauses.push({
+                match: { content_with_weight: { query: req.query, minimum_should_match: '30%' } },
+            })
+        }
+
+        const shouldClauses: Record<string, unknown>[] = [
+            // Boost by pagerank (version recency)
+            { rank_feature: { field: 'pagerank_fea', linear: {} } },
+        ]
+
+        // Add vector search for semantic and hybrid methods
+        if ((method === 'semantic' || method === 'hybrid') && queryVector?.length) {
+            shouldClauses.push({
+                knn: {
+                    q_vec: {
+                        vector: queryVector,
+                        k: topK,
+                    },
+                },
+            })
+        }
+
+        const res = await client.search({
+            index: getIndexName(tenantId),
+            body: {
+                query: {
+                    bool: {
+                        must: mustClauses,
+                        filter: [
+                            { term: { available_int: 1 } },
+                            ...this.getFilters(tenantId, abacFilters),
+                            ...extraFilters,
+                        ],
+                        should: shouldClauses,
+                    },
+                },
+                size: topK,
+                _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd', 'kb_id'],
+                highlight: {
+                    fields: {
+                        content_with_weight: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
+                    },
+                },
+            },
+        })
+
+        const hitsTotal = res.body.hits.total
+        const total = typeof hitsTotal === 'number' ? hitsTotal : hitsTotal?.value ?? 0
+        const chunks = this.mapHits(res.body.hits.hits, method)
+
+        // Sort by score descending and apply topK limit
+        const sorted = chunks
+            .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+            .slice(0, topK)
+
+        return { chunks: sorted, total }
+    }
+
+    /**
      * List chunks for a dataset, optionally filtered by document.
      * @param {string} tenantId - Tenant ID for mandatory isolation (from request context)
      * @param {string} datasetId - The dataset (kb_id) to list chunks from
@@ -737,6 +852,8 @@ export class RagSearchService {
                 ...(method ? { method } : {}),
                 ...(src.img_id ? { img_id: src.img_id } : {}),
                 ...(highlightFields.content_with_weight?.[0] ? { highlight: highlightFields.content_with_weight[0] } : {}),
+                // Include source dataset ID for cross-dataset result attribution
+                ...(src.kb_id ? { kb_id: src.kb_id } : {}),
             }
         })
     }
