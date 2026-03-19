@@ -36,7 +36,7 @@ export interface AbacPolicyRule {
   description?: string
 }
 
-/** @description Core dataset entity with metadata, counts, and access control */
+/** @description Core dataset entity with metadata, counts, access control, and versioning fields */
 export interface Dataset {
   id: string;
   name: string;
@@ -55,6 +55,16 @@ export interface Dataset {
   updated_by?: string | null;
   created_at: string;
   updated_at: string;
+  /** Parent dataset ID when this dataset is a version of another */
+  parent_dataset_id?: string | null;
+  /** Version number (1-based) when this is a version dataset */
+  version_number?: number | null;
+  /** Human-readable description of changes in this version */
+  change_summary?: string | null;
+  /** User who created this version */
+  version_created_by?: string | null;
+  /** Custom metadata configuration for this dataset */
+  metadata_config?: Record<string, unknown>;
 }
 
 /** @description Payload for creating a new dataset */

@@ -241,6 +241,34 @@ export function useDatasets(): UseDatasetsReturn {
 }
 
 // ============================================================================
+// useCreateDatasetVersion — Upload a new version of an existing dataset
+// ============================================================================
+
+/**
+ * @description Mutation hook to upload a new version of a dataset.
+ * Invalidates the datasets list cache on success so the new version appears immediately.
+ * @param {string} datasetId - Parent dataset UUID
+ * @returns Mutation hook for creating dataset versions
+ */
+export function useCreateDatasetVersion(datasetId: string) {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ files, changeSummary, autoParse }: {
+      files: File[]
+      changeSummary?: string
+      autoParse?: boolean
+    }) => datasetApi.createDatasetVersion(datasetId, files, changeSummary, autoParse),
+    meta: { successMessage: t('datasets.uploadNewVersionSuccess') },
+    onSuccess: () => {
+      // Invalidate dataset list to show the new version dataset
+      queryClient.invalidateQueries({ queryKey: queryKeys.datasets.list() })
+    },
+  })
+}
+
+// ============================================================================
 // useDocuments — Document list for a specific dataset
 // ============================================================================
 

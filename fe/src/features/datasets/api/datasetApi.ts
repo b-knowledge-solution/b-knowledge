@@ -83,6 +83,40 @@ export const datasetApi = {
   },
 
   // ============================================================================
+  // Dataset Versioning
+  // ============================================================================
+
+  /**
+   * @description Upload a new version of an existing dataset. Creates a child dataset
+   * with inherited settings from the parent, attaching uploaded files.
+   * @param {string} datasetId - Parent dataset UUID
+   * @param {File[]} files - Files to include in the new version
+   * @param {string} [changeSummary] - Optional description of what changed
+   * @param {boolean} [autoParse] - Whether to auto-parse uploaded files
+   * @returns {Promise<Dataset>} The newly created version dataset
+   */
+  createDatasetVersion: async (
+    datasetId: string,
+    files: File[],
+    changeSummary?: string,
+    autoParse?: boolean,
+  ): Promise<Dataset> => {
+    const formData = new FormData()
+    // Append each file under the 'files' key for multer-style backend processing
+    files.forEach((file) => {
+      formData.append('files', file)
+    })
+    // Attach optional metadata fields
+    if (changeSummary) formData.append('change_summary', changeSummary)
+    if (autoParse !== undefined) formData.append('auto_parse', String(autoParse))
+    return apiFetch<Dataset>(`${BASE_URL}/datasets/${datasetId}/versions`, {
+      method: 'POST',
+      body: formData,
+      headers: {}, // let browser set Content-Type with boundary
+    })
+  },
+
+  // ============================================================================
   // Document CRUD
   // ============================================================================
 
