@@ -135,6 +135,10 @@ class ParserType(StrEnum):
     EMAIL = "email"
     KG = "knowledge_graph"
     TAG = "tag"
+    CODE = "code"
+    OPENAPI = "openapi"
+    ADR = "adr"
+    CLINICAL = "clinical"
 
 
 class FileSource(StrEnum):

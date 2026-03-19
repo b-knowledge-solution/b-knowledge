@@ -83,7 +83,7 @@ from db.joint_services.tenant_model_service import get_model_config_by_id, get_m
 from common.versions import get_ragflow_version
 from db.db_models import close_connection
 from rag.app import laws, paper, presentation, manual, qa, table, book, resume, picture, naive, one, audio, \
-    email, tag
+    email, tag, code, openapi, adr, clinical
 from rag.nlp import search, rag_tokenizer, add_positions
 from rag.raptor import RecursiveAbstractiveProcessing4TreeOrganizedRetrieval as Raptor
 from common.token_utils import num_tokens_from_string, truncate
@@ -112,7 +112,11 @@ FACTORY = {
     ParserType.AUDIO.value: audio,
     ParserType.EMAIL.value: email,
     ParserType.KG.value: naive,
-    ParserType.TAG.value: tag
+    ParserType.TAG.value: tag,
+    ParserType.CODE.value: code,
+    ParserType.OPENAPI.value: openapi,
+    ParserType.ADR.value: adr,
+    ParserType.CLINICAL.value: clinical
 }
 
 TASK_TYPE_TO_PIPELINE_TASK_TYPE = {
@@ -205,7 +209,10 @@ def set_progress(task_id, from_page=0, to_page=-1, prog=None, msg="Processing...
     except TaskCanceledException:
         raise
     except DoesNotExist:
-        logging.warning(f"set_progress({task_id}) got exception DoesNotExist")
+        # Task was deleted (e.g., user triggered re-parse while this task was running).
+        # Abort by raising TaskCanceledException so the executor stops wasting resources.
+        logging.warning(f"set_progress({task_id}) task no longer exists — aborting orphaned task")
+        raise TaskCanceledException(f"Task {task_id} was deleted during execution")
     except Exception as e:
         logging.exception(f"set_progress({task_id}), progress: {prog}, progress_msg: {msg}, got exception: {e}")
 
@@ -275,6 +282,12 @@ async def collect():
         # are picked up without a 5s sleep gap.
         if msg.get("task_type") == "parse_init":
             _handle_parse_init(msg)
+            redis_msg.ack()
+            continue
+
+        # Skip tasks already being processed by another concurrent coroutine
+        # to prevent duplicate retry_count increments from PEL re-delivery
+        if msg.get("id") in CURRENT_TASKS:
             redis_msg.ack()
             continue
 
@@ -1587,6 +1600,12 @@ async def report_status():
             total_lag += int(group_info.get("lag", 0))
         PENDING_TASKS = total_pending
         LAG_TASKS = total_lag
+
+        # Sync task progress to document table so FE polling sees updates (~every 30s)
+        try:
+            DocumentService.update_progress()
+        except Exception:
+            logging.exception("Failed to sync document progress")
 
         # Periodically clean stale pending messages (first run + every ~5 min)
         if heartbeat_count % 10 == 0:
