@@ -26,12 +26,12 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Document Management
 
-- [ ] **DOCM-01**: Document version history — upload new version, keep all previous versions stored
-- [ ] **DOCM-02**: Search across document versions — query current or historical versions
-- [ ] **DOCM-03**: Version metadata — track author, timestamp, and change summary per version
-- [ ] **DOCM-04**: Document metadata and tagging — custom attributes on documents for filtering and ABAC
-- [ ] **DOCM-05**: Auto-metadata extraction during document parsing
-- [ ] **DOCM-06**: Bulk metadata and tag operations across multiple documents
+- [x] **DOCM-01**: Document version history — upload new version, keep all previous versions stored
+- [x] **DOCM-02**: Search across document versions — query current or historical versions
+- [x] **DOCM-03**: Version metadata — track author, timestamp, and change summary per version
+- [x] **DOCM-04**: Document metadata and tagging — custom attributes on documents for filtering and ABAC
+- [x] **DOCM-05**: Auto-metadata extraction during document parsing
+- [x] **DOCM-06**: Bulk metadata and tag operations across multiple documents
 
 ### Domain-Specific Parsers
 
@@ -124,12 +124,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ACCS-04 | Phase 2 | Complete |
 | ACCS-05 | Phase 2 | Complete |
 | ACCS-06 | Phase 2 | Complete |
-| DOCM-01 | Phase 3 | Pending |
-| DOCM-02 | Phase 3 | Pending |
-| DOCM-03 | Phase 3 | Pending |
-| DOCM-04 | Phase 3 | Pending |
-| DOCM-05 | Phase 3 | Pending |
-| DOCM-06 | Phase 3 | Pending |
+| DOCM-01 | Phase 3 | Complete |
+| DOCM-02 | Phase 3 | Complete |
+| DOCM-03 | Phase 3 | Complete |
+| DOCM-04 | Phase 3 | Complete |
+| DOCM-05 | Phase 3 | Complete |
+| DOCM-06 | Phase 3 | Complete |
 | PRSR-01 | Phase 4 | Pending |
 | PRSR-02 | Phase 4 | Pending |
 | PRSR-03 | Phase 4 | Pending |

@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 3 UI-SPEC approved
-last_updated: "2026-03-18T17:45:48.691Z"
+last_updated: "2026-03-19T02:55:37.921Z"
 last_activity: 2026-03-18 — Plan 02-06 complete (audit events, role API, project ABAC)
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 11
-  completed_plans: 11
+  total_plans: 17
+  completed_plans: 12
   percent: 73
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** Users can ask questions in natural language and get accurate, cited answers from their organization's knowledge base — with strict access control ensuring each team only sees what they're authorized to access.
-**Current focus:** Phase 2 — Access Control
+**Current focus:** Phase 3 — Document Management
 
 ## Current Position
 
-Phase: 2 of 6 (Access Control)
-Plan: 7 of 7 in current phase
+Phase: 3 of 6 (Document Management)
+Plan: 1 of 6 in current phase
 Status: In Progress
-Last activity: 2026-03-18 — Plan 02-06 complete (audit events, role API, project ABAC)
+Last activity: 2026-03-19 — Plan 03-00 complete (Wave 0 test scaffolds for DOCM-01 through DOCM-06)
 
-Progress: [███████▓░░] 73%
+Progress: [███████░░░] 71%
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Progress: [███████▓░░] 73%
 | Phase 02 P04 | 10min | 2 tasks | 10 files |
 | Phase 02 P03 | 16min | 2 tasks | 18 files |
 | Phase 02 P06 | 13min | 3 tasks | 10 files |
+| Phase 03 P00 | 2min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,7 @@ Recent decisions affecting current work:
 - [Phase 2, Plan 06]: Super-admin sees all orgs' audit logs (optional tenantId filter); admin forced to own org only
 - [Phase 2, Plan 06]: invalidateAllAbilities on role change (simpler than per-session invalidation)
 - [Phase 2, Plan 06]: Existing /:id/role route upgraded with requireTenant + requireAbility instead of requirePermission
+- [Phase 3, Plan 00]: Followed existing rag.service.test.ts mock patterns (vi.hoisted, Proxy-based knex mock) for Wave 0 scaffolds
 
 ### Pending Todos
 
@@ -106,6 +108,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T17:45:48.682Z
-Stopped at: Phase 3 UI-SPEC approved
-Resume file: .planning/phases/03-document-management/03-UI-SPEC.md
+Last session: 2026-03-19T02:55:00Z
+Stopped at: Completed 03-00-PLAN.md
+Resume file: .planning/phases/03-document-management/03-00-SUMMARY.md
