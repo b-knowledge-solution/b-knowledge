@@ -39,9 +39,17 @@ vi.mock('../../src/shared/services/web-search.service.js', () => ({
   searchWeb: mockSearchWeb,
 }))
 
+const {
+  mockSufficiencyBuild,
+  mockMultiQueriesBuild,
+} = vi.hoisted(() => ({
+  mockSufficiencyBuild: vi.fn().mockReturnValue('check prompt'),
+  mockMultiQueriesBuild: vi.fn().mockReturnValue('queries prompt'),
+}))
+
 vi.mock('../../src/shared/prompts/index.js', () => ({
-  sufficiencyCheckPrompt: { build: vi.fn(() => 'check prompt') },
-  multiQueriesPrompt: { build: vi.fn(() => 'queries prompt') },
+  sufficiencyCheckPrompt: { build: mockSufficiencyBuild },
+  multiQueriesPrompt: { build: mockMultiQueriesBuild },
 }))
 
 vi.mock('../../src/shared/services/logger.service.js', () => ({
@@ -106,6 +114,10 @@ describe('RagDeepResearchService (budget-aware)', () => {
   beforeEach(() => {
     service = new RagDeepResearchService()
     vi.clearAllMocks()
+
+    // Re-setup prompt mocks after clearAllMocks (which resets mockReturnValue)
+    mockSufficiencyBuild.mockReturnValue('check prompt')
+    mockMultiQueriesBuild.mockReturnValue('queries prompt')
 
     // Default: return some chunks from KB search
     mockSearch.mockResolvedValue({

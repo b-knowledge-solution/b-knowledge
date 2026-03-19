@@ -4,7 +4,7 @@
  * Performs multi-round retrieval: checks whether retrieved context is
  * sufficient, generates follow-up questions for missing information,
  * and recursively searches until the answer is complete or max depth
- * is reached.
+ * is reached. Enforces token budget and call limits to prevent cost spirals.
  *
  * @module modules/rag/services/rag-deep-research
  */
@@ -22,7 +22,39 @@ import { searchWeb } from '@/shared/services/web-search.service.js'
 // ---------------------------------------------------------------------------
 
 /**
- * Configuration options for the deep research pipeline.
+ * @description Structured progress event emitted during deep research.
+ * Provides typed information about sub-query progress, budget status,
+ * and sufficiency checks.
+ */
+export interface DeepResearchProgressEvent {
+  /** Event type discriminator */
+  subEvent: 'subquery_start' | 'subquery_result' | 'budget_warning' | 'budget_exhausted' | 'sufficiency_check' | 'info'
+  /** Search query being processed */
+  query?: string
+  /** Current recursion depth (0 = initial) */
+  depth?: number
+  /** Index of current sub-query in the batch */
+  index?: number
+  /** Total number of sub-queries in the current batch */
+  total?: number
+  /** Number of chunks returned from the sub-query */
+  chunks?: number
+  /** Human-readable message for display */
+  message?: string
+  /** Current token usage */
+  tokensUsed?: number
+  /** Maximum token budget */
+  tokensMax?: number
+  /** Current LLM call count */
+  callsUsed?: number
+  /** Maximum LLM call limit */
+  callsMax?: number
+  /** Number of completed sub-queries before budget exhaustion */
+  completed?: number
+}
+
+/**
+ * @description Configuration options for the deep research pipeline.
  */
 export interface DeepResearchOptions {
   /** LLM provider ID for sufficiency check and follow-up generation */
@@ -35,6 +67,83 @@ export interface DeepResearchOptions {
   maxDepth?: number | undefined
   /** Number of chunks to retrieve per round */
   topN?: number | undefined
+  /** Maximum token budget for LLM calls (default 50,000) */
+  maxTokens?: number | undefined
+  /** Maximum number of LLM calls (default 15) */
+  maxCalls?: number | undefined
+}
+
+// ---------------------------------------------------------------------------
+// BudgetTracker
+// ---------------------------------------------------------------------------
+
+/**
+ * @description Tracks token usage and LLM call count during deep research.
+ * Prevents cost spirals by enforcing hard limits on both dimensions.
+ */
+export class BudgetTracker {
+  private tokensUsed = 0
+  private callsUsed = 0
+
+  /**
+   * @param maxTokens - Maximum token budget (default 50,000)
+   * @param maxCalls - Maximum number of LLM calls (default 15)
+   */
+  constructor(
+    private readonly maxTokens: number = 50_000,
+    private readonly maxCalls: number = 15
+  ) {}
+
+  /**
+   * @description Record an LLM call with its estimated token usage.
+   * @param tokens - Estimated token count for input + output
+   */
+  recordCall(tokens: number): void {
+    this.tokensUsed += tokens
+    this.callsUsed += 1
+  }
+
+  /**
+   * @description Check whether the budget is exhausted (either limit reached).
+   * @returns True if token or call limit has been reached
+   */
+  isExhausted(): boolean {
+    return this.tokensUsed >= this.maxTokens || this.callsUsed >= this.maxCalls
+  }
+
+  /**
+   * @description Check whether budget usage is at or above 80% on either dimension.
+   * @returns True if approaching exhaustion
+   */
+  isWarning(): boolean {
+    return (this.tokensUsed >= this.maxTokens * 0.8) || (this.callsUsed >= this.maxCalls * 0.8)
+  }
+
+  /**
+   * @description Get current budget status for reporting.
+   * @returns Object with current and max values for tokens and calls
+   */
+  getStatus() {
+    return {
+      tokensUsed: this.tokensUsed,
+      tokensMax: this.maxTokens,
+      callsUsed: this.callsUsed,
+      callsMax: this.maxCalls,
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * @description Approximate token count from text length (~4 chars per token).
+ * @param text - Input text to measure
+ * @returns Estimated token count
+ */
+function approxTokens(text: string): number {
+  return Math.ceil(text.length / 4)
 }
 
 // ---------------------------------------------------------------------------
@@ -42,13 +151,14 @@ export interface DeepResearchOptions {
 // ---------------------------------------------------------------------------
 
 /**
- * Service for deep research with recursive retrieval and sufficiency checking.
- * Iteratively retrieves, evaluates completeness, and generates follow-up
- * queries until the information is sufficient or max depth is reached.
+ * @description Service for deep research with recursive retrieval and sufficiency checking.
+ * Iteratively retrieves, checks completeness, and generates follow-up
+ * queries until the information is sufficient, max depth is reached, or
+ * the token/call budget is exhausted.
  */
 export class RagDeepResearchService {
   /**
-   * Check if retrieved information is sufficient to answer the question.
+   * @description Check if retrieved information is sufficient to answer the question.
    * @param question - Original question
    * @param retrievedContext - Current retrieved text
    * @param providerId - LLM provider ID
@@ -88,7 +198,7 @@ export class RagDeepResearchService {
   }
 
   /**
-   * Generate follow-up questions for missing information.
+   * @description Generate follow-up questions for missing information.
    * @param originalQuestion - Original user question
    * @param currentQuery - Current search query used
    * @param missingInfo - List of missing information
@@ -136,17 +246,25 @@ export class RagDeepResearchService {
   }
 
   /**
-   * Full deep research pipeline with recursive question decomposition.
+   * @description Full deep research pipeline with recursive question decomposition
+   * and budget enforcement.
+   *
+   * Flow:
    * 1. Initial retrieval from KB + web + KG
-   * 2. Sufficiency check
-   * 3. If insufficient: generate follow-up questions
+   * 2. Sufficiency check (budget-guarded)
+   * 3. If insufficient: generate follow-up questions (budget-guarded)
    * 4. Recursive search for each follow-up (max depth 3)
    * 5. Merge all results
    *
+   * Enforces token budget (default 50K) and call limit (default 15) to prevent
+   * cost spirals. When budget is exhausted, returns partial results from
+   * completed sub-queries rather than failing.
+   *
+   * @param tenantId - Tenant ID for isolation
    * @param question - User question
    * @param kbIds - Knowledge base IDs
-   * @param options - Configuration options
-   * @param onProgress - Callback for streaming progress updates
+   * @param options - Configuration options including budget limits
+   * @param onProgress - Callback for structured progress events
    * @returns All retrieved chunks merged and deduplicated
    */
   async research(
@@ -154,20 +272,28 @@ export class RagDeepResearchService {
     question: string,
     kbIds: string[],
     options: DeepResearchOptions = {},
-    onProgress?: (msg: string) => void
+    onProgress?: (event: DeepResearchProgressEvent) => void
   ): Promise<ChunkResult[]> {
     const maxDepth = options.maxDepth ?? 3
     const topN = options.topN ?? 6
+    const budget = new BudgetTracker(options.maxTokens ?? 50_000, options.maxCalls ?? 15)
 
     // Track all collected chunks across rounds, deduplicated by chunk_id
     const allChunks = new Map<string, ChunkResult>()
 
-    // Recursive inner function
-    const searchRound = async (query: string, depth: number): Promise<void> => {
-      if (depth > maxDepth) return
+    // Recursive inner function -- returns true if budget exhausted (abort signal)
+    const searchRound = async (query: string, depth: number, index: number = 0, total: number = 1): Promise<boolean> => {
+      if (depth > maxDepth) return false
 
-      const depthLabel = depth === 0 ? 'Initial' : `Follow-up (depth ${depth})`
-      onProgress?.(`${depthLabel} search: "${query}"`)
+      // Emit subquery_start event with structured metadata
+      onProgress?.({
+        subEvent: 'subquery_start',
+        query,
+        depth,
+        index,
+        total,
+        message: `${depth === 0 ? 'Initial' : `Follow-up (depth ${depth})`} search: "${query}"`,
+      })
 
       // ── Retrieve from knowledge bases ──
       const kbResults = await this.retrieveFromKbs(tenantId, kbIds, query, topN)
@@ -177,9 +303,18 @@ export class RagDeepResearchService {
         }
       }
 
+      // Emit subquery_result event with chunk count
+      onProgress?.({
+        subEvent: 'subquery_result',
+        query,
+        depth,
+        chunks: kbResults.length,
+        message: `Retrieved ${kbResults.length} chunks`,
+      })
+
       // ── Web search (if configured) ──
       if (options.tavilyApiKey) {
-        onProgress?.(`Web search: "${query}"`)
+        onProgress?.({ subEvent: 'info', message: `Web search: "${query}"` })
         const webResults = await searchWeb(query, options.tavilyApiKey, 3)
         for (const chunk of webResults) {
           // Web chunks use generated IDs; always add
@@ -189,7 +324,7 @@ export class RagDeepResearchService {
 
       // ── Knowledge graph (if enabled) ──
       if (options.useKg && kbIds.length > 0) {
-        onProgress?.('Knowledge graph retrieval')
+        onProgress?.({ subEvent: 'info', message: 'Knowledge graph retrieval' })
         try {
           const kgContext = await ragGraphragService.retrieval(
             kbIds,
@@ -211,27 +346,66 @@ export class RagDeepResearchService {
         }
       }
 
-      // ── Sufficiency check ──
-      if (depth >= maxDepth) return // No more recursion allowed
+      // ── Budget check before sufficiency LLM call ──
+      if (depth >= maxDepth) return false
+      if (budget.isExhausted()) {
+        const status = budget.getStatus()
+        onProgress?.({
+          subEvent: 'budget_exhausted',
+          message: 'Budget exhausted before sufficiency check',
+          ...status,
+          completed: allChunks.size,
+        })
+        log.info('Deep research budget exhausted', { ...status, chunksCollected: allChunks.size })
+        return true
+      }
 
+      // ── Sufficiency check ──
       const currentContext = [...allChunks.values()]
         .map(c => c.text)
         .join('\n---\n')
 
-      onProgress?.('Checking information completeness...')
+      onProgress?.({ subEvent: 'sufficiency_check', message: 'Checking information completeness...' })
+      const promptText = sufficiencyCheckPrompt.build(question, currentContext.slice(0, 3000))
       const { isSufficient, missingInfo } = await this.sufficiencyCheck(
         question,
         currentContext,
         options.providerId
       )
 
-      if (isSufficient) {
-        onProgress?.('Information is sufficient.')
-        return
+      // Record token usage for the sufficiency check call
+      budget.recordCall(approxTokens(promptText) + approxTokens(JSON.stringify({ isSufficient, missingInfo })))
+
+      // Emit budget warning if usage is at 80%+
+      if (budget.isWarning() && !budget.isExhausted()) {
+        const status = budget.getStatus()
+        onProgress?.({
+          subEvent: 'budget_warning',
+          message: 'Budget usage at 80%+',
+          ...status,
+        })
       }
 
-      // ── Generate follow-up questions ──
-      onProgress?.(`Missing information detected: ${missingInfo.join('; ')}`)
+      // Check budget again after the LLM call
+      if (budget.isExhausted()) {
+        const status = budget.getStatus()
+        onProgress?.({
+          subEvent: 'budget_exhausted',
+          message: 'Budget exhausted after sufficiency check',
+          ...status,
+          completed: allChunks.size,
+        })
+        log.info('Deep research budget exhausted after sufficiency check', { ...status, chunksCollected: allChunks.size })
+        return true
+      }
+
+      if (isSufficient) {
+        onProgress?.({ subEvent: 'info', message: 'Information is sufficient.' })
+        return false
+      }
+
+      // ── Generate follow-up questions (budget-guarded) ──
+      onProgress?.({ subEvent: 'info', message: `Missing information detected: ${missingInfo.join('; ')}` })
       const followUps = await this.generateFollowUpQuestions(
         question,
         query,
@@ -240,10 +414,41 @@ export class RagDeepResearchService {
         options.providerId
       )
 
-      // ── Recursively search each follow-up ──
-      for (const followUp of followUps) {
-        await searchRound(followUp.query, depth + 1)
+      // Record token usage for follow-up generation
+      budget.recordCall(approxTokens(query + question + currentContext.slice(0, 1000)) + approxTokens(JSON.stringify(followUps)))
+
+      // Check budget after follow-up generation
+      if (budget.isExhausted()) {
+        const status = budget.getStatus()
+        onProgress?.({
+          subEvent: 'budget_exhausted',
+          message: 'Budget exhausted after generating follow-up questions',
+          ...status,
+          completed: allChunks.size,
+        })
+        log.info('Deep research budget exhausted after follow-up generation', { ...status, chunksCollected: allChunks.size })
+        return true
       }
+
+      // ── Recursively search each follow-up ──
+      for (let i = 0; i < followUps.length; i++) {
+        // Check budget before each sub-query recursion
+        if (budget.isExhausted()) {
+          const status = budget.getStatus()
+          onProgress?.({
+            subEvent: 'budget_exhausted',
+            message: `Budget exhausted after ${i}/${followUps.length} follow-up sub-queries`,
+            ...status,
+            completed: i,
+            total: followUps.length,
+          })
+          return true
+        }
+        const exhausted = await searchRound(followUps[i].query, depth + 1, i, followUps.length)
+        if (exhausted) return true
+      }
+
+      return false
     }
 
     // Start the recursive research pipeline
@@ -257,7 +462,8 @@ export class RagDeepResearchService {
   // ── Private helpers ──────────────────────────────────────────────────────
 
   /**
-   * Retrieve chunks from all knowledge bases in parallel.
+   * @description Retrieve chunks from all knowledge bases in parallel.
+   * @param tenantId - Tenant ID for isolation
    * @param kbIds - Knowledge base IDs to search
    * @param query - Search query
    * @param topN - Number of results per KB
