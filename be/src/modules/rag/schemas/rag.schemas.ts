@@ -264,3 +264,20 @@ export const policyRulesSchema = z.array(policyRuleSchema).max(50).default([])
 export const updateDatasetPolicySchema = z.object({
   policy_rules: policyRulesSchema,
 })
+
+// ---------------------------------------------------------------------------
+// Bulk Metadata schemas
+// ---------------------------------------------------------------------------
+
+/**
+ * @description POST /api/rag/datasets/bulk-metadata — body schema for bulk metadata tag update.
+ * Updates parser_config.metadata_tags (NOT parser_config.metadata) on multiple datasets.
+ */
+export const bulkMetadataSchema = z.object({
+  /** Array of dataset UUIDs to update */
+  dataset_ids: z.array(z.string().uuid()).min(1, 'At least one dataset ID is required'),
+  /** Key-value pairs to set/merge into parser_config.metadata_tags */
+  metadata_tags: z.record(z.string()),
+  /** 'merge' adds to existing metadata_tags, 'overwrite' replaces metadata_tags entirely */
+  mode: z.enum(['merge', 'overwrite']),
+})

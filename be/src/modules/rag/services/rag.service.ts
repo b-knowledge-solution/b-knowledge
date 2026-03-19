@@ -552,6 +552,59 @@ export class RagService {
     }
 
     // -------------------------------------------------------------------------
+    // Bulk Metadata Operations
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description Bulk update metadata_tags on multiple datasets.
+     * Stores tags in parser_config.metadata_tags (separate from parser_config.metadata
+     * which holds auto-extraction schema).
+     * @param {string[]} datasetIds - Array of dataset UUIDs to update
+     * @param {Record<string, string>} metadataTags - Key-value pairs to set/merge into parser_config.metadata_tags
+     * @param {'merge' | 'overwrite'} mode - 'merge' adds to existing metadata_tags, 'overwrite' replaces entirely
+     * @param {string} tenantId - Tenant for isolation
+     * @returns {Promise<void>}
+     */
+    async bulkUpdateMetadata(
+        datasetIds: string[],
+        metadataTags: Record<string, string>,
+        mode: 'merge' | 'overwrite',
+        tenantId: string,
+    ): Promise<void> {
+        const tagsJson = JSON.stringify(metadataTags)
+
+        if (mode === 'merge') {
+            // Merge new tags into existing metadata_tags, preserving other parser_config keys
+            await db('datasets')
+                .whereIn('id', datasetIds)
+                .andWhere('tenant_id', tenantId)
+                .update({
+                    parser_config: db.raw(
+                        `jsonb_set(COALESCE(parser_config, '{}'), '{metadata_tags}', COALESCE(parser_config->'metadata_tags', '{}') || ?::jsonb)`,
+                        [tagsJson],
+                    ),
+                })
+        } else {
+            // Overwrite mode: replace metadata_tags entirely
+            await db('datasets')
+                .whereIn('id', datasetIds)
+                .andWhere('tenant_id', tenantId)
+                .update({
+                    parser_config: db.raw(
+                        `jsonb_set(COALESCE(parser_config, '{}'), '{metadata_tags}', ?::jsonb)`,
+                        [tagsJson],
+                    ),
+                })
+        }
+
+        log.info('Bulk metadata update completed', {
+            datasetCount: datasetIds.length,
+            mode,
+            tagCount: Object.keys(metadataTags).length,
+        })
+    }
+
+    // -------------------------------------------------------------------------
     // Document operations (metadata only — actual files managed by advance-rag)
     // -------------------------------------------------------------------------
 

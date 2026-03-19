@@ -1649,4 +1649,57 @@ export class RagController {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Bulk Metadata Operations
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description POST /datasets/bulk-metadata — Bulk update metadata_tags on multiple datasets.
+     * Stores tags in parser_config.metadata_tags (separate from auto-extraction metadata).
+     * Requires manage_datasets permission.
+     * @param {Request} req - Express request with dataset_ids, metadata_tags, and mode in body
+     * @param {Response} res - Express response with success status
+     * @returns {Promise<void>}
+     */
+    async bulkUpdateMetadata(req: Request, res: Response): Promise<void> {
+        try {
+            const tenantId = getTenantId(req) || ''
+            const { dataset_ids, metadata_tags, mode } = req.body
+
+            await ragService.bulkUpdateMetadata(dataset_ids, metadata_tags, mode, tenantId)
+            res.json({ success: true, updated: dataset_ids.length })
+        } catch (error) {
+            log.error('Failed to bulk update metadata', { error: String(error) })
+            res.status(500).json({ error: 'Failed to bulk update metadata' })
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Tag Aggregations
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description GET /tags/aggregations — Return unique tag keys and top values from OpenSearch.
+     * Requires authentication. Filters by tenant and optional dataset_ids query param.
+     * @param {Request} req - Express request with optional dataset_ids query param (comma-separated)
+     * @param {Response} res - Express response with tag aggregation array
+     * @returns {Promise<void>}
+     */
+    async getTagAggregations(req: Request, res: Response): Promise<void> {
+        try {
+            const tenantId = getTenantId(req) || ''
+            // Parse optional dataset_ids query parameter (comma-separated UUIDs)
+            const datasetIdsParam = req.query['dataset_ids'] as string | undefined
+            const datasetIds = datasetIdsParam
+                ? datasetIdsParam.split(',').map(id => id.trim()).filter(Boolean)
+                : undefined
+
+            const aggregations = await ragSearchService.getTagAggregations(tenantId, datasetIds)
+            res.json({ tags: aggregations })
+        } catch (error) {
+            log.error('Failed to get tag aggregations', { error: String(error) })
+            res.status(500).json({ error: 'Failed to get tag aggregations' })
+        }
+    }
+
 }

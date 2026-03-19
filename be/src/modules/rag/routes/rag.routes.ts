@@ -25,12 +25,19 @@ import {
   changeDocumentParserSchema, webCrawlSchema,
   updateDatasetPolicySchema,
   createVersionSchema,
+  bulkMetadataSchema,
 } from '../schemas/rag.schemas.js';
 
 const router = Router();
 const controller = new RagController();
 // Use memory storage for file uploads — files are forwarded to S3 immediately
 const upload = multer({ storage: multer.memoryStorage() });
+
+// Bulk metadata — MUST be registered before /datasets/:id to avoid route parameter capture
+router.post('/datasets/bulk-metadata', requirePermission('manage_datasets'), validate(bulkMetadataSchema), controller.bulkUpdateMetadata.bind(controller));
+
+// Tag aggregations endpoint
+router.get('/tags/aggregations', requireAuth, controller.getTagAggregations.bind(controller));
 
 // Dataset endpoints
 router.get('/datasets', requireAuth, controller.listDatasets.bind(controller));
