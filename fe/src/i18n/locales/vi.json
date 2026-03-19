@@ -180,10 +180,19 @@
     "localAccountLoginTitle": "Local Account Login Title"
   },
   "metadataFilter": {
-    "conditions": "Điều kiện",
-    "empty": "Chưa có điều kiện lọc. Nhấn \"Thêm\" để tạo mới.",
-    "fieldName": "Tên trường",
-    "value": "Giá trị"
+    "title": "Bộ lọc siêu dữ liệu",
+    "addCondition": "Thêm điều kiện",
+    "logic": "Logic kết hợp",
+    "keyPlaceholder": "Khóa siêu dữ liệu",
+    "valuePlaceholder": "Giá trị",
+    "op": {
+      "is": "bằng",
+      "is_not": "không bằng",
+      "contains": "chứa",
+      "gt": "lớn hơn",
+      "lt": "nhỏ hơn",
+      "range": "trong khoảng"
+    }
   },
   "permissions": {
     "noTeamsAvailable": "Không có nhóm nào",
@@ -1259,7 +1268,16 @@
     "variableKeyPlaceholder": "Variable Key Placeholder",
     "deepResearchSubquery": "Đang nghiên cứu: {{query}}",
     "deepResearchBudgetWarning": "Gần đạt giới hạn ngân sách ({{tokensUsed}}/{{tokensMax}} token)",
-    "deepResearchBudgetExhausted": "Nghiên cứu bị giới hạn bởi ngân sách. {{completed}} / {{total}} truy vấn con hoàn thành."
+    "deepResearchBudgetExhausted": "Nghiên cứu bị giới hạn bởi ngân sách. {{completed}} / {{total}} truy vấn con hoàn thành.",
+    "deepResearch": {
+      "title": "Nghiên cứu sâu",
+      "researching": "Đang nghiên cứu: {{query}}",
+      "subQuery": "Truy vấn con {{index}} / {{total}}",
+      "tokens": "Token: {{used}} / {{max}}",
+      "calls": "Cuộc gọi: {{used}} / {{max}}",
+      "budgetWarning": "Sắp đạt giới hạn ngân sách",
+      "budgetExhausted": "Đã hết ngân sách - hiển thị kết quả một phần"
+    }
   },
   "landing": {
     "nav": {
@@ -2309,7 +2327,7 @@
     "mindMapDesc": "Mind Map Desc",
     "highlight": "Highlight",
     "highlightDesc": "Highlight Desc",
-    "embeddingMismatchWarning": "C\u1EA3nh b\u00E1o: C\u00E1c t\u1EADp d\u1EEF li\u1EC7u \u0111\u00E3 ch\u1ECDn s\u1EED d\u1EE5ng c\u00E1c m\u00F4 h\u00ECnh embedding kh\u00E1c nhau. \u0110i\u1EC1u n\u00E0y c\u00F3 th\u1EC3 l\u00E0m gi\u1EA3m ch\u1EA5t l\u01B0\u1EE3ng t\u00ECm ki\u1EBFm.",
+    "embeddingMismatchWarning": "Cảnh báo: Các tập dữ liệu đã chọn sử dụng các mô hình embedding khác nhau. Điều này có thể làm giảm chất lượng tìm kiếm.",
     "crossLanguages": "Cross-Language Search",
     "crossLanguagesDesc": "Enable searching across multiple languages",
     "retrievalTest": {
@@ -2387,20 +2405,5 @@
     "deepResearchDesc": "Bật nghiên cứu đệ quy nhiều bước cho câu hỏi phức tạp",
     "allowRbacDatasets": "Cho phép bộ dữ liệu người dùng có quyền truy cập",
     "allowRbacDatasetsDesc": "Tìm kiếm cả bộ dữ liệu chuyên dụng và bộ dữ liệu người dùng được phép truy cập"
-  },
-  "metadataFilter": {
-    "title": "Bộ lọc siêu dữ liệu",
-    "addCondition": "Thêm điều kiện",
-    "logic": "Logic kết hợp",
-    "keyPlaceholder": "Khóa siêu dữ liệu",
-    "valuePlaceholder": "Giá trị",
-    "op": {
-      "is": "bằng",
-      "is_not": "không bằng",
-      "contains": "chứa",
-      "gt": "lớn hơn",
-      "lt": "nhỏ hơn",
-      "range": "trong khoảng"
-    }
   }
 }

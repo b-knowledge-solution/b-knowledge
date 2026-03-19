@@ -180,10 +180,19 @@
     "localAccountLoginTitle": "Local Account Login Title"
   },
   "metadataFilter": {
-    "conditions": "条件",
-    "empty": "フィルター条件がありません。「追加」をクリックして作成してください。",
-    "fieldName": "フィールド名",
-    "value": "値"
+    "title": "メタデータフィルター",
+    "addCondition": "条件を追加",
+    "logic": "マッチロジック",
+    "keyPlaceholder": "メタデータキー",
+    "valuePlaceholder": "値",
+    "op": {
+      "is": "等しい",
+      "is_not": "等しくない",
+      "contains": "含む",
+      "gt": "より大きい",
+      "lt": "より小さい",
+      "range": "範囲内"
+    }
   },
   "permissions": {
     "noTeamsAvailable": "利用可能なチームがありません",
@@ -1245,7 +1254,16 @@
     "variableKeyPlaceholder": "Variable Key Placeholder",
     "deepResearchSubquery": "調査中: {{query}}",
     "deepResearchBudgetWarning": "予算上限に接近中（{{tokensUsed}}/{{tokensMax}}トークン）",
-    "deepResearchBudgetExhausted": "予算により研究が制限されました。{{completed}} / {{total}} のサブクエリが完了しました。"
+    "deepResearchBudgetExhausted": "予算により研究が制限されました。{{completed}} / {{total}} のサブクエリが完了しました。",
+    "deepResearch": {
+      "title": "ディープリサーチ",
+      "researching": "調査中: {{query}}",
+      "subQuery": "サブクエリ {{index}} / {{total}}",
+      "tokens": "トークン: {{used}} / {{max}}",
+      "calls": "コール: {{used}} / {{max}}",
+      "budgetWarning": "予算制限に近づいています",
+      "budgetExhausted": "予算が尽きました - 部分的な結果を表示"
+    }
   },
   "landing": {
     "nav": {
@@ -2295,7 +2313,7 @@
     "mindMapDesc": "Mind Map Desc",
     "highlight": "Highlight",
     "highlightDesc": "Highlight Desc",
-    "embeddingMismatchWarning": "\u8B66\u544A: \u9078\u629E\u3057\u305F\u30C7\u30FC\u30BF\u30BB\u30C3\u30C8\u306F\u7570\u306A\u308B\u57CB\u3081\u8FBC\u307F\u30E2\u30C7\u30EB\u3092\u4F7F\u7528\u3057\u3066\u3044\u307E\u3059\u3002\u691C\u7D22\u54C1\u8CEA\u304C\u4F4E\u4E0B\u3059\u308B\u53EF\u80FD\u6027\u304C\u3042\u308A\u307E\u3059\u3002",
+    "embeddingMismatchWarning": "警告: 選択したデータセットは異なる埋め込みモデルを使用しています。検索品質が低下する可能性があります。",
     "crossLanguages": "Cross-Language Search",
     "crossLanguagesDesc": "Enable searching across multiple languages",
     "retrievalTest": {
@@ -2373,20 +2391,5 @@
     "deepResearchDesc": "複雑な質問のための再帰的マルチステップ研究を有効にする",
     "allowRbacDatasets": "ユーザーのアクセス可能なデータセットを許可",
     "allowRbacDatasetsDesc": "専用データセットとユーザーのRBACアクセス可能なデータセットの両方を検索"
-  },
-  "metadataFilter": {
-    "title": "メタデータフィルター",
-    "addCondition": "条件を追加",
-    "logic": "マッチロジック",
-    "keyPlaceholder": "メタデータキー",
-    "valuePlaceholder": "値",
-    "op": {
-      "is": "等しい",
-      "is_not": "等しくない",
-      "contains": "含む",
-      "gt": "より大きい",
-      "lt": "より小さい",
-      "range": "範囲内"
-    }
   }
 }

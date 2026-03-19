@@ -179,10 +179,19 @@
     "localAccountLoginTitle": "Local Account Login Title"
   },
   "metadataFilter": {
-    "conditions": "Conditions",
-    "empty": "No filter conditions. Click \"Add\" to create one.",
-    "fieldName": "Field name",
-    "value": "Value"
+    "title": "Metadata Filter",
+    "addCondition": "Add Condition",
+    "logic": "Match logic",
+    "keyPlaceholder": "Metadata key",
+    "valuePlaceholder": "Value",
+    "op": {
+      "is": "equals",
+      "is_not": "not equals",
+      "contains": "contains",
+      "gt": "greater than",
+      "lt": "less than",
+      "range": "in range"
+    }
   },
   "permissions": {
     "noTeamsAvailable": "No teams available",
@@ -1257,7 +1266,16 @@
     "variableKeyPlaceholder": "Variable Key Placeholder",
     "deepResearchSubquery": "Researching: {{query}}",
     "deepResearchBudgetWarning": "Approaching budget limit ({{tokensUsed}}/{{tokensMax}} tokens)",
-    "deepResearchBudgetExhausted": "Research limited by budget. {{completed}} of {{total}} sub-queries completed."
+    "deepResearchBudgetExhausted": "Research limited by budget. {{completed}} of {{total}} sub-queries completed.",
+    "deepResearch": {
+      "title": "Deep Research",
+      "researching": "Researching: {{query}}",
+      "subQuery": "Sub-query {{index}} of {{total}}",
+      "tokens": "Tokens: {{used}} / {{max}}",
+      "calls": "Calls: {{used}} / {{max}}",
+      "budgetWarning": "Approaching budget limit",
+      "budgetExhausted": "Budget exhausted - showing partial results"
+    }
   },
   "landing": {
     "nav": {
@@ -2403,20 +2421,5 @@
     "deepResearchDesc": "Enable recursive multi-step research for complex questions",
     "allowRbacDatasets": "Allow User's Accessible Datasets",
     "allowRbacDatasetsDesc": "Search both dedicated datasets and the user's RBAC-accessible datasets"
-  },
-  "metadataFilter": {
-    "title": "Metadata Filter",
-    "addCondition": "Add Condition",
-    "logic": "Match logic",
-    "keyPlaceholder": "Metadata key",
-    "valuePlaceholder": "Value",
-    "op": {
-      "is": "equals",
-      "is_not": "not equals",
-      "contains": "contains",
-      "gt": "greater than",
-      "lt": "less than",
-      "range": "in range"
-    }
   }
 }

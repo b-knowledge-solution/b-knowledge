@@ -16,6 +16,7 @@ import ChatInput from '../components/ChatInput'
 import ChatFileUpload from '../components/ChatFileUpload'
 import ChatReferencePanel from '../components/ChatReferencePanel'
 import CitationDocDrawer from '../components/CitationDocDrawer'
+import DeepResearchProgress from '../components/DeepResearchProgress'
 import { useChatAssistants } from '../api/chatQueries'
 import { useChatConversations, useRenameConversation } from '../api/chatQueries'
 import { useChatStream } from '../hooks/useChatStream'
@@ -309,6 +310,14 @@ function DatasetChatPage() {
             className="flex-1"
             conversationId={conversations.activeConversation?.id}
           />
+
+          {/* Deep Research progress indicator (shown inline during deep research streaming) */}
+          {stream.pipelineStatus === 'deep_research' && stream.deepResearchEvents.length > 0 && (
+            <DeepResearchProgress
+              events={stream.deepResearchEvents}
+              isActive={stream.isStreaming}
+            />
+          )}
 
           {/* Variable form - shown when assistant has required variables without defaults */}
           {hasRequiredVars && stream.messages.length === 0 && (
