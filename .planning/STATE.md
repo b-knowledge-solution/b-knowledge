@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 5 of 6 (Advanced Retrieval)
-Plan: 2 of 4 in current phase
+Plan: 3 of 4 in current phase
 Status: In Progress
-Last activity: 2026-03-19 — Plan 05-02 complete (Budget-aware deep research and cross-dataset search)
+Last activity: 2026-03-19 — Plan 05-03 complete (Chat pipeline integration: language, deep research SSE, graph+vector, ABAC)
 
 Progress: [██████████] 100%
 
@@ -73,6 +73,7 @@ Progress: [██████████] 100%
 | Phase 04 P02 | 9min | 2 tasks | 10 files |
 | Phase 05 P01 | 9min | 2 tasks | 10 files |
 | Phase 05 P02 | 8min | 2 tasks | 5 files |
+| Phase 05 P03 | 7min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -132,6 +133,9 @@ Recent decisions affecting current work:
 - [Phase 05, Plan 02]: BudgetTracker records tokens via approxTokens (chars/4) after each LLM call -- simple heuristic avoids tokenizer dependency
 - [Phase 05, Plan 02]: Cross-dataset search uses OpenSearch terms filter with multiple kb_ids in single query (pool model shared index)
 - [Phase 05, Plan 02]: KB expansion capped at 20 to prevent OpenSearch query size limit issues (Pitfall 6)
+- [Phase 05, Plan 03]: Language instruction prepended to system prompt before kgContext merge for consistent response language
+- [Phase 05, Plan 03]: RBAC dataset expansion uses per-user abilityService.buildAbilityFor (not tenant-wide findAll) for ABAC security
+- [Phase 05, Plan 03]: Deep research budget caps 50K tokens / 15 calls hardcoded in chat pipeline (Pitfall 5)
 
 ### Pending Todos
 
@@ -146,6 +150,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T07:21:00Z
-Stopped at: Completed 05-02-PLAN.md
-Resume file: .planning/phases/05-advanced-retrieval/05-02-SUMMARY.md
+Last session: 2026-03-19T07:31:33Z
+Stopped at: Completed 05-03-PLAN.md
+Resume file: .planning/phases/05-advanced-retrieval/05-03-SUMMARY.md

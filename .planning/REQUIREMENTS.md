@@ -44,10 +44,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **RETR-01**: GraphRAG entity and relationship extraction — build knowledge graphs from documents during indexing
 - [x] **RETR-02**: GraphRAG community detection and summarization — group related entities with auto-generated summaries
-- [ ] **RETR-03**: Graph + vector hybrid retrieval — combine structured graph traversal with semantic vector search
+- [x] **RETR-03**: Graph + vector hybrid retrieval — combine structured graph traversal with semantic vector search
 - [x] **RETR-04**: Deep Research recursive query decomposition — break complex questions into sub-queries
 - [x] **RETR-05**: Deep Research iterative retrieval with reasoning — retrieve, reason about gaps, retrieve more
-- [ ] **RETR-06**: Cross-dataset retrieval — search across multiple knowledge bases respecting ABAC rules
+- [x] **RETR-06**: Cross-dataset retrieval — search across multiple knowledge bases respecting ABAC rules
 - [x] **RETR-07**: Deep Research token budget and call limits — hard caps on LLM calls and tokens per research session
 
 ### Chat & Search Experience
@@ -136,10 +136,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PRSR-04 | Phase 4 | Complete |
 | RETR-01 | Phase 5 | Complete |
 | RETR-02 | Phase 5 | Complete |
-| RETR-03 | Phase 5 | Pending |
+| RETR-03 | Phase 5 | Complete |
 | RETR-04 | Phase 5 | Complete |
 | RETR-05 | Phase 5 | Complete |
-| RETR-06 | Phase 5 | Pending |
+| RETR-06 | Phase 5 | Complete |
 | RETR-07 | Phase 5 | Complete |
 | OBSV-01 | Phase 6 | Pending |
 | OBSV-02 | Phase 6 | Pending |
