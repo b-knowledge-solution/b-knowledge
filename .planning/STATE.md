@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: "Completed 06-01-PLAN.md"
+stopped_at: "Completed 06-02-PLAN.md"
 last_updated: "2026-03-19T11:02:20.000Z"
-last_activity: "2026-03-19 — Plan 06-01 complete (DB foundation: tenant_id on projects, query_log table, QueryLogService)"
+last_activity: "2026-03-19 — Plan 06-02 complete (Member CRUD, dataset binding, cross-project resolver, activity feed APIs)"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 31
-  completed_plans: 27
-  percent: 87
+  completed_plans: 28
+  percent: 90
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 6 of 6 (Projects and Observability)
-Plan: 1 of 5 in current phase
-Status: Plan 06-01 Complete
-Last activity: 2026-03-19 — Plan 06-01 complete (DB foundation: tenant_id on projects, query_log table, QueryLogService)
+Plan: 2 of 5 in current phase
+Status: Plan 06-02 Complete
+Last activity: 2026-03-19 — Plan 06-02 complete (Member CRUD, dataset binding, cross-project resolver, activity feed APIs)
 
-Progress: [████████░░] 87%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
@@ -76,6 +76,7 @@ Progress: [████████░░] 87%
 | Phase 05 P03 | 7min | 3 tasks | 3 files |
 | Phase 05 P04 | 14 | 2 tasks | 10 files |
 | Phase 06 P01 | 3min | 2 tasks | 10 files |
+| Phase 06 P02 | 4min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -144,6 +145,10 @@ Recent decisions affecting current work:
 - [Phase 06, Plan 01]: Backfill tenant_id from user_tenant with COALESCE 'default' fallback for orphaned projects
 - [Phase 06, Plan 01]: QueryLogService uses void promise + catch pattern for guaranteed non-blocking logging
 - [Phase 06, Plan 01]: getAccessibleProjects tenantId changed from optional to required for multi-tenant safety
+- [Phase 06, Plan 02]: Cross-project-datasets route placed before /:id to avoid Express param collision
+- [Phase 06, Plan 02]: bindDatasets uses single INSERT ON CONFLICT DO NOTHING for N+1 avoidance
+- [Phase 06, Plan 02]: removeMember rejects removing project creator to prevent orphaned projects
+- [Phase 06, Plan 02]: addMember validates user exists in same tenant via user_tenant JOIN
 
 ### Pending Todos
 
@@ -158,6 +163,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T11:02:20.000Z
-Stopped at: Completed 06-01-PLAN.md
-Resume file: .planning/phases/06-projects-and-observability/06-01-SUMMARY.md
+Last session: 2026-03-19T11:10:01.000Z
+Stopped at: Completed 06-02-PLAN.md
+Resume file: .planning/phases/06-projects-and-observability/06-02-SUMMARY.md

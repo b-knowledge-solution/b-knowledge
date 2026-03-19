@@ -65,9 +65,9 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Multi-Tenant Project Management
 
 - [x] **PROJ-01**: Project CRUD — create, update, delete projects within an org
-- [ ] **PROJ-02**: Project-dataset binding — map datasets to SDLC projects with team-level access
-- [ ] **PROJ-03**: Project member management — add/remove team members with project-scoped roles
-- [ ] **PROJ-04**: Cross-project search for authorized users — search across multiple projects with access enforcement
+- [x] **PROJ-02**: Project-dataset binding — map datasets to SDLC projects with team-level access
+- [x] **PROJ-03**: Project member management — add/remove team members with project-scoped roles
+- [x] **PROJ-04**: Cross-project search for authorized users — search across multiple projects with access enforcement
 
 ## v2 Requirements
 
@@ -145,9 +145,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OBSV-02 | Phase 6 | Pending |
 | OBSV-03 | Phase 6 | Pending |
 | PROJ-01 | Phase 6 | Complete |
-| PROJ-02 | Phase 6 | Pending |
-| PROJ-03 | Phase 6 | Pending |
-| PROJ-04 | Phase 6 | Pending |
+| PROJ-02 | Phase 6 | Complete |
+| PROJ-03 | Phase 6 | Complete |
+| PROJ-04 | Phase 6 | Complete |
 
 **Coverage:**
 - v1 requirements: 38 total

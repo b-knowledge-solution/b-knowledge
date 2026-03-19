@@ -147,7 +147,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 3. Document Management | 8/8 | Complete   | 2026-03-19 |
 | 4. Domain-Specific Parsers | 2/3 | In Progress|  |
 | 5. Advanced Retrieval | 3/4 | In Progress|  |
-| 6. Projects and Observability | 1/5 | In Progress|  |
+| 6. Projects and Observability | 2/5 | In Progress|  |
 
 ---
 *Roadmap created: 2026-03-18*
