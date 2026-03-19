@@ -1,9 +1,8 @@
 /**
  * @fileoverview Tests for Version History features (DOCM-01, DOCM-02, DOCM-03).
  *
- * DOCM-01 and DOCM-03 tests: Implemented — verify createVersionDataset method
- * and version metadata storage on the RagService.
- * DOCM-02 tests: Still failing stubs — addressed in Plan 03-03 (rank_feature boost).
+ * DOCM-01 and DOCM-03: Verify createVersionDataset method and version metadata.
+ * DOCM-02: Verify rank_feature boost on pagerank_fea in search queries.
  */
 
 import { describe, expect, it, vi, beforeEach } from 'vitest'
@@ -15,9 +14,17 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 const {
   mockDatasetModel,
   mockMaxFirstFn,
+  mockSearchFn,
 } = vi.hoisted(() => {
-  // The .first() at the end of the chain — controls the resolved value
   const mockMaxFirstFn = vi.fn().mockResolvedValue({ max: null })
+  const mockSearchFn = vi.fn().mockResolvedValue({
+    body: {
+      hits: {
+        total: { value: 0 },
+        hits: [],
+      },
+    },
+  })
 
   return {
     mockDatasetModel: {
@@ -28,18 +35,19 @@ const {
       getKnex: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ increment: vi.fn() }) }),
     },
     mockMaxFirstFn,
+    mockSearchFn,
   }
 })
 
-vi.mock('../../src/shared/models/factory.js', () => ({
+// Mock shared dependencies using @/ alias to match vitest resolve config
+vi.mock('@/shared/models/factory.js', () => ({
   ModelFactory: {
     dataset: mockDatasetModel,
   },
 }))
 
-// Mock knex DB — returns a chainable query builder with controlled .first() output
-vi.mock('../../src/shared/db/knex.js', () => {
-  // Build a stable chain that always works regardless of clearAllMocks
+vi.mock('@/shared/db/knex.js', () => {
+  // Build a stable chainable query builder with controlled .first() output
   function makeChain(): any {
     return {
       where: () => makeChain(),
@@ -52,25 +60,44 @@ vi.mock('../../src/shared/db/knex.js', () => {
   return { db: () => makeChain() }
 })
 
-vi.mock('../../src/shared/services/logger.service.js', () => ({
+vi.mock('@/shared/services/logger.service.js', () => ({
   log: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }))
 
-vi.mock('../../src/modules/audit/services/audit.service.js', () => ({
+vi.mock('@/modules/audit/services/audit.service.js', () => ({
   auditService: { log: vi.fn() },
   AuditAction: { CREATE_SOURCE: 'CREATE_SOURCE' },
   AuditResourceType: { DATASET: 'DATASET' },
 }))
 
-vi.mock('../../src/modules/teams/services/team.service.js', () => ({
+vi.mock('@/modules/teams/services/team.service.js', () => ({
   teamService: { getUserTeams: vi.fn() },
 }))
 
-vi.mock('../../src/shared/services/ability.service.js', () => ({
+vi.mock('@/shared/services/ability.service.js', () => ({
   invalidateAllAbilities: vi.fn(),
 }))
 
+// Mock config for RagSearchService (uses config.opensearch.*)
+vi.mock('@/shared/config/index.js', () => ({
+  config: {
+    opensearch: {
+      systemTenantId: 'test-system-tenant',
+      host: 'http://localhost:9200',
+      password: '',
+    },
+  },
+}))
+
+// Mock OpenSearch client to capture query bodies for DOCM-02 tests
+vi.mock('@opensearch-project/opensearch', () => ({
+  Client: vi.fn().mockImplementation(() => ({
+    search: mockSearchFn,
+  })),
+}))
+
 import { RagService } from '../../src/modules/rag/services/rag.service'
+import { RagSearchService } from '../../src/modules/rag/services/rag-search.service'
 
 // ---------------------------------------------------------------------------
 // Shared test fixtures
@@ -227,18 +254,67 @@ describe('Version History - createVersionDataset', () => {
 })
 
 // ---------------------------------------------------------------------------
-// DOCM-02: Version-aware search (stubs — addressed in Plan 03-03)
+// DOCM-02: Version-aware search (rank_feature boost)
 // ---------------------------------------------------------------------------
 
 describe('Version History - rank_feature boost', () => {
-  it('should include rank_feature on pagerank_fea in search query should clause', () => {
-    // OpenSearch query must add rank_feature clause to boost newer versions
-    expect(true).toBe(false)
+  let searchService: RagSearchService
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    searchService = new RagSearchService()
   })
 
-  it('should not break search for datasets without pagerank_fea', () => {
-    // Graceful degradation: missing field must not cause query errors
-    expect(true).toBe(false)
+  it('should include rank_feature on pagerank_fea in fullTextSearch should clause', async () => {
+    await searchService.fullTextSearch('tenant-1', 'ds-1', 'test query', 10)
+
+    // Verify the search was called
+    expect(mockSearchFn).toHaveBeenCalledTimes(1)
+    const queryBody = mockSearchFn.mock.calls[0]![0].body.query.bool
+
+    // The should array must contain a rank_feature clause on pagerank_fea
+    expect(queryBody.should).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rank_feature: { field: 'pagerank_fea', linear: {} },
+        }),
+      ]),
+    )
+  })
+
+  it('should include rank_feature on pagerank_fea in semanticSearch should clause', async () => {
+    const fakeVector = Array(128).fill(0.1)
+    await searchService.semanticSearch('tenant-1', 'ds-1', fakeVector, 10, 0.3)
+
+    expect(mockSearchFn).toHaveBeenCalledTimes(1)
+    const queryBody = mockSearchFn.mock.calls[0]![0].body.query.bool
+
+    // Should clause must contain both knn and rank_feature
+    expect(queryBody.should).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rank_feature: { field: 'pagerank_fea', linear: {} },
+        }),
+        expect.objectContaining({
+          knn: expect.any(Object),
+        }),
+      ]),
+    )
+  })
+
+  it('should not break search for datasets without pagerank_fea field', async () => {
+    // rank_feature in a should clause is gracefully ignored when the field
+    // is missing from the document — OpenSearch returns 0 boost, no error.
+    // We verify the query structure is valid (no errors thrown during construction).
+    await searchService.fullTextSearch('tenant-1', 'ds-no-pagerank', 'test', 5)
+
+    // Query executed successfully — rank_feature in should is optional by design
+    expect(mockSearchFn).toHaveBeenCalledTimes(1)
+    const queryBody = mockSearchFn.mock.calls[0]![0].body.query.bool
+
+    // rank_feature clause is always present (OpenSearch handles missing fields gracefully)
+    expect(queryBody.should).toBeDefined()
+    expect(queryBody.should.length).toBeGreaterThan(0)
   })
 })
 

@@ -132,6 +132,14 @@ export class RagSearchService {
                             ...this.getFilters(tenantId, abacFilters),
                             ...extraFilters,
                         ],
+                        should: [
+                            /**
+                             * Boost by pagerank (version recency) — newer versions have higher
+                             * pagerank values set during createVersionDataset. Uses linear scoring
+                             * so v2 scores ~2x v1. Documents without pagerank_fea are unaffected.
+                             */
+                            { rank_feature: { field: 'pagerank_fea', linear: {} } },
+                        ],
                     },
                 },
                 size: topK,
@@ -195,6 +203,12 @@ export class RagSearchService {
                                     },
                                 },
                             },
+                            /**
+                             * Boost by pagerank (version recency) — newer versions have higher
+                             * pagerank values. Linear scoring gives proportional boost.
+                             * Documents without pagerank_fea are unaffected.
+                             */
+                            { rank_feature: { field: 'pagerank_fea', linear: {} } },
                         ],
                     },
                 },
@@ -622,6 +636,63 @@ export class RagSearchService {
         } catch (err) {
             log.warn('Failed to delete chunks from OpenSearch', { docId, error: String(err) })
             return 0
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Tag Aggregations
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description Query OpenSearch for unique tag keys and top values from accessible datasets.
+     * Uses a terms aggregation on the tag_kwd field to discover available tags.
+     * @param {string} tenantId - Tenant filter for mandatory isolation
+     * @param {string[]} [datasetIds] - Optional dataset ID scope to narrow aggregation
+     * @returns {Promise<{ key: string; values: string[] }[]>} Tag keys with their top values
+     */
+    async getTagAggregations(
+        tenantId: string,
+        datasetIds?: string[],
+    ): Promise<{ key: string; values: string[] }[]> {
+        const client = getClient()
+
+        // Build filter clauses with mandatory tenant isolation
+        const filter: Record<string, unknown>[] = [
+            { term: { tenant_id: tenantId } },
+        ]
+
+        // Scope to specific datasets if provided (strip hyphens per OpenSearch convention)
+        if (datasetIds?.length) {
+            filter.push({
+                terms: { kb_id: datasetIds.map(id => id.replace(/-/g, '')) },
+            })
+        }
+
+        try {
+            const res = await client.search({
+                index: getIndexName(tenantId),
+                body: {
+                    size: 0,
+                    query: {
+                        bool: { filter },
+                    },
+                    aggs: {
+                        tag_keys: {
+                            terms: { field: 'tag_kwd', size: 50 },
+                        },
+                    },
+                },
+            })
+
+            // Extract buckets from aggregation response (cast to any for OpenSearch generic typing)
+            const buckets = (res.body.aggregations?.tag_keys as any)?.buckets ?? []
+            return buckets.map((bucket: { key: string; doc_count: number }) => ({
+                key: bucket.key,
+                values: [bucket.key],
+            }))
+        } catch (err) {
+            log.warn('Failed to get tag aggregations from OpenSearch', { error: String(err) })
+            return []
         }
     }
 
