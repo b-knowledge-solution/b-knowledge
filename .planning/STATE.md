@@ -10,8 +10,8 @@ progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 17
-  completed_plans: 12
-  percent: 73
+  completed_plans: 13
+  percent: 76
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 3 of 6 (Document Management)
-Plan: 1 of 6 in current phase
+Plan: 2 of 6 in current phase
 Status: In Progress
-Last activity: 2026-03-19 — Plan 03-00 complete (Wave 0 test scaffolds for DOCM-01 through DOCM-06)
+Last activity: 2026-03-19 — Plan 03-01 complete (dataset versioning migration, service, API, tests)
 
-Progress: [███████░░░] 71%
+Progress: [████████░░] 76%
 
 ## Performance Metrics
 
@@ -60,6 +60,8 @@ Progress: [███████░░░] 71%
 | Phase 02 P04 | 10min | 2 tasks | 10 files |
 | Phase 02 P03 | 16min | 2 tasks | 18 files |
 | Phase 02 P06 | 13min | 3 tasks | 10 files |
+| Phase 03 P00 | 3min | 1 tasks | 6 files |
+| Phase 03 P01 | 9min | 2 tasks | 7 files |
 | Phase 03 P00 | 2min | 1 tasks | 2 files |
 
 ## Accumulated Context
@@ -93,6 +95,9 @@ Recent decisions affecting current work:
 - [Phase 2, Plan 06]: Super-admin sees all orgs' audit logs (optional tenantId filter); admin forced to own org only
 - [Phase 2, Plan 06]: invalidateAllAbilities on role change (simpler than per-session invalidation)
 - [Phase 2, Plan 06]: Existing /:id/role route upgraded with requireTenant + requireAbility instead of requirePermission
+- [Phase 3, Plan 01]: Version-as-dataset model: each version inherits all parent settings at creation time (no live reference)
+- [Phase 3, Plan 01]: Pagerank = version_number (1+) for OpenSearch rank_feature recency boost; parent keeps 0
+- [Phase 3, Plan 01]: Default change_summary auto-generated as "Version N uploaded by user" when not provided
 - [Phase 3, Plan 00]: Followed existing rag.service.test.ts mock patterns (vi.hoisted, Proxy-based knex mock) for Wave 0 scaffolds
 
 ### Pending Todos
@@ -108,6 +113,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T02:55:00Z
-Stopped at: Completed 03-00-PLAN.md
-Resume file: .planning/phases/03-document-management/03-00-SUMMARY.md
+Last session: 2026-03-19T03:02:18Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: .planning/phases/03-document-management/03-02-PLAN.md
