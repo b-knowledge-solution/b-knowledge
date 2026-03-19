@@ -42,8 +42,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Advanced Retrieval
 
-- [ ] **RETR-01**: GraphRAG entity and relationship extraction — build knowledge graphs from documents during indexing
-- [ ] **RETR-02**: GraphRAG community detection and summarization — group related entities with auto-generated summaries
+- [x] **RETR-01**: GraphRAG entity and relationship extraction — build knowledge graphs from documents during indexing
+- [x] **RETR-02**: GraphRAG community detection and summarization — group related entities with auto-generated summaries
 - [ ] **RETR-03**: Graph + vector hybrid retrieval — combine structured graph traversal with semantic vector search
 - [x] **RETR-04**: Deep Research recursive query decomposition — break complex questions into sub-queries
 - [x] **RETR-05**: Deep Research iterative retrieval with reasoning — retrieve, reason about gaps, retrieve more
@@ -134,8 +134,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PRSR-02 | Phase 4 | Complete |
 | PRSR-03 | Phase 4 | Complete |
 | PRSR-04 | Phase 4 | Complete |
-| RETR-01 | Phase 5 | Pending |
-| RETR-02 | Phase 5 | Pending |
+| RETR-01 | Phase 5 | Complete |
+| RETR-02 | Phase 5 | Complete |
 | RETR-03 | Phase 5 | Pending |
 | RETR-04 | Phase 5 | Complete |
 | RETR-05 | Phase 5 | Complete |
