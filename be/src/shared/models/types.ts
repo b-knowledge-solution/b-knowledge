@@ -778,6 +778,8 @@ export interface Project {
   default_parser_config: any
   /** Project status: active, archived */
   status: string
+  /** Tenant ID for multi-org isolation */
+  tenant_id: string
   /** Whether the project is private */
   is_private: boolean
   /** User ID who created this record */
@@ -1439,3 +1441,38 @@ export interface AnswerFeedback {
  * Omits auto-generated fields (id, created_at, updated_at).
  */
 export type CreateAnswerFeedback = Omit<AnswerFeedback, 'id' | 'created_at' | 'updated_at'>
+
+// ---------------------------------------------------------------------------
+// Query Log types (observability)
+// ---------------------------------------------------------------------------
+
+/**
+ * @description QueryLog interface representing a record in the 'query_log' table.
+ * Stores search and chat query events with performance and retrieval quality metrics.
+ */
+export interface QueryLog {
+  /** Unique UUID for the query log entry */
+  id: string
+  /** Source of the query: 'chat' or 'search' */
+  source: 'chat' | 'search'
+  /** conversation_id for chat, search_app_id for search */
+  source_id: string
+  /** UUID of the user who issued the query */
+  user_id: string
+  /** Tenant ID for multi-org isolation */
+  tenant_id: string
+  /** Original query text submitted by the user */
+  query: string
+  /** Array of dataset IDs that were searched */
+  dataset_ids: string[]
+  /** Number of retrieval results returned */
+  result_count: number
+  /** End-to-end response time in milliseconds */
+  response_time_ms: number | null
+  /** Average confidence/relevance score across returned chunks */
+  confidence_score: number | null
+  /** Flag for zero-result or below-threshold retrievals */
+  failed_retrieval: boolean
+  /** Timestamp when the query was logged */
+  created_at: Date
+}
