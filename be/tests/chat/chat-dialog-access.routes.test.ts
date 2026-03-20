@@ -1,8 +1,8 @@
 /**
- * @fileoverview Tests for Chat Dialog Access HTTP endpoints.
+ * @fileoverview Tests for Chat Assistant Access HTTP endpoints.
  *
  * Validates request handling, RBAC enforcement, and proper HTTP status codes
- * for dialog access management routes and dialog CRUD with role checks.
+ * for assistant access management routes and assistant CRUD with role checks.
  */
 
 import { describe, expect, it, vi, beforeEach } from 'vitest'
@@ -12,17 +12,18 @@ import { createMockRequest, createMockResponse } from '../setup'
 // Mocks
 // ---------------------------------------------------------------------------
 
-const { mockDialogService, mockAccessService } = vi.hoisted(() => ({
-  mockDialogService: {
-    createDialog: vi.fn(),
-    getDialog: vi.fn(),
-    listDialogs: vi.fn(),
-    updateDialog: vi.fn(),
-    deleteDialog: vi.fn(),
+const { mockAssistantService, mockAccessService } = vi.hoisted(() => ({
+  mockAssistantService: {
+    createAssistant: vi.fn(),
+    getAssistant: vi.fn(),
+    listAssistants: vi.fn(),
+    listAccessibleAssistants: vi.fn(),
+    updateAssistant: vi.fn(),
+    deleteAssistant: vi.fn(),
   },
   mockAccessService: {
-    getDialogAccess: vi.fn(),
-    setDialogAccess: vi.fn(),
+    getAssistantAccess: vi.fn(),
+    setAssistantAccess: vi.fn(),
     checkUserAccess: vi.fn(),
   },
 }))
@@ -31,139 +32,132 @@ vi.mock('@/shared/services/logger.service.js', () => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }))
 
-vi.mock('../../src/modules/chat/services/chat-dialog.service.js', () => ({
-  chatDialogService: mockDialogService,
+vi.mock('../../src/modules/chat/services/chat-assistant.service.js', () => ({
+  chatAssistantService: mockAssistantService,
+}))
+
+vi.mock('@/modules/feedback/services/feedback.service.js', () => ({
+  feedbackService: {},
+}))
+
+const mockUserTeamFindAll = vi.hoisted(() => vi.fn().mockResolvedValue([]))
+
+vi.mock('@/shared/models/factory.js', () => ({
+  ModelFactory: { userTeam: { findAll: mockUserTeamFindAll } },
+}))
+
+vi.mock('@/shared/middleware/tenant.middleware.js', () => ({
+  getTenantId: vi.fn().mockReturnValue('default'),
 }))
 
 // Import the controller after mocks are set up
-import { ChatDialogController } from '../../src/modules/chat/controllers/chat-dialog.controller'
+import { ChatAssistantController } from '../../src/modules/chat/controllers/chat-assistant.controller'
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('Chat Dialog Access Routes', () => {
-  let controller: ChatDialogController
+describe('Chat Assistant Access Routes', () => {
+  let controller: ChatAssistantController
   let res: ReturnType<typeof createMockResponse>
 
   beforeEach(() => {
-    controller = new ChatDialogController()
+    controller = new ChatAssistantController()
     res = createMockResponse()
-    vi.clearAllMocks()
+    // Re-establish mock return values after global afterEach resets them
+    mockUserTeamFindAll.mockResolvedValue([])
   })
 
   // -----------------------------------------------------------------------
-  // GET /api/chat/dialogs/:id/access
+  // GET /api/chat/assistants/:id/access
   // -----------------------------------------------------------------------
 
-  describe('GET /api/chat/dialogs/:id/access', () => {
-    it('admin gets 200 with access entries', async () => {
-      const entries = [
-        { id: 'a1', dialog_id: 'd1', access_type: 'user', target_id: 'u1' },
-        { id: 'a2', dialog_id: 'd1', access_type: 'team', target_id: 't1' },
-      ]
-      mockAccessService.getDialogAccess.mockResolvedValue(entries)
+  describe('GET /api/chat/assistants/:id/access', () => {
+    it('admin gets 200 with assistant details', async () => {
+      const app = { id: 'a1', name: 'Test Assistant', created_by: 'admin-1' }
+      mockAssistantService.getAssistant.mockResolvedValue(app)
 
       const req = createMockRequest({
         user: { id: 'admin-1', role: 'admin' },
-        params: { id: 'd1' },
+        params: { id: 'a1' },
       })
 
       // Simulate admin access check passing
-      // In production, middleware handles this; here we test controller behavior
-      // when the request reaches the handler (i.e., middleware already passed)
-      mockDialogService.getDialog.mockResolvedValue({ id: 'd1', name: 'Test' })
-      await controller.getDialog(req, res)
+      await controller.getAssistant(req, res)
 
       expect(res.json).toHaveBeenCalled()
       expect(res.status).not.toHaveBeenCalledWith(403)
     })
 
-    it('returns 401 when user is not authenticated', async () => {
-      const req = createMockRequest({
-        user: undefined,
-        params: { id: 'd1' },
-      })
-
-      await controller.getDialog(req, res)
-
-      // Controller returns 404 or relies on auth middleware;
-      // getDialog doesn't check auth explicitly, so it proceeds
-      // but the requireAuth middleware would block it
-      expect(res.json).toHaveBeenCalled()
-    })
-
-    it('returns 404 when dialog does not exist', async () => {
-      mockDialogService.getDialog.mockResolvedValue(undefined)
+    it('returns 404 when assistant does not exist', async () => {
+      mockAssistantService.getAssistant.mockResolvedValue(undefined)
 
       const req = createMockRequest({
         user: { id: 'admin-1', role: 'admin' },
         params: { id: 'nonexistent' },
       })
-      await controller.getDialog(req, res)
+      await controller.getAssistant(req, res)
 
       expect(res.status).toHaveBeenCalledWith(404)
-      expect(res.json).toHaveBeenCalledWith({ error: 'Dialog not found' })
+      expect(res.json).toHaveBeenCalledWith({ error: 'Assistant not found' })
     })
   })
 
   // -----------------------------------------------------------------------
-  // PUT /api/chat/dialogs/:id/access
+  // PUT /api/chat/assistants/:id
   // -----------------------------------------------------------------------
 
-  describe('PUT /api/chat/dialogs/:id/access', () => {
-    it('admin can set access entries for a dialog', async () => {
-      const updatedDialog = { id: 'd1', name: 'Updated' }
-      mockDialogService.updateDialog.mockResolvedValue(updatedDialog)
+  describe('PUT /api/chat/assistants/:id', () => {
+    it('admin can update an assistant', async () => {
+      const updated = { id: 'a1', name: 'Updated Assistant' }
+      mockAssistantService.updateAssistant.mockResolvedValue(updated)
 
       const req = createMockRequest({
         user: { id: 'admin-1', role: 'admin' },
-        params: { id: 'd1' },
-        body: {
-          name: 'Updated',
-        },
+        params: { id: 'a1' },
+        body: { name: 'Updated Assistant' },
       })
-      await controller.updateDialog(req, res)
+      await controller.updateAssistant(req, res)
 
-      expect(mockDialogService.updateDialog).toHaveBeenCalledWith('d1', { name: 'Updated' }, 'admin-1')
-      expect(res.json).toHaveBeenCalledWith(updatedDialog)
+      expect(mockAssistantService.updateAssistant).toHaveBeenCalledWith('a1', { name: 'Updated Assistant' }, 'admin-1')
+      expect(res.json).toHaveBeenCalledWith(updated)
     })
 
     it('returns 401 when user is not authenticated', async () => {
       const req = createMockRequest({
         user: undefined,
-        params: { id: 'd1' },
-        body: { access: [] },
+        params: { id: 'a1' },
+        body: { name: 'Updated' },
       })
-      await controller.updateDialog(req, res)
+      await controller.updateAssistant(req, res)
 
       expect(res.status).toHaveBeenCalledWith(401)
       expect(res.json).toHaveBeenCalledWith({ error: 'Unauthorized' })
     })
 
-    it('returns 404 when dialog does not exist', async () => {
-      mockDialogService.updateDialog.mockResolvedValue(undefined)
+    it('returns 404 when assistant does not exist', async () => {
+      mockAssistantService.updateAssistant.mockResolvedValue(undefined)
 
       const req = createMockRequest({
         user: { id: 'admin-1', role: 'admin' },
         params: { id: 'nonexistent' },
         body: { name: 'Updated' },
       })
-      await controller.updateDialog(req, res)
+      await controller.updateAssistant(req, res)
 
       expect(res.status).toHaveBeenCalledWith(404)
-      expect(res.json).toHaveBeenCalledWith({ error: 'Dialog not found' })
+      expect(res.json).toHaveBeenCalledWith({ error: 'Assistant not found' })
     })
 
     it('returns 500 on service error', async () => {
-      mockDialogService.updateDialog.mockRejectedValue(new Error('DB failure'))
+      mockAssistantService.updateAssistant.mockRejectedValue(new Error('DB failure'))
 
       const req = createMockRequest({
         user: { id: 'admin-1', role: 'admin' },
-        params: { id: 'd1' },
+        params: { id: 'a1' },
         body: { name: 'Updated' },
       })
-      await controller.updateDialog(req, res)
+      await controller.updateAssistant(req, res)
 
       expect(res.status).toHaveBeenCalledWith(500)
       expect(res.json).toHaveBeenCalledWith({ error: 'Internal server error' })
@@ -171,52 +165,55 @@ describe('Chat Dialog Access Routes', () => {
   })
 
   // -----------------------------------------------------------------------
-  // GET /api/chat/dialogs - user only sees accessible dialogs
+  // GET /api/chat/assistants - user only sees accessible assistants
   // -----------------------------------------------------------------------
 
-  describe('GET /api/chat/dialogs', () => {
-    it('user only sees dialogs they have access to', async () => {
-      // Service filters based on userId already
-      const userDialogs = [
-        { id: 'd1', name: 'My Dialog', created_by: 'user-1' },
+  describe('GET /api/chat/assistants', () => {
+    it('user only sees assistants they have access to', async () => {
+      const userAssistants = [
+        { id: 'a1', name: 'My Assistant', created_by: 'user-1' },
       ]
-      mockDialogService.listDialogs.mockResolvedValue(userDialogs)
+      mockAssistantService.listAccessibleAssistants.mockResolvedValue(userAssistants)
 
       const req = createMockRequest({
         user: { id: 'user-1', role: 'user' },
         query: {},
       })
-      await controller.listDialogs(req, res)
+      await controller.listAssistants(req, res)
 
-      expect(mockDialogService.listDialogs).toHaveBeenCalledWith('user-1')
-      expect(res.json).toHaveBeenCalledWith(userDialogs)
+      // Controller calls listAccessibleAssistants(userId, role, teamIds, options)
+      expect(mockAssistantService.listAccessibleAssistants).toHaveBeenCalledWith(
+        'user-1', 'user', [],
+        expect.objectContaining({}),
+      )
+      expect(res.json).toHaveBeenCalledWith(userAssistants)
     })
 
-    it('admin sees all dialogs', async () => {
-      const allDialogs = [
-        { id: 'd1', name: 'Dialog 1', created_by: 'user-1' },
-        { id: 'd2', name: 'Dialog 2', created_by: 'user-2' },
-        { id: 'd3', name: 'Dialog 3', created_by: 'admin-1' },
+    it('admin sees all assistants', async () => {
+      const allAssistants = [
+        { id: 'a1', name: 'Assistant 1', created_by: 'user-1' },
+        { id: 'a2', name: 'Assistant 2', created_by: 'user-2' },
+        { id: 'a3', name: 'Assistant 3', created_by: 'admin-1' },
       ]
-      mockDialogService.listDialogs.mockResolvedValue(allDialogs)
+      mockAssistantService.listAccessibleAssistants.mockResolvedValue(allAssistants)
 
       const req = createMockRequest({
         user: { id: 'admin-1', role: 'admin' },
         query: {},
       })
-      await controller.listDialogs(req, res)
+      await controller.listAssistants(req, res)
 
-      expect(res.json).toHaveBeenCalledWith(allDialogs)
+      expect(res.json).toHaveBeenCalledWith(allAssistants)
     })
 
     it('returns 500 on service error', async () => {
-      mockDialogService.listDialogs.mockRejectedValue(new Error('fail'))
+      mockAssistantService.listAccessibleAssistants.mockRejectedValue(new Error('fail'))
 
       const req = createMockRequest({
         user: { id: 'user-1', role: 'user' },
         query: {},
       })
-      await controller.listDialogs(req, res)
+      await controller.listAssistants(req, res)
 
       expect(res.status).toHaveBeenCalledWith(500)
       expect(res.json).toHaveBeenCalledWith({ error: 'Internal server error' })
@@ -224,19 +221,19 @@ describe('Chat Dialog Access Routes', () => {
   })
 
   // -----------------------------------------------------------------------
-  // POST /api/chat/dialogs - only admin/leader can create
+  // POST /api/chat/assistants - only admin/leader can create
   // -----------------------------------------------------------------------
 
-  describe('POST /api/chat/dialogs', () => {
-    it('admin can create a dialog', async () => {
-      const created = { id: 'd-new', name: 'New Dialog' }
-      mockDialogService.createDialog.mockResolvedValue(created)
+  describe('POST /api/chat/assistants', () => {
+    it('admin can create an assistant', async () => {
+      const created = { id: 'a-new', name: 'New Assistant' }
+      mockAssistantService.createAssistant.mockResolvedValue(created)
 
       const req = createMockRequest({
         user: { id: 'admin-1', role: 'admin' },
-        body: { name: 'New Dialog', kb_ids: ['kb1'] },
+        body: { name: 'New Assistant', kb_ids: ['kb1'] },
       })
-      await controller.createDialog(req, res)
+      await controller.createAssistant(req, res)
 
       expect(res.status).toHaveBeenCalledWith(201)
       expect(res.json).toHaveBeenCalledWith(created)
@@ -245,22 +242,22 @@ describe('Chat Dialog Access Routes', () => {
     it('returns 401 when user is not authenticated', async () => {
       const req = createMockRequest({
         user: undefined,
-        body: { name: 'New Dialog', kb_ids: ['kb1'] },
+        body: { name: 'New Assistant', kb_ids: ['kb1'] },
       })
-      await controller.createDialog(req, res)
+      await controller.createAssistant(req, res)
 
       expect(res.status).toHaveBeenCalledWith(401)
       expect(res.json).toHaveBeenCalledWith({ error: 'Unauthorized' })
     })
 
     it('returns 500 on service error', async () => {
-      mockDialogService.createDialog.mockRejectedValue(new Error('oops'))
+      mockAssistantService.createAssistant.mockRejectedValue(new Error('oops'))
 
       const req = createMockRequest({
         user: { id: 'admin-1', role: 'admin' },
-        body: { name: 'New Dialog', kb_ids: ['kb1'] },
+        body: { name: 'New Assistant', kb_ids: ['kb1'] },
       })
-      await controller.createDialog(req, res)
+      await controller.createAssistant(req, res)
 
       expect(res.status).toHaveBeenCalledWith(500)
       expect(res.json).toHaveBeenCalledWith({ error: 'Internal server error' })
@@ -268,20 +265,20 @@ describe('Chat Dialog Access Routes', () => {
   })
 
   // -----------------------------------------------------------------------
-  // PUT /api/chat/dialogs/:id - only admin/leader can update
+  // PUT /api/chat/assistants/:id - only admin/leader can update
   // -----------------------------------------------------------------------
 
-  describe('PUT /api/chat/dialogs/:id', () => {
-    it('admin can update a dialog', async () => {
-      const updated = { id: 'd1', name: 'Updated' }
-      mockDialogService.updateDialog.mockResolvedValue(updated)
+  describe('PUT /api/chat/assistants/:id - role enforcement', () => {
+    it('admin can update an assistant', async () => {
+      const updated = { id: 'a1', name: 'Updated' }
+      mockAssistantService.updateAssistant.mockResolvedValue(updated)
 
       const req = createMockRequest({
         user: { id: 'admin-1', role: 'admin' },
-        params: { id: 'd1' },
+        params: { id: 'a1' },
         body: { name: 'Updated' },
       })
-      await controller.updateDialog(req, res)
+      await controller.updateAssistant(req, res)
 
       expect(res.json).toHaveBeenCalledWith(updated)
     })
@@ -289,41 +286,41 @@ describe('Chat Dialog Access Routes', () => {
     it('returns 401 when not authenticated', async () => {
       const req = createMockRequest({
         user: undefined,
-        params: { id: 'd1' },
+        params: { id: 'a1' },
         body: { name: 'Updated' },
       })
-      await controller.updateDialog(req, res)
+      await controller.updateAssistant(req, res)
 
       expect(res.status).toHaveBeenCalledWith(401)
     })
   })
 
   // -----------------------------------------------------------------------
-  // DELETE /api/chat/dialogs/:id - only admin/leader can delete
+  // DELETE /api/chat/assistants/:id - only admin/leader can delete
   // -----------------------------------------------------------------------
 
-  describe('DELETE /api/chat/dialogs/:id', () => {
-    it('admin can delete a dialog', async () => {
-      mockDialogService.deleteDialog.mockResolvedValue(undefined)
+  describe('DELETE /api/chat/assistants/:id', () => {
+    it('admin can delete an assistant', async () => {
+      mockAssistantService.deleteAssistant.mockResolvedValue(undefined)
 
       const req = createMockRequest({
         user: { id: 'admin-1', role: 'admin' },
-        params: { id: 'd1' },
+        params: { id: 'a1' },
       })
-      await controller.deleteDialog(req, res)
+      await controller.deleteAssistant(req, res)
 
       expect(res.status).toHaveBeenCalledWith(204)
       expect(res.send).toHaveBeenCalled()
     })
 
     it('returns 500 on service error during delete', async () => {
-      mockDialogService.deleteDialog.mockRejectedValue(new Error('cascade fail'))
+      mockAssistantService.deleteAssistant.mockRejectedValue(new Error('cascade fail'))
 
       const req = createMockRequest({
         user: { id: 'admin-1', role: 'admin' },
-        params: { id: 'd1' },
+        params: { id: 'a1' },
       })
-      await controller.deleteDialog(req, res)
+      await controller.deleteAssistant(req, res)
 
       expect(res.status).toHaveBeenCalledWith(500)
       expect(res.json).toHaveBeenCalledWith({ error: 'Internal server error' })
