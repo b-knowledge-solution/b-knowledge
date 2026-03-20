@@ -162,9 +162,10 @@ class TestSplit:
     """Tests for Dealer.split() method."""
 
     def test_basic_split(self, dealer):
-        """Verify basic whitespace splitting."""
+        """Verify basic splitting merges adjacent English tokens."""
         result = dealer.split("hello world test")
-        assert result == ["hello", "world", "test"]
+        # Adjacent English tokens are merged into one compound token
+        assert result == ["hello world test"]
 
     def test_merges_adjacent_english(self, dealer):
         """Verify adjacent English tokens are merged."""

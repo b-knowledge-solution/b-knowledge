@@ -59,6 +59,8 @@ sys.modules["db.db_models"].DB = mock_DB
 
 
 from rag.app.qa import rmPrefix
+# Pre-import document_service so @patch decorators can resolve the module path
+import db.services.document_service
 
 
 class TestGetQueueLength:

@@ -4,12 +4,19 @@ Tests safe float conversion and overlap percentage normalization.
 """
 import os
 import sys
+import importlib
 import pytest
 
 # Ensure advance-rag root is on the Python path
 _ADVANCE_RAG_ROOT = os.path.join(os.path.dirname(__file__), "..")
 if _ADVANCE_RAG_ROOT not in sys.path:
     sys.path.insert(0, _ADVANCE_RAG_ROOT)
+
+# Force reload of the real module (conftest may have mocked it)
+if "common.float_utils" in sys.modules:
+    del sys.modules["common.float_utils"]
+import common.float_utils
+importlib.reload(common.float_utils)
 
 
 class TestGetFloat:

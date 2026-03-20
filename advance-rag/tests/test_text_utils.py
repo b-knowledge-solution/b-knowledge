@@ -4,6 +4,7 @@ Tests Arabic digit normalization and Arabic presentation form normalization.
 """
 import os
 import sys
+import importlib
 
 import pytest
 
@@ -11,6 +12,12 @@ import pytest
 _ADVANCE_RAG_ROOT = os.path.join(os.path.dirname(__file__), "..")
 if _ADVANCE_RAG_ROOT not in sys.path:
     sys.path.insert(0, _ADVANCE_RAG_ROOT)
+
+# Force reload of the real module (conftest may have mocked it)
+if "common.text_utils" in sys.modules:
+    del sys.modules["common.text_utils"]
+import common.text_utils
+importlib.reload(common.text_utils)
 
 from common.text_utils import (
     normalize_arabic_digits,

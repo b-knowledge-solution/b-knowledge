@@ -39,7 +39,7 @@ def mock_deps():
         p.stop()
 
 
-def _make_pipeline(mock_deps, dsl=None, doc_id="doc-1", task_id="task-1", flow_id="flow-1"):
+def _make_pipeline(mock_deps, dsl=None, doc_id="doc-1", task_id="task-1", flow_id="flow-1", kb_id="kb-1"):
     """Create a Pipeline instance with mocked dependencies.
 
     Args:
@@ -48,19 +48,20 @@ def _make_pipeline(mock_deps, dsl=None, doc_id="doc-1", task_id="task-1", flow_i
         doc_id: Document ID for the pipeline.
         task_id: Task ID for progress tracking.
         flow_id: Flow ID for log key construction.
+        kb_id: Knowledge base ID returned by DocumentService mock.
 
     Returns:
         Pipeline instance with controlled dependencies.
     """
     if dsl is None:
-        dsl = {"components": {}, "path": []}
-    mock_deps["doc_svc"].get_knowledgebase_id.return_value = "kb-1"
+        dsl = {"components": {"File": {}, "Parser": {}}, "path": ["File", "Parser"]}
+    mock_deps["doc_svc"].get_knowledgebase_id.return_value = kb_id
 
     from rag.flow.pipeline import Pipeline
     pipeline = Pipeline(dsl, tenant_id="tenant-1", doc_id=doc_id, task_id=task_id, flow_id=flow_id)
     # Set attributes that Graph.__init__ would normally set
-    pipeline.path = []
-    pipeline.components = {}
+    pipeline.path = dsl.get("path", []) if isinstance(dsl, dict) else []
+    pipeline.components = dsl.get("components", {}) if isinstance(dsl, dict) else {}
     pipeline.task_id = task_id
     pipeline._tenant_id = "tenant-1"
     return pipeline
@@ -82,8 +83,7 @@ class TestPipelineInit:
 
     def test_kb_id_resolved(self, mock_deps):
         """Verify knowledge base ID is resolved from document service."""
-        mock_deps["doc_svc"].get_knowledgebase_id.return_value = "kb-42"
-        pipeline = _make_pipeline(mock_deps, doc_id="doc-1")
+        pipeline = _make_pipeline(mock_deps, doc_id="doc-1", kb_id="kb-42")
         assert pipeline._kb_id == "kb-42"
 
     def test_canvas_debug_doc_id_ignored(self, mock_deps):
@@ -94,8 +94,7 @@ class TestPipelineInit:
 
     def test_no_kb_id_clears_doc_id(self, mock_deps):
         """Verify missing KB ID causes doc_id to be cleared."""
-        mock_deps["doc_svc"].get_knowledgebase_id.return_value = None
-        pipeline = _make_pipeline(mock_deps, doc_id="doc-1")
+        pipeline = _make_pipeline(mock_deps, doc_id="doc-1", kb_id=None)
         assert pipeline._doc_id is None
 
 
@@ -262,24 +261,35 @@ class TestPipelineRun:
     def test_run_error_propagation(self, mock_deps):
         """Verify component errors stop the pipeline and are reported."""
         async def _run():
-            pipeline = _make_pipeline(mock_deps)
+            dsl = {"components": {"File": {}, "Parser": {}, "Indexer": {}}, "path": ["File", "Parser"]}
+            pipeline = _make_pipeline(mock_deps, dsl=dsl)
             pipeline.path = ["File", "Parser"]
             pipeline.error = ""
 
             mock_file = MagicMock()
             mock_file.output.return_value = {"data": "test"}
             mock_file.error.return_value = ""
-            mock_file.get_downstream.return_value = ["Parser"]
+            mock_file.get_downstream.return_value = []
+            mock_file.component_name = "File"
 
             mock_parser = MagicMock()
             mock_parser.invoke = AsyncMock()
-            mock_parser.output.return_value = {}
-            mock_parser.error.return_value = "Parse failed"
-            mock_parser.get_downstream.return_value = []
+            mock_parser.output.return_value = {"parsed": "data"}
+            mock_parser.error.return_value = ""
+            mock_parser.get_downstream.return_value = ["Indexer"]
             mock_parser._id = "Parser"
+            mock_parser.component_name = "Parser"
+
+            mock_indexer = MagicMock()
+            mock_indexer.invoke = AsyncMock()
+            mock_indexer.output.return_value = {}
+            mock_indexer.error.return_value = "Index failed"
+            mock_indexer.get_downstream.return_value = []
+            mock_indexer._id = "Indexer"
+            mock_indexer.component_name = "Indexer"
 
             pipeline.get_component_obj = MagicMock(
-                side_effect=lambda name: {"File": mock_file, "Parser": mock_parser}.get(name, mock_file)
+                side_effect=lambda name: {"File": mock_file, "Parser": mock_parser, "Indexer": mock_indexer}.get(name, mock_file)
             )
             pipeline.get_component_name = MagicMock(return_value="Component")
             pipeline.callback = MagicMock()

@@ -8,6 +8,7 @@ import os
 import sys
 import time
 import types
+import importlib
 import pytest
 from unittest.mock import MagicMock
 
@@ -15,6 +16,14 @@ from unittest.mock import MagicMock
 _ADVANCE_RAG_ROOT = os.path.join(os.path.dirname(__file__), "..")
 if _ADVANCE_RAG_ROOT not in sys.path:
     sys.path.insert(0, _ADVANCE_RAG_ROOT)
+
+# Force reload of the real modules (conftest may have mocked them)
+# dateutil is used by format_iso_8601_to_ymd_hms
+for _mod in ["dateutil", "dateutil.parser", "common.time_utils"]:
+    if _mod in sys.modules:
+        del sys.modules[_mod]
+import common.time_utils
+importlib.reload(common.time_utils)
 
 
 class TestCurrentTimestamp:

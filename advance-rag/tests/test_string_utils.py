@@ -5,12 +5,19 @@ stripping, without requiring heavy ML dependencies.
 """
 import os
 import sys
+import importlib
 import pytest
 
 # Ensure advance-rag root is on the Python path
 _ADVANCE_RAG_ROOT = os.path.join(os.path.dirname(__file__), "..")
 if _ADVANCE_RAG_ROOT not in sys.path:
     sys.path.insert(0, _ADVANCE_RAG_ROOT)
+
+# Force-reload the real common.string_utils module (conftest mocks it with a lambda)
+if "common.string_utils" in sys.modules:
+    del sys.modules["common.string_utils"]
+import common.string_utils
+importlib.reload(common.string_utils)
 
 
 class TestRemoveRedundantSpaces:

@@ -25,25 +25,23 @@ _mock_rag_tokenizer = MagicMock()
 _mock_rag_tokenizer.tokenize = MagicMock(side_effect=lambda text: f"tokenized:{text[:30]}")
 _mock_rag_tokenizer.fine_grained_tokenize = MagicMock(side_effect=lambda text: f"fine:{text[:30]}")
 
-_mock_nlp_module = types.ModuleType("rag.nlp")
-_mock_nlp_module.rag_tokenizer = _mock_rag_tokenizer
+# Override rag.nlp's rag_tokenizer to use our test-specific mock with tokenized: prefix
+if "rag.nlp" not in sys.modules:
+    _rag_nlp_mod = types.ModuleType("rag.nlp")
+    _rag_nlp_mod.__path__ = []
+    sys.modules["rag.nlp"] = _rag_nlp_mod
+sys.modules["rag.nlp"].rag_tokenizer = _mock_rag_tokenizer
 
-sys.modules.setdefault("rag.nlp", _mock_nlp_module)
+# Mock deepdoc parser utils — override conftest's get_text to actually decode binary
+sys.modules["deepdoc.parser.utils"].get_text = MagicMock(side_effect=lambda fn, binary: binary.decode("utf-8") if binary else "")
 
-# Mock deepdoc parser utils
-_mock_deepdoc_utils = types.ModuleType("deepdoc.parser.utils")
-_mock_deepdoc_utils.get_text = MagicMock(side_effect=lambda fn, binary: binary.decode("utf-8") if binary else "")
-sys.modules.setdefault("deepdoc.parser.utils", _mock_deepdoc_utils)
-sys.modules.setdefault("deepdoc", types.ModuleType("deepdoc"))
-sys.modules.setdefault("deepdoc.parser", types.ModuleType("deepdoc.parser"))
-
-# Mock common modules
-_mock_settings = MagicMock()
-sys.modules.setdefault("common", types.ModuleType("common"))
-sys.modules.setdefault("common.settings", _mock_settings)
-sys.modules.setdefault("common.token_utils", types.ModuleType("common.token_utils"))
+# Ensure num_tokens_from_string mock does word-count
 sys.modules["common.token_utils"].num_tokens_from_string = MagicMock(side_effect=lambda text, *a: len(text.split()))
 
+# Force reload to pick up the updated mocks
+import importlib
+if "rag.app.clinical" in sys.modules:
+    importlib.reload(sys.modules["rag.app.clinical"])
 from rag.app.clinical import (
     chunk,
     classify_document,

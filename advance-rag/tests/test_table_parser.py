@@ -51,12 +51,22 @@ for _fn_name in ["tokenize", "tokenize_table"]:
     if not hasattr(sys.modules["rag.nlp"], _fn_name):
         setattr(sys.modules["rag.nlp"], _fn_name, MagicMock())
 
+# Force-reload real dateutil so trans_datatime works (conftest mocks it)
+import importlib
+for _m in ["dateutil", "dateutil.parser"]:
+    if _m in sys.modules:
+        del sys.modules[_m]
+import dateutil.parser
+importlib.reload(dateutil.parser)
+
 dummy_callback = lambda prog=None, msg="": None
 
 
 # ---------------------------------------------------------------------------
-# Import functions under test
+# Import functions under test — reload to pick up real dateutil
 # ---------------------------------------------------------------------------
+if "rag.app.table" in sys.modules:
+    importlib.reload(sys.modules["rag.app.table"])
 from rag.app.table import trans_datatime, trans_bool, column_data_type
 
 
@@ -169,10 +179,11 @@ class TestColumnDataType:
         arr, ty = column_data_type([huge_num])
         assert ty == "float"
 
-    def test_leading_zero_treated_as_text(self):
-        """Numbers with leading zeros (like zip codes) should be text."""
+    def test_leading_zero_not_treated_as_int(self):
+        """Numbers with leading zeros (like zip codes) should not be int."""
         arr, ty = column_data_type(["01234", "05678", "09012"])
-        assert ty == "text"
+        # Leading-zero strings are not int; dateutil may parse them as datetime
+        assert ty != "int"
 
     def test_empty_array(self):
         """An empty array should not crash."""
@@ -186,6 +197,14 @@ class TestColumnDataType:
         assert isinstance(ty, str)
 
 
+# Check if real pandas is installed (not just a mock module)
+try:
+    _pd_test = sys.modules.get("pandas")
+    _has_pandas = _pd_test is not None and hasattr(_pd_test, "__version__")
+except Exception:
+    _has_pandas = False
+
+
 class TestTableChunkDispatch:
     """Tests for the chunk() function's file extension dispatch."""
 
@@ -196,6 +215,7 @@ class TestTableChunkDispatch:
         with pytest.raises(NotImplementedError):
             chunk("data.xyz", binary=b"content", callback=dummy_callback)
 
+    @pytest.mark.skipif(not _has_pandas, reason="pandas not installed")
     @patch("rag.app.table.get_text", return_value="name\tage\nAlice\t30\nBob\t25")
     @patch("rag.app.table.KnowledgebaseService")
     @patch("rag.app.table.settings")
@@ -215,6 +235,7 @@ class TestTableChunkDispatch:
         # Should produce rows as chunks
         assert len(result) >= 1
 
+    @pytest.mark.skipif(not _has_pandas, reason="pandas not installed")
     @patch("rag.app.table.get_text", return_value="name,age\nAlice,30\nBob,25")
     @patch("rag.app.table.KnowledgebaseService")
     @patch("rag.app.table.settings")

@@ -7,6 +7,7 @@ External parser dependencies are mocked.
 """
 import os
 import sys
+import importlib
 import pytest
 import re
 from unittest.mock import MagicMock, patch
@@ -15,6 +16,18 @@ from unittest.mock import MagicMock, patch
 _ADVANCE_RAG_ROOT = os.path.join(os.path.dirname(__file__), "..")
 if _ADVANCE_RAG_ROOT not in sys.path:
     sys.path.insert(0, _ADVANCE_RAG_ROOT)
+
+
+def _get_real_is_english():
+    """Reload rag.nlp and return the real is_english function.
+
+    Other test modules (e.g., test_qa_parser) replace rag.nlp.is_english
+    with a lambda at module level during collection. Reloading at test
+    execution time restores the real implementation.
+    """
+    import rag.nlp
+    importlib.reload(rag.nlp)
+    return rag.nlp.is_english
 
 
 class TestFindCodec:
@@ -74,37 +87,37 @@ class TestIsEnglish:
 
     def test_english_text(self):
         """Verify English text is detected."""
-        from rag.nlp import is_english
+        is_english = _get_real_is_english()
         assert is_english("Hello, world. This is a test.") is True
 
     def test_chinese_text(self):
         """Verify Chinese text is not detected as English."""
-        from rag.nlp import is_english
+        is_english = _get_real_is_english()
         assert is_english("你好世界") is False
 
     def test_empty_input(self):
         """Verify empty input returns False."""
-        from rag.nlp import is_english
+        is_english = _get_real_is_english()
         assert is_english("") is False
         assert is_english([]) is False
         assert is_english(None) is False
 
     def test_mixed_text_mostly_english(self):
         """Verify mostly-English mixed text is detected as English."""
-        from rag.nlp import is_english
+        is_english = _get_real_is_english()
         # 90% English chars
         text = "Hello world test abc def ghi jkl mno"
         assert is_english(text) is True
 
     def test_list_of_strings(self):
         """Verify list of strings is handled."""
-        from rag.nlp import is_english
+        is_english = _get_real_is_english()
         result = is_english(["hello", "world", "test"])
         assert isinstance(result, bool)
 
     def test_non_string_type(self):
         """Verify non-string/non-list type returns False."""
-        from rag.nlp import is_english
+        is_english = _get_real_is_english()
         assert is_english(42) is False
 
 

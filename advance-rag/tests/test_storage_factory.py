@@ -65,7 +65,7 @@ class TestStorageImplInSettings:
     def test_settings_module_accessible(self):
         """The common.settings module should be accessible."""
         import common.settings
-        assert common.settings is not None
+        assert sys.modules["common.settings"] is not None
 
     @patch("common.settings")
     def test_storage_impl_attribute_exists_when_configured(self, mock_settings):

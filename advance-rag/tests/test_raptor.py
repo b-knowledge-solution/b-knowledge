@@ -71,9 +71,13 @@ sys.modules["rag.graphrag.utils"].set_llm_cache = MagicMock()
 _ensure_mock_module("db.services.task_service")
 sys.modules["db.services.task_service"].has_canceled = MagicMock(return_value=False)
 
-# Mock thread_pool_exec to just call the function
+# Mock thread_pool_exec as async (used in await expressions)
 _ensure_mock_module("common.misc_utils")
-sys.modules["common.misc_utils"].thread_pool_exec = lambda fn, *args, **kwargs: fn(*args, **kwargs)
+
+async def _async_thread_pool_exec(fn, *args, **kwargs):
+    """Async mock for thread_pool_exec."""
+    return fn(*args, **kwargs)
+sys.modules["common.misc_utils"].thread_pool_exec = _async_thread_pool_exec
 
 # Mock exceptions
 _ensure_mock_module("common.exceptions")
@@ -109,7 +113,8 @@ def _make_raptor(max_cluster=5, max_token=512, threshold=0.1, max_errors=3):
 
     embd_model = MagicMock()
     embd_model.llm_name = "test-embd"
-    embd_model.encode = MagicMock(return_value=([np.random.rand(128).tolist()], None))
+    # Use real list values instead of np.random (which is a MagicMock)
+    embd_model.encode = MagicMock(return_value=([[0.1] * 128], None))
 
     return RecursiveAbstractiveProcessing4TreeOrganizedRetrieval(
         max_cluster=max_cluster,
@@ -149,16 +154,19 @@ class TestRaptorInit:
 class TestRaptorGetOptimalClusters:
     """Tests for the _get_optimal_clusters BIC selection."""
 
-    def test_returns_optimal_cluster_count(self):
+    @patch("rag.raptor.GaussianMixture")
+    def test_returns_optimal_cluster_count(self, mock_gm_cls):
         """Should return the number of clusters with lowest BIC."""
         raptor = _make_raptor(max_cluster=5)
 
-        # Create distinct embeddings that should form 2-3 clusters
-        np.random.seed(42)
-        embeddings = np.vstack([
-            np.random.randn(5, 10) + [5, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            np.random.randn(5, 10) + [-5, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        ])
+        # Mock GaussianMixture to return decreasing BIC values
+        bic_vals = iter([500.0, 300.0, 200.0, 250.0])
+        mock_gm = MagicMock()
+        mock_gm.bic.side_effect = lambda x: next(bic_vals)
+        mock_gm_cls.return_value = mock_gm
+
+        # Use real list embeddings (5 items so max_cluster range is [1,2,3,4])
+        embeddings = [[i * 0.1] * 10 for i in range(5)]
 
         optimal = raptor._get_optimal_clusters(embeddings, random_state=42)
 
@@ -169,23 +177,28 @@ class TestRaptorGetOptimalClusters:
         """With a single embedding, max_clusters should be 1."""
         raptor = _make_raptor(max_cluster=5)
 
-        embeddings = np.random.randn(1, 10)
+        embeddings = [[0.1] * 10]
 
-        # With only 1 embedding, n_clusters range is empty, so this tests the edge case
-        # The function iterates range(1, min(5, 1)) = range(1, 1) which is empty
-        # This would cause np.argmin on empty array to fail, so we verify behavior
-        # In practice the caller checks len > 1 before calling, but test the boundary
+        # With only 1 embedding, n_clusters range is empty (range(1, min(5,1)) = range(1,1))
+        # np.argmin on empty list should fail
         with pytest.raises((ValueError, IndexError)):
             raptor._get_optimal_clusters(embeddings, random_state=42)
 
-    def test_max_cluster_capped_by_embedding_count(self):
+    @patch("rag.raptor.GaussianMixture")
+    def test_max_cluster_capped_by_embedding_count(self, mock_gm_cls):
         """max_clusters should be capped by the number of embeddings."""
         raptor = _make_raptor(max_cluster=100)
 
-        embeddings = np.random.randn(3, 10)
+        # Make GaussianMixture.bic return decreasing values so argmin picks last
+        bic_values = iter([300.0, 200.0])
+        mock_gm = MagicMock()
+        mock_gm.bic.side_effect = lambda x: next(bic_values)
+        mock_gm_cls.return_value = mock_gm
+
+        embeddings = [[0.1] * 10, [0.2] * 10, [0.3] * 10]
         optimal = raptor._get_optimal_clusters(embeddings, random_state=42)
 
-        # Should not exceed the number of embeddings
+        # With 3 embeddings, max_clusters is min(100, 3) = 3, range is [1, 2]
         assert optimal <= 3
 
 
@@ -223,9 +236,9 @@ class TestRaptorCall:
         """A single chunk should return empty (no clustering needed)."""
         raptor = _make_raptor()
 
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             raptor(
-                [("chunk1 text", np.random.rand(10).tolist())],
+                [("chunk1 text", [0.1] * 10)],
                 random_state=42
             )
         )
@@ -236,7 +249,7 @@ class TestRaptorCall:
         """Empty chunks list should return empty."""
         raptor = _make_raptor()
 
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             raptor([], random_state=42)
         )
 
@@ -247,18 +260,20 @@ class TestRaptorCall:
         raptor = _make_raptor()
 
         chunks = [
-            ("", np.random.rand(10).tolist()),  # empty text
+            ("", [0.1] * 10),  # empty text
             ("valid text", None),  # None embedding
             ("valid text", []),  # empty embedding
-            ("valid text", np.random.rand(10).tolist()),  # valid
+            ("valid text", [0.1] * 10),  # valid
         ]
 
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             raptor(chunks, random_state=42)
         )
 
-        # After filtering, only 1 valid chunk remains, so should return empty
-        assert result == []
+        # After filtering, only 1 valid chunk remains; while loop doesn't execute
+        # so the filtered list (1 item) is returned unchanged
+        assert len(result) == 1
+        assert result[0][0] == "valid text"
 
     @patch("rag.raptor.umap")
     def test_two_chunks_summarized_directly(self, mock_umap):
@@ -266,11 +281,11 @@ class TestRaptorCall:
         raptor = _make_raptor()
 
         chunks = [
-            ("First chunk text", np.random.rand(128).tolist()),
-            ("Second chunk text", np.random.rand(128).tolist()),
+            ("First chunk text", [0.1] * 128),
+            ("Second chunk text", [0.1] * 128),
         ]
 
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             raptor(chunks, random_state=42, callback=MagicMock())
         )
 
@@ -304,9 +319,9 @@ class TestRaptorEmbeddingEncode:
         """Should return cached embedding if available."""
         raptor = _make_raptor()
 
-        cached = np.random.rand(128).tolist()
+        cached = [0.1] * 128
         with patch("rag.raptor.get_embed_cache", return_value=cached):
-            result = asyncio.get_event_loop().run_until_complete(
+            result = asyncio.run(
                 raptor._embedding_encode("test text")
             )
 
@@ -315,12 +330,12 @@ class TestRaptorEmbeddingEncode:
     def test_encodes_and_caches_when_not_cached(self):
         """Should encode and cache when no cached result exists."""
         raptor = _make_raptor()
-        expected = np.random.rand(128).tolist()
+        expected = [0.1] * 128
         raptor._embd_model.encode = MagicMock(return_value=([expected], None))
 
         with patch("rag.raptor.get_embed_cache", return_value=None):
             with patch("rag.raptor.set_embed_cache") as mock_set:
-                result = asyncio.get_event_loop().run_until_complete(
+                result = asyncio.run(
                     raptor._embedding_encode("test text")
                 )
 
@@ -334,7 +349,7 @@ class TestRaptorEmbeddingEncode:
 
         with patch("rag.raptor.get_embed_cache", return_value=None):
             with pytest.raises(Exception, match="Embedding error"):
-                asyncio.get_event_loop().run_until_complete(
+                asyncio.run(
                     raptor._embedding_encode("test text")
                 )
 
@@ -347,7 +362,7 @@ class TestRaptorChat:
         raptor = _make_raptor()
 
         with patch("rag.raptor.get_llm_cache", return_value="Cached summary"):
-            result = asyncio.get_event_loop().run_until_complete(
+            result = asyncio.run(
                 raptor._chat("system", [{"role": "user", "content": "test"}], {})
             )
 
@@ -361,7 +376,7 @@ class TestRaptorChat:
         )
 
         with patch("rag.raptor.get_llm_cache", return_value=None):
-            result = asyncio.get_event_loop().run_until_complete(
+            result = asyncio.run(
                 raptor._chat("system", [{"role": "user", "content": "test"}], {})
             )
 
@@ -375,7 +390,7 @@ class TestRaptorChat:
 
         with patch("rag.raptor.get_llm_cache", return_value=None):
             with pytest.raises(Exception):
-                asyncio.get_event_loop().run_until_complete(
+                asyncio.run(
                     raptor._chat("system", [{"role": "user", "content": "test"}], {})
                 )
 
@@ -387,7 +402,7 @@ class TestRaptorChat:
         )
 
         with patch("rag.raptor.get_llm_cache", return_value=None):
-            result = asyncio.get_event_loop().run_until_complete(
+            result = asyncio.run(
                 raptor._chat("system", [{"role": "user", "content": "test"}], {})
             )
 

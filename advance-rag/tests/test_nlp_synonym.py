@@ -82,6 +82,8 @@ class TestDealerLoad:
         """Verify reload is skipped when lookup_num < 100."""
         mock_redis = MagicMock()
         dealer = _make_dealer(dictionary={}, redis=mock_redis)
+        # Reset mock call count (constructor's load() may have called Redis)
+        mock_redis.reset_mock()
         dealer.lookup_num = 50
         dealer.load_tm = time.time() - 7200  # 2 hours ago
         dealer.load()
@@ -92,6 +94,8 @@ class TestDealerLoad:
         """Verify reload is skipped when less than 1 hour since last load."""
         mock_redis = MagicMock()
         dealer = _make_dealer(dictionary={}, redis=mock_redis)
+        # Reset mock call count (constructor's load() may have called Redis)
+        mock_redis.reset_mock()
         dealer.lookup_num = 200
         dealer.load_tm = time.time() - 60  # 60 seconds ago (< 3600)
         dealer.load()

@@ -70,6 +70,38 @@ _ensure_mock_module("common.token_utils")
 _ensure_mock_module("rag.nlp")
 sys.modules["rag.nlp"].rag_tokenizer = _mock_rag_tokenizer
 
+# Mock prance.ResolvingParser to parse YAML/JSON and do simple ref resolution
+import yaml as _yaml
+
+def _resolve_refs(spec, root=None):
+    """Recursively resolve $ref pointers in an OpenAPI spec dict."""
+    if root is None:
+        root = spec
+    if isinstance(spec, dict):
+        if "$ref" in spec:
+            ref_path = spec["$ref"].lstrip("#/").split("/")
+            resolved = root
+            for part in ref_path:
+                resolved = resolved.get(part, {})
+            return _resolve_refs(resolved, root)
+        return {k: _resolve_refs(v, root) for k, v in spec.items()}
+    if isinstance(spec, list):
+        return [_resolve_refs(item, root) for item in spec]
+    return spec
+
+class _MockResolvingParser:
+    """Mock prance.ResolvingParser that parses YAML/JSON and resolves refs."""
+    def __init__(self, spec_string=None, content_type=None, **kwargs):
+        if content_type and "json" in content_type:
+            import json as _json
+            raw = _json.loads(spec_string)
+        else:
+            raw = _yaml.safe_load(spec_string)
+        self.specification = _resolve_refs(raw)
+
+_ensure_mock_module("prance")
+sys.modules["prance"].ResolvingParser = _MockResolvingParser
+
 
 class TestOpenAPI3YamlParsing:
     """Tests for OpenAPI 3.x YAML spec parsing."""

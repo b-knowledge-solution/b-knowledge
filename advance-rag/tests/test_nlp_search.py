@@ -157,8 +157,8 @@ class TestDealerRankFeatureScores:
         sres = self._make_search_result(
             ["c1", "c2"],
             {
-                "c1": {"pagerank_flt": 0.5},
-                "c2": {"pagerank_flt": 0.3},
+                "c1": {"pagerank_fea": 0.5},
+                "c2": {"pagerank_fea": 0.3},
             },
         )
         result = dealer._rank_feature_scores(None, sres)
@@ -172,8 +172,8 @@ class TestDealerRankFeatureScores:
             ["c1"],
             {
                 "c1": {
-                    "pagerank_flt": 0.0,
-                    "tag_fea": '{"python": 2.0, "ai": 1.0}',
+                    "pagerank_fea": 0.0,
+                    "tag_feas": '{"python": 2.0, "ai": 1.0}',
                 },
             },
         )
@@ -184,11 +184,11 @@ class TestDealerRankFeatureScores:
         assert result[0] > 0
 
     def test_no_tag_field_returns_zero_score(self):
-        """Verify chunks without tag_fea get zero tag score."""
+        """Verify chunks without tag_feas get zero tag score."""
         dealer = self._make_dealer()
         sres = self._make_search_result(
             ["c1"],
-            {"c1": {"pagerank_flt": 0.0}},
+            {"c1": {"pagerank_fea": 0.0}},
         )
         query_rfea = {"python": 3.0}
         result = dealer._rank_feature_scores(query_rfea, sres)

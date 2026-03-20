@@ -3,6 +3,9 @@
 Tests AST-based chunking for Python, TypeScript, and Java files using
 tree-sitter. Validates chunk structure, metadata extraction, import
 handling, large function splitting, and fallback behavior.
+
+Requires tree-sitter-language-pack to be installed. Tests are skipped
+when the package is unavailable.
 """
 
 import os
@@ -15,6 +18,19 @@ from unittest.mock import MagicMock
 _ADVANCE_RAG_ROOT = os.path.join(os.path.dirname(__file__), "..")
 if _ADVANCE_RAG_ROOT not in sys.path:
     sys.path.insert(0, _ADVANCE_RAG_ROOT)
+
+# Skip all tests in this module if tree-sitter-language-pack is not installed.
+# Check for get_parser attribute to detect mock modules from conftest.
+try:
+    import tree_sitter_language_pack
+    _HAS_TREE_SITTER = hasattr(tree_sitter_language_pack, 'get_parser') and callable(tree_sitter_language_pack.get_parser)
+except (ImportError, ModuleNotFoundError):
+    _HAS_TREE_SITTER = False
+
+pytestmark = pytest.mark.skipif(
+    not _HAS_TREE_SITTER,
+    reason="tree-sitter-language-pack not installed",
+)
 
 FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
 
