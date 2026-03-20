@@ -1,7 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import React from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k, i18n: { language: 'en', changeLanguage: vi.fn() } }),
@@ -15,14 +13,23 @@ vi.mock('lucide-react', () => {
   const factory = { default: NullIcon } as Record<string | symbol, any>
   return new Proxy(factory, { get: (target, prop) => (prop in target ? (target as any)[prop] : NullIcon) })
 })
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: () => ({ data: undefined, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+  QueryClient: class { clear = vi.fn() },
+  QueryClientProvider: ({ children }: any) => children,
+}))
 
 import AuditLogPage from '../../../src/features/audit/pages/AuditLogPage'
 
 describe('AuditLogPage', () => {
-  it('renders once', () => {
-    global.fetch = vi.fn(() => Promise.resolve(new Response(JSON.stringify([])))) as any
-    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    render(<QueryClientProvider client={qc}><AuditLogPage /></QueryClientProvider>)
+  it('renders', () => {
+    render(<AuditLogPage />)
+    expect(screen.getAllByText(/auditLog/).length).toBeGreaterThan(0)
+  })
+  it('renders again', () => {
+    render(<AuditLogPage />)
     expect(screen.getAllByText(/auditLog/).length).toBeGreaterThan(0)
   })
 })
