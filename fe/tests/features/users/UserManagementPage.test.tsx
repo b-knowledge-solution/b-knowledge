@@ -60,7 +60,8 @@ vi.mock('lucide-react', () => ({
   ArrowDown: () => <div />, AlertCircle: () => <div />, Users: () => <div />,
   UserPlus: () => <div />, Loader2: () => <div />, Eye: () => <div />,
   EyeOff: () => <div />, ChevronLeft: () => <div />, ChevronRight: () => <div />,
-  MoreHorizontal: () => <div />,
+  MoreHorizontal: () => <div />, Check: () => <div />,
+  ChevronDown: () => <div />, ChevronUp: () => <div />,
 }))
 
 vi.mock('@tanstack/react-query', () => ({
