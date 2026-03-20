@@ -63,7 +63,9 @@ const mockConversations: any = {
 
 vi.mock('@/features/chat/api/chatQueries', () => ({
   useChatDialogs: () => mockDialogs,
+  useChatAssistants: () => mockDialogs,
   useChatConversations: () => mockConversations,
+  useRenameConversation: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 vi.mock('@/features/chat/api/chatApi', () => ({
@@ -83,6 +85,7 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
+  initReactI18next: { type: '3rdParty', init: () => {} },
 }))
 
 vi.mock('@/features/chat/components/ChatSidebar', () => ({
@@ -143,11 +146,48 @@ vi.mock('@/lib/utils', () => ({
   cn: (...args: any[]) => args.filter(Boolean).join(' '),
 }))
 
-vi.mock('lucide-react', () => ({
-  Settings2: () => <span data-testid="settings-icon">Settings</span>,
-  PanelRightOpen: () => <span>PanelOpen</span>,
-  PanelRightClose: () => <span>PanelClose</span>,
+vi.mock('@/features/chat/components/ChatFileUpload', () => ({
+  default: () => <div data-testid="chat-file-upload" />,
 }))
+vi.mock('@/features/chat/components/CitationDocDrawer', () => ({
+  default: () => <div data-testid="citation-drawer" />,
+}))
+vi.mock('@/features/chat/components/DeepResearchProgress', () => ({
+  default: () => null,
+}))
+vi.mock('@/features/chat/hooks/useChatFiles', () => ({
+  useChatFiles: () => ({ files: [], addFiles: vi.fn(), removeFile: vi.fn(), clearFiles: vi.fn() }),
+}))
+vi.mock('@/components/ui/sheet', () => ({
+  Sheet: ({ children }: any) => <div>{children}</div>,
+  SheetContent: ({ children }: any) => <div>{children}</div>,
+  SheetTrigger: ({ children }: any) => <div>{children}</div>,
+}))
+
+vi.mock('lucide-react', () => {
+  const Null = () => null
+  return {
+    Settings2: () => <span data-testid="settings-icon">Settings</span>,
+    PanelRightOpen: () => <span>PanelOpen</span>,
+    PanelRightClose: () => <span>PanelClose</span>,
+    Menu: Null,
+    // Sidebar/sidebarNav icons
+    MessageSquare: Null, Search: Null, BookOpen: Null, Users: Null,
+    Server: Null, ClipboardList: Null, FileCode: Null, Activity: Null,
+    User: Null, UserCog: Null, Megaphone: Null, History: Null,
+    BarChart3: Null, Database: Null, Shield: Null, FolderOpen: Null,
+    LayoutDashboard: Null, BrainCircuit: Null,
+    ChevronLeft: Null, ChevronRight: Null, LogOut: Null, Settings: Null,
+    // Common UI icons
+    Loader2: Null, X: Null, Check: Null, ChevronDown: Null, ChevronUp: Null,
+    MoreHorizontal: Null, ChevronsUpDown: Null,
+    // Chat-related icons
+    FileText: Null, Copy: Null, ThumbsUp: Null, ThumbsDown: Null,
+    Bot: Null, Volume2: Null, Square: Null, RefreshCw: Null,
+    Edit2: Null, Trash2: Null, Plus: Null, Send: Null, Paperclip: Null,
+    ArrowUp: Null, ArrowDown: Null, AlertCircle: Null,
+  }
+})
 
 // Import the component AFTER mocks
 import ChatPage from '@/features/chat/pages/ChatPage'
