@@ -92,6 +92,7 @@ _THIRD_PARTY_MOCKS = [
     "deepdoc.parser.figure_parser", "deepdoc.parser.pdf_parser",
     "deepdoc.parser.docling_parser", "deepdoc.parser.tcadp_parser",
     "deepdoc.parser.ppt_parser",
+    "deepdoc.parser.mineru_parser",
     # common modules
     "common", "common.settings", "common.token_utils", "common.constants",
     "common.float_utils", "common.parser_config_utils", "common.text_utils",
@@ -117,6 +118,29 @@ _THIRD_PARTY_MOCKS = [
     "pydantic",
     # litellm
     "litellm",
+    # openai / strenum / json_repair / ollama / cohere
+    "openai", "openai.lib", "openai.lib.azure",
+    "strenum", "json_repair",
+    "ollama",
+    "cohere",
+    # opensearchpy
+    "opensearchpy", "opensearchpy.client",
+    # minio
+    "minio", "minio.commonconfig", "minio.error",
+    # valkey / redis
+    "valkey", "valkey.lock",
+    # networkx
+    "networkx", "networkx.readwrite", "networkx.readwrite.json_graph",
+    # editdistance
+    "editdistance",
+    # werkzeug (transitive dep of db.services.user_service)
+    "werkzeug", "werkzeug.security",
+    # cv2 / onnxruntime / huggingface_hub
+    "cv2", "onnxruntime",
+    "huggingface_hub",
+    # common extra modules for new tests
+    "common.decorator", "common.file_utils", "common.log_utils",
+    "common.misc_utils",
     # rag utility modules (NOT rag.nlp — let that import for real)
     "rag.utils", "rag.utils.file_utils", "rag.utils.base64_image",
     "rag.utils.lazy_image", "rag.utils.redis_conn", "rag.utils.storage_factory",
@@ -130,6 +154,22 @@ _THIRD_PARTY_MOCKS = [
 for _mod_name in _THIRD_PARTY_MOCKS:
     _ensure_mock_module(_mod_name)
 
+# Restore __path__ for real packages so Python can find sub-modules on disk
+sys.modules["rag.utils"].__path__ = [os.path.join(_ADVANCE_RAG_ROOT, "rag", "utils")]
+sys.modules["rag.graphrag"].__path__ = [os.path.join(_ADVANCE_RAG_ROOT, "rag", "graphrag")]
+sys.modules["deepdoc"].__path__ = [os.path.join(_ADVANCE_RAG_ROOT, "deepdoc")]
+sys.modules["deepdoc.parser"].__path__ = [os.path.join(_ADVANCE_RAG_ROOT, "deepdoc", "parser")]
+
+# strenum — provide a real StrEnum class before any imports that need it (e.g. db/__init__.py)
+class _StrEnum(str):
+    """Minimal StrEnum stub for mocked environments."""
+    pass
+sys.modules["strenum"].StrEnum = _StrEnum
+
+# werkzeug.security — provide password hash stubs
+sys.modules["werkzeug.security"].generate_password_hash = lambda pw, **kw: "hashed"
+sys.modules["werkzeug.security"].check_password_hash = lambda h, pw: True
+
 # common.doc_store.doc_store_base — mock dataclass/class stubs
 _doc_store_base = sys.modules["common.doc_store.doc_store_base"]
 _doc_store_base.MatchTextExpr = MagicMock
@@ -137,6 +177,7 @@ _doc_store_base.MatchDenseExpr = MagicMock
 _doc_store_base.FusionExpr = MagicMock
 _doc_store_base.OrderByExpr = MagicMock
 _doc_store_base.DocStoreConnection = MagicMock
+_doc_store_base.MatchExpr = MagicMock
 
 # common.query_base — load real module (only uses stdlib re + abc)
 del sys.modules["common.query_base"]
@@ -163,6 +204,9 @@ sys.modules["pydantic"].Field = lambda *a, **kw: kw.get("default", None)
 sys.modules["pydantic"].model_validator = lambda *a, **kw: (lambda f: f)
 sys.modules["pydantic"].ConfigDict = lambda **kw: {}
 sys.modules["pydantic"].field_validator = lambda *a, **kw: (lambda f: f)
+sys.modules["pydantic"].conint = lambda **kw: int
+sys.modules["pydantic"].constr = lambda **kw: str
+sys.modules["pydantic"].confloat = lambda **kw: float
 
 # agent.component.base — stub ComponentBase and ComponentParamBase
 class _MockComponentParamBase:
@@ -278,6 +322,8 @@ sys.modules["infinity"].rag_tokenizer = sys.modules["infinity.rag_tokenizer"]
 # common.token_utils
 sys.modules["common.token_utils"].num_tokens_from_string = lambda s: len(s.split())
 sys.modules["common.token_utils"].truncate = lambda text, max_len: text[:max_len]
+sys.modules["common.token_utils"].total_token_count_from_response = lambda resp: 0
+sys.modules["common.token_utils"].encoder = MagicMock()
 
 # common.constants — enum-like values
 _constants = sys.modules["common.constants"]
@@ -302,7 +348,7 @@ sys.modules["common.float_utils"].get_float = lambda x: float(x) if x else 0.0
 sys.modules["common.parser_config_utils"].normalize_layout_recognizer = MagicMock(return_value=("DeepDOC", None))
 
 # common.connection_utils — timeout decorator as no-op
-sys.modules["common.connection_utils"].timeout = lambda seconds: (lambda f: f)
+sys.modules["common.connection_utils"].timeout = lambda *args, **kwargs: (lambda f: f)
 
 # common.exceptions
 class _MockTaskCanceledException(Exception):
@@ -335,6 +381,14 @@ _settings.DOC_ENGINE_OCEANBASE = False
 _settings.STORAGE_IMPL = MagicMock()
 _settings.docStoreConn = MagicMock()
 _settings.get_svr_queue_name = lambda priority: f"queue_{priority}"
+# S3 config used by minio_conn
+_settings.S3 = {"host": "localhost:9000", "user": "minioadmin", "password": "minioadmin",
+                 "bucket": None, "prefix_path": None, "verify": True}
+# OpenSearch config used by opensearch_conn
+_settings.OS = {"hosts": "localhost:9201", "username": "admin", "password": "admin"}
+# decrypt_database_config / get_base_config used by redis_conn at module level
+_settings.decrypt_database_config = lambda name="redis": {"host": "localhost", "port": 6379, "db": 1}
+_settings.get_base_config = lambda name, default=None: default or {}
 # Wire settings as attribute on parent common module so @patch("common.settings") works
 import common as _common_module
 _common_module.settings = _settings
@@ -376,8 +430,9 @@ if not hasattr(_db_module, 'TenantPermission'):
 # db.db_utils
 sys.modules["db.db_utils"].bulk_insert_into_db = MagicMock()
 
-# db.services — the real module is imported, override duplicate_name for tests
+# db.services — restore real __path__ so sub-modules can be found on disk
 import db.services as _db_services_module
+_db_services_module.__path__ = [os.path.join(_ADVANCE_RAG_ROOT, "db", "services")]
 _db_services_module.duplicate_name = lambda fn, **kw: kw.get("name", "")
 
 # db.services.common_service — base class stub
@@ -493,6 +548,9 @@ sys.modules["deepdoc.parser.pdf_parser"].VisionParser = MagicMock
 sys.modules["deepdoc.parser.docling_parser"].DoclingParser = MagicMock
 sys.modules["deepdoc.parser.tcadp_parser"].TCADPParser = MagicMock
 sys.modules["deepdoc.parser.ppt_parser"].RAGFlowPptParser = MagicMock
+sys.modules["deepdoc.parser.mineru_parser"].MinerUParser = MagicMock
+_ensure_mock_module("deepdoc.parser.paddleocr_parser")
+sys.modules["deepdoc.parser.paddleocr_parser"].PaddleOCRParser = MagicMock
 sys.modules["deepdoc.parser.utils"].get_text = MagicMock(return_value="")
 
 # numpy — provide real-enough stubs for RAPTOR tests
@@ -515,6 +573,19 @@ class _NpArray(list):
         if isinstance(other, (list, _NpArray)):
             return _NpArray([a - b for a, b in zip(self, other)])
         return _NpArray([a - other for a in self])
+    def __truediv__(self, other):
+        if isinstance(other, (list, _NpArray)):
+            return _NpArray([a / b for a, b in zip(self, other)])
+        return _NpArray([a / other for a in self])
+    def __rtruediv__(self, other):
+        return _NpArray([other / a for a in self])
+    def min(self):
+        return min(self) if self else 0.0
+    def max(self):
+        return max(self) if self else 0.0
+    @property
+    def shape(self):
+        return (len(self),)
 
 _np.ndarray = type("ndarray", (), {})
 _np.random = MagicMock()
@@ -552,6 +623,81 @@ sys.modules["sklearn.metrics.pairwise"].cosine_similarity = _cosine_similarity
 
 # umap
 sys.modules["umap"].UMAP = MagicMock
+
+# networkx — minimal Graph stub for graphrag tests
+class _NxNodeView(dict):
+    """Callable dict that supports nodes(data=True) iteration."""
+    def __call__(self, data=False):
+        if data:
+            return list(self.items())
+        return list(self.keys())
+
+class _NxEdgeView:
+    """Edge view supporting iteration and edges(data=True) calls."""
+    def __init__(self, edges_dict):
+        self._edges = edges_dict
+    def __iter__(self):
+        return iter(self._edges.keys())
+    def __call__(self, data=False):
+        if data:
+            return [(s, t, d) for (s, t), d in self._edges.items()]
+        return list(self._edges.keys())
+    def __len__(self):
+        return len(self._edges)
+
+class _NxGraph:
+    """Minimal networkx Graph stub supporting graphrag operations."""
+    def __init__(self, **kwargs):
+        self._nodes = _NxNodeView()
+        self._edges = {}
+        self.graph = {}
+    def add_node(self, name, **attrs):
+        self._nodes[name] = attrs
+    def has_node(self, name):
+        return name in self._nodes
+    def remove_node(self, name):
+        self._nodes.pop(name, None)
+        to_remove = [e for e in self._edges if name in e]
+        for e in to_remove:
+            del self._edges[e]
+    def remove_edge(self, src, tgt):
+        self._edges.pop((src, tgt), None)
+        self._edges.pop((tgt, src), None)
+    @property
+    def nodes(self):
+        return self._nodes
+    def add_edge(self, src, tgt, **attrs):
+        if src not in self._nodes:
+            self._nodes[src] = {}
+        if tgt not in self._nodes:
+            self._nodes[tgt] = {}
+        self._edges[(src, tgt)] = attrs
+    def has_edge(self, src, tgt):
+        return (src, tgt) in self._edges or (tgt, src) in self._edges
+    def get_edge_data(self, src, tgt, default=None):
+        return self._edges.get((src, tgt), self._edges.get((tgt, src), default))
+    @property
+    def edges(self):
+        return _NxEdgeView(self._edges)
+    @property
+    def degree(self):
+        # Return list of (node, degree) pairs
+        deg = {n: 0 for n in self._nodes}
+        for (s, t) in self._edges:
+            deg[s] = deg.get(s, 0) + 1
+            deg[t] = deg.get(t, 0) + 1
+        return list(deg.items())
+    def number_of_nodes(self):
+        return len(self._nodes)
+    def number_of_edges(self):
+        return len(self._edges)
+
+_nx_mod = sys.modules["networkx"]
+_nx_mod.Graph = _NxGraph
+_nx_mod.DiGraph = _NxGraph
+# json_graph stubs
+sys.modules["networkx.readwrite.json_graph"].node_link_data = lambda g: {"nodes": [], "links": []}
+sys.modules["networkx.readwrite.json_graph"].node_link_graph = lambda data: _NxGraph()
 
 # peewee
 _peewee = sys.modules["peewee"]
@@ -612,3 +758,116 @@ sys.modules["xpinyin"].Pinyin = MagicMock
 
 # csv is a stdlib module — no mock needed
 # email is a stdlib module — no mock needed
+
+# ---------------------------------------------------------------------------
+# Additional mocks for LLM, GraphRAG, Vision, and connector tests
+# ---------------------------------------------------------------------------
+
+# json_repair — provide loads function
+sys.modules["json_repair"].loads = MagicMock(return_value={})
+sys.modules["json_repair"].JSONDecodeError = type("JSONDecodeError", (ValueError,), {})
+
+# openai — AsyncOpenAI and OpenAI stubs
+sys.modules["openai"].OpenAI = MagicMock
+sys.modules["openai"].AsyncOpenAI = MagicMock
+sys.modules["openai.lib.azure"].AzureOpenAI = MagicMock
+sys.modules["openai.lib.azure"].AsyncAzureOpenAI = MagicMock
+
+# ollama — Client stub
+sys.modules["ollama"].Client = MagicMock
+
+# cohere — Client stub
+sys.modules["cohere"].Client = MagicMock
+
+# requests — mock post/get
+sys.modules["requests"].post = MagicMock()
+sys.modules["requests"].get = MagicMock()
+
+# common.decorator — no-op singleton so @singleton-decorated classes remain real classes
+sys.modules["common.decorator"].singleton = lambda cls, *a, **kw: cls
+
+# common.log_utils
+_ensure_mock_module("common.log_utils")
+sys.modules["common.log_utils"].log_exception = MagicMock()
+
+# common.file_utils — get_project_base_directory
+sys.modules["common.file_utils"].get_project_base_directory = lambda: "/mock/project"
+
+# rag.graphrag.general — mock extractor base
+_ensure_mock_module("rag.graphrag.general")
+_ensure_mock_module("rag.graphrag.general.extractor")
+
+class _MockExtractor:
+    """Minimal Extractor base class stub."""
+    def __init__(self, llm_invoker):
+        self._llm = llm_invoker
+    def _chat(self, text, history, gen_conf, task_id=""):
+        return ""
+
+sys.modules["rag.graphrag.general.extractor"].Extractor = _MockExtractor
+
+# rag.graphrag.entity_resolution_prompt
+_ensure_mock_module("rag.graphrag.entity_resolution_prompt")
+sys.modules["rag.graphrag.entity_resolution_prompt"].ENTITY_RESOLUTION_PROMPT = "Resolve entities: {input_text}"
+
+# rag.graphrag.query_analyze_prompt
+_ensure_mock_module("rag.graphrag.query_analyze_prompt")
+sys.modules["rag.graphrag.query_analyze_prompt"].PROMPTS = {
+    "minirag_query2kwd": "Analyze: {query} with {TYPE_POOL}",
+}
+
+# deepdoc.vision — mock package and submodules
+_ensure_mock_module("deepdoc.vision")
+_ensure_mock_module("deepdoc.vision.recognizer")
+_ensure_mock_module("deepdoc.vision.operators")
+_ensure_mock_module("deepdoc.vision.postprocess")
+# Restore __path__ so real submodules (ocr, layout_recognizer, etc.) can be found
+sys.modules["deepdoc.vision"].__path__ = [os.path.join(_ADVANCE_RAG_ROOT, "deepdoc", "vision")]
+
+class _MockRecognizer:
+    """Minimal Recognizer base stub."""
+    def __init__(self, label_list=None, task_name=None, model_dir=None):
+        self.labels = label_list or []
+    def __call__(self, images, thr=0.2, batch_size=16):
+        return [[] for _ in images]
+
+sys.modules["deepdoc.vision"].Recognizer = _MockRecognizer
+sys.modules["deepdoc.vision.recognizer"].Recognizer = _MockRecognizer
+sys.modules["deepdoc.vision.operators"].nms = MagicMock(return_value=[])
+sys.modules["deepdoc.vision.operators"].preprocess = MagicMock()
+sys.modules["deepdoc.vision.postprocess"].build_post_process = MagicMock()
+
+# common.misc_utils — pip_install_torch stub
+sys.modules["common.misc_utils"].pip_install_torch = MagicMock()
+
+# opensearchpy — additional stubs for connector tests
+_os_mod = sys.modules["opensearchpy"]
+_os_mod.OpenSearch = MagicMock
+_os_mod.NotFoundError = type("NotFoundError", (Exception,), {})
+_os_mod.ConnectionTimeout = type("ConnectionTimeout", (Exception,), {})
+_os_mod.UpdateByQuery = MagicMock
+_os_mod.Q = MagicMock
+_os_mod.Search = MagicMock
+_os_mod.Index = MagicMock
+_os_mod_client = sys.modules.get("opensearchpy.client", sys.modules["opensearchpy"])
+_os_mod_client.IndicesClient = MagicMock
+
+# minio — additional stubs for connector tests
+_minio_mod = sys.modules["minio"]
+_minio_mod.Minio = MagicMock
+sys.modules["minio.commonconfig"].CopySource = MagicMock
+_minio_err = sys.modules["minio.error"]
+_minio_err.S3Error = type("S3Error", (Exception,), {"code": ""})
+_minio_err.ServerError = type("ServerError", (Exception,), {})
+_minio_err.InvalidResponseError = type("InvalidResponseError", (Exception,), {})
+
+# valkey — additional stubs for connector tests
+_valkey_mod = sys.modules["valkey"]
+_valkey_mod.StrictRedis = MagicMock
+sys.modules["valkey.lock"].Lock = MagicMock
+
+# numpy additional — isclose, min, max, zeros_like
+_np.isclose = lambda a, b, **kw: abs(a - b) < kw.get("atol", 1e-8)
+_np.min = lambda x, **kw: min(x) if isinstance(x, (list, _NpArray)) else x
+_np.max = lambda x, **kw: max(x) if isinstance(x, (list, _NpArray)) else x
+_np.zeros_like = lambda x, **kw: _NpArray([0.0] * len(x)) if isinstance(x, (list, _NpArray)) else 0.0

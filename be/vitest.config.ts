@@ -45,10 +45,10 @@ export default defineConfig({
       
       // Coverage thresholds (adjusted for unit tests with mocked dependencies)
       thresholds: {
-        statements: 50,
-        branches: 50,
-        functions: 50,
-        lines: 50,
+        statements: 60,
+        branches: 55,
+        functions: 60,
+        lines: 60,
       },
     },
     
