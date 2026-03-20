@@ -98,7 +98,8 @@ class TestLayoutRecognizerCall:
         with patch.object(type(recognizer).__bases__[0], "__call__", return_value=[]):
             result = recognizer([], [], scale_factor=3, thr=0.2)
 
-        assert result == []
+        # __call__ returns (boxes, page_layout) tuple — both should be empty
+        assert result == ([], [])
 
 
 class TestLayoutTypes:

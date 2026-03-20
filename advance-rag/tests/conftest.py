@@ -137,7 +137,7 @@ _THIRD_PARTY_MOCKS = [
     "werkzeug", "werkzeug.security",
     # cv2 / onnxruntime / huggingface_hub
     "cv2", "onnxruntime",
-    "huggingface_hub",
+    "huggingface_hub", "huggingface_hub.utils",
     # common extra modules for new tests
     "common.decorator", "common.file_utils", "common.log_utils",
     "common.misc_utils",
@@ -871,3 +871,27 @@ _np.isclose = lambda a, b, **kw: abs(a - b) < kw.get("atol", 1e-8)
 _np.min = lambda x, **kw: min(x) if isinstance(x, (list, _NpArray)) else x
 _np.max = lambda x, **kw: max(x) if isinstance(x, (list, _NpArray)) else x
 _np.zeros_like = lambda x, **kw: _NpArray([0.0] * len(x)) if isinstance(x, (list, _NpArray)) else 0.0
+
+# huggingface_hub — snapshot_download stub
+sys.modules["huggingface_hub"].snapshot_download = MagicMock(return_value="/mock/model/path")
+
+# onnxruntime — additional stubs for OCR model loading
+_ort = sys.modules["onnxruntime"]
+_ort.SessionOptions = MagicMock
+_ort.ExecutionMode = MagicMock()
+_ort.RunOptions = MagicMock
+_ort.InferenceSession = MagicMock
+_ort.get_available_providers = MagicMock(return_value=["CPUExecutionProvider"])
+
+# cv2 — additional stubs for vision modules
+_cv2 = sys.modules["cv2"]
+_cv2.imread = MagicMock()
+_cv2.resize = MagicMock()
+_cv2.copyMakeBorder = MagicMock()
+_cv2.BORDER_CONSTANT = 0
+
+# valkey — provide exceptions submodule
+_ensure_mock_module("valkey.exceptions")
+_valkey_mod.exceptions = sys.modules["valkey.exceptions"]
+_valkey_exc = sys.modules["valkey.exceptions"]
+_valkey_exc.ResponseError = type("ResponseError", (Exception,), {})
