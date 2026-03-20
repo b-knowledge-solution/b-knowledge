@@ -29,23 +29,15 @@ vi.mock('@tanstack/react-query', () => ({
     invalidateQueries: vi.fn()
   })
 }))
-vi.mock('lucide-react', () => {
-  const NullIcon = () => null
-  const factory = {
-    default: NullIcon,
-    Plus: () => <div data-testid="plus-icon" />,
-    Edit2: () => <div data-testid="edit-icon" />,
-    Trash2: () => <div data-testid="trash-icon" />,
-    CheckCircle: () => <div data-testid="check-icon" />,
-    XCircle: () => <div data-testid="x-circle-icon" />,
-  } as Record<string | symbol, any>
-  return new Proxy(factory, {
-    get: (target, prop) => {
-      if (prop in target) return (target as any)[prop]
-      return NullIcon
-    }
-  })
-})
+vi.mock('lucide-react', () => ({
+  Plus: () => <div data-testid="plus-icon" />,
+  Edit2: () => <div data-testid="edit-icon" />,
+  Trash2: () => <div data-testid="trash-icon" />,
+  CheckCircle: () => <div data-testid="check-icon" />,
+  XCircle: () => <div data-testid="x-circle-icon" />,
+  X: () => null, ChevronLeft: () => null, ChevronRight: () => null,
+  MoreHorizontal: () => null, Loader2: () => null,
+}))
 vi.mock('@/components/Dialog', () => ({
   Dialog: ({ open, children }: any) => open ? <div data-testid="dialog">{children}</div> : null
 }))
