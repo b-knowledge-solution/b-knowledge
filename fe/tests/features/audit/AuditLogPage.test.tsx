@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { renderWithQueryClient } from '../../test-utils'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -27,7 +28,7 @@ describe('AuditLogPage', () => {
 
   it('shows no perm for non-admin', () => {
     vi_mockAuth.mockReturnValueOnce({ user: { role: 'user' } })
-    render(<AuditLogPage />)
+    renderWithQueryClient(<AuditLogPage />)
     expect(screen.getByText('auditLog.noPermission')).toBeInTheDocument()
   })
 
@@ -40,14 +41,14 @@ describe('AuditLogPage', () => {
       return Promise.resolve(new Response(null))
     }) as any
 
-    render(<AuditLogPage />)
+    renderWithQueryClient(<AuditLogPage />)
     await waitFor(() => expect(screen.getByText('t@e.com')).toBeInTheDocument())
   })
 
   it('handles fetch error', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     global.fetch = vi.fn(() => Promise.resolve(new Response(null, { status: 500 })))
-    render(<AuditLogPage />)
+    renderWithQueryClient(<AuditLogPage />)
     await waitFor(() => expect(consoleErrorSpy).toHaveBeenCalled())
     // Should show empty table state when fetch fails
     expect(screen.getAllByText(/no data/i).length).toBeGreaterThan(0)
@@ -60,14 +61,14 @@ describe('AuditLogPage', () => {
       if (url.includes('/api/audit/resource-types')) return Promise.resolve(new Response(JSON.stringify(['user'])))
       return Promise.resolve(new Response(JSON.stringify({ data: [], pagination: { page: 1, limit: 25, total: 0, totalPages: 0 } })))
     }) as any
-    render(<AuditLogPage />)
+    renderWithQueryClient(<AuditLogPage />)
     fireEvent.click(screen.getByText('auditLog.filters'))
     await waitFor(() => expect(screen.getByText('auditLog.filterBy')).toBeInTheDocument())
   })
 
   it('updates search', () => {
     global.fetch = vi.fn(() => Promise.resolve(new Response(JSON.stringify({ data: [], pagination: { page: 1, limit: 25, total: 0, totalPages: 0 } })))) as any
-    render(<AuditLogPage />)
+    renderWithQueryClient(<AuditLogPage />)
     const inp = screen.getByPlaceholderText('auditLog.searchPlaceholder')
     fireEvent.change(inp, { target: { value: 'test' } })
     expect(inp).toHaveValue('test')
@@ -79,7 +80,7 @@ describe('AuditLogPage', () => {
       if (url.includes('/api/audit/resource-types')) return Promise.resolve(new Response(JSON.stringify(['user'])))
       return Promise.resolve(new Response(JSON.stringify({ data: [], pagination: { page: 1, limit: 25, total: 0, totalPages: 0 } })))
     }) as any
-    render(<AuditLogPage />)
+    renderWithQueryClient(<AuditLogPage />)
     fireEvent.click(screen.getByText('auditLog.filters'))
     const inp = screen.getByPlaceholderText('auditLog.searchPlaceholder')
     fireEvent.change(inp, { target: { value: 'test' } })
@@ -94,7 +95,7 @@ describe('AuditLogPage', () => {
       if (url.includes('/api/audit/resource-types')) return Promise.resolve(new Response(JSON.stringify(['user'])))
       return Promise.resolve(new Response(JSON.stringify({ data: [], pagination: { page: 1, limit: 25, total: 0, totalPages: 0 } })))
     }) as any
-    render(<AuditLogPage />)
+    renderWithQueryClient(<AuditLogPage />)
     await waitFor(() => expect(screen.getAllByText(/no data/i).length).toBeGreaterThan(0))
   })
 })
