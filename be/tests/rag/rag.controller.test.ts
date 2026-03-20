@@ -241,7 +241,7 @@ describe('RagController', () => {
       })
       await controller.listChunks(req, res)
 
-      expect(mockRagSearchService.listChunks).toHaveBeenCalledWith('ds1', {
+      expect(mockRagSearchService.listChunks).toHaveBeenCalledWith('', 'ds1', {
         doc_id: 'doc1',
         page: 2,
         limit: 10,

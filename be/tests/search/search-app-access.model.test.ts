@@ -5,7 +5,7 @@
  * findByAppId, findAccessibleAppIds, and bulkReplace.
  */
 
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -51,25 +51,30 @@ function makeBuilder(result: unknown) {
   return builder
 }
 
-/**
- * Create a mock Knex transaction object.
- * @param builder - The builder to return from trx calls
- * @returns A mock transaction function
- */
-function makeTrx(builder: any) {
-  const trx: any = vi.fn().mockReturnValue(builder)
-  trx.commit = vi.fn().mockResolvedValue(undefined)
-  trx.rollback = vi.fn().mockResolvedValue(undefined)
-  return trx
+// ---------------------------------------------------------------------------
+// Mock ModelFactory with writable searchAppAccess
+// ---------------------------------------------------------------------------
+
+const mockSearchAppAccess = {
+  getKnex: vi.fn(),
 }
+
+vi.mock('@/shared/models/factory.js', () => ({
+  ModelFactory: {
+    searchAppAccess: mockSearchAppAccess,
+  },
+}))
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 describe('SearchAppAccessModel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   afterEach(() => {
-    vi.resetModules()
     vi.restoreAllMocks()
   })
 
@@ -79,22 +84,14 @@ describe('SearchAppAccessModel', () => {
 
   describe('findByAppId', () => {
     it('returns access entries for a given app ID', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
       const entries = [
         { id: 'a1', app_id: 'app1', entity_type: 'user', entity_id: 'u1' },
         { id: 'a2', app_id: 'app1', entity_type: 'team', entity_id: 't1' },
       ]
       const builder = makeBuilder(entries)
+      mockSearchAppAccess.getKnex.mockReturnValue(builder)
 
-      // Mock the searchAppAccess model
-      if (factory.ModelFactory.searchAppAccess) {
-        factory.ModelFactory.searchAppAccess.getKnex = vi.fn().mockReturnValue(builder)
-      } else {
-        factory.ModelFactory.searchAppAccess = { getKnex: vi.fn().mockReturnValue(builder) } as any
-      }
-
-      const knex = factory.ModelFactory.searchAppAccess.getKnex()
+      const knex = mockSearchAppAccess.getKnex()
       const result = await knex.from('search_app_access').where('app_id', 'app1')
 
       expect(builder.where).toHaveBeenCalledWith('app_id', 'app1')
@@ -102,12 +99,10 @@ describe('SearchAppAccessModel', () => {
     })
 
     it('returns empty array when no entries exist for app', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
       const builder = makeBuilder([])
-      factory.ModelFactory.searchAppAccess = { getKnex: vi.fn().mockReturnValue(builder) } as any
+      mockSearchAppAccess.getKnex.mockReturnValue(builder)
 
-      const knex = factory.ModelFactory.searchAppAccess.getKnex()
+      const knex = mockSearchAppAccess.getKnex()
       const result = await knex.from('search_app_access').where('app_id', 'app-none')
 
       expect(result).toEqual([])
@@ -120,14 +115,11 @@ describe('SearchAppAccessModel', () => {
 
   describe('findAccessibleAppIds', () => {
     it('returns correct app IDs for user with direct access', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
-      // Simulate finding app IDs where the user has direct access
       const appIds = ['app1', 'app3']
       const builder = makeBuilder(appIds)
-      factory.ModelFactory.searchAppAccess = { getKnex: vi.fn().mockReturnValue(builder) } as any
+      mockSearchAppAccess.getKnex.mockReturnValue(builder)
 
-      const knex = factory.ModelFactory.searchAppAccess.getKnex()
+      const knex = mockSearchAppAccess.getKnex()
       const result = await knex
         .from('search_app_access')
         .where('entity_type', 'user')
@@ -139,13 +131,11 @@ describe('SearchAppAccessModel', () => {
     })
 
     it('returns correct app IDs for team-based access', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
       const appIds = ['app2', 'app4']
       const builder = makeBuilder(appIds)
-      factory.ModelFactory.searchAppAccess = { getKnex: vi.fn().mockReturnValue(builder) } as any
+      mockSearchAppAccess.getKnex.mockReturnValue(builder)
 
-      const knex = factory.ModelFactory.searchAppAccess.getKnex()
+      const knex = mockSearchAppAccess.getKnex()
       const result = await knex
         .from('search_app_access')
         .where('entity_type', 'team')
@@ -158,12 +148,10 @@ describe('SearchAppAccessModel', () => {
     })
 
     it('returns empty array when user has no access entries', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
       const builder = makeBuilder([])
-      factory.ModelFactory.searchAppAccess = { getKnex: vi.fn().mockReturnValue(builder) } as any
+      mockSearchAppAccess.getKnex.mockReturnValue(builder)
 
-      const knex = factory.ModelFactory.searchAppAccess.getKnex()
+      const knex = mockSearchAppAccess.getKnex()
       const result = await knex
         .from('search_app_access')
         .where('entity_type', 'user')
@@ -181,27 +169,23 @@ describe('SearchAppAccessModel', () => {
 
   describe('bulkReplace', () => {
     it('deletes existing entries and inserts new ones atomically', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
       const deleteBuilder = makeBuilder(2)
       const insertBuilder = makeBuilder([
         { id: 'new1', app_id: 'app1', entity_type: 'user', entity_id: 'u2' },
       ])
 
       // Simulate two sequential calls: first delete, then insert
-      factory.ModelFactory.searchAppAccess = {
-        getKnex: vi.fn()
-          .mockReturnValueOnce(deleteBuilder)
-          .mockReturnValueOnce(insertBuilder),
-      } as any
+      mockSearchAppAccess.getKnex
+        .mockReturnValueOnce(deleteBuilder)
+        .mockReturnValueOnce(insertBuilder)
 
       // Step 1: Delete existing entries for the app
-      const delKnex = factory.ModelFactory.searchAppAccess.getKnex()
+      const delKnex = mockSearchAppAccess.getKnex()
       await delKnex.from('search_app_access').where('app_id', 'app1').delete()
       expect(deleteBuilder.delete).toHaveBeenCalled()
 
       // Step 2: Insert new entries
-      const insKnex = factory.ModelFactory.searchAppAccess.getKnex()
+      const insKnex = mockSearchAppAccess.getKnex()
       const inserted = await insKnex.from('search_app_access').insert([
         { app_id: 'app1', entity_type: 'user', entity_id: 'u2', created_by: 'admin-1' },
       ])
@@ -212,15 +196,11 @@ describe('SearchAppAccessModel', () => {
     })
 
     it('handles empty replacement (clears all access)', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
       const deleteBuilder = makeBuilder(3)
-      factory.ModelFactory.searchAppAccess = {
-        getKnex: vi.fn().mockReturnValue(deleteBuilder),
-      } as any
+      mockSearchAppAccess.getKnex.mockReturnValue(deleteBuilder)
 
       // Delete all entries, insert nothing
-      const knex = factory.ModelFactory.searchAppAccess.getKnex()
+      const knex = mockSearchAppAccess.getKnex()
       await knex.from('search_app_access').where('app_id', 'app1').delete()
       expect(deleteBuilder.delete).toHaveBeenCalled()
     })

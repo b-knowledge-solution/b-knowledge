@@ -67,6 +67,14 @@ vi.mock('../../src/shared/prompts/index.js', () => ({
   relatedQuestionPrompt: { system: 'related q prompt' },
 }))
 
+vi.mock('../../src/modules/rag/index.js', () => ({
+  queryLogService: { logQuery: vi.fn() },
+}))
+
+vi.mock('../../src/shared/services/web-search.service.js', () => ({
+  searchWeb: vi.fn(),
+}))
+
 const mockFindById = vi.fn()
 
 vi.mock('../../src/shared/models/factory.js', () => ({
@@ -144,7 +152,7 @@ describe('SearchService – askSearch tracing', () => {
   })
 
   it('creates a search-pipeline trace', async () => {
-    await service.askSearch('app-1', { query: 'test query' }, mockRes)
+    await service.askSearch('tenant-1', 'app-1', { query: 'test query' }, mockRes)
 
     expect(mockCreateTrace).toHaveBeenCalledWith(expect.objectContaining({
       name: 'search-pipeline',
@@ -155,7 +163,7 @@ describe('SearchService – askSearch tracing', () => {
   })
 
   it('creates retrieval span with query input', async () => {
-    await service.askSearch('app-1', { query: 'test query' }, mockRes)
+    await service.askSearch('tenant-1', 'app-1', { query: 'test query' }, mockRes)
 
     expect(mockCreateSpan).toHaveBeenCalledWith(
       expect.anything(),
@@ -164,14 +172,14 @@ describe('SearchService – askSearch tracing', () => {
   })
 
   it('creates main-completion span', async () => {
-    await service.askSearch('app-1', { query: 'test query' }, mockRes)
+    await service.askSearch('tenant-1', 'app-1', { query: 'test query' }, mockRes)
 
     const spanNames = mockCreateSpan.mock.calls.map((c: any) => c[1]?.name)
     expect(spanNames).toContain('main-completion')
   })
 
   it('updates trace with final output and flushes', async () => {
-    await service.askSearch('app-1', { query: 'test query' }, mockRes)
+    await service.askSearch('tenant-1', 'app-1', { query: 'test query' }, mockRes)
 
     expect(mockUpdateTrace).toHaveBeenCalledWith(
       expect.anything(),
@@ -183,7 +191,7 @@ describe('SearchService – askSearch tracing', () => {
   it('completes stream even when trace creation fails', async () => {
     mockCreateTrace.mockImplementation(() => { throw new Error('trace fail') })
 
-    await service.askSearch('app-1', { query: 'test query' }, mockRes)
+    await service.askSearch('tenant-1', 'app-1', { query: 'test query' }, mockRes)
 
     expect(mockRes.end).toHaveBeenCalled()
   })

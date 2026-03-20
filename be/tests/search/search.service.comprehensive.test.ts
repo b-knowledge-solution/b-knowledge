@@ -30,6 +30,7 @@ vi.mock('../../src/shared/services/langfuse.service.js', () => ({
   langfuseTraceService: {
     createTrace: vi.fn().mockReturnValue({ id: 'trace-1', update: vi.fn() }),
     createSpan: vi.fn().mockReturnValue({ end: vi.fn(), id: 'span-1' }),
+    createGeneration: vi.fn().mockReturnValue({ end: vi.fn(), id: 'gen-1' }),
     updateTrace: vi.fn(),
     flush: vi.fn().mockResolvedValue(undefined),
   },
@@ -37,10 +38,12 @@ vi.mock('../../src/shared/services/langfuse.service.js', () => ({
 
 const mockChatCompletion = vi.fn()
 const mockChatCompletionStream = vi.fn()
+const mockEmbedTexts = vi.fn()
 vi.mock('../../src/shared/services/llm-client.service.js', () => ({
   llmClientService: {
     chatCompletion: (...args: any[]) => mockChatCompletion(...args),
     chatCompletionStream: (...args: any[]) => mockChatCompletionStream(...args),
+    embedTexts: (...args: any[]) => mockEmbedTexts(...args),
   },
 }))
 
@@ -66,6 +69,14 @@ vi.mock('../../src/shared/prompts/index.js', () => ({
   askSummaryPrompt: { build: () => 'summary prompt' },
   citationPrompt: { system: 'cite instructions' },
   relatedQuestionPrompt: { system: 'related q prompt' },
+}))
+
+vi.mock('../../src/modules/rag/index.js', () => ({
+  queryLogService: { logQuery: vi.fn() },
+}))
+
+vi.mock('../../src/shared/services/web-search.service.js', () => ({
+  searchWeb: vi.fn(),
 }))
 
 // ModelFactory mock with configurable behavior
@@ -117,7 +128,41 @@ function createMockRes() {
   return {
     write: vi.fn(),
     end: vi.fn(),
+    setHeader: vi.fn(),
+    flushHeaders: vi.fn(),
   }
+}
+
+/**
+ * Create a chainable Knex-like builder for listAccessibleApps.
+ * Supports .where(), .orWhere(), .orWhereIn(), .andWhere(), .clone(), etc.
+ */
+function makeKnexChain(result: unknown, totalCount: string = '3') {
+  const chain: any = {}
+  chain.where = vi.fn().mockImplementation(function (fn: any) {
+    if (typeof fn === 'function') fn.call(chain)
+    return chain
+  })
+  chain.andWhere = vi.fn().mockImplementation(function (fn: any) {
+    if (typeof fn === 'function') fn.call(chain)
+    return chain
+  })
+  chain.orWhere = vi.fn().mockReturnValue(chain)
+  chain.orWhereIn = vi.fn().mockReturnValue(chain)
+  chain.orderBy = vi.fn().mockReturnValue(chain)
+  chain.limit = vi.fn().mockReturnValue(chain)
+  chain.offset = vi.fn().mockReturnValue(chain)
+  chain.clone = vi.fn().mockReturnValue({
+    clearSelect: vi.fn().mockReturnValue({
+      clearOrder: vi.fn().mockReturnValue({
+        count: vi.fn().mockReturnValue({
+          first: vi.fn().mockResolvedValue({ count: totalCount }),
+        }),
+      }),
+    }),
+  })
+  chain.then = (onFulfilled: any) => Promise.resolve(result).then(onFulfilled)
+  return chain
 }
 
 // ---------------------------------------------------------------------------
@@ -128,9 +173,6 @@ describe('SearchService – comprehensive', () => {
   let service: any
 
   beforeEach(async () => {
-    // Reset all mocks
-    vi.clearAllMocks()
-
     // Default mock behaviors
     mockChatCompletion.mockResolvedValue('related q1\nrelated q2')
     mockChatCompletionStream.mockReturnValue(
@@ -140,6 +182,7 @@ describe('SearchService – comprehensive', () => {
       })()
     )
     mockInsertCitations.mockResolvedValue({ answer: 'cited answer', citedIndices: new Set([0]) })
+    mockEmbedTexts.mockResolvedValue([[0.1, 0.2, 0.3]])
 
     const mod = await import('../../src/modules/search/services/search.service.js')
     service = new mod.SearchService()
@@ -165,9 +208,9 @@ describe('SearchService – comprehensive', () => {
       mockFindById.mockResolvedValue(mockApp)
       mockRagSearch.mockResolvedValue({ chunks: allChunks, total: 25 })
 
-      const result = await service.executeSearch('app-1', 'test query', 25)
+      // executeSearch now takes (tenantId, searchId, query, options?)
+      const result = await service.executeSearch('tenant-1', 'app-1', 'test query', { topK: 25 })
 
-      // executeSearch limits by topK and returns all within topK
       expect(result.chunks.length).toBeLessThanOrEqual(25)
       expect(result.total).toBe(25)
     })
@@ -181,7 +224,7 @@ describe('SearchService – comprehensive', () => {
       mockFindById.mockResolvedValue(mockApp)
       mockRagSearch.mockResolvedValue({ chunks, total: 3 })
 
-      const result = await service.executeSearch('app-1', 'test', 10)
+      const result = await service.executeSearch('tenant-1', 'app-1', 'test', { topK: 10 })
 
       expect(result.chunks[0].score).toBe(0.9)
       expect(result.chunks[1].score).toBe(0.6)
@@ -193,7 +236,7 @@ describe('SearchService – comprehensive', () => {
       mockFindById.mockResolvedValue(mockApp)
       mockRagSearch.mockResolvedValue({ chunks: allChunks, total: 30 })
 
-      const result = await service.executeSearch('app-1', 'test', 10)
+      const result = await service.executeSearch('tenant-1', 'app-1', 'test', { topK: 10 })
 
       expect(result.chunks.length).toBe(10)
     })
@@ -201,7 +244,7 @@ describe('SearchService – comprehensive', () => {
     it('throws when search app not found', async () => {
       mockFindById.mockResolvedValue(null)
 
-      await expect(service.executeSearch('bad-id', 'test'))
+      await expect(service.executeSearch('tenant-1', 'bad-id', 'test'))
         .rejects.toThrow('Search app not found')
     })
 
@@ -218,7 +261,7 @@ describe('SearchService – comprehensive', () => {
         .mockResolvedValueOnce({ chunks: [{ chunk_id: 'c1', text: 'ds1', score: 0.8 }], total: 1 })
         .mockResolvedValueOnce({ chunks: [{ chunk_id: 'c2', text: 'ds2', score: 0.9 }], total: 1 })
 
-      const result = await service.executeSearch('app-multi', 'test', 10)
+      const result = await service.executeSearch('tenant-1', 'app-multi', 'test', { topK: 10 })
 
       expect(result.chunks.length).toBe(2)
       // Sorted by score: ds2 (0.9) first, then ds1 (0.8)
@@ -239,84 +282,57 @@ describe('SearchService – comprehensive', () => {
     ]
 
     it('admin sees all apps', async () => {
-      mockFindAll.mockResolvedValue(allApps)
+      // For admin, getKnex() chain is used with no RBAC filter
+      const chain = makeKnexChain(allApps)
+      mockGetKnex.mockReturnValue(chain)
 
       const result = await service.listAccessibleApps('admin-1', 'admin', [])
 
-      expect(mockFindAll).toHaveBeenCalledWith(undefined, { orderBy: { created_at: 'desc' } })
-      expect(result).toHaveLength(3)
+      // Admin path skips RBAC where clause
+      expect(result.data).toHaveLength(3)
+      expect(result.total).toBe(3)
     })
 
     it('superadmin sees all apps', async () => {
-      mockFindAll.mockResolvedValue(allApps)
+      const chain = makeKnexChain(allApps)
+      mockGetKnex.mockReturnValue(chain)
 
       const result = await service.listAccessibleApps('admin-1', 'superadmin', [])
 
-      expect(mockFindAll).toHaveBeenCalledWith(undefined, { orderBy: { created_at: 'desc' } })
-      expect(result).toHaveLength(3)
+      expect(result.data).toHaveLength(3)
+      expect(result.total).toBe(3)
     })
 
     it('regular user sees own + public + shared apps via Knex query', async () => {
-      // For non-admin, the method uses getKnex() with chained where clauses
+      // For non-admin, findAccessibleAppIds is called first
       mockFindAccessibleAppIds.mockResolvedValue(['app-3'])
 
-      const mockKnexChain = {
-        where: vi.fn().mockReturnThis(),
-        orWhere: vi.fn().mockReturnThis(),
-        orWhereIn: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockResolvedValue([
-          allApps[0], // own app
-          allApps[1], // public app
-          allApps[2], // shared app
-        ]),
-      }
-
-      // Make `where(fn)` invoke the callback with the chain
-      mockKnexChain.where.mockImplementation(function (this: any, fn: any) {
-        if (typeof fn === 'function') {
-          fn.call(mockKnexChain)
-        }
-        return mockKnexChain
-      })
-
-      mockGetKnex.mockReturnValue(mockKnexChain)
+      const chain = makeKnexChain([allApps[0], allApps[1], allApps[2]])
+      mockGetKnex.mockReturnValue(chain)
 
       const result = await service.listAccessibleApps('user-1', 'user', ['team-1'])
 
       expect(mockFindAccessibleAppIds).toHaveBeenCalledWith('user-1', ['team-1'])
-      expect(mockKnexChain.where).toHaveBeenCalled()
-      expect(result).toHaveLength(3)
+      expect(chain.where).toHaveBeenCalled()
+      expect(result.data).toHaveLength(3)
     })
 
     it('regular user with no shared apps omits orWhereIn', async () => {
       mockFindAccessibleAppIds.mockResolvedValue([])
 
-      const mockKnexChain = {
-        where: vi.fn().mockReturnThis(),
-        orWhere: vi.fn().mockReturnThis(),
-        orWhereIn: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockResolvedValue([allApps[0]]),
-      }
-
-      mockKnexChain.where.mockImplementation(function (this: any, fn: any) {
-        if (typeof fn === 'function') {
-          fn.call(mockKnexChain)
-        }
-        return mockKnexChain
-      })
-
-      mockGetKnex.mockReturnValue(mockKnexChain)
+      const chain = makeKnexChain([allApps[0]], '1')
+      mockGetKnex.mockReturnValue(chain)
 
       const result = await service.listAccessibleApps('user-1', 'user', [])
 
       // orWhereIn should NOT be called when no accessible IDs
-      expect(mockKnexChain.orWhereIn).not.toHaveBeenCalled()
-      expect(result).toHaveLength(1)
+      expect(chain.orWhereIn).not.toHaveBeenCalled()
+      expect(result.data).toHaveLength(1)
     })
   })
 
   // =========================================================================
-  // createSearchApp name uniqueness (case-insensitive)
+  // createSearchApp
   // =========================================================================
 
   describe('createSearchApp', () => {
@@ -383,7 +399,8 @@ describe('SearchService – comprehensive', () => {
       })
 
       const mockRes = createMockRes()
-      await service.askSearch('app-1', { query: 'test' }, mockRes)
+      // askSearch signature: (tenantId, searchId, params, res)
+      await service.askSearch('tenant-1', 'app-1', { query: 'test' }, mockRes)
 
       // LLM should have been called for streaming
       expect(mockChatCompletionStream).toHaveBeenCalled()
@@ -395,7 +412,7 @@ describe('SearchService – comprehensive', () => {
       const mockApp = {
         id: 'app-1',
         dataset_ids: ['ds-1'],
-        search_config: { llm_id: 'custom-provider-42', temperature: 0.3 },
+        search_config: { llm_id: 'custom-provider-42', llm_setting: { temperature: 0.3 } },
       }
       mockFindById.mockResolvedValue(mockApp)
       mockRagSearch.mockResolvedValue({
@@ -404,17 +421,15 @@ describe('SearchService – comprehensive', () => {
       })
 
       const mockRes = createMockRes()
-      await service.askSearch('app-1', { query: 'test' }, mockRes)
+      await service.askSearch('tenant-1', 'app-1', { query: 'test' }, mockRes)
 
-      // Verify the custom provider ID was passed
-      expect(mockChatCompletionStream).toHaveBeenCalledWith(
-        expect.any(Array),
-        expect.objectContaining({
-          providerId: 'custom-provider-42',
-          temperature: 0.3,
-        }),
-        expect.anything()
-      )
+      // Verify the custom provider ID was passed to the stream call
+      const streamCall = mockChatCompletionStream.mock.calls[0]
+      expect(streamCall[0]).toEqual(expect.any(Array))
+      expect(streamCall[1]).toEqual(expect.objectContaining({
+        providerId: 'custom-provider-42',
+        temperature: 0.3,
+      }))
     })
   })
 
@@ -435,11 +450,19 @@ describe('SearchService – comprehensive', () => {
         chunks: [{ chunk_id: 'c1', text: 'chunk 1', doc_id: 'd1', doc_name: 'doc1', score: 0.9 }],
         total: 1,
       })
+      // Re-establish stream mock after global resetAllMocks
+      mockChatCompletionStream.mockReturnValue(
+        (async function* () {
+          yield { content: 'answer text', done: false }
+          yield { content: '', done: true }
+        })()
+      )
+      mockInsertCitations.mockResolvedValue({ answer: 'cited answer', citedIndices: new Set([0]) })
     })
 
     it('sends retrieving status first', async () => {
       const mockRes = createMockRes()
-      await service.askSearch('app-1', { query: 'test' }, mockRes)
+      await service.askSearch('tenant-1', 'app-1', { query: 'test' }, mockRes)
 
       const firstWrite = mockRes.write.mock.calls[0][0]
       expect(firstWrite).toContain('"status":"retrieving"')
@@ -447,7 +470,7 @@ describe('SearchService – comprehensive', () => {
 
     it('sends generating status and reference before LLM stream', async () => {
       const mockRes = createMockRes()
-      await service.askSearch('app-1', { query: 'test' }, mockRes)
+      await service.askSearch('tenant-1', 'app-1', { query: 'test' }, mockRes)
 
       const writes = mockRes.write.mock.calls.map((c: any) => c[0])
 
@@ -462,7 +485,7 @@ describe('SearchService – comprehensive', () => {
 
     it('sends final answer with reference and metrics', async () => {
       const mockRes = createMockRes()
-      await service.askSearch('app-1', { query: 'test' }, mockRes)
+      await service.askSearch('tenant-1', 'app-1', { query: 'test' }, mockRes)
 
       const writes = mockRes.write.mock.calls.map((c: any) => c[0])
 
@@ -473,7 +496,7 @@ describe('SearchService – comprehensive', () => {
 
     it('sends [DONE] as last event before end', async () => {
       const mockRes = createMockRes()
-      await service.askSearch('app-1', { query: 'test' }, mockRes)
+      await service.askSearch('tenant-1', 'app-1', { query: 'test' }, mockRes)
 
       const writes = mockRes.write.mock.calls.map((c: any) => c[0])
       const lastDataWrite = writes[writes.length - 1]
@@ -485,7 +508,7 @@ describe('SearchService – comprehensive', () => {
       mockFindById.mockResolvedValue(null)
 
       const mockRes = createMockRes()
-      await expect(service.askSearch('bad-id', { query: 'test' }, mockRes))
+      await expect(service.askSearch('tenant-1', 'bad-id', { query: 'test' }, mockRes))
         .rejects.toThrow('Search app not found')
     })
   })
@@ -495,11 +518,22 @@ describe('SearchService – comprehensive', () => {
   // =========================================================================
 
   describe('askSearch – related questions', () => {
+    beforeEach(() => {
+      // Re-establish stream mock after global resetAllMocks
+      mockChatCompletionStream.mockReturnValue(
+        (async function* () {
+          yield { content: 'answer text', done: false }
+          yield { content: '', done: true }
+        })()
+      )
+      mockInsertCitations.mockResolvedValue({ answer: 'cited answer', citedIndices: new Set([0]) })
+    })
+
     it('generates related questions when related_search is enabled', async () => {
       const mockApp = {
         id: 'app-1',
         dataset_ids: ['ds-1'],
-        search_config: { llm_id: 'provider-1', related_search: true },
+        search_config: { llm_id: 'provider-1', enable_related_questions: true },
       }
       mockFindById.mockResolvedValue(mockApp)
       mockRagSearch.mockResolvedValue({
@@ -509,7 +543,7 @@ describe('SearchService – comprehensive', () => {
       mockChatCompletion.mockResolvedValue('question 1\nquestion 2\nquestion 3')
 
       const mockRes = createMockRes()
-      await service.askSearch('app-1', { query: 'test' }, mockRes)
+      await service.askSearch('tenant-1', 'app-1', { query: 'test' }, mockRes)
 
       // chatCompletion should be called for related questions
       expect(mockChatCompletion).toHaveBeenCalled()
@@ -535,10 +569,9 @@ describe('SearchService – comprehensive', () => {
       })
 
       const mockRes = createMockRes()
-      await service.askSearch('app-1', { query: 'test' }, mockRes)
+      await service.askSearch('tenant-1', 'app-1', { query: 'test' }, mockRes)
 
       // chatCompletion should NOT be called for related questions
-      // (it may be called zero times since there is no related_search config)
       const writes = mockRes.write.mock.calls.map((c: any) => c[0])
       const finalWrite = writes.find((w: string) => w.includes('"related_questions"'))
       if (finalWrite) {
@@ -613,7 +646,8 @@ describe('SearchService – comprehensive', () => {
       })
       mockChatCompletion.mockResolvedValue('{"name":"Root","children":[{"name":"Child","children":[]}]}')
 
-      const result = await service.mindmap('app-1', { query: 'test' })
+      // mindmap signature: (tenantId, searchId, params)
+      const result = await service.mindmap('tenant-1', 'app-1', { query: 'test' })
 
       expect(result).toEqual({ name: 'Root', children: [{ name: 'Child', children: [] }] })
     })
@@ -628,7 +662,7 @@ describe('SearchService – comprehensive', () => {
       mockRagSearch.mockResolvedValue({ chunks: [], total: 0 })
       mockChatCompletion.mockResolvedValue('not valid json at all')
 
-      const result = await service.mindmap('app-1', { query: 'test' })
+      const result = await service.mindmap('tenant-1', 'app-1', { query: 'test' })
 
       expect(result.name).toBe('test')
       expect(result.children).toHaveLength(1)

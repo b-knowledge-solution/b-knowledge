@@ -17,6 +17,7 @@ const { mockSearchService, mockAccessService } = vi.hoisted(() => ({
     createSearchApp: vi.fn(),
     getSearchApp: vi.fn(),
     listSearchApps: vi.fn(),
+    listAccessibleApps: vi.fn(),
     updateSearchApp: vi.fn(),
     deleteSearchApp: vi.fn(),
     executeSearch: vi.fn(),
@@ -40,8 +41,10 @@ vi.mock('@/modules/feedback/services/feedback.service.js', () => ({
   feedbackService: {},
 }))
 
+const mockUserTeamFindAll = vi.hoisted(() => vi.fn().mockResolvedValue([]))
+
 vi.mock('@/shared/models/factory.js', () => ({
-  ModelFactory: { userTeam: { findAll: vi.fn().mockResolvedValue([]) } },
+  ModelFactory: { userTeam: { findAll: mockUserTeamFindAll } },
 }))
 
 vi.mock('@/shared/middleware/tenant.middleware.js', () => ({
@@ -62,7 +65,8 @@ describe('Search App Access Routes', () => {
   beforeEach(() => {
     controller = new SearchController()
     res = createMockResponse()
-    vi.clearAllMocks()
+    // Re-establish mock return values after global afterEach resets them
+    mockUserTeamFindAll.mockResolvedValue([])
   })
 
   // -----------------------------------------------------------------------
@@ -170,7 +174,7 @@ describe('Search App Access Routes', () => {
       const userApps = [
         { id: 'app1', name: 'My Search', created_by: 'user-1' },
       ]
-      mockSearchService.listSearchApps.mockResolvedValue(userApps)
+      mockSearchService.listAccessibleApps.mockResolvedValue(userApps)
 
       const req = createMockRequest({
         user: { id: 'user-1', role: 'user' },
@@ -178,7 +182,11 @@ describe('Search App Access Routes', () => {
       })
       await controller.listSearchApps(req, res)
 
-      expect(mockSearchService.listSearchApps).toHaveBeenCalledWith('user-1')
+      // Controller calls listAccessibleApps(userId, role, teamIds, options)
+      expect(mockSearchService.listAccessibleApps).toHaveBeenCalledWith(
+        'user-1', 'user', [],
+        expect.objectContaining({}),
+      )
       expect(res.json).toHaveBeenCalledWith(userApps)
     })
 
@@ -188,7 +196,7 @@ describe('Search App Access Routes', () => {
         { id: 'app2', name: 'Search 2', created_by: 'user-2' },
         { id: 'app3', name: 'Search 3', created_by: 'admin-1' },
       ]
-      mockSearchService.listSearchApps.mockResolvedValue(allApps)
+      mockSearchService.listAccessibleApps.mockResolvedValue(allApps)
 
       const req = createMockRequest({
         user: { id: 'admin-1', role: 'admin' },
@@ -200,7 +208,7 @@ describe('Search App Access Routes', () => {
     })
 
     it('returns 500 on service error', async () => {
-      mockSearchService.listSearchApps.mockRejectedValue(new Error('fail'))
+      mockSearchService.listAccessibleApps.mockRejectedValue(new Error('fail'))
 
       const req = createMockRequest({
         user: { id: 'user-1', role: 'user' },
