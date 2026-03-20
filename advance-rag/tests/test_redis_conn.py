@@ -16,6 +16,10 @@ _ADVANCE_RAG_ROOT = os.path.join(os.path.dirname(__file__), "..")
 if _ADVANCE_RAG_ROOT not in sys.path:
     sys.path.insert(0, _ADVANCE_RAG_ROOT)
 
+# Delete the pre-mocked module so we can import the real one
+if "rag.utils.redis_conn" in sys.modules and not hasattr(sys.modules["rag.utils.redis_conn"], "RedisMsg"):
+    del sys.modules["rag.utils.redis_conn"]
+
 
 def _make_redis_db():
     """Create a RedisDB instance with a fully mocked Redis client.
