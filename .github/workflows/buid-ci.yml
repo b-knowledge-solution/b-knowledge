@@ -1,4 +1,5 @@
 # CI pipeline: install, build, and test all workspaces (Node.js + Python)
+# Includes ISO 13485 / IEC 62304 compliance test verification
 # https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
 
 name: Node.js CI
@@ -32,9 +33,21 @@ jobs:
         python-version: '3.11'
         cache: 'pip'
 
-    - run: npm ci
-    - run: npm run build --if-present
-    - run: npm test
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build workspaces
+      run: npm run build --if-present
+
+    - name: Run backend tests (unit + compliance)
+      run: npm test -w be -- --reporter=verbose
+      env:
+        NODE_ENV: test
+
+    - name: Run frontend unit tests
+      run: npm run test:run -w fe -- --reporter=verbose
+      env:
+        NODE_ENV: test
 
     - name: Run advance-rag tests
       working-directory: advance-rag
