@@ -95,7 +95,7 @@ class TestOSConnectionCreateIdx:
         # Mock IndicesClient used in create_idx
         mock_indices_client = MagicMock()
         mock_indices_client.create.return_value = {"acknowledged": True}
-        with patch("rag.utils.opensearch_conn.IndicesClient", return_value=mock_indices_client):
+        with patch("opensearchpy.client.IndicesClient", return_value=mock_indices_client):
             conn.create_idx("new_index", "kb1", 768)
 
         mock_indices_client.create.assert_called_once()
@@ -167,3 +167,124 @@ class TestOSConnectionConstants:
         from rag.utils.opensearch_conn import ATTEMPT_TIME
         assert ATTEMPT_TIME > 0
         assert isinstance(ATTEMPT_TIME, int)
+
+
+class TestOSConnectionGet:
+    """Tests for OSConnection.get() single document retrieval."""
+
+    def test_get_returns_chunk_with_id(self):
+        """Verify get() returns chunk data with 'id' field added."""
+        conn = _make_os_connection()
+        conn.os.get.return_value = {
+            "_source": {"content": "test content", "kb_id": "kb1"},
+            "timed_out": False,
+        }
+        result = conn.get("chunk123", "test_index", ["kb1"])
+        assert result is not None
+        assert result["id"] == "chunk123"
+        assert result["content"] == "test content"
+
+    def test_get_returns_none_on_not_found(self):
+        """Verify get() returns None when chunk is not found."""
+        from opensearchpy import NotFoundError
+        conn = _make_os_connection()
+        conn.os.get.side_effect = NotFoundError("test", "not found", {})
+        result = conn.get("missing_chunk", "test_index", ["kb1"])
+        assert result is None
+
+    def test_get_retries_on_timeout(self):
+        """Verify get() retries on timeout errors."""
+        conn = _make_os_connection()
+        conn.os.get.side_effect = [
+            Exception("Es Timeout."),
+            {
+                "_source": {"content": "data"},
+                "timed_out": False,
+            }
+        ]
+        result = conn.get("chunk1", "test_index", ["kb1"])
+        assert result is not None
+        assert conn.os.get.call_count == 2
+
+
+class TestOSConnectionInsert:
+    """Tests for OSConnection.insert() bulk document indexing."""
+
+    def test_insert_formats_bulk_operations(self):
+        """Verify insert() creates correct bulk operation format."""
+        conn = _make_os_connection()
+        conn.os.bulk.return_value = {"errors": "False", "items": []}
+
+        docs = [
+            {"id": "doc1", "content": "hello", "kb_id": "kb1"},
+            {"id": "doc2", "content": "world", "kb_id": "kb1"},
+        ]
+        result = conn.insert(docs, "test_index")
+        conn.os.bulk.assert_called_once()
+        assert result == []
+
+    def test_insert_returns_errors(self):
+        """Verify insert() returns error details when bulk has errors."""
+        conn = _make_os_connection()
+        conn.os.bulk.return_value = {
+            "errors": "True",
+            "items": [
+                {"index": {"_id": "doc1", "error": {"reason": "mapping error"}}}
+            ]
+        }
+
+        docs = [{"id": "doc1", "content": "test"}]
+        result = conn.insert(docs, "test_index")
+        assert len(result) > 0
+        assert "doc1" in result[0]
+
+
+class TestOSConnectionUpdate:
+    """Tests for OSConnection.update() document updates."""
+
+    def test_update_single_document_by_id(self):
+        """Verify updating a single document by its ID."""
+        conn = _make_os_connection()
+        condition = {"id": "chunk123"}
+        new_value = {"content": "updated content"}
+        result = conn.update(condition, new_value, "test_index", "kb1")
+        conn.os.update.assert_called_once()
+        assert result is True
+
+    def test_update_returns_false_on_error(self):
+        """Verify update returns False on non-timeout exceptions."""
+        conn = _make_os_connection()
+        conn.os.update.side_effect = Exception("Invalid mapping")
+        condition = {"id": "chunk123"}
+        new_value = {"content": "new"}
+        result = conn.update(condition, new_value, "test_index", "kb1")
+        assert result is False
+
+
+class TestOSConnectionDeleteIdx:
+    """Tests for additional OSConnection.delete_idx() scenarios."""
+
+    def test_handles_generic_exception(self):
+        """Verify generic exceptions during deletion are handled."""
+        conn = _make_os_connection()
+        conn.os.indices.delete.side_effect = Exception("Unexpected error")
+        # Should not raise — exception is caught internally
+        conn.delete_idx("test_index", "")
+
+
+class TestOSConnectionIndexExistRetry:
+    """Tests for OSConnection.index_exist() retry behavior."""
+
+    def test_retries_on_timeout(self):
+        """Verify index_exist retries on timeout errors."""
+        conn = _make_os_connection()
+        with patch("rag.utils.opensearch_conn.Index") as MockIndex:
+            mock_idx = MagicMock()
+            # First call times out, second succeeds
+            # Note: the retry check uses find("Timeout") > 0, so the word
+            # must not be at position 0 in the string
+            mock_idx.exists.side_effect = [Exception("Es Timeout."), True]
+            MockIndex.return_value = mock_idx
+            result = conn.index_exist("test_index")
+            assert result is True
+            assert mock_idx.exists.call_count == 2

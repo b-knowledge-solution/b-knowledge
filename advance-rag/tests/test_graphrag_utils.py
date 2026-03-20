@@ -382,3 +382,235 @@ class TestGraphFieldSep:
         """Verify the graph field separator is the expected string."""
         from rag.graphrag.utils import GRAPH_FIELD_SEP
         assert GRAPH_FIELD_SEP == "<SEP>"
+
+
+class TestHandleSingleEntityExtraction:
+    """Tests for handle_single_entity_extraction() LLM output parsing."""
+
+    def test_valid_entity_record(self):
+        """Verify a valid entity record is parsed correctly."""
+        from rag.graphrag.utils import handle_single_entity_extraction
+        result = handle_single_entity_extraction(
+            ['"entity"', 'python', 'programming language', 'A popular language'],
+            "chunk_1"
+        )
+        assert result is not None
+        assert result["entity_name"] == "PYTHON"
+        assert result["entity_type"] == "PROGRAMMING LANGUAGE"
+        assert "popular language" in result["description"]
+        assert result["source_id"] == "chunk_1"
+
+    def test_invalid_record_type(self):
+        """Verify non-entity records return None."""
+        from rag.graphrag.utils import handle_single_entity_extraction
+        result = handle_single_entity_extraction(
+            ['"relationship"', 'a', 'b', 'desc'],
+            "chunk_1"
+        )
+        assert result is None
+
+    def test_too_few_attributes(self):
+        """Verify records with fewer than 4 attributes return None."""
+        from rag.graphrag.utils import handle_single_entity_extraction
+        result = handle_single_entity_extraction(
+            ['"entity"', 'name', 'type'],
+            "chunk_1"
+        )
+        assert result is None
+
+    def test_empty_entity_name_returns_none(self):
+        """Verify empty entity name (after cleaning) returns None."""
+        from rag.graphrag.utils import handle_single_entity_extraction
+        # Entity name that becomes empty after clean_str
+        result = handle_single_entity_extraction(
+            ['"entity"', '   ', 'type', 'desc'],
+            "chunk_1"
+        )
+        assert result is None
+
+    def test_entity_name_uppercased(self):
+        """Verify entity names are uppercased in the result."""
+        from rag.graphrag.utils import handle_single_entity_extraction
+        result = handle_single_entity_extraction(
+            ['"entity"', 'MixedCase', 'some type', 'description'],
+            "chunk_1"
+        )
+        assert result["entity_name"] == "MIXEDCASE"
+
+
+class TestHandleSingleRelationshipExtraction:
+    """Tests for handle_single_relationship_extraction() LLM output parsing."""
+
+    def test_valid_relationship_record(self):
+        """Verify a valid relationship record is parsed correctly."""
+        from rag.graphrag.utils import handle_single_relationship_extraction
+        result = handle_single_relationship_extraction(
+            ['"relationship"', 'Alice', 'Bob', 'friends', 'social', '0.8'],
+            "chunk_2"
+        )
+        assert result is not None
+        # Source and target should be canonically sorted and uppercased
+        assert result["src_id"] == "ALICE"
+        assert result["tgt_id"] == "BOB"
+        assert result["weight"] == 0.8
+        assert result["source_id"] == "chunk_2"
+        assert "metadata" in result
+
+    def test_invalid_record_type(self):
+        """Verify non-relationship records return None."""
+        from rag.graphrag.utils import handle_single_relationship_extraction
+        result = handle_single_relationship_extraction(
+            ['"entity"', 'a', 'b', 'desc', 'kw'],
+            "chunk_1"
+        )
+        assert result is None
+
+    def test_too_few_attributes(self):
+        """Verify records with fewer than 5 attributes return None."""
+        from rag.graphrag.utils import handle_single_relationship_extraction
+        result = handle_single_relationship_extraction(
+            ['"relationship"', 'a', 'b', 'desc'],
+            "chunk_1"
+        )
+        assert result is None
+
+    def test_default_weight_when_not_float(self):
+        """Verify default weight of 1.0 when last field is not a number."""
+        from rag.graphrag.utils import handle_single_relationship_extraction
+        result = handle_single_relationship_extraction(
+            ['"relationship"', 'X', 'Y', 'desc', 'keywords', 'not_a_number'],
+            "chunk_1"
+        )
+        assert result["weight"] == 1.0
+
+    def test_canonical_edge_ordering(self):
+        """Verify source/target are sorted alphabetically."""
+        from rag.graphrag.utils import handle_single_relationship_extraction
+        result = handle_single_relationship_extraction(
+            ['"relationship"', 'Zebra', 'Apple', 'desc', 'kw', '1.0'],
+            "chunk_1"
+        )
+        # Apple < Zebra alphabetically
+        assert result["src_id"] == "APPLE"
+        assert result["tgt_id"] == "ZEBRA"
+
+
+class TestPackUserAssToOpenAIMessages:
+    """Tests for pack_user_ass_to_openai_messages() message formatting."""
+
+    def test_single_user_message(self):
+        """Verify single argument creates one user message."""
+        from rag.graphrag.utils import pack_user_ass_to_openai_messages
+        result = pack_user_ass_to_openai_messages("hello")
+        assert len(result) == 1
+        assert result[0]["role"] == "user"
+        assert result[0]["content"] == "hello"
+
+    def test_alternating_roles(self):
+        """Verify arguments alternate between user and assistant roles."""
+        from rag.graphrag.utils import pack_user_ass_to_openai_messages
+        result = pack_user_ass_to_openai_messages("q1", "a1", "q2", "a2")
+        assert result[0]["role"] == "user"
+        assert result[1]["role"] == "assistant"
+        assert result[2]["role"] == "user"
+        assert result[3]["role"] == "assistant"
+
+    def test_empty_args(self):
+        """Verify no arguments returns empty list."""
+        from rag.graphrag.utils import pack_user_ass_to_openai_messages
+        result = pack_user_ass_to_openai_messages()
+        assert result == []
+
+
+class TestSplitStringByMultiMarkers:
+    """Tests for split_string_by_multi_markers() multi-delimiter splitting."""
+
+    def test_single_marker(self):
+        """Verify splitting by a single marker."""
+        from rag.graphrag.utils import split_string_by_multi_markers
+        result = split_string_by_multi_markers("a##b##c", ["##"])
+        assert result == ["a", "b", "c"]
+
+    def test_multiple_markers(self):
+        """Verify splitting by multiple markers."""
+        from rag.graphrag.utils import split_string_by_multi_markers
+        result = split_string_by_multi_markers("a##b<|>c&&d", ["##", "<|>", "&&"])
+        assert result == ["a", "b", "c", "d"]
+
+    def test_empty_markers_returns_original(self):
+        """Verify empty markers list returns original content."""
+        from rag.graphrag.utils import split_string_by_multi_markers
+        result = split_string_by_multi_markers("no split", [])
+        assert result == ["no split"]
+
+    def test_strips_whitespace(self):
+        """Verify results are stripped of whitespace."""
+        from rag.graphrag.utils import split_string_by_multi_markers
+        result = split_string_by_multi_markers("  a  ##  b  ", ["##"])
+        assert result == ["a", "b"]
+
+    def test_removes_empty_results(self):
+        """Verify empty strings from consecutive markers are removed."""
+        from rag.graphrag.utils import split_string_by_multi_markers
+        result = split_string_by_multi_markers("a####b", ["##"])
+        assert "" not in result
+
+
+class TestIsFloatRegex:
+    """Tests for is_float_regex() numeric string validation."""
+
+    def test_valid_float(self):
+        """Verify valid float strings return True."""
+        from rag.graphrag.utils import is_float_regex
+        assert is_float_regex("3.14") is True
+        assert is_float_regex("0.5") is True
+        assert is_float_regex("-1.0") is True
+        assert is_float_regex("+2.5") is True
+
+    def test_valid_integer(self):
+        """Verify integer strings also match."""
+        from rag.graphrag.utils import is_float_regex
+        assert is_float_regex("42") is True
+        assert is_float_regex("-7") is True
+
+    def test_invalid_strings(self):
+        """Verify non-numeric strings return False."""
+        from rag.graphrag.utils import is_float_regex
+        assert is_float_regex("abc") is False
+        assert is_float_regex("") is False
+        assert is_float_regex("1.2.3") is False
+
+
+class TestGraphMergeSourceIds:
+    """Tests for graph_merge() source_id propagation."""
+
+    def test_merges_graph_source_ids(self):
+        """Verify graph-level source_ids are combined."""
+        from rag.graphrag.utils import graph_merge, GraphChange
+        import networkx as nx
+        g1 = nx.Graph()
+        g2 = nx.Graph()
+        g1.graph["source_id"] = ["doc1"]
+        g2.graph["source_id"] = ["doc2"]
+        # Add a node so merge has something to do
+        g2.add_node("A", description="a", source_id="s", rank=0)
+
+        change = GraphChange()
+        graph_merge(g1, g2, change)
+        assert "doc1" in g1.graph["source_id"]
+        assert "doc2" in g1.graph["source_id"]
+
+    def test_initializes_source_id_if_missing(self):
+        """Verify source_id is initialized on g1 if absent."""
+        from rag.graphrag.utils import graph_merge, GraphChange
+        import networkx as nx
+        g1 = nx.Graph()
+        g2 = nx.Graph()
+        # g1 has no source_id
+        g2.graph["source_id"] = ["doc1"]
+        g2.add_node("A", description="a", source_id="s", rank=0)
+
+        change = GraphChange()
+        graph_merge(g1, g2, change)
+        assert "source_id" in g1.graph
+        assert "doc1" in g1.graph["source_id"]

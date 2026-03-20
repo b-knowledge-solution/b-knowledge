@@ -322,3 +322,178 @@ class TestRedisDBLuaScripts:
         assert RedisDB.LUA_TOKEN_BUCKET_SCRIPT is not None
         assert "capacity" in RedisDB.LUA_TOKEN_BUCKET_SCRIPT
         assert "tokens" in RedisDB.LUA_TOKEN_BUCKET_SCRIPT
+
+
+class TestRedisDBQueueProduct:
+    """Tests for RedisDB.queue_product() stream message publishing."""
+
+    def test_publishes_message_as_json(self):
+        """Verify queue_product serializes message as JSON and uses XADD."""
+        db = _make_redis_db()
+        message = {"task_id": "t1", "action": "parse"}
+        result = db.queue_product("task_queue", message)
+        db.REDIS.xadd.assert_called_once()
+        # Verify the payload contains the JSON message
+        call_args = db.REDIS.xadd.call_args
+        payload = call_args[0][1]
+        assert "message" in payload
+        parsed = json.loads(payload["message"])
+        assert parsed["task_id"] == "t1"
+        assert result is True
+
+    def test_retries_on_failure(self):
+        """Verify queue_product retries up to 3 times on failure."""
+        db = _make_redis_db()
+        db.REDIS.xadd.side_effect = Exception("Stream error")
+        db.__open__ = MagicMock()
+        result = db.queue_product("queue", {"msg": "test"})
+        assert result is False
+        assert db.REDIS.xadd.call_count == 3
+
+
+class TestRedisDBTransaction:
+    """Tests for RedisDB.transaction() atomic set-if-not-exists."""
+
+    def test_transaction_success(self):
+        """Verify transaction() returns True on success."""
+        db = _make_redis_db()
+        mock_pipeline = MagicMock()
+        db.REDIS.pipeline.return_value = mock_pipeline
+        result = db.transaction("lock_key", "lock_value", 60)
+        mock_pipeline.set.assert_called_once_with("lock_key", "lock_value", 60, nx=True)
+        mock_pipeline.execute.assert_called_once()
+        assert result is True
+
+    def test_transaction_returns_false_on_error(self):
+        """Verify transaction() returns False when pipeline fails."""
+        db = _make_redis_db()
+        db.REDIS.pipeline.side_effect = Exception("Redis down")
+        db.__open__ = MagicMock()
+        result = db.transaction("key", "val")
+        assert result is False
+
+
+class TestRedisDBGetOrCreateSecretKey:
+    """Tests for RedisDB.get_or_create_secret_key() atomic key creation."""
+
+    def test_returns_existing_key(self):
+        """Verify existing key is returned without creating a new one."""
+        db = _make_redis_db()
+        db.REDIS.get.return_value = "existing_secret"
+        result = db.get_or_create_secret_key("session_key", "new_value")
+        assert result == "existing_secret"
+        db.REDIS.setnx.assert_not_called()
+
+    def test_creates_new_key_when_absent(self):
+        """Verify new key is created via SETNX when key doesn't exist."""
+        db = _make_redis_db()
+        db.REDIS.get.return_value = None
+        db.REDIS.setnx.return_value = True
+        result = db.get_or_create_secret_key("session_key", "new_secret")
+        assert result == "new_secret"
+        db.REDIS.setnx.assert_called_once_with("session_key", "new_secret")
+
+    def test_returns_concurrent_key_on_setnx_failure(self):
+        """Verify key from concurrent creation is returned on SETNX failure."""
+        db = _make_redis_db()
+        # First get returns None, then after setnx failure, get returns concurrent value
+        db.REDIS.get.side_effect = [None, "concurrent_secret"]
+        db.REDIS.setnx.return_value = False
+        result = db.get_or_create_secret_key("key", "my_value")
+        assert result == "concurrent_secret"
+
+
+class TestRedisDBZremrangebyscore:
+    """Tests for RedisDB.zremrangebyscore() sorted set range removal."""
+
+    def test_removes_members_in_range(self):
+        """Verify zremrangebyscore calls Redis with correct params."""
+        db = _make_redis_db()
+        db.REDIS.zremrangebyscore.return_value = 3
+        result = db.zremrangebyscore("sorted_key", 0.0, 5.0)
+        db.REDIS.zremrangebyscore.assert_called_once_with("sorted_key", 0.0, 5.0)
+        assert result == 3
+
+    def test_returns_zero_on_error(self):
+        """Verify zremrangebyscore returns 0 on exception."""
+        db = _make_redis_db()
+        db.REDIS.zremrangebyscore.side_effect = Exception("Redis error")
+        db.__open__ = MagicMock()
+        result = db.zremrangebyscore("key", 0, 10)
+        assert result == 0
+
+
+class TestRedisDBOpenConnection:
+    """Tests for RedisDB.__open__() connection establishment."""
+
+    def test_parses_host_port_from_colon_format(self):
+        """Verify host:port format is parsed correctly."""
+        from rag.utils.redis_conn import RedisDB
+
+        db = RedisDB.__new__(RedisDB)
+        db.config = {"host": "redis.local:6380", "db": 2}
+        db.REDIS = None
+
+        with patch("rag.utils.redis_conn.redis") as mock_redis:
+            mock_client = MagicMock()
+            mock_redis.StrictRedis.return_value = mock_client
+            db.__open__()
+
+        call_kwargs = mock_redis.StrictRedis.call_args[1]
+        assert call_kwargs["host"] == "redis.local"
+        assert call_kwargs["port"] == 6380
+
+    def test_uses_default_port(self):
+        """Verify default port 6379 when host has no colon."""
+        from rag.utils.redis_conn import RedisDB
+
+        db = RedisDB.__new__(RedisDB)
+        db.config = {"host": "localhost", "db": 0}
+        db.REDIS = None
+
+        with patch("rag.utils.redis_conn.redis") as mock_redis:
+            mock_client = MagicMock()
+            mock_redis.StrictRedis.return_value = mock_client
+            db.__open__()
+
+        call_kwargs = mock_redis.StrictRedis.call_args[1]
+        assert call_kwargs["port"] == 6379
+
+    def test_sets_password_when_configured(self):
+        """Verify password is set when present in config."""
+        from rag.utils.redis_conn import RedisDB
+
+        db = RedisDB.__new__(RedisDB)
+        db.config = {"host": "localhost", "port": 6379, "db": 0, "password": "secret123"}
+        db.REDIS = None
+
+        with patch("rag.utils.redis_conn.redis") as mock_redis:
+            mock_client = MagicMock()
+            mock_redis.StrictRedis.return_value = mock_client
+            db.__open__()
+
+        call_kwargs = mock_redis.StrictRedis.call_args[1]
+        assert call_kwargs["password"] == "secret123"
+
+
+class TestRedisDBInfo:
+    """Tests for RedisDB.info() server information retrieval."""
+
+    def test_returns_formatted_info(self):
+        """Verify info() extracts and returns key Redis server metrics."""
+        db = _make_redis_db()
+        db.REDIS.info.return_value = {
+            "redis_version": "7.0.0",
+            "redis_mode": "standalone",
+            "used_memory_human": "10M",
+            "total_system_memory_human": "16G",
+            "mem_fragmentation_ratio": 1.2,
+            "connected_clients": 5,
+            "blocked_clients": 0,
+            "instantaneous_ops_per_sec": 1000,
+            "total_commands_processed": 50000,
+        }
+        result = db.info()
+        assert result["redis_version"] == "7.0.0"
+        assert result["connected_clients"] == 5
+        assert "used_memory" in result

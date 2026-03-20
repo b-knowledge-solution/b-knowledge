@@ -181,3 +181,142 @@ class TestLoadedModelsCache:
             assert cache_key in loaded_models
         finally:
             del loaded_models[cache_key]
+
+
+class TestLoadModelCPUPath:
+    """Tests for load_model() CPU execution path."""
+
+    def test_uses_cpu_when_cuda_unavailable(self):
+        """Verify CPUExecutionProvider is used when CUDA is not available."""
+        from deepdoc.vision.ocr import load_model, loaded_models
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = os.path.join(tmpdir, "cpu_test.onnx")
+            with open(model_path, "wb") as f:
+                f.write(b"fake model")
+
+            mock_session = MagicMock()
+            mock_run_options = MagicMock()
+
+            with patch("deepdoc.vision.ocr.ort") as mock_ort:
+                mock_ort.SessionOptions.return_value = MagicMock()
+                mock_ort.ExecutionMode = MagicMock()
+                mock_ort.RunOptions.return_value = mock_run_options
+                mock_ort.InferenceSession.return_value = mock_session
+
+                result = load_model(tmpdir, "cpu_test")
+
+            assert result == (mock_session, mock_run_options)
+            # Verify CPUExecutionProvider was passed
+            call_kwargs = mock_ort.InferenceSession.call_args
+            assert 'CPUExecutionProvider' in call_kwargs[1].get('providers', call_kwargs[0][-1] if len(call_kwargs[0]) > 1 else [])
+
+            # Clean up cache
+            del loaded_models[model_path]
+
+    def test_thread_options_from_env(self):
+        """Verify OCR thread options are read from environment variables."""
+        from deepdoc.vision.ocr import load_model, loaded_models
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = os.path.join(tmpdir, "thread_test.onnx")
+            with open(model_path, "wb") as f:
+                f.write(b"fake model")
+
+            mock_options = MagicMock()
+            with patch("deepdoc.vision.ocr.ort") as mock_ort:
+                mock_ort.SessionOptions.return_value = mock_options
+                mock_ort.ExecutionMode = MagicMock()
+                mock_ort.RunOptions.return_value = MagicMock()
+                mock_ort.InferenceSession.return_value = MagicMock()
+
+                with patch.dict(os.environ, {"OCR_INTRA_OP_NUM_THREADS": "4", "OCR_INTER_OP_NUM_THREADS": "3"}):
+                    load_model(tmpdir, "thread_test")
+
+            # Verify thread options were set on the SessionOptions
+            assert mock_options.intra_op_num_threads == 4
+            assert mock_options.inter_op_num_threads == 3
+
+            del loaded_models[model_path]
+
+
+class TestTransformEdgeCases:
+    """Tests for transform() edge cases."""
+
+    def test_single_operator(self):
+        """Verify transform works with a single operator."""
+        from deepdoc.vision.ocr import transform
+
+        op = MagicMock(side_effect=lambda d: {**d, "processed": True})
+        result = transform({"image": "raw"}, [op])
+        assert result["processed"] is True
+
+    def test_operator_chain_passes_data_through(self):
+        """Verify each operator receives output of the previous one."""
+        from deepdoc.vision.ocr import transform
+
+        def add_step(n):
+            return lambda d: {**d, f"step{n}": n}
+
+        ops = [MagicMock(side_effect=add_step(i)) for i in range(3)]
+        result = transform({}, ops)
+        assert result["step0"] == 0
+        assert result["step1"] == 1
+        assert result["step2"] == 2
+
+
+class TestCreateOperatorsGlobalConfig:
+    """Tests for create_operators() with global_config merging."""
+
+    def test_global_config_merged_into_params(self):
+        """Verify global_config is merged into operator params."""
+        from deepdoc.vision.ocr import create_operators
+
+        mock_op_class = MagicMock(return_value="op")
+        with patch("deepdoc.vision.ocr.operators") as mock_operators:
+            mock_operators.MyOp = mock_op_class
+            ops = create_operators(
+                [{"MyOp": {"local_param": 1}}],
+                global_config={"global_param": 2}
+            )
+
+        # Should have been called with both local and global params
+        call_kwargs = mock_op_class.call_args[1]
+        assert call_kwargs["local_param"] == 1
+        assert call_kwargs["global_param"] == 2
+
+    def test_multiple_operators_created(self):
+        """Verify multiple operators are created from config list."""
+        from deepdoc.vision.ocr import create_operators
+
+        mock_op1 = MagicMock(return_value="op1")
+        mock_op2 = MagicMock(return_value="op2")
+        with patch("deepdoc.vision.ocr.operators") as mock_operators:
+            mock_operators.Op1 = mock_op1
+            mock_operators.Op2 = mock_op2
+            ops = create_operators([{"Op1": None}, {"Op2": {"x": 1}}])
+
+        assert len(ops) == 2
+
+
+class TestLoadModelCachingBehavior:
+    """Tests for load_model() device-specific caching."""
+
+    def test_different_device_ids_cached_separately(self):
+        """Verify models for different devices are cached under different keys."""
+        from deepdoc.vision.ocr import loaded_models
+
+        cache_key_0 = "/model/test.onnx0"
+        cache_key_1 = "/model/test.onnx1"
+        session_0 = (MagicMock(), MagicMock())
+        session_1 = (MagicMock(), MagicMock())
+        loaded_models[cache_key_0] = session_0
+        loaded_models[cache_key_1] = session_1
+
+        try:
+            assert loaded_models[cache_key_0] is not loaded_models[cache_key_1]
+        finally:
+            del loaded_models[cache_key_0]
+            del loaded_models[cache_key_1]

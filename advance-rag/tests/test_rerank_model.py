@@ -146,7 +146,7 @@ class TestCoHereRerank:
             CoHereRerank instance with mocked client.
         """
         from rag.llm.rerank_model import CoHereRerank
-        with patch("rag.llm.rerank_model.Client") as MockClient:
+        with patch("cohere.Client") as MockClient:
             mock_client = MagicMock()
             MockClient.return_value = mock_client
             reranker = CoHereRerank(key="co-test-key", model_name="rerank-v3.5")
@@ -169,14 +169,14 @@ class TestCoHereRerank:
     def test_model_name_strips_suffix(self):
         """Verify triple-underscore suffixes are stripped from Cohere model name."""
         from rag.llm.rerank_model import CoHereRerank
-        with patch("rag.llm.rerank_model.Client"):
+        with patch("cohere.Client"):
             reranker = CoHereRerank(key="key", model_name="rerank-v3.5___custom")
         assert reranker.model_name == "rerank-v3.5"
 
     def test_cohere_without_base_url(self):
         """Verify Cohere uses default endpoint when no base_url provided."""
         from rag.llm.rerank_model import CoHereRerank
-        with patch("rag.llm.rerank_model.Client") as MockClient:
+        with patch("cohere.Client") as MockClient:
             reranker = CoHereRerank(key="key", model_name="model")
             # base_url should not be in kwargs when not provided
             call_kwargs = MockClient.call_args[1]
@@ -185,7 +185,7 @@ class TestCoHereRerank:
     def test_cohere_with_custom_base_url(self):
         """Verify custom base_url is passed to Cohere client."""
         from rag.llm.rerank_model import CoHereRerank
-        with patch("rag.llm.rerank_model.Client") as MockClient:
+        with patch("cohere.Client") as MockClient:
             reranker = CoHereRerank(key="key", model_name="model", base_url="http://custom:8080")
             call_kwargs = MockClient.call_args[1]
             assert call_kwargs["base_url"] == "http://custom:8080"
@@ -223,3 +223,126 @@ class TestRAGconRerank:
         # Verify the URL includes /rerank
         call_args = mock_requests.post.call_args
         assert "/rerank" in call_args[0][0]
+
+
+class TestNormalizeRankEdgeCases:
+    """Tests for edge cases in the _normalize_rank static method."""
+
+    def test_normalize_two_elements(self):
+        """Verify two-element array normalizes to 0 and 1."""
+        from rag.llm.rerank_model import Base
+        rank = np.array([0.3, 0.7])
+        normalized = Base._normalize_rank(rank)
+        assert abs(normalized[0] - 0.0) < 1e-6
+        assert abs(normalized[1] - 1.0) < 1e-6
+
+    def test_normalize_negative_scores(self):
+        """Verify negative scores are handled correctly."""
+        from rag.llm.rerank_model import Base
+        rank = np.array([-1.0, 0.0, 1.0])
+        normalized = Base._normalize_rank(rank)
+        # Min is -1, max is 1, range is 2
+        assert abs(normalized[0] - 0.0) < 1e-6
+        assert abs(normalized[1] - 0.5) < 1e-6
+        assert abs(normalized[2] - 1.0) < 1e-6
+
+    def test_normalize_nearly_equal_scores(self):
+        """Verify nearly-equal scores (within atol) produce zeros."""
+        from rag.llm.rerank_model import Base
+        rank = np.array([0.5, 0.5001, 0.4999])
+        normalized = Base._normalize_rank(rank)
+        # All values within atol=1e-3, should return zeros
+        for v in normalized:
+            assert abs(v) < 1e-6
+
+
+class TestOpenAIAPIRerankSimilarity:
+    """Tests for OpenAI_APIRerank.similarity() detailed behavior."""
+
+    def test_token_count_sums_all_texts(self):
+        """Verify token count accumulates across all input texts."""
+        from rag.llm.rerank_model import OpenAI_APIRerank
+        reranker = OpenAI_APIRerank(
+            key="key", model_name="model",
+            base_url="http://host/v1"
+        )
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "results": [
+                {"index": 0, "relevance_score": 0.5},
+                {"index": 1, "relevance_score": 0.8},
+            ]
+        }
+        with patch("rag.llm.rerank_model.requests") as mock_requests:
+            mock_requests.post.return_value = mock_response
+            scores, token_count = reranker.similarity("query", ["doc one two", "doc three four"])
+
+        # Token count should be positive (words are counted by num_tokens_from_string)
+        assert token_count > 0
+
+    def test_scores_mapped_by_index(self):
+        """Verify relevance scores are mapped to correct original positions."""
+        from rag.llm.rerank_model import OpenAI_APIRerank
+        reranker = OpenAI_APIRerank(
+            key="key", model_name="model",
+            base_url="http://host/v1"
+        )
+        mock_response = MagicMock()
+        # Return results in reverse order to verify index mapping
+        mock_response.json.return_value = {
+            "results": [
+                {"index": 1, "relevance_score": 0.9},
+                {"index": 0, "relevance_score": 0.1},
+            ]
+        }
+        with patch("rag.llm.rerank_model.requests") as mock_requests:
+            mock_requests.post.return_value = mock_response
+            scores, _ = reranker.similarity("query", ["doc0", "doc1"])
+
+        # After normalization: index 0 should be lowest, index 1 highest
+        assert scores[0] < scores[1]
+
+
+class TestCoHereRerankFactoryName:
+    """Tests for CoHereRerank factory name and compatibility."""
+
+    def test_factory_name_includes_cohere_and_vllm(self):
+        """Verify _FACTORY_NAME includes both Cohere and VLLM."""
+        from rag.llm.rerank_model import CoHereRerank
+        assert "Cohere" in CoHereRerank._FACTORY_NAME
+        assert "VLLM" in CoHereRerank._FACTORY_NAME
+
+    def test_similarity_token_counting(self):
+        """Verify token count includes both query and all documents."""
+        from rag.llm.rerank_model import CoHereRerank
+        with patch("cohere.Client") as MockClient:
+            mock_client = MagicMock()
+            MockClient.return_value = mock_client
+            reranker = CoHereRerank(key="key", model_name="model")
+            reranker.client = mock_client
+
+            mock_result = MagicMock(index=0, relevance_score=0.9)
+            mock_response = MagicMock()
+            mock_response.results = [mock_result]
+            mock_client.rerank.return_value = mock_response
+
+            _, tokens = reranker.similarity("query text", ["doc text"])
+            # Token count should include both query and document tokens
+            assert tokens > 0
+
+
+class TestRAGconRerankHeaders:
+    """Tests for RAGcon reranker authorization headers."""
+
+    def test_auth_header_set(self):
+        """Verify Authorization header is set with Bearer token."""
+        from rag.llm.rerank_model import RAGconRerank
+        reranker = RAGconRerank(key="rk-secret", model_name="model")
+        assert reranker.headers["Authorization"] == "Bearer rk-secret"
+        assert reranker.headers["Content-Type"] == "application/json"
+
+    def test_model_name_preserved(self):
+        """Verify model name is stored without modification."""
+        from rag.llm.rerank_model import RAGconRerank
+        reranker = RAGconRerank(key="key", model_name="custom-rerank-model")
+        assert reranker.model_name == "custom-rerank-model"

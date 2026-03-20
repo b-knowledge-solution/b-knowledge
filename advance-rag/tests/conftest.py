@@ -176,7 +176,13 @@ _doc_store_base.MatchTextExpr = MagicMock
 _doc_store_base.MatchDenseExpr = MagicMock
 _doc_store_base.FusionExpr = MagicMock
 _doc_store_base.OrderByExpr = MagicMock
-_doc_store_base.DocStoreConnection = MagicMock
+class _MockDocStoreConnection:
+    """Minimal DocStoreConnection base class for connector tests."""
+    def db_type(self):
+        return ""
+    def health(self):
+        return {}
+_doc_store_base.DocStoreConnection = _MockDocStoreConnection
 _doc_store_base.MatchExpr = MagicMock
 
 # common.query_base — load real module (only uses stdlib re + abc)
@@ -871,6 +877,41 @@ _np.isclose = lambda a, b, **kw: abs(a - b) < kw.get("atol", 1e-8)
 _np.min = lambda x, **kw: min(x) if isinstance(x, (list, _NpArray)) else x
 _np.max = lambda x, **kw: max(x) if isinstance(x, (list, _NpArray)) else x
 _np.zeros_like = lambda x, **kw: _NpArray([0.0] * len(x)) if isinstance(x, (list, _NpArray)) else 0.0
+
+# ---------------------------------------------------------------------------
+# Re-import modules that were pre-mocked but are needed as real modules.
+# Their transitive deps are now properly mocked above.
+# ---------------------------------------------------------------------------
+for _reimport_mod in [
+    "rag.graphrag.utils",
+    "rag.utils.redis_conn",
+]:
+    if _reimport_mod in sys.modules and not hasattr(sys.modules[_reimport_mod], "__file__"):
+        del sys.modules[_reimport_mod]
+
+# Force real import of rag.graphrag.utils (used by entity_resolution, search, etc.)
+import rag.graphrag.utils as _real_graphrag_utils  # noqa: F401
+# Force real import of rag.utils.redis_conn (used by many modules)
+import rag.utils.redis_conn as _real_redis_conn  # noqa: F401
+
+# editdistance — Levenshtein distance stub
+def _editdistance_eval(a, b):
+    """Simple Levenshtein distance for test environments."""
+    if len(a) < len(b):
+        return _editdistance_eval(b, a)
+    if len(b) == 0:
+        return len(a)
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a):
+        curr = [i + 1]
+        for j, cb in enumerate(b):
+            ins = prev[j + 1] + 1
+            dl = curr[j] + 1
+            sub = prev[j] + (ca != cb)
+            curr.append(min(ins, dl, sub))
+        prev = curr
+    return prev[-1]
+sys.modules["editdistance"].eval = _editdistance_eval
 
 # huggingface_hub — snapshot_download stub
 sys.modules["huggingface_hub"].snapshot_download = MagicMock(return_value="/mock/model/path")

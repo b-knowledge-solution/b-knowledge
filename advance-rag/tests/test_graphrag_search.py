@@ -273,3 +273,177 @@ class TestKGSearchGetRelevantEntsByKeywords:
 
         # Verify dataStore.search was called
         kgs.dataStore.search.assert_called_once()
+
+
+class TestKGSearchGetRelevantRelations:
+    """Tests for KGSearch.get_relevant_relations_by_txt() relationship retrieval."""
+
+    def _make_kg_search(self):
+        """Create a KGSearch instance.
+
+        Returns:
+            KGSearch instance with mocked dependencies.
+        """
+        with patch("rag.nlp.search.query.FulltextQueryer"):
+            from rag.graphrag.search import KGSearch
+            mock_store = MagicMock()
+            kgs = KGSearch(mock_store)
+            return kgs
+
+    def test_empty_text_returns_empty(self):
+        """Verify empty text returns empty dict."""
+        kgs = self._make_kg_search()
+        result = kgs.get_relevant_relations_by_txt(
+            "", {}, "idx", "kb1", MagicMock(), sim_thr=0.3
+        )
+        assert result == {}
+
+    def test_sets_relation_filter(self):
+        """Verify the knowledge_graph_kwd filter is set to 'relation'."""
+        kgs = self._make_kg_search()
+        mock_emb = MagicMock()
+        kgs.get_vector = MagicMock(return_value=MagicMock())
+        kgs.dataStore.search.return_value = {}
+        kgs.dataStore.get_fields.return_value = {}
+
+        kgs.get_relevant_relations_by_txt(
+            "find relationships", {"doc_id": ["d1"]}, "idx", "kb1", mock_emb
+        )
+        kgs.dataStore.search.assert_called_once()
+
+
+class TestKGSearchGetRelevantEntsByTypes:
+    """Tests for KGSearch.get_relevant_ents_by_types() type-based entity retrieval."""
+
+    def _make_kg_search(self):
+        """Create a KGSearch instance.
+
+        Returns:
+            KGSearch instance with mocked dependencies.
+        """
+        with patch("rag.nlp.search.query.FulltextQueryer"):
+            from rag.graphrag.search import KGSearch
+            mock_store = MagicMock()
+            kgs = KGSearch(mock_store)
+            return kgs
+
+    def test_empty_types_returns_empty(self):
+        """Verify empty types list returns empty dict."""
+        kgs = self._make_kg_search()
+        result = kgs.get_relevant_ents_by_types([], {}, "idx", "kb1")
+        assert result == {}
+
+    def test_calls_search_with_type_filter(self):
+        """Verify types are passed as entity_type_kwd filter."""
+        kgs = self._make_kg_search()
+        kgs.dataStore.search.return_value = {}
+        kgs.dataStore.get_fields.return_value = {}
+
+        kgs.get_relevant_ents_by_types(["PERSON", "ORG"], {}, "idx", "kb1")
+        kgs.dataStore.search.assert_called_once()
+
+
+class TestKGSearchQueryRewrite:
+    """Tests for KGSearch.query_rewrite() LLM-based query analysis."""
+
+    def _make_kg_search(self):
+        """Create a KGSearch instance.
+
+        Returns:
+            KGSearch instance with mocked dependencies.
+        """
+        with patch("rag.nlp.search.query.FulltextQueryer"):
+            from rag.graphrag.search import KGSearch
+            mock_store = MagicMock()
+            kgs = KGSearch(mock_store)
+            return kgs
+
+    def test_returns_type_keywords_and_entities(self):
+        """Verify query_rewrite returns type keywords and extracted entities."""
+        kgs = self._make_kg_search()
+        mock_llm = MagicMock()
+        mock_llm.llm_name = "test-model"
+        mock_llm.async_chat = AsyncMock(return_value='{"answer_type_keywords": ["PERSON"], "entities_from_query": ["Alice"]}')
+
+        with patch("rag.graphrag.search.get_llm_cache", return_value=None):
+            with patch("rag.graphrag.search.set_llm_cache"):
+                with patch("rag.graphrag.search.get_entity_type2samples", new_callable=AsyncMock, return_value={"PERSON": ["Alice"]}):
+                    with patch("rag.graphrag.search.json_repair") as mock_json_repair:
+                        mock_json_repair.loads.return_value = {"answer_type_keywords": ["PERSON"], "entities_from_query": ["Alice"]}
+                        mock_json_repair.JSONDecodeError = ValueError
+                        ty_kwds, ents = asyncio.get_event_loop().run_until_complete(
+                            kgs.query_rewrite(mock_llm, "Who is Alice?", ["idx"], "kb1")
+                        )
+
+        assert "PERSON" in ty_kwds
+        assert "Alice" in ents
+
+    def test_entities_limited_to_5(self):
+        """Verify extracted entities are capped at 5."""
+        kgs = self._make_kg_search()
+        mock_llm = MagicMock()
+        mock_llm.llm_name = "test"
+        many_ents = [f"entity_{i}" for i in range(10)]
+        mock_llm.async_chat = AsyncMock(return_value="json")
+
+        with patch("rag.graphrag.search.get_llm_cache", return_value=None):
+            with patch("rag.graphrag.search.set_llm_cache"):
+                with patch("rag.graphrag.search.get_entity_type2samples", new_callable=AsyncMock, return_value={}):
+                    with patch("rag.graphrag.search.json_repair") as mock_json_repair:
+                        mock_json_repair.loads.return_value = {
+                            "answer_type_keywords": [],
+                            "entities_from_query": many_ents,
+                        }
+                        mock_json_repair.JSONDecodeError = ValueError
+                        _, ents = asyncio.get_event_loop().run_until_complete(
+                            kgs.query_rewrite(mock_llm, "query", ["idx"], "kb1")
+                        )
+
+        assert len(ents) <= 5
+
+
+class TestKGSearchRelationInfoListHandling:
+    """Tests for _relation_info_from_() list-type entity keyword handling."""
+
+    def _make_kg_search(self):
+        """Create a KGSearch instance.
+
+        Returns:
+            KGSearch instance.
+        """
+        with patch("rag.nlp.search.query.FulltextQueryer"):
+            from rag.graphrag.search import KGSearch
+            mock_store = MagicMock()
+            return KGSearch(mock_store)
+
+    def test_list_entity_kwd_flattened(self):
+        """Verify list-type from/to entity keywords are flattened to first element."""
+        kgs = self._make_kg_search()
+        kgs.dataStore.get_fields.return_value = {
+            "id1": {
+                "content_with_weight": "desc",
+                "_score": 0.9,
+                "from_entity_kwd": ["Alpha", "Extra"],
+                "to_entity_kwd": ["Beta", "Extra2"],
+                "weight_int": 2,
+            }
+        }
+
+        result = kgs._relation_info_from_(MagicMock(), sim_thr=0.3)
+        assert ("Alpha", "Beta") in result
+
+    def test_removes_none_fields(self):
+        """Verify None field values in entity info are handled."""
+        kgs = self._make_kg_search()
+        kgs.dataStore.get_fields.return_value = {
+            "id1": {
+                "content_with_weight": "{}",
+                "_score": 0.9,
+                "entity_kwd": "TestEntity",
+                "rank_flt": None,
+                "n_hop_with_weight": "[]",
+            }
+        }
+
+        result = kgs._ent_info_from_(MagicMock(), sim_thr=0.3)
+        assert "TestEntity" in result

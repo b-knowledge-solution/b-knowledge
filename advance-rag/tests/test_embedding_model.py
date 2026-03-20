@@ -201,7 +201,7 @@ class TestAzureEmbed:
         import json
         key_json = json.dumps({"api_key": "azure-key-123", "api_version": "2024-03-01"})
 
-        with patch("rag.llm.embedding_model.AzureOpenAI") as MockAzure:
+        with patch("openai.lib.azure.AzureOpenAI") as MockAzure:
             mock_client = MagicMock()
             MockAzure.return_value = mock_client
             # Azure requires base_url kwarg
@@ -212,3 +212,116 @@ class TestAzureEmbed:
         call_kwargs = MockAzure.call_args[1]
         assert call_kwargs["api_key"] == "azure-key-123"
         assert call_kwargs["api_version"] == "2024-03-01"
+
+    def test_default_api_version(self):
+        """Verify default api_version is used when not specified in key JSON."""
+        from rag.llm.embedding_model import AzureEmbed
+        import json
+        key_json = json.dumps({"api_key": "azure-key-456"})
+
+        with patch("openai.lib.azure.AzureOpenAI") as MockAzure:
+            mock_client = MagicMock()
+            MockAzure.return_value = mock_client
+            embedder = AzureEmbed(key=key_json, model_name="model", base_url="https://myresource.openai.azure.com")
+
+        call_kwargs = MockAzure.call_args[1]
+        # Default api_version should be "2024-02-01"
+        assert call_kwargs["api_version"] == "2024-02-01"
+
+
+class TestOllamaEmbedInit:
+    """Tests for OllamaEmbed initialization and keep_alive settings."""
+
+    def test_unauthenticated_client_with_empty_key(self):
+        """Verify unauthenticated client is used when key is empty."""
+        from rag.llm.embedding_model import OllamaEmbed
+        with patch("rag.llm.embedding_model.Client") as MockClient:
+            embedder = OllamaEmbed(key="", model_name="model", base_url="http://localhost:11434")
+            # Should not pass Authorization header
+            call_args = MockClient.call_args
+            assert "headers" not in call_args[1] if call_args[1] else True
+
+    def test_unauthenticated_client_with_x_key(self):
+        """Verify unauthenticated client is used when key is 'x'."""
+        from rag.llm.embedding_model import OllamaEmbed
+        with patch("rag.llm.embedding_model.Client") as MockClient:
+            embedder = OllamaEmbed(key="x", model_name="model", base_url="http://localhost:11434")
+            call_args = MockClient.call_args
+            assert call_args[1].get("host") == "http://localhost:11434"
+
+    def test_authenticated_client_with_real_key(self):
+        """Verify Bearer auth header is set when a real API key is provided."""
+        from rag.llm.embedding_model import OllamaEmbed
+        with patch("rag.llm.embedding_model.Client") as MockClient:
+            embedder = OllamaEmbed(key="real-key", model_name="model", base_url="http://localhost:11434")
+            call_kwargs = MockClient.call_args[1]
+            assert "headers" in call_kwargs
+            assert "Bearer real-key" in call_kwargs["headers"]["Authorization"]
+
+    def test_query_encoding_returns_128_tokens(self):
+        """Verify encode_queries returns fixed 128 token estimate."""
+        from rag.llm.embedding_model import OllamaEmbed
+        with patch("rag.llm.embedding_model.Client") as MockClient:
+            mock_client = MagicMock()
+            MockClient.return_value = mock_client
+            embedder = OllamaEmbed(key="x", model_name="model", base_url="http://localhost:11434")
+            embedder.client = mock_client
+            mock_client.embeddings.return_value = {"embedding": [0.1, 0.2]}
+            _, tokens = embedder.encode_queries("test query")
+            assert tokens == 128
+
+
+class TestOpenAIEmbedModelName:
+    """Tests for OpenAIEmbed model name and factory attributes."""
+
+    def test_factory_name(self):
+        """Verify the _FACTORY_NAME class attribute."""
+        from rag.llm.embedding_model import OpenAIEmbed
+        assert OpenAIEmbed._FACTORY_NAME == "OpenAI"
+
+    def test_model_name_stored(self):
+        """Verify model_name is stored on the instance."""
+        from rag.llm.embedding_model import OpenAIEmbed
+        with patch("rag.llm.embedding_model.OpenAI"):
+            embedder = OpenAIEmbed(key="sk-test", model_name="text-embedding-3-large")
+        assert embedder.model_name == "text-embedding-3-large"
+
+    def test_default_model_name(self):
+        """Verify default model name is text-embedding-ada-002."""
+        from rag.llm.embedding_model import OpenAIEmbed
+        with patch("rag.llm.embedding_model.OpenAI"):
+            embedder = OpenAIEmbed(key="sk-test")
+        assert embedder.model_name == "text-embedding-ada-002"
+
+
+class TestOllamaEmbedSpecialTokens:
+    """Tests for special token handling in Ollama embedding."""
+
+    def test_multiple_special_tokens_stripped(self):
+        """Verify all special tokens are stripped from input text."""
+        from rag.llm.embedding_model import OllamaEmbed
+        with patch("rag.llm.embedding_model.Client") as MockClient:
+            mock_client = MagicMock()
+            MockClient.return_value = mock_client
+            embedder = OllamaEmbed(key="x", model_name="model", base_url="http://localhost:11434")
+            embedder.client = mock_client
+            mock_client.embeddings.return_value = {"embedding": [0.1]}
+
+            # Text with multiple special tokens
+            embedder.encode(["start <|endoftext|> middle <|endoftext|> end"])
+            call_args = mock_client.embeddings.call_args
+            assert "<|endoftext|>" not in call_args[1]["prompt"]
+
+    def test_encode_error_propagates(self):
+        """Verify API errors are raised with descriptive message."""
+        from rag.llm.embedding_model import OllamaEmbed
+        with patch("rag.llm.embedding_model.Client") as MockClient:
+            mock_client = MagicMock()
+            MockClient.return_value = mock_client
+            embedder = OllamaEmbed(key="x", model_name="model", base_url="http://localhost:11434")
+            embedder.client = mock_client
+            # Return response without "embedding" key
+            mock_client.embeddings.return_value = {"error": "model not loaded"}
+
+            with pytest.raises(Exception, match="Error"):
+                embedder.encode(["test"])
