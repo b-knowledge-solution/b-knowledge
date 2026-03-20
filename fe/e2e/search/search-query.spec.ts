@@ -17,6 +17,10 @@
 import { test, expect } from '@playwright/test'
 import { ApiHelper, apiHelper } from '../helpers/api.helper'
 import path from 'path'
+import { fileURLToPath } from 'url'
+
+/** ESM-compatible __dirname equivalent */
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 /** Search page base URL */
 const SEARCH_URL = '/search'

@@ -20,6 +20,10 @@ import { ApiHelper, apiHelper } from '../helpers/api.helper'
 import { waitForDocumentParsed, waitForChunksIndexed } from '../helpers/wait.helper'
 import { OpenSearchHelper, opensearchHelper } from '../helpers/opensearch.helper'
 import path from 'path'
+import { fileURLToPath } from 'url'
+
+/** ESM-compatible __dirname equivalent */
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 /** Datasets page URL path */
 const DATASETS_URL = '/data-studio/datasets'

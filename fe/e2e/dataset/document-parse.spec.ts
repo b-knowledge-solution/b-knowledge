@@ -18,9 +18,13 @@
  */
 
 import path from 'path'
+import { fileURLToPath } from 'url'
 import { test, expect, APIRequestContext } from '@playwright/test'
 import { ApiHelper, apiHelper } from '../helpers/api.helper'
 import { waitForDocumentParsed } from '../helpers/wait.helper'
+
+/** ESM-compatible __dirname equivalent */
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 /** Dataset detail page URL prefix */
 const DATASET_URL_PREFIX = '/data-studio/datasets'
