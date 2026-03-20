@@ -1,7 +1,7 @@
 /**
- * @fileoverview Tests for ChatDialogService RBAC logic.
+ * @fileoverview Tests for ChatAssistantService RBAC logic.
  *
- * Validates role-based access control for dialog listing, access checking,
+ * Validates role-based access control for assistant listing, access checking,
  * and access management operations.
  */
 
@@ -60,62 +60,94 @@ const ADMIN_USER = { id: 'admin-1', role: 'admin' }
 const LEADER_USER = { id: 'leader-1', role: 'leader' }
 const REGULAR_USER = { id: 'user-1', role: 'user' }
 
-const DIALOG_PUBLIC = { id: 'd-public', name: 'Public', is_public: true, created_by: 'admin-1' }
-const DIALOG_OWN = { id: 'd-own', name: 'My Dialog', is_public: false, created_by: 'user-1' }
-const DIALOG_PRIVATE = { id: 'd-priv', name: 'Private', is_public: false, created_by: 'other-user' }
-const DIALOG_USER_ACCESS = { id: 'd-user-acc', name: 'User Access', is_public: false, created_by: 'other-user' }
-const DIALOG_TEAM_ACCESS = { id: 'd-team-acc', name: 'Team Access', is_public: false, created_by: 'other-user' }
+const ASSISTANT_PUBLIC = { id: 'd-public', name: 'Public', is_public: true, created_by: 'admin-1' }
+const ASSISTANT_OWN = { id: 'd-own', name: 'My Assistant', is_public: false, created_by: 'user-1' }
+const ASSISTANT_PRIVATE = { id: 'd-priv', name: 'Private', is_public: false, created_by: 'other-user' }
+const ASSISTANT_USER_ACCESS = { id: 'd-user-acc', name: 'User Access', is_public: false, created_by: 'other-user' }
+const ASSISTANT_TEAM_ACCESS = { id: 'd-team-acc', name: 'Team Access', is_public: false, created_by: 'other-user' }
 
-const ALL_DIALOGS = [DIALOG_PUBLIC, DIALOG_OWN, DIALOG_PRIVATE, DIALOG_USER_ACCESS, DIALOG_TEAM_ACCESS]
+const ALL_ASSISTANTS = [ASSISTANT_PUBLIC, ASSISTANT_OWN, ASSISTANT_PRIVATE, ASSISTANT_USER_ACCESS, ASSISTANT_TEAM_ACCESS]
+
+// ---------------------------------------------------------------------------
+// Mocks
+// ---------------------------------------------------------------------------
+
+const mockChatAssistant = {
+  findAll: vi.fn(),
+  findById: vi.fn(),
+  create: vi.fn(),
+  update: vi.fn(),
+  getKnex: vi.fn(),
+}
+
+const mockChatAssistantAccess = {
+  getKnex: vi.fn(),
+  findAll: vi.fn(),
+  findAccessibleAssistantIds: vi.fn().mockResolvedValue([]),
+  findByAssistantId: vi.fn().mockResolvedValue([]),
+  bulkReplace: vi.fn().mockResolvedValue([]),
+}
+
+vi.mock('@/shared/models/factory.js', () => ({
+  ModelFactory: {
+    chatAssistant: mockChatAssistant,
+    chatAssistantAccess: mockChatAssistantAccess,
+    user: { getKnex: vi.fn() },
+    team: { getKnex: vi.fn() },
+  },
+}))
+
+vi.mock('@/shared/models/types.js', () => ({}))
+
+vi.mock('@/shared/services/logger.service.js', () => ({
+  log: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
+}))
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('ChatDialogService – RBAC logic', () => {
+describe('ChatAssistantService – RBAC logic', () => {
   afterEach(() => {
     vi.resetModules()
     vi.restoreAllMocks()
   })
 
   // -----------------------------------------------------------------------
-  // listDialogs – admin sees all
+  // listAssistants – admin sees all
   // -----------------------------------------------------------------------
 
-  describe('listDialogs – admin visibility', () => {
-    it('admin can list all dialogs regardless of ownership or access', async () => {
-      const { chatDialogService } = await import('../../src/modules/chat/services/chat-dialog.service')
-      const factory = await import('../../src/shared/models/factory')
+  describe('listAssistants – admin visibility', () => {
+    it('admin can list all assistants regardless of ownership or access', async () => {
+      const { chatAssistantService } = await import('../../src/modules/chat/services/chat-assistant.service')
 
-      // Mock: return all dialogs for admin
-      const builder = makeBuilder(ALL_DIALOGS)
-      factory.ModelFactory.chatAssistant.findAll = vi.fn().mockResolvedValue(ALL_DIALOGS)
+      // Mock: return all assistants for admin
+      mockChatAssistant.findAll.mockResolvedValue(ALL_ASSISTANTS)
 
-      const result = await chatDialogService.listDialogs(ADMIN_USER.id)
+      const result = await chatAssistantService.listAssistants()
 
-      // Admin should see all 5 dialogs
+      // Admin should see all 5 assistants
       expect(result).toHaveLength(5)
-      expect(result).toEqual(ALL_DIALOGS)
+      expect(result).toEqual(ALL_ASSISTANTS)
     })
   })
 
   // -----------------------------------------------------------------------
-  // listDialogs – regular user sees filtered
+  // listAssistants – regular user sees filtered
   // -----------------------------------------------------------------------
 
-  describe('listDialogs – regular user visibility', () => {
-    it('regular user only sees own dialogs when no RBAC entries exist', async () => {
-      const { chatDialogService } = await import('../../src/modules/chat/services/chat-dialog.service')
-      const factory = await import('../../src/shared/models/factory')
+  describe('listAssistants – regular user visibility', () => {
+    it('regular user only sees own assistants when filtered by userId', async () => {
+      const { chatAssistantService } = await import('../../src/modules/chat/services/chat-assistant.service')
 
-      // Mock: return only dialogs created by this user
-      const ownDialogs = [DIALOG_OWN]
-      factory.ModelFactory.chatAssistant.findAll = vi.fn().mockResolvedValue(ownDialogs)
+      // Mock: return only assistants created by this user
+      const ownAssistants = [ASSISTANT_OWN]
+      mockChatAssistant.findAll.mockResolvedValue(ownAssistants)
 
-      const result = await chatDialogService.listDialogs(REGULAR_USER.id)
+      const result = await chatAssistantService.listAssistants(REGULAR_USER.id)
 
-      expect(result).toEqual(ownDialogs)
-      expect(factory.ModelFactory.chatAssistant.findAll).toHaveBeenCalledWith(
+      expect(result).toEqual(ownAssistants)
+      expect(mockChatAssistant.findAll).toHaveBeenCalledWith(
         { created_by: REGULAR_USER.id },
         expect.any(Object)
       )
@@ -128,168 +160,150 @@ describe('ChatDialogService – RBAC logic', () => {
 
   describe('checkUserAccess', () => {
     it('returns true when user has direct access entry', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
       // Mock: access entry exists for user
-      const accessEntry = { id: 'a1', dialog_id: 'd-user-acc', access_type: 'user', target_id: 'user-1' }
+      const accessEntry = { id: 'a1', assistant_id: 'd-user-acc', entity_type: 'user', entity_id: 'user-1' }
       const builder = makeBuilder(accessEntry)
-      factory.ModelFactory.chatDialogAccess = { getKnex: vi.fn().mockReturnValue(builder) } as any
+      mockChatAssistantAccess.getKnex.mockReturnValue(builder)
 
-      const knex = factory.ModelFactory.chatDialogAccess.getKnex()
+      const knex = mockChatAssistantAccess.getKnex()
       const result = await knex
-        .from('chat_dialog_access')
-        .where('dialog_id', 'd-user-acc')
-        .where('access_type', 'user')
-        .where('target_id', 'user-1')
+        .from('chat_assistant_access')
+        .where('assistant_id', 'd-user-acc')
+        .where('entity_type', 'user')
+        .where('entity_id', 'user-1')
         .first()
 
       expect(result).toBeDefined()
-      expect(result.target_id).toBe('user-1')
+      expect(result.entity_id).toBe('user-1')
     })
 
     it('returns true when user belongs to a team with access', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
       // Mock: team-based access entry
-      const accessEntry = { id: 'a2', dialog_id: 'd-team-acc', access_type: 'team', target_id: 'team-alpha' }
+      const accessEntry = { id: 'a2', assistant_id: 'd-team-acc', entity_type: 'team', entity_id: 'team-alpha' }
       const builder = makeBuilder(accessEntry)
-      factory.ModelFactory.chatDialogAccess = { getKnex: vi.fn().mockReturnValue(builder) } as any
+      mockChatAssistantAccess.getKnex.mockReturnValue(builder)
 
-      const knex = factory.ModelFactory.chatDialogAccess.getKnex()
+      const knex = mockChatAssistantAccess.getKnex()
       const result = await knex
-        .from('chat_dialog_access')
-        .where('dialog_id', 'd-team-acc')
-        .where('access_type', 'team')
-        .whereIn('target_id', ['team-alpha'])
+        .from('chat_assistant_access')
+        .where('assistant_id', 'd-team-acc')
+        .where('entity_type', 'team')
+        .whereIn('entity_id', ['team-alpha'])
         .first()
 
       expect(result).toBeDefined()
-      expect(result.access_type).toBe('team')
+      expect(result.entity_type).toBe('team')
     })
 
     it('returns false when user has no access entry', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
       // Mock: no access entry found
       const builder = makeBuilder(undefined)
-      factory.ModelFactory.chatDialogAccess = { getKnex: vi.fn().mockReturnValue(builder) } as any
+      mockChatAssistantAccess.getKnex.mockReturnValue(builder)
 
-      const knex = factory.ModelFactory.chatDialogAccess.getKnex()
+      const knex = mockChatAssistantAccess.getKnex()
       const result = await knex
-        .from('chat_dialog_access')
-        .where('dialog_id', 'd-priv')
-        .where('access_type', 'user')
-        .where('target_id', 'user-1')
+        .from('chat_assistant_access')
+        .where('assistant_id', 'd-priv')
+        .where('entity_type', 'user')
+        .where('entity_id', 'user-1')
         .first()
 
       expect(result).toBeUndefined()
     })
 
-    it('returns true for public dialog regardless of access entries', async () => {
-      // Public dialogs should be accessible without explicit access entries
-      expect(DIALOG_PUBLIC.is_public).toBe(true)
+    it('returns true for public assistant regardless of access entries', async () => {
+      // Public assistants should be accessible without explicit access entries
+      expect(ASSISTANT_PUBLIC.is_public).toBe(true)
     })
 
-    it('returns true for dialog owner', async () => {
-      // Owner should always have access to their own dialog
-      expect(DIALOG_OWN.created_by).toBe(REGULAR_USER.id)
+    it('returns true for assistant owner', async () => {
+      // Owner should always have access to their own assistant
+      expect(ASSISTANT_OWN.created_by).toBe(REGULAR_USER.id)
     })
   })
 
   // -----------------------------------------------------------------------
-  // setDialogAccess
+  // setAssistantAccess
   // -----------------------------------------------------------------------
 
-  describe('setDialogAccess', () => {
+  describe('setAssistantAccess', () => {
     it('creates access entries for users and teams', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
       const newEntries = [
-        { dialog_id: 'd1', access_type: 'user', target_id: 'u2' },
-        { dialog_id: 'd1', access_type: 'team', target_id: 't1' },
+        { assistant_id: 'd1', entity_type: 'user', entity_id: 'u2' },
+        { assistant_id: 'd1', entity_type: 'team', entity_id: 't1' },
       ]
       const deleteBuilder = makeBuilder(0)
       const insertBuilder = makeBuilder(newEntries)
 
-      factory.ModelFactory.chatDialogAccess = {
-        getKnex: vi.fn()
-          .mockReturnValueOnce(deleteBuilder)
-          .mockReturnValueOnce(insertBuilder),
-      } as any
+      mockChatAssistantAccess.getKnex
+        .mockReturnValueOnce(deleteBuilder)
+        .mockReturnValueOnce(insertBuilder)
 
       // Step 1: Clear existing entries
-      const delKnex = factory.ModelFactory.chatDialogAccess.getKnex()
-      await delKnex.from('chat_dialog_access').where('dialog_id', 'd1').delete()
+      const delKnex = mockChatAssistantAccess.getKnex()
+      await delKnex.from('chat_assistant_access').where('assistant_id', 'd1').delete()
       expect(deleteBuilder.delete).toHaveBeenCalled()
 
       // Step 2: Insert new entries
-      const insKnex = factory.ModelFactory.chatDialogAccess.getKnex()
-      const result = await insKnex.from('chat_dialog_access').insert(newEntries)
+      const insKnex = mockChatAssistantAccess.getKnex()
+      const result = await insKnex.from('chat_assistant_access').insert(newEntries)
       expect(insertBuilder.insert).toHaveBeenCalledWith(newEntries)
       expect(result).toEqual(newEntries)
     })
 
     it('replaces existing entries when updating access', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
       // First call deletes 3 old entries, second inserts 1 new entry
       const deleteBuilder = makeBuilder(3)
-      const insertBuilder = makeBuilder([{ dialog_id: 'd1', access_type: 'user', target_id: 'u5' }])
+      const insertBuilder = makeBuilder([{ assistant_id: 'd1', entity_type: 'user', entity_id: 'u5' }])
 
-      factory.ModelFactory.chatDialogAccess = {
-        getKnex: vi.fn()
-          .mockReturnValueOnce(deleteBuilder)
-          .mockReturnValueOnce(insertBuilder),
-      } as any
+      mockChatAssistantAccess.getKnex
+        .mockReturnValueOnce(deleteBuilder)
+        .mockReturnValueOnce(insertBuilder)
 
-      const delKnex = factory.ModelFactory.chatDialogAccess.getKnex()
-      const deleted = await delKnex.from('chat_dialog_access').where('dialog_id', 'd1').delete()
+      const delKnex = mockChatAssistantAccess.getKnex()
+      const deleted = await delKnex.from('chat_assistant_access').where('assistant_id', 'd1').delete()
       expect(deleted).toBe(3)
 
-      const insKnex = factory.ModelFactory.chatDialogAccess.getKnex()
-      await insKnex.from('chat_dialog_access').insert([
-        { dialog_id: 'd1', access_type: 'user', target_id: 'u5' },
+      const insKnex = mockChatAssistantAccess.getKnex()
+      await insKnex.from('chat_assistant_access').insert([
+        { assistant_id: 'd1', entity_type: 'user', entity_id: 'u5' },
       ])
       expect(insertBuilder.insert).toHaveBeenCalled()
     })
   })
 
   // -----------------------------------------------------------------------
-  // getDialogAccess
+  // getAssistantAccess
   // -----------------------------------------------------------------------
 
-  describe('getDialogAccess', () => {
+  describe('getAssistantAccess', () => {
     it('returns enriched access entries with user/team info', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
       const entries = [
-        { id: 'a1', dialog_id: 'd1', access_type: 'user', target_id: 'u1', user_name: 'Alice' },
-        { id: 'a2', dialog_id: 'd1', access_type: 'team', target_id: 't1', team_name: 'Engineering' },
+        { id: 'a1', assistant_id: 'd1', entity_type: 'user', entity_id: 'u1', user_name: 'Alice' },
+        { id: 'a2', assistant_id: 'd1', entity_type: 'team', entity_id: 't1', team_name: 'Engineering' },
       ]
       const builder = makeBuilder(entries)
-      factory.ModelFactory.chatDialogAccess = { getKnex: vi.fn().mockReturnValue(builder) } as any
+      mockChatAssistantAccess.getKnex.mockReturnValue(builder)
 
-      const knex = factory.ModelFactory.chatDialogAccess.getKnex()
+      const knex = mockChatAssistantAccess.getKnex()
       const result = await knex
-        .from('chat_dialog_access')
-        .select('chat_dialog_access.*')
-        .where('dialog_id', 'd1')
+        .from('chat_assistant_access')
+        .select('chat_assistant_access.*')
+        .where('assistant_id', 'd1')
 
       expect(result).toHaveLength(2)
-      expect(result[0].access_type).toBe('user')
-      expect(result[1].access_type).toBe('team')
+      expect(result[0].entity_type).toBe('user')
+      expect(result[1].entity_type).toBe('team')
     })
 
-    it('returns empty array when dialog has no access entries', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
+    it('returns empty array when assistant has no access entries', async () => {
       const builder = makeBuilder([])
-      factory.ModelFactory.chatDialogAccess = { getKnex: vi.fn().mockReturnValue(builder) } as any
+      mockChatAssistantAccess.getKnex.mockReturnValue(builder)
 
-      const knex = factory.ModelFactory.chatDialogAccess.getKnex()
+      const knex = mockChatAssistantAccess.getKnex()
       const result = await knex
-        .from('chat_dialog_access')
-        .where('dialog_id', 'd-empty')
+        .from('chat_assistant_access')
+        .where('assistant_id', 'd-empty')
 
       expect(result).toEqual([])
     })
