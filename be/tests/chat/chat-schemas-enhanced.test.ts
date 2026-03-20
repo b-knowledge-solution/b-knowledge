@@ -2,7 +2,7 @@
  * @fileoverview Tests for chat Zod validation schemas (enhanced).
  *
  * Covers renameConversationSchema, chatCompletionSchema,
- * createDialogSchema, and all conversation-related schemas.
+ * createAssistantSchema, and all conversation-related schemas.
  */
 
 import { describe, expect, it } from 'vitest'
@@ -17,11 +17,11 @@ import {
   ttsSchema,
 } from '../../src/modules/chat/schemas/chat-conversation.schemas'
 import {
-  createDialogSchema,
-  updateDialogSchema,
-  dialogAccessSchema,
-  dialogIdParamSchema,
-} from '../../src/modules/chat/schemas/chat-dialog.schemas'
+  createAssistantSchema,
+  updateAssistantSchema,
+  assistantAccessSchema,
+  assistantIdParamSchema,
+} from '../../src/modules/chat/schemas/chat-assistant.schemas'
 
 const VALID_UUID = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
 const VALID_UUID_2 = 'b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e'
@@ -95,12 +95,12 @@ describe('chatCompletionSchema', () => {
 })
 
 // ---------------------------------------------------------------------------
-// createDialogSchema
+// createAssistantSchema
 // ---------------------------------------------------------------------------
 
-describe('createDialogSchema', () => {
+describe('createAssistantSchema', () => {
   it('accepts all required and optional fields', () => {
-    const result = createDialogSchema.safeParse({
+    const result = createAssistantSchema.safeParse({
       name: 'Sales Bot',
       description: 'A sales assistant',
       icon: 'bot-icon',
@@ -113,7 +113,7 @@ describe('createDialogSchema', () => {
   })
 
   it('accepts minimal required fields', () => {
-    const result = createDialogSchema.safeParse({
+    const result = createAssistantSchema.safeParse({
       name: 'Bot',
       kb_ids: [VALID_UUID],
     })
@@ -121,7 +121,7 @@ describe('createDialogSchema', () => {
   })
 
   it('rejects empty name', () => {
-    const result = createDialogSchema.safeParse({
+    const result = createAssistantSchema.safeParse({
       name: '',
       kb_ids: [VALID_UUID],
     })
@@ -129,7 +129,7 @@ describe('createDialogSchema', () => {
   })
 
   it('rejects name exceeding 128 characters', () => {
-    const result = createDialogSchema.safeParse({
+    const result = createAssistantSchema.safeParse({
       name: 'x'.repeat(129),
       kb_ids: [VALID_UUID],
     })
@@ -137,7 +137,7 @@ describe('createDialogSchema', () => {
   })
 
   it('rejects empty kb_ids array', () => {
-    const result = createDialogSchema.safeParse({
+    const result = createAssistantSchema.safeParse({
       name: 'Bot',
       kb_ids: [],
     })
@@ -145,12 +145,12 @@ describe('createDialogSchema', () => {
   })
 
   it('rejects missing kb_ids', () => {
-    const result = createDialogSchema.safeParse({ name: 'Bot' })
+    const result = createAssistantSchema.safeParse({ name: 'Bot' })
     expect(result.success).toBe(false)
   })
 
   it('rejects non-UUID in kb_ids', () => {
-    const result = createDialogSchema.safeParse({
+    const result = createAssistantSchema.safeParse({
       name: 'Bot',
       kb_ids: ['not-a-uuid'],
     })
@@ -158,7 +158,7 @@ describe('createDialogSchema', () => {
   })
 
   it('accepts multiple valid UUIDs in kb_ids', () => {
-    const result = createDialogSchema.safeParse({
+    const result = createAssistantSchema.safeParse({
       name: 'Multi KB Bot',
       kb_ids: [VALID_UUID, VALID_UUID_2],
     })
@@ -167,22 +167,22 @@ describe('createDialogSchema', () => {
 })
 
 // ---------------------------------------------------------------------------
-// updateDialogSchema
+// updateAssistantSchema
 // ---------------------------------------------------------------------------
 
-describe('updateDialogSchema', () => {
+describe('updateAssistantSchema', () => {
   it('accepts partial updates', () => {
-    const result = updateDialogSchema.safeParse({ name: 'Updated Name' })
+    const result = updateAssistantSchema.safeParse({ name: 'Updated Name' })
     expect(result.success).toBe(true)
   })
 
   it('accepts empty object (no updates)', () => {
-    const result = updateDialogSchema.safeParse({})
+    const result = updateAssistantSchema.safeParse({})
     expect(result.success).toBe(true)
   })
 
   it('accepts is_public toggle', () => {
-    const result = updateDialogSchema.safeParse({ is_public: true })
+    const result = updateAssistantSchema.safeParse({ is_public: true })
     expect(result.success).toBe(true)
   })
 })
@@ -309,12 +309,12 @@ describe('deleteMessageParamsSchema', () => {
 })
 
 // ---------------------------------------------------------------------------
-// dialogAccessSchema
+// assistantAccessSchema
 // ---------------------------------------------------------------------------
 
-describe('dialogAccessSchema', () => {
+describe('assistantAccessSchema', () => {
   it('accepts user and team entries', () => {
-    const result = dialogAccessSchema.safeParse({
+    const result = assistantAccessSchema.safeParse({
       entries: [
         { entity_type: 'user', entity_id: VALID_UUID },
         { entity_type: 'team', entity_id: VALID_UUID_2 },
@@ -324,19 +324,19 @@ describe('dialogAccessSchema', () => {
   })
 
   it('accepts empty entries array', () => {
-    const result = dialogAccessSchema.safeParse({ entries: [] })
+    const result = assistantAccessSchema.safeParse({ entries: [] })
     expect(result.success).toBe(true)
   })
 
   it('rejects invalid entity_type', () => {
-    const result = dialogAccessSchema.safeParse({
+    const result = assistantAccessSchema.safeParse({
       entries: [{ entity_type: 'group', entity_id: VALID_UUID }],
     })
     expect(result.success).toBe(false)
   })
 
   it('rejects invalid entity_id', () => {
-    const result = dialogAccessSchema.safeParse({
+    const result = assistantAccessSchema.safeParse({
       entries: [{ entity_type: 'user', entity_id: 'not-uuid' }],
     })
     expect(result.success).toBe(false)
@@ -390,7 +390,7 @@ describe('ttsSchema', () => {
 })
 
 // ---------------------------------------------------------------------------
-// conversationIdParamSchema / dialogIdParamSchema
+// conversationIdParamSchema / assistantIdParamSchema
 // ---------------------------------------------------------------------------
 
 describe('UUID param schemas', () => {
@@ -404,13 +404,13 @@ describe('UUID param schemas', () => {
     expect(result.success).toBe(false)
   })
 
-  it('dialogIdParamSchema accepts valid UUID', () => {
-    const result = dialogIdParamSchema.safeParse({ id: VALID_UUID })
+  it('assistantIdParamSchema accepts valid UUID', () => {
+    const result = assistantIdParamSchema.safeParse({ id: VALID_UUID })
     expect(result.success).toBe(true)
   })
 
-  it('dialogIdParamSchema rejects invalid UUID', () => {
-    const result = dialogIdParamSchema.safeParse({ id: 'bad' })
+  it('assistantIdParamSchema rejects invalid UUID', () => {
+    const result = assistantIdParamSchema.safeParse({ id: 'bad' })
     expect(result.success).toBe(false)
   })
 })
