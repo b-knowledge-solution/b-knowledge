@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { renderWithQueryClient } from '../../test-utils'
+import React from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k, i18n: { language: 'en', changeLanguage: vi.fn() } }),
@@ -20,7 +21,8 @@ import AuditLogPage from '../../../src/features/audit/pages/AuditLogPage'
 describe('AuditLogPage', () => {
   it('renders once', () => {
     global.fetch = vi.fn(() => Promise.resolve(new Response(JSON.stringify([])))) as any
-    renderWithQueryClient(<AuditLogPage />)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(<QueryClientProvider client={qc}><AuditLogPage /></QueryClientProvider>)
     expect(screen.getAllByText(/auditLog/).length).toBeGreaterThan(0)
   })
 })
