@@ -260,7 +260,7 @@ class TestEntityResolutionCallSetup:
             except Exception:
                 pass
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
 
         # After call, prompt_variables should have defaults
         assert er.prompt_variables["record_delimiter"] == DEFAULT_RECORD_DELIMITER
@@ -286,7 +286,7 @@ class TestEntityResolutionCallSetup:
             except Exception:
                 pass
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
 
         assert er.prompt_variables["record_delimiter"] == "||"
         assert er.prompt_variables["entity_index_delimiter"] == "@@"
@@ -338,7 +338,7 @@ class TestEntityResolutionCandidatePairing:
             except Exception:
                 pass
 
-        asyncio.get_event_loop().run_until_complete(run())
+        asyncio.run(run())
 
         # is_similarity should have been called for pairs involving ALICIA
         # (ALICE, ALICIA) and (ALICIA, BOB) — but NOT (ALICE, BOB)

@@ -62,7 +62,7 @@ class TestKGSearchChat:
 
         # Simulate a cache hit
         with patch("rag.graphrag.search.get_llm_cache", return_value="cached answer"):
-            result = asyncio.get_event_loop().run_until_complete(
+            result = asyncio.run(
                 kgs._chat(mock_llm, "system prompt", [{"role": "user", "content": "hello"}], {})
             )
 
@@ -79,7 +79,7 @@ class TestKGSearchChat:
 
         with patch("rag.graphrag.search.get_llm_cache", return_value=None):
             with patch("rag.graphrag.search.set_llm_cache") as mock_set_cache:
-                result = asyncio.get_event_loop().run_until_complete(
+                result = asyncio.run(
                     kgs._chat(mock_llm, "system", [{"role": "user", "content": "hi"}], {})
                 )
 
@@ -95,7 +95,7 @@ class TestKGSearchChat:
 
         with patch("rag.graphrag.search.get_llm_cache", return_value=None):
             with pytest.raises(Exception):
-                asyncio.get_event_loop().run_until_complete(
+                asyncio.run(
                     kgs._chat(mock_llm, "system", [{"role": "user", "content": "hi"}], {})
                 )
 
@@ -371,7 +371,7 @@ class TestKGSearchQueryRewrite:
                     with patch("rag.graphrag.search.json_repair") as mock_json_repair:
                         mock_json_repair.loads.return_value = {"answer_type_keywords": ["PERSON"], "entities_from_query": ["Alice"]}
                         mock_json_repair.JSONDecodeError = ValueError
-                        ty_kwds, ents = asyncio.get_event_loop().run_until_complete(
+                        ty_kwds, ents = asyncio.run(
                             kgs.query_rewrite(mock_llm, "Who is Alice?", ["idx"], "kb1")
                         )
 
@@ -395,7 +395,7 @@ class TestKGSearchQueryRewrite:
                             "entities_from_query": many_ents,
                         }
                         mock_json_repair.JSONDecodeError = ValueError
-                        _, ents = asyncio.get_event_loop().run_until_complete(
+                        _, ents = asyncio.run(
                             kgs.query_rewrite(mock_llm, "query", ["idx"], "kb1")
                         )
 

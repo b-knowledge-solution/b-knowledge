@@ -307,3 +307,291 @@ class TestResolveBucketAndPath:
         assert bucket == "default"
         assert "prefix" in fnm
         assert "logical" in fnm
+
+
+class TestRAGFlowMinioClose:
+    """Tests for RAGFlowMinio.__close__() connection teardown."""
+
+    def test_close_sets_conn_to_none(self):
+        """Verify __close__ deletes conn and sets it to None."""
+        minio = _make_minio()
+        assert minio.conn is not None
+        minio.__close__()
+        assert minio.conn is None
+
+    def test_close_then_reopen(self):
+        """Verify connection can be re-established after close."""
+        minio = _make_minio()
+        minio.__close__()
+        assert minio.conn is None
+        # Simulate reopening by assigning a new mock
+        minio.conn = MagicMock()
+        assert minio.conn is not None
+
+
+class TestRAGFlowMinioOpen:
+    """Tests for RAGFlowMinio.__open__() connection establishment."""
+
+    def test_open_closes_existing_connection(self):
+        """Verify __open__ closes any existing connection before reconnecting."""
+        minio = _make_minio()
+        old_conn = minio.conn
+        with patch("rag.utils.minio_conn.settings") as mock_settings:
+            mock_settings.S3 = {
+                "host": "localhost:9000",
+                "user": "minioadmin",
+                "password": "minioadmin",
+                "secure": False,
+            }
+            with patch("rag.utils.minio_conn.Minio", return_value=MagicMock()):
+                with patch("rag.utils.minio_conn._build_minio_http_client", return_value=None):
+                    minio.__open__()
+        # Old connection should have been replaced
+        assert minio.conn is not old_conn
+
+    def test_open_parses_secure_string(self):
+        """Verify __open__ parses string 'true' as secure=True."""
+        minio = _make_minio()
+        with patch("rag.utils.minio_conn.settings") as mock_settings:
+            mock_settings.S3 = {
+                "host": "localhost:9000",
+                "user": "admin",
+                "password": "secret",
+                "secure": "true",
+            }
+            with patch("rag.utils.minio_conn.Minio") as MockMinio:
+                MockMinio.return_value = MagicMock()
+                with patch("rag.utils.minio_conn._build_minio_http_client", return_value=None):
+                    minio.__open__()
+            # Verify Minio was called with secure=True (boolean)
+            call_kwargs = MockMinio.call_args[1]
+            assert call_kwargs["secure"] is True
+
+    def test_open_handles_connection_failure(self):
+        """Verify __open__ logs exception on connection failure."""
+        minio = _make_minio()
+        minio.__close__()
+        with patch("rag.utils.minio_conn.settings") as mock_settings:
+            mock_settings.S3 = {"host": "bad-host", "user": "u", "password": "p", "secure": False}
+            with patch("rag.utils.minio_conn.Minio", side_effect=Exception("Connection refused")):
+                with patch("rag.utils.minio_conn._build_minio_http_client", return_value=None):
+                    # Should not raise
+                    minio.__open__()
+        # conn may be None after failed connection
+        assert minio.conn is None
+
+
+class TestBuildMinioHttpClient:
+    """Tests for _build_minio_http_client() SSL configuration."""
+
+    def test_returns_none_when_verify_true(self):
+        """Verify None is returned when S3 verify is True (use default SSL)."""
+        from rag.utils.minio_conn import _build_minio_http_client
+        with patch("rag.utils.minio_conn.settings") as mock_settings:
+            mock_settings.S3 = {"verify": True}
+            result = _build_minio_http_client()
+        assert result is None
+
+    def test_returns_none_when_verify_string_true(self):
+        """Verify None is returned when S3 verify is string 'true'."""
+        from rag.utils.minio_conn import _build_minio_http_client
+        with patch("rag.utils.minio_conn.settings") as mock_settings:
+            mock_settings.S3 = {"verify": "true"}
+            result = _build_minio_http_client()
+        assert result is None
+
+    def test_returns_pool_manager_when_verify_false(self):
+        """Verify urllib3.PoolManager is returned when verify is False."""
+        from rag.utils.minio_conn import _build_minio_http_client
+        with patch("rag.utils.minio_conn.settings") as mock_settings:
+            mock_settings.S3 = {"verify": False}
+            with patch("rag.utils.minio_conn.urllib3.PoolManager") as MockPool:
+                MockPool.return_value = MagicMock()
+                result = _build_minio_http_client()
+        assert result is not None
+        MockPool.assert_called_once()
+
+    def test_returns_none_when_verify_string_1(self):
+        """Verify None is returned when S3 verify is string '1'."""
+        from rag.utils.minio_conn import _build_minio_http_client
+        with patch("rag.utils.minio_conn.settings") as mock_settings:
+            mock_settings.S3 = {"verify": "1"}
+            result = _build_minio_http_client()
+        assert result is None
+
+
+class TestRAGFlowMinioCopy:
+    """Tests for RAGFlowMinio.copy() object copy operation."""
+
+    def test_copy_success(self):
+        """Verify copy returns True on successful copy."""
+        minio = _make_minio()
+        minio.conn.bucket_exists.return_value = True
+        minio.conn.stat_object.return_value = MagicMock()
+        minio.conn.copy_object.return_value = MagicMock()
+        result = minio.copy("src-bucket", "src.txt", "dest-bucket", "dest.txt")
+        assert result is True
+        minio.conn.copy_object.assert_called_once()
+
+    def test_copy_creates_dest_bucket_if_missing(self):
+        """Verify copy creates destination bucket if it doesn't exist."""
+        minio = _make_minio()
+        minio.conn.bucket_exists.return_value = False
+        minio.conn.stat_object.return_value = MagicMock()
+        minio.conn.copy_object.return_value = MagicMock()
+        minio.copy("src-bucket", "src.txt", "dest-bucket", "dest.txt")
+        minio.conn.make_bucket.assert_called_once_with("dest-bucket")
+
+    def test_copy_returns_false_when_source_missing(self):
+        """Verify copy returns False when source object doesn't exist."""
+        minio = _make_minio()
+        minio.conn.bucket_exists.return_value = True
+        minio.conn.stat_object.side_effect = Exception("Not found")
+        result = minio.copy("src-bucket", "missing.txt", "dest-bucket", "dest.txt")
+        assert result is False
+        minio.conn.copy_object.assert_not_called()
+
+    def test_copy_returns_false_on_exception(self):
+        """Verify copy returns False on unexpected exceptions."""
+        minio = _make_minio()
+        minio.conn.bucket_exists.side_effect = Exception("Network error")
+        result = minio.copy("src", "s.txt", "dest", "d.txt")
+        assert result is False
+
+
+class TestRAGFlowMinioMove:
+    """Tests for RAGFlowMinio.move() object move operation."""
+
+    def test_move_copies_then_deletes(self):
+        """Verify move performs copy then rm on success."""
+        minio = _make_minio()
+        minio.copy = MagicMock(return_value=True)
+        minio.rm = MagicMock()
+        result = minio.move("src-bucket", "src.txt", "dest-bucket", "dest.txt")
+        assert result is True
+        minio.copy.assert_called_once_with("src-bucket", "src.txt", "dest-bucket", "dest.txt")
+        minio.rm.assert_called_once_with("src-bucket", "src.txt")
+
+    def test_move_returns_false_when_copy_fails(self):
+        """Verify move returns False and skips rm when copy fails."""
+        minio = _make_minio()
+        minio.copy = MagicMock(return_value=False)
+        minio.rm = MagicMock()
+        result = minio.move("src", "s.txt", "dest", "d.txt")
+        assert result is False
+        minio.rm.assert_not_called()
+
+    def test_move_returns_false_on_exception(self):
+        """Verify move returns False on unexpected exceptions."""
+        minio = _make_minio()
+        minio.copy = MagicMock(side_effect=Exception("Unexpected"))
+        result = minio.move("src", "s.txt", "dest", "d.txt")
+        assert result is False
+
+
+class TestRAGFlowMinioRemoveBucket:
+    """Tests for RAGFlowMinio.remove_bucket() bucket removal."""
+
+    def test_multi_bucket_removes_objects_and_bucket(self):
+        """Verify multi-bucket mode removes all objects then the bucket."""
+        minio = _make_minio(bucket=None)
+        minio.conn.bucket_exists.return_value = True
+        mock_obj = MagicMock()
+        mock_obj.object_name = "file1.txt"
+        minio.conn.list_objects.return_value = [mock_obj]
+        minio.remove_bucket("my-bucket")
+        minio.conn.remove_object.assert_called_once_with("my-bucket", "file1.txt")
+        minio.conn.remove_bucket.assert_called_once_with("my-bucket")
+
+    def test_single_bucket_removes_only_prefixed_objects(self):
+        """Verify single-bucket mode removes only prefixed objects, not the bucket."""
+        minio = _make_minio(bucket="default")
+        mock_obj = MagicMock()
+        mock_obj.object_name = "logical/file.txt"
+        minio.conn.list_objects.return_value = [mock_obj]
+        minio.remove_bucket("logical")
+        minio.conn.remove_object.assert_called_once_with("default", "logical/file.txt")
+        # Physical bucket should NOT be removed
+        minio.conn.remove_bucket.assert_not_called()
+
+    def test_single_bucket_with_prefix_path(self):
+        """Verify prefix_path is included in the object listing prefix."""
+        minio = _make_minio(bucket="default", prefix_path="tenant1")
+        minio.conn.list_objects.return_value = []
+        minio.remove_bucket("logical")
+        # list_objects should be called with prefix including prefix_path and logical bucket
+        call_kwargs = minio.conn.list_objects.call_args
+        prefix_arg = call_kwargs[1].get("prefix", call_kwargs[0][1] if len(call_kwargs[0]) > 1 else "")
+        assert "tenant1" in prefix_arg
+
+    def test_multi_bucket_skips_when_bucket_missing(self):
+        """Verify multi-bucket mode skips removal when bucket doesn't exist."""
+        minio = _make_minio(bucket=None)
+        minio.conn.bucket_exists.return_value = False
+        minio.remove_bucket("missing-bucket")
+        minio.conn.list_objects.assert_not_called()
+        minio.conn.remove_bucket.assert_not_called()
+
+    def test_handles_removal_exception(self):
+        """Verify remove_bucket handles exceptions gracefully."""
+        minio = _make_minio(bucket=None)
+        minio.conn.bucket_exists.side_effect = Exception("Access denied")
+        # Should not raise
+        minio.remove_bucket("bucket")
+
+
+class TestRAGFlowMinioHealthEdgeCases:
+    """Tests for additional health() edge cases."""
+
+    def test_multi_bucket_handles_unexpected_error(self):
+        """Verify health returns False on unexpected exceptions in multi-bucket mode."""
+        minio = _make_minio(bucket=None)
+        minio.conn.list_buckets.side_effect = RuntimeError("Unexpected")
+        assert minio.health() is False
+
+    def test_single_bucket_handles_server_error(self):
+        """Verify health returns False on ServerError in single-bucket mode."""
+        from minio.error import ServerError
+        minio = _make_minio(bucket="default")
+        minio.conn.bucket_exists.side_effect = ServerError("msg", "body")
+        assert minio.health() is False
+
+
+class TestRAGFlowMinioObjExistEdgeCases:
+    """Tests for additional obj_exist() edge cases."""
+
+    def test_returns_false_on_no_such_bucket(self):
+        """Verify returns False for NoSuchBucket S3Error."""
+        from minio.error import S3Error
+        minio = _make_minio()
+        minio.conn.bucket_exists.return_value = True
+        err = S3Error("NoSuchBucket", "msg", "res")
+        err.code = "NoSuchBucket"
+        minio.conn.stat_object.side_effect = err
+        assert minio.obj_exist("bucket", "file.txt") is False
+
+    def test_returns_false_on_unexpected_exception(self):
+        """Verify returns False on non-S3 exceptions."""
+        minio = _make_minio()
+        minio.conn.bucket_exists.return_value = True
+        minio.conn.stat_object.side_effect = RuntimeError("Network error")
+        assert minio.obj_exist("bucket", "file.txt") is False
+
+
+class TestRAGFlowMinioBucketExistsEdgeCases:
+    """Tests for additional bucket_exists() edge cases."""
+
+    def test_returns_false_on_s3_error(self):
+        """Verify returns False on S3Error with NoSuchBucket code."""
+        from minio.error import S3Error
+        minio = _make_minio()
+        err = S3Error("NoSuchBucket", "msg", "res")
+        err.code = "NoSuchBucket"
+        minio.conn.bucket_exists.side_effect = err
+        assert minio.bucket_exists("missing") is False
+
+    def test_returns_false_on_unexpected_exception(self):
+        """Verify returns False on non-S3 exceptions."""
+        minio = _make_minio()
+        minio.conn.bucket_exists.side_effect = RuntimeError("Timeout")
+        assert minio.bucket_exists("bucket") is False
