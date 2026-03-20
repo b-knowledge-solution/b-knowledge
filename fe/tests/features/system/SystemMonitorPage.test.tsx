@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { renderWithQueryClient } from '../../test-utils'
 
 const vi_mockSystemService = vi.hoisted(() => ({
   getSystemHealth: vi.fn()
@@ -52,17 +53,17 @@ describe('SystemMonitorPage', () => {
   })
 
   it('renders monitor page', () => {
-    render(<SystemMonitorPage />)
+    renderWithQueryClient(<SystemMonitorPage />)
     expect(screen.getAllByText(/systemMonitor/).length).toBeGreaterThan(0)
   })
 
   it('loads health on mount', async () => {
-    render(<SystemMonitorPage />)
+    renderWithQueryClient(<SystemMonitorPage />)
     await waitFor(() => expect(vi_mockSystemService.getSystemHealth).toHaveBeenCalled())
   })
 
   it('displays service health', async () => {
-    render(<SystemMonitorPage />)
+    renderWithQueryClient(<SystemMonitorPage />)
     // Allow initial fetch microtasks to complete
     await Promise.resolve()
     await waitFor(() => {
@@ -72,13 +73,13 @@ describe('SystemMonitorPage', () => {
   })
 
   it('shows connected status badge', async () => {
-    render(<SystemMonitorPage />)
+    renderWithQueryClient(<SystemMonitorPage />)
     await Promise.resolve()
     await waitFor(() => expect(screen.getAllByText(/healthy/).length).toBeGreaterThan(0))
   })
 
   it('displays system metrics', async () => {
-    render(<SystemMonitorPage />)
+    renderWithQueryClient(<SystemMonitorPage />)
     await Promise.resolve()
     await waitFor(() => {
       expect(screen.getByText(/uptime/i)).toBeInTheDocument()
@@ -94,7 +95,7 @@ describe('SystemMonitorPage', () => {
       return 123 as any
     })
 
-    render(<SystemMonitorPage />)
+    renderWithQueryClient(<SystemMonitorPage />)
     await waitFor(() => expect(vi_mockSystemService.getSystemHealth).toHaveBeenCalled())
 
     // There should be an interval registered
@@ -110,7 +111,7 @@ describe('SystemMonitorPage', () => {
   })
 
   it('allows refresh interval change', async () => {
-    render(<SystemMonitorPage />)
+    renderWithQueryClient(<SystemMonitorPage />)
     const intervals = screen.getAllByText(/30s|1m|5m|10m/)
     if (intervals.length > 1) {
       fireEvent.click(intervals[1])
@@ -128,13 +129,13 @@ describe('SystemMonitorPage', () => {
       },
       system: { uptime: 3600, memory: { rss: 100, heapTotal: 50, heapUsed: 25, external: 10 }, loadAvg: [0.5], cpus: 4, platform: 'linux', arch: 'x64', hostname: 'server' }
     })
-    render(<SystemMonitorPage />)
+    renderWithQueryClient(<SystemMonitorPage />)
     await Promise.resolve()
     await waitFor(() => expect(screen.getAllByText(/error/).length).toBeGreaterThan(0), { timeout: 5000 })
   })
 
   it('refreshes on manual click', async () => {
-    render(<SystemMonitorPage />)
+    renderWithQueryClient(<SystemMonitorPage />)
     await waitFor(() => expect(vi_mockSystemService.getSystemHealth).toHaveBeenCalled())
     const refreshBtn = screen.getByTestId('refresh').closest('button')
     if (refreshBtn) {
@@ -147,7 +148,7 @@ describe('SystemMonitorPage', () => {
 
   it('handles health check errors', async () => {
     vi_mockSystemService.getSystemHealth.mockRejectedValueOnce(new Error('Failed to fetch health'))
-    render(<SystemMonitorPage />)
+    renderWithQueryClient(<SystemMonitorPage />)
     await waitFor(() => expect(vi_mockSystemService.getSystemHealth).toHaveBeenCalled())
   })
 
@@ -162,7 +163,7 @@ describe('SystemMonitorPage', () => {
       },
       system: { uptime: 3600, memory: { rss: 100, heapTotal: 50, heapUsed: 25, external: 10 }, loadAvg: [0.5], cpus: 4, platform: 'linux', arch: 'x64', hostname: 'server' }
     })
-    render(<SystemMonitorPage />)
+    renderWithQueryClient(<SystemMonitorPage />)
     await Promise.resolve()
     await waitFor(() => expect(screen.getAllByText(/disabled/).length).toBeGreaterThan(0), { timeout: 5000 })
   })

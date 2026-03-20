@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { renderWithQueryClient } from '../../test-utils'
 
 const vi_mockSystemService = vi.hoisted(() => ({
   getSystemTools: vi.fn(),
@@ -43,13 +44,13 @@ describe('SystemToolsPage', () => {
   })
 
   it('renders tools page', () => {
-    render(<SystemToolsPage />)
+    renderWithQueryClient(<SystemToolsPage />)
     expect(screen.getByText(/systemTools/)).toBeInTheDocument()
   })
 
   it('loads tools on mount', async () => {
     vi_mockSystemService.getSystemTools.mockResolvedValue([])
-    render(<SystemToolsPage />)
+    renderWithQueryClient(<SystemToolsPage />)
     await waitFor(() => expect(vi_mockSystemService.getSystemTools).toHaveBeenCalled())
   })
 
@@ -59,7 +60,7 @@ describe('SystemToolsPage', () => {
       { id: '2', name: 'Grafana', description: 'Dashboards', icon: 'grafana.svg', url: 'http://localhost:3000', order: 2, enabled: true }
     ]
     vi_mockSystemService.getSystemTools.mockResolvedValue(tools)
-    render(<SystemToolsPage />)
+    renderWithQueryClient(<SystemToolsPage />)
     await waitFor(() => {
       expect(screen.getByText('Prometheus')).toBeInTheDocument()
       expect(screen.getByText('Grafana')).toBeInTheDocument()
@@ -68,19 +69,19 @@ describe('SystemToolsPage', () => {
 
   it('shows loading state', () => {
     vi_mockSystemService.getSystemTools.mockImplementationOnce(() => new Promise(() => {}))
-    render(<SystemToolsPage />)
+    renderWithQueryClient(<SystemToolsPage />)
     expect(screen.getByText(/systemTools.loading/)).toBeInTheDocument()
   })
 
   it('shows error state', async () => {
     vi_mockSystemService.getSystemTools.mockRejectedValueOnce(new Error('API Error'))
-    render(<SystemToolsPage />)
+    renderWithQueryClient(<SystemToolsPage />)
     await waitFor(() => expect(screen.getByTestId('alert')).toBeInTheDocument())
   })
 
   it('retries on error', async () => {
     vi_mockSystemService.getSystemTools.mockRejectedValueOnce(new Error('API Error'))
-    render(<SystemToolsPage />)
+    renderWithQueryClient(<SystemToolsPage />)
     await waitFor(() => expect(screen.getByTestId('refresh')).toBeInTheDocument())
     const retryBtn = screen.getByTestId('refresh').closest('button')
     if (retryBtn) {
@@ -93,7 +94,7 @@ describe('SystemToolsPage', () => {
   it('shows empty state when no tools', async () => {
     vi_mockSystemService.getSystemTools.mockReset()
     vi_mockSystemService.getSystemTools.mockResolvedValue([])
-    render(<SystemToolsPage />)
+    renderWithQueryClient(<SystemToolsPage />)
     await waitFor(() => expect(screen.queryByText(/systemTools.noToolsConfigured/i) || screen.queryByText(/empty/i)).toBeInTheDocument())
   })
 
@@ -103,7 +104,7 @@ describe('SystemToolsPage', () => {
     ]
     vi_mockSystemService.getSystemTools.mockResolvedValue(tools)
     window.open = vi.fn()
-    render(<SystemToolsPage />)
+    renderWithQueryClient(<SystemToolsPage />)
     await waitFor(() => {
       const toolCard = screen.getByText('Tool').closest('div')
       if (toolCard) fireEvent.click(toolCard)
@@ -112,7 +113,7 @@ describe('SystemToolsPage', () => {
 
   it('handles network errors', async () => {
     vi_mockSystemService.getSystemTools.mockRejectedValueOnce(new Error('Network error'))
-    render(<SystemToolsPage />)
+    renderWithQueryClient(<SystemToolsPage />)
     await waitFor(() => expect(screen.getByTestId('alert')).toBeInTheDocument())
   })
 })
