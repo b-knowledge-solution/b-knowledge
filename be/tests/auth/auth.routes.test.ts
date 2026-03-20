@@ -47,14 +47,21 @@ vi.mock('../../src/modules/auth/auth.service.js', () => ({
     isTokenExpired: vi.fn(),
 }));
 
-vi.mock('../../src/modules/users/user.service.js', () => ({
+vi.mock('../../src/modules/users/services/user.service.js', () => ({
     userService: {
         findOrCreateUser: vi.fn(),
         recordUserIp: vi.fn().mockResolvedValue(undefined),
     },
 }));
 
-vi.mock('../../src/modules/audit/audit.service.js', () => ({
+vi.mock('@/modules/users/index.js', () => ({
+    userService: {
+        findOrCreateUser: vi.fn(),
+        recordUserIp: vi.fn().mockResolvedValue(undefined),
+    },
+}));
+
+vi.mock('../../src/modules/audit/services/audit.service.js', () => ({
     auditService: {
         log: vi.fn().mockResolvedValue(undefined),
     },
@@ -65,6 +72,20 @@ vi.mock('../../src/modules/audit/audit.service.js', () => ({
     AuditResourceType: {
         USER: 'USER',
     },
+}));
+
+vi.mock('@/shared/utils/ip.js', () => ({
+    getClientIp: vi.fn().mockReturnValue('127.0.0.1'),
+}));
+
+vi.mock('@/shared/services/ability.service.js', () => ({
+    abilityService: {
+        buildAbility: vi.fn(),
+    },
+}));
+
+vi.mock('@/shared/db/knex.js', () => ({
+    db: vi.fn(),
 }));
 
 describe('Auth Routes', () => {
@@ -103,12 +124,12 @@ describe('Auth Routes', () => {
 
     describe('User service integration', () => {
         it('should have findOrCreateUser available', async () => {
-            const { userService } = await import('../../src/modules/users/user.service.js');
+            const { userService } = await import('../../src/modules/users/services/user.service.js');
             expect(typeof userService.findOrCreateUser).toBe('function');
         });
 
         it('should have recordUserIp available', async () => {
-            const { userService } = await import('../../src/modules/users/user.service.js');
+            const { userService } = await import('../../src/modules/users/services/user.service.js');
             expect(typeof userService.recordUserIp).toBe('function');
         });
     });

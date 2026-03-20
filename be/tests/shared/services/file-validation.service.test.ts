@@ -151,7 +151,16 @@ describe('File Validation Service', () => {
 
     it('should remove path components', () => {
       expect(sanitizeFilename('/etc/passwd').sanitized).toBe('passwd');
-      expect(sanitizeFilename('C:\\Windows\\system.dll').sanitized).toBe('system.dll');
+      // On Linux, backslashes are not path separators; the function correctly
+      // rejects filenames containing backslashes as path traversal attempts
+      const winResult = sanitizeFilename('C:\\Windows\\system.dll');
+      if (process.platform === 'win32') {
+        expect(winResult.sanitized).toBe('system.dll');
+      } else {
+        // On Linux, backslashes trigger traversal guard
+        expect(winResult.sanitized).toBeNull();
+        expect(winResult.error).toContain('path traversal');
+      }
     });
 
     it('should reject empty filenames', () => {

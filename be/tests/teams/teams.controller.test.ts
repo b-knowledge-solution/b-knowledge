@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { TeamController } from '../../src/modules/teams/teams.controller.js'
+import { TeamController } from '../../src/modules/teams/controllers/teams.controller.js'
 import { createMockRequest, createMockResponse } from '../setup'
 
 // Hoist mocks
@@ -23,7 +23,7 @@ const mocks = vi.hoisted(() => ({
   mockGetClientIp: vi.fn(() => '127.0.0.1'),
 }))
 
-vi.mock('@/modules/teams/team.service.js', () => ({
+vi.mock('@/modules/teams/services/team.service.js', () => ({
   teamService: mocks.mockTeamService,
 }))
 

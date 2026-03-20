@@ -12,23 +12,40 @@ import { createMockRequest, createMockResponse } from '../setup'
 // Mocks
 // ---------------------------------------------------------------------------
 
-const mockSearchService = {
-  createSearchApp: vi.fn(),
-  getSearchApp: vi.fn(),
-  listSearchApps: vi.fn(),
-  updateSearchApp: vi.fn(),
-  deleteSearchApp: vi.fn(),
-  executeSearch: vi.fn(),
-}
-
-const mockAccessService = {
-  getAppAccess: vi.fn(),
-  setAppAccess: vi.fn(),
-  checkUserAccess: vi.fn(),
-}
+const { mockSearchService, mockAccessService } = vi.hoisted(() => ({
+  mockSearchService: {
+    createSearchApp: vi.fn(),
+    getSearchApp: vi.fn(),
+    listSearchApps: vi.fn(),
+    updateSearchApp: vi.fn(),
+    deleteSearchApp: vi.fn(),
+    executeSearch: vi.fn(),
+  },
+  mockAccessService: {
+    getAppAccess: vi.fn(),
+    setAppAccess: vi.fn(),
+    checkUserAccess: vi.fn(),
+  },
+}))
 
 vi.mock('../../src/modules/search/services/search.service.js', () => ({
   searchService: mockSearchService,
+}))
+
+vi.mock('@/shared/services/logger.service.js', () => ({
+  log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+}))
+
+vi.mock('@/modules/feedback/services/feedback.service.js', () => ({
+  feedbackService: {},
+}))
+
+vi.mock('@/shared/models/factory.js', () => ({
+  ModelFactory: { userTeam: { findAll: vi.fn().mockResolvedValue([]) } },
+}))
+
+vi.mock('@/shared/middleware/tenant.middleware.js', () => ({
+  getTenantId: vi.fn().mockReturnValue('default'),
 }))
 
 // Import the controller after mocks are set up

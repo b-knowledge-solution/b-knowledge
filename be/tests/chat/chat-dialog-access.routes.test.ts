@@ -12,19 +12,24 @@ import { createMockRequest, createMockResponse } from '../setup'
 // Mocks
 // ---------------------------------------------------------------------------
 
-const mockDialogService = {
-  createDialog: vi.fn(),
-  getDialog: vi.fn(),
-  listDialogs: vi.fn(),
-  updateDialog: vi.fn(),
-  deleteDialog: vi.fn(),
-}
+const { mockDialogService, mockAccessService } = vi.hoisted(() => ({
+  mockDialogService: {
+    createDialog: vi.fn(),
+    getDialog: vi.fn(),
+    listDialogs: vi.fn(),
+    updateDialog: vi.fn(),
+    deleteDialog: vi.fn(),
+  },
+  mockAccessService: {
+    getDialogAccess: vi.fn(),
+    setDialogAccess: vi.fn(),
+    checkUserAccess: vi.fn(),
+  },
+}))
 
-const mockAccessService = {
-  getDialogAccess: vi.fn(),
-  setDialogAccess: vi.fn(),
-  checkUserAccess: vi.fn(),
-}
+vi.mock('@/shared/services/logger.service.js', () => ({
+  log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+}))
 
 vi.mock('../../src/modules/chat/services/chat-dialog.service.js', () => ({
   chatDialogService: mockDialogService,

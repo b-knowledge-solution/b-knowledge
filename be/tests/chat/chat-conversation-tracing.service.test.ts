@@ -84,6 +84,20 @@ vi.mock('../../src/shared/services/web-search.service.js', () => ({
   searchWeb: () => Promise.resolve([]),
 }))
 
+vi.mock('@/modules/rag/index.js', () => ({
+  queryLogService: { logQuery: vi.fn() },
+}))
+
+vi.mock('@/shared/utils/language-detect.js', () => ({
+  detectLanguage: () => 'en',
+  buildLanguageInstruction: () => '',
+}))
+
+vi.mock('@/shared/services/ability.service.js', () => ({
+  abilityService: { buildAbility: vi.fn() },
+  buildOpenSearchAbacFilters: () => [],
+}))
+
 vi.mock('../../src/shared/prompts/index.js', () => ({
   fullQuestionPrompt: { system: 'sys', buildUser: () => 'user prompt' },
   crossLanguagePrompt: { system: 'sys', buildUser: () => 'cross prompt' },
@@ -116,7 +130,7 @@ const mockFindDefaults = vi.fn()
 
 vi.mock('../../src/shared/models/factory.js', () => ({
   ModelFactory: {
-    chatDialog: { findById: (...a: any[]) => mockDialogFindById(...a) },
+    chatAssistant: { findById: (...a: any[]) => mockDialogFindById(...a) },
     chatSession: {
       findById: () => Promise.resolve({ id: 'sess-1', user_id: 'user-1' }),
       create: (...a: any[]) => mockSessionCreate(...a),

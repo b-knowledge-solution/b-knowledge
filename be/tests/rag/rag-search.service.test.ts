@@ -114,7 +114,7 @@ describe('RagSearchService', () => {
         osResponse([makeHit('c1', 'text', 1.0, { available_int: 1 })]),
       )
 
-      const { chunks } = await service.fullTextSearch('ds1', 'text', 10)
+      const { chunks } = await service.fullTextSearch('t1', 'ds1', 'text', 10)
       expect(chunks[0]!.available).toBe(true)
     })
 
@@ -123,7 +123,7 @@ describe('RagSearchService', () => {
         osResponse([makeHit('c1', 'text', 1.0, { available_int: 0 })]),
       )
 
-      const { chunks } = await service.fullTextSearch('ds1', 'text', 10)
+      const { chunks } = await service.fullTextSearch('t1', 'ds1', 'text', 10)
       expect(chunks[0]!.available).toBe(false)
     })
 
@@ -142,7 +142,7 @@ describe('RagSearchService', () => {
       }
       mockSearch.mockResolvedValue(osResponse([hit]))
 
-      const { chunks } = await service.fullTextSearch('ds1', 'q', 10)
+      const { chunks } = await service.fullTextSearch('t1', 'ds1', 'q', 10)
       expect(chunks[0]!.available).toBe(true)
     })
 
@@ -156,7 +156,7 @@ describe('RagSearchService', () => {
         ]),
       )
 
-      const { chunks } = await service.fullTextSearch('ds1', 'text', 10)
+      const { chunks } = await service.fullTextSearch('t1', 'ds1', 'text', 10)
       expect(chunks[0]!.important_kwd).toEqual(['key1', 'key2'])
       expect(chunks[0]!.question_kwd).toEqual(['q1'])
     })
@@ -176,7 +176,7 @@ describe('RagSearchService', () => {
       }
       mockSearch.mockResolvedValue(osResponse([hit]))
 
-      const { chunks } = await service.fullTextSearch('ds1', 'q', 10)
+      const { chunks } = await service.fullTextSearch('t1', 'ds1', 'q', 10)
       expect(chunks[0]!.important_kwd).toEqual([])
       expect(chunks[0]!.question_kwd).toEqual([])
     })
@@ -188,7 +188,7 @@ describe('RagSearchService', () => {
         osResponse([makeHit('c1', content, 1.0)]),
       )
 
-      const { chunks } = await service.fullTextSearch('ds1', 'q', 10)
+      const { chunks } = await service.fullTextSearch('t1', 'ds1', 'q', 10)
       expect(chunks[0]!.token_count).toBe(Math.ceil(content.length / 4))
     })
 
@@ -209,7 +209,7 @@ describe('RagSearchService', () => {
       }
       mockSearch.mockResolvedValue(osResponse([hit]))
 
-      const { chunks } = await service.fullTextSearch('ds1', 'full', 10)
+      const { chunks } = await service.fullTextSearch('t1', 'ds1', 'full', 10)
       expect(chunks[0]!.highlight).toBe('<mark>full</mark> text here')
     })
 
@@ -218,7 +218,7 @@ describe('RagSearchService', () => {
         osResponse([makeHit('c1', 'no highlight', 1.0)]),
       )
 
-      const { chunks } = await service.fullTextSearch('ds1', 'q', 10)
+      const { chunks } = await service.fullTextSearch('t1', 'ds1', 'q', 10)
       expect(chunks[0]!.highlight).toBeUndefined()
     })
   })
@@ -231,7 +231,7 @@ describe('RagSearchService', () => {
     it('passes available_int: 1 term filter when available is true', async () => {
       mockSearch.mockResolvedValue(osResponse([], 0))
 
-      await service.listChunks('ds1', { available: true })
+      await service.listChunks('t1', 'ds1', { available: true })
 
       const body = mockSearch.mock.calls[0]![0].body
       const must = body.query.bool.must
@@ -245,7 +245,7 @@ describe('RagSearchService', () => {
     it('passes available_int: 0 term filter when available is false', async () => {
       mockSearch.mockResolvedValue(osResponse([], 0))
 
-      await service.listChunks('ds1', { available: false })
+      await service.listChunks('t1', 'ds1', { available: false })
 
       const body = mockSearch.mock.calls[0]![0].body
       const must = body.query.bool.must
@@ -259,7 +259,7 @@ describe('RagSearchService', () => {
     it('does not add available filter when available is undefined', async () => {
       mockSearch.mockResolvedValue(osResponse([], 0))
 
-      await service.listChunks('ds1', {})
+      await service.listChunks('t1', 'ds1', {})
 
       const body = mockSearch.mock.calls[0]![0].body
       const must = body.query.bool.must
@@ -286,7 +286,7 @@ describe('RagSearchService', () => {
         },
       })
 
-      await service.bulkSwitchChunks('ds1', ['c1', 'c2'], true)
+      await service.bulkSwitchChunks('t1', 'ds1', ['c1', 'c2'], true)
 
       expect(mockBulk).toHaveBeenCalledTimes(1)
       const bulkBody = mockBulk.mock.calls[0]![0].body
@@ -311,7 +311,7 @@ describe('RagSearchService', () => {
         },
       })
 
-      const result = await service.bulkSwitchChunks('ds1', ['c1', 'c2', 'c3'], false)
+      const result = await service.bulkSwitchChunks('t1', 'ds1', ['c1', 'c2', 'c3'], false)
       expect(result.updated).toBe(2)
     })
 
@@ -320,7 +320,7 @@ describe('RagSearchService', () => {
         body: { items: [] },
       })
 
-      const result = await service.bulkSwitchChunks('ds1', [], true)
+      const result = await service.bulkSwitchChunks('t1', 'ds1', [], true)
       expect(result.updated).toBe(0)
     })
   })
@@ -341,7 +341,7 @@ describe('RagSearchService', () => {
       )
 
       const { chunks } = await service.hybridSearch(
-        'ds1', 'query', [0.1], 10, 0, 0.5,
+        't1', 'ds1', 'query', [0.1], 10, 0, 0.5,
       )
 
       const c1 = chunks.find((c) => c.chunk_id === 'c1')
@@ -365,7 +365,7 @@ describe('RagSearchService', () => {
       )
 
       const { chunks } = await service.hybridSearch(
-        'ds1', 'query', [0.1], 10, 0, vectorWeight,
+        't1', 'ds1', 'query', [0.1], 10, 0, vectorWeight,
       )
 
       const c1 = chunks.find((c) => c.chunk_id === 'c1')
@@ -386,7 +386,7 @@ describe('RagSearchService', () => {
         body: { deleted: 3 },
       })
 
-      await service.deleteChunksByDocId('ds1', 'abc-def-123')
+      await service.deleteChunksByDocId('t1', 'ds1', 'abc-def-123')
 
       const body = mockDeleteByQuery.mock.calls[0]![0].body
       const docIdTerm = body.query.bool.must.find(
@@ -401,18 +401,19 @@ describe('RagSearchService', () => {
         body: { deleted: 1 },
       })
 
-      const result = await service.deleteChunksByDocId('ds1', 'docid')
+      const result = await service.deleteChunksByDocId('t1', 'ds1', 'docid')
 
       expect(mockDeleteByQuery).toHaveBeenCalledTimes(1)
       const callArg = mockDeleteByQuery.mock.calls[0]![0]
       // Index should follow knowledge_{tenantId} pattern
-      expect(callArg.index).toBe('knowledge_00000000000000000000000000000001')
+      expect(callArg.index).toBe('knowledge_t1')
       // Query must include both kb_id and doc_id
       const must = callArg.body.query.bool.must
       expect(must).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ term: { kb_id: 'ds1' } }),
           expect.objectContaining({ term: { doc_id: 'docid' } }),
+          expect.objectContaining({ term: { tenant_id: 't1' } }),
         ]),
       )
       expect(result.deleted).toBe(1)
@@ -433,7 +434,7 @@ describe('RagSearchService', () => {
         ]),
       )
 
-      const result = await service.search('ds1', {
+      const result = await service.search('t1', 'ds1', {
         query: 'test',
         method: 'full_text',
         similarity_threshold: 0.4,
@@ -449,7 +450,7 @@ describe('RagSearchService', () => {
     it('filters by doc_ids when provided', async () => {
       mockSearch.mockResolvedValue(osResponse([makeHit('c1', 'text', 1.0)]))
 
-      await service.search('ds1', {
+      await service.search('t1', 'ds1', {
         query: 'q',
         method: 'full_text',
         doc_ids: ['doc-a', 'doc-b'],
@@ -470,7 +471,7 @@ describe('RagSearchService', () => {
         osResponse([makeHit('c1', 'text', 0.8)]),
       )
 
-      const result = await service.search('ds1', {
+      const result = await service.search('t1', 'ds1', {
         query: 'test',
         method: 'full_text',
       })
@@ -485,7 +486,7 @@ describe('RagSearchService', () => {
       )
 
       const result = await service.search(
-        'ds1',
+        't1', 'ds1',
         { query: 'test', method: 'semantic' },
         [0.1, 0.2, 0.3],
       )

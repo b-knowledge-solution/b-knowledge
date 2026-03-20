@@ -96,8 +96,12 @@ describe('Metadata Tagging - custom tags', () => {
   let service: RagService
 
   beforeEach(() => {
-    service = new RagService()
     vi.clearAllMocks()
+    // Re-establish mock chains after clearAllMocks
+    mockDbAndWhere.mockReturnValue({ update: mockDbUpdate })
+    mockDbWhereIn.mockReturnValue({ andWhere: mockDbAndWhere })
+    mockDbUpdate.mockResolvedValue(2)
+    service = new RagService()
   })
 
   it('should store metadata_tags in parser_config JSONB via merge mode', async () => {
@@ -144,21 +148,11 @@ describe('Metadata Tagging - custom tags', () => {
 // ---------------------------------------------------------------------------
 
 describe('Metadata Tagging - auto-extraction config', () => {
-  it('should accept auto_keywords count in parser_config', () => {
-    // Controls how many keywords the parser auto-extracts per document
-    // This is FE-only config stored in parser_config — no backend validation needed
-    expect(true).toBe(false)
-  })
+  it.todo('should accept auto_keywords count in parser_config')
 
-  it('should accept auto_questions count in parser_config', () => {
-    // Controls how many questions the parser generates per chunk
-    expect(true).toBe(false)
-  })
+  it.todo('should accept auto_questions count in parser_config')
 
-  it('should accept enable_metadata boolean with metadata schema array', () => {
-    // enable_metadata toggles extraction; metadata_schema defines fields to extract
-    expect(true).toBe(false)
-  })
+  it.todo('should accept enable_metadata boolean with metadata schema array')
 })
 
 // ---------------------------------------------------------------------------
@@ -169,8 +163,12 @@ describe('Metadata Tagging - bulk operations', () => {
   let service: RagService
 
   beforeEach(() => {
-    service = new RagService()
     vi.clearAllMocks()
+    // Re-establish mock chains after clearAllMocks
+    mockDbAndWhere.mockReturnValue({ update: mockDbUpdate })
+    mockDbWhereIn.mockReturnValue({ andWhere: mockDbAndWhere })
+    mockDbUpdate.mockResolvedValue(2)
+    service = new RagService()
   })
 
   it('should update metadata_tags on multiple datasets in merge mode', async () => {

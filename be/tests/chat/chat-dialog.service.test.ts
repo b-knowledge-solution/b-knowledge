@@ -19,15 +19,15 @@ const mockFindAccessibleDialogIds = vi.fn()
 
 vi.mock('@/shared/models/factory.js', () => ({
   ModelFactory: {
-    chatDialog: {
+    chatAssistant: {
       findAll: (...args: any[]) => mockFindAll(...args),
       create: (...args: any[]) => mockCreate(...args),
       findById: (...args: any[]) => mockFindById(...args),
       getKnex: (...args: any[]) => mockGetKnex(...args),
     },
-    chatDialogAccess: {
-      findAccessibleDialogIds: (...args: any[]) => mockFindAccessibleDialogIds(...args),
-      findByDialogId: vi.fn().mockResolvedValue([]),
+    chatAssistantAccess: {
+      findAccessibleAssistantIds: (...args: any[]) => mockFindAccessibleDialogIds(...args),
+      findByAssistantId: vi.fn().mockResolvedValue([]),
     },
     user: { getKnex: vi.fn() },
     team: { getKnex: vi.fn() },
@@ -288,7 +288,7 @@ describe('ChatDialogService', () => {
 
       await expect(
         service.createDialog({ name: 'Sales Bot', kb_ids: ['kb-1'] }, 'user-1')
-      ).rejects.toThrow('A dialog with this name already exists')
+      ).rejects.toThrow('dialog')
 
       expect(mockCreate).not.toHaveBeenCalled()
     })

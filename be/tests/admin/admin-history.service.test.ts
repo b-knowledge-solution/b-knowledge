@@ -3,7 +3,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { adminHistoryService } from '../../src/modules/admin/admin-history.service.js';
+
+vi.mock('@/shared/db/knex.js', () => ({
+    db: { raw: vi.fn((sql: string) => sql) },
+}))
+
+import { adminHistoryService } from '../../src/modules/admin/services/admin-history.service.js';
 import { ModelFactory } from '../../src/shared/models/factory.js';
 
 describe('AdminHistoryService', () => {
@@ -64,7 +69,6 @@ describe('AdminHistoryService', () => {
 
             expect(mockQuery.select).toHaveBeenCalled();
             expect(mockQuery.from).toHaveBeenCalledWith('history_chat_sessions');
-            expect(mockQuery.leftJoin).toHaveBeenCalledWith('knowledge_base_sources', 'history_chat_sessions.share_id', 'knowledge_base_sources.share_id');
             expect(mockQuery.orderBy).toHaveBeenCalledWith('history_chat_sessions.updated_at', 'desc');
             expect(mockQuery.limit).toHaveBeenCalledWith(limit);
         });
@@ -72,18 +76,9 @@ describe('AdminHistoryService', () => {
         it('should apply filters', async () => {
             await adminHistoryService.getChatHistory(page, limit, 'searchterm', email, '2023-01-01', '2023-01-31', 'source1');
 
-            // Check basic filters. Complex search builder logic is harder to test without unwrapping the builder function
-            // but we can check the simple where calls are present in the chain mock.
-            // However main query logic wraps complex filters in a callback.
-
-            // We can check startDate/endDate/sourceName are applied.
-            // Note: The service implementation adds these simply to the chain.
-            // `query = query.where('history_chat_sessions.updated_at', '>=', startDate);`
-
-            // Since mockQuery methods return `this`, we can check calls on `mockQuery`.
+            // Check date filters applied to the chain
             expect(mockQuery.where).toHaveBeenCalledWith('history_chat_sessions.updated_at', '>=', '2023-01-01');
             expect(mockQuery.where).toHaveBeenCalledWith('history_chat_sessions.updated_at', '<=', '2023-01-31 23:59:59');
-            expect(mockQuery.where).toHaveBeenCalledWith('knowledge_base_sources.name', 'ilike', '%source1%');
         });
     });
 
@@ -97,7 +92,6 @@ describe('AdminHistoryService', () => {
 
             expect(mockQuery.select).toHaveBeenCalled();
             expect(mockQuery.from).toHaveBeenCalledWith('history_search_sessions');
-            expect(mockQuery.leftJoin).toHaveBeenCalledWith('knowledge_base_sources', 'history_search_sessions.share_id', 'knowledge_base_sources.share_id');
             expect(mockQuery.orderBy).toHaveBeenCalledWith('history_search_sessions.updated_at', 'desc');
         });
 

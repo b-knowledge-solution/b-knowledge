@@ -89,7 +89,7 @@ describe('ChatDialogService – RBAC logic', () => {
 
       // Mock: return all dialogs for admin
       const builder = makeBuilder(ALL_DIALOGS)
-      factory.ModelFactory.chatDialog.findAll = vi.fn().mockResolvedValue(ALL_DIALOGS)
+      factory.ModelFactory.chatAssistant.findAll = vi.fn().mockResolvedValue(ALL_DIALOGS)
 
       const result = await chatDialogService.listDialogs(ADMIN_USER.id)
 
@@ -110,12 +110,12 @@ describe('ChatDialogService – RBAC logic', () => {
 
       // Mock: return only dialogs created by this user
       const ownDialogs = [DIALOG_OWN]
-      factory.ModelFactory.chatDialog.findAll = vi.fn().mockResolvedValue(ownDialogs)
+      factory.ModelFactory.chatAssistant.findAll = vi.fn().mockResolvedValue(ownDialogs)
 
       const result = await chatDialogService.listDialogs(REGULAR_USER.id)
 
       expect(result).toEqual(ownDialogs)
-      expect(factory.ModelFactory.chatDialog.findAll).toHaveBeenCalledWith(
+      expect(factory.ModelFactory.chatAssistant.findAll).toHaveBeenCalledWith(
         { created_by: REGULAR_USER.id },
         expect.any(Object)
       )
