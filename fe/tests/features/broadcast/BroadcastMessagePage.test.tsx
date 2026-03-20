@@ -7,7 +7,7 @@ const vi_mockBroadcastService = vi.hoisted(() => ({
   updateMessage: vi.fn(),
   deleteMessage: vi.fn()
 }))
-vi.mock('../../../src/features/broadcast/api/broadcastMessageService', () => ({ broadcastMessageService: vi_mockBroadcastService }))
+vi.mock('../../../src/features/broadcast/api/broadcastApi', () => ({ broadcastMessageService: vi_mockBroadcastService }))
 vi.mock('react-i18next', () => ({ 
   useTranslation: () => ({ t: (k: string) => k }),
   initReactI18next: { type: '3rdParty', init: () => {} }
