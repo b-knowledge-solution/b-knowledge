@@ -1,7 +1,7 @@
 /**
- * @fileoverview Tests for ChatDialogService RBAC, pagination, search, name uniqueness, and access.
+ * @fileoverview Tests for ChatAssistantService RBAC, pagination, search, name uniqueness, and access.
  *
- * Covers listAccessibleDialogs with pagination/search, createDialog name uniqueness,
+ * Covers listAccessibleAssistants with pagination/search, createAssistant name uniqueness,
  * and checkUserAccess role-based rules.
  */
 
@@ -15,7 +15,7 @@ const mockFindAll = vi.fn()
 const mockCreate = vi.fn()
 const mockFindById = vi.fn()
 const mockGetKnex = vi.fn()
-const mockFindAccessibleDialogIds = vi.fn()
+const mockFindAccessibleAssistantIds = vi.fn()
 
 vi.mock('@/shared/models/factory.js', () => ({
   ModelFactory: {
@@ -26,7 +26,7 @@ vi.mock('@/shared/models/factory.js', () => ({
       getKnex: (...args: any[]) => mockGetKnex(...args),
     },
     chatAssistantAccess: {
-      findAccessibleAssistantIds: (...args: any[]) => mockFindAccessibleDialogIds(...args),
+      findAccessibleAssistantIds: (...args: any[]) => mockFindAccessibleAssistantIds(...args),
       findByAssistantId: vi.fn().mockResolvedValue([]),
     },
     user: { getKnex: vi.fn() },
@@ -46,7 +46,7 @@ vi.mock('@/shared/services/logger.service.js', () => ({
 }))
 
 // Import after mocking
-import { ChatDialogService } from '../../src/modules/chat/services/chat-dialog.service'
+import { ChatAssistantService } from '../../src/modules/chat/services/chat-assistant.service'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -95,23 +95,23 @@ function makeBuilder(result: unknown, countTotal = 0) {
 // Test data
 // ---------------------------------------------------------------------------
 
-const DIALOG_1 = { id: 'd1', name: 'Sales Bot', is_public: true, created_by: 'admin-1' }
-const DIALOG_2 = { id: 'd2', name: 'Support Bot', is_public: false, created_by: 'user-1' }
-const DIALOG_3 = { id: 'd3', name: 'Internal KB', is_public: false, created_by: 'user-2' }
-const DIALOG_4 = { id: 'd4', name: 'Dev Helper', is_public: false, created_by: 'user-3' }
-const DIALOG_5 = { id: 'd5', name: 'HR Bot', is_public: true, created_by: 'admin-1' }
+const ASSISTANT_1 = { id: 'd1', name: 'Sales Bot', is_public: true, created_by: 'admin-1' }
+const ASSISTANT_2 = { id: 'd2', name: 'Support Bot', is_public: false, created_by: 'user-1' }
+const ASSISTANT_3 = { id: 'd3', name: 'Internal KB', is_public: false, created_by: 'user-2' }
+const ASSISTANT_4 = { id: 'd4', name: 'Dev Helper', is_public: false, created_by: 'user-3' }
+const ASSISTANT_5 = { id: 'd5', name: 'HR Bot', is_public: true, created_by: 'admin-1' }
 
-const ALL_DIALOGS = [DIALOG_1, DIALOG_2, DIALOG_3, DIALOG_4, DIALOG_5]
+const ALL_ASSISTANTS = [ASSISTANT_1, ASSISTANT_2, ASSISTANT_3, ASSISTANT_4, ASSISTANT_5]
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('ChatDialogService', () => {
-  let service: ChatDialogService
+describe('ChatAssistantService', () => {
+  let service: ChatAssistantService
 
   beforeEach(() => {
-    service = new ChatDialogService()
+    service = new ChatAssistantService()
     vi.clearAllMocks()
   })
 
@@ -120,58 +120,58 @@ describe('ChatDialogService', () => {
   })
 
   // -----------------------------------------------------------------------
-  // listAccessibleDialogs – admin visibility
+  // listAccessibleAssistants – admin visibility
   // -----------------------------------------------------------------------
 
-  describe('listAccessibleDialogs – admin visibility', () => {
-    it('admin sees all dialogs (no RBAC filtering)', async () => {
-      const builder = makeBuilder(ALL_DIALOGS, 5)
+  describe('listAccessibleAssistants – admin visibility', () => {
+    it('admin sees all assistants (no RBAC filtering)', async () => {
+      const builder = makeBuilder(ALL_ASSISTANTS, 5)
       mockGetKnex.mockReturnValue(builder)
 
-      const result = await service.listAccessibleDialogs('admin-1', 'admin', [])
+      const result = await service.listAccessibleAssistants('admin-1', 'admin', [])
 
       expect(result.data).toHaveLength(5)
       expect(result.total).toBe(5)
-      // Admin should NOT trigger findAccessibleDialogIds
-      expect(mockFindAccessibleDialogIds).not.toHaveBeenCalled()
+      // Admin should NOT trigger findAccessibleAssistantIds
+      expect(mockFindAccessibleAssistantIds).not.toHaveBeenCalled()
     })
 
     it('superadmin also bypasses RBAC', async () => {
-      const builder = makeBuilder(ALL_DIALOGS, 5)
+      const builder = makeBuilder(ALL_ASSISTANTS, 5)
       mockGetKnex.mockReturnValue(builder)
 
-      const result = await service.listAccessibleDialogs('sa-1', 'superadmin', [])
+      const result = await service.listAccessibleAssistants('sa-1', 'superadmin', [])
 
       expect(result.data).toHaveLength(5)
-      expect(mockFindAccessibleDialogIds).not.toHaveBeenCalled()
+      expect(mockFindAccessibleAssistantIds).not.toHaveBeenCalled()
     })
   })
 
   // -----------------------------------------------------------------------
-  // listAccessibleDialogs – pagination
+  // listAccessibleAssistants – pagination
   // -----------------------------------------------------------------------
 
-  describe('listAccessibleDialogs – pagination', () => {
+  describe('listAccessibleAssistants – pagination', () => {
     it('applies page and pageSize', async () => {
-      const builder = makeBuilder([DIALOG_3], 5)
+      const builder = makeBuilder([ASSISTANT_3], 5)
       mockGetKnex.mockReturnValue(builder)
 
-      const result = await service.listAccessibleDialogs('admin-1', 'admin', [], {
+      const result = await service.listAccessibleAssistants('admin-1', 'admin', [], {
         page: 2,
         pageSize: 2,
       })
 
-      expect(result.data).toEqual([DIALOG_3])
+      expect(result.data).toEqual([ASSISTANT_3])
       expect(result.total).toBe(5)
       expect(builder.limit).toHaveBeenCalledWith(2)
       expect(builder.offset).toHaveBeenCalledWith(2) // (2-1)*2 = 2
     })
 
     it('defaults to page 1 and pageSize 20', async () => {
-      const builder = makeBuilder(ALL_DIALOGS, 5)
+      const builder = makeBuilder(ALL_ASSISTANTS, 5)
       mockGetKnex.mockReturnValue(builder)
 
-      await service.listAccessibleDialogs('admin-1', 'admin', [])
+      await service.listAccessibleAssistants('admin-1', 'admin', [])
 
       expect(builder.limit).toHaveBeenCalledWith(20)
       expect(builder.offset).toHaveBeenCalledWith(0)
@@ -179,25 +179,25 @@ describe('ChatDialogService', () => {
   })
 
   // -----------------------------------------------------------------------
-  // listAccessibleDialogs – search
+  // listAccessibleAssistants – search
   // -----------------------------------------------------------------------
 
-  describe('listAccessibleDialogs – search', () => {
+  describe('listAccessibleAssistants – search', () => {
     it('applies ILIKE filter on name and description', async () => {
-      const builder = makeBuilder([DIALOG_1], 1)
+      const builder = makeBuilder([ASSISTANT_1], 1)
       mockGetKnex.mockReturnValue(builder)
 
-      await service.listAccessibleDialogs('admin-1', 'admin', [], { search: 'sales' })
+      await service.listAccessibleAssistants('admin-1', 'admin', [], { search: 'sales' })
 
       // The where callback triggers whereILike and orWhereILike
       expect(builder.where).toHaveBeenCalled()
     })
 
     it('skips search filter when search is empty', async () => {
-      const builder = makeBuilder(ALL_DIALOGS, 5)
+      const builder = makeBuilder(ALL_ASSISTANTS, 5)
       mockGetKnex.mockReturnValue(builder)
 
-      await service.listAccessibleDialogs('admin-1', 'admin', [], { search: '' })
+      await service.listAccessibleAssistants('admin-1', 'admin', [], { search: '' })
 
       // where should only be called for RBAC (which admin skips), not search
       // The search filter branch is skipped for empty/falsy search
@@ -206,57 +206,57 @@ describe('ChatDialogService', () => {
   })
 
   // -----------------------------------------------------------------------
-  // listAccessibleDialogs – user visibility
+  // listAccessibleAssistants – user visibility
   // -----------------------------------------------------------------------
 
-  describe('listAccessibleDialogs – user visibility', () => {
-    it('user sees own, public, and shared dialogs', async () => {
-      const accessibleDialogs = [DIALOG_1, DIALOG_2, DIALOG_5]
-      const builder = makeBuilder(accessibleDialogs, 3)
+  describe('listAccessibleAssistants – user visibility', () => {
+    it('user sees own, public, and shared assistants', async () => {
+      const accessibleAssistants = [ASSISTANT_1, ASSISTANT_2, ASSISTANT_5]
+      const builder = makeBuilder(accessibleAssistants, 3)
       mockGetKnex.mockReturnValue(builder)
-      mockFindAccessibleDialogIds.mockResolvedValue(['d4'])
+      mockFindAccessibleAssistantIds.mockResolvedValue(['d4'])
 
-      const result = await service.listAccessibleDialogs('user-1', 'user', ['team-1'])
+      const result = await service.listAccessibleAssistants('user-1', 'user', ['team-1'])
 
-      expect(result.data).toEqual(accessibleDialogs)
+      expect(result.data).toEqual(accessibleAssistants)
       expect(result.total).toBe(3)
       expect(builder.where).toHaveBeenCalled()
     })
 
     it('user with no accessible IDs does not call orWhereIn', async () => {
-      const builder = makeBuilder([DIALOG_1, DIALOG_2], 2)
+      const builder = makeBuilder([ASSISTANT_1, ASSISTANT_2], 2)
       mockGetKnex.mockReturnValue(builder)
-      mockFindAccessibleDialogIds.mockResolvedValue([])
+      mockFindAccessibleAssistantIds.mockResolvedValue([])
 
-      await service.listAccessibleDialogs('user-1', 'user', [])
+      await service.listAccessibleAssistants('user-1', 'user', [])
 
       expect(builder.orWhereIn).not.toHaveBeenCalled()
     })
 
-    it('calls findAccessibleDialogIds with userId and teamIds', async () => {
+    it('calls findAccessibleAssistantIds with userId and teamIds', async () => {
       const builder = makeBuilder([], 0)
       mockGetKnex.mockReturnValue(builder)
-      mockFindAccessibleDialogIds.mockResolvedValue([])
+      mockFindAccessibleAssistantIds.mockResolvedValue([])
 
-      await service.listAccessibleDialogs('user-1', 'user', ['team-alpha', 'team-beta'])
+      await service.listAccessibleAssistants('user-1', 'user', ['team-alpha', 'team-beta'])
 
-      expect(mockFindAccessibleDialogIds).toHaveBeenCalledWith('user-1', ['team-alpha', 'team-beta'])
+      expect(mockFindAccessibleAssistantIds).toHaveBeenCalledWith('user-1', ['team-alpha', 'team-beta'])
     })
   })
 
   // -----------------------------------------------------------------------
-  // createDialog – name uniqueness
+  // createAssistant – name uniqueness
   // -----------------------------------------------------------------------
 
-  describe('createDialog', () => {
-    it('creates a dialog when name is unique', async () => {
+  describe('createAssistant', () => {
+    it('creates an assistant when name is unique', async () => {
       const created = { id: 'd-new', name: 'New Bot' }
       const uniqueBuilder = makeBuilder(undefined)
       uniqueBuilder.first = vi.fn().mockResolvedValue(undefined) // No duplicate
       mockGetKnex.mockReturnValue(uniqueBuilder)
       mockCreate.mockResolvedValue(created)
 
-      const result = await service.createDialog(
+      const result = await service.createAssistant(
         {
           name: 'New Bot',
           description: 'A new bot',
@@ -281,14 +281,14 @@ describe('ChatDialogService', () => {
     })
 
     it('rejects duplicate name (case-insensitive)', async () => {
-      const existingDialog = { id: 'd-existing', name: 'Sales Bot' }
+      const existingAssistant = { id: 'd-existing', name: 'Sales Bot' }
       const uniqueBuilder = makeBuilder(undefined)
-      uniqueBuilder.first = vi.fn().mockResolvedValue(existingDialog)
+      uniqueBuilder.first = vi.fn().mockResolvedValue(existingAssistant)
       mockGetKnex.mockReturnValue(uniqueBuilder)
 
       await expect(
-        service.createDialog({ name: 'Sales Bot', kb_ids: ['kb-1'] }, 'user-1')
-      ).rejects.toThrow('dialog')
+        service.createAssistant({ name: 'Sales Bot', kb_ids: ['kb-1'] }, 'user-1')
+      ).rejects.toThrow('assistant')
 
       expect(mockCreate).not.toHaveBeenCalled()
     })
@@ -299,7 +299,7 @@ describe('ChatDialogService', () => {
       mockGetKnex.mockReturnValue(uniqueBuilder)
       mockCreate.mockResolvedValue({ id: 'd-new' })
 
-      await service.createDialog({ name: 'Test Bot', kb_ids: ['kb-1'] }, 'user-1')
+      await service.createAssistant({ name: 'Test Bot', kb_ids: ['kb-1'] }, 'user-1')
 
       expect(uniqueBuilder.whereRaw).toHaveBeenCalledWith(
         'LOWER(name) = LOWER(?)',
@@ -313,7 +313,7 @@ describe('ChatDialogService', () => {
       mockGetKnex.mockReturnValue(uniqueBuilder)
       mockCreate.mockResolvedValue({ id: 'd-new' })
 
-      await service.createDialog(
+      await service.createAssistant(
         { name: 'Minimal Bot', kb_ids: ['kb-1'] },
         'user-1'
       )
@@ -347,38 +347,38 @@ describe('ChatDialogService', () => {
       expect(result).toBe(true)
     })
 
-    it('returns false for non-existent dialog', async () => {
+    it('returns false for non-existent assistant', async () => {
       mockFindById.mockResolvedValue(undefined)
 
       const result = await service.checkUserAccess('d-nope', 'user-1', 'user', [])
       expect(result).toBe(false)
     })
 
-    it('owner always has access to their own dialog', async () => {
-      mockFindById.mockResolvedValue(DIALOG_2) // created_by: 'user-1'
+    it('owner always has access to their own assistant', async () => {
+      mockFindById.mockResolvedValue(ASSISTANT_2) // created_by: 'user-1'
 
       const result = await service.checkUserAccess('d2', 'user-1', 'user', [])
       expect(result).toBe(true)
     })
 
-    it('public dialog is accessible to anyone', async () => {
-      mockFindById.mockResolvedValue(DIALOG_1) // is_public: true
+    it('public assistant is accessible to anyone', async () => {
+      mockFindById.mockResolvedValue(ASSISTANT_1) // is_public: true
 
       const result = await service.checkUserAccess('d1', 'random-user', 'user', [])
       expect(result).toBe(true)
     })
 
-    it('returns false for private dialog without access grant', async () => {
-      mockFindById.mockResolvedValue(DIALOG_3) // is_public: false, created_by: 'user-2'
-      mockFindAccessibleDialogIds.mockResolvedValue([])
+    it('returns false for private assistant without access grant', async () => {
+      mockFindById.mockResolvedValue(ASSISTANT_3) // is_public: false, created_by: 'user-2'
+      mockFindAccessibleAssistantIds.mockResolvedValue([])
 
       const result = await service.checkUserAccess('d3', 'user-1', 'user', [])
       expect(result).toBe(false)
     })
 
     it('returns true when user has explicit access grant', async () => {
-      mockFindById.mockResolvedValue(DIALOG_3)
-      mockFindAccessibleDialogIds.mockResolvedValue(['d3'])
+      mockFindById.mockResolvedValue(ASSISTANT_3)
+      mockFindAccessibleAssistantIds.mockResolvedValue(['d3'])
 
       const result = await service.checkUserAccess('d3', 'user-1', 'user', ['team-1'])
       expect(result).toBe(true)
