@@ -62,7 +62,7 @@ vi.mock('@/shared/services/logger.service.js', () => ({
   log: mocks.mockLog,
 }))
 
-vi.mock('@/modules/audit/audit.service.js', () => ({
+vi.mock('@/modules/audit/services/audit.service.js', () => ({
   auditService: mocks.mockAudit,
   AuditAction: {
     CREATE_TEAM: 'CREATE_TEAM',
@@ -72,7 +72,7 @@ vi.mock('@/modules/audit/audit.service.js', () => ({
   AuditResourceType: { TEAM: 'TEAM' },
 }))
 
-vi.mock('@/modules/users/user.service.js', () => ({
+vi.mock('@/modules/users/services/user.service.js', () => ({
   userService: { updateUserPermissions: mocks.mockUpdateUserPermissions }
 }))
 
@@ -81,7 +81,7 @@ vi.mock('uuid', () => ({
 }))
 
 // Lazy import service to ensure mocks apply
-import { TeamService } from '../../src/modules/teams/team.service.js'
+import { TeamService } from '../../src/modules/teams/services/team.service.js'
 
 describe('TeamService', () => {
   let teamService: TeamService

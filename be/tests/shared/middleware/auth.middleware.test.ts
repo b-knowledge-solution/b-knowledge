@@ -5,6 +5,21 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Mock dependencies required by auth.middleware.ts before importing it
+vi.mock('@/shared/services/logger.service.js', () => ({
+  log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+}))
+vi.mock('@/shared/config/rbac.js', async () => {
+  // Use actual RBAC module so permission checks are realistic
+  const actual = await vi.importActual<any>('../../../src/shared/config/rbac.js')
+  return actual
+})
+vi.mock('@/shared/services/ability.service.js', () => ({
+  abilityService: { loadCachedAbility: vi.fn(), buildAbilityFor: vi.fn(), cacheAbility: vi.fn() },
+  AppAbility: {},
+}))
+
 import {
   requireAuth,
   requirePermission,
@@ -248,8 +263,20 @@ describe('Auth Middleware', () => {
       expect(next).toHaveBeenCalled();
     });
 
-    it('should call next if user has explicit permission', () => {
+    it('should call next if user has explicit permission in array', () => {
       const user = createMockUser({ role: 'user', permissions: ['manage_users'] });
+      const req = createMockRequest({ session: { user } });
+      const res = createMockResponse();
+      const next = createMockNext();
+
+      const middleware = requirePermission('manage_users');
+      middleware(req, res, next);
+
+      expect(next).toHaveBeenCalled();
+    });
+
+    it('should call next if user has explicit permission in JSON string', () => {
+      const user = createMockUser({ role: 'user', permissions: JSON.stringify(['manage_users']) });
       const req = createMockRequest({ session: { user } });
       const res = createMockResponse();
       const next = createMockNext();

@@ -59,11 +59,6 @@ describe('History Models', () => {
 
       expect(mockQuery.select).toHaveBeenCalled()
       expect(mockQuery.from).toHaveBeenCalledWith('history_chat_sessions')
-      expect(mockQuery.leftJoin).toHaveBeenCalledWith(
-        'knowledge_base_sources', 
-        'history_chat_sessions.share_id', 
-        'knowledge_base_sources.share_id'
-      )
       expect(mockQuery.where).toHaveBeenCalledWith('history_chat_sessions.user_email', 'u@test.com')
       expect(mockQuery.where).toHaveBeenCalledWith('history_chat_sessions.updated_at', '>=', '2023-01-01')
       expect(mockQuery.whereExists).toHaveBeenCalled()

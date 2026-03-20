@@ -10,8 +10,8 @@ import { PARSER_OPTIONS } from '@/features/datasets/types'
 
 describe('ChangeParserDialog (unit)', () => {
   describe('PARSER_OPTIONS', () => {
-    it('contains exactly 13 parser types', () => {
-      expect(PARSER_OPTIONS).toHaveLength(13)
+    it('contains exactly 17 parser types', () => {
+      expect(PARSER_OPTIONS).toHaveLength(17)
     })
 
     it('includes all expected parser values', () => {
@@ -19,6 +19,7 @@ describe('ChangeParserDialog (unit)', () => {
       const expected = [
         'naive', 'qa', 'resume', 'manual', 'table', 'paper', 'book',
         'laws', 'presentation', 'one', 'picture', 'audio', 'email',
+        'code', 'openapi', 'adr', 'clinical',
       ]
       for (const v of expected) {
         expect(values).toContain(v)

@@ -7,31 +7,53 @@ const vi_mockSystemService = vi.hoisted(() => ({
   reloadTools: vi.fn()
 }))
 
-vi.mock('../../../src/features/system/api/systemToolsService', () => ({
+vi.mock('../../../src/features/system/api/systemToolsApi', () => ({
   getSystemTools: vi_mockSystemService.getSystemTools,
   getSystemHealth: vi_mockSystemService.getSystemHealth,
   reloadTools: vi_mockSystemService.reloadTools
 }))
-vi.mock('../../../src/features/auth/hooks/useAuth', () => ({
+// Mock sub-components to avoid heavy dependency chains
+vi.mock('../../../src/features/system/components/SystemToolCard', () => ({
+  default: ({ tool }: any) => <div data-testid="tool-card">{tool.name}</div>,
+}))
+vi.mock('../../../src/features/system/components/CronSchedulerSettings', () => ({
+  default: () => <div data-testid="cron-settings" />,
+}))
+vi.mock('@/lib/api', () => ({
+  api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+  apiFetch: vi.fn(),
+}))
+vi.mock('@/features/auth', () => ({
   useAuth: () => ({ user: { role: 'admin' }, isAuthenticated: true, isLoading: false })
 }))
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }), initReactI18next: { type: '3rdParty', init: () => {} } }))
-vi.mock('lucide-react', () => ({
-  AlertCircle: () => <div data-testid="alert" />,
-  RefreshCw: () => <div data-testid="refresh" />,
-  Server: () => <div />,
-  Database: () => <div />,
-  HardDrive: () => <div />,
-  Cpu: () => <div />,
-  Clock: () => <div />,
-  Activity: () => <div />,
-  Zap: () => <div />,
-  Box: () => <div />,
-  CheckCircle2: () => <div />,
-  XCircle: () => <div />,
-  HelpCircle: () => <div />,
-  ExternalLink: () => <div />
+// Mock TanStack Query to avoid real query scheduling
+const vi_mockQueryData = vi.hoisted(() => ({ current: undefined as any, isLoading: false, isError: false, error: null }))
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: () => ({
+    data: vi_mockQueryData.current,
+    isLoading: vi_mockQueryData.isLoading,
+    isError: vi_mockQueryData.isError,
+    error: vi_mockQueryData.error,
+    refetch: vi.fn(),
+  }),
+  useMutation: (opts: any) => ({ mutate: opts?.mutationFn || vi.fn(), isPending: false }),
+  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }))
+vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }), initReactI18next: { type: '3rdParty', init: () => {} } }))
+vi.mock('lucide-react', () => {
+  const NullIcon = () => null
+  const factory = {
+    default: NullIcon,
+    AlertCircle: () => <div data-testid="alert" />,
+    RefreshCw: () => <div data-testid="refresh" />,
+  } as Record<string | symbol, any>
+  return new Proxy(factory, {
+    get: (target, prop) => {
+      if (prop in target) return (target as any)[prop]
+      return NullIcon
+    }
+  })
+})
 
 import SystemToolsPage from '../../../src/features/system/pages/SystemToolsPage'
 

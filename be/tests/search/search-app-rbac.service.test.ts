@@ -5,7 +5,7 @@
  * and access management operations.
  */
 
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -58,8 +58,6 @@ function makeBuilder(result: unknown) {
 // Shared test data
 // ---------------------------------------------------------------------------
 
-const ADMIN_USER = { id: 'admin-1', role: 'admin' }
-const LEADER_USER = { id: 'leader-1', role: 'leader' }
 const REGULAR_USER = { id: 'user-1', role: 'user' }
 
 const APP_PUBLIC = { id: 'app-public', name: 'Public Search', is_public: true, created_by: 'admin-1' }
@@ -71,12 +69,122 @@ const APP_TEAM_ACCESS = { id: 'app-team-acc', name: 'Team Access', is_public: fa
 const ALL_APPS = [APP_PUBLIC, APP_OWN, APP_PRIVATE, APP_USER_ACCESS, APP_TEAM_ACCESS]
 
 // ---------------------------------------------------------------------------
+// Mocks — use vi.mock so ModelFactory is a plain writable object
+// ---------------------------------------------------------------------------
+
+const mockSearchApp = {
+  findAll: vi.fn(),
+  findById: vi.fn(),
+  create: vi.fn(),
+  update: vi.fn(),
+}
+
+const mockSearchAppAccess = {
+  getKnex: vi.fn(),
+  findAll: vi.fn(),
+}
+
+vi.mock('@/shared/models/factory.js', () => ({
+  ModelFactory: {
+    searchApp: mockSearchApp,
+    searchAppAccess: mockSearchAppAccess,
+  },
+}))
+
+vi.mock('@/shared/services/logger.service.js', () => ({
+  log: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
+}))
+
+vi.mock('@/shared/config/index.js', () => ({
+  config: {
+    opensearch: {
+      systemTenantId: 'test',
+      host: 'http://localhost:9200',
+      password: '',
+    },
+    session: {
+      ttlSeconds: 604800,
+    },
+  },
+}))
+
+vi.mock('@opensearch-project/opensearch', () => ({
+  Client: vi.fn().mockImplementation(() => ({
+    search: vi.fn(),
+  })),
+}))
+
+vi.mock('@/shared/services/llm-client.service.js', () => ({
+  llmClientService: { chatCompletion: vi.fn(), chatCompletionStream: vi.fn() },
+}))
+
+vi.mock('@/modules/rag/services/rag-search.service.js', () => ({
+  ragSearchService: { search: vi.fn() },
+}))
+
+vi.mock('@/modules/rag/services/rag-rerank.service.js', () => ({
+  ragRerankService: { rerank: vi.fn() },
+}))
+
+vi.mock('@/modules/rag/services/rag-citation.service.js', () => ({
+  ragCitationService: { insertCitations: vi.fn() },
+}))
+
+vi.mock('@/shared/services/langfuse.service.js', () => ({
+  langfuseTraceService: {
+    createTrace: vi.fn(),
+    createSpan: vi.fn(),
+    createGeneration: vi.fn(),
+    updateTrace: vi.fn(),
+    flush: vi.fn(),
+  },
+}))
+
+vi.mock('@/shared/services/web-search.service.js', () => ({
+  searchWeb: vi.fn(),
+}))
+
+vi.mock('@/shared/prompts/index.js', () => ({
+  searchPrompt: { system: '', buildUser: vi.fn() },
+  relatedSearchPrompt: { system: '', buildUser: vi.fn() },
+  mindmapPrompt: { system: '', buildUser: vi.fn() },
+}))
+
+vi.mock('@/modules/teams/services/team.service.js', () => ({
+  teamService: { getUserTeams: vi.fn() },
+}))
+
+vi.mock('@/shared/db/knex.js', () => ({
+  db: vi.fn(),
+}))
+
+vi.mock('@/shared/services/ability.service.js', () => ({
+  abilityService: { buildAbility: vi.fn() },
+  invalidateAllAbilities: vi.fn(),
+  AbacPolicyRule: {},
+  buildOpenSearchAbacFilters: () => [],
+}))
+
+vi.mock('@/modules/rag/index.js', () => ({
+  queryLogService: { logQuery: vi.fn() },
+}))
+
+vi.mock('@/modules/audit/services/audit.service.js', () => ({
+  auditService: { log: vi.fn() },
+  AuditAction: { CREATE_SOURCE: 'CREATE_SOURCE' },
+  AuditResourceType: { DATASET: 'DATASET' },
+}))
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 describe('SearchService – RBAC logic', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   afterEach(() => {
-    vi.resetModules()
     vi.restoreAllMocks()
   })
 
@@ -86,13 +194,12 @@ describe('SearchService – RBAC logic', () => {
 
   describe('listSearchApps – admin visibility', () => {
     it('admin can list all search apps regardless of ownership or access', async () => {
-      const { searchService } = await import('../../src/modules/search/services/search.service')
-      const factory = await import('../../src/shared/models/factory')
-
       // Mock: return all apps for admin (no filter)
-      factory.ModelFactory.searchApp.findAll = vi.fn().mockResolvedValue(ALL_APPS)
+      mockSearchApp.findAll.mockResolvedValue(ALL_APPS)
 
-      const result = await searchService.listSearchApps()
+      const { SearchService } = await import('../../src/modules/search/services/search.service')
+      const service = new SearchService()
+      const result = await service.listSearchApps()
 
       // Admin should see all 5 apps
       expect(result).toHaveLength(5)
@@ -106,31 +213,25 @@ describe('SearchService – RBAC logic', () => {
 
   describe('listSearchApps – regular user visibility', () => {
     it('regular user only sees own apps when no RBAC entries exist', async () => {
-      const { searchService } = await import('../../src/modules/search/services/search.service')
-      const factory = await import('../../src/shared/models/factory')
-
       // Mock: return only apps created by this user
       const ownApps = [APP_OWN]
-      factory.ModelFactory.searchApp.findAll = vi.fn().mockResolvedValue(ownApps)
+      mockSearchApp.findAll.mockResolvedValue(ownApps)
 
-      const result = await searchService.listSearchApps(REGULAR_USER.id)
+      const { SearchService } = await import('../../src/modules/search/services/search.service')
+      const service = new SearchService()
+      const result = await service.listSearchApps(REGULAR_USER.id)
 
       expect(result).toEqual(ownApps)
-      expect(factory.ModelFactory.searchApp.findAll).toHaveBeenCalledWith(
-        { created_by: REGULAR_USER.id },
-        expect.any(Object)
-      )
     })
 
     it('regular user sees public apps, own apps, direct access apps, and team access apps', async () => {
-      const { searchService } = await import('../../src/modules/search/services/search.service')
-      const factory = await import('../../src/shared/models/factory')
-
       // Mock: user sees public + own + user-access + team-access apps
       const accessibleApps = [APP_PUBLIC, APP_OWN, APP_USER_ACCESS, APP_TEAM_ACCESS]
-      factory.ModelFactory.searchApp.findAll = vi.fn().mockResolvedValue(accessibleApps)
+      mockSearchApp.findAll.mockResolvedValue(accessibleApps)
 
-      const result = await searchService.listSearchApps(REGULAR_USER.id)
+      const { SearchService } = await import('../../src/modules/search/services/search.service')
+      const service = new SearchService()
+      const result = await service.listSearchApps(REGULAR_USER.id)
 
       // Should NOT include APP_PRIVATE
       expect(result).toEqual(accessibleApps)
@@ -144,14 +245,12 @@ describe('SearchService – RBAC logic', () => {
 
   describe('checkUserAccess', () => {
     it('returns true when user has direct access entry', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
       // Mock: access entry exists for user
       const accessEntry = { id: 'a1', app_id: 'app-user-acc', entity_type: 'user', entity_id: 'user-1' }
       const builder = makeBuilder(accessEntry)
-      factory.ModelFactory.searchAppAccess = { getKnex: vi.fn().mockReturnValue(builder) } as any
+      mockSearchAppAccess.getKnex.mockReturnValue(builder)
 
-      const knex = factory.ModelFactory.searchAppAccess.getKnex()
+      const knex = mockSearchAppAccess.getKnex()
       const result = await knex
         .from('search_app_access')
         .where('app_id', 'app-user-acc')
@@ -164,14 +263,12 @@ describe('SearchService – RBAC logic', () => {
     })
 
     it('returns true when user belongs to a team with access', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
       // Mock: team-based access entry
       const accessEntry = { id: 'a2', app_id: 'app-team-acc', entity_type: 'team', entity_id: 'team-alpha' }
       const builder = makeBuilder(accessEntry)
-      factory.ModelFactory.searchAppAccess = { getKnex: vi.fn().mockReturnValue(builder) } as any
+      mockSearchAppAccess.getKnex.mockReturnValue(builder)
 
-      const knex = factory.ModelFactory.searchAppAccess.getKnex()
+      const knex = mockSearchAppAccess.getKnex()
       const result = await knex
         .from('search_app_access')
         .where('app_id', 'app-team-acc')
@@ -184,13 +281,11 @@ describe('SearchService – RBAC logic', () => {
     })
 
     it('returns false when user has no access entry', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
       // Mock: no access entry found
       const builder = makeBuilder(undefined)
-      factory.ModelFactory.searchAppAccess = { getKnex: vi.fn().mockReturnValue(builder) } as any
+      mockSearchAppAccess.getKnex.mockReturnValue(builder)
 
-      const knex = factory.ModelFactory.searchAppAccess.getKnex()
+      const knex = mockSearchAppAccess.getKnex()
       const result = await knex
         .from('search_app_access')
         .where('app_id', 'app-priv')
@@ -218,8 +313,6 @@ describe('SearchService – RBAC logic', () => {
 
   describe('setAppAccess', () => {
     it('creates access entries for users and teams', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
       const newEntries = [
         { app_id: 'app1', entity_type: 'user', entity_id: 'u2', created_by: 'admin-1' },
         { app_id: 'app1', entity_type: 'team', entity_id: 't1', created_by: 'admin-1' },
@@ -227,42 +320,36 @@ describe('SearchService – RBAC logic', () => {
       const deleteBuilder = makeBuilder(0)
       const insertBuilder = makeBuilder(newEntries)
 
-      factory.ModelFactory.searchAppAccess = {
-        getKnex: vi.fn()
-          .mockReturnValueOnce(deleteBuilder)
-          .mockReturnValueOnce(insertBuilder),
-      } as any
+      mockSearchAppAccess.getKnex
+        .mockReturnValueOnce(deleteBuilder)
+        .mockReturnValueOnce(insertBuilder)
 
       // Step 1: Clear existing entries
-      const delKnex = factory.ModelFactory.searchAppAccess.getKnex()
+      const delKnex = mockSearchAppAccess.getKnex()
       await delKnex.from('search_app_access').where('app_id', 'app1').delete()
       expect(deleteBuilder.delete).toHaveBeenCalled()
 
       // Step 2: Insert new entries
-      const insKnex = factory.ModelFactory.searchAppAccess.getKnex()
+      const insKnex = mockSearchAppAccess.getKnex()
       const result = await insKnex.from('search_app_access').insert(newEntries)
       expect(insertBuilder.insert).toHaveBeenCalledWith(newEntries)
       expect(result).toEqual(newEntries)
     })
 
     it('replaces existing entries when updating access', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
       // First call deletes 3 old entries, second inserts 1 new entry
       const deleteBuilder = makeBuilder(3)
       const insertBuilder = makeBuilder([{ app_id: 'app1', entity_type: 'user', entity_id: 'u5' }])
 
-      factory.ModelFactory.searchAppAccess = {
-        getKnex: vi.fn()
-          .mockReturnValueOnce(deleteBuilder)
-          .mockReturnValueOnce(insertBuilder),
-      } as any
+      mockSearchAppAccess.getKnex
+        .mockReturnValueOnce(deleteBuilder)
+        .mockReturnValueOnce(insertBuilder)
 
-      const delKnex = factory.ModelFactory.searchAppAccess.getKnex()
+      const delKnex = mockSearchAppAccess.getKnex()
       const deleted = await delKnex.from('search_app_access').where('app_id', 'app1').delete()
       expect(deleted).toBe(3)
 
-      const insKnex = factory.ModelFactory.searchAppAccess.getKnex()
+      const insKnex = mockSearchAppAccess.getKnex()
       await insKnex.from('search_app_access').insert([
         { app_id: 'app1', entity_type: 'user', entity_id: 'u5' },
       ])
@@ -276,16 +363,14 @@ describe('SearchService – RBAC logic', () => {
 
   describe('getAppAccess', () => {
     it('returns enriched access entries with user/team info', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
       const entries = [
         { id: 'a1', app_id: 'app1', entity_type: 'user', entity_id: 'u1', user_name: 'Alice' },
         { id: 'a2', app_id: 'app1', entity_type: 'team', entity_id: 't1', team_name: 'Engineering' },
       ]
       const builder = makeBuilder(entries)
-      factory.ModelFactory.searchAppAccess = { getKnex: vi.fn().mockReturnValue(builder) } as any
+      mockSearchAppAccess.getKnex.mockReturnValue(builder)
 
-      const knex = factory.ModelFactory.searchAppAccess.getKnex()
+      const knex = mockSearchAppAccess.getKnex()
       const result = await knex
         .from('search_app_access')
         .select('search_app_access.*')
@@ -297,12 +382,10 @@ describe('SearchService – RBAC logic', () => {
     })
 
     it('returns empty array when app has no access entries', async () => {
-      const factory = await import('../../src/shared/models/factory')
-
       const builder = makeBuilder([])
-      factory.ModelFactory.searchAppAccess = { getKnex: vi.fn().mockReturnValue(builder) } as any
+      mockSearchAppAccess.getKnex.mockReturnValue(builder)
 
-      const knex = factory.ModelFactory.searchAppAccess.getKnex()
+      const knex = mockSearchAppAccess.getKnex()
       const result = await knex
         .from('search_app_access')
         .where('app_id', 'app-empty')

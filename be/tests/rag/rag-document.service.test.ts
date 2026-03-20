@@ -149,7 +149,7 @@ describe('RagDocumentService', () => {
 
       await service.changeDocumentParser(datasetId, docId, { parser_id: 'pdf' })
 
-      expect(mockRagSearchService.deleteChunksByDocId).toHaveBeenCalledWith(datasetId, docId)
+      expect(mockRagSearchService.deleteChunksByDocId).toHaveBeenCalledWith('', datasetId, docId)
     })
 
     it('resets document progress, run, chunk_num, token_num', async () => {

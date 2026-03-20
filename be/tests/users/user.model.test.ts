@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { UserModel } from '../../src/modules/users/user.model.js'
-import { UserIpHistoryModel } from '../../src/modules/users/user-ip-history.model.js'
+import { UserModel } from '../../src/modules/users/models/user.model.js'
+import { UserIpHistoryModel } from '../../src/modules/users/models/user-ip-history.model.js'
 import { db } from '../../src/shared/db/knex.js'
 
 vi.mock('../../src/shared/db/knex.js', () => ({

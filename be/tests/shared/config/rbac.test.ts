@@ -8,8 +8,10 @@ import { describe, it, expect } from 'vitest';
 import {
   hasPermission,
   isAdminRole,
+  isAtLeastRole,
   DEFAULT_ROLE,
   ADMIN_ROLES,
+  ROLE_HIERARCHY,
   ROLE_PERMISSIONS,
   type Role,
 } from '../../../src/shared/config/rbac.js';
@@ -21,11 +23,30 @@ describe('RBAC Configuration', () => {
     });
   });
 
+  describe('ROLE_HIERARCHY', () => {
+    it('should assign super-admin the highest privilege level', () => {
+      expect(ROLE_HIERARCHY['super-admin']).toBe(100);
+    });
+
+    it('should assign admin a higher level than leader', () => {
+      expect(ROLE_HIERARCHY['admin']).toBeGreaterThan(ROLE_HIERARCHY['leader']);
+    });
+
+    it('should assign leader a higher level than user', () => {
+      expect(ROLE_HIERARCHY['leader']).toBeGreaterThan(ROLE_HIERARCHY['user']);
+    });
+
+    it('should assign user the lowest privilege level', () => {
+      expect(ROLE_HIERARCHY['user']).toBe(25);
+    });
+  });
+
   describe('ADMIN_ROLES', () => {
-    it('includes admin and leader only', () => {
+    it('includes super-admin, admin, and leader', () => {
+      expect(ADMIN_ROLES).toContain('super-admin');
       expect(ADMIN_ROLES).toContain('admin');
       expect(ADMIN_ROLES).toContain('leader');
-      expect(ADMIN_ROLES).toHaveLength(2);
+      expect(ADMIN_ROLES).toHaveLength(3);
     });
 
     it('excludes non-admin roles', () => {
@@ -177,6 +198,34 @@ describe('RBAC Configuration', () => {
       it('should return false for any permission', () => {
         expect(hasPermission('', 'view_chat')).toBe(false);
       });
+    });
+
+    describe('super-admin role', () => {
+      it('should have all permissions (short-circuit)', () => {
+        expect(hasPermission('super-admin', 'view_chat')).toBe(true);
+        expect(hasPermission('super-admin', 'manage_system')).toBe(true);
+        expect(hasPermission('super-admin', 'storage:delete')).toBe(true);
+      });
+    });
+  });
+
+  describe('isAtLeastRole', () => {
+    it('should return true when user role matches minimum role', () => {
+      expect(isAtLeastRole('admin', 'admin')).toBe(true);
+    });
+
+    it('should return true when user role exceeds minimum role', () => {
+      expect(isAtLeastRole('admin', 'leader')).toBe(true);
+      expect(isAtLeastRole('super-admin', 'admin')).toBe(true);
+    });
+
+    it('should return false when user role is below minimum role', () => {
+      expect(isAtLeastRole('user', 'leader')).toBe(false);
+      expect(isAtLeastRole('leader', 'admin')).toBe(false);
+    });
+
+    it('should return false for unknown role', () => {
+      expect(isAtLeastRole('unknown', 'user')).toBe(false);
     });
   });
 });

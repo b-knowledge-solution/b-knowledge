@@ -28,7 +28,7 @@ vi.mock('@/shared/models/factory.js', () => ({
       create: (...args: any[]) => mockSessionCreate(...args),
       getKnex: (...args: any[]) => mockSessionGetKnex(...args),
     },
-    chatDialog: {
+    chatAssistant: {
       findById: (...args: any[]) => mockDialogFindById(...args),
     },
     chatMessage: {
@@ -96,9 +96,24 @@ vi.mock('@/shared/services/langfuse.service.js', () => ({
   langfuseTraceService: {
     createTrace: vi.fn(),
     createSpan: vi.fn(),
+    createGeneration: vi.fn(),
     updateTrace: vi.fn(),
     flush: vi.fn(),
   },
+}))
+
+vi.mock('@/modules/rag/index.js', () => ({
+  queryLogService: { logQuery: vi.fn() },
+}))
+
+vi.mock('@/shared/utils/language-detect.js', () => ({
+  detectLanguage: () => 'en',
+  buildLanguageInstruction: () => '',
+}))
+
+vi.mock('@/shared/services/ability.service.js', () => ({
+  abilityService: { buildAbility: vi.fn() },
+  buildOpenSearchAbacFilters: () => [],
 }))
 
 vi.mock('uuid', () => ({
@@ -129,6 +144,7 @@ function makeBuilder(result: unknown) {
     whereIn: vi.fn().mockReturnThis(),
     andWhere: vi.fn().mockReturnThis(),
     delete: vi.fn().mockResolvedValue(result),
+    pluck: vi.fn().mockResolvedValue(result),
     count: vi.fn().mockReturnValue({ first: () => Promise.resolve({ count: '0' }) }),
     then: (onFulfilled: any) => Promise.resolve(result).then(onFulfilled),
   }
@@ -160,8 +176,11 @@ describe('ChatConversationService – operations', () => {
       const session = { id: 'conv-1', user_id: 'user-1', title: 'Old Name' }
       const updated = { id: 'conv-1', user_id: 'user-1', title: 'New Name' }
 
-      mockSessionFindById.mockResolvedValue(session)
-      mockSessionUpdate.mockResolvedValue(updated)
+      // First findById verifies ownership, second returns updated session
+      mockSessionFindById
+        .mockResolvedValueOnce(session)
+        .mockResolvedValueOnce(updated)
+      mockSessionUpdate.mockResolvedValue(undefined)
 
       const result = await service.renameConversation('conv-1', 'New Name', 'user-1')
 
@@ -222,7 +241,7 @@ describe('ChatConversationService – operations', () => {
 
       await expect(
         service.createConversation('d-nope', 'Chat', 'user-1')
-      ).rejects.toThrow('Dialog not found')
+      ).rejects.toThrow('Assistant not found')
     })
   })
 
@@ -320,19 +339,30 @@ describe('ChatConversationService – operations', () => {
 
   describe('deleteConversations', () => {
     it('deletes messages and sessions for given IDs', async () => {
+      // First call: pluck owned IDs (session getKnex)
+      const pluckBuilder = makeBuilder(['c1', 'c2'])
+      // Second call: delete messages (message getKnex)
       const msgBuilder = makeBuilder(5)
+      // Third call: delete sessions (session getKnex)
       const sessionBuilder = makeBuilder(2)
 
+      mockSessionGetKnex
+        .mockReturnValueOnce(pluckBuilder)
+        .mockReturnValueOnce(sessionBuilder)
       mockMessageGetKnex.mockReturnValue(msgBuilder)
-      mockSessionGetKnex.mockReturnValue(sessionBuilder)
 
       const result = await service.deleteConversations(['c1', 'c2'], 'user-1')
 
       expect(result).toBe(2)
+      // Verify ownership check via pluck
+      expect(pluckBuilder.whereIn).toHaveBeenCalledWith('id', ['c1', 'c2'])
+      expect(pluckBuilder.andWhere).toHaveBeenCalledWith('user_id', 'user-1')
+      expect(pluckBuilder.pluck).toHaveBeenCalledWith('id')
+      // Verify message deletion
       expect(msgBuilder.whereIn).toHaveBeenCalledWith('session_id', ['c1', 'c2'])
       expect(msgBuilder.delete).toHaveBeenCalled()
+      // Verify session deletion
       expect(sessionBuilder.whereIn).toHaveBeenCalledWith('id', ['c1', 'c2'])
-      expect(sessionBuilder.andWhere).toHaveBeenCalledWith('user_id', 'user-1')
     })
   })
 

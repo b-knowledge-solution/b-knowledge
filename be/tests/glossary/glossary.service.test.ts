@@ -44,7 +44,7 @@ vi.mock('../../src/shared/models/factory.js', () => ({
   },
 }))
 
-import { glossaryService } from '../../src/modules/glossary/glossary.service.js'
+import { glossaryService } from '../../src/modules/glossary/services/glossary.service.js'
 
 describe('GlossaryService', () => {
   beforeEach(() => {

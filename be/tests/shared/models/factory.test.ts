@@ -61,13 +61,6 @@ describe('ModelFactory', () => {
       expect(model.constructor.name).toBe('SystemConfigModel');
     });
 
-    it('should instantiate knowledgeBaseSource model', () => {
-      const model = ModelFactory.knowledgeBaseSource;
-
-      expect(model).toBeDefined();
-      expect(model.constructor.name).toBe('KnowledgeBaseSourceModel');
-    });
-
     it('should instantiate auditLog model', () => {
       const model = ModelFactory.auditLog;
 
@@ -130,7 +123,6 @@ describe('ModelFactory', () => {
       expect(ModelFactory.chatSession).toBeDefined();
       expect(ModelFactory.chatMessage).toBeDefined();
       expect(ModelFactory.systemConfig).toBeDefined();
-      expect(ModelFactory.knowledgeBaseSource).toBeDefined();
       expect(ModelFactory.auditLog).toBeDefined();
       expect(ModelFactory.userIpHistory).toBeDefined();
       expect(ModelFactory.broadcastMessage).toBeDefined();
@@ -152,7 +144,7 @@ describe('ModelFactory', () => {
         ModelFactory.chatSession,
         ModelFactory.chatMessage,
         ModelFactory.systemConfig,
-        ModelFactory.knowledgeBaseSource,
+
         ModelFactory.auditLog,
         ModelFactory.userIpHistory,
         ModelFactory.broadcastMessage,
@@ -167,7 +159,7 @@ describe('ModelFactory', () => {
         ModelFactory.chatSession,
         ModelFactory.chatMessage,
         ModelFactory.systemConfig,
-        ModelFactory.knowledgeBaseSource,
+
         ModelFactory.auditLog,
         ModelFactory.userIpHistory,
         ModelFactory.broadcastMessage,

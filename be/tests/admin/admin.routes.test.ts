@@ -15,6 +15,16 @@ vi.mock('../../src/shared/services/logger.service.js', () => ({
     },
 }));
 
+vi.mock('@/modules/users/index.js', () => ({
+    userService: {
+        getAllUsers: vi.fn().mockResolvedValue([]),
+    },
+}));
+
+vi.mock('@/shared/middleware/auth.middleware.js', () => ({
+    requireRole: vi.fn(() => (_req: any, _res: any, next: any) => next()),
+}));
+
 describe('Admin Routes', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -22,7 +32,7 @@ describe('Admin Routes', () => {
 
     describe('Module exports', () => {
         it('should export a router', async () => {
-            const adminRoutes = await import('../../src/modules/admin/admin.routes.js');
+            const adminRoutes = await import('../../src/modules/admin/routes/admin.routes.js');
             expect(adminRoutes.default).toBeDefined();
         });
     });

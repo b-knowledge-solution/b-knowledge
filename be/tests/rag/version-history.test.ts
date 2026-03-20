@@ -96,6 +96,7 @@ vi.mock('@opensearch-project/opensearch', () => ({
   })),
 }))
 
+import { Client } from '@opensearch-project/opensearch'
 import { RagService } from '../../src/modules/rag/services/rag.service'
 import { RagSearchService } from '../../src/modules/rag/services/rag-search.service'
 
@@ -124,6 +125,21 @@ const parentDataset = {
   updated_at: new Date('2026-01-01'),
 }
 
+/**
+ * Selectively clear mock call history without destroying mockImplementation.
+ * This avoids the vitest vi.clearAllMocks() issue that clears mockImplementation
+ * on the OpenSearch Client constructor.
+ */
+function clearMockHistory() {
+  mockDatasetModel.findAll.mockClear()
+  mockDatasetModel.findById.mockClear()
+  mockDatasetModel.create.mockClear()
+  mockDatasetModel.update.mockClear()
+  mockDatasetModel.getKnex.mockClear()
+  mockMaxFirstFn.mockClear()
+  mockSearchFn.mockClear()
+}
+
 // ---------------------------------------------------------------------------
 // DOCM-01: Version creation
 // ---------------------------------------------------------------------------
@@ -132,7 +148,7 @@ describe('Version History - createVersionDataset', () => {
   let service: RagService
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    clearMockHistory()
     service = new RagService()
 
     // Reset default: no existing versions
@@ -170,6 +186,7 @@ describe('Version History - createVersionDataset', () => {
     const result = await service.createVersionDataset(
       'parent-uuid-1234',
       'Initial version upload',
+      null,
       'user-1',
       'tenant-1',
     )
@@ -193,7 +210,7 @@ describe('Version History - createVersionDataset', () => {
     mockMaxFirstFn.mockResolvedValue({ max: null })
     mockDatasetModel.create.mockResolvedValue({ id: 'v-1', pagerank: 1, version_number: 1 })
 
-    await service.createVersionDataset('parent-uuid-1234', null, 'user-1', 'tenant-1')
+    await service.createVersionDataset('parent-uuid-1234', null, null, 'user-1', 'tenant-1')
 
     // Verify pagerank matches version_number
     const createCall = mockDatasetModel.create.mock.calls[0]![0] as any
@@ -210,7 +227,7 @@ describe('Version History - createVersionDataset', () => {
 
     mockDatasetModel.create.mockResolvedValue({ id: 'v-4', pagerank: 4, version_number: 4 })
 
-    await service.createVersionDataset('parent-uuid-1234', 'Fourth version', 'user-1', 'tenant-1')
+    await service.createVersionDataset('parent-uuid-1234', 'Fourth version', null, 'user-1', 'tenant-1')
 
     // Version number should be max(3) + 1 = 4
     const createCall = mockDatasetModel.create.mock.calls[0]![0] as any
@@ -224,7 +241,7 @@ describe('Version History - createVersionDataset', () => {
     mockDatasetModel.create.mockResolvedValue({ id: 'v-1', version_number: 1 })
 
     // Pass null as change_summary to trigger default generation
-    await service.createVersionDataset('parent-uuid-1234', null, 'user-1', 'tenant-1')
+    await service.createVersionDataset('parent-uuid-1234', null, null, 'user-1', 'tenant-1')
 
     const createCall = mockDatasetModel.create.mock.calls[0]![0] as any
     expect(createCall.change_summary).toBe('Version 1 uploaded by user')
@@ -235,7 +252,7 @@ describe('Version History - createVersionDataset', () => {
     mockMaxFirstFn.mockResolvedValue({ max: null })
     mockDatasetModel.create.mockResolvedValue({ id: 'v-1', version_number: 1 })
 
-    await service.createVersionDataset('parent-uuid-1234', null, 'user-1', 'tenant-1')
+    await service.createVersionDataset('parent-uuid-1234', null, null, 'user-1', 'tenant-1')
 
     const createCall = mockDatasetModel.create.mock.calls[0]![0] as any
 
@@ -261,7 +278,15 @@ describe('Version History - rank_feature boost', () => {
   let searchService: RagSearchService
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    // Re-establish Client mockImplementation because the global setup.ts afterEach
+    // calls vi.resetAllMocks() which clears mockImplementation on all mocks
+    vi.mocked(Client).mockImplementation(() => ({
+      search: mockSearchFn,
+    }) as any)
+    mockSearchFn.mockClear()
+    mockSearchFn.mockResolvedValue({
+      body: { hits: { total: { value: 0 }, hits: [] } },
+    })
     searchService = new RagSearchService()
   })
 
@@ -326,7 +351,7 @@ describe('Version History - version metadata', () => {
   let service: RagService
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    clearMockHistory()
     service = new RagService()
 
     // Reset default: no existing versions
@@ -343,7 +368,8 @@ describe('Version History - version metadata', () => {
       version_created_by: 'user-42',
     })
 
-    await service.createVersionDataset('parent-uuid-1234', 'Updated policy docs', 'user-42', 'tenant-1')
+    // Signature: (parentDatasetId, changeSummary, versionLabel, userId, tenantId)
+    await service.createVersionDataset('parent-uuid-1234', 'Updated policy docs', null, 'user-42', 'tenant-1')
 
     const createCall = mockDatasetModel.create.mock.calls[0]![0] as any
 

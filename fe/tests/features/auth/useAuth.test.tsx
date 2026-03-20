@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import React from 'react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { createTestQueryClient } from '../../test-utils'
 
 const vi_mockNav = vi.fn()
 vi.mock('react-router-dom', async () => {
@@ -11,7 +13,9 @@ vi.mock('react-router-dom', async () => {
 import { AuthProvider, useAuth } from '../../../src/features/auth/hooks/useAuth'
 
 const AuthTestWrapper = ({ children }: { children: React.ReactNode }) => (
-  <AuthProvider>{children}</AuthProvider>
+  <QueryClientProvider client={createTestQueryClient()}>
+    <AuthProvider>{children}</AuthProvider>
+  </QueryClientProvider>
 )
 
 describe('useAuth', () => {
