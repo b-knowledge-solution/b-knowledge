@@ -26,7 +26,7 @@ const mockMgmt = {
   setUsers: vi.fn(),
 }
 
-vi.mock('../../../src/features/users/hooks/useUserManagement', () => ({
+vi.mock('../../../src/features/users/api/userQueries', () => ({
   useUserManagement: () => mockMgmt
 }))
 
@@ -35,6 +35,10 @@ vi.mock('@/features/auth', () => ({
     user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
     isAuthenticated: true,
   })
+}))
+
+vi.mock('@/lib/ability', () => ({
+  useAppAbility: () => ({ can: () => true }),
 }))
 
 vi.mock('@/features/guideline', () => ({
@@ -46,18 +50,28 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
 }))
 
-vi.mock('lucide-react', () => ({
-  Mail: () => <div />,
-  Edit2: () => <div data-testid="edit" />,
-  Globe: () => <div data-testid="globe" />,
-  Search: () => <div />,
-  Filter: () => <div />,
-  X: () => <div />,
-  ArrowUp: () => <div />,
-  ArrowDown: () => <div />,
-  AlertCircle: () => <div />,
-  Users: () => <div />,
-}))
+vi.mock('lucide-react', () => {
+  const NullIcon = () => null
+  const factory = {
+    default: NullIcon,
+    Mail: () => <div />,
+    Edit2: () => <div data-testid="edit" />,
+    Globe: () => <div data-testid="globe" />,
+    Search: () => <div />,
+    Filter: () => <div />,
+    X: () => <div />,
+    ArrowUp: () => <div />,
+    ArrowDown: () => <div />,
+    AlertCircle: () => <div />,
+    Users: () => <div />,
+  } as Record<string | symbol, any>
+  return new Proxy(factory, {
+    get: (target, prop) => {
+      if (prop in target) return (target as any)[prop]
+      return NullIcon
+    }
+  })
+})
 
 vi.mock('@tanstack/react-query', () => ({
   useMutation: () => ({ mutate: vi.fn(), isPending: false }),
