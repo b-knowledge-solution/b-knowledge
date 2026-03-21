@@ -302,7 +302,17 @@ For PPTX specifically, Approach 3 is viable because slides have fixed-position s
 | Library | GitHub | Stars | Type | Position Support |
 |---|---|---|---|---|
 | RAG Document Viewer | [preprocess-co/rag-document-viewer](https://github.com/preprocess-co/rag-document-viewer) | ~200+ | RAG viewer + highlights | Yes (bbox coordinates) |
-| Docling (IBM) | [DS4SD/docling](https://github.com/DS4SD/docling) | ~15k+ | Document parser | Yes (provenance bbox) |
+| Docling (IBM) | [docling-project/docling](https://github.com/docling-project/docling) | ~10k+ | Document parser | PDF: Yes, DOCX: No, PPTX: Partial |
+| pdf2htmlEX | [pdf2htmlEX/pdf2htmlEX](https://github.com/pdf2htmlEX/pdf2htmlEX) | ~3.5k+ | PDF → high-fidelity HTML | Preserves positions in HTML |
+
+### Commercial Solutions
+
+| Product | Type | Formats | Highlight Support |
+|---|---|---|---|
+| [Apryse WebViewer](https://apryse.com/capabilities/docx-editor) | Client-side SDK | DOCX, PPTX, XLSX, PDF | Full annotation + highlights |
+| [Nutrient Web SDK](https://www.nutrient.io/blog/how-to-build-a-powerpoint-viewer-using-javascript/) (formerly PSPDFKit) | Client-side SDK | DOCX, PPTX, PDF | Full annotation + highlights |
+
+Both commercial solutions convert Office formats to PDF client-side and then provide PDF-based annotation tools — essentially Approach 1 done entirely in the browser. Commercial licensing required.
 
 ---
 
@@ -311,6 +321,7 @@ For PPTX specifically, Approach 3 is viable because slides have fixed-position s
 ### RAGFlow
 - Converts all Office files to PDF first, then uses PDF parser for position extraction
 - Same approach as B-Knowledge's current pipeline
+- Known issues: Word documents can't scroll past first page in preview; citation persistence bugs in chat history ([ragflow#8817](https://github.com/infiniflow/ragflow/issues/8817))
 - Source: B-Knowledge's codebase is based on RAGFlow's parser architecture
 
 ### Dify
@@ -326,6 +337,18 @@ For PPTX specifically, Approach 3 is viable because slides have fixed-position s
 - Uses LibreOffice + pdf2htmlEX pipeline
 - Provides the RAG Document Viewer (open source) for rendering + highlighting
 - Most complete solution for multi-format citation highlighting
+
+### Docling (IBM Research)
+- Universal document parser ([docling-project/docling](https://github.com/docling-project/docling))
+- **PDF:** Full bounding-box support via layout analysis + TableFormer models
+- **DOCX:** No bounding boxes — confirmed by maintainers ([discussion#997](https://github.com/docling-project/docling/discussions/997), [issue#2015](https://github.com/docling-project/docling/issues/2015)). Format fundamentally does not store positions.
+- **PPTX:** Partial — slide-level metadata via python-pptx shape positions
+- Has OpenSearch integration: [Building RAG pipelines with Docling and OpenSearch](https://opensearch.org/blog/building-powerful-rag-pipelines-with-docling-and-opensearch/)
+- Supports `HierarchicalChunker` and `HybridChunker` with provenance metadata
+
+### ChatDOC
+- Converts everything to PDF for citation-backed responses with highlighted source regions
+- Same fundamental approach as Approach 1
 
 ---
 
@@ -459,6 +482,20 @@ function highlightParagraphs(startIdx: number, endIdx: number) {
 
 ---
 
+## Key Insight: Why DOCX Cannot Have Native Bounding Boxes
+
+DOCX files do **NOT** store paragraph/text positions. Page layout is a **rendering-time concept** that depends on:
+- Page size, margins, columns
+- Installed fonts and font metrics
+- Line spacing, paragraph spacing
+- Renderer implementation (Microsoft Word vs LibreOffice vs Google Docs vs browser)
+
+This is confirmed by the Docling project maintainers and python-docx documentation. The only way to get bounding boxes for DOCX content is to **render it first** (i.e., convert to PDF).
+
+PPTX is different: each shape has explicit `left`, `top`, `width`, `height` attributes in EMU coordinates, because slides have fixed dimensions and shapes are absolutely positioned.
+
+---
+
 ## Decision Log
 
 | Date | Decision | Rationale |
@@ -467,3 +504,21 @@ function highlightParagraphs(startIdx: number, endIdx: number) {
 | — | Phase 1: Use PDF conversion pipeline | Zero development cost, already works |
 | — | Phase 2: Evaluate RAG Document Viewer | Best open-source multi-format solution |
 | — | Phase 3: Consider native PPTX positions | Only format with reliable native coordinates |
+
+---
+
+## Sources
+
+- [preprocess-co/rag-document-viewer](https://github.com/preprocess-co/rag-document-viewer) — MIT-licensed RAG viewer with highlight support
+- [VolodymyrBaydalka/docxjs (docx-preview)](https://github.com/VolodymyrBaydalka/docxjs) — Browser DOCX renderer
+- [mwilliamson/mammoth.js](https://github.com/mwilliamson/mammoth.js/) — DOCX to semantic HTML
+- [docling-project/docling](https://github.com/docling-project/docling) — Universal document parser (IBM Research)
+- [pdf2htmlEX/pdf2htmlEX](https://github.com/pdf2htmlEX/pdf2htmlEX) — High-fidelity PDF to HTML
+- [python-pptx shape position docs](https://python-pptx.readthedocs.io/en/latest/dev/analysis/shp-pos-and-size.html)
+- [Docling DOCX bounding box discussion](https://github.com/docling-project/docling/discussions/997)
+- [Building RAG pipelines with Docling and OpenSearch](https://opensearch.org/blog/building-powerful-rag-pipelines-with-docling-and-opensearch/)
+- [RAGFlow citation issues](https://github.com/infiniflow/ragflow/issues/8817)
+- [Layout-Aware RAG with Evidence Pins (Docling + Neo4j)](https://vipulmshah.medium.com/layout-aware-rag-with-evidence-pins-building-clickable-citations-for-pdfs-using-docling-neo4j-5305769759f0)
+- [Apryse WebViewer Office](https://docs.apryse.com/web/guides/office)
+- [Nutrient PPTX viewer](https://www.nutrient.io/blog/how-to-build-a-powerpoint-viewer-using-javascript/)
+- [Preprocess.co RAG Document Viewer product page](https://preprocess.co/rag-document-viewer)
