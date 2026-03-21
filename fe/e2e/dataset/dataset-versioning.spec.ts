@@ -19,6 +19,10 @@ import { test, expect } from '@playwright/test'
 import { ApiHelper, apiHelper } from '../helpers/api.helper'
 import { waitForDocumentParsed, waitForChunksIndexed } from '../helpers/wait.helper'
 import path from 'path'
+import { fileURLToPath } from 'url'
+
+/** ESM-compatible __dirname equivalent */
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 /** Track resources for cleanup */
 let api: ApiHelper

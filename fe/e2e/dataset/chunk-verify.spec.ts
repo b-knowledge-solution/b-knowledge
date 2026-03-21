@@ -21,10 +21,14 @@
  */
 
 import path from 'path'
+import { fileURLToPath } from 'url'
 import { test, expect, APIRequestContext } from '@playwright/test'
 import { ApiHelper, apiHelper } from '../helpers/api.helper'
 import { waitForDocumentParsed, waitForChunksIndexed } from '../helpers/wait.helper'
 import { OpenSearchHelper, opensearchHelper, ChunkResult } from '../helpers/opensearch.helper'
+
+/** ESM-compatible __dirname equivalent */
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 /** Path to test PDF file */
 const SAMPLE_PDF_PATH = path.resolve(__dirname, '../test-data/sample.pdf')
