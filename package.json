@@ -31,7 +31,10 @@
     "build:be": "npm run build --workspace=be",
     "build:fe": "npm run build --workspace=fe",
     "lint": "npm run lint --workspaces",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "docs:dev": "cd docs && npx vitepress dev",
+    "docs:build": "cd docs && npx vitepress build",
+    "docs:preview": "cd docs && npx vitepress preview"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",
