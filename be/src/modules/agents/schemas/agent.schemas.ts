@@ -63,6 +63,20 @@ export const agentRunIdParamSchema = z.object({
   runId: z.string().uuid(),
 })
 
+/** @description POST /api/agents/tools/credentials — body schema for creating a tool credential */
+export const createCredentialSchema = z.object({
+  tool_type: z.string().min(1).max(100),
+  name: z.string().min(1).max(255),
+  credentials: z.record(z.string()),
+  agent_id: z.string().uuid().optional(),
+})
+
+/** @description PUT /api/agents/tools/credentials/:id — body schema for updating a tool credential */
+export const updateCredentialSchema = z.object({
+  name: z.string().min(1).max(255).optional(),
+  credentials: z.record(z.string()).optional(),
+})
+
 /** @description Inferred types for service layer consumption */
 export type CreateAgentDto = z.infer<typeof createAgentSchema>
 export type UpdateAgentDto = z.infer<typeof updateAgentSchema>
