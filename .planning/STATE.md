@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 01-04-PLAN.md
-last_updated: "2026-03-22T17:13:53.595Z"
-last_activity: "2026-03-22 — Plan 01-03 complete (Agent CRUD API: 12 endpoints, Zod validation, version-as-row versioning)"
+stopped_at: Completed 01-05-PLAN.md
+last_updated: "2026-03-22T17:19:46Z"
+last_activity: "2026-03-22 — Plan 01-05 complete (ReactFlow canvas with 38-operator palette, generic node renderer, auto-save hook)"
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 10
-  completed_plans: 4
-  percent: 30
+  completed_plans: 5
+  percent: 50
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 1 of 1 (Migrate Agent Features from RAGFlow to B-Knowledge)
-Plan: 3 of 10 in current phase
-Status: Plan 01-03 Complete
-Last activity: 2026-03-22 — Plan 01-03 complete (Agent CRUD API: 12 endpoints, Zod validation, version-as-row versioning)
+Plan: 5 of 10 in current phase
+Status: Plan 01-05 Complete
+Last activity: 2026-03-22 — Plan 01-05 complete (ReactFlow canvas with 38-operator palette, generic node renderer, auto-save hook)
 
-Progress: [███-------] 30%
+Progress: [█████-----] 50%
 
 ## Performance Metrics
 
@@ -85,6 +85,7 @@ Progress: [███-------] 30%
 | Phase 01 P02 | 3min | 2 tasks | 6 files |
 | Phase 01 P03 | 5min | 2 tasks | 6 files |
 | Phase 01 P04 | 8min | 2 tasks | 13 files |
+| Phase 01 P05 | 5min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -175,6 +176,9 @@ Recent decisions affecting current work:
 - [Phase 01]: Spread pattern for optional description to satisfy exactOptionalPropertyTypes
 - [Phase 01]: Agent-first links as separate component files, not inline in management pages
 - [Phase 01]: AgentCanvasPage placeholder points to AgentListPage until canvas is built
+- [Phase 01, Plan 05]: Auto-save reads store state directly via getState() to avoid stale closure in setInterval
+- [Phase 01, Plan 05]: NodePalette uses Dialog+Input+ScrollArea instead of shadcn Command (not installed)
+- [Phase 01, Plan 05]: Generic JSON editor for NodeConfigPanel; operator-specific forms deferred to later plans
 
 ### Roadmap Evolution
 
@@ -195,6 +199,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T17:13:53.589Z
-Stopped at: Completed 01-04-PLAN.md
+Last session: 2026-03-22T17:19:46Z
+Stopped at: Completed 01-05-PLAN.md
 Resume file: None
