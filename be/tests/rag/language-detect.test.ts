@@ -7,7 +7,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { detectLanguage, buildLanguageInstruction, LANG_NAMES } from '../../src/shared/utils/language-detect'
+import { detectLanguage, buildLanguageInstruction, buildLanguageReminder, LANG_NAMES } from '../../src/shared/utils/language-detect'
 
 describe('language-detect', () => {
   // ── detectLanguage ──────────────────────────────────────────────────
@@ -78,6 +78,35 @@ describe('language-detect', () => {
 
     it('returns fallback for unknown language code', () => {
       const result = buildLanguageInstruction('unknown_code')
+      expect(result).toContain('the same language as the user')
+    })
+
+    it('includes multi-line directive with cross-language knowledge handling', () => {
+      const result = buildLanguageInstruction('jpn')
+      // Should instruct to respond in Japanese even if context is in another language
+      expect(result).toContain('Japanese')
+      expect(result).toContain('Even if the knowledge context below is in a different language')
+      expect(result).toContain('Do NOT switch languages mid-response')
+    })
+  })
+
+  // ── buildLanguageReminder ──────────────────────────────────────────
+
+  describe('buildLanguageReminder', () => {
+    it('returns reminder containing the target language name', () => {
+      const result = buildLanguageReminder('vie')
+      expect(result).toContain('Vietnamese')
+      expect(result).toContain('REMINDER')
+    })
+
+    it('mentions overriding knowledge context language', () => {
+      const result = buildLanguageReminder('jpn')
+      expect(result).toContain('Regardless of the language of the knowledge context')
+      expect(result).toContain('Japanese')
+    })
+
+    it('returns fallback for unknown language code', () => {
+      const result = buildLanguageReminder('xyz')
       expect(result).toContain('the same language as the user')
     })
   })
