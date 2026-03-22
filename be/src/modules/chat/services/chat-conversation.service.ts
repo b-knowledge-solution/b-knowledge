@@ -36,7 +36,7 @@ import {
   citationPrompt,
   askSummaryPrompt,
 } from '@/shared/prompts/index.js'
-import { detectLanguage, buildLanguageInstruction } from '@/shared/utils/language-detect.js'
+import { detectLanguage, buildLanguageInstruction, buildLanguageReminder } from '@/shared/utils/language-detect.js'
 import { htmlToMarkdown } from '@/shared/utils/html-to-markdown.js'
 import { abilityService, buildOpenSearchAbacFilters } from '@/shared/services/ability.service.js'
 import { log } from '@/shared/services/logger.service.js'
@@ -714,7 +714,7 @@ Requirements and restriction:
   - DO NOT make things up, especially for numbers.
   - If the information from knowledge is irrelevant with user's question, JUST SAY: Sorry, no relevant information provided.
   - Answer with markdown format text.
-  - Answer in language of user's question.`
+  - You MUST answer in the same language as the user's question. Even if the knowledge context is in a different language, translate and respond in the user's language.`
       const kbIds = assistant?.kb_ids || []
 
       // Apply per-request overrides from the client
@@ -1079,8 +1079,13 @@ Requirements and restriction:
         cfg.quote !== false // Enable citations by default
       )
 
+      // Append language reminder after knowledge context (sandwich technique)
+      // This prevents large knowledge contexts in other languages from overriding the language directive
+      const langReminder = buildLanguageReminder(detectedLang)
+      const promptWithReminder = `${contextSystemPrompt}${langReminder}`
+
       // Apply variable substitution to system prompt
-      let effectiveSystemPrompt = contextSystemPrompt
+      let effectiveSystemPrompt = promptWithReminder
       for (const [key, value] of Object.entries(variableValues)) {
         effectiveSystemPrompt = effectiveSystemPrompt.replace(new RegExp(`\\{${key}\\}`, 'g'), value)
       }

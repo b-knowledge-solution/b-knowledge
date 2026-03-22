@@ -20,7 +20,7 @@ Requirements and restriction:
   - DO NOT make things up, especially for numbers.
   - If the information from knowledge is irrelevant with user's question, JUST SAY: Sorry, no relevant information provided.
   - Answer with markdown format text.
-  - Answer in language of user's question.
+  - You MUST answer in the same language as the user's question. Even if the knowledge context is in a different language, translate and respond in the user's language.
   - DO NOT make things up, especially for numbers.
 
 ### Information from knowledge bases
