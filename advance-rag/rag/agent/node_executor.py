@@ -23,11 +23,56 @@ from email.mime.text import MIMEText
 import requests
 from loguru import logger
 
-from rag.agent.tools import TavilyTool, WikipediaTool
+from rag.agent.tools import (
+    AkShareTool,
+    ArxivTool,
+    BingTool,
+    CodeExecTool,
+    CrawlerTool,
+    DeepLTool,
+    DuckDuckGoTool,
+    EmailTool,
+    ExeSQLTool,
+    GitHubTool,
+    GoogleMapsTool,
+    GoogleScholarTool,
+    GoogleTool,
+    Jin10Tool,
+    PubMedTool,
+    QWeatherTool,
+    RetrievalTool,
+    SearxNGTool,
+    TavilyTool,
+    TuShareTool,
+    WenCaiTool,
+    WikipediaTool,
+    YahooFinanceTool,
+)
 
 # Instantiate concrete tool implementations for handler registration
 _tavily_tool = TavilyTool()
 _wikipedia_tool = WikipediaTool()
+_arxiv_tool = ArxivTool()
+_bing_tool = BingTool()
+_code_exec_tool = CodeExecTool()
+_crawler_tool = CrawlerTool()
+_deepl_tool = DeepLTool()
+_duckduckgo_tool = DuckDuckGoTool()
+_email_tool = EmailTool()
+_exesql_tool = ExeSQLTool()
+_github_tool = GitHubTool()
+_google_tool = GoogleTool()
+_google_maps_tool = GoogleMapsTool()
+_google_scholar_tool = GoogleScholarTool()
+_jin10_tool = Jin10Tool()
+_pubmed_tool = PubMedTool()
+_qweather_tool = QWeatherTool()
+_retrieval_tool = RetrievalTool()
+_searxng_tool = SearxNGTool()
+_akshare_tool = AkShareTool()
+_tushare_tool = TuShareTool()
+_wencai_tool = WenCaiTool()
+_yahoofinance_tool = YahooFinanceTool()
 
 
 # ---------------------------------------------------------------------------
@@ -1718,6 +1763,55 @@ def handle_wencai(input_data: dict, config: dict, tenant_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Tool-to-Handler Adapter
+# ---------------------------------------------------------------------------
+
+
+def _make_tool_handler(tool_instance):
+    """Create a node handler function that delegates to a BaseTool instance.
+
+    Extracts credentials from config['credentials'] (injected by the Node.js
+    orchestrator) and wraps the tool's execute() return value in the standard
+    node handler output format.
+
+    Args:
+        tool_instance: A concrete BaseTool implementation.
+
+    Returns:
+        Handler function compatible with the NODE_HANDLERS registry.
+    """
+    def handler(input_data: dict, config: dict, tenant_id: str) -> dict:
+        """Delegate to tool.execute() and wrap the result.
+
+        Args:
+            input_data: Input from upstream nodes.
+            config: Node configuration with optional 'credentials' dict.
+            tenant_id: Multi-tenant isolation identifier.
+
+        Returns:
+            Dict with 'output_data' or 'error'.
+        """
+        credentials = config.get("credentials")
+        result = tool_instance.execute(input_data, config, credentials)
+
+        # Check for errors from the tool
+        if "error" in result:
+            return {"error": result["error"]}
+
+        tool_result = result.get("result", "")
+        # Serialize non-string results to a string for the output field
+        if isinstance(tool_result, str):
+            output_str = tool_result
+        else:
+            import json as _json
+            output_str = _json.dumps(tool_result, ensure_ascii=False, default=str)[:10000]
+
+        return {"output_data": {"output": output_str, "result": tool_result}}
+
+    return handler
+
+
+# ---------------------------------------------------------------------------
 # Handler Registry
 # ---------------------------------------------------------------------------
 
@@ -1774,7 +1868,15 @@ NODE_HANDLERS: dict[str, callable] = {
     "tushare": handle_tushare,
     "wencai": handle_wencai,
 
-    # Legacy stubs for search engines handled by other tools
+    # Bing search
+    "bing": _make_tool_handler(_bing_tool),
+
+    # SearxNG metasearch
+    "searxng": _make_tool_handler(_searxng_tool),
+
+    # Google Maps / Places
+    "google_maps": _make_tool_handler(_google_maps_tool),
+
+    # Legacy alias: baidu falls back to duckduckgo
     "baidu": handle_duckduckgo,
-    "bing": handle_duckduckgo,
 }
