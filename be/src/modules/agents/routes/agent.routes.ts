@@ -8,6 +8,7 @@
  */
 import { Router } from 'express'
 import { agentController } from '../controllers/agent.controller.js'
+import { agentDebugController } from '../controllers/agent-debug.controller.js'
 import { requireAuth } from '@/shared/middleware/auth.middleware.js'
 import { requireTenant } from '@/shared/middleware/tenant.middleware.js'
 import { validate } from '@/shared/middleware/validate.middleware.js'
@@ -53,6 +54,17 @@ router.post('/:id/run', validate({ params: agentIdParamSchema, body: agentRunBod
 router.get('/:id/run/:runId/stream', validate({ params: agentRunIdParamSchema }), agentController.streamAgent.bind(agentController))
 router.post('/:id/run/:runId/cancel', validate({ params: agentRunIdParamSchema }), agentController.cancelRun.bind(agentController))
 router.get('/:id/runs', validate({ params: agentIdParamSchema }), agentController.listRuns.bind(agentController))
+
+// -------------------------------------------------------------------------
+// Debug Mode
+// -------------------------------------------------------------------------
+
+router.post('/:id/debug', agentDebugController.startDebug.bind(agentDebugController))
+router.post('/:id/debug/:runId/step', agentDebugController.stepNext.bind(agentDebugController))
+router.post('/:id/debug/:runId/continue', agentDebugController.continueDebug.bind(agentDebugController))
+router.post('/:id/debug/:runId/breakpoint', agentDebugController.setBreakpoint.bind(agentDebugController))
+router.delete('/:id/debug/:runId/breakpoint/:nodeId', agentDebugController.removeBreakpoint.bind(agentDebugController))
+router.get('/:id/debug/:runId/steps/:nodeId', agentDebugController.getStepDetails.bind(agentDebugController))
 
 // -------------------------------------------------------------------------
 // Versioning
