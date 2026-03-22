@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 01-08-PLAN.md
+stopped_at: Completed 01-09-PLAN.md
 last_updated: "2026-03-22T17:19:46Z"
 last_activity: "2026-03-22 — Plan 01-05 complete (ReactFlow canvas with 38-operator palette, generic node renderer, auto-save hook)"
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 10
-  completed_plans: 8
-  percent: 80
+  completed_plans: 9
+  percent: 90
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 1 of 1 (Migrate Agent Features from RAGFlow to B-Knowledge)
-Plan: 8 of 10 in current phase
-Status: Plan 01-07 Complete
-Last activity: 2026-03-22 — Plan 01-07 complete (Debug mode with step-by-step execution, breakpoints, Socket.IO events, SSE streaming)
+Plan: 9 of 10 in current phase
+Status: Plan 01-09 Complete
+Last activity: 2026-03-22 — Plan 01-09 complete (MCP client, Docker sandbox, encrypted tool credentials, Tavily/Wikipedia tools)
 
-Progress: [████████--] 70%
+Progress: [█████████-] 90%
 
 ## Performance Metrics
 
@@ -89,6 +89,7 @@ Progress: [████████--] 70%
 | Phase 01 P06 | 8min | 3 tasks | 9 files |
 | Phase 01 P07 | 6min | 2 tasks | 9 files |
 | Phase 01 P08 | 6min | 2 tasks | 9 files |
+| Phase 01 P09 | 6min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -191,6 +192,10 @@ Recent decisions affecting current work:
 - [Phase 01, Plan 07]: Debug mode executes all nodes inline (Python dispatch simulated) for interactive debugging
 - [Phase 01, Plan 07]: Debug state is ephemeral in-memory Map (not persisted) since debug runs are short-lived
 - [Phase 01, Plan 07]: continueRun executes first step unconditionally, then stops at breakpoints
+- [Phase 01, Plan 09]: MCP connection pool at service level keyed by server URL for client reuse
+- [Phase 01, Plan 09]: Docker sandbox uses tmpfs /tmp mount with read-only rootfs
+- [Phase 01, Plan 09]: Tool credential lookup uses agent-specific first, tenant-level fallback
+- [Phase 01, Plan 09]: Tavily credentials injected via config.credentials by Node.js orchestrator
 
 ### Roadmap Evolution
 
@@ -211,6 +216,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T17:33:09Z
-Stopped at: Completed 01-07-PLAN.md
+Last session: 2026-03-22T17:42:00Z
+Stopped at: Completed 01-09-PLAN.md
 Resume file: None
