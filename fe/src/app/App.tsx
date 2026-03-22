@@ -55,7 +55,7 @@ const DocumentReviewerPage = lazy(() => import('@/features/datasets/pages/Docume
 const ChunkDetailPage = lazy(() => import('@/features/datasets/pages/ChunkDetailPage'));
 const ApiKeysPage = lazy(() => import('@/features/api-keys/pages/ApiKeysPage'));
 const AgentListPage = lazy(() => import('@/features/agents/pages/AgentListPage'));
-const AgentCanvasPage = lazy(() => import('@/features/agents/pages/AgentListPage')); // placeholder until canvas page is built
+const AgentCanvasPage = lazy(() => import('@/features/agents/pages/AgentCanvasPage'));
 
 // ============================================================================
 // Loading Component
