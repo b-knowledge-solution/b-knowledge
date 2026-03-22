@@ -124,7 +124,8 @@
     "administrators": "Administrators",
     "collapseMenu": "Collapse menu",
     "glossary": "Glossary",
-    "apiKeys": "API Keys"
+    "apiKeys": "API Keys",
+    "agents": "Agents"
   },
   "iam": {
     "title": "Identity & Access Management",
@@ -1865,8 +1866,7 @@
     "maxTokensPlaceholder": "Enter max tokens",
     "testConnection": "Test Connection",
     "connectionSuccess": "Connection successful ({{latency}}ms)",
-    "connectionFailed": "Connection failed: {{error}}",
-    "cloneProvider": "Clone"
+    "connectionFailed": "Connection failed: {{error}}"
   },
   "chatAdmin": {
     "title": "Chat Assistants",
@@ -2452,5 +2452,35 @@
     "exampleUsage": "Example Usage",
     "noKeys": "No API keys yet",
     "noKeysDescription": "Create an API key to use the external evaluation API"
+  },
+  "agents": {
+    "pageTitle": "Agents",
+    "canvasTitle": "Agent Canvas",
+    "createAgent": "Create Agent",
+    "noAgentsYet": "No agents yet",
+    "emptyDescription": "Build your first AI agent workflow. Start from scratch or pick a template.",
+    "browseTemplates": "Browse Templates",
+    "deleteAgent": "Delete Agent",
+    "deleteConfirmation": "This will permanently delete \"{{name}}\" and all its run history. This cannot be undone.",
+    "typeToConfirm": "Type the agent name to confirm",
+    "duplicate": "Duplicate",
+    "exportJson": "Export JSON",
+    "edit": "Edit",
+    "all": "All",
+    "myAgents": "My Agents",
+    "templates": "Templates",
+    "agent": "Agent",
+    "pipeline": "Pipeline",
+    "draft": "Draft",
+    "published": "Published",
+    "searchPlaceholder": "Search agents...",
+    "modeFilter": "Mode",
+    "useTemplate": "Use Template",
+    "agentSaved": "Agent saved",
+    "agentCreated": "Agent created",
+    "agentDeleted": "Agent deleted",
+    "agentDuplicated": "Agent duplicated",
+    "createAsAgentWorkflow": "Create as Agent Workflow (Advanced)",
+    "agentWorkflowDescription": "Build a multi-step AI workflow with the visual agent canvas"
   }
 }

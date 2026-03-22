@@ -31,6 +31,8 @@ import {
   FolderOpen,
   LayoutDashboard,
   BrainCircuit,
+  KeyRound,
+  Workflow,
 } from 'lucide-react'
 import type { config } from '@/config'
 
@@ -103,6 +105,12 @@ export function isNavGroup(entry: SidebarNavEntry): entry is SidebarNavGroup {
 export const SIDEBAR_NAV: SidebarNavEntry[] = [
   // ── Top-level links ────────────────────────────────────────────
   {
+    path: '/agents',
+    labelKey: 'nav.agents',
+    icon: Workflow,
+    iconSize: 20,
+  },
+  {
     path: '/chat',
     labelKey: 'nav.aiChat',
     icon: MessageSquare,
@@ -130,6 +138,11 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
         icon: FolderOpen,
       },
       {
+        path: '/data-studio/glossary',
+        labelKey: 'nav.glossary',
+        icon: BookOpen,
+      },
+      {
         path: '/data-studio/chat-assistants',
         labelKey: 'nav.chatAssistants',
         icon: MessageSquare,
@@ -153,6 +166,12 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
         roles: ['super-admin', 'admin'],
       },
       {
+        path: '/data-studio/api-keys',
+        labelKey: 'nav.apiKeys',
+        icon: KeyRound,
+        roles: ['super-admin', 'admin', 'leader'],
+      },
+      {
         path: '/data-studio/histories',
         labelKey: 'nav.histories',
         icon: History,
@@ -160,13 +179,7 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
       },
     ],
   },
-  {
-    path: '/glossary',
-    labelKey: 'nav.glossary',
-    roles: ['super-admin', 'admin', 'leader'],
-    icon: BookOpen,
-    iconSize: 20,
-  },
+
   // ── IAM (super-admin / admin) ───────────────────────────────────
   {
     labelKey: 'nav.iam',

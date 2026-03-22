@@ -125,7 +125,8 @@
     "administrators": "Quản trị",
     "collapseMenu": "Thu gọn menu",
     "glossary": "Từ điển",
-    "apiKeys": "Khóa API"
+    "apiKeys": "Khóa API",
+    "agents": "Tác tử"
   },
   "iam": {
     "title": "Quản lý Định danh & Truy cập",
@@ -1849,8 +1850,7 @@
     "maxTokensPlaceholder": "Nhập số token tối đa",
     "testConnection": "Kiểm tra kết nối",
     "connectionSuccess": "Kết nối thành công ({{latency}}ms)",
-    "connectionFailed": "Kết nối thất bại: {{error}}",
-    "cloneProvider": "Nhân bản"
+    "connectionFailed": "Kết nối thất bại: {{error}}"
   },
   "chatAdmin": {
     "title": "Trợ lý chat",
@@ -2436,5 +2436,35 @@
     "exampleUsage": "Ví dụ sử dụng",
     "noKeys": "Chưa có khóa API",
     "noKeysDescription": "Tạo khóa API để sử dụng API đánh giá bên ngoài"
+  },
+  "agents": {
+    "pageTitle": "Tác tử",
+    "canvasTitle": "Canvas Tác tử",
+    "createAgent": "Tạo tác tử",
+    "noAgentsYet": "Chưa có tác tử nào",
+    "emptyDescription": "Xây dựng quy trình AI đầu tiên của bạn. Bắt đầu từ đầu hoặc chọn mẫu.",
+    "browseTemplates": "Duyệt mẫu",
+    "deleteAgent": "Xóa tác tử",
+    "deleteConfirmation": "Thao tác này sẽ xóa vĩnh viễn \"{{name}}\" và toàn bộ lịch sử chạy. Không thể hoàn tác.",
+    "typeToConfirm": "Nhập tên tác tử để xác nhận",
+    "duplicate": "Nhân bản",
+    "exportJson": "Xuất JSON",
+    "edit": "Chỉnh sửa",
+    "all": "Tất cả",
+    "myAgents": "Tác tử của tôi",
+    "templates": "Mẫu",
+    "agent": "Tác tử",
+    "pipeline": "Quy trình",
+    "draft": "Nháp",
+    "published": "Đã xuất bản",
+    "searchPlaceholder": "Tìm kiếm tác tử...",
+    "modeFilter": "Chế độ",
+    "useTemplate": "Sử dụng mẫu",
+    "agentSaved": "Đã lưu tác tử",
+    "agentCreated": "Đã tạo tác tử",
+    "agentDeleted": "Đã xóa tác tử",
+    "agentDuplicated": "Đã nhân bản tác tử",
+    "createAsAgentWorkflow": "Tạo bằng quy trình Agent (Nâng cao)",
+    "agentWorkflowDescription": "Xây dựng quy trình AI đa bước với canvas agent trực quan"
   }
 }

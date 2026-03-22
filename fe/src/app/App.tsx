@@ -54,6 +54,8 @@ const LLMProviderPage = lazy(() => import('@/features/llm-provider/pages/LLMProv
 const DocumentReviewerPage = lazy(() => import('@/features/datasets/pages/DocumentReviewerPage'));
 const ChunkDetailPage = lazy(() => import('@/features/datasets/pages/ChunkDetailPage'));
 const ApiKeysPage = lazy(() => import('@/features/api-keys/pages/ApiKeysPage'));
+const AgentListPage = lazy(() => import('@/features/agents/pages/AgentListPage'));
+const AgentCanvasPage = lazy(() => import('@/features/agents/pages/AgentListPage')); // placeholder until canvas page is built
 
 // ============================================================================
 // Loading Component
@@ -128,6 +130,10 @@ function App() {
               {config.features.enableAiSearch && (
                 <Route path="search" element={<FeatureErrorBoundary><AiSearchPage /></FeatureErrorBoundary>} />
               )}
+              {/* Agent routes */}
+              <Route path="agents" element={<FeatureErrorBoundary><AgentListPage /></FeatureErrorBoundary>} />
+              <Route path="agents/:id" element={<FeatureErrorBoundary><AgentCanvasPage /></FeatureErrorBoundary>} />
+
               {/* Glossary route */}
               <Route path="glossary" element={
                 <FeatureErrorBoundary>
