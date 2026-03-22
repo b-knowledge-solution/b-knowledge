@@ -231,6 +231,30 @@ class AgentController {
     }
   }
   // -----------------------------------------------------------------------
+  // Templates
+  // -----------------------------------------------------------------------
+
+  /**
+   * @description GET /agents/templates — List all available agent templates.
+   *   Returns system-level templates plus any tenant-specific templates.
+   * @param {Request} req - Express request
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
+   */
+  async listTemplates(req: Request, res: Response): Promise<void> {
+    try {
+      const tenantId = getTenantId(req) || ''
+      // Fetch system templates (tenant_id IS NULL) and tenant-specific templates
+      const templates = await ModelFactory.agentTemplate.findByTenant(tenantId)
+      res.json(templates)
+    } catch (error: any) {
+      log.error('Failed to list agent templates', { error: String(error) })
+      const status = error.statusCode || 500
+      res.status(status).json({ error: error.message || 'Failed to list templates' })
+    }
+  }
+
+  // -----------------------------------------------------------------------
   // Execution Endpoints
   // -----------------------------------------------------------------------
 
