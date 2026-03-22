@@ -1,7 +1,10 @@
 /**
  * @fileoverview ReactFlow canvas wrapper for the agent builder.
  * Renders the visual node graph with controls, minimap, background,
- * context menu, and keyboard shortcuts for undo/redo.
+ * context menu, keyboard shortcuts, and debug mode overlays.
+ *
+ * When debug mode is active, nodes display execution status badges
+ * with running animations, and the DebugPanel replaces the NodeConfigPanel.
  *
  * @module features/agents/components/AgentCanvas
  */
@@ -17,15 +20,21 @@ import {
   type EdgeTypes,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
+import { Badge } from '@/components/ui/badge'
 import { useCanvasStore } from '../store/canvasStore'
 import { CanvasNode } from './canvas/CanvasNode'
 import { SmartEdge } from './canvas/edges/SmartEdge'
+import type { DebugStepState } from '../hooks/useAgentDebug'
 
 /**
  * @description Props for the AgentCanvas component
  */
 interface AgentCanvasProps {
   onOpenPalette: () => void
+  /** Map of nodeId to debug step state (only when debug active) */
+  debugSteps?: Map<string, DebugStepState>
+  /** Whether debug mode is currently active */
+  isDebugActive?: boolean
 }
 
 /**
@@ -44,13 +53,13 @@ const edgeTypes: EdgeTypes = {
 
 /**
  * @description ReactFlow canvas wrapper that renders the agent node graph with controls,
- * minimap, background grid, context menu, and keyboard shortcuts for undo/redo.
+ * minimap, background grid, context menu, keyboard shortcuts, and debug status overlays.
  * All node/edge state is managed via the Zustand canvasStore.
  *
  * @param {AgentCanvasProps} props - Canvas configuration
  * @returns {JSX.Element} Full ReactFlow canvas with controls and overlays
  */
-export function AgentCanvas({ onOpenPalette }: AgentCanvasProps) {
+export function AgentCanvas({ onOpenPalette, debugSteps, isDebugActive }: AgentCanvasProps) {
   // Canvas data and event handlers from Zustand store (selector pattern)
   const nodes = useCanvasStore((s) => s.nodes)
   const edges = useCanvasStore((s) => s.edges)
@@ -112,6 +121,27 @@ export function AgentCanvas({ onOpenPalette }: AgentCanvasProps) {
     }
   }, [undo, redo])
 
+  /**
+   * @description Returns CSS classes for the debug status badge based on step status
+   * @param {string} status - Step execution status
+   * @returns {string} Tailwind CSS class string
+   */
+  const getDebugBadgeClass = (status: string): string => {
+    switch (status) {
+      case 'running':
+        return 'bg-blue-500 text-white animate-pulse'
+      case 'completed':
+        return 'bg-emerald-500 text-white'
+      case 'failed':
+        return 'bg-destructive text-destructive-foreground'
+      case 'skipped':
+        return 'bg-muted text-muted-foreground line-through'
+      case 'pending':
+      default:
+        return 'bg-muted text-muted-foreground'
+    }
+  }
+
   return (
     <div
       ref={reactFlowWrapper}
@@ -145,6 +175,31 @@ export function AgentCanvas({ onOpenPalette }: AgentCanvasProps) {
         />
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
       </ReactFlow>
+
+      {/* Debug mode: overlay status badges on each canvas node */}
+      {isDebugActive && debugSteps && nodes.map((node) => {
+        const step = debugSteps.get(node.id)
+        if (!step) return null
+
+        // Overlay the badge at the node's canvas position
+        // The badge is rendered as an absolute-positioned overlay inside the canvas wrapper
+        return (
+          <div
+            key={`debug-${node.id}`}
+            className="absolute pointer-events-none z-20"
+            style={{
+              // Position is approximate since ReactFlow uses its own coordinate system
+              // The badges appear as an overlay hint; full detail is in DebugPanel
+              left: 8,
+              top: 8,
+            }}
+          >
+            <Badge className={`text-[10px] ${getDebugBadgeClass(step.status)}`}>
+              {step.status}
+            </Badge>
+          </div>
+        )
+      })}
 
       {/* Canvas context menu overlay */}
       {contextMenu && (

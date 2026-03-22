@@ -1,6 +1,6 @@
 /**
  * @fileoverview Top toolbar for the agent canvas page with save, navigation,
- * and agent configuration controls.
+ * debug toggle, run/step/continue controls, and agent configuration.
  *
  * @module features/agents/components/AgentToolbar
  */
@@ -12,6 +12,8 @@ import {
   ArrowLeft,
   Save,
   Play,
+  SkipForward,
+  Bug,
   MoreHorizontal,
   Download,
   Trash2,
@@ -29,6 +31,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { Switch } from '@/components/ui/switch'
 import type { Agent, AgentStatus } from '../types/agent.types'
 
 /**
@@ -40,15 +43,37 @@ interface AgentToolbarProps {
   isSaving: boolean
   onSave: () => void
   onNameChange?: (name: string) => void
+  /** Whether debug mode is currently active */
+  isDebugActive?: boolean
+  /** Toggle debug mode on/off */
+  onToggleDebug?: () => void
+  /** Execute next node in debug mode */
+  onStepNext?: () => void
+  /** Continue running all remaining nodes in debug mode */
+  onContinueRun?: () => void
+  /** Run the agent normally (non-debug) */
+  onRunAgent?: () => void
 }
 
 /**
  * @description Top toolbar for the agent canvas with back navigation, inline agent name editing,
- * status badge, save/run buttons, and a more actions dropdown
+ * status badge, save/run/debug buttons, and a more actions dropdown.
+ * When debug mode is active, shows Step and Continue buttons instead of Run.
  * @param {AgentToolbarProps} props - Toolbar configuration and event handlers
  * @returns {JSX.Element} 56px sticky toolbar at the top of the canvas page
  */
-export function AgentToolbar({ agent, isDirty, isSaving, onSave, onNameChange }: AgentToolbarProps) {
+export function AgentToolbar({
+  agent,
+  isDirty,
+  isSaving,
+  onSave,
+  onNameChange,
+  isDebugActive = false,
+  onToggleDebug,
+  onStepNext,
+  onContinueRun,
+  onRunAgent,
+}: AgentToolbarProps) {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const [editingName, setEditingName] = useState(false)
@@ -152,7 +177,7 @@ export function AgentToolbar({ agent, isDirty, isSaving, onSave, onNameChange }:
         )}
       </div>
 
-      {/* Right section: save, run, more */}
+      {/* Right section: save, debug toggle, run/step/continue, more */}
       <div className="flex items-center gap-2">
         <Button onClick={onSave} disabled={isSaving || !isDirty} size="sm">
           <Save className="h-4 w-4 mr-1" />
@@ -160,17 +185,40 @@ export function AgentToolbar({ agent, isDirty, isSaving, onSave, onNameChange }:
           <span className="sr-only">{t('agents.agentSaved', 'Save Agent')}</span>
         </Button>
 
-        {/* Run button - disabled until execution plan wires it */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="outline" size="sm" disabled>
-              <Play className="h-4 w-4 mr-1" />
-              {t('common.run', 'Run')}
-              <span className="sr-only">{t('common.run', 'Run Agent')}</span>
+        {/* Debug mode toggle switch */}
+        {onToggleDebug && (
+          <div className="flex items-center gap-1.5 mx-1">
+            <Bug className="h-4 w-4 text-muted-foreground" />
+            <Switch
+              checked={isDebugActive}
+              onCheckedChange={onToggleDebug}
+              aria-label={t('agents.debugMode', 'Debug mode')}
+            />
+            <span className="text-xs text-muted-foreground">
+              {t('agents.debug', 'Debug')}
+            </span>
+          </div>
+        )}
+
+        {/* Show Step/Continue buttons when debug is active, otherwise Run button */}
+        {isDebugActive ? (
+          <>
+            <Button size="sm" onClick={onStepNext}>
+              <SkipForward className="h-4 w-4 mr-1" />
+              {t('agents.stepNext', 'Step')}
             </Button>
-          </TooltipTrigger>
-          <TooltipContent>{t('common.comingSoon', 'Coming soon')}</TooltipContent>
-        </Tooltip>
+            <Button size="sm" variant="outline" onClick={onContinueRun}>
+              <Play className="h-4 w-4 mr-1" />
+              {t('agents.continueRun', 'Continue')}
+            </Button>
+          </>
+        ) : (
+          <Button variant="outline" size="sm" onClick={onRunAgent} disabled={!onRunAgent}>
+            <Play className="h-4 w-4 mr-1" />
+            {t('common.run', 'Run')}
+            <span className="sr-only">{t('common.run', 'Run Agent')}</span>
+          </Button>
+        )}
 
         {/* More actions dropdown */}
         <DropdownMenu>
