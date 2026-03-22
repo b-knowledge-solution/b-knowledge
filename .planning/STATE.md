@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 01-09-PLAN.md
-last_updated: "2026-03-22T17:19:46Z"
-last_activity: "2026-03-22 — Plan 01-05 complete (ReactFlow canvas with 38-operator palette, generic node renderer, auto-save hook)"
+stopped_at: Completed 01-10-PLAN.md
+last_updated: "2026-03-22T17:45:14Z"
+last_activity: "2026-03-22 — Plan 01-10 complete (Agent embed widget, ABAC enforcement, 5 core operator config forms)"
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 10
-  completed_plans: 9
-  percent: 90
+  completed_plans: 10
+  percent: 100
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 1 of 1 (Migrate Agent Features from RAGFlow to B-Knowledge)
-Plan: 9 of 10 in current phase
-Status: Plan 01-09 Complete
-Last activity: 2026-03-22 — Plan 01-09 complete (MCP client, Docker sandbox, encrypted tool credentials, Tavily/Wikipedia tools)
+Plan: 10 of 10 in current phase
+Status: Phase 01 Complete
+Last activity: 2026-03-22 — Plan 01-10 complete (Agent embed widget, ABAC enforcement, 5 core operator config forms)
 
-Progress: [█████████-] 90%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -90,6 +90,7 @@ Progress: [█████████-] 90%
 | Phase 01 P07 | 6min | 2 tasks | 9 files |
 | Phase 01 P08 | 6min | 2 tasks | 9 files |
 | Phase 01 P09 | 6min | 2 tasks | 14 files |
+| Phase 01 P10 | 9min | 2 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -196,6 +197,10 @@ Recent decisions affecting current work:
 - [Phase 01, Plan 09]: Docker sandbox uses tmpfs /tmp mount with read-only rootfs
 - [Phase 01, Plan 09]: Tool credential lookup uses agent-specific first, tenant-level fallback
 - [Phase 01, Plan 09]: Tavily credentials injected via config.credentials by Node.js orchestrator
+- [Phase 01, Plan 10]: Embed routes use token-in-URL pattern (matching chat/search embed) rather than external-auth Bearer middleware
+- [Phase 01, Plan 10]: ABAC requireAbility middleware on all agent CRUD, action, and execution routes
+- [Phase 01, Plan 10]: FORM_MAP uses Partial<Record<OperatorType, Component>> so unmapped operators fall through to JSON editor
+- [Phase 01, Plan 10]: Type-specific forms propagate updates on every field change (no explicit Apply button)
 
 ### Roadmap Evolution
 
@@ -216,6 +221,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T17:42:00Z
-Stopped at: Completed 01-09-PLAN.md
+Last session: 2026-03-22T17:45:14Z
+Stopped at: Completed 01-10-PLAN.md (Phase 01 Complete)
 Resume file: None
