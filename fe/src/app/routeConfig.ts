@@ -41,6 +41,15 @@ export interface RouteMetadata {
  * For dynamic routes (e.g. `/datasets/:id`), use the `matchRoute()` helper.
  */
 export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
+  '/agents': {
+    titleKey: 'agents.pageTitle',
+    fullBleed: true,
+  },
+  '/agents/:id': {
+    titleKey: 'agents.canvasTitle',
+    fullBleed: true,
+    hideHeader: true,
+  },
   '/chat': {
     titleKey: 'pages.aiChat.title',
     guidelineFeatureId: 'ai-chat',
@@ -150,6 +159,10 @@ export function getRouteMetadata(pathname: string): RouteMetadata {
   // Dynamic route prefix match — more specific paths checked first
   if (pathname.match(/^\/data-studio\/datasets\/[^/]+\/documents\/[^/]+\/chunks$/)) {
     return ROUTE_CONFIG['/data-studio/datasets/:id/documents/:docId/chunks']!;
+  }
+  // Match agent canvas route with dynamic ID
+  if (pathname.startsWith('/agents/')) {
+    return ROUTE_CONFIG['/agents/:id']!;
   }
   if (pathname.startsWith('/data-studio/datasets/')) {
     return ROUTE_CONFIG['/data-studio/datasets']!;

@@ -125,7 +125,8 @@
     "administrators": "管理者",
     "collapseMenu": "メニューを折りたたむ",
     "glossary": "用語集",
-    "apiKeys": "APIキー"
+    "apiKeys": "APIキー",
+    "agents": "エージェント"
   },
   "iam": {
     "title": "ID管理とアクセス制御",
@@ -1835,8 +1836,7 @@
     "maxTokensPlaceholder": "最大トークン数を入力",
     "testConnection": "接続テスト",
     "connectionSuccess": "接続成功 ({{latency}}ms)",
-    "connectionFailed": "接続失敗: {{error}}",
-    "cloneProvider": "複製"
+    "connectionFailed": "接続失敗: {{error}}"
   },
   "chatAdmin": {
     "title": "チャットアシスタント",
@@ -2422,5 +2422,35 @@
     "exampleUsage": "使用例",
     "noKeys": "APIキーはまだありません",
     "noKeysDescription": "外部評価APIを使用するためにAPIキーを作成してください"
+  },
+  "agents": {
+    "pageTitle": "エージェント",
+    "canvasTitle": "エージェントキャンバス",
+    "createAgent": "エージェント作成",
+    "noAgentsYet": "エージェントがありません",
+    "emptyDescription": "最初のAIエージェントワークフローを構築しましょう。ゼロから始めるか、テンプレートを選択してください。",
+    "browseTemplates": "テンプレートを見る",
+    "deleteAgent": "エージェント削除",
+    "deleteConfirmation": "\"{{name}}\"とそのすべての実行履歴を完全に削除します。この操作は取り消せません。",
+    "typeToConfirm": "確認のためエージェント名を入力してください",
+    "duplicate": "複製",
+    "exportJson": "JSONエクスポート",
+    "edit": "編集",
+    "all": "すべて",
+    "myAgents": "マイエージェント",
+    "templates": "テンプレート",
+    "agent": "エージェント",
+    "pipeline": "パイプライン",
+    "draft": "下書き",
+    "published": "公開済み",
+    "searchPlaceholder": "エージェントを検索...",
+    "modeFilter": "モード",
+    "useTemplate": "テンプレートを使用",
+    "agentSaved": "エージェントを保存しました",
+    "agentCreated": "エージェントを作成しました",
+    "agentDeleted": "エージェントを削除しました",
+    "agentDuplicated": "エージェントを複製しました",
+    "createAsAgentWorkflow": "エージェントワークフローとして作成（上級）",
+    "agentWorkflowDescription": "ビジュアルエージェントキャンバスで多段階AIワークフローを構築"
   }
 }
