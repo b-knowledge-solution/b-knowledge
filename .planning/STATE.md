@@ -87,6 +87,7 @@ Progress: [████████--] 70%
 | Phase 01 P04 | 8min | 2 tasks | 13 files |
 | Phase 01 P05 | 5min | 2 tasks | 9 files |
 | Phase 01 P06 | 8min | 3 tasks | 9 files |
+| Phase 01 P07 | 6min | 2 tasks | 9 files |
 | Phase 01 P08 | 6min | 2 tasks | 9 files |
 
 ## Accumulated Context
@@ -187,6 +188,9 @@ Recent decisions affecting current work:
 - [Phase 01, Plan 08]: Templates route registered in app/routes.ts before agent module to avoid /:id catch-all
 - [Phase 01, Plan 08]: Seed templates at be/src/shared/db/seeds/ following existing seed convention
 - [Phase 01, Plan 06]: Loop-back edges (sourceHandle='loop_back') excluded from DAG cycle detection
+- [Phase 01, Plan 07]: Debug mode executes all nodes inline (Python dispatch simulated) for interactive debugging
+- [Phase 01, Plan 07]: Debug state is ephemeral in-memory Map (not persisted) since debug runs are short-lived
+- [Phase 01, Plan 07]: continueRun executes first step unconditionally, then stops at breakpoints
 
 ### Roadmap Evolution
 
@@ -207,6 +211,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T17:32:17Z
-Stopped at: Completed 01-08-PLAN.md
+Last session: 2026-03-22T17:33:09Z
+Stopped at: Completed 01-07-PLAN.md
 Resume file: None
