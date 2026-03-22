@@ -18,6 +18,8 @@ import {
   agentIdParamSchema,
   versionIdParamSchema,
   listAgentsQuerySchema,
+  agentRunBodySchema,
+  agentRunIdParamSchema,
 } from '../schemas/agent.schemas.js'
 
 const router = Router()
@@ -42,6 +44,15 @@ router.delete('/:id', validate({ params: agentIdParamSchema }), agentController.
 
 router.post('/:id/duplicate', validate({ params: agentIdParamSchema }), agentController.duplicateAgent.bind(agentController))
 router.get('/:id/export', validate({ params: agentIdParamSchema }), agentController.exportAgent.bind(agentController))
+
+// -------------------------------------------------------------------------
+// Execution
+// -------------------------------------------------------------------------
+
+router.post('/:id/run', validate({ params: agentIdParamSchema, body: agentRunBodySchema }), agentController.runAgent.bind(agentController))
+router.get('/:id/run/:runId/stream', validate({ params: agentRunIdParamSchema }), agentController.streamAgent.bind(agentController))
+router.post('/:id/run/:runId/cancel', validate({ params: agentRunIdParamSchema }), agentController.cancelRun.bind(agentController))
+router.get('/:id/runs', validate({ params: agentIdParamSchema }), agentController.listRuns.bind(agentController))
 
 // -------------------------------------------------------------------------
 // Versioning
