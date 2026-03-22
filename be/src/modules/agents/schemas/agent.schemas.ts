@@ -52,6 +52,17 @@ export const listAgentsQuerySchema = z.object({
   search: z.string().max(255).optional(),
 })
 
+/** @description POST /api/agents/:id/run — body schema for triggering an agent run */
+export const agentRunBodySchema = z.object({
+  input: z.string().min(1).max(50000),
+})
+
+/** @description UUID path parameter schema — validates :id and :runId params */
+export const agentRunIdParamSchema = z.object({
+  id: z.string().uuid(),
+  runId: z.string().uuid(),
+})
+
 /** @description Inferred types for service layer consumption */
 export type CreateAgentDto = z.infer<typeof createAgentSchema>
 export type UpdateAgentDto = z.infer<typeof updateAgentSchema>

@@ -8,6 +8,8 @@
  */
 import { Request, Response } from 'express'
 import { agentService } from '../services/agent.service.js'
+import { agentExecutorService } from '../services/agent-executor.service.js'
+import { ModelFactory } from '@/shared/models/factory.js'
 import { getTenantId } from '@/shared/middleware/tenant.middleware.js'
 import { log } from '@/shared/services/logger.service.js'
 
@@ -226,6 +228,102 @@ class AgentController {
     } catch (error: any) {
       const status = error.statusCode || 500
       res.status(status).json({ error: error.message || 'Failed to export agent' })
+    }
+  }
+  // -----------------------------------------------------------------------
+  // Execution Endpoints
+  // -----------------------------------------------------------------------
+
+  /**
+   * @description POST /agents/:id/run — Trigger a new agent execution run.
+   *   Validates the agent belongs to the tenant, extracts input from body,
+   *   and delegates to the executor service. Returns 201 with the run_id.
+   * @param {Request} req - Express request with :id param and { input } body
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
+   */
+  async runAgent(req: Request, res: Response): Promise<void> {
+    try {
+      const tenantId = getTenantId(req) || ''
+      const userId = req.user?.id || ''
+      const { input } = req.body as { input: string }
+
+      // Start the run asynchronously and return the run_id immediately
+      const runId = await agentExecutorService.startRun(
+        req.params['id']!,
+        input,
+        tenantId,
+        userId,
+        'manual',
+      )
+
+      res.status(201).json({ run_id: runId })
+    } catch (error: any) {
+      log.error('Failed to run agent', { error: String(error) })
+      const status = error.statusCode || 500
+      res.status(status).json({ error: error.message || 'Failed to run agent' })
+    }
+  }
+
+  /**
+   * @description GET /agents/:id/run/:runId/stream — Stream agent run output via SSE.
+   *   Sets SSE headers and subscribes to the Redis pub/sub channel for the run.
+   *   Handles client disconnect cleanup automatically.
+   * @param {Request} req - Express request with :id and :runId params
+   * @param {Response} res - Express response for SSE writing
+   * @returns {Promise<void>}
+   */
+  async streamAgent(req: Request, res: Response): Promise<void> {
+    try {
+      const runId = req.params['runId']!
+      await agentExecutorService.streamRun(runId, res)
+    } catch (error: any) {
+      log.error('Failed to stream agent run', { error: String(error) })
+      // If headers already sent (SSE started), we can't change status
+      if (!res.headersSent) {
+        const status = error.statusCode || 500
+        res.status(status).json({ error: error.message || 'Failed to stream agent run' })
+      }
+    }
+  }
+
+  /**
+   * @description POST /agents/:id/run/:runId/cancel — Cancel an in-progress agent run.
+   *   Sets run status to cancelled and publishes cancel signal via Redis.
+   * @param {Request} req - Express request with :id and :runId params
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
+   */
+  async cancelRun(req: Request, res: Response): Promise<void> {
+    try {
+      const tenantId = getTenantId(req) || ''
+      const runId = req.params['runId']!
+
+      await agentExecutorService.cancelRun(runId, tenantId)
+      res.json({ message: 'Run cancelled' })
+    } catch (error: any) {
+      log.error('Failed to cancel agent run', { error: String(error) })
+      const status = error.statusCode || 500
+      res.status(status).json({ error: error.message || 'Failed to cancel agent run' })
+    }
+  }
+
+  /**
+   * @description GET /agents/:id/runs — List all runs for an agent.
+   *   Returns runs sorted by created_at descending for execution history.
+   * @param {Request} req - Express request with :id param
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
+   */
+  async listRuns(req: Request, res: Response): Promise<void> {
+    try {
+      const agentId = req.params['id']!
+      const runs = await ModelFactory.agentRun.findByAgent(agentId)
+      res.json(runs)
+    } catch (error: any) {
+      log.error('Failed to list agent runs', { error: String(error) })
+      const status = error.statusCode || 500
+      res.status(status).json({ error: error.message || 'Failed to list agent runs' })
     }
   }
 }
