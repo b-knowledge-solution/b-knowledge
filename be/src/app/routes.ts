@@ -42,6 +42,10 @@ import feedbackRoutes from '@/modules/feedback/routes/feedback.routes.js';
 import apiKeyRoutes from '@/modules/external/routes/api-key.routes.js';
 import externalApiRoutes from '@/modules/external/routes/external-api.routes.js';
 import agentRoutes from '@/modules/agents/routes/agent.routes.js';
+import agentWebhookRoutes from '@/modules/agents/routes/agent-webhook.routes.js';
+import { agentController } from '@/modules/agents/controllers/agent.controller.js';
+import { requireAuth } from '@/shared/middleware/auth.middleware.js';
+import { requireTenant } from '@/shared/middleware/tenant.middleware.js';
 
 // ============================================================================
 // Rate Limiters
@@ -181,6 +185,12 @@ function registerRoutes(apiRouter: Router): void {
 
     // Projects (multi-category document management)
     apiRouter.use('/projects', projectRoutes);
+
+    // Agent webhook (unauthenticated, rate-limited — must be before authenticated agent routes)
+    apiRouter.use('/agents/webhook', agentWebhookRoutes);
+
+    // Agent templates (authenticated, registered before /:id to prevent Express param collision)
+    apiRouter.get('/agents/templates', requireAuth, requireTenant, agentController.listTemplates.bind(agentController));
 
     // Agents (AI workflow graphs with versioning)
     apiRouter.use('/agents', agentRoutes);
