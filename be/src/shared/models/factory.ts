@@ -55,6 +55,13 @@ import { ProjectSearchModel } from '@/modules/projects/models/project-search.mod
 import { ProjectEntityPermissionModel } from '@/modules/projects/models/project-entity-permission.model.js';
 import { ApiKeyModel } from '@/modules/external/models/api-key.model.js';
 
+// Agent Models
+import { AgentModel } from '@/modules/agents/models/agent.model.js';
+import { AgentRunModel } from '@/modules/agents/models/agent-run.model.js';
+import { AgentRunStepModel } from '@/modules/agents/models/agent-run-step.model.js';
+import { AgentTemplateModel } from '@/modules/agents/models/agent-template.model.js';
+import { AgentToolCredentialModel } from '@/modules/agents/models/agent-tool-credential.model.js';
+
 /**
  * @description ModelFactory class implementing the Factory Pattern.
  * Provides lazy-loaded singletons for all data models.
@@ -169,6 +176,18 @@ export class ModelFactory {
   private static projectEntityPermissionModel: ProjectEntityPermissionModel;
   /** ApiKey model singleton instance */
   private static apiKeyModel: ApiKeyModel;
+
+  // Agent Models
+  /** Agent model singleton instance */
+  private static agentModel: AgentModel;
+  /** AgentRun model singleton instance */
+  private static agentRunModel: AgentRunModel;
+  /** AgentRunStep model singleton instance */
+  private static agentRunStepModel: AgentRunStepModel;
+  /** AgentTemplate model singleton instance */
+  private static agentTemplateModel: AgentTemplateModel;
+  /** AgentToolCredential model singleton instance */
+  private static agentToolCredentialModel: AgentToolCredentialModel;
 
   /**
    * Get the User model singleton.
@@ -644,5 +663,54 @@ export class ModelFactory {
   static get apiKey() {
     if (!this.apiKeyModel) this.apiKeyModel = new ApiKeyModel();
     return this.apiKeyModel;
+  }
+
+  // -------------------------------------------------------------------------
+  // Agent Models
+  // -------------------------------------------------------------------------
+
+  /**
+   * Get the Agent model singleton.
+   * @returns AgentModel instance for agent CRUD operations
+   */
+  static get agent() {
+    if (!this.agentModel) this.agentModel = new AgentModel();
+    return this.agentModel;
+  }
+
+  /**
+   * Get the AgentRun model singleton.
+   * @returns AgentRunModel instance for agent run CRUD operations
+   */
+  static get agentRun() {
+    if (!this.agentRunModel) this.agentRunModel = new AgentRunModel();
+    return this.agentRunModel;
+  }
+
+  /**
+   * Get the AgentRunStep model singleton.
+   * @returns AgentRunStepModel instance for agent run step operations
+   */
+  static get agentRunStep() {
+    if (!this.agentRunStepModel) this.agentRunStepModel = new AgentRunStepModel();
+    return this.agentRunStepModel;
+  }
+
+  /**
+   * Get the AgentTemplate model singleton.
+   * @returns AgentTemplateModel instance for agent template CRUD operations
+   */
+  static get agentTemplate() {
+    if (!this.agentTemplateModel) this.agentTemplateModel = new AgentTemplateModel();
+    return this.agentTemplateModel;
+  }
+
+  /**
+   * Get the AgentToolCredential model singleton.
+   * @returns AgentToolCredentialModel instance for tool credential operations
+   */
+  static get agentToolCredential() {
+    if (!this.agentToolCredentialModel) this.agentToolCredentialModel = new AgentToolCredentialModel();
+    return this.agentToolCredentialModel;
   }
 }
