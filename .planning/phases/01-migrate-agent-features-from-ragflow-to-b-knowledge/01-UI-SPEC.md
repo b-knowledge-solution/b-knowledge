@@ -21,7 +21,7 @@ created: 2026-03-22
 | Preset | new-york (slate base, CSS variables, 0.5rem radius) |
 | Component library | Radix UI (via shadcn) |
 | Icon library | lucide-react ^0.560.0 |
-| Font | Inter (300, 400, 500, 600, 700) via Google Fonts |
+| Font | Inter (400, 600) via Google Fonts |
 
 **New dependencies required for this phase:**
 
@@ -58,18 +58,20 @@ Exceptions:
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Body | 14px | 400 (regular) | 1.5 |
-| Label | 12px | 500 (medium) | 1.4 |
+| Label | 12px | 400 (regular) | 1.4 |
 | Heading | 20px | 600 (semibold) | 1.2 |
 | Display | 28px | 600 (semibold) | 1.2 |
 
-**Canvas-specific typography:**
+**Canvas element mapping to base scale:**
 
-| Element | Size | Weight |
-|---------|------|--------|
-| Node title | 13px | 500 |
-| Node subtitle / type label | 11px | 400 |
-| Port label | 10px | 400 |
-| Minimap label | 9px | 400 |
+| Element | Maps To | Size | Weight | Notes |
+|---------|---------|------|--------|-------|
+| Node title | Body | 14px | 600 | Semibold to distinguish from body text within nodes |
+| Node subtitle / type label | Label | 12px | 400 | Standard label weight |
+| Port label | Label | 12px | 400 | Reduced opacity (0.7) for visual hierarchy |
+| Minimap label | Exception | 9px | 400 | Read-only decorative text, not keyboard-accessible, not a declared scale member |
+
+The minimap exception (9px) is justified because minimap labels are decorative, read-only, not reachable by keyboard navigation, and always paired with the full-size node labels on canvas. This is the only size outside the 4-size base scale.
 
 ---
 
@@ -83,7 +85,7 @@ Exceptions:
 | Destructive | `hsl(0 100% 50%)` / `#ff0000` | `hsl(0 63% 45%)` / `#b91c1c` | Delete agent, delete node, error states |
 
 **Accent reserved for:**
-- Primary CTA buttons ("Create Agent", "Save Agent", "Run")
+- Primary CTA buttons ("Create Agent", "Save Agent", "Run Agent")
 - Active sidebar navigation item (Agents)
 - Selected canvas node border highlight
 - Active tab indicator in agent config panels
@@ -110,6 +112,8 @@ These colors are used as a 4px left-border or subtle background tint on canvas n
 | Element | Copy |
 |---------|------|
 | Primary CTA | "Create Agent" |
+| Toolbar CTA: save | "Save Agent" |
+| Toolbar CTA: run | "Run Agent" |
 | Empty state heading | "No agents yet" |
 | Empty state body | "Build your first AI agent workflow. Start from scratch or pick a template." |
 | Empty state action | "Create Agent" (primary) / "Browse Templates" (secondary) |
@@ -123,6 +127,16 @@ These colors are used as a 4px left-border or subtle background tint on canvas n
 | Debug step | Status badge on node: "Running..." / "Completed" / "Failed" / "Skipped" |
 | Template clone | "Use Template": creates a copy with name "{template_name} (copy)" |
 | Webhook URL display | "Webhook URL" label + copy button + "POST requests to this URL will trigger the agent." |
+
+---
+
+## Visual Focal Points
+
+**Agent List Page (`/agents`):** The focal point is the card grid. The eye enters at the top-left card and scans right then down. The "Create Agent" primary CTA in the top-right corner is the secondary focal point, reachable after the user scans the existing agents.
+
+**Agent Canvas Page (`/agents/:id`):** The focal point is the center of the canvas where the node graph lives. The toolbar across the top anchors context (agent name, status). The right-side config panel is a supporting detail surface, not a focal point. The "Save Agent" and "Run Agent" buttons in the toolbar are the primary action targets.
+
+**Accessibility note:** All toolbar icon-only buttons must include either a visible text label or an `sr-only` span providing the action name. Tooltips are supplementary and do not replace accessible labels.
 
 ---
 
@@ -244,7 +258,7 @@ These colors are used as a 4px left-border or subtle background tint on canvas n
 
 ```
 +--toolbar-------------------------------------------+
-| [< Back] [Agent Name] [Draft v] [Save] [Run] [Debug] [Share] [More v] |
+| [< Back] [Agent Name] [Draft v] [Save Agent] [Run Agent] [Debug] [Share] [More v] |
 +--canvas-area-----------------------+--config-panel-+
 |                                    |               |
 |   [node]--->[node]--->[node]       | Node Config   |
@@ -285,6 +299,7 @@ No third-party registries declared.
 | Color contrast | Node category colors used with text labels (not color-only semantics) |
 | Reduced motion | Canvas animations respect `prefers-reduced-motion` (disable node transition animations) |
 | Touch targets | All clickable elements minimum 44x44px (including node drag handles, port connection points) |
+| Toolbar icon buttons | All icon-only buttons include a visible text label or `sr-only` span with the action name |
 
 ---
 
