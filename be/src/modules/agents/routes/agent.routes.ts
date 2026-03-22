@@ -9,7 +9,8 @@
 import { Router } from 'express'
 import { agentController } from '../controllers/agent.controller.js'
 import { agentDebugController } from '../controllers/agent-debug.controller.js'
-import { requireAuth } from '@/shared/middleware/auth.middleware.js'
+import { agentToolController } from '../controllers/agent-tool.controller.js'
+import { requireAuth, requireAbility } from '@/shared/middleware/auth.middleware.js'
 import { requireTenant } from '@/shared/middleware/tenant.middleware.js'
 import { validate } from '@/shared/middleware/validate.middleware.js'
 import {
@@ -21,6 +22,8 @@ import {
   listAgentsQuerySchema,
   agentRunBodySchema,
   agentRunIdParamSchema,
+  createCredentialSchema,
+  updateCredentialSchema,
 } from '../schemas/agent.schemas.js'
 
 const router = Router()
@@ -30,30 +33,39 @@ router.use(requireAuth)
 router.use(requireTenant)
 
 // -------------------------------------------------------------------------
-// Agent CRUD
+// Tool Credentials (placed BEFORE /:id routes to avoid param collision)
 // -------------------------------------------------------------------------
 
-router.get('/', validate({ query: listAgentsQuerySchema }), agentController.listAgents.bind(agentController))
-router.post('/', validate(createAgentSchema), agentController.createAgent.bind(agentController))
-router.get('/:id', validate({ params: agentIdParamSchema }), agentController.getAgent.bind(agentController))
-router.put('/:id', validate({ params: agentIdParamSchema, body: updateAgentSchema }), agentController.updateAgent.bind(agentController))
-router.delete('/:id', validate({ params: agentIdParamSchema }), agentController.deleteAgent.bind(agentController))
+router.get('/tools/credentials', agentToolController.listCredentials.bind(agentToolController))
+router.post('/tools/credentials', validate(createCredentialSchema), agentToolController.createCredential.bind(agentToolController))
+router.put('/tools/credentials/:id', validate({ params: agentIdParamSchema, body: updateCredentialSchema }), agentToolController.updateCredential.bind(agentToolController))
+router.delete('/tools/credentials/:id', validate({ params: agentIdParamSchema }), agentToolController.deleteCredential.bind(agentToolController))
+
+// -------------------------------------------------------------------------
+// Agent CRUD (ABAC-protected: read for GET, manage for mutations)
+// -------------------------------------------------------------------------
+
+router.get('/', requireAbility('read', 'Agent'), validate({ query: listAgentsQuerySchema }), agentController.listAgents.bind(agentController))
+router.post('/', requireAbility('manage', 'Agent'), validate(createAgentSchema), agentController.createAgent.bind(agentController))
+router.get('/:id', requireAbility('read', 'Agent'), validate({ params: agentIdParamSchema }), agentController.getAgent.bind(agentController))
+router.put('/:id', requireAbility('manage', 'Agent'), validate({ params: agentIdParamSchema, body: updateAgentSchema }), agentController.updateAgent.bind(agentController))
+router.delete('/:id', requireAbility('manage', 'Agent'), validate({ params: agentIdParamSchema }), agentController.deleteAgent.bind(agentController))
 
 // -------------------------------------------------------------------------
 // Agent Actions
 // -------------------------------------------------------------------------
 
-router.post('/:id/duplicate', validate({ params: agentIdParamSchema }), agentController.duplicateAgent.bind(agentController))
-router.get('/:id/export', validate({ params: agentIdParamSchema }), agentController.exportAgent.bind(agentController))
+router.post('/:id/duplicate', requireAbility('manage', 'Agent'), validate({ params: agentIdParamSchema }), agentController.duplicateAgent.bind(agentController))
+router.get('/:id/export', requireAbility('read', 'Agent'), validate({ params: agentIdParamSchema }), agentController.exportAgent.bind(agentController))
 
 // -------------------------------------------------------------------------
 // Execution
 // -------------------------------------------------------------------------
 
-router.post('/:id/run', validate({ params: agentIdParamSchema, body: agentRunBodySchema }), agentController.runAgent.bind(agentController))
-router.get('/:id/run/:runId/stream', validate({ params: agentRunIdParamSchema }), agentController.streamAgent.bind(agentController))
-router.post('/:id/run/:runId/cancel', validate({ params: agentRunIdParamSchema }), agentController.cancelRun.bind(agentController))
-router.get('/:id/runs', validate({ params: agentIdParamSchema }), agentController.listRuns.bind(agentController))
+router.post('/:id/run', requireAbility('read', 'Agent'), validate({ params: agentIdParamSchema, body: agentRunBodySchema }), agentController.runAgent.bind(agentController))
+router.get('/:id/run/:runId/stream', requireAbility('read', 'Agent'), validate({ params: agentRunIdParamSchema }), agentController.streamAgent.bind(agentController))
+router.post('/:id/run/:runId/cancel', requireAbility('manage', 'Agent'), validate({ params: agentRunIdParamSchema }), agentController.cancelRun.bind(agentController))
+router.get('/:id/runs', requireAbility('read', 'Agent'), validate({ params: agentIdParamSchema }), agentController.listRuns.bind(agentController))
 
 // -------------------------------------------------------------------------
 // Debug Mode
