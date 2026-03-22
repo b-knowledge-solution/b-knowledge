@@ -5,11 +5,17 @@ Compute-heavy nodes (LLM generation, retrieval, code execution) are handled here
 in Python, while lightweight nodes (switch, condition, merge) are handled inline
 by the Node.js orchestrator and never dispatched to this worker.
 
-Handler implementations are stubs for now -- full wiring to existing LLM,
-retrieval, and tool infrastructure happens in later plans (Plan 07-09).
+LLM and retrieval handlers are stubs for now -- full wiring happens in Plan 07.
+Tavily and Wikipedia tools have working implementations via the tools package.
 """
 
 from loguru import logger
+
+from rag.agent.tools import TavilyTool, WikipediaTool
+
+# Instantiate concrete tool implementations for handler registration
+_tavily_tool = TavilyTool()
+_wikipedia_tool = WikipediaTool()
 
 
 def execute_node(task: dict) -> dict:
@@ -153,33 +159,52 @@ def handle_retrieval(input_data: dict, config: dict, tenant_id: str) -> dict:
 
 
 def handle_wikipedia(input_data: dict, config: dict, tenant_id: str) -> dict:
-    """Execute a Wikipedia search node.
+    """Execute a Wikipedia search node using the WikipediaTool.
 
     Args:
-        input_data: Search query text.
+        input_data: Search query text (uses 'query' or 'output' key).
         config: Language and result count settings.
         tenant_id: Multi-tenant isolation identifier.
 
     Returns:
         Dict with 'output_data' containing Wikipedia search results.
     """
-    logger.info("[STUB] wikipedia node")
-    return {"output_data": {"output": "[Wikipedia stub] No results", "results": []}}
+    # Delegate to the WikipediaTool implementation (no credentials needed)
+    result = _wikipedia_tool.execute(input_data, config)
+
+    # Check for errors from the tool
+    if "error" in result:
+        return {"error": result["error"]}
+
+    return {"output_data": {"output": str(result.get("result", [])), "results": result.get("result", [])}}
 
 
 def handle_tavily(input_data: dict, config: dict, tenant_id: str) -> dict:
-    """Execute a Tavily web search node.
+    """Execute a Tavily web search node using the TavilyTool.
+
+    Credentials are expected in config['credentials'] (injected by the
+    Node.js orchestrator from the tool credential service).
 
     Args:
-        input_data: Search query text.
-        config: Tavily API key and search parameters.
+        input_data: Search query text (uses 'query' or 'output' key).
+        config: Tavily search parameters and optional credentials dict.
         tenant_id: Multi-tenant isolation identifier.
 
     Returns:
         Dict with 'output_data' containing web search results.
     """
-    logger.info("[STUB] tavily node")
-    return {"output_data": {"output": "[Tavily stub] No results", "results": []}}
+    # Extract credentials from config (injected by Node.js orchestrator)
+    credentials = config.get("credentials")
+    result = _tavily_tool.execute(input_data, config, credentials)
+
+    # Check for errors from the tool
+    if "error" in result:
+        return {"error": result["error"]}
+
+    return {"output_data": {
+        "output": result.get("answer", str(result.get("result", []))),
+        "results": result.get("result", []),
+    }}
 
 
 def handle_pubmed(input_data: dict, config: dict, tenant_id: str) -> dict:
