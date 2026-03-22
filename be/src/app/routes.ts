@@ -41,6 +41,7 @@ import projectRoutes from '@/modules/projects/routes/projects.routes.js';
 import feedbackRoutes from '@/modules/feedback/routes/feedback.routes.js';
 import apiKeyRoutes from '@/modules/external/routes/api-key.routes.js';
 import externalApiRoutes from '@/modules/external/routes/external-api.routes.js';
+import agentRoutes from '@/modules/agents/routes/agent.routes.js';
 
 // ============================================================================
 // Rate Limiters
@@ -180,6 +181,9 @@ function registerRoutes(apiRouter: Router): void {
 
     // Projects (multi-category document management)
     apiRouter.use('/projects', projectRoutes);
+
+    // Agents (AI workflow graphs with versioning)
+    apiRouter.use('/agents', agentRoutes);
 
     // External API key management (session auth)
     apiRouter.use('/external/api-keys', apiKeyRoutes);
