@@ -1,6 +1,7 @@
 /**
  * @fileoverview Right-side configuration panel for editing the selected node's data.
- * Shows a JSON editor for node config with apply/close controls.
+ * Dispatches to type-specific forms for core operators, falls back to generic
+ * JSON editor for remaining operator types.
  *
  * @module features/agents/components/canvas/NodeConfigPanel
  */
@@ -12,11 +13,31 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { useCanvasStore } from '../../store/canvasStore'
 import type { OperatorType } from '../../types/agent.types'
+import type { NodeFormProps } from './forms/types'
+import { GenerateForm } from './forms/GenerateForm'
+import { RetrievalForm } from './forms/RetrievalForm'
+import { BeginForm } from './forms/BeginForm'
+import { SwitchForm } from './forms/SwitchForm'
+import { CodeForm } from './forms/CodeForm'
+
+/**
+ * @description Maps operator type to its dedicated configuration form component.
+ *   Core operators have type-specific forms; remaining operators fall through
+ *   to the generic JSON editor below.
+ */
+const FORM_MAP: Partial<Record<OperatorType, React.ComponentType<NodeFormProps>>> = {
+  generate: GenerateForm,
+  retrieval: RetrievalForm,
+  begin: BeginForm,
+  switch: SwitchForm,
+  code: CodeForm,
+}
 
 /**
  * @description Right-side panel (360px fixed width) for configuring the currently
- * selected canvas node. Displays node type, label, and a JSON editor for the
- * node's config payload. Visible only when a node is selected.
+ * selected canvas node. Dispatches to type-specific forms for core operators
+ * (Generate, Retrieval, Begin, Switch, Code) and falls back to a generic JSON
+ * editor for all other operator types. Visible only when a node is selected.
  *
  * @returns {JSX.Element | null} Config panel or null when no node is selected
  */
@@ -32,7 +53,7 @@ export function NodeConfigPanel() {
     ? nodes.find((n) => n.id === selectedNodeId)
     : null
 
-  // Local state for the JSON editor
+  // Local state for the generic JSON editor (used when no type-specific form exists)
   const [configJson, setConfigJson] = useState('')
   const [jsonError, setJsonError] = useState<string | null>(null)
 
@@ -46,7 +67,7 @@ export function NodeConfigPanel() {
   }, [selectedNode])
 
   /**
-   * @description Validates and applies the JSON config to the selected node
+   * @description Validates and applies the JSON config to the selected node (generic editor)
    */
   const handleApply = useCallback(() => {
     if (!selectedNodeId) return
@@ -62,6 +83,18 @@ export function NodeConfigPanel() {
   }, [selectedNodeId, configJson, updateNodeData])
 
   /**
+   * @description Handles config updates from type-specific forms
+   * @param {Record<string, unknown>} data - Partial node data to merge
+   */
+  const handleFormUpdate = useCallback(
+    (data: Record<string, unknown>) => {
+      if (!selectedNodeId) return
+      updateNodeData(selectedNodeId, data)
+    },
+    [selectedNodeId, updateNodeData],
+  )
+
+  /**
    * @description Closes the panel by deselecting the current node
    */
   const handleClose = useCallback(() => {
@@ -71,7 +104,11 @@ export function NodeConfigPanel() {
   // Hide panel when no node is selected
   if (!selectedNode) return null
 
-  const nodeData = selectedNode.data as { type?: OperatorType; label?: string }
+  const nodeData = selectedNode.data as { type?: OperatorType; label?: string; config?: Record<string, unknown> }
+
+  // Resolve the type-specific form component, if available
+  const FormComponent = nodeData.type ? FORM_MAP[nodeData.type] : undefined
+  const nodeConfig = nodeData.config ?? {}
 
   return (
     <div className="w-[360px] border-l bg-background flex flex-col h-full">
@@ -91,32 +128,46 @@ export function NodeConfigPanel() {
         </Button>
       </div>
 
-      {/* Body: JSON config editor */}
+      {/* Body: type-specific form or generic JSON editor */}
       <div className="flex-1 overflow-auto p-4">
-        <label className="text-sm font-medium mb-2 block">
-          {t('common.configuration', 'Configuration')}
-        </label>
-        <Textarea
-          value={configJson}
-          onChange={(e) => {
-            setConfigJson(e.target.value)
-            setJsonError(null)
-          }}
-          className="font-mono text-xs min-h-[200px]"
-          placeholder="{}"
-        />
-        {/* JSON validation error */}
-        {jsonError && (
-          <p className="text-xs text-destructive mt-1">{jsonError}</p>
+        {FormComponent ? (
+          // Render the dedicated form for this operator type
+          <FormComponent
+            nodeId={selectedNode.id}
+            config={nodeConfig}
+            onUpdate={handleFormUpdate}
+          />
+        ) : (
+          // Generic JSON editor fallback for operators without dedicated forms
+          <>
+            <label className="text-sm font-medium mb-2 block">
+              {t('common.configuration', 'Configuration')}
+            </label>
+            <Textarea
+              value={configJson}
+              onChange={(e) => {
+                setConfigJson(e.target.value)
+                setJsonError(null)
+              }}
+              className="font-mono text-xs min-h-[200px]"
+              placeholder="{}"
+            />
+            {/* JSON validation error */}
+            {jsonError && (
+              <p className="text-xs text-destructive mt-1">{jsonError}</p>
+            )}
+          </>
         )}
       </div>
 
-      {/* Footer: Apply button */}
-      <div className="border-t px-4 py-3">
-        <Button onClick={handleApply} className="w-full" size="sm">
-          {t('common.apply', 'Apply')}
-        </Button>
-      </div>
+      {/* Footer: Apply button (only for generic JSON editor) */}
+      {!FormComponent && (
+        <div className="border-t px-4 py-3">
+          <Button onClick={handleApply} className="w-full" size="sm">
+            {t('common.apply', 'Apply')}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
