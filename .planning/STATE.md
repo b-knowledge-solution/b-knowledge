@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-03-22T17:02:00.456Z"
-last_activity: 2026-03-19 — Plan 07-02 complete (ABAC field-level filters wired into cross-dataset search)
+status: in-progress
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-03-22T17:02:11Z"
+last_activity: 2026-03-22 — Plan 01-01 complete (Agent data model: 5 tables, 5 models, factory registration)
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 10
   completed_plans: 1
-  percent: 97
+  percent: 10
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 
 ## Current Position
 
-Phase: 7 of 7 (Milestone Gap Closure)
-Plan: 2 of 2 in current phase
-Status: Plan 07-02 Complete
-Last activity: 2026-03-19 — Plan 07-02 complete (ABAC field-level filters wired into cross-dataset search)
+Phase: 1 of 1 (Migrate Agent Features from RAGFlow to B-Knowledge)
+Plan: 1 of 10 in current phase
+Status: Plan 01-01 Complete
+Last activity: 2026-03-22 — Plan 01-01 complete (Agent data model: 5 tables, 5 models, factory registration)
 
-Progress: [██████████] 97%
+Progress: [█---------] 10%
 
 ## Performance Metrics
 
@@ -172,6 +172,8 @@ Recent decisions affecting current work:
 ### Roadmap Evolution
 
 - Phase 1 added: Migrate agent features from RAGFlow to B-Knowledge
+- [Phase 1, Plan 01]: Agent models follow existing BaseModel + ModelFactory singleton pattern; version-as-row with parent_id matches dataset approach
+- [Phase 1, Plan 01]: COALESCE-based unique index on agent_tool_credentials handles NULL agent_id for tenant-level defaults
 
 ### Pending Todos
 
@@ -186,6 +188,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T17:02:00.451Z
-Stopped at: Completed 01-02-PLAN.md
-Resume file: None
+Last session: 2026-03-22T17:02:11Z
+Stopped at: Completed 01-01-PLAN.md
+Resume file: .planning/phases/01-migrate-agent-features-from-ragflow-to-b-knowledge/01-02-PLAN.md
