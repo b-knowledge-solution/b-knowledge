@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 01-05-PLAN.md
+stopped_at: Completed 01-08-PLAN.md
 last_updated: "2026-03-22T17:19:46Z"
 last_activity: "2026-03-22 — Plan 01-05 complete (ReactFlow canvas with 38-operator palette, generic node renderer, auto-save hook)"
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 10
-  completed_plans: 5
-  percent: 50
+  completed_plans: 8
+  percent: 80
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 1 of 1 (Migrate Agent Features from RAGFlow to B-Knowledge)
-Plan: 6 of 10 in current phase
-Status: Plan 01-06 Complete
-Last activity: 2026-03-22 — Plan 01-06 complete (Hybrid execution engine: Node.js graph orchestrator + Python worker + Redis Streams + SSE streaming)
+Plan: 8 of 10 in current phase
+Status: Plan 01-07 Complete
+Last activity: 2026-03-22 — Plan 01-07 complete (Debug mode with step-by-step execution, breakpoints, Socket.IO events, SSE streaming)
 
-Progress: [██████----] 60%
+Progress: [████████--] 70%
 
 ## Performance Metrics
 
@@ -87,6 +87,7 @@ Progress: [██████----] 60%
 | Phase 01 P04 | 8min | 2 tasks | 13 files |
 | Phase 01 P05 | 5min | 2 tasks | 9 files |
 | Phase 01 P06 | 8min | 3 tasks | 9 files |
+| Phase 01 P08 | 6min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -182,6 +183,9 @@ Recent decisions affecting current work:
 - [Phase 01, Plan 05]: Generic JSON editor for NodeConfigPanel; operator-specific forms deferred to later plans
 - [Phase 01, Plan 06]: Inline vs dispatch node classification: begin/answer/switch/condition/merge/template/keyword_extract in Node.js; LLM/retrieval/code/tools to Python
 - [Phase 01, Plan 06]: Per-node Redis pub/sub channels for result delivery; 5-min per-node timeout
+- [Phase 01, Plan 08]: Webhook accepts input/message/query field names for payload flexibility
+- [Phase 01, Plan 08]: Templates route registered in app/routes.ts before agent module to avoid /:id catch-all
+- [Phase 01, Plan 08]: Seed templates at be/src/shared/db/seeds/ following existing seed convention
 - [Phase 01, Plan 06]: Loop-back edges (sourceHandle='loop_back') excluded from DAG cycle detection
 
 ### Roadmap Evolution
@@ -203,6 +207,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T17:19:46Z
-Stopped at: Completed 01-06-PLAN.md
+Last session: 2026-03-22T17:32:17Z
+Stopped at: Completed 01-08-PLAN.md
 Resume file: None
