@@ -243,4 +243,19 @@ export const queryKeys = {
     all: ['api-keys'] as const,
     list: () => [...queryKeys.apiKeys.all, 'list'] as const,
   },
+
+  // --------------------------------------------------------------------------
+  // Agents
+  // --------------------------------------------------------------------------
+  agents: {
+    all: ['agents'] as const,
+    lists: () => [...queryKeys.agents.all, 'list'] as const,
+    list: (filters: Record<string, unknown>) => [...queryKeys.agents.lists(), filters] as const,
+    details: () => [...queryKeys.agents.all, 'detail'] as const,
+    detail: (id: string) => [...queryKeys.agents.details(), id] as const,
+    runs: (agentId: string) => [...queryKeys.agents.detail(agentId), 'runs'] as const,
+    run: (agentId: string, runId: string) => [...queryKeys.agents.runs(agentId), runId] as const,
+    templates: () => ['agent-templates'] as const,
+    templatesByCategory: (category: string) => ['agent-templates', category] as const,
+  },
 } as const
