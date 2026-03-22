@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 1 of 1 (Migrate Agent Features from RAGFlow to B-Knowledge)
-Plan: 5 of 10 in current phase
-Status: Plan 01-05 Complete
-Last activity: 2026-03-22 — Plan 01-05 complete (ReactFlow canvas with 38-operator palette, generic node renderer, auto-save hook)
+Plan: 6 of 10 in current phase
+Status: Plan 01-06 Complete
+Last activity: 2026-03-22 — Plan 01-06 complete (Hybrid execution engine: Node.js graph orchestrator + Python worker + Redis Streams + SSE streaming)
 
-Progress: [█████-----] 50%
+Progress: [██████----] 60%
 
 ## Performance Metrics
 
@@ -86,6 +86,7 @@ Progress: [█████-----] 50%
 | Phase 01 P03 | 5min | 2 tasks | 6 files |
 | Phase 01 P04 | 8min | 2 tasks | 13 files |
 | Phase 01 P05 | 5min | 2 tasks | 9 files |
+| Phase 01 P06 | 8min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -179,6 +180,9 @@ Recent decisions affecting current work:
 - [Phase 01, Plan 05]: Auto-save reads store state directly via getState() to avoid stale closure in setInterval
 - [Phase 01, Plan 05]: NodePalette uses Dialog+Input+ScrollArea instead of shadcn Command (not installed)
 - [Phase 01, Plan 05]: Generic JSON editor for NodeConfigPanel; operator-specific forms deferred to later plans
+- [Phase 01, Plan 06]: Inline vs dispatch node classification: begin/answer/switch/condition/merge/template/keyword_extract in Node.js; LLM/retrieval/code/tools to Python
+- [Phase 01, Plan 06]: Per-node Redis pub/sub channels for result delivery; 5-min per-node timeout
+- [Phase 01, Plan 06]: Loop-back edges (sourceHandle='loop_back') excluded from DAG cycle detection
 
 ### Roadmap Evolution
 
@@ -200,5 +204,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-22T17:19:46Z
-Stopped at: Completed 01-05-PLAN.md
+Stopped at: Completed 01-06-PLAN.md
 Resume file: None
