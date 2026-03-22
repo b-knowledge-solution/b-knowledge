@@ -23,7 +23,7 @@
 
 | Phase | Milestone | Plans | Status | Completed |
 |-------|-----------|-------|--------|-----------|
-| 1. Migration Stabilization | 2/10 | In Progress|  | 2026-03-18 |
+| 1. Migration Stabilization | 6/10 | In Progress|  | 2026-03-18 |
 | 2. Access Control | v1.0 | 7/7 | Complete | 2026-03-18 |
 | 3. Document Management | v1.0 | 8/8 | Complete | 2026-03-19 |
 | 4. Domain-Specific Parsers | v1.0 | 3/3 | Complete | 2026-03-19 |
@@ -38,7 +38,7 @@
 **Goal:** Full parity migration of RAGFlow's agent/workflow system into B-Knowledge — visual ReactFlow canvas builder, 23 operators, 23 tools, 24 templates, hybrid Node.js/Python execution engine, debug mode, versioning, webhooks, MCP integration, sandbox code execution, embeddable widgets, and ABAC access control.
 **Requirements**: AGENT-DATA-MODEL, AGENT-FE-FOUNDATION, AGENT-CRUD-API, AGENT-LIST-UI, AGENT-CANVAS-UI, AGENT-EXECUTION-ENGINE, AGENT-DEBUG-MODE, AGENT-VERSIONING-WEBHOOKS-TEMPLATES, AGENT-MCP-SANDBOX-TOOLS, AGENT-EMBED-ABAC-FORMS
 **Depends on:** v1.0 milestone
-**Plans:** 2/10 plans executed
+**Plans:** 6/10 plans executed
 
 Plans:
 - [ ] 01-01-PLAN.md — Database schema + Knex models (agents, runs, steps, credentials, templates)
