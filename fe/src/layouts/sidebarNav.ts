@@ -31,6 +31,7 @@ import {
   FolderOpen,
   LayoutDashboard,
   BrainCircuit,
+  KeyRound,
 } from 'lucide-react'
 import type { config } from '@/config'
 
@@ -156,6 +157,12 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
         labelKey: 'nav.llmProviders',
         icon: BrainCircuit,
         roles: ['super-admin', 'admin'],
+      },
+      {
+        path: '/data-studio/api-keys',
+        labelKey: 'nav.apiKeys',
+        icon: KeyRound,
+        roles: ['super-admin', 'admin', 'leader'],
       },
       {
         path: '/data-studio/histories',

@@ -115,6 +115,9 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     titleKey: 'llmProviders.title',
     fullBleed: true,
   },
+  '/data-studio/api-keys': {
+    titleKey: 'apiKeys.title',
+  },
   '/data-studio/datasets/:id/settings': {
     titleKey: 'datasetSettings.title',
     fullBleed: true,

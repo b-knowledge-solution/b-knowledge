@@ -124,7 +124,8 @@
     "expandMenu": "メニューを展開",
     "administrators": "管理者",
     "collapseMenu": "メニューを折りたたむ",
-    "glossary": "用語集"
+    "glossary": "用語集",
+    "apiKeys": "APIキー"
   },
   "iam": {
     "title": "ID管理とアクセス制御",
@@ -2391,5 +2392,34 @@
     "deepResearchDesc": "複雑な質問のための再帰的マルチステップ研究を有効にする",
     "allowRbacDatasets": "ユーザーのアクセス可能なデータセットを許可",
     "allowRbacDatasetsDesc": "専用データセットとユーザーのRBACアクセス可能なデータセットの両方を検索"
+  },
+  "apiKeys": {
+    "title": "APIキー",
+    "description": "外部APIアクセスとpromptfooなどの評価ツール用のAPIキーを管理",
+    "createKey": "APIキーを作成",
+    "name": "名前",
+    "namePlaceholder": "例：Promptfoo評価",
+    "scopes": "スコープ",
+    "status": "ステータス",
+    "active": "有効",
+    "inactive": "無効",
+    "lastUsed": "最終使用日",
+    "expiresAt": "有効期限",
+    "never": "なし",
+    "neverUsed": "未使用",
+    "createdSuccess": "APIキーが正常に作成されました",
+    "deleteConfirm": "このAPIキーを削除してもよろしいですか？この操作は取り消せません。",
+    "deleteSuccess": "APIキーを削除しました",
+    "updateSuccess": "APIキーを更新しました",
+    "keyCreated": "APIキーが作成されました",
+    "keyCreatedWarning": "今すぐこのキーをコピーしてください。再度表示されることはありません。",
+    "copyKey": "キーをコピー",
+    "copied": "コピーしました！",
+    "scopeChat": "チャット",
+    "scopeSearch": "検索",
+    "scopeRetrieval": "取得",
+    "exampleUsage": "使用例",
+    "noKeys": "APIキーはまだありません",
+    "noKeysDescription": "外部評価APIを使用するためにAPIキーを作成してください"
   }
 }
