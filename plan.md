@@ -1,508 +1,409 @@
-# Detailed Plan: Fix All Test Coverage Gaps
+# Implementation Plan: API Key Management + External Evaluation API
 
-## Phase 1 — CI/CD & Infrastructure (Foundation)
+## Overview
 
-### 1.1 Enable tests in GitHub Actions CI
-**File:** `.github/workflows/buid-ci.yml`
+Two interconnected features:
+1. **API Key Management Page** — Users can CRUD personal API keys for external API access
+2. **External Evaluation API** — REST endpoints authenticated via API keys, returning structured responses compatible with [promptfoo RAG evaluation](https://www.promptfoo.dev/docs/guides/evaluate-rag/)
 
-**Changes:**
-- Uncomment `npm test` line
-- Add Python test steps for `advance-rag` and `converter`
-- Add Python 3.11 setup step
-- Add `npm run setup:python` or direct venv creation for CI
-- Cache npm and pip dependencies for speed
+---
 
-**Target workflow:**
-```yaml
-steps:
-  - uses: actions/checkout@v4
-  - name: Use Node.js ${{ matrix.node-version }}
-    uses: actions/setup-node@v4
-    with:
-      node-version: ${{ matrix.node-version }}
-      cache: 'npm'
-  - name: Set up Python 3.11
-    uses: actions/setup-python@v5
-    with:
-      python-version: '3.11'
-      cache: 'pip'
-  - run: npm ci
-  - run: npm run build --if-present
-  - run: npm test
-  - name: Run advance-rag tests
-    working-directory: advance-rag
-    run: |
-      python -m venv .venv
-      source .venv/bin/activate
-      pip install -e ".[dev]" || pip install -e .
-      pip install pytest pytest-cov
-      python -m pytest tests/ --tb=short
-  - name: Run converter tests
-    working-directory: converter
-    run: |
-      python -m venv .venv
-      source .venv/bin/activate
-      pip install -e ".[dev]" || pip install -e .
-      pip install pytest pytest-cov
-      python -m pytest tests/ --tb=short
+## Part 1: API Key Management (Backend)
+
+### 1.1 Database Migration — `api_keys` table
+
+**File:** `be/src/shared/db/migrations/20260322000000_create_api_keys.ts`
+
+```sql
+CREATE TABLE api_keys (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name          VARCHAR(255) NOT NULL,           -- human-readable label
+  key_prefix    VARCHAR(8) NOT NULL,             -- first 8 chars for display (e.g. "bk-a1b2...")
+  key_hash      VARCHAR(128) NOT NULL,           -- SHA-256 hash of the full key
+  scopes        JSONB NOT NULL DEFAULT '["chat","search","retrieval"]',  -- permitted API scopes
+  is_active     BOOLEAN NOT NULL DEFAULT true,
+  last_used_at  TIMESTAMPTZ,
+  expires_at    TIMESTAMPTZ,                     -- optional expiration
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_api_keys_user_id ON api_keys(user_id);
+CREATE INDEX idx_api_keys_key_hash ON api_keys(key_hash);
 ```
 
-### 1.2 Add pytest configuration to Python projects
-**Files:**
-- `advance-rag/pyproject.toml` — Add `[tool.pytest.ini_options]` section
-- `converter/pyproject.toml` — Add `[tool.pytest.ini_options]` section
+**Key difference from embed tokens:** API keys are hashed (SHA-256) and never stored in plaintext. The full key is only returned once on creation. This follows security best practices — embed tokens are stored plaintext because they're short-lived widget tokens, but user API keys are long-lived credentials.
 
-**Changes for both:**
-```toml
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-python_functions = ["test_*"]
-addopts = "-v --tb=short"
+### 1.2 Backend Module — `be/src/modules/external/`
 
-[project.optional-dependencies]
-dev = ["pytest>=7.0", "pytest-cov>=4.0", "pytest-mock>=3.0"]
+**Structure (≥5 files → sub-directory layout):**
+```
+be/src/modules/external/
+├── controllers/
+│   ├── api-key.controller.ts        # CRUD endpoints for API keys
+│   └── external-api.controller.ts   # External evaluation API endpoints
+├── services/
+│   ├── api-key.service.ts           # Key generation, hashing, validation
+│   └── external-api.service.ts      # Evaluation API orchestration
+├── models/
+│   └── api-key.model.ts             # Knex model extending BaseModel
+├── schemas/
+│   └── external.schemas.ts          # Zod schemas for all endpoints
+├── routes/
+│   ├── api-key.routes.ts            # /api/external/api-keys (session auth)
+│   └── external-api.routes.ts       # /api/v1/external/* (API key auth)
+└── index.ts                         # Barrel export
 ```
 
-### 1.3 Raise frontend coverage thresholds
-**File:** `fe/vitest.config.ts`
+### 1.3 API Key Service
 
-**Change coverage thresholds from:**
+**`api-key.service.ts`** — Core operations:
+
+| Method | Purpose |
+|--------|---------|
+| `generateKey()` | Generate `bk-<40 random hex chars>` format key |
+| `hashKey(key)` | SHA-256 hash for storage |
+| `createApiKey(userId, name, scopes, expiresAt?)` | Create key, return full key once |
+| `listApiKeys(userId)` | List user's keys (prefix + masked) |
+| `revokeApiKey(userId, keyId)` | Soft-deactivate key |
+| `deleteApiKey(userId, keyId)` | Hard delete |
+| `validateApiKey(rawKey)` | Hash lookup + active + expiry check (with in-memory cache) |
+| `updateLastUsed(keyId)` | Bump `last_used_at` (debounced) |
+
+### 1.4 API Key Routes (Session Auth)
+
+**Path:** `POST|GET|DELETE /api/external/api-keys`
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/api/external/api-keys` | `requireAuth` | Create new API key |
+| `GET` | `/api/external/api-keys` | `requireAuth` | List user's API keys |
+| `DELETE` | `/api/external/api-keys/:id` | `requireAuth` + ownership | Revoke/delete key |
+| `PATCH` | `/api/external/api-keys/:id` | `requireAuth` + ownership | Update name/scopes/active |
+
+### 1.5 API Key Auth Middleware
+
+**`external-auth.middleware.ts`** in shared middleware:
+
 ```typescript
-thresholds: { lines: 5, functions: 5, branches: 3, statements: 5 }
+// Extracts Bearer token from Authorization header
+// Validates via apiKeyService.validateApiKey()
+// Attaches user context to req (req.apiKeyUser)
+// Returns 401 with OpenAI-format error if invalid
 ```
-**To:**
+
+---
+
+## Part 2: External Evaluation API (Backend)
+
+### 2.1 Endpoint Design for Promptfoo Compatibility
+
+Promptfoo uses an [HTTP provider](https://www.promptfoo.dev/docs/providers/http/) that can call any REST API. The response must include structured fields that `transformResponse`, `transform`, and `contextTransform` can extract.
+
+### 2.2 API Endpoints
+
+**Base path:** `/api/v1/external/`
+
+| Method | Path | Description | Promptfoo Use |
+|--------|------|-------------|---------------|
+| `POST` | `/v1/external/chat` | RAG chat with full context return | Main chat evaluation endpoint |
+| `POST` | `/v1/external/search` | Search with full context return | Search evaluation |
+| `POST` | `/v1/external/retrieval` | Retrieval-only (no LLM generation) | Context-only evaluation |
+
+### 2.3 Request Format
+
 ```typescript
-thresholds: { lines: 30, functions: 30, branches: 20, statements: 30 }
+// POST /api/v1/external/chat  (or /search or /retrieval)
+{
+  "query": "What is the capital of France?",
+  "assistant_id": "uuid",          // optional: specific chat assistant
+  "search_app_id": "uuid",         // optional: specific search app
+  "dataset_ids": ["uuid"],         // optional: direct dataset targeting
+  "options": {
+    "top_k": 10,                   // retrieval count
+    "method": "hybrid",            // full_text | semantic | hybrid
+    "similarity_threshold": 0.2,
+    "temperature": 0.7,
+    "max_tokens": 2048,
+    "include_contexts": true,      // return retrieved chunks (default: true)
+    "include_metadata": true       // return timing/scoring metadata
+  }
+}
 ```
 
-This is an interim target. Raise further as coverage improves.
+### 2.4 Response Format (Promptfoo-Compatible)
 
----
+The response is designed so promptfoo can use:
+- `transform: 'json.answer'` → extract the answer for assertions
+- `contextTransform: 'json.contexts.map(c => c.text).join("\\n\\n")'` → extract contexts for RAG metrics
 
-## Phase 2 — Fix Excluded/Broken Frontend Tests (Tech Debt)
-
-### 2.1 Diagnose and fix the lucide-react Proxy mock issue
-**Root cause:** The global `lucide-react` Proxy mock in `fe/tests/setup.ts` causes module loading hangs for components that import icons in certain patterns.
-
-**Files to modify:**
-- `fe/tests/setup.ts` — Replace the global Proxy mock with a targeted `vi.mock('lucide-react', ...)` that returns named exports instead of using Proxy
-
-**Approach:**
-1. Read the current Proxy-based mock in `setup.ts`
-2. Identify which icons are actually imported across the codebase
-3. Replace with explicit mock exports (or a factory that generates simple span elements)
-4. Re-enable the 23 tests excluded due to "module loading issues with global Proxy lucide-react mock":
-   - `tests/components/ConfirmDialog.test.tsx`
-   - `tests/components/Dialog.test.tsx`
-   - `tests/components/SettingsDialog.test.tsx`
-   - `tests/components/ErrorPage.test.tsx`
-   - `tests/components/MetadataFilterEditor.test.tsx`
-   - `tests/features/histories/pages/HistoriesPage.test.tsx`
-   - `tests/layouts/MainLayout.test.tsx`
-   - `tests/app/App.test.tsx`
-   - `tests/features/documents/components/FilePreview/PreviewComponents/ImagePreview.test.tsx`
-   - `tests/features/documents/components/FilePreview/PreviewComponents/PdfPreview.test.tsx`
-   - `tests/features/documents/components/FilePreview/PreviewComponents/TextPreview.test.tsx`
-   - `tests/features/users/pages/PermissionManagementPage.test.tsx`
-   - `tests/features/users/components/UserMultiSelect.test.tsx`
-   - `tests/features/auth/components/ProtectedRoute.test.tsx`
-   - `tests/features/auth/components/AdminRoute.test.tsx`
-   - `tests/features/auth/components/RoleRoute.test.tsx`
-   - `tests/features/system/SystemMonitorPage.test.tsx`
-   - `tests/features/system/SystemToolsPage.test.tsx`
-   - `tests/features/chat/ChatAssistantConfig.test.tsx`
-   - `tests/features/search/SearchAppConfig.test.tsx`
-   - `tests/features/search/SearchPage.test.tsx`
-   - `tests/features/chat/ChatPage.test.tsx`
-   - `tests/components/RouteProgressBar.test.tsx`
-
-4. Run each re-enabled test individually to verify it passes
-
-### 2.2 Delete tests for deleted/renamed source files
-**Action:** Remove the 20 test files whose source modules no longer exist:
-- `tests/features/ai/AiChatPage.test.tsx`
-- `tests/features/ai/AiSearchPage.test.tsx`
-- `tests/features/ai/IframeActionButtons.test.tsx`
-- `tests/features/ai/RagflowIframe.comprehensive.test.tsx`
-- `tests/features/ai/RagflowIframe.test.tsx`
-- `tests/features/ai/useRagflowIframe.test.ts`
-- `tests/features/documents/DocumentManagerPage.test.tsx`
-- `tests/features/documents/DocumentPermissionModal.test.tsx`
-- `tests/features/documents/FilePreviewModal.test.tsx`
-- `tests/features/documents/SourcePermissionsModal.test.tsx`
-- `tests/features/documents/documentService.test.ts`
-- `tests/features/documents/api/documentService.test.ts`
-- `tests/features/documents/api/shared-storage.service.test.ts`
-- `tests/features/knowledge-base/KnowledgeBaseConfigPage.test.tsx`
-- `tests/features/knowledge-base/KnowledgeBaseContext.test.tsx`
-- `tests/features/knowledge-base/knowledgeBaseService.test.tsx`
-- `tests/features/storage/StoragePage.test.tsx`
-- `tests/features/histories/api/historiesService.test.ts`
-- `tests/features/prompts/api/promptService.test.ts`
-- `tests/features/broadcast/broadcastMessageService.test.tsx`
-
-**Verify:** Confirm each corresponding source file is actually deleted before removing the test. For files that were renamed (not deleted), update imports instead.
-
-### 2.3 Fix remaining excluded tests with import resolution issues
-**Files (8):**
-- `tests/features/history/api/historyService.test.ts`
-- `tests/features/history/pages/ChatHistoryPage.test.tsx`
-- `tests/features/history/pages/SearchHistoryPage.test.tsx`
-- `tests/features/glossary/useGlossaryKeywords.test.ts`
-- `tests/features/glossary/useGlossaryTasks.test.ts`
-- `tests/features/teams/hooks/useTeamMembers.test.tsx`
-- `tests/features/teams/hooks/useTeams.test.tsx`
-- `tests/features/users/useSharedUser.test.tsx`
-
-**Approach:** For each file, check if the source module was moved/renamed — if so, update imports. If source was deleted, delete the test.
-
----
-
-## Phase 3 — Backend Test Gaps
-
-### 3.1 Add `llm-provider` module tests
-**New files to create:**
-- `be/tests/llm-provider/llm-provider.service.test.ts`
-- `be/tests/llm-provider/llm-provider.schemas.test.ts`
-- `be/tests/llm-provider/llm-provider.controller.test.ts`
-
-**Source files to test:**
-- `be/src/modules/llm-provider/services/llm-provider.service.ts`
-- `be/src/modules/llm-provider/schemas/llm-provider.schemas.ts`
-- `be/src/modules/llm-provider/controllers/llm-provider.controller.ts`
-
-**Test scope:**
-- Service: CRUD operations for LLM providers (create, list, update, delete, get by ID)
-- Service: Factory preset loading from `factory-presets.json`
-- Service: Provider validation (API key testing, model listing)
-- Schemas: Zod validation for create/update payloads, query params
-- Controller: Request handling, input validation, error responses
-
-### 3.2 Install `supertest` and add route integration tests
-**Step 1:** Install dependency
-```bash
-cd be && npm install --save-dev supertest @types/supertest
+```typescript
+// Response
+{
+  "answer": "The capital of France is Paris. [1]",
+  "contexts": [
+    {
+      "text": "Paris is the capital and most populous city of France...",
+      "doc_id": "uuid",
+      "doc_name": "Geography.pdf",
+      "chunk_id": "chunk_abc",
+      "score": 0.95,
+      "page_num": [1],
+      "token_count": 156
+    }
+  ],
+  "sources": [
+    {
+      "doc_id": "uuid",
+      "doc_name": "Geography.pdf",
+      "chunk_count": 3
+    }
+  ],
+  "metadata": {
+    "model": "b-knowledge-rag",
+    "assistant_id": "uuid",
+    "retrieval_ms": 245,
+    "generation_ms": 1230,
+    "total_ms": 1475,
+    "chunks_retrieved": 6,
+    "chunks_after_rerank": 3,
+    "query_refined": "capital of France Paris",
+    "search_method": "hybrid"
+  }
+}
 ```
 
-**Step 2:** Create test helper for Express app instantiation
-**New file:** `be/tests/helpers/create-test-app.ts`
-- Import Express app factory (or create a minimal one with routes mounted)
-- Set up middleware (auth mock, tenant mock, validation)
-- Export function that returns a supertest agent
+### 2.5 Retrieval-Only Endpoint
 
-**Step 3:** Add route tests for the most critical untested routes (pick 5 highest-traffic):
-- `be/tests/chat/chat-conversation.routes.test.ts` — Chat conversation CRUD
-- `be/tests/chat/chat-assistant.routes.test.ts` — Chat assistant config
-- `be/tests/projects/projects.routes.test.ts` — Project management
-- `be/tests/llm-provider/llm-provider.routes.test.ts` — LLM provider endpoints
-- `be/tests/users/users.routes.test.ts` — User management
-
-**Each route test should cover:**
-- Correct HTTP status codes (200, 201, 400, 401, 403, 404)
-- Request body validation (invalid payloads → 400)
-- Auth middleware enforcement (missing token → 401)
-- RBAC enforcement (wrong role → 403)
-- Response shape validation
-
-### 3.3 Raise backend coverage threshold
-**File:** `be/vitest.config.ts`
-
-**Change from 50% to 60%** (statements, branches, functions, lines) after adding the above tests. This is an incremental step — raise further as coverage grows.
-
----
-
-## Phase 4 — Frontend Feature Test Gaps
-
-### 4.1 Add tests for `chat-widget` feature
-**New files:**
-- `fe/tests/features/chat-widget/chatWidgetApi.test.ts` — Test API calls (mock HTTP)
-- `fe/tests/features/chat-widget/ChatWidget.test.tsx` — Test main component render, open/close behavior
-- `fe/tests/features/chat-widget/ChatWidgetButton.test.tsx` — Test button click triggers widget open
-- `fe/tests/features/chat-widget/ChatWidgetWindow.test.tsx` — Test window render, message sending, streaming
-
-**Source files (5):**
-- `fe/src/features/chat-widget/chatWidgetApi.ts`
-- `fe/src/features/chat-widget/ChatWidget.tsx`
-- `fe/src/features/chat-widget/ChatWidgetButton.tsx`
-- `fe/src/features/chat-widget/ChatWidgetWindow.tsx`
-
-### 4.2 Add tests for `search-widget` feature
-**New files:**
-- `fe/tests/features/search-widget/searchWidgetApi.test.ts` — Test API calls
-- `fe/tests/features/search-widget/SearchWidget.test.tsx` — Test main component
-- `fe/tests/features/search-widget/SearchWidgetBar.test.tsx` — Test search input, submit behavior
-- `fe/tests/features/search-widget/SearchWidgetResults.test.tsx` — Test result rendering, pagination
-
-**Source files (5):**
-- `fe/src/features/search-widget/searchWidgetApi.ts`
-- `fe/src/features/search-widget/SearchWidget.tsx`
-- `fe/src/features/search-widget/SearchWidgetBar.tsx`
-- `fe/src/features/search-widget/SearchWidgetResults.tsx`
-
-### 4.3 Add tests for `guideline` feature
-**New files:**
-- `fe/tests/features/guideline/hooks/useFirstVisit.test.ts` — Test localStorage-based first visit detection
-- `fe/tests/features/guideline/hooks/useGuideline.test.ts` — Test guideline loading/state
-- `fe/tests/features/guideline/hooks/useGuidedTour.test.ts` — Test tour step progression
-- `fe/tests/features/guideline/components/GuidedTour.test.tsx` — Test tour overlay rendering
-- `fe/tests/features/guideline/components/GuidelineDialog.test.tsx` — Test dialog open/close/content
-
-**Source files (17):** Hooks (4), components (3), data definitions (10)
-
-### 4.4 Add tests for `landing` feature
-**New files:**
-- `fe/tests/features/landing/LandingPage.test.tsx` — Test page composition, all sections render
-- `fe/tests/features/landing/components/HeroSection.test.tsx` — Test CTA rendering
-- `fe/tests/features/landing/components/FeaturesSection.test.tsx` — Test feature cards render
-
-**Source files (9):** Purely presentational — render tests and snapshot tests suffice.
-
-### 4.5 Add tests for high-usage shared components
-**Priority components (test the 10 most impactful, currently only 14/77 tested):**
-
-| Component | New test file | What to test |
-|-----------|--------------|-------------|
-| `ConfirmDialog` | Fix excluded test (Phase 2.1) | Open/close, confirm/cancel callbacks |
-| `SettingsDialog` | Fix excluded test (Phase 2.1) | Tab switching, settings persistence |
-| `ErrorBoundary` | `tests/components/ErrorBoundary.test.tsx` | Error catching, fallback UI rendering |
-| `MarkdownRenderer` | `tests/components/MarkdownRenderer.test.tsx` | Markdown rendering, code blocks, links |
-| `EmbedTokenManager` | `tests/components/EmbedTokenManager.test.tsx` | Token create/copy/delete |
-| `PermissionsSelector` | `tests/components/PermissionsSelector.test.tsx` | User/team selection, permission levels |
-| `MetadataFilterBuilder` | Fix excluded test (Phase 2.1) | Filter add/remove, condition building |
-| `Select` | `tests/components/Select.test.tsx` | Open, search, select, multi-select |
-| `RadioGroup` | `tests/components/RadioGroup.test.tsx` | Selection, keyboard navigation |
-| `OrgSwitcher` | `tests/components/OrgSwitcher.test.tsx` | Org listing, switch action |
-
----
-
-## Phase 5 — Python advance-rag Test Gaps
-
-### 5.1 Add tests for LLM integration modules (4,925 LOC, 0 tests)
-**New files:**
-- `advance-rag/tests/test_chat_model.py` — Test chat completion wrappers
-- `advance-rag/tests/test_embedding_model.py` — Test embedding generation
-- `advance-rag/tests/test_rerank_model.py` — Test reranking logic
-
-**Approach:** Mock actual API calls (OpenAI, Azure, Ollama). Test:
-- Provider selection logic (which client to instantiate)
-- Request construction (prompt formatting, token counting)
-- Response parsing (streaming vs non-streaming)
-- Error handling (rate limits, timeouts, invalid responses)
-- Model-specific parameter mapping
-
-**Source files:**
-- `advance-rag/rag/llm/chat_model.py` (1,719 LOC — highest priority)
-- `advance-rag/rag/llm/embedding_model.py` (508 LOC)
-- `advance-rag/rag/llm/rerank_model.py` (293 LOC)
-
-### 5.2 Add tests for GraphRAG modules (5,568 LOC, 0 tests)
-**New files:**
-- `advance-rag/tests/test_graphrag_utils.py` — Test graph utility functions (1,063 LOC of utils)
-- `advance-rag/tests/test_graphrag_entity_resolution.py` — Test entity dedup/merging
-- `advance-rag/tests/test_graphrag_search.py` — Test graph search queries
-- `advance-rag/tests/test_graphrag_extractor.py` — Test entity/relation extraction
-- `advance-rag/tests/test_graphrag_index.py` — Test graph indexing pipeline
-
-**Approach:** Mock LLM calls and graph database operations. Test:
-- Entity extraction from text chunks
-- Relation extraction and linking
-- Entity resolution (deduplication)
-- Community detection (Leiden algorithm wrapper)
-- Graph search traversal and result ranking
-- Mind map extraction
-
-**Source files (priority order):**
-1. `rag/graphrag/utils.py` (1,063 LOC)
-2. `rag/graphrag/general/index.py` (546 LOC)
-3. `rag/graphrag/general/extractor.py` (500 LOC)
-4. `rag/graphrag/search.py` (491 LOC)
-5. `rag/graphrag/entity_resolution.py` (417 LOC)
-
-### 5.3 Add tests for Vision/OCR modules (4,133 LOC, 0 tests)
-**New files:**
-- `advance-rag/tests/test_vision_ocr.py` — Test OCR text extraction
-- `advance-rag/tests/test_vision_layout.py` — Test layout recognition
-- `advance-rag/tests/test_vision_table.py` — Test table structure recognition
-- `advance-rag/tests/test_vision_operators.py` — Test image preprocessing operators
-
-**Approach:** Mock ONNX/model inference. Test:
-- Image preprocessing pipelines
-- Bounding box post-processing
-- OCR text extraction and ordering
-- Table cell detection and grid reconstruction
-- Layout classification (text, table, figure, title regions)
-
-**Source files (priority order):**
-1. `deepdoc/vision/ocr.py` (825 LOC)
-2. `deepdoc/vision/operators.py` (763 LOC)
-3. `deepdoc/vision/table_structure_recognizer.py` (633 LOC)
-4. `deepdoc/vision/layout_recognizer.py` (487 LOC)
-
-### 5.4 Add tests for storage/connector utilities (7,430 LOC, 0 tests)
-**New files:**
-- `advance-rag/tests/test_opensearch_conn.py` — Test OpenSearch operations
-- `advance-rag/tests/test_redis_conn.py` — Test Redis caching/pub-sub
-- `advance-rag/tests/test_minio_conn.py` — Test MinIO/S3 operations
-- `advance-rag/tests/test_es_conn.py` — Test Elasticsearch operations
-
-**Approach:** Mock actual connections. Test:
-- Connection initialization and config parsing
-- Index creation/deletion
-- Document indexing and search queries
-- Bulk operations and error handling
-- Connection pooling behavior
-
-**Source files (priority order):**
-1. `rag/utils/ob_conn.py` (1,709 LOC)
-2. `rag/utils/infinity_conn.py` (912 LOC)
-3. `rag/utils/opensearch_conn.py` (756 LOC)
-4. `rag/utils/redis_conn.py` (684 LOC)
-5. `rag/utils/es_conn.py` (638 LOC)
-
----
-
-## Phase 6 — Python converter Test Gaps
-
-### 6.1 Add unit tests for individual converters
-**New files:**
-- `converter/tests/test_word_converter.py` — Test Word-to-PDF conversion logic
-- `converter/tests/test_powerpoint_converter.py` — Test PPT-to-PDF conversion logic
-- `converter/tests/test_excel_converter.py` — Test Excel-to-PDF conversion logic
-
-**Source files:**
-- `converter/src/word_converter.py` (106 LOC)
-- `converter/src/powerpoint_converter.py` (107 LOC)
-- `converter/src/excel_converter.py` (486 LOC)
-
-**Approach:** Mock `subprocess.run` (LibreOffice calls) and file I/O. Test:
-- Correct LibreOffice CLI arguments constructed for each file type
-- Temp directory management (created/cleaned)
-- Output file renaming and path handling
-- Error handling for corrupt files, missing LibreOffice, conversion failures
-- Excel-specific: orientation, page size, column width calculations
-
----
-
-## Phase 7 — E2E Test Expansion
-
-### 7.1 Expand Playwright E2E tests
-**New files:**
-- `fe/e2e/auth/login-logout.spec.ts` — Test login flow, session persistence, logout
-- `fe/e2e/auth/role-access.spec.ts` — Test admin vs user access to routes
-- `fe/e2e/projects/project-crud.spec.ts` — Test project create/edit/delete
-- `fe/e2e/llm-provider/llm-provider-config.spec.ts` — Test LLM provider setup
-- `fe/e2e/users/user-management.spec.ts` — Test user invite/role change/delete
-
-**Approach:**
-- Reuse existing auth setup (persistent storageState)
-- Each test is self-contained (creates its own data, cleans up after)
-- Use Playwright's `expect` for assertions
-- Keep sequential execution (1 worker) to avoid DB conflicts
-
-### 7.2 Add backend E2E/integration tests with real services
-**File:** `be/tests/e2e/api.test.ts` (enhance existing)
-
-**Install supertest:**
-```bash
-cd be && npm install --save-dev supertest @types/supertest
+```typescript
+// POST /api/v1/external/retrieval
+// Response (no LLM generation)
+{
+  "contexts": [...],   // same format as above
+  "sources": [...],
+  "metadata": {
+    "retrieval_ms": 245,
+    "chunks_retrieved": 6,
+    "search_method": "hybrid"
+  }
+}
 ```
 
-**New E2E tests:**
-- Health check (already exists)
-- Authentication flow (login → token → authenticated request)
-- CRUD lifecycle (create → read → update → delete)
-- Error handling (404, validation errors, unauthorized)
+### 2.6 Promptfoo RAG Metrics Coverage
 
----
+The response format supports all key promptfoo RAG metrics:
 
-## Phase 8 — Ongoing Quality Gates
+| Metric | Assertion Type | Data Source | How It Works |
+|--------|---------------|-------------|--------------|
+| **Context Faithfulness** | `context-faithfulness` | `contexts` + `answer` | Checks answer is grounded in retrieved context (no hallucination) |
+| **Context Relevance** | `context-relevance` | `contexts` + `query` | Checks retrieved context is relevant to the query |
+| **Context Recall** | `context-recall` | `contexts` + ground truth `vars` | Checks context contains the correct reference info |
+| **Answer Relevance** | `answer-relevance` | `answer` + `query` | Checks answer directly addresses the question |
+| **Factuality** | `factuality` | `answer` + expected answer | Checks factual accuracy against expected |
+| **Custom metrics** | `javascript`/`python` | Full response | User-defined assertions on any response field |
 
-### 8.1 Progressive threshold increases
-**Schedule (after each phase completes):**
+### 2.7 Example Promptfoo Config
 
-| Milestone | FE threshold | BE threshold |
-|-----------|-------------|-------------|
-| After Phase 2 | 15% | 50% (unchanged) |
-| After Phase 3 | 20% | 60% |
-| After Phase 4 | 30% | 60% |
-| After Phase 7 | 40% | 65% |
-| Long-term target | 60% | 75% |
-
-### 8.2 Add coverage reporting to CI
-**File:** `.github/workflows/buid-ci.yml`
-
-Add after test steps:
 ```yaml
-- name: Backend coverage
-  working-directory: be
-  run: npx vitest run --coverage
-- name: Frontend coverage
-  working-directory: fe
-  run: npx vitest run --coverage
-- name: Upload coverage artifacts
-  uses: actions/upload-artifact@v4
-  with:
-    name: coverage-reports
-    path: |
-      be/coverage/
-      fe/coverage/
+providers:
+  - id: http
+    config:
+      url: "http://localhost:3001/api/v1/external/chat"
+      method: POST
+      headers:
+        Authorization: "Bearer bk-your-api-key-here"
+        Content-Type: "application/json"
+      body:
+        query: "{{query}}"
+        dataset_ids: ["your-dataset-id"]
+        options:
+          top_k: 5
+          method: "hybrid"
+      transformResponse: "json"
+
+defaultTest:
+  options:
+    transform: "output.answer"
+    provider: "openai:gpt-4o-mini"
+  assert:
+    - type: context-faithfulness
+      threshold: 0.8
+      value: "output.contexts.map(c => c.text).join('\\n\\n')"
+    - type: context-relevance
+      threshold: 0.7
+      value: "output.contexts.map(c => c.text).join('\\n\\n')"
+    - type: answer-relevance
+      threshold: 0.8
+    - type: context-recall
+      threshold: 0.8
+      value: "output.contexts.map(c => c.text).join('\\n\\n')"
+
+tests:
+  - vars:
+      query: "What is the reimbursement policy?"
+      context: "The reimbursement policy covers..."  # ground truth for recall
+    assert:
+      - type: contains
+        value: "reimbursement"
 ```
+
+### 2.8 External API Service
+
+**`external-api.service.ts`** — Orchestrates the full pipeline without SSE streaming:
+
+- **Chat endpoint:** Reuses the RAG pipeline components directly (ragSearchService for retrieval, ragRerankService for reranking, llmClientService for generation) — assembles a non-streaming structured JSON response with full context. Does NOT use the SSE streamChat pattern.
+- **Search endpoint:** Calls `searchService.retrieveChunks()` (private, needs to be exposed or duplicated) + LLM summary, returns structured JSON.
+- **Retrieval endpoint:** Calls `ragSearchService.search()` only, returns chunks without LLM.
+
+This avoids the mock-response interceptor pattern used by OpenAI-compatible endpoints. Instead, it calls the underlying service methods directly and assembles a structured response.
+
+### 2.9 Rate Limiting & Usage Tracking
+
+- Separate rate limiter: 100 requests/minute per API key
+- Log each request to `query_log` table (existing) with `source: 'external_api'`
+- Track `last_used_at` on the api_key record
 
 ---
 
-## Execution Order & Dependencies
+## Part 3: Frontend — API Key Management Page
 
+### 3.1 Feature Module
+
+**Structure:**
 ```
-Phase 1 (CI + infra)          ← Do first, unblocks everything
-  ├── 1.1 Enable CI tests
-  ├── 1.2 Add pytest config
-  └── 1.3 Raise FE thresholds (to 30%)
-       │
-Phase 2 (Fix broken FE tests) ← Do second, highest ROI
-  ├── 2.1 Fix lucide-react mock (re-enables 23 tests)
-  ├── 2.2 Delete orphaned tests (removes 20 dead files)
-  └── 2.3 Fix import resolution (fixes 8 tests)
-       │
-Phase 3 (BE gaps)              ← Can run parallel with Phase 4
-  ├── 3.1 llm-provider tests
-  ├── 3.2 supertest + route tests
-  └── 3.3 Raise BE threshold (to 60%)
-       │
-Phase 4 (FE feature gaps)      ← Can run parallel with Phase 3
-  ├── 4.1 chat-widget tests
-  ├── 4.2 search-widget tests
-  ├── 4.3 guideline tests
-  ├── 4.4 landing tests
-  └── 4.5 shared component tests
-       │
-Phase 5 (Python advance-rag)   ← Can run parallel with Phase 6
-  ├── 5.1 LLM integration tests
-  ├── 5.2 GraphRAG tests
-  ├── 5.3 Vision/OCR tests
-  └── 5.4 Storage connector tests
-       │
-Phase 6 (Python converter)     ← Can run parallel with Phase 5
-  └── 6.1 Individual converter tests
-       │
-Phase 7 (E2E expansion)        ← Do after unit tests stabilize
-  ├── 7.1 Playwright E2E expansion
-  └── 7.2 Backend E2E with supertest
-       │
-Phase 8 (Quality gates)        ← Ongoing after each phase
-  ├── 8.1 Progressive threshold increases
-  └── 8.2 Coverage reporting in CI
+fe/src/features/api-keys/
+├── api/
+│   ├── apiKeyApi.ts          # Raw HTTP calls
+│   └── apiKeyQueries.ts      # TanStack Query hooks
+├── components/
+│   ├── ApiKeyTable.tsx        # Table with masked keys, actions
+│   ├── CreateApiKeyDialog.tsx # Form: name, scopes, expiration
+│   └── ApiKeyCreatedDialog.tsx # One-time key display with copy
+├── pages/
+│   └── ApiKeysPage.tsx        # Main CRUD page
+├── types/
+│   └── apiKey.types.ts
+└── index.ts
 ```
 
-## Estimated New Test Files
+### 3.2 Page Location in Sidebar
 
-| Phase | New/Fixed test files | Lines of test code (est.) |
-|-------|---------------------|--------------------------|
-| Phase 1 | 3 config files modified | ~50 |
-| Phase 2 | 23 re-enabled, 20 deleted, 8 fixed | ~0 net new (recovery) |
-| Phase 3 | 8 new test files | ~2,000 |
-| Phase 4 | 17 new test files | ~3,500 |
-| Phase 5 | 12 new test files | ~4,000 |
-| Phase 6 | 3 new test files | ~800 |
-| Phase 7 | 7 new test files | ~1,500 |
-| **Total** | **~47 new + 23 recovered** | **~11,850 new LOC** |
+Add to the **Data Studio** group (since API keys are used for data evaluation):
+
+```typescript
+{
+  path: '/data-studio/api-keys',
+  labelKey: 'nav.apiKeys',
+  icon: Key,  // from lucide-react
+  roles: ['super-admin', 'admin', 'leader'],
+}
+```
+
+### 3.3 Page Components
+
+**ApiKeysPage.tsx:**
+- Header with title + description + "Create API Key" button
+- Table showing: Name, Key (masked: `bk-a1b2...`), Scopes (badges), Status, Created, Last Used, Actions
+- Actions: Toggle active, Delete (with confirm dialog)
+- Empty state with illustration when no keys exist
+
+**CreateApiKeyDialog.tsx:**
+- Fields: Name (required), Scopes (multi-select checkboxes: chat, search, retrieval), Expiration (optional date picker)
+- On submit → POST creates key → closes dialog → opens ApiKeyCreatedDialog
+
+**ApiKeyCreatedDialog.tsx:**
+- One-time display of the full API key in a code block
+- Copy to clipboard button
+- Warning: "This key will not be shown again"
+- Collapsible section showing example curl command and promptfoo config snippet
+- "Done" button to close
+
+### 3.4 i18n Keys
+
+Add to all 3 locale files (`en.json`, `vi.json`, `ja.json`):
+```json
+{
+  "apiKeys": {
+    "title": "API Keys",
+    "description": "Manage API keys for external API access and evaluation tools like promptfoo",
+    "createKey": "Create API Key",
+    "name": "Name",
+    "namePlaceholder": "e.g. Promptfoo Evaluation",
+    "scopes": "Scopes",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "lastUsed": "Last Used",
+    "expiresAt": "Expires",
+    "never": "Never",
+    "neverUsed": "Never used",
+    "createdSuccess": "API key created successfully",
+    "deleteConfirm": "Are you sure you want to delete this API key? This action cannot be undone.",
+    "deleteSuccess": "API key deleted",
+    "updateSuccess": "API key updated",
+    "keyCreated": "API Key Created",
+    "keyCreatedWarning": "Copy this key now. It will not be shown again.",
+    "copyKey": "Copy Key",
+    "copied": "Copied!",
+    "scopeChat": "Chat",
+    "scopeSearch": "Search",
+    "scopeRetrieval": "Retrieval",
+    "exampleUsage": "Example Usage",
+    "noKeys": "No API keys yet",
+    "noKeysDescription": "Create an API key to use the external evaluation API"
+  },
+  "nav": {
+    "apiKeys": "API Keys"
+  }
+}
+```
+
+### 3.5 Route & Navigation Registration
+
+**`App.tsx`:** Add lazy route under Data Studio:
+```typescript
+const ApiKeysPage = lazy(() => import('@/features/api-keys/pages/ApiKeysPage'))
+// Under Data Studio routes
+<Route path="data-studio/api-keys" element={...} />
+```
+
+**`routeConfig.ts`:** Add route metadata with `titleKey: 'apiKeys.title'`
+
+**`sidebarNav.ts`:** Add nav item to Data Studio group
+
+**`queryKeys.ts`:** Add `apiKeys` key factory
+
+---
+
+## Part 4: Implementation Order
+
+| Step | Task | Files |
+|------|------|-------|
+| 1 | DB migration for `api_keys` table | `be/src/shared/db/migrations/20260322000000_create_api_keys.ts` |
+| 2 | API Key model + ModelFactory registration | `be/src/modules/external/models/api-key.model.ts`, `be/src/shared/models/factory.ts` |
+| 3 | API Key service (generate, hash, CRUD, validate) | `be/src/modules/external/services/api-key.service.ts` |
+| 4 | API Key auth middleware | `be/src/shared/middleware/external-auth.middleware.ts` |
+| 5 | Zod schemas for all endpoints | `be/src/modules/external/schemas/external.schemas.ts` |
+| 6 | API Key CRUD controller + routes | `be/src/modules/external/controllers/api-key.controller.ts`, `be/src/modules/external/routes/api-key.routes.ts` |
+| 7 | External API service (chat, search, retrieval) | `be/src/modules/external/services/external-api.service.ts` |
+| 8 | External API controller + routes | `be/src/modules/external/controllers/external-api.controller.ts`, `be/src/modules/external/routes/external-api.routes.ts` |
+| 9 | Register routes in `app/routes.ts` | `be/src/app/routes.ts` |
+| 10 | Barrel export | `be/src/modules/external/index.ts` |
+| 11 | FE: Types + API layer | `fe/src/features/api-keys/types/`, `fe/src/features/api-keys/api/` |
+| 12 | FE: Components (table, dialogs) | `fe/src/features/api-keys/components/` |
+| 13 | FE: Page + routing + sidebar + query keys | Various app config files |
+| 14 | FE: i18n (3 locales) | `fe/src/i18n/locales/{en,vi,ja}.json` |
+| 15 | Build verification | `npm run build` |
+
+---
+
+## Key Design Decisions
+
+1. **Hashed keys** (not plaintext like embed tokens) — API keys are long-lived user credentials
+2. **Non-streaming response** for external API — Promptfoo and evaluation tools need full JSON, not SSE
+3. **Direct service calls** instead of mock-response interceptor — cleaner than the OpenAI-compatible pattern
+4. **Scopes** — Allow granular access control (chat only, search only, retrieval only, or all)
+5. **User-scoped keys** — Each user creates their own keys, accessing resources they have permission to
+6. **Structured context return** — Every chunk returned with score, doc_name, text for full promptfoo metric support
+7. **Per-key rate limiting** — 100 req/min per key to prevent abuse while allowing evaluation workloads
