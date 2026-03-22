@@ -16,6 +16,7 @@ import { ragRerankService } from '@/modules/rag/services/rag-rerank.service.js'
 import { ragCitationService } from '@/modules/rag/services/rag-citation.service.js'
 import { llmClientService } from '@/shared/services/llm-client.service.js'
 import { askSummaryPrompt, citationPrompt, relatedQuestionPrompt } from '@/shared/prompts/index.js'
+import { htmlToMarkdown } from '@/shared/utils/html-to-markdown.js'
 import { log } from '@/shared/services/logger.service.js'
 import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
 import { queryLogService } from '@/modules/rag/index.js'
@@ -482,7 +483,11 @@ export class SearchService {
    */
   private buildKnowledgeContext(chunks: ChunkResult[]): string {
     return chunks
-      .map((chunk, i) => `### Chunk ID: ${i}\n**Source**: ${chunk.doc_name || 'Unknown'}\n\n${chunk.text}`)
+      .map((chunk, i) => {
+        // Convert HTML (e.g. tables from Excel parser) to compact Markdown for LLM token savings
+        const text = htmlToMarkdown(chunk.text)
+        return `### Chunk ID: ${i}\n**Source**: ${chunk.doc_name || 'Unknown'}\n\n${text}`
+      })
       .join('\n\n---\n\n')
   }
 

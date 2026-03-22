@@ -37,6 +37,7 @@ import {
   askSummaryPrompt,
 } from '@/shared/prompts/index.js'
 import { detectLanguage, buildLanguageInstruction } from '@/shared/utils/language-detect.js'
+import { htmlToMarkdown } from '@/shared/utils/html-to-markdown.js'
 import { abilityService, buildOpenSearchAbacFilters } from '@/shared/services/ability.service.js'
 import { log } from '@/shared/services/logger.service.js'
 import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
@@ -317,12 +318,15 @@ function buildContextPrompt(
 ): string {
   if (!chunks.length) return systemPrompt
 
-  // Format each chunk with source metadata and index for citation
+  // Format each chunk with source metadata and index for citation.
+  // Convert HTML chunks to Markdown to reduce token usage while preserving content quality.
   const context = chunks
     .map((c, i) => {
       const source = c.doc_name ? ` [${c.doc_name}]` : ''
       const page = c.page_num?.length ? ` (p.${c.page_num.join(',')})` : ''
-      return `[ID:${i}]${source}${page}\n${c.text}`
+      // Convert HTML (e.g. tables from Excel parser) to compact Markdown
+      const text = htmlToMarkdown(c.text)
+      return `[ID:${i}]${source}${page}\n${text}`
     })
     .join('\n\n')
 
