@@ -38,13 +38,20 @@ export type NodeCategory = 'input-output' | 'llm-ai' | 'retrieval' | 'logic-flow
 export type OperatorType =
   | 'begin' | 'answer' | 'message'                    // input-output
   | 'generate' | 'categorize' | 'rewrite' | 'relevant' // llm-ai
+  | 'agent_with_tools'                                  // llm-ai (tool-augmented)
   | 'retrieval' | 'wikipedia' | 'tavily' | 'pubmed'    // retrieval
-  | 'switch' | 'condition' | 'loop' | 'merge' | 'note' // logic-flow
+  | 'switch' | 'condition' | 'loop' | 'loop_item'      // logic-flow
+  | 'iteration' | 'iteration_item' | 'exit_loop'       // logic-flow (iteration)
+  | 'merge' | 'note'                                    // logic-flow
   | 'code' | 'github' | 'sql' | 'api' | 'email'       // code-tool
   | 'template' | 'keyword_extract' | 'baidu' | 'bing' | 'duckduckgo' | 'google' // data
   | 'google_scholar' | 'arxiv' | 'deepl' | 'qweather' | 'exesql' | 'crawler'
   | 'invoke' | 'concentrator' | 'akshare' | 'yahoofinance' | 'jin10' | 'tushare'
   | 'wencai'
+  | 'variable_assigner' | 'variable_aggregator'         // variable ops
+  | 'data_operations' | 'list_operations'               // data ops
+  | 'string_transform'                                   // string ops
+  | 'docs_generator' | 'excel_processor' | 'fillup'     // document ops
 
 // ============================================================================
 // DSL Schema Types (stored as JSONB)
@@ -234,12 +241,17 @@ export interface UpdateAgentDto {
 export const NODE_CATEGORY_MAP: Record<OperatorType, NodeCategory> = {
   // input-output
   begin: 'input-output', answer: 'input-output', message: 'input-output',
+  // input-output
+  fillup: 'input-output',
   // llm-ai
   generate: 'llm-ai', categorize: 'llm-ai', rewrite: 'llm-ai', relevant: 'llm-ai',
+  agent_with_tools: 'llm-ai',
   // retrieval
   retrieval: 'retrieval', wikipedia: 'retrieval', tavily: 'retrieval', pubmed: 'retrieval',
   // logic-flow
-  switch: 'logic-flow', condition: 'logic-flow', loop: 'logic-flow', merge: 'logic-flow', note: 'logic-flow',
+  switch: 'logic-flow', condition: 'logic-flow', loop: 'logic-flow', loop_item: 'logic-flow',
+  iteration: 'logic-flow', iteration_item: 'logic-flow', exit_loop: 'logic-flow',
+  merge: 'logic-flow', note: 'logic-flow',
   concentrator: 'logic-flow',
   // code-tool
   code: 'code-tool', github: 'code-tool', sql: 'code-tool', api: 'code-tool', email: 'code-tool',
@@ -248,6 +260,9 @@ export const NODE_CATEGORY_MAP: Record<OperatorType, NodeCategory> = {
   template: 'data', keyword_extract: 'data', baidu: 'data', bing: 'data', duckduckgo: 'data', google: 'data',
   google_scholar: 'data', arxiv: 'data', deepl: 'data', qweather: 'data', exesql: 'data', crawler: 'data',
   akshare: 'data', yahoofinance: 'data', jin10: 'data', tushare: 'data', wencai: 'data',
+  variable_assigner: 'data', variable_aggregator: 'data',
+  data_operations: 'data', list_operations: 'data',
+  string_transform: 'data', docs_generator: 'data', excel_processor: 'data',
 } as const
 
 /**

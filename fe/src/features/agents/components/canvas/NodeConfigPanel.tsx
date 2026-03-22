@@ -19,6 +19,24 @@ import { RetrievalForm } from './forms/RetrievalForm'
 import { BeginForm } from './forms/BeginForm'
 import { SwitchForm } from './forms/SwitchForm'
 import { CodeForm } from './forms/CodeForm'
+import { CategorizeForm } from './forms/CategorizeForm'
+import { MessageForm } from './forms/MessageForm'
+import { LoopForm } from './forms/LoopForm'
+import { IterationForm } from './forms/IterationForm'
+import { IterationItemForm } from './forms/IterationItemForm'
+import { LoopItemForm } from './forms/LoopItemForm'
+import { InvokeForm } from './forms/InvokeForm'
+import { VariableAssignerForm } from './forms/VariableAssignerForm'
+import { VariableAggregatorForm } from './forms/VariableAggregatorForm'
+import { DataOperationsForm } from './forms/DataOperationsForm'
+import { ListOperationsForm } from './forms/ListOperationsForm'
+import { StringTransformForm } from './forms/StringTransformForm'
+import { ExitLoopForm } from './forms/ExitLoopForm'
+import { DocsGeneratorForm } from './forms/DocsGeneratorForm'
+import { ExcelProcessorForm } from './forms/ExcelProcessorForm'
+import { FillUpForm } from './forms/FillUpForm'
+import { AgentWithToolsForm } from './forms/AgentWithToolsForm'
+import { RewriteForm } from './forms/RewriteForm'
 
 /**
  * @description Maps operator type to its dedicated configuration form component.
@@ -31,13 +49,31 @@ const FORM_MAP: Partial<Record<OperatorType, React.ComponentType<NodeFormProps>>
   begin: BeginForm,
   switch: SwitchForm,
   code: CodeForm,
+  categorize: CategorizeForm,
+  message: MessageForm,
+  loop: LoopForm,
+  iteration: IterationForm,
+  iteration_item: IterationItemForm,
+  loop_item: LoopItemForm,
+  invoke: InvokeForm,
+  variable_assigner: VariableAssignerForm,
+  variable_aggregator: VariableAggregatorForm,
+  data_operations: DataOperationsForm,
+  list_operations: ListOperationsForm,
+  string_transform: StringTransformForm,
+  exit_loop: ExitLoopForm,
+  docs_generator: DocsGeneratorForm,
+  excel_processor: ExcelProcessorForm,
+  fillup: FillUpForm,
+  agent_with_tools: AgentWithToolsForm,
+  rewrite: RewriteForm,
 }
 
 /**
  * @description Right-side panel (360px fixed width) for configuring the currently
- * selected canvas node. Dispatches to type-specific forms for core operators
- * (Generate, Retrieval, Begin, Switch, Code) and falls back to a generic JSON
- * editor for all other operator types. Visible only when a node is selected.
+ * selected canvas node. Dispatches to type-specific forms for 23 operator types
+ * and falls back to a generic JSON editor for any remaining types.
+ * Visible only when a node is selected.
  *
  * @returns {JSX.Element | null} Config panel or null when no node is selected
  */
