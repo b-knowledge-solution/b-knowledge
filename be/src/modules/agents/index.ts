@@ -16,3 +16,6 @@ export { agentExecutorService } from './services/agent-executor.service.js'
 
 /** @description Redis Streams dispatch service for Python worker communication */
 export { agentRedisService } from './services/agent-redis.service.js'
+
+/** @description Debug mode service for step-by-step execution with breakpoints */
+export { agentDebugService } from './services/agent-debug.service.js'
