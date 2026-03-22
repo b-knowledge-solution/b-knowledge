@@ -235,4 +235,12 @@ export const queryKeys = {
     defaults: () => [...queryKeys.llmProvider.all, 'defaults'] as const,
     presets: () => [...queryKeys.llmProvider.all, 'presets'] as const,
   },
+
+  // --------------------------------------------------------------------------
+  // API Keys
+  // --------------------------------------------------------------------------
+  apiKeys: {
+    all: ['api-keys'] as const,
+    list: () => [...queryKeys.apiKeys.all, 'list'] as const,
+  },
 } as const

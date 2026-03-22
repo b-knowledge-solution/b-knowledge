@@ -53,6 +53,7 @@ const ProjectDetailPage = lazy(() => import('@/features/projects/pages/ProjectDe
 const LLMProviderPage = lazy(() => import('@/features/llm-provider/pages/LLMProviderPage'));
 const DocumentReviewerPage = lazy(() => import('@/features/datasets/pages/DocumentReviewerPage'));
 const ChunkDetailPage = lazy(() => import('@/features/datasets/pages/ChunkDetailPage'));
+const ApiKeysPage = lazy(() => import('@/features/api-keys/pages/ApiKeysPage'));
 
 // ============================================================================
 // Loading Component
@@ -212,6 +213,15 @@ function App() {
               <Route path="data-studio/search-apps" element={<FeatureErrorBoundary><AdminRoute><SearchAppManagementPage /></AdminRoute></FeatureErrorBoundary>} />
               <Route path="data-studio/histories" element={<FeatureErrorBoundary><AdminRoute><HistoriesPage /></AdminRoute></FeatureErrorBoundary>} />
               <Route path="data-studio/llm-providers" element={<FeatureErrorBoundary><AdminRoute><LLMProviderPage /></AdminRoute></FeatureErrorBoundary>} />
+
+              {/* API Keys (admin, leader) */}
+              <Route path="data-studio/api-keys" element={
+                <FeatureErrorBoundary>
+                  <RoleRoute allowedRoles={['admin', 'leader']}>
+                    <ApiKeysPage />
+                  </RoleRoute>
+                </FeatureErrorBoundary>
+              } />
             </Route>
           </Route>
 

@@ -53,6 +53,7 @@ import { DocumentCategoryVersionFileModel } from '@/modules/projects/models/docu
 import { ProjectChatModel } from '@/modules/projects/models/project-chat.model.js';
 import { ProjectSearchModel } from '@/modules/projects/models/project-search.model.js';
 import { ProjectEntityPermissionModel } from '@/modules/projects/models/project-entity-permission.model.js';
+import { ApiKeyModel } from '@/modules/external/models/api-key.model.js';
 
 /**
  * @description ModelFactory class implementing the Factory Pattern.
@@ -166,6 +167,8 @@ export class ModelFactory {
   private static projectSearchModel: ProjectSearchModel;
   /** ProjectEntityPermission model singleton instance */
   private static projectEntityPermissionModel: ProjectEntityPermissionModel;
+  /** ApiKey model singleton instance */
+  private static apiKeyModel: ApiKeyModel;
 
   /**
    * Get the User model singleton.
@@ -632,5 +635,14 @@ export class ModelFactory {
   static get projectEntityPermission() {
     if (!this.projectEntityPermissionModel) this.projectEntityPermissionModel = new ProjectEntityPermissionModel();
     return this.projectEntityPermissionModel;
+  }
+
+  /**
+   * Get the ApiKey model singleton.
+   * @returns ApiKeyModel instance for API key CRUD operations
+   */
+  static get apiKey() {
+    if (!this.apiKeyModel) this.apiKeyModel = new ApiKeyModel();
+    return this.apiKeyModel;
   }
 }

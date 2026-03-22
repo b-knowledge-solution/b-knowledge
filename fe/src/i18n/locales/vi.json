@@ -124,7 +124,8 @@
     "expandMenu": "Mở rộng menu",
     "administrators": "Quản trị",
     "collapseMenu": "Thu gọn menu",
-    "glossary": "Từ điển"
+    "glossary": "Từ điển",
+    "apiKeys": "Khóa API"
   },
   "iam": {
     "title": "Quản lý Định danh & Truy cập",
@@ -2405,5 +2406,34 @@
     "deepResearchDesc": "Bật nghiên cứu đệ quy nhiều bước cho câu hỏi phức tạp",
     "allowRbacDatasets": "Cho phép bộ dữ liệu người dùng có quyền truy cập",
     "allowRbacDatasetsDesc": "Tìm kiếm cả bộ dữ liệu chuyên dụng và bộ dữ liệu người dùng được phép truy cập"
+  },
+  "apiKeys": {
+    "title": "Khóa API",
+    "description": "Quản lý khóa API cho truy cập API bên ngoài và công cụ đánh giá như promptfoo",
+    "createKey": "Tạo khóa API",
+    "name": "Tên",
+    "namePlaceholder": "VD: Đánh giá Promptfoo",
+    "scopes": "Phạm vi",
+    "status": "Trạng thái",
+    "active": "Hoạt động",
+    "inactive": "Không hoạt động",
+    "lastUsed": "Sử dụng lần cuối",
+    "expiresAt": "Hết hạn",
+    "never": "Không bao giờ",
+    "neverUsed": "Chưa sử dụng",
+    "createdSuccess": "Tạo khóa API thành công",
+    "deleteConfirm": "Bạn có chắc muốn xóa khóa API này? Hành động này không thể hoàn tác.",
+    "deleteSuccess": "Đã xóa khóa API",
+    "updateSuccess": "Đã cập nhật khóa API",
+    "keyCreated": "Đã tạo khóa API",
+    "keyCreatedWarning": "Sao chép khóa ngay bây giờ. Nó sẽ không được hiển thị lại.",
+    "copyKey": "Sao chép khóa",
+    "copied": "Đã sao chép!",
+    "scopeChat": "Trò chuyện",
+    "scopeSearch": "Tìm kiếm",
+    "scopeRetrieval": "Truy xuất",
+    "exampleUsage": "Ví dụ sử dụng",
+    "noKeys": "Chưa có khóa API",
+    "noKeysDescription": "Tạo khóa API để sử dụng API đánh giá bên ngoài"
   }
 }

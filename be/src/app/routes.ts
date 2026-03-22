@@ -39,6 +39,8 @@ import llmProviderPublicRoutes from '@/modules/llm-provider/routes/llm-provider-
 import syncRoutes from '@/modules/sync/routes/sync.routes.js';
 import projectRoutes from '@/modules/projects/routes/projects.routes.js';
 import feedbackRoutes from '@/modules/feedback/routes/feedback.routes.js';
+import apiKeyRoutes from '@/modules/external/routes/api-key.routes.js';
+import externalApiRoutes from '@/modules/external/routes/external-api.routes.js';
 
 // ============================================================================
 // Rate Limiters
@@ -179,9 +181,15 @@ function registerRoutes(apiRouter: Router): void {
     // Projects (multi-category document management)
     apiRouter.use('/projects', projectRoutes);
 
+    // External API key management (session auth)
+    apiRouter.use('/external/api-keys', apiKeyRoutes);
+
     // OpenAI-compatible API endpoints (Bearer token auth)
     apiRouter.use('/v1', chatOpenaiRoutes);
     apiRouter.use('/v1', searchOpenaiRoutes);
+
+    // External evaluation API (API key auth)
+    apiRouter.use('/v1/external', externalApiRoutes);
 }
 
 // ============================================================================
