@@ -217,7 +217,7 @@ class RAGFlowHtmlParser:
             # Tables are captured as complete HTML elements
             if str.lower(element.name) == "table":
                 table_info_list = []
-                table_id = str(uuid.uuid1())
+                table_id = str(uuid.uuid4())
                 table_list = [html.unescape(str(element))]
                 for t in table_list:
                     table_info_list.append({"content": t, "tag_name": "table",
@@ -226,7 +226,7 @@ class RAGFlowHtmlParser:
             else:
                 # Assign a new block ID for block-level elements
                 if str.lower(element.name) in BLOCK_TAGS:
-                    block_id = str(uuid.uuid1())
+                    block_id = str(uuid.uuid4())
                 # Recurse into child elements
                 for child in element.children:
                     child_info = cls.read_text_recursively(child, parser_result, chunk_token_num, element.name,
