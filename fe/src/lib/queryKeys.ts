@@ -245,6 +245,18 @@ export const queryKeys = {
   },
 
   // --------------------------------------------------------------------------
+  // Memory
+  // --------------------------------------------------------------------------
+  memory: {
+    all: ['memory'] as const,
+    lists: () => [...queryKeys.memory.all, 'list'] as const,
+    list: (filters?: Record<string, unknown>) => [...queryKeys.memory.lists(), filters] as const,
+    details: () => [...queryKeys.memory.all, 'detail'] as const,
+    detail: (id: string) => [...queryKeys.memory.details(), id] as const,
+    messages: (id: string) => [...queryKeys.memory.detail(id), 'messages'] as const,
+  },
+
+  // --------------------------------------------------------------------------
   // Agents
   // --------------------------------------------------------------------------
   agents: {
