@@ -233,6 +233,38 @@ flowchart TD
 
 ## Agent Integration
 
+### Chat Assistant Integration
+
+Chat assistants can be linked to a memory pool via the `memory_id` field on the `ChatAssistant` model:
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant Chat as Chat Service
+    participant Mem as Memory Service
+    participant LLM as LLM Provider
+    participant OS as OpenSearch
+
+    U->>Chat: Send message
+    Chat->>Mem: searchMemory(assistant.memory_id, query)
+    Mem->>OS: Hybrid search (knn + text)
+    OS-->>Mem: Top-K relevant memories
+    Mem-->>Chat: Memory context
+    Chat->>LLM: System prompt + memory context + user query
+    LLM-->>Chat: Response
+    Chat-->>U: Stream response
+
+    Note over Chat,Mem: Fire-and-forget extraction
+    Chat-)Mem: extractFromConversation(memory_id, input, response)
+    Mem->>LLM: Extract per enabled type
+    Mem->>OS: Store extracted messages
+```
+
+When `memory_id` is set on a chat assistant:
+- **Recall**: Before generating a response, top-K memories are searched and injected into the system prompt as context
+- **Extraction**: After responding, the conversation turn is processed through the extraction pipeline (fire-and-forget, non-blocking)
+- Failures in either recall or extraction are logged but never break the chat response
+
 ### memory_read Node
 
 During agent execution, a `memory_read` node:
