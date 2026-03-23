@@ -512,7 +512,8 @@ sys.modules["rag.utils.redis_conn"].REDIS_CONN = MagicMock()
 # rag.utils.lazy_image
 sys.modules["rag.utils.lazy_image"].ensure_pil_image = lambda x: x
 sys.modules["rag.utils.lazy_image"].is_image_like = lambda x: x is not None
-sys.modules["rag.utils.lazy_image"].LazyDocxImage = MagicMock()
+sys.modules["rag.utils.lazy_image"].LazyImage = MagicMock()
+sys.modules["rag.utils.lazy_image"].LazyDocxImage = MagicMock()  # backward-compat alias
 sys.modules["rag.utils.lazy_image"].open_image_for_processing = MagicMock()
 
 # rag.utils.base64_image

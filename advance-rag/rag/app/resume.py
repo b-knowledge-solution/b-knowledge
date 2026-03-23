@@ -163,9 +163,11 @@ FIELD_MAP_EN = {
 }
 
 
-def _is_english(lang: str) -> bool:
-    """Determine if the language parameter indicates English"""
-    return lang.lower() in ("english", "en")
+def _is_english(lang: str | None) -> bool:
+    """Determine if the language parameter indicates English."""
+    if not isinstance(lang, str):
+        return False
+    return lang.strip().lower() in ("english", "en")
 
 
 def get_field_map(lang: str) -> dict:
@@ -1063,13 +1065,10 @@ def _call_llm(prompt: str, tenant_id , lang: str) -> Optional[dict]:
 
     """
     try:
-        from db.services.llm_service import LLMBundle
+        from api.db.services.llm_service import LLMBundle
         from common.constants import LLMType
-        from db.joint_services.tenant_model_service import get_tenant_default_model_by_type
 
-        # Resolve the tenant's default chat model config (new schema)
-        chat_model_config = get_tenant_default_model_by_type(tenant_id, LLMType.CHAT)
-        llm = LLMBundle(tenant_id, chat_model_config, lang=lang)
+        llm =  LLMBundle(tenant_id, LLMType.CHAT, lang=lang)
 
         for attempt in range(_LLM_MAX_RETRIES + 1):
             try:

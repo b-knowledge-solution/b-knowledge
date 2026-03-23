@@ -14,16 +14,6 @@
 #  limitations under the License.
 #
 
-"""Tabular data parser module for the RAG pipeline.
-
-Handles structured tabular data from Excel (.xlsx/.xls), CSV, and TXT
-files. Each row becomes a separate chunk with column headers providing
-context. Supports complex Excel features including merged cells,
-multi-level headers, and embedded images. Column data types are
-automatically detected (int, float, text, datetime, bool) and mapped
-to appropriate database field suffixes for indexing.
-"""
-
 import copy
 import csv
 import io
@@ -38,7 +28,7 @@ from collections import Counter
 # from openpyxl import load_workbook, Workbook
 from dateutil.parser import parse as datetime_parse
 
-from db.services.knowledgebase_service import KnowledgebaseService
+from api.db.services.knowledgebase_service import KnowledgebaseService
 from deepdoc.parser.figure_parser import vision_figure_parser_figure_xlsx_wrapper
 from deepdoc.parser.utils import get_text
 from rag.nlp import rag_tokenizer, tokenize, tokenize_table
@@ -47,12 +37,6 @@ from common import settings
 
 
 class Excel(ExcelParser):
-    """Advanced Excel parser for tabular data.
-
-    Extends ExcelParser with support for complex header structures,
-    merged cells, multi-level headers, embedded images with vision
-    LLM descriptions, and automatic data type detection per column.
-    """
     def __call__(self, fnm, binary=None, from_page=0, to_page=10000000000, callback=None, **kwargs):
         if not binary:
             wb = Excel._load_excel_to_workbook(fnm)
@@ -131,7 +115,7 @@ class Excel(ExcelParser):
             tables.append(
                 (
                     (
-                        img["image"],  # Image.Image
+                        img["image"],  # Image.Image or LazyImage
                         [img["image_description"]]  # description list (must be list)
                     ),
                     [

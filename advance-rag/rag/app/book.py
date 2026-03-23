@@ -14,14 +14,6 @@
 #  limitations under the License.
 #
 
-"""Book document parser module for the RAG pipeline.
-
-Provides chunking logic for long-form book documents in PDF, DOCX, TXT,
-HTML, and DOC formats. Supports page range selection to reduce processing
-time for lengthy books. Uses layout analysis for PDFs, hierarchical merging
-for structured content, and naive merging for unstructured text.
-"""
-
 import logging
 import re
 from io import BytesIO
@@ -35,34 +27,11 @@ from rag.nlp import rag_tokenizer
 from deepdoc.parser import PdfParser, HtmlParser
 from deepdoc.parser.figure_parser import vision_figure_parser_docx_wrapper
 from PIL import Image
-from rag.utils.lazy_image import LazyDocxImage
+from rag.utils.lazy_image import LazyImage
 
 
 class Pdf(PdfParser):
-    """PDF parser specialized for book-format documents.
-
-    Extends PdfParser with OCR, layout analysis, table extraction,
-    and text merging tailored for book content with chapters and
-    sections.
-    """
     def __call__(self, filename, binary=None, from_page=0, to_page=100000, zoomin=3, callback=None):
-        """Parse a book-format PDF document.
-
-        Performs OCR, layout analysis, table extraction, and text merging
-        on the specified page range.
-
-        Args:
-            filename: Path to the PDF file, or ignored if binary is provided.
-            binary: Raw PDF binary content.
-            from_page: Starting page number (0-indexed).
-            to_page: Ending page number (exclusive).
-            zoomin: Zoom factor for OCR image processing.
-            callback: Progress callback function.
-
-        Returns:
-            A tuple of (sections, tables) where sections is a list of
-            (text, layout_number) tuples and tables contains extracted tables.
-        """
         from timeit import default_timer as timer
 
         start = timer()
@@ -120,7 +89,7 @@ def chunk(filename, binary=None, from_page=0, to_page=100000, lang="Chinese", ca
         sections = [
             (item[0], item[1] if item[1] is not None else "")
             for item in sections
-            if not isinstance(item[1], (Image.Image, LazyDocxImage))
+            if not isinstance(item[1], (Image.Image, LazyImage))
         ]
         callback(0.8, "Finish parsing.")
 
