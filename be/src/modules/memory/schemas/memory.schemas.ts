@@ -45,6 +45,18 @@ export const memoryIdParamSchema = z.object({
   id: z.string().uuid(),
 })
 
+/** @description POST /api/memories/:id/import — body schema for importing chat history */
+export const importHistorySchema = z.object({
+  session_id: z.string().uuid(),
+})
+
+/** @description POST /api/memories/:id/messages — body schema for direct message insertion */
+export const addMessageSchema = z.object({
+  content: z.string().min(1).max(50000),
+  // Memory type bitmask value: RAW=1, SEMANTIC=2, EPISODIC=4, PROCEDURAL=8
+  message_type: z.number().int().min(1).max(8).default(1),
+})
+
 /** @description Inferred types for service layer consumption */
 export type CreateMemoryDto = z.infer<typeof createMemorySchema>
 export type UpdateMemoryDto = z.infer<typeof updateMemorySchema>

@@ -8,8 +8,10 @@
  * @module modules/memory/controllers/memory
  */
 import { Request, Response } from 'express'
+import { v4 as uuidv4 } from 'uuid'
 import { memoryService } from '../services/memory.service.js'
 import { memoryMessageService } from '../services/memory-message.service.js'
+import { memoryExtractionService } from '../services/memory-extraction.service.js'
 import { getTenantId } from '@/shared/middleware/tenant.middleware.js'
 import { log } from '@/shared/services/logger.service.js'
 
@@ -210,6 +212,72 @@ class MemoryController {
       log.error('Failed to forget memory message', { error: String(error) })
       const status = error.statusCode || 500
       res.status(status).json({ error: error.message || 'Failed to forget memory message' })
+    }
+  }
+
+  /**
+   * @description POST /:id/import -- Import chat history into a memory pool (D-11).
+   *   Delegates to memoryExtractionService.importChatHistory which loads chat messages,
+   *   groups them into user+assistant pairs, and extracts memories via LLM pipeline.
+   * @param {Request} req - Express request with :id param and body { session_id: string }
+   * @param {Response} res - Express response with { imported: number }
+   * @returns {Promise<void>}
+   */
+  async importHistory(req: Request, res: Response): Promise<void> {
+    try {
+      const tenantId = getTenantId(req) || ''
+      const userId = req.user?.id || ''
+      const { session_id } = req.body as { session_id: string }
+
+      const result = await memoryExtractionService.importChatHistory(
+        req.params['id']!,
+        session_id,
+        userId,
+        tenantId,
+      )
+
+      res.status(200).json(result)
+    } catch (error: any) {
+      log.error('Failed to import chat history into memory pool', { error: String(error) })
+      const status = error.statusCode || 500
+      res.status(status).json({ error: error.message || 'Failed to import chat history' })
+    }
+  }
+
+  /**
+   * @description POST /:id/messages -- Insert a single message directly into a memory pool.
+   *   Used by the agent memory_write node to store content without LLM extraction.
+   *   Generates UUID for message_id, generates embedding, and inserts via memoryMessageService.
+   * @param {Request} req - Express request with :id param and body { content: string, message_type?: number }
+   * @param {Response} res - Express response with { message_id: string }
+   * @returns {Promise<void>}
+   */
+  async addMessage(req: Request, res: Response): Promise<void> {
+    try {
+      const tenantId = getTenantId(req) || ''
+      const { content, message_type } = req.body as { content: string; message_type?: number }
+      const messageId = uuidv4()
+
+      // Ensure the OpenSearch index exists before inserting
+      await memoryMessageService.ensureIndex(tenantId)
+
+      // Insert the memory message with empty embedding (full embedding wired in extraction plan)
+      await memoryMessageService.insertMessage(tenantId, {
+        message_id: messageId,
+        memory_id: req.params['id']!,
+        content,
+        content_embed: [],
+        message_type: message_type ?? 1,
+        status: 1,
+        tenant_id: tenantId,
+        source_id: '',
+      })
+
+      res.status(201).json({ message_id: messageId })
+    } catch (error: any) {
+      log.error('Failed to add message to memory pool', { error: String(error) })
+      const status = error.statusCode || 500
+      res.status(status).json({ error: error.message || 'Failed to add message' })
     }
   }
 }

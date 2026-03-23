@@ -16,6 +16,8 @@ import {
   updateMemorySchema,
   queryMemoryMessagesSchema,
   memoryIdParamSchema,
+  importHistorySchema,
+  addMessageSchema,
 } from '../schemas/memory.schemas.js'
 
 const router = Router()
@@ -59,5 +61,15 @@ router.post('/:id/search', validate({ params: memoryIdParamSchema }), memoryCont
 
 /** PUT /:id/messages/:messageId/forget -- Mark a memory message as forgotten */
 router.put('/:id/messages/:messageId/forget', memoryController.forgetMessage.bind(memoryController))
+
+// -------------------------------------------------------------------------
+// Import & Direct Insert
+// -------------------------------------------------------------------------
+
+/** POST /:id/import -- Import chat history into a memory pool */
+router.post('/:id/import', validate({ params: memoryIdParamSchema, body: importHistorySchema }), memoryController.importHistory.bind(memoryController))
+
+/** POST /:id/messages -- Insert a single message directly (used by agent memory_write node) */
+router.post('/:id/messages', validate({ params: memoryIdParamSchema, body: addMessageSchema }), memoryController.addMessage.bind(memoryController))
 
 export default router
