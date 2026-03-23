@@ -107,6 +107,8 @@ export async function up(knex: Knex): Promise<void> {
     table.string('llm_id', 128)
     table.jsonb('prompt_config').defaultTo('{}')
     table.boolean('is_public').defaultTo(false)
+    // Optional link to a memory pool for auto-extraction and context injection
+    table.text('memory_id').nullable()
     table.text('created_by').references('id').inTable('users').onDelete('SET NULL')
     table.text('updated_by').references('id').inTable('users').onDelete('SET NULL')
     table.timestamps(true, true)
@@ -273,12 +275,15 @@ export async function up(knex: Knex): Promise<void> {
     table.text('resource_id')
     table.jsonb('details').defaultTo('{}')
     table.text('ip_address')
+    // Tenant scoping for org-level audit queries
+    table.text('tenant_id').nullable()
     table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
 
     table.index('user_id')
     table.index('action')
     table.index('resource_type')
     table.index('created_at')
+    table.index('tenant_id')
   })
   // Descending index for recent-first queries
   await knex.raw('CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC)')
@@ -454,7 +459,7 @@ export async function up(knex: Knex): Promise<void> {
     process.env['SYSTEM_TENANT_ID'] || '00000000000000000000000000000001'
   ).replace(/-/g, '')
 
-  // Tenant — system tenant record (single-tenant mode)
+  // Tenant — system tenant record (single-tenant mode, multi-org ready)
   await knex.schema.createTable('tenant', (t) => {
     t.string('id', 32).primary()
     t.string('name', 100).nullable().index()
@@ -474,6 +479,12 @@ export async function up(knex: Knex): Promise<void> {
     t.string('parser_ids', 256).notNullable().defaultTo('').index()
     t.integer('credit').defaultTo(512).index()
     t.string('status', 1).nullable().defaultTo('1').index()
+    // Multi-org display fields
+    t.text('display_name').nullable()
+    t.text('description').nullable()
+    t.jsonb('settings').defaultTo('{}')
+    t.text('created_by').nullable()
+    t.text('updated_by').nullable()
     t.bigInteger('create_time').nullable().index()
     t.timestamp('create_date').nullable().index()
     t.bigInteger('update_time').nullable().index()
@@ -526,6 +537,8 @@ export async function up(knex: Knex): Promise<void> {
     t.timestamp('raptor_task_finish_at').nullable()
     t.string('mindmap_task_id', 32).nullable().index()
     t.timestamp('mindmap_task_finish_at').nullable()
+    // ABAC policy rules
+    t.jsonb('policy_rules').defaultTo('[]')
     t.string('status', 1).nullable().defaultTo('1').index()
     t.bigInteger('create_time').nullable().index()
     t.timestamp('create_date').nullable().index()
@@ -558,6 +571,8 @@ export async function up(knex: Knex): Promise<void> {
     t.string('run', 1).nullable().defaultTo('0').index()
     t.string('status', 1).nullable().defaultTo('1').index()
     t.string('source_url', 2048).nullable()
+    // ABAC permission overrides (restrict-only)
+    t.jsonb('policy_overrides').defaultTo('[]')
     t.bigInteger('create_time').nullable().index()
     t.timestamp('create_date').nullable().index()
     t.bigInteger('update_time').nullable().index()
@@ -626,6 +641,8 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamp('create_date').nullable().index()
       t.bigInteger('update_time').nullable().index()
       t.timestamp('update_date').nullable().index()
+      // Prevent duplicate memberships
+      t.unique(['user_id', 'tenant_id'])
     })
   }
 
@@ -843,6 +860,22 @@ export async function up(knex: Knex): Promise<void> {
     table.integer('token_count').defaultTo(0)
     // Pagerank for search result boosting (positive = boost, negative = suppress)
     table.integer('pagerank').defaultTo(0)
+    // Versioning columns
+    table.uuid('parent_dataset_id').nullable().references('id').inTable('datasets').onDelete('SET NULL')
+    table.integer('version_number').nullable()
+    table.text('change_summary').nullable()
+    table.text('version_created_by').nullable().references('id').inTable('users').onDelete('SET NULL')
+    table.jsonb('metadata_config').defaultTo('{}')
+    table.text('version_label').nullable()
+    // Sync columns (mirrors knowledgebase fields)
+    table.text('tenant_id').nullable().index()
+    table.float('similarity_threshold').defaultTo(0.2)
+    table.float('vector_similarity_weight').defaultTo(0.3)
+    table.text('graphrag_task_id').nullable()
+    table.text('raptor_task_id').nullable()
+    table.text('mindmap_task_id').nullable()
+    table.text('pipeline_id').nullable()
+    table.text('tenant_embd_id').nullable()
     table.text('created_by').references('id').inTable('users').onDelete('SET NULL')
     table.text('updated_by').references('id').inTable('users').onDelete('SET NULL')
     table.timestamps(true, true)
@@ -853,6 +886,16 @@ export async function up(knex: Knex): Promise<void> {
     CREATE UNIQUE INDEX datasets_name_active_unique
     ON datasets (LOWER(name))
     WHERE status <> 'deleted'
+  `)
+  // Versioning indexes
+  await knex.raw(`
+    CREATE INDEX idx_datasets_parent_id
+    ON datasets(parent_dataset_id)
+    WHERE parent_dataset_id IS NOT NULL
+  `)
+  await knex.raw(`
+    CREATE INDEX idx_datasets_version
+    ON datasets(parent_dataset_id, version_number)
   `)
 
   // Documents - files within a dataset
@@ -902,10 +945,10 @@ export async function up(knex: Knex): Promise<void> {
     table.bigInteger('update_time').nullable()
     table.timestamp('update_date').nullable()
   })
-  // Partial unique index — only active rows must have unique (tenant_id, factory_name, model_name)
+  // Partial unique index including model_type for separate chat/vision rows
   await knex.raw(`
-    CREATE UNIQUE INDEX model_providers_tenant_factory_model_active_unique
-    ON model_providers (tenant_id, factory_name, model_name)
+    CREATE UNIQUE INDEX model_providers_tenant_factory_type_model_active_unique
+    ON model_providers (tenant_id, factory_name, model_name, model_type)
     WHERE status = 'active'
   `)
 
@@ -975,6 +1018,8 @@ export async function up(knex: Knex): Promise<void> {
     table.text('status').notNullable().defaultTo('active')
     // Whether the project is private (restricted access)
     table.boolean('is_private').defaultTo(false)
+    // Multi-tenant isolation
+    table.text('tenant_id').notNullable().defaultTo('default')
     table.text('created_by')
     table.text('updated_by')
     table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
@@ -982,6 +1027,7 @@ export async function up(knex: Knex): Promise<void> {
 
     table.index('status')
     table.index('created_by')
+    table.index('tenant_id')
   })
 
   // 12.2 Project permissions - tab-level access control
@@ -1204,6 +1250,228 @@ export async function up(knex: Knex): Promise<void> {
   })
 
   // ──────────────────────────────────────────────
+  // Section 13 – Answer feedback, platform policies, query log, API keys
+  // ──────────────────────────────────────────────
+
+  // Answer feedback - user feedback on chat and search answers
+  await knex.schema.createTable('answer_feedback', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('source').notNullable().checkIn(['chat', 'search'])
+    table.text('source_id').notNullable()
+    table.text('message_id').nullable()
+    table.text('user_id').notNullable()
+    table.boolean('thumbup').notNullable()
+    table.text('comment').nullable()
+    table.text('query').notNullable()
+    table.text('answer').notNullable()
+    table.jsonb('chunks_used').nullable()
+    table.text('trace_id').nullable()
+    table.text('tenant_id').notNullable()
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.index(['source', 'source_id'])
+    table.index(['user_id'])
+    table.index(['thumbup'])
+    table.index(['tenant_id'])
+  })
+
+  // Platform policies - super-admin managed ABAC policies
+  await knex.schema.createTable('platform_policies', (table) => {
+    table.text('id').primary().defaultTo(knex.raw("gen_random_uuid()::TEXT"))
+    table.text('name').notNullable()
+    table.text('description').nullable()
+    table.jsonb('rules').notNullable().defaultTo('[]')
+    table.boolean('is_active').defaultTo(true)
+    table.text('created_by').nullable()
+    table.text('updated_by').nullable()
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
+  })
+
+  // Query log - search and chat query events for analytics
+  await knex.schema.createTable('query_log', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('source').notNullable().checkIn(['chat', 'search'])
+    table.text('source_id').notNullable()
+    table.text('user_id').notNullable()
+    table.text('tenant_id').notNullable()
+    table.text('query').notNullable()
+    table.jsonb('dataset_ids').defaultTo('[]')
+    table.integer('result_count').defaultTo(0)
+    table.integer('response_time_ms').nullable()
+    table.float('confidence_score').nullable()
+    table.boolean('failed_retrieval').defaultTo(false)
+    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
+    table.index(['tenant_id', 'created_at'])
+    table.index(['tenant_id', 'failed_retrieval'])
+    table.index(['source'])
+    table.index(['user_id'])
+  })
+
+  // API keys - hashed API keys for external API authentication
+  await knex.schema.createTable('api_keys', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('user_id').notNullable().references('id').inTable('users').onDelete('CASCADE')
+    table.text('name').notNullable()
+    table.text('key_prefix').notNullable()
+    table.text('key_hash').notNullable()
+    table.jsonb('scopes').notNullable().defaultTo('["chat","search","retrieval"]')
+    table.boolean('is_active').notNullable().defaultTo(true)
+    table.timestamp('last_used_at', { useTz: true }).nullable()
+    table.timestamp('expires_at', { useTz: true }).nullable()
+    table.timestamp('created_at', { useTz: true }).notNullable().defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).notNullable().defaultTo(knex.fn.now())
+    table.index(['key_hash'])
+    table.index(['user_id'])
+  })
+
+  // ──────────────────────────────────────────────
+  // Section 13b – Agent tables
+  // ──────────────────────────────────────────────
+
+  // Agents - AI agent workflow definitions
+  await knex.schema.createTable('agents', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.string('name', 255).notNullable()
+    table.text('description').nullable()
+    table.string('avatar', 512).nullable()
+    table.string('mode', 20).notNullable().defaultTo('agent')
+    table.string('status', 20).notNullable().defaultTo('draft')
+    table.jsonb('dsl').notNullable().defaultTo('{}')
+    table.integer('dsl_version').notNullable().defaultTo(1)
+    table.jsonb('policy_rules').nullable()
+    table.string('tenant_id', 64).notNullable()
+    table.text('project_id').nullable().references('id').inTable('projects').onDelete('SET NULL')
+    table.text('parent_id').nullable().references('id').inTable('agents').onDelete('SET NULL')
+    table.integer('version_number').notNullable().defaultTo(0)
+    table.string('version_label', 128).nullable()
+    table.text('created_by').nullable().references('id').inTable('users').onDelete('SET NULL')
+    table.timestamp('created_at', { useTz: true }).notNullable().defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).notNullable().defaultTo(knex.fn.now())
+    table.index(['tenant_id', 'parent_id'], 'idx_agents_tenant_parent')
+    table.index(['tenant_id', 'status'], 'idx_agents_tenant_status')
+    table.index(['created_by'], 'idx_agents_created_by')
+    table.index(['project_id'], 'idx_agents_project_id')
+  })
+
+  // Agent runs - agent execution history
+  await knex.schema.createTable('agent_runs', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('agent_id').notNullable().references('id').inTable('agents').onDelete('CASCADE')
+    table.string('tenant_id', 64).notNullable()
+    table.string('status', 20).notNullable().defaultTo('pending')
+    table.string('mode', 20).notNullable()
+    table.text('input').nullable()
+    table.text('output').nullable()
+    table.text('error').nullable()
+    table.timestamp('started_at', { useTz: true }).nullable()
+    table.timestamp('completed_at', { useTz: true }).nullable()
+    table.integer('duration_ms').nullable()
+    table.integer('total_nodes').defaultTo(0)
+    table.integer('completed_nodes').defaultTo(0)
+    table.text('triggered_by').nullable().references('id').inTable('users').onDelete('SET NULL')
+    table.string('trigger_type', 20).notNullable().defaultTo('manual')
+    table.timestamp('created_at', { useTz: true }).notNullable().defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).notNullable().defaultTo(knex.fn.now())
+    table.index(['agent_id'], 'idx_agent_runs_agent_id')
+    table.index(['tenant_id', 'status'], 'idx_agent_runs_tenant_status')
+  })
+
+  // Agent run steps - per-node step logging for runs
+  await knex.schema.createTable('agent_run_steps', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('run_id').notNullable().references('id').inTable('agent_runs').onDelete('CASCADE')
+    table.string('node_id', 255).notNullable()
+    table.string('node_type', 100).notNullable()
+    table.string('node_label', 255).nullable()
+    table.string('status', 20).notNullable().defaultTo('pending')
+    table.jsonb('input_data').nullable()
+    table.jsonb('output_data').nullable()
+    table.text('error').nullable()
+    table.timestamp('started_at', { useTz: true }).nullable()
+    table.timestamp('completed_at', { useTz: true }).nullable()
+    table.integer('duration_ms').nullable()
+    table.integer('execution_order').notNullable().defaultTo(0)
+    table.timestamp('created_at', { useTz: true }).notNullable().defaultTo(knex.fn.now())
+    table.index(['run_id'], 'idx_agent_run_steps_run_id')
+    table.index(['run_id', 'node_id'], 'idx_agent_run_steps_run_node')
+  })
+
+  // Agent tool credentials - encrypted credentials for external tools
+  await knex.schema.createTable('agent_tool_credentials', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.string('tenant_id', 64).notNullable()
+    table.text('agent_id').nullable().references('id').inTable('agents').onDelete('CASCADE')
+    table.string('tool_type', 100).notNullable()
+    table.string('name', 255).notNullable()
+    table.text('encrypted_credentials').notNullable()
+    table.text('created_by').nullable().references('id').inTable('users').onDelete('SET NULL')
+    table.timestamp('created_at', { useTz: true }).notNullable().defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).notNullable().defaultTo(knex.fn.now())
+    table.index(['tenant_id'], 'idx_agent_tool_creds_tenant')
+    table.index(['agent_id'], 'idx_agent_tool_creds_agent')
+  })
+  await knex.raw(`
+    CREATE UNIQUE INDEX idx_agent_tool_creds_unique
+    ON agent_tool_credentials (tenant_id, COALESCE(agent_id, '00000000-0000-0000-0000-000000000000'), tool_type)
+  `)
+
+  // Agent templates - pre-built agent workflow templates
+  await knex.schema.createTable('agent_templates', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.string('name', 255).notNullable()
+    table.text('description').nullable()
+    table.string('avatar', 512).nullable()
+    table.string('category', 100).nullable()
+    table.string('mode', 20).notNullable().defaultTo('agent')
+    table.jsonb('dsl').notNullable().defaultTo('{}')
+    table.integer('dsl_version').notNullable().defaultTo(1)
+    table.boolean('is_system').notNullable().defaultTo(false)
+    table.string('tenant_id', 64).nullable()
+    table.text('created_by').nullable().references('id').inTable('users').onDelete('SET NULL')
+    table.timestamp('created_at', { useTz: true }).notNullable().defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).notNullable().defaultTo(knex.fn.now())
+    table.index(['tenant_id'], 'idx_agent_templates_tenant')
+    table.index(['category'], 'idx_agent_templates_category')
+  })
+
+  // ──────────────────────────────────────────────
+  // Section 13c – Memory pools
+  // ──────────────────────────────────────────────
+
+  // Memories - AI memory pool definitions
+  await knex.schema.createTable('memories', (table) => {
+    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.string('name', 255).notNullable()
+    table.text('description').nullable()
+    table.text('avatar').nullable()
+    table.integer('memory_type').notNullable().defaultTo(15)
+    table.string('storage_type', 20).notNullable().defaultTo('table')
+    table.integer('memory_size').notNullable().defaultTo(5242880)
+    table.string('forgetting_policy', 20).notNullable().defaultTo('FIFO')
+    table.string('embd_id', 255).nullable()
+    table.string('llm_id', 255).nullable()
+    table.float('temperature').notNullable().defaultTo(0.1)
+    table.text('system_prompt').nullable()
+    table.text('user_prompt').nullable()
+    table.string('extraction_mode', 20).notNullable().defaultTo('batch')
+    table.string('permission', 10).notNullable().defaultTo('me')
+    table.string('scope_type', 20).notNullable().defaultTo('user')
+    table.text('scope_id').nullable()
+    table.string('tenant_id', 255).notNullable()
+    table.string('created_by', 255).nullable()
+    table.timestamp('created_at', { useTz: true }).notNullable().defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).notNullable().defaultTo(knex.fn.now())
+    table.check("storage_type IN ('table', 'graph')", [], 'chk_memories_storage_type')
+    table.check("extraction_mode IN ('batch', 'realtime')", [], 'chk_memories_extraction_mode')
+    table.check("permission IN ('me', 'team')", [], 'chk_memories_permission')
+    table.check("scope_type IN ('user', 'agent', 'team')", [], 'chk_memories_scope_type')
+    table.index(['tenant_id'], 'idx_memories_tenant_id')
+    table.index(['scope_type', 'scope_id'], 'idx_memories_scope')
+    table.index(['created_by'], 'idx_memories_created_by')
+  })
+
+  // ──────────────────────────────────────────────
   // Section 14 – Encrypt existing plaintext API keys
   // ──────────────────────────────────────────────
   // On a fresh database this is a no-op (no rows to encrypt).
@@ -1249,6 +1517,23 @@ export async function down(knex: Knex): Promise<void> {
     }
   }
 
+  // Memory pools
+  await knex.schema.dropTableIfExists('memories')
+
+  // Agent tables (reverse dependency order)
+  await knex.schema.dropTableIfExists('agent_templates')
+  await knex.raw('DROP INDEX IF EXISTS idx_agent_tool_creds_unique')
+  await knex.schema.dropTableIfExists('agent_tool_credentials')
+  await knex.schema.dropTableIfExists('agent_run_steps')
+  await knex.schema.dropTableIfExists('agent_runs')
+  await knex.schema.dropTableIfExists('agents')
+
+  // API keys, query log, platform policies, answer feedback
+  await knex.schema.dropTableIfExists('api_keys')
+  await knex.schema.dropTableIfExists('query_log')
+  await knex.schema.dropTableIfExists('platform_policies')
+  await knex.schema.dropTableIfExists('answer_feedback')
+
   // Project tables (reverse dependency order)
   await knex.schema.dropTableIfExists('project_sync_configs')
   await knex.schema.dropTableIfExists('project_datasets')
@@ -1267,7 +1552,9 @@ export async function down(knex: Knex): Promise<void> {
 
   // RAG pipeline
   await knex.raw('DROP INDEX IF EXISTS datasets_name_active_unique')
-  await knex.raw('DROP INDEX IF EXISTS model_providers_tenant_factory_model_active_unique')
+  await knex.raw('DROP INDEX IF EXISTS idx_datasets_parent_id')
+  await knex.raw('DROP INDEX IF EXISTS idx_datasets_version')
+  await knex.raw('DROP INDEX IF EXISTS model_providers_tenant_factory_type_model_active_unique')
   await knex.schema.dropTableIfExists('model_providers')
   await knex.schema.dropTableIfExists('documents')
   await knex.schema.dropTableIfExists('datasets')
