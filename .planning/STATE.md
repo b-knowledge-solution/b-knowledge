@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 2 UI-SPEC approved
-last_updated: "2026-03-23T03:41:22.613Z"
-last_activity: 2026-03-22 — Plan 01-10 complete (Agent embed widget, ABAC enforcement, 5 core operator config forms)
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-03-23T03:58:30.323Z"
+last_activity: 2026-03-23
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 16
-  completed_plans: 10
+  completed_plans: 11
   percent: 100
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 Phase: 1 of 1 (Migrate Agent Features from RAGFlow to B-Knowledge)
 Plan: 10 of 10 in current phase
 Status: Phase 01 Complete
-Last activity: 2026-03-22 — Plan 01-10 complete (Agent embed widget, ABAC enforcement, 5 core operator config forms)
+Last activity: 2026-03-23
 
 Progress: [██████████] 100%
 
@@ -93,6 +93,7 @@ Progress: [██████████] 100%
 | Phase 01 P08 | 6min | 2 tasks | 9 files |
 | Phase 01 P09 | 6min | 2 tasks | 14 files |
 | Phase 01 P10 | 9min | 2 tasks | 16 files |
+| Phase 02 P01 | 3min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -203,6 +204,8 @@ Recent decisions affecting current work:
 - [Phase 01, Plan 10]: ABAC requireAbility middleware on all agent CRUD, action, and execution routes
 - [Phase 01, Plan 10]: FORM_MAP uses Partial<Record<OperatorType, Component>> so unmapped operators fall through to JSON editor
 - [Phase 01, Plan 10]: Type-specific forms propagate updates on every field change (no explicit Apply button)
+- [Phase 02]: Bitmask system for memory types (RAW=1, SEMANTIC=2, EPISODIC=4, PROCEDURAL=8) enables flexible per-pool type selection
+- [Phase 02]: CHECK constraints on storage_type, extraction_mode, permission, scope_type for database-level data integrity
 
 ### Roadmap Evolution
 
@@ -224,6 +227,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-23T03:41:22.601Z
-Stopped at: Phase 2 UI-SPEC approved
-Resume file: .planning/phases/02-migration-memory-feature-from-ragflow-to-b-knowledge/02-UI-SPEC.md
+Last session: 2026-03-23T03:58:30.315Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: None
