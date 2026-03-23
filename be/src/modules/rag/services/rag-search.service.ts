@@ -318,8 +318,14 @@ export class RagSearchService {
     ): Promise<{ chunks: ChunkResult[]; total: number }> {
         const method = req.method || 'full_text'
         const topK = req.top_k || 10
-        const threshold = req.similarity_threshold || 0
         const vectorWeight = req.vector_similarity_weight ?? 0.5
+
+        // When doc_ids are explicitly provided, bypass similarity threshold so that
+        // those specific documents are always included regardless of relevance score.
+        // Upstream port: search.py similarity threshold bypass for explicit doc_ids.
+        const threshold = (req.doc_ids && req.doc_ids.length > 0)
+            ? 0
+            : (req.similarity_threshold || 0)
 
         // Build extra OpenSearch filters from metadata_filter conditions
         const extraFilters = this.buildMetadataFilters(req.metadata_filter)
@@ -357,8 +363,9 @@ export class RagSearchService {
             result.chunks = result.chunks.map(c => ({ ...c, vector_similarity: c.score ?? 0 }))
         }
 
-        // Apply similarity threshold filter to remove low-scoring results
-        result.chunks = result.chunks.filter((chunk) => (chunk.score ?? 0) >= (req.similarity_threshold ?? 0.2))
+        // Apply similarity threshold filter to remove low-scoring results.
+        // Uses the computed threshold which is already set to 0 when doc_ids are provided.
+        result.chunks = result.chunks.filter((chunk) => (chunk.score ?? 0) >= (threshold || 0.2))
 
         return result
     }

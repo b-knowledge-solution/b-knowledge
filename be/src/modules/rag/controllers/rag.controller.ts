@@ -1422,7 +1422,8 @@ export class RagController {
 
         try {
             // Strip dashes from UUID for OpenSearch kb_id format
-            const kbId = datasetId            const metrics = await ragGraphragService.getGraphMetrics([kbId])
+            const kbId = datasetId
+            const metrics = await ragGraphragService.getGraphMetrics([kbId])
 
             res.json({
                 entity_count: metrics.entityCount,

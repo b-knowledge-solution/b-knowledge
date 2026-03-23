@@ -9,6 +9,7 @@
  */
 
 import { ModelFactory } from '@/shared/models/factory.js';
+import { db } from '@/shared/db/knex.js';
 import { log } from '@/shared/services/logger.service.js';
 import { getRedisClient } from '@/shared/services/redis.service.js';
 import { DocumentRow, TaskRow, KnowledgebaseRow } from '@/shared/models/types.js';
@@ -153,6 +154,22 @@ export class RagDocumentService {
      */
     async getDatasetDocuments(datasetId: string): Promise<DocumentRow[]> {
         return ModelFactory.ragDocument.findByDatasetIdAsc(datasetId);
+    }
+
+    /**
+     * @description Deletes all documents belonging to a dataset.
+     * Upstream port: DocumentService.delete_all_by_kb()
+     * @param {string} datasetId - Dataset ID whose documents should be deleted
+     * @param {string} tenantId - Tenant ID for access control scoping
+     * @returns {Promise<number>} Number of documents deleted
+     */
+    async deleteAllByDataset(datasetId: string, tenantId: string): Promise<number> {
+        // Delete all documents for this dataset, returning count of affected rows
+        const count = await db('document')
+            .where('kb_id', datasetId)
+            .del()
+        log.info('Deleted all documents for dataset', { datasetId, tenantId, count })
+        return count
     }
 
     // -----------------------------------------------------------------------

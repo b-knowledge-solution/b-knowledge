@@ -539,6 +539,33 @@ export class RagService {
     }
 
     // -------------------------------------------------------------------------
+    // Aggregated Status
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description Gets aggregated document parsing status counts for a dataset.
+     * Groups documents by their `run` column value and returns a count per status.
+     * Upstream port: DocumentService.get_aggregate_parsing_status()
+     * @param {string} datasetId - Dataset ID to aggregate status for
+     * @returns {Promise<Record<string, number>>} Count of documents grouped by run status
+     */
+    async getAggregatedParsingStatus(datasetId: string): Promise<Record<string, number>> {
+        // Query document table grouped by run status for the given dataset
+        const counts = await db('document')
+            .where('kb_id', datasetId)
+            .groupBy('run')
+            .select('run')
+            .count('* as count')
+
+        // Transform array of {run, count} into {status: count} record
+        const result: Record<string, number> = {}
+        for (const row of counts) {
+            result[String(row.run)] = Number(row.count)
+        }
+        return result
+    }
+
+    // -------------------------------------------------------------------------
     // Document operations (metadata only — actual files managed by advance-rag)
     // -------------------------------------------------------------------------
 
