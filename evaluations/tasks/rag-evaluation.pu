@@ -1,0 +1,198 @@
+@startuml RAG_Evaluation_Full_Cycle
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam defaultFontName Segoe UI
+skinparam defaultFontSize 12
+skinparam roundcorner 8
+skinparam ArrowColor #555555
+skinparam packageBorderColor #AAAAAA
+
+title RAG Evaluation — Full Improvement Cycle\nTools: Easy Dataset · promptfoo · Python · Docker
+
+' ============================================================
+' PHASE 1: DATASET CREATION
+' ============================================================
+package "Phase 1 · Dataset Creation" #E8F4FD {
+  component [Input Docs\n(Function Spec / Screen Spec)] as docs
+  component [Easy Dataset\n(LLM-generated Q+A)] as easy
+  component [Human Verify & Curate] as human
+  database "eval_dataset.yaml\n(question · ground_truth · source_doc)" as yaml_dataset
+
+  docs --> easy : select structured docs\n(easy to verify)
+  easy --> human : draft Q+A pairs
+  human --> yaml_dataset : verified dataset
+}
+
+' ============================================================
+' DOCKER INFRASTRUCTURE
+' ============================================================
+package "Docker Infrastructure" #E8E0F0 {
+
+  package "docker-compose.yml" #D8D0E8 {
+    component [rag-eval Container\n(Python 3.11 + Node 22\n+ promptfoo)] as eval_container
+    component [Volume: ./dataset\n→ /app/dataset] as vol_dataset
+    component [Volume: ./results\n→ /app/results] as vol_results
+    component [.env\n(API keys · endpoints)] as docker_env
+
+    docker_env --> eval_container
+    vol_dataset --> eval_container
+    eval_container --> vol_results
+  }
+
+  note right of eval_container
+    docker compose run --rm rag-eval
+    ────────────────────────────────
+    Single command to run full eval
+    Results persist via volumes
+    No local Python/Node setup needed
+  end note
+}
+
+' ============================================================
+' PHASE 2: EVALUATION  (promptfoo + Python)
+' ============================================================
+package "Phase 2 · Evaluation" #FFF0E8 {
+
+  package "promptfoo (orchestrator)" #FFE4D4 {
+    component [promptfooconfig.yaml\n(providers · prompts · tests)] as pf_config
+    component [OpenAI Provider\n→ B-Knowledge /api/v1/chat/completions] as pf_provider
+    component [Assertion Engine] as pf_assert
+
+    package "Built-in Assertions" #FFDDC0 {
+      component [contains / regex] as a_basic
+      component [llm-rubric\n(LLM-as-judge)] as a_rubric
+      component [similarity\n(embedding cosine)] as a_sim
+    }
+
+    package "Custom Python Assertors" #FFDDC0 {
+      component [faithfulness.py\n(answer grounded in chunks?)] as a_faith
+      component [context_recall.py\n(right chunks retrieved?)] as a_recall
+      component [answer_correctness.py\n(answer matches ground truth?)] as a_correct
+    }
+
+    pf_config --> pf_provider
+    pf_config --> pf_assert
+    pf_assert --> a_basic
+    pf_assert --> a_rubric
+    pf_assert --> a_sim
+    pf_assert --> a_faith
+    pf_assert --> a_recall
+    pf_assert --> a_correct
+  }
+
+  package "Python Utilities" #FFE4D4 {
+    component [chunk_extractor.py\n(parse citations[] from response)] as chunk_ext
+    component [ragas_metrics.py\n(RAGAS-style scoring)] as ragas
+    component [langfuse_push.py\n(annotate traces with scores)] as lf_push
+  }
+
+  a_faith --> ragas
+  a_recall --> ragas
+  a_correct --> ragas
+  ragas --> lf_push
+  pf_provider --> chunk_ext : response + citations
+  chunk_ext --> a_faith : extracted chunks
+  chunk_ext --> a_recall : extracted chunks
+}
+
+' ============================================================
+' B-KNOWLEDGE RAG PIPELINE (existing)
+' ============================================================
+package "B-Knowledge RAG Pipeline (existing)" #F0F0F0 {
+  component [OpenAI-compat API] as bk_api
+  component [Retrieve → Rerank → Generate] as rag_pipeline
+  component [Langfuse\n(per-trace observability)] as langfuse #FFE4B5
+
+  bk_api --> rag_pipeline
+  rag_pipeline ..> langfuse : trace
+}
+
+' ============================================================
+' PHASE 3: GENERATE REPORTS
+' ============================================================
+package "Phase 3 · Generate Reports" #F0FFF0 {
+  component [promptfoo HTML Report\n(pass/fail · score per question)] as html_report
+  component [Metric Dashboard\n(score per metric + threshold line)] as metric_dash
+  component [Langfuse Dashboard\n(scores gắn vào production traces)] as lf_dashboard
+  database "results.json\n(raw scores · run_id · timestamp)" as results_json
+
+  note right of metric_dash
+    Metrics & suggested thresholds:
+    ─────────────────────────────
+    Faithfulness       ≥ 0.80
+    Answer Relevancy   ≥ 0.75
+    Context Recall     ≥ 0.70
+    Context Precision  ≥ 0.70
+    Answer Correctness ≥ 0.75
+  end note
+}
+
+' ============================================================
+' PHASE 4: ENHANCEMENT  (feedback loop)
+' ============================================================
+package "Phase 4 · Enhancement" #FFF8E1 {
+  diamond "Score ≥ Threshold?" as threshold_gate
+
+  package "Enhancement Actions" #FFECB3 {
+    component [Tune RAG Config\n(top_k · similarity_threshold\n· chunk_size · reranker)] as tune_rag
+    component [Improve Prompt\n(system prompt · context template)] as tune_prompt
+    component [Add / Fix Documents\n(add missing docs to knowledge base)] as tune_docs
+    component [Re-annotate Dataset\n(fix wrong ground truth)] as tune_dataset
+  }
+
+  threshold_gate --> tune_rag : score low on\nContext Recall/Precision
+  threshold_gate --> tune_prompt : score low on\nFaithfulness/Relevancy
+  threshold_gate --> tune_docs : score low on\nContext Recall (missing info)
+  threshold_gate --> tune_dataset : ground truth\nwas wrong
+}
+
+' ============================================================
+' DOCKER → EVAL CONNECTION
+' ============================================================
+eval_container --> pf_config : runs inside container
+eval_container --> ragas : runs inside container
+eval_container --> lf_push : runs inside container
+
+' ============================================================
+' MAIN FLOW CONNECTIONS
+' ============================================================
+yaml_dataset --> pf_config : test cases (Q + ground_truth)
+pf_provider --> bk_api : POST question\n(network: host or docker)
+bk_api --> pf_provider : answer + citations[]
+pf_assert --> results_json
+pf_assert --> html_report
+results_json --> metric_dash
+lf_push --> langfuse
+langfuse --> lf_dashboard
+metric_dash --> threshold_gate : compare each\nmetric score
+
+' Enhancement loop back
+tune_rag ..> bk_api : adjust config\nthen re-run eval
+tune_prompt ..> bk_api : update system prompt\nthen re-run eval
+tune_docs ..> yaml_dataset : re-run eval\nwith new docs indexed
+tune_dataset ..> yaml_dataset : fix ground truth\nthen re-run eval
+
+note right of pf_provider
+  promptfoo OpenAI provider config:
+  ──────────────────────────────
+  apiBaseUrl: http://host.docker.internal:3001
+  (or B-Knowledge container name)
+  apiKey: <B-Knowledge API key>
+end note
+
+note bottom of threshold_gate
+  Nếu tất cả metrics ≥ threshold → PASS
+  Deploy config mới hoặc đóng eval cycle
+end note
+
+note bottom of eval_container
+  Dockerfile (multi-stage):
+  ─────────────────────────
+  Stage 1: node:22-slim → npm i -g promptfoo
+  Stage 2: python:3.11-slim → pip install deps
+  Final: merge → ENTRYPOINT ["./run_eval.sh"]
+  ─────────────────────────
+  docker compose up rag-eval
+end note
+
+@enduml
