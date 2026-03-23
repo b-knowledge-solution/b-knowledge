@@ -126,7 +126,9 @@
     "collapseMenu": "Thu gọn menu",
     "glossary": "Từ điển",
     "apiKeys": "Khóa API",
-    "agents": "Tác tử"
+    "agents": "Tác tử",
+    "agentList": "Danh sách Tác tử",
+    "memory": "Bộ nhớ"
   },
   "iam": {
     "title": "Quản lý Định danh & Truy cập",
@@ -2466,5 +2468,37 @@
     "agentDuplicated": "Đã nhân bản tác tử",
     "createAsAgentWorkflow": "Tạo bằng quy trình Agent (Nâng cao)",
     "agentWorkflowDescription": "Xây dựng quy trình AI đa bước với canvas agent trực quan"
+  },
+  "memory": {
+    "title": "Bộ nhớ",
+    "create": "Tạo Bộ nhớ",
+    "edit": "Sửa Bộ nhớ",
+    "delete": "Xóa Bộ nhớ",
+    "deleteConfirm": "Bạn có chắc muốn xóa \"{{name}}\"? Tất cả dữ liệu nhớ sẽ bị mất vĩnh viễn.",
+    "name": "Tên",
+    "description": "Mô tả",
+    "memoryType": "Loại bộ nhớ",
+    "raw": "Thô",
+    "semantic": "Ngữ nghĩa",
+    "episodic": "Sự kiện",
+    "procedural": "Quy trình",
+    "storageType": "Loại lưu trữ",
+    "table": "Bảng",
+    "graph": "Đồ thị",
+    "extractionMode": "Chế độ trích xuất",
+    "batch": "Hàng loạt",
+    "realtime": "Thời gian thực",
+    "permission": "Quyền truy cập",
+    "permMe": "Chỉ tôi",
+    "permTeam": "Đội nhóm",
+    "scopeType": "Phạm vi",
+    "scopeUser": "Người dùng",
+    "scopeAgent": "Tác tử",
+    "scopeTeam": "Đội nhóm",
+    "empty": "Chưa có bộ nhớ nào",
+    "emptyHint": "Tạo bộ nhớ để giúp tác tử ghi nhớ qua các phiên hội thoại",
+    "created": "Đã tạo bộ nhớ",
+    "updated": "Đã cập nhật bộ nhớ",
+    "deleted": "Đã xóa bộ nhớ"
   }
 }

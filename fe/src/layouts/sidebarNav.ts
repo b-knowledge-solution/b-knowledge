@@ -33,6 +33,7 @@ import {
   BrainCircuit,
   KeyRound,
   Workflow,
+  Brain,
 } from 'lucide-react'
 import type { config } from '@/config'
 
@@ -103,12 +104,14 @@ export function isNavGroup(entry: SidebarNavEntry): entry is SidebarNavGroup {
  *  3. Add the `<Route>` element in `App.tsx`
  */
 export const SIDEBAR_NAV: SidebarNavEntry[] = [
-  // ── Top-level links ────────────────────────────────────────────
+  // ── Agents group (with Memory child) ────────────────────────────
   {
-    path: '/agents',
     labelKey: 'nav.agents',
     icon: Workflow,
-    iconSize: 20,
+    children: [
+      { path: '/agents', labelKey: 'nav.agentList', icon: Workflow, iconSize: 18 },
+      { path: '/memory', labelKey: 'nav.memory', icon: Brain, iconSize: 18 },
+    ],
   },
   {
     path: '/chat',
