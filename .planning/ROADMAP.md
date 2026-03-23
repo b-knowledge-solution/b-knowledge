@@ -65,7 +65,7 @@ Plans:
 - [x] 02-03-PLAN.md — FE API layer + Memory list page + sidebar nav + routing + i18n
 - [x] 02-04-PLAN.md — Memory extraction pipeline + chat integration (auto-save/inject)
 - [x] 02-05-PLAN.md — FE detail page (message browser + settings panel + import dialog)
-- [ ] 02-06-PLAN.md — Agent Memory operator (Python handlers + canvas form) + import endpoint
+- [x] 02-06-PLAN.md — Agent Memory operator (Python handlers + canvas form) + import endpoint
 
 ---
 *Roadmap created: 2026-03-18*
