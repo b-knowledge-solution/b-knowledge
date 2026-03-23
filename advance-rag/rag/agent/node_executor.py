@@ -1812,6 +1812,120 @@ def _make_tool_handler(tool_instance):
 
 
 # ---------------------------------------------------------------------------
+# Memory Handlers
+# ---------------------------------------------------------------------------
+
+
+def handle_memory_read(input_data: dict, config: dict, tenant_id: str) -> dict:
+    """Read relevant memories for the given query via the BE memory API.
+
+    Extracts the query from upstream node output and performs a hybrid search
+    against the specified memory pool.
+
+    Args:
+        input_data: Input from upstream nodes containing 'query', 'input', or 'message' text.
+        config: Node configuration with memory_id, top_k (default 5), and api_base_url.
+        tenant_id: Multi-tenant isolation identifier for auth header.
+
+    Returns:
+        Dict with 'output_data' containing 'memories' list and 'raw_results'.
+    """
+    memory_id = config.get("memory_id", "")
+    if not memory_id:
+        return {"error": "memory_id is required in node config"}
+
+    # Extract query from input data, trying common field names
+    query = (
+        input_data.get("query")
+        or input_data.get("input")
+        or input_data.get("message")
+        or input_data.get("output", "")
+    )
+    if not query:
+        return {"error": "No query found in input_data"}
+
+    api_base_url = config.get("api_base_url", "http://localhost:3001")
+    auth_token = config.get("auth_token", "")
+    top_k = config.get("top_k", 5)
+
+    try:
+        resp = requests.post(
+            f"{api_base_url}/api/memory/{memory_id}/search",
+            json={"query": query, "top_k": top_k},
+            headers={"Authorization": f"Bearer {auth_token}"},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        results = resp.json()
+
+        # Extract content strings from search results
+        memories = [item.get("content", "") for item in results if item.get("content")]
+        return {
+            "output_data": {
+                "output": "\n\n".join(memories),
+                "memories": memories,
+                "raw_results": results,
+            }
+        }
+    except requests.RequestException as e:
+        logger.error(f"Memory read failed: memory_id={memory_id}, error={e}")
+        return {"error": f"Memory read failed: {e}"}
+
+
+def handle_memory_write(input_data: dict, config: dict, tenant_id: str) -> dict:
+    """Write content to a memory pool via the BE memory API.
+
+    Stores the provided content as a new memory message in the specified pool.
+
+    Args:
+        input_data: Input containing 'content' or 'output' text to store as memory.
+        config: Node configuration with memory_id, message_type (default 1), and api_base_url.
+        tenant_id: Multi-tenant isolation identifier for auth header.
+
+    Returns:
+        Dict with 'output_data' containing 'status' and 'memory_id'.
+    """
+    memory_id = config.get("memory_id", "")
+    if not memory_id:
+        return {"error": "memory_id is required in node config"}
+
+    # Extract content to store from input data
+    content = (
+        input_data.get("content")
+        or input_data.get("output")
+        or input_data.get("message", "")
+    )
+    if not content:
+        return {"error": "No content found in input_data to write"}
+
+    api_base_url = config.get("api_base_url", "http://localhost:3001")
+    auth_token = config.get("auth_token", "")
+    message_type = config.get("message_type", 1)
+
+    try:
+        resp = requests.post(
+            f"{api_base_url}/api/memory/{memory_id}/messages",
+            json={"content": content, "message_type": message_type},
+            headers={"Authorization": f"Bearer {auth_token}"},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        result = resp.json()
+
+        return {
+            "output_data": {
+                "output": f"Memory stored: {result.get('message_id', '')}",
+                "status": "stored",
+                "memory_id": memory_id,
+                "message_id": result.get("message_id", ""),
+            }
+        }
+    except requests.RequestException as e:
+        logger.error(f"Memory write failed: memory_id={memory_id}, error={e}")
+        return {"error": f"Memory write failed: {e}"}
+
+
+# ---------------------------------------------------------------------------
 # Handler Registry
 # ---------------------------------------------------------------------------
 
@@ -1879,4 +1993,8 @@ NODE_HANDLERS: dict[str, callable] = {
 
     # Legacy alias: baidu falls back to duckduckgo
     "baidu": handle_duckduckgo,
+
+    # Memory nodes
+    "memory_read": handle_memory_read,
+    "memory_write": handle_memory_write,
 }
