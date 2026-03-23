@@ -36,14 +36,15 @@ import {
   citationPrompt,
   askSummaryPrompt,
 } from '@/shared/prompts/index.js'
-import { detectLanguage, buildLanguageInstruction, buildLanguageReminder } from '@/shared/utils/language-detect.js'
+import { detectLanguage, buildLanguageInstruction } from '@/shared/utils/language-detect.js'
 import { htmlToMarkdown } from '@/shared/utils/html-to-markdown.js'
-import { abilityService } from '@/shared/services/ability.service.js'
+import { abilityService, buildOpenSearchAbacFilters } from '@/shared/services/ability.service.js'
 import { log } from '@/shared/services/logger.service.js'
 import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
 import { queryLogService } from '@/modules/rag/index.js'
 import type { LangfuseTraceClient } from 'langfuse'
 import { ChunkResult, ChatAssistant } from '@/shared/models/types.js'
+import { memoryExtractionService, memoryMessageService } from '@/modules/memory/index.js'
 import { Response as ExpressResponse } from 'express'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -714,7 +715,7 @@ Requirements and restriction:
   - DO NOT make things up, especially for numbers.
   - If the information from knowledge is irrelevant with user's question, JUST SAY: Sorry, no relevant information provided.
   - Answer with markdown format text.
-  - You MUST answer in the same language as the user's question. Even if the knowledge context is in a different language, translate and respond in the user's language.`
+  - Answer in language of user's question.`
       const kbIds = assistant?.kb_ids || []
 
       // Apply per-request overrides from the client
@@ -843,9 +844,11 @@ Requirements and restriction:
       }
 
       // ── Step 7a: Expand to RBAC-accessible datasets if enabled ──────────
-      // When allow_rbac_datasets is enabled, fetch all active datasets and
-      // filter by CASL ability to find additional datasets the user can read.
+      // SECURITY-CRITICAL: When allow_rbac_datasets is enabled, resolve the user's
+      // RBAC-accessible datasets using per-user ABAC filtering. Do NOT use a tenant-wide
+      // findAll — that would bypass per-user ABAC rules and leak unauthorized data.
       let allKbIds = [...kbIds]
+      let userAbacFilters: Record<string, unknown>[] = []
       if (cfg.allow_rbac_datasets && userId && tenantId) {
         try {
           const userContext = {
@@ -855,13 +858,13 @@ Requirements and restriction:
           }
           // Build CASL ability for this specific user to determine authorized datasets
           const userAbility = abilityService.buildAbilityFor(userContext)
-          // Fetch all active datasets
-          const allDatasets = await ModelFactory.dataset.getKnex()
-            .where('status', 'active')
-            .select('id', 'name')
+          // Fetch all tenant datasets, then filter by what the user's ABAC rules permit
+          const allTenantDatasets = await ModelFactory.dataset.getKnex()
+            .where('tenant_id', tenantId)
+            .select('id', 'name', 'tenant_id', 'policy_rules')
 
           // Only include datasets the user is authorized to read via CASL ability check
-          const authorizedKbIds = allDatasets
+          const authorizedKbIds = allTenantDatasets
             .filter((d: any) => userAbility.can('read', { __caslSubjectType__: 'Dataset', ...d } as any))
             .map((d: any) => d.id as string)
             .filter((id: string) => !kbIds.includes(id))
@@ -872,6 +875,18 @@ Requirements and restriction:
               original: kbIds.length,
               expanded: allKbIds.length,
             })
+          }
+
+          // Gather field-level ABAC policy rules from all datasets in the search set
+          const allPolicies = allKbIds.flatMap((id: string) => {
+            const ds = allTenantDatasets.find((d: any) => d.id === id)
+            const rules = ds?.policy_rules
+            // Guard against null/undefined/non-array policy_rules (most datasets have none)
+            return Array.isArray(rules) ? rules : []
+          })
+          // Build OpenSearch ABAC filters only when policies exist to avoid empty filter artifacts
+          if (allPolicies.length > 0) {
+            userAbacFilters = buildOpenSearchAbacFilters(allPolicies)
           }
         } catch (err) {
           log.warn('RBAC dataset expansion failed, using original kbIds', { error: String(err) })
@@ -893,7 +908,7 @@ Requirements and restriction:
         // When RBAC expansion produced multiple datasets, use cross-dataset single-query search
         if (cfg.allow_rbac_datasets && allKbIds.length > kbIds.length) {
           const crossResult = await ragSearchService.searchMultipleDatasets(
-            tenantId, allKbIds, searchReq, queryVector
+            tenantId, allKbIds, searchReq, queryVector, userAbacFilters
           ).catch(err => {
             log.warn('Cross-dataset search failed', { error: String(err) })
             return { chunks: [] as ChunkResult[], total: 0 }
@@ -1051,10 +1066,54 @@ Requirements and restriction:
         return
       }
 
+      // ── Step 10b: Inject relevant memories into context (D-09 auto-inject) ──
+      // When the assistant has a linked memory pool, search for relevant past memories
+      // and prepend them to the system prompt for personalized responses.
+      let memoryContext = ''
+      if (assistant?.memory_id) {
+        try {
+          // Generate embedding for the user's query to enable semantic memory search
+          let memoryQueryVector: number[] = []
+          if (queryVector) {
+            memoryQueryVector = queryVector
+          } else {
+            try {
+              const vecs = await llmClientService.embedTexts([content])
+              memoryQueryVector = vecs[0] ?? []
+            } catch {
+              // Embedding failed -- will fall back to text-only memory search
+            }
+          }
+
+          const memories = await memoryMessageService.searchMemory(
+            tenantId,
+            assistant.memory_id,
+            content,
+            memoryQueryVector,
+            5,
+          )
+
+          // Prepend relevant memories to system prompt if any were found
+          if (memories.length > 0) {
+            memoryContext = `\n\nRelevant memories:\n${memories.map(m => '- ' + m.content).join('\n')}`
+            log.info('Injected memories into chat context', {
+              memoryId: assistant.memory_id,
+              count: memories.length,
+            })
+          }
+        } catch (err) {
+          // Memory search failure must not break chat -- graceful degradation
+          log.warn('Memory search failed, continuing without memories', {
+            memoryId: assistant.memory_id,
+            error: err instanceof Error ? err.message : String(err),
+          })
+        }
+      }
+
       // ── Step 11: Build prompt with context and citations ────────────────
       // Prepend language instruction so the LLM responds in the user's detected language.
       // Then append knowledge graph context (graph+vector merge point) if available.
-      const langAwarePrompt = `${langInstruction}\n\n${systemPrompt}`
+      const langAwarePrompt = `${langInstruction}\n\n${systemPrompt}${memoryContext}`
       const basePrompt = kgContext
         ? `${langAwarePrompt}\n\n${kgContext}`
         : langAwarePrompt
@@ -1065,13 +1124,8 @@ Requirements and restriction:
         cfg.quote !== false // Enable citations by default
       )
 
-      // Append language reminder after knowledge context (sandwich technique)
-      // This prevents large knowledge contexts in other languages from overriding the language directive
-      const langReminder = buildLanguageReminder(detectedLang)
-      const promptWithReminder = `${contextSystemPrompt}${langReminder}`
-
       // Apply variable substitution to system prompt
-      let effectiveSystemPrompt = promptWithReminder
+      let effectiveSystemPrompt = contextSystemPrompt
       for (const [key, value] of Object.entries(variableValues)) {
         effectiveSystemPrompt = effectiveSystemPrompt.replace(new RegExp(`\\{${key}\\}`, 'g'), value)
       }
@@ -1182,6 +1236,16 @@ Requirements and restriction:
           citations: finalReference ? JSON.stringify(finalReference) : null,
           created_by: userId,
         } as any)
+      }
+
+      // ── Step 14b: Fire-and-forget memory extraction (Pitfall 5 -- non-blocking) ──
+      // When the assistant has a linked memory pool, extract memories from the conversation
+      // after the response has been streamed. Uses void to ensure no await -- must not block.
+      if (assistant?.memory_id && processedAnswer) {
+        // Fire-and-forget memory extraction -- must not block chat response
+        void memoryExtractionService
+          .extractFromConversation(assistant.memory_id, content, processedAnswer, conversationId, userId, tenantId)
+          .catch(err => log.error('Memory extraction failed', { memoryId: assistant.memory_id, error: String(err) }))
       }
 
       // Auto-generate session title from first user message
