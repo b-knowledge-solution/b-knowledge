@@ -75,7 +75,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 03-01-PLAN.md — Switch get_uuid() to UUID4, replace html_parser uuid1 calls, add validation tests
+- [x] 03-01-PLAN.md — Switch get_uuid() to UUID4, replace html_parser uuid1 calls, add validation tests
 
 ---
 *Roadmap created: 2026-03-18*
