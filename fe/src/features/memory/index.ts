@@ -35,7 +35,15 @@ export {
   useSearchMemoryMessages,
   useDeleteMemoryMessage,
   useForgetMemoryMessage,
+  useImportChatHistory,
 } from './api/memoryQueries'
 
 // Components
 export { MemoryCard } from './components/MemoryCard'
+export { MemoryMessageTable } from './components/MemoryMessageTable'
+export { MemorySettingsPanel } from './components/MemorySettingsPanel'
+export { ImportHistoryDialog } from './components/ImportHistoryDialog'
+
+// Pages (default exports for lazy loading -- import via React.lazy() in App.tsx)
+// MemoryListPage: ./pages/MemoryListPage
+// MemoryDetailPage: ./pages/MemoryDetailPage

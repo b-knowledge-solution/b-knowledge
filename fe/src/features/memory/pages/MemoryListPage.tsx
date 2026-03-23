@@ -16,6 +16,7 @@
  */
 
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Plus, Brain } from 'lucide-react'
 
@@ -128,6 +129,7 @@ const MEMORY_TYPE_OPTIONS = [
  */
 export default function MemoryListPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
 
   // Data fetching
   const { data: memories, isLoading } = useMemories()
@@ -433,12 +435,17 @@ export default function MemoryListPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {memories.map((memory) => (
-            <MemoryCard
+            <div
               key={memory.id}
-              memory={memory}
-              onEdit={openEditDialog}
-              onDelete={setDeletingMemory}
-            />
+              className="cursor-pointer"
+              onClick={() => navigate(`/memory/${memory.id}`)}
+            >
+              <MemoryCard
+                memory={memory}
+                onEdit={openEditDialog}
+                onDelete={setDeletingMemory}
+              />
+            </div>
           ))}
         </div>
       )}

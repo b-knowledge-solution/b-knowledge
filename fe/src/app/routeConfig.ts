@@ -54,6 +54,10 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     titleKey: 'memory.title',
     fullBleed: true,
   },
+  '/memory/:id': {
+    titleKey: 'memory.detail',
+    fullBleed: true,
+  },
   '/chat': {
     titleKey: 'pages.aiChat.title',
     guidelineFeatureId: 'ai-chat',
@@ -167,6 +171,10 @@ export function getRouteMetadata(pathname: string): RouteMetadata {
   // Match agent canvas route with dynamic ID
   if (pathname.startsWith('/agents/')) {
     return ROUTE_CONFIG['/agents/:id']!;
+  }
+  // Match memory detail route with dynamic ID
+  if (pathname.startsWith('/memory/')) {
+    return ROUTE_CONFIG['/memory/:id']!;
   }
   if (pathname.startsWith('/data-studio/datasets/')) {
     return ROUTE_CONFIG['/data-studio/datasets']!;
