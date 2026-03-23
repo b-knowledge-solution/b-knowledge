@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 2 planned (6 plans, 4 waves)
-last_updated: "2026-03-23T03:18:54.527Z"
+stopped_at: Phase 2 UI-SPEC approved
+last_updated: "2026-03-23T03:41:22.613Z"
 last_activity: 2026-03-22 — Plan 01-10 complete (Agent embed widget, ABAC enforcement, 5 core operator config forms)
 progress:
   total_phases: 2
@@ -224,6 +224,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-23T03:18:54.515Z
-Stopped at: Phase 2 planned (6 plans, 4 waves)
-Resume file: .planning/phases/02-migration-memory-feature-from-ragflow-to-b-knowledge/02-01-PLAN.md
+Last session: 2026-03-23T03:41:22.601Z
+Stopped at: Phase 2 UI-SPEC approved
+Resume file: .planning/phases/02-migration-memory-feature-from-ragflow-to-b-knowledge/02-UI-SPEC.md
