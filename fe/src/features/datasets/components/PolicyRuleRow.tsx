@@ -5,6 +5,7 @@
  * @module features/datasets/components/PolicyRuleRow
  */
 
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -110,8 +111,18 @@ function serializeConditions(entries: ConditionEntry[]): Record<string, unknown>
 export function PolicyRuleRow({ rule, onChange, onRemove, disabled }: PolicyRuleRowProps) {
   const { t } = useTranslation()
 
-  // Parse conditions into editable entries
-  const conditionEntries = parseConditions(rule.conditions)
+  // Maintain conditions as local array state to preserve empty entries during editing
+  const [conditionEntries, setConditionEntries] = useState<ConditionEntry[]>(() => parseConditions(rule.conditions))
+
+  /**
+   * @description Propagate condition changes to parent, filtering out incomplete entries
+   * @param {ConditionEntry[]} entries - Current condition entries
+   */
+  const propagateConditions = (entries: ConditionEntry[]) => {
+    // Only serialize non-empty entries for the parent rule data
+    const validEntries = entries.filter(e => e.key.trim())
+    onChange({ ...rule, conditions: serializeConditions(validEntries) })
+  }
 
   /**
    * @description Update the rule's effect field
@@ -130,14 +141,15 @@ export function PolicyRuleRow({ rule, onChange, onRemove, disabled }: PolicyRule
   }
 
   /**
-   * @description Update a specific condition entry and serialize back to conditions object
+   * @description Update a specific condition entry
    * @param {number} index - Index of the condition to update
    * @param {Partial<ConditionEntry>} updates - Partial field updates
    */
   const updateCondition = (index: number, updates: Partial<ConditionEntry>) => {
     const updated = [...conditionEntries]
     updated[index] = { ...updated[index]!, ...updates }
-    onChange({ ...rule, conditions: serializeConditions(updated) })
+    setConditionEntries(updated)
+    propagateConditions(updated)
   }
 
   /**
@@ -145,7 +157,7 @@ export function PolicyRuleRow({ rule, onChange, onRemove, disabled }: PolicyRule
    */
   const addCondition = () => {
     const updated: ConditionEntry[] = [...conditionEntries, { key: '', operator: 'equals', value: '' }]
-    onChange({ ...rule, conditions: serializeConditions(updated) })
+    setConditionEntries(updated)
   }
 
   /**
@@ -154,7 +166,8 @@ export function PolicyRuleRow({ rule, onChange, onRemove, disabled }: PolicyRule
    */
   const removeCondition = (index: number) => {
     const updated = conditionEntries.filter((_, i) => i !== index)
-    onChange({ ...rule, conditions: serializeConditions(updated) })
+    setConditionEntries(updated)
+    propagateConditions(updated)
   }
 
   return (

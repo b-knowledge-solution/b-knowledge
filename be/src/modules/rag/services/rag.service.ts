@@ -13,7 +13,6 @@ import { log } from '@/shared/services/logger.service.js';
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js';
 import { Dataset, Document, AccessControl, UserContext } from '@/shared/models/types.js';
 import { teamService } from '@/modules/teams/services/team.service.js';
-import { AbacPolicyRule, invalidateAllAbilities } from '@/shared/services/ability.service.js';
 
 /**
  * @description Core service for dataset CRUD, RBAC access control, and document operations.
@@ -389,8 +388,7 @@ export class RagService {
     /**
      * @description Create a new version dataset that inherits settings from a parent dataset.
      * Each version is a full dataset with pagerank = version_number for recency boost.
-     * The version auto-inherits parser_config, access_control, embedding_model, language,
-     * and policy_rules from the parent dataset.
+     * The version auto-inherits parser_config, access_control, embedding_model, and language
      * @param {string} parentDatasetId - UUID of the parent dataset to version
      * @param {string | null} changeSummary - User-provided change summary, or null for auto-generated
      * @param {string} userId - ID of the user creating the version

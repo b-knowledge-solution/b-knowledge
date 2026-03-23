@@ -23,7 +23,7 @@ import {
   bulkParseDocumentsSchema, bulkToggleDocumentsSchema, bulkDeleteDocumentsSchema,
   bulkChunkSwitchSchema,
   changeDocumentParserSchema, webCrawlSchema,
-  updateDatasetPolicySchema,
+
   createVersionSchema,
   bulkMetadataSchema,
   graphRunSchema,
@@ -55,9 +55,7 @@ router.get('/datasets/:id/versions', requireAuth, controller.listVersions.bind(c
 router.get('/datasets/:id/access', requirePermission('manage_datasets'), controller.getDatasetAccess.bind(controller));
 router.put('/datasets/:id/access', requirePermission('manage_datasets'), validate({ params: uuidParamSchema, body: datasetAccessSchema }), controller.setDatasetAccess.bind(controller));
 
-// Dataset ABAC policy endpoints
-router.get('/datasets/:id/policy', requireAuth, controller.getDatasetPolicy.bind(controller));
-router.put('/datasets/:id/policy', requirePermission('manage_datasets'), validate({ params: uuidParamSchema, body: updateDatasetPolicySchema }), controller.updateDatasetPolicy.bind(controller));
+
 
 // Dataset settings endpoints
 router.get('/datasets/:id/settings', requireAuth, controller.getDatasetSettings.bind(controller));

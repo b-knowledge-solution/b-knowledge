@@ -24,6 +24,7 @@ import { getClientIp } from '@/shared/utils/ip.js';
 import { getRedisClient } from '@/shared/services/redis.service.js';
 import { db } from '@/shared/db/knex.js';
 import { getTenantId } from '@/shared/middleware/tenant.middleware.js';
+import { datasetSyncService } from '../services/dataset-sync.service.js';
 
 /**
  * @description Resolve model_providers.id for an embedding model name
@@ -107,29 +108,8 @@ export class RagController {
             const dataset = await ragService.createDataset(req.body, user);
 
             // Sync to shared knowledgebase table (used by Python task executors)
-            try {
-                const kbData: Parameters<typeof ragDocumentService.createKnowledgebase>[0] = {
-                    id: dataset.id,
-                    name: dataset.name,
-                };
-                if (dataset.description) kbData.description = dataset.description;
-                if (dataset.language) kbData.language = dataset.language;
-                if (dataset.embedding_model) {
-                    kbData.embedding_model = dataset.embedding_model;
-                    // Resolve provider UUID so the Python worker can look up the model config directly
-                    const providerId = await resolveEmbeddingProviderId(dataset.embedding_model);
-                    if (providerId) kbData.tenant_embd_id = providerId;
-                }
-                if (dataset.parser_id) kbData.parser_id = dataset.parser_id;
-                if (dataset.parser_config) {
-                    kbData.parser_config = typeof dataset.parser_config === 'string'
-                        ? JSON.parse(dataset.parser_config) : dataset.parser_config;
-                }
-                if (dataset.pagerank !== undefined) kbData.pagerank = dataset.pagerank;
-                await ragDocumentService.createKnowledgebase(kbData);
-            } catch (syncErr) {
-                log.warn('Failed to sync dataset to knowledgebase table (non-blocking)', { error: String(syncErr) });
-            }
+            await datasetSyncService.syncCreate(dataset);
+
 
             res.status(201).json(dataset);
         } catch (error: any) {
@@ -159,28 +139,8 @@ export class RagController {
             const dataset = await ragService.updateDataset(id, req.body, user);
             if (!dataset) { res.status(404).json({ error: 'Dataset not found' }); return; }
 
-            // Sync changed fields to Peewee knowledgebase table (non-blocking)
-            try {
-                const kbData: any = {};
-                if (req.body.name !== undefined) kbData.name = req.body.name;
-                if (req.body.description !== undefined) kbData.description = req.body.description;
-                if (req.body.language !== undefined) kbData.language = req.body.language;
-                if (req.body.embedding_model !== undefined) {
-                    kbData.embedding_model = req.body.embedding_model;
-                    // Resolve provider UUID so the Python worker can look up the model config directly
-                    const providerId = await resolveEmbeddingProviderId(req.body.embedding_model);
-                    kbData.tenant_embd_id = providerId;
-                }
-                if (req.body.parser_id !== undefined) kbData.parser_id = req.body.parser_id;
-                if (req.body.parser_config !== undefined) kbData.parser_config = req.body.parser_config;
-                if (req.body.pagerank !== undefined) kbData.pagerank = req.body.pagerank;
-
-                if (Object.keys(kbData).length > 0) {
-                    await ragDocumentService.updateKnowledgebase(id, kbData);
-                }
-            } catch (syncErr) {
-                log.warn('Failed to sync dataset update to knowledgebase table', { error: String(syncErr) });
-            }
+            // Sync changed fields to knowledgebase table (non-blocking)
+            await datasetSyncService.syncUpdate(id, req.body);
 
             res.json(dataset);
         } catch (error: any) {
@@ -208,12 +168,8 @@ export class RagController {
 
             await ragService.deleteDataset(id, user);
 
-            // Sync deletion to Peewee knowledgebase table (non-blocking)
-            try {
-                await ragDocumentService.deleteKnowledgebase(id);
-            } catch (syncErr) {
-                log.warn('Failed to sync dataset deletion to knowledgebase table', { error: String(syncErr) });
-            }
+            // Sync deletion to knowledgebase table (non-blocking)
+            await datasetSyncService.syncDelete(id);
 
             res.status(204).send();
         } catch (error) {
@@ -257,30 +213,8 @@ export class RagController {
                 tenantId,
             )
 
-            // Sync version dataset to Peewee knowledgebase table (used by Python task executors)
-            try {
-                const kbData: Parameters<typeof ragDocumentService.createKnowledgebase>[0] = {
-                    id: versionDataset.id,
-                    name: versionDataset.name,
-                }
-                if (versionDataset.description) kbData.description = versionDataset.description
-                if (versionDataset.language) kbData.language = versionDataset.language
-                if (versionDataset.embedding_model) {
-                    kbData.embedding_model = versionDataset.embedding_model
-                    // Resolve provider UUID for Python worker model config lookup
-                    const providerId = await resolveEmbeddingProviderId(versionDataset.embedding_model)
-                    if (providerId) kbData.tenant_embd_id = providerId
-                }
-                if (versionDataset.parser_id) kbData.parser_id = versionDataset.parser_id
-                if (versionDataset.parser_config) {
-                    kbData.parser_config = typeof versionDataset.parser_config === 'string'
-                        ? JSON.parse(versionDataset.parser_config) : versionDataset.parser_config
-                }
-                if (versionDataset.pagerank !== undefined) kbData.pagerank = versionDataset.pagerank
-                await ragDocumentService.createKnowledgebase(kbData)
-            } catch (syncErr) {
-                log.warn('Failed to sync version dataset to knowledgebase table (non-blocking)', { error: String(syncErr) })
-            }
+            // Sync version dataset to knowledgebase table (used by Python task executors)
+            await datasetSyncService.syncCreate(versionDataset);
 
             // Upload files to the version dataset if any were provided
             const files = req.files as Express.Multer.File[] | undefined
@@ -414,57 +348,7 @@ export class RagController {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Dataset ABAC Policy
-    // -------------------------------------------------------------------------
 
-    /**
-     * @description GET /datasets/:id/policy — return ABAC policy rules for a dataset.
-     * @param {Request} req - Express request with dataset ID param
-     * @param {Response} res - Express response with policy rules array
-     * @returns {Promise<void>}
-     */
-    async getDatasetPolicy(req: Request, res: Response): Promise<void> {
-        const { id } = req.params;
-        if (!id) { res.status(400).json({ error: 'ID is required' }); return; }
-
-        try {
-            const policies = await ragService.getDatasetPolicies(id);
-            res.json({ policy_rules: policies });
-        } catch (error) {
-            log.error('Failed to get dataset policy', { error: String(error) });
-            res.status(500).json({ error: 'Failed to get dataset policy' });
-        }
-    }
-
-    /**
-     * @description PUT /datasets/:id/policy — update ABAC policy rules for a dataset.
-     * Validates and replaces the entire policy_rules array. Invalidates all cached abilities.
-     * @param {Request} req - Express request with dataset ID param and policy_rules body
-     * @param {Response} res - Express response with updated policy rules
-     * @returns {Promise<void>}
-     */
-    async updateDatasetPolicy(req: Request, res: Response): Promise<void> {
-        const { id } = req.params;
-        if (!id) { res.status(400).json({ error: 'ID is required' }); return; }
-
-        try {
-            // Extract tenant ID from request context
-            const tenantId = getTenantId(req) || ''
-            const user = req.user;
-            const userContext = user ? { id: user.id, email: (user as any).email, ip: (req as any).ip } : undefined;
-
-            await ragService.updateDatasetPolicy(id, tenantId, req.body.policy_rules, userContext);
-            res.json({ policy_rules: req.body.policy_rules });
-        } catch (error: any) {
-            if (error.message === 'Dataset not found') {
-                res.status(404).json({ error: error.message });
-                return;
-            }
-            log.error('Failed to update dataset policy', { error: String(error) });
-            res.status(500).json({ error: 'Failed to update dataset policy' });
-        }
-    }
 
     // -------------------------------------------------------------------------
     // Dataset RBAC Access Control
@@ -1466,7 +1350,7 @@ export class RagController {
                     create_date: t.create_date,
                     status: t.progress === 1 ? 'done'
                         : t.progress === -1 ? 'failed'
-                        : 'running',
+                            : 'running',
                 })),
             });
         } catch (error) {

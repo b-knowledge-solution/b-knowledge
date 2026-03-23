@@ -11,6 +11,7 @@
 export { default as ragRoutes } from './routes/rag.routes.js';
 export { ragService } from './services/rag.service.js';
 export { ragDocumentService } from './services/rag-document.service.js';
+export { datasetSyncService } from './services/dataset-sync.service.js';
 export { ragRedisService } from './services/rag-redis.service.js';
 export { ragStorageService } from './services/rag-storage.service.js';
 export { ragSearchService } from './services/rag-search.service.js';

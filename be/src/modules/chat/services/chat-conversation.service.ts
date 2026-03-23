@@ -38,7 +38,7 @@ import {
 } from '@/shared/prompts/index.js'
 import { detectLanguage, buildLanguageInstruction, buildLanguageReminder } from '@/shared/utils/language-detect.js'
 import { htmlToMarkdown } from '@/shared/utils/html-to-markdown.js'
-import { abilityService, buildOpenSearchAbacFilters } from '@/shared/services/ability.service.js'
+import { abilityService } from '@/shared/services/ability.service.js'
 import { log } from '@/shared/services/logger.service.js'
 import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
 import { queryLogService } from '@/modules/rag/index.js'
@@ -843,11 +843,9 @@ Requirements and restriction:
       }
 
       // ── Step 7a: Expand to RBAC-accessible datasets if enabled ──────────
-      // SECURITY-CRITICAL: When allow_rbac_datasets is enabled, resolve the user's
-      // RBAC-accessible datasets using per-user ABAC filtering. Do NOT use a tenant-wide
-      // findAll — that would bypass per-user ABAC rules and leak unauthorized data.
+      // When allow_rbac_datasets is enabled, fetch all active datasets and
+      // filter by CASL ability to find additional datasets the user can read.
       let allKbIds = [...kbIds]
-      let userAbacFilters: Record<string, unknown>[] = []
       if (cfg.allow_rbac_datasets && userId && tenantId) {
         try {
           const userContext = {
@@ -857,13 +855,13 @@ Requirements and restriction:
           }
           // Build CASL ability for this specific user to determine authorized datasets
           const userAbility = abilityService.buildAbilityFor(userContext)
-          // Fetch all tenant datasets, then filter by what the user's ABAC rules permit
-          const allTenantDatasets = await ModelFactory.dataset.getKnex()
-            .where('tenant_id', tenantId)
-            .select('id', 'name', 'tenant_id', 'policy_rules')
+          // Fetch all active datasets
+          const allDatasets = await ModelFactory.dataset.getKnex()
+            .where('status', 'active')
+            .select('id', 'name')
 
           // Only include datasets the user is authorized to read via CASL ability check
-          const authorizedKbIds = allTenantDatasets
+          const authorizedKbIds = allDatasets
             .filter((d: any) => userAbility.can('read', { __caslSubjectType__: 'Dataset', ...d } as any))
             .map((d: any) => d.id as string)
             .filter((id: string) => !kbIds.includes(id))
@@ -874,18 +872,6 @@ Requirements and restriction:
               original: kbIds.length,
               expanded: allKbIds.length,
             })
-          }
-
-          // Gather field-level ABAC policy rules from all datasets in the search set
-          const allPolicies = allKbIds.flatMap((id: string) => {
-            const ds = allTenantDatasets.find((d: any) => d.id === id)
-            const rules = ds?.policy_rules
-            // Guard against null/undefined/non-array policy_rules (most datasets have none)
-            return Array.isArray(rules) ? rules : []
-          })
-          // Build OpenSearch ABAC filters only when policies exist to avoid empty filter artifacts
-          if (allPolicies.length > 0) {
-            userAbacFilters = buildOpenSearchAbacFilters(allPolicies)
           }
         } catch (err) {
           log.warn('RBAC dataset expansion failed, using original kbIds', { error: String(err) })
@@ -907,7 +893,7 @@ Requirements and restriction:
         // When RBAC expansion produced multiple datasets, use cross-dataset single-query search
         if (cfg.allow_rbac_datasets && allKbIds.length > kbIds.length) {
           const crossResult = await ragSearchService.searchMultipleDatasets(
-            tenantId, allKbIds, searchReq, queryVector, userAbacFilters
+            tenantId, allKbIds, searchReq, queryVector
           ).catch(err => {
             log.warn('Cross-dataset search failed', { error: String(err) })
             return { chunks: [] as ChunkResult[], total: 0 }
