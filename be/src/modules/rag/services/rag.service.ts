@@ -432,6 +432,10 @@ export class RagService {
             access_control: typeof parent.access_control === 'string'
                 ? parent.access_control
                 : JSON.stringify(parent.access_control || { public: true }),
+            // Inherit policy rules from parent to preserve permission constraints
+            policy_rules: typeof parent.policy_rules === 'string'
+                ? parent.policy_rules
+                : JSON.stringify(parent.policy_rules || []),
 
             // Pagerank = version_number for recency boost in OpenSearch rank_feature queries
             pagerank: versionNumber,
