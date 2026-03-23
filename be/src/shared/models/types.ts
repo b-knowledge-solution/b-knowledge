@@ -161,6 +161,8 @@ export interface ChatAssistant {
     prompt_config: Record<string, unknown>;
     /** Whether the assistant is publicly accessible to all users */
     is_public: boolean;
+    /** Optional link to a memory pool for auto-extraction and context injection */
+    memory_id?: string | null;
     /** User ID who created this record */
     created_by?: string | null;
     /** User ID who last updated this record */
