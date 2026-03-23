@@ -163,4 +163,26 @@ Each workspace has `.env.example` → copy to `.env`:
 | `fe/.env` | API URL, feature flags, Azure AD |
 | `advance-rag/.env` | DB, Redis, OpenSearch, S3, model defaults |
 
+## Browser E2E Testing (AI Agent Rule)
+
+When using the **browser tool** to verify UI changes, you **MUST** log in with a local account first. The database is seeded with test accounts via `npm run db:seed` (see `be/src/shared/db/seeds/00_sample_users.ts`).
+
+**Prerequisites:** `ENABLE_LOCAL_LOGIN=true` must be set in `be/.env`.
+
+**Login steps:**
+1. Navigate to `http://localhost:5173`
+2. Click "Local Login" (or go to the login page directly)
+3. Enter credentials from the table below
+4. Submit the form and wait for redirect to dashboard
+
+**Test accounts (password for all: `password123`):**
+
+| Role   | Email             | Use when verifying…                          |
+|--------|-------------------|----------------------------------------------|
+| admin  | admin1@baoda.vn   | System settings, admin panels, full CRUD     |
+| leader | leader1@baoda.vn  | Team management, knowledge bases, chat       |
+| user   | user1@baoda.vn    | Basic view-only / restricted-access pages    |
+
+> Default to **admin1@baoda.vn** unless the change specifically targets leader or user role permissions.
+
 **Production checklist:** Change all default passwords, set `ENABLE_LOCAL_LOGIN=false`, generate strong `SESSION_SECRET`, configure SSL.

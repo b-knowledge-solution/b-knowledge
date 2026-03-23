@@ -10,6 +10,27 @@
  *
  * Default password for every account: `password123`
  *
+ * ─── E2E Testing with Browser Tool ───────────────────────────────────
+ *
+ * Prerequisites:
+ *   1. Set `ENABLE_LOCAL_LOGIN=true` in `be/.env`
+ *   2. Run `npm run db:seed` to populate accounts
+ *   3. Start the dev server: `npm run dev`
+ *
+ * Recommended accounts for browser-based e2e tests:
+ *
+ * | Role   | Email              | Password      | Use case                                |
+ * |--------|--------------------|---------------|-----------------------------------------|
+ * | admin  | admin1@baoda.vn    | password123   | Full access — system settings, all CRUD |
+ * | leader | leader1@baoda.vn   | password123   | Team management, knowledge bases, chat  |
+ * | user   | user1@baoda.vn     | password123   | Basic view-only access                  |
+ *
+ * Login flow:
+ *   1. Navigate to the app URL (default: http://localhost:5173)
+ *   2. Click "Local Login" or navigate to the login page
+ *   3. Enter email + password from the table above
+ *   4. Submit the form
+ *
  * @example
  * Run seed: npm run db:seed
  */

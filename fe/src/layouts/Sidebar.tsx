@@ -4,21 +4,27 @@
  * Renders the collapsible sidebar with:
  * - Data-driven navigation links (see `sidebarNav.ts`)
  * - Expandable sub-menus via `SidebarGroup`
- * - User profile section
- * - Logout action
+ * - User profile dropdown (API Keys, Settings, Sign Out)
  *
  * @module layouts/Sidebar
  */
 
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth, User } from '@/features/auth'
 import { useAppAbility } from '@/lib/ability'
 import { useSettings } from '@/app/contexts/SettingsContext'
 import { config } from '@/config'
-import { LogOut, ChevronLeft, ChevronRight, Settings } from 'lucide-react'
+import { LogOut, ChevronLeft, ChevronRight, Settings, KeyRound } from 'lucide-react'
 import logoDark from '@/assets/logo-dark.svg'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 import { SIDEBAR_NAV, isNavGroup } from './sidebarNav'
 import { SidebarNavLink } from './SidebarNavLink'
@@ -67,11 +73,12 @@ function UserAvatar({ user, size = 'md' }: { user: User; size?: 'sm' | 'md' }) {
 // ============================================================================
 
 /**
- * @description Renders the collapsible sidebar with data-driven navigation links, user profile section, and settings/logout actions
+ * @description Renders the collapsible sidebar with data-driven navigation links and a user profile dropdown menu
  * @returns {JSX.Element} Sidebar navigation panel
  */
 export function Sidebar() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
 
   // Track whether the sidebar is in collapsed (icon-only) mode
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -153,31 +160,43 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* User profile / Logout */}
-      <div className="mt-auto pt-4 border-t border-white/10 space-y-2 pb-4 px-2">
+      {/* User profile dropdown — API Keys, Settings, Sign Out */}
+      <div className="mt-auto pt-4 border-t border-white/10 pb-4 px-2">
         {user && (
-          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2`} title={isCollapsed ? user.displayName : undefined}>
-            <UserAvatar user={user} size={isCollapsed ? 'sm' : 'md'} />
-            {!isCollapsed && (
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate text-white">{user.displayName}</div>
-                <div className="text-xs truncate text-slate-400">{user.email}</div>
-              </div>
-            )}
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className={`flex items-center w-full rounded-lg transition-colors hover:bg-white/10 cursor-pointer ${isCollapsed ? 'justify-center p-2' : 'gap-3 px-3 py-2'}`}
+                title={isCollapsed ? user.displayName : undefined}
+              >
+                <UserAvatar user={user} size={isCollapsed ? 'sm' : 'md'} />
+                {!isCollapsed && (
+                  <div className="flex-1 min-w-0 text-left">
+                    <div className="text-sm font-medium truncate text-white">{user.displayName}</div>
+                    <div className="text-xs truncate text-slate-400">{user.email}</div>
+                  </div>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="start" className="w-56">
+              <DropdownMenuItem onClick={() => navigate('/data-studio/api-keys')} className="cursor-pointer">
+                <KeyRound className="mr-2 h-4 w-4" />
+                {t('nav.apiKeys')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openSettings()} className="cursor-pointer">
+                <Settings className="mr-2 h-4 w-4" />
+                {t('settings.title')}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild className="cursor-pointer text-destructive focus:text-destructive">
+                <Link to="/logout">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  {t('nav.signOut')}
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
-        <button
-          onClick={() => openSettings()}
-          className={`sidebar-link w-full ${isCollapsed ? 'justify-center px-2' : ''} text-slate-400 hover:text-white`}
-          title={t('settings.title')}
-        >
-          <Settings size={20} />
-          {!isCollapsed && <span>{t('settings.title')}</span>}
-        </button>
-        <Link to="/logout" className={`sidebar-link w-full ${isCollapsed ? 'justify-center px-2' : ''} text-slate-400 hover:text-white`} title={t('nav.signOut')}>
-          <LogOut size={20} />
-          {!isCollapsed && <span>{t('nav.signOut')}</span>}
-        </Link>
       </div>
     </aside>
   )
