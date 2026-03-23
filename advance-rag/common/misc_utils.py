@@ -37,12 +37,16 @@ from concurrent.futures import ThreadPoolExecutor
 import requests
 
 def get_uuid():
-    """Generate a new UUID1 hex string (time-based, 32 hex characters).
+    """Generate a new UUID4 hex string (random, 32 hex characters).
+
+    Standardized to UUID4 to match the Node.js backend's UUID generation.
+    UUID4 uses cryptographically random bytes, avoiding UUID1's MAC address
+    leakage and providing consistent behavior across Python and Node.js.
 
     Returns:
         A 32-character lowercase hex UUID string.
     """
-    return uuid.uuid1().hex
+    return uuid.uuid4().hex
 
 
 def download_img(url):
