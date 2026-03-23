@@ -41,6 +41,8 @@ export default withMermaid(
               { text: 'Embed Widgets', link: '/srs/fr-embed-widgets' },
               { text: 'Sync Connectors', link: '/srs/fr-sync-connectors' },
               { text: 'Document Converter', link: '/srs/fr-document-converter' },
+              { text: 'Agents', link: '/srs/fr-agents' },
+              { text: 'Memory', link: '/srs/fr-memory' },
               { text: 'Non-Functional Requirements', link: '/srs/nfr' },
             ],
           },
@@ -63,6 +65,7 @@ export default withMermaid(
               { text: 'Chat & Search Tables', link: '/basic-design/database-design-chat-search' },
               { text: 'Project Tables', link: '/basic-design/database-design-projects' },
               { text: 'Support Tables', link: '/basic-design/database-design-support' },
+              { text: 'Agent & Memory Tables', link: '/basic-design/database-design-agents-memory' },
             ],
           },
           {
@@ -89,6 +92,13 @@ export default withMermaid(
             ],
           },
           {
+            text: 'Agent & Memory',
+            items: [
+              { text: 'Agent Architecture', link: '/basic-design/agent-architecture' },
+              { text: 'Memory Architecture', link: '/basic-design/memory-architecture' },
+            ],
+          },
+          {
             text: 'Converter',
             items: [
               { text: 'Converter Pipeline', link: '/basic-design/converter-pipeline' },
@@ -104,6 +114,7 @@ export default withMermaid(
               { text: 'Azure AD Flow', link: '/detail-design/auth-azure-ad-flow' },
               { text: 'Local Login', link: '/detail-design/auth-local-login' },
               { text: 'RBAC & ABAC', link: '/detail-design/auth-rbac-abac' },
+              { text: 'RBAC & ABAC Comprehensive', link: '/detail-design/auth-rbac-abac-comprehensive' },
             ],
           },
           {
@@ -152,6 +163,18 @@ export default withMermaid(
               { text: 'Overview', link: '/detail-design/project-overview' },
               { text: 'Project CRUD', link: '/detail-design/project-crud-detail' },
               { text: 'Categories & Versions', link: '/detail-design/project-category-detail' },
+            ],
+          },
+          {
+            text: 'Agent Workflows',
+            items: [
+              { text: 'Agent Overview', link: '/detail-design/agent-overview' },
+            ],
+          },
+          {
+            text: 'AI Memory',
+            items: [
+              { text: 'Memory Overview', link: '/detail-design/memory-overview' },
             ],
           },
           {
