@@ -63,7 +63,7 @@ Plans:
 - [x] 02-01-PLAN.md — Database migration + Knex model + Zod schemas + extraction prompts + FE types
 - [x] 02-02-PLAN.md — BE memory service + message service (OpenSearch) + controller + routes
 - [x] 02-03-PLAN.md — FE API layer + Memory list page + sidebar nav + routing + i18n
-- [ ] 02-04-PLAN.md — Memory extraction pipeline + chat integration (auto-save/inject)
+- [x] 02-04-PLAN.md — Memory extraction pipeline + chat integration (auto-save/inject)
 - [ ] 02-05-PLAN.md — FE detail page (message browser + settings panel + import dialog)
 - [ ] 02-06-PLAN.md — Agent Memory operator (Python handlers + canvas form) + import endpoint
 
