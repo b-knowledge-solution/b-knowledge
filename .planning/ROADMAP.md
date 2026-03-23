@@ -52,6 +52,21 @@ Plans:
 - [ ] 01-09-PLAN.md — MCP integration, Docker sandbox, tool credentials, Tavily/Wikipedia tools
 - [ ] 01-10-PLAN.md — Embed widgets, ABAC enforcement, 5 core operator forms
 
+### Phase 2: Migration memory feature from RAGFlow to B-Knowledge
+
+**Goal:** Full parity migration of RAGFlow's memory system — 4 memory types (Raw/Semantic/Episodic/Procedural) via bitmask, OpenSearch storage with hybrid vector+text search, LLM-powered extraction pipeline with configurable prompts, FIFO forgetting, chat auto-save/inject integration, agent canvas Memory operator node, chat history import, and management UI (pool list, message browser, settings panel).
+**Requirements**: MEM-SCHEMA, MEM-CRUD-API, MEM-MESSAGES, MEM-EXTRACTION, MEM-CHAT-INTEGRATION, MEM-AGENT-INTEGRATION, MEM-FE-TYPES, MEM-LIST-UI, MEM-DETAIL-UI, MEM-IMPORT, MEM-SIDEBAR-NAV
+**Depends on:** Phase 1
+**Plans:** 6 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Database migration + Knex model + Zod schemas + extraction prompts + FE types
+- [ ] 02-02-PLAN.md — BE memory service + message service (OpenSearch) + controller + routes
+- [ ] 02-03-PLAN.md — FE API layer + Memory list page + sidebar nav + routing + i18n
+- [ ] 02-04-PLAN.md — Memory extraction pipeline + chat integration (auto-save/inject)
+- [ ] 02-05-PLAN.md — FE detail page (message browser + settings panel + import dialog)
+- [ ] 02-06-PLAN.md — Agent Memory operator (Python handlers + canvas form) + import endpoint
+
 ---
 *Roadmap created: 2026-03-18*
 *v1.0 shipped: 2026-03-19*
