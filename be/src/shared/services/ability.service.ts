@@ -23,7 +23,7 @@ import { log } from '@/shared/services/logger.service.js'
 type Actions = 'manage' | 'create' | 'read' | 'update' | 'delete'
 
 /** @description CASL subject types corresponding to application resources */
-type Subjects = 'Dataset' | 'Document' | 'ChatAssistant' | 'SearchApp' | 'User' | 'AuditLog' | 'Policy' | 'Org' | 'Project' | 'all'
+type Subjects = 'Dataset' | 'Document' | 'ChatAssistant' | 'SearchApp' | 'User' | 'AuditLog' | 'Policy' | 'Org' | 'Project' | 'Memory' | 'all'
 
 /** @description Application-wide CASL ability type combining actions and subjects */
 export type AppAbility = MongoAbility<[Actions, Subjects]>
@@ -120,6 +120,7 @@ export function buildAbilityFor(user: AbilityUserContext, policies: AbacPolicyRu
     can('read', 'AuditLog', tenantCondition)
     can('manage', 'ChatAssistant', tenantCondition)
     can('manage', 'SearchApp', tenantCondition)
+    can('manage', 'Memory', tenantCondition)
   }
 
   // Leader: create/update/delete datasets, manage documents and apps within their org
@@ -130,6 +131,7 @@ export function buildAbilityFor(user: AbilityUserContext, policies: AbacPolicyRu
     can('manage', 'Document', tenantCondition)
     can('manage', 'ChatAssistant', tenantCondition)
     can('manage', 'SearchApp', tenantCondition)
+    can('manage', 'Memory', tenantCondition)
   }
 
   // User role: only the base read permissions above (no additional grants)

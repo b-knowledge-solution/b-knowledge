@@ -44,6 +44,7 @@ import externalApiRoutes from '@/modules/external/routes/external-api.routes.js'
 import agentRoutes from '@/modules/agents/routes/agent.routes.js';
 import agentWebhookRoutes from '@/modules/agents/routes/agent-webhook.routes.js';
 import agentEmbedRoutes from '@/modules/agents/routes/agent-embed.routes.js';
+import memoryRoutes from '@/modules/memory/routes/memory.routes.js';
 import { agentController } from '@/modules/agents/controllers/agent.controller.js';
 import { agentEmbedController } from '@/modules/agents/controllers/agent-embed.controller.js';
 import { requireAuth, requireAbility } from '@/shared/middleware/auth.middleware.js';
@@ -204,6 +205,9 @@ function registerRoutes(apiRouter: Router): void {
 
     // Agents (AI workflow graphs with versioning)
     apiRouter.use('/agents', agentRoutes);
+
+    // Memory pools (persistent knowledge store for agents/chat)
+    apiRouter.use('/memory', memoryRoutes);
 
     // External API key management (session auth)
     apiRouter.use('/external/api-keys', apiKeyRoutes);

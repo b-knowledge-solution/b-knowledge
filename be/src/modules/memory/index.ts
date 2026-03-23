@@ -24,6 +24,17 @@ export type {
   QueryMemoryMessagesDto,
 } from './schemas/memory.schemas.js'
 
+// Services
+export { memoryService } from './services/memory.service.js'
+export { memoryMessageService } from './services/memory-message.service.js'
+export type { MemoryMessageDoc, MemorySearchResult } from './services/memory-message.service.js'
+
+// Controller
+export { memoryController } from './controllers/memory.controller.js'
+
+// Routes (default export)
+export { default as memoryRoutes } from './routes/memory.routes.js'
+
 // Extraction prompt templates
 export {
   SEMANTIC_EXTRACTION_PROMPT,
