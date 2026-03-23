@@ -79,13 +79,31 @@ export function detectLanguage(text: string): string {
 
 /**
  * @description Build a system prompt instruction telling the LLM to respond
- * in the specified language.
+ * in the specified language. Returns a strong directive designed to be prepended
+ * to the system prompt before any knowledge context.
  * @param {string} langCode - ISO 639-3 language code
  * @returns {string} Instruction string for inclusion in system prompts
  */
 export function buildLanguageInstruction(langCode: string): string {
   const name = LANG_NAMES[langCode] || 'the same language as the user'
-  return `IMPORTANT: You MUST respond in ${name}. All your answers, explanations, and citations must be in ${name}.`
+  return `## Response Language Requirement
+IMPORTANT: You MUST respond entirely in ${name}.
+- All answers, explanations, summaries, and citations MUST be written in ${name}.
+- Even if the knowledge context below is in a different language, you MUST still answer in ${name}.
+- Translate any referenced information into ${name} when composing your response.
+- Do NOT switch languages mid-response.`
+}
+
+/**
+ * @description Build a short language reminder to append after the knowledge context.
+ * Uses a "sandwich" technique — language instruction at both start and end of the prompt —
+ * to prevent large knowledge contexts in other languages from overriding the language directive.
+ * @param {string} langCode - ISO 639-3 language code
+ * @returns {string} Reminder string to append after knowledge context
+ */
+export function buildLanguageReminder(langCode: string): string {
+  const name = LANG_NAMES[langCode] || 'the same language as the user'
+  return `\nREMINDER: Regardless of the language of the knowledge context above, you MUST respond in ${name}.`
 }
 
 // ---------------------------------------------------------------------------
