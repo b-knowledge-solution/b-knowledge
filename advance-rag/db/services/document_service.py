@@ -40,7 +40,7 @@ from db import PIPELINE_SPECIAL_PROGRESS_FREEZE_TASK_TYPES, FileType, UserTenant
 from db.db_models import DB, Document, Knowledgebase, Task, Tenant, UserTenant, File2Document, File, UserCanvas, \
     User
 from db.db_utils import bulk_insert_into_db
-from db.services.common_service import CommonService
+from db.services.common_service import CommonService, retry_deadlock_operation
 from db.services.knowledgebase_service import KnowledgebaseService
 from db.services.doc_metadata_service import DocMetadataService
 from common.misc_utils import get_uuid
@@ -84,6 +84,60 @@ class DocumentService(CommonService):
             cls.model.update_time,
             cls.model.update_date,
         ]
+
+    @classmethod
+    @DB.connection_context()
+    def get_parsing_status_by_kb_ids(cls, kb_ids: list[str]) -> dict[str, dict[str, int]]:
+        """Return aggregated document parsing status counts grouped by dataset (kb_id).
+
+        For each kb_id, counts documents in each run-status bucket:
+            - unstart_count  (run == "0")
+            - running_count  (run == "1")
+            - cancel_count   (run == "2")
+            - done_count     (run == "3")
+            - fail_count     (run == "4")
+
+        Args:
+            kb_ids: List of knowledge base IDs to aggregate.
+
+        Returns:
+            Dict keyed by kb_id with status count dicts, e.g.
+            {"kb-abc": {"unstart_count": 10, "running_count": 2, ...}, ...}
+        """
+        if not kb_ids:
+            return {}
+
+        status_field_map = {
+            TaskStatus.UNSTART.value: "unstart_count",
+            TaskStatus.RUNNING.value: "running_count",
+            TaskStatus.CANCEL.value: "cancel_count",
+            TaskStatus.DONE.value: "done_count",
+            TaskStatus.FAIL.value: "fail_count",
+        }
+
+        empty_status = {v: 0 for v in status_field_map.values()}
+        result: dict[str, dict[str, int]] = {kb_id: dict(empty_status) for kb_id in kb_ids}
+
+        # Single GROUP BY query instead of per-kb queries for efficiency
+        rows = (
+            cls.model.select(
+                cls.model.kb_id,
+                cls.model.run,
+                fn.COUNT(cls.model.id).alias("cnt"),
+            )
+            .where(cls.model.kb_id.in_(kb_ids))
+            .group_by(cls.model.kb_id, cls.model.run)
+            .dicts()
+        )
+
+        for row in rows:
+            kb_id = row["kb_id"]
+            run_val = str(row["run"])
+            field_name = status_field_map.get(run_val)
+            if field_name and kb_id in result:
+                result[kb_id][field_name] = int(row["cnt"])
+
+        return result
 
     @classmethod
     @DB.connection_context()
@@ -532,6 +586,7 @@ class DocumentService(CommonService):
         return num
 
     @classmethod
+    @retry_deadlock_operation()
     @DB.connection_context()
     def delete_document_and_update_kb_counts(cls, doc_id) -> bool:
         """Atomically delete the document row and update KB counters.

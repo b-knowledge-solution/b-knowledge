@@ -24,7 +24,10 @@ and retry logic for transient database errors.
 All database operations are wrapped with @DB.connection_context() to ensure
 connections are properly acquired and released from the pool.
 """
+import logging
+import time
 from datetime import datetime
+from functools import wraps
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import peewee
 from peewee import InterfaceError, OperationalError
@@ -32,6 +35,59 @@ from peewee import InterfaceError, OperationalError
 from db.db_models import DB
 from common.misc_utils import get_uuid
 from common.time_utils import current_timestamp, datetime_format
+
+
+def _is_deadlock_error(exc: OperationalError) -> bool:
+    """Check if an OperationalError is caused by a database deadlock.
+
+    Args:
+        exc: The OperationalError to inspect.
+
+    Returns:
+        True if the error is a deadlock (MySQL error code 1213), False otherwise.
+    """
+    return isinstance(exc, OperationalError) and bool(getattr(exc, "args", ())) and exc.args[0] == 1213
+
+
+def retry_deadlock_operation(max_retries: int = 3, retry_delay: float = 0.1):
+    """Retry a full DB operation when the database aborts it due to deadlock.
+
+    Uses exponential backoff between retry attempts. Only retries when the
+    error is specifically a deadlock (error code 1213); all other errors
+    are re-raised immediately.
+
+    Args:
+        max_retries: Maximum number of attempts before giving up.
+        retry_delay: Base delay in seconds between retries (doubled each attempt).
+
+    Returns:
+        A decorator that wraps a function with deadlock retry logic.
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except OperationalError as e:
+                    # Only retry if it is a deadlock error and we have attempts left
+                    if not _is_deadlock_error(e) or attempt >= max_retries - 1:
+                        raise
+                    current_delay = retry_delay * (2 ** attempt)
+                    logging.warning(
+                        "%s failed due to DB deadlock, retrying (%s/%s): %s",
+                        func.__qualname__,
+                        attempt + 1,
+                        max_retries,
+                        e,
+                    )
+                    time.sleep(current_delay)
+
+        return wrapper
+
+    return decorator
+
 
 def retry_db_operation(func):
     """Decorator that retries a function up to 3 times on transient DB errors.

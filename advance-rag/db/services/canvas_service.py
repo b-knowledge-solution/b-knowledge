@@ -23,7 +23,7 @@ access control checks, and tenant-scoped listing with search and pagination.
 """
 import logging
 from db import CanvasCategory, TenantPermission
-from db.db_models import DB, CanvasTemplate, User, UserCanvas
+from db.db_models import DB, CanvasTemplate, User, UserCanvas, UserCanvasVersion
 from db.services.common_service import CommonService
 from peewee import fn
 
@@ -250,7 +250,29 @@ class UserCanvasService(CommonService):
         count = agents.count()
         if page_number and items_per_page:
             agents = agents.paginate(page_number, items_per_page)
-        return list(agents.dicts()), count
+
+        agents_list = list(agents.dicts())
+
+        # Enrich each canvas with its latest release time for UI display
+        if agents_list:
+            canvas_ids = [a['id'] for a in agents_list]
+            release_times = (
+                UserCanvasVersion.select(
+                    UserCanvasVersion.user_canvas_id,
+                    fn.MAX(UserCanvasVersion.create_time).alias("release_time"),
+                )
+                .where(
+                    (UserCanvasVersion.user_canvas_id.in_(canvas_ids))
+                    & (UserCanvasVersion.release)
+                )
+                .group_by(UserCanvasVersion.user_canvas_id)
+            )
+            release_time_map = {r.user_canvas_id: r.release_time for r in release_times}
+
+            for agent in agents_list:
+                agent['release_time'] = release_time_map.get(agent['id'])
+
+        return agents_list, count
 
     @classmethod
     @DB.connection_context()
@@ -277,4 +299,46 @@ class UserCanvasService(CommonService):
             return False
         return True
 
+    @classmethod
+    def get_agent_dsl_with_release(cls, agent_id: str, release_mode: bool = False, tenant_id: str | None = None):
+        """Get agent DSL, optionally using the latest released version.
 
+        When release_mode is True, returns the DSL from the latest released
+        version rather than the current draft DSL.
+
+        Args:
+            agent_id: The canvas/agent ID.
+            release_mode: If True, use latest released version DSL.
+            tenant_id: Optional owner check - raises PermissionError if mismatch.
+
+        Returns:
+            tuple: (canvas_model, dsl_string) where dsl_string is JSON.
+
+        Raises:
+            LookupError: If agent not found.
+            PermissionError: If tenant_id mismatch or no released version available.
+        """
+        import json
+        from db.services.user_canvas_version import UserCanvasVersionService
+
+        e, cvs = cls.get_by_id(agent_id)
+        if not e:
+            raise LookupError("Agent not found.")
+        # Verify ownership if tenant_id provided
+        if tenant_id and cvs.user_id != tenant_id:
+            raise PermissionError("You do not own the agent.")
+
+        if release_mode:
+            # Retrieve the latest published version for production use
+            released_version = UserCanvasVersionService.get_latest_released(agent_id)
+            if not released_version:
+                raise PermissionError("No available published version")
+            dsl = released_version.dsl
+        else:
+            dsl = cvs.dsl
+
+        # Ensure DSL is a JSON string for downstream Canvas parsing
+        if not isinstance(dsl, str):
+            dsl = json.dumps(dsl, ensure_ascii=False)
+
+        return cvs, dsl
