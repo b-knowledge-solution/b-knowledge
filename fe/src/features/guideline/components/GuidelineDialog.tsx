@@ -92,7 +92,8 @@ export function GuidelineDialog({ open, onClose, featureId }: GuidelineDialogPro
     if (!guideline) return null;
 
     // Role check
-    const roleHierarchy = { user: 1, leader: 2, admin: 3 };
+    // Map roles to numeric levels for access control comparison
+    const roleHierarchy: Record<string, number> = { user: 1, leader: 2, admin: 3, 'super-admin': 4 };
     const userRoleLevel = roleHierarchy[user?.role || 'user'] || 1;
     const requiredRoleLevel = roleHierarchy[guideline.roleRequired] || 1;
 
