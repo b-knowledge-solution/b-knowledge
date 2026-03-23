@@ -986,6 +986,49 @@ class CanvasTemplate(DataBaseModel):
         db_table = "canvas_template"
 
 
+class API4Conversation(DataBaseModel):
+    """Peewee model for API conversation sessions (agent chat sessions).
+
+    Maps to the api_4_conversation table. Tracks individual conversation
+    sessions including messages, token usage, and optional version labeling.
+    """
+    id = CharField(max_length=32, primary_key=True)
+    name = CharField(max_length=255, null=True, help_text="conversation name", index=False)
+    dialog_id = CharField(max_length=32, null=False, index=True)
+    user_id = CharField(max_length=255, null=False, help_text="user_id", index=True)
+    exp_user_id = CharField(max_length=255, null=True, help_text="exp_user_id", index=True)
+    message = JSONField(null=True)
+    reference = JSONField(null=True, default=[])
+    tokens = IntegerField(default=0)
+    source = CharField(max_length=16, null=True, help_text="none|agent|dialog", index=True)
+    dsl = JSONField(null=True, default={})
+    duration = FloatField(default=0, index=True)
+    round = IntegerField(default=0, index=True)
+    thumb_up = IntegerField(default=0, index=True)
+    errors = TextField(null=True, help_text="errors")
+    version_title = CharField(max_length=255, null=True, help_text="canvas version title when session created", index=False)
+
+    class Meta:
+        db_table = "api_4_conversation"
+
+
+class UserCanvasVersion(DataBaseModel):
+    """Peewee model for canvas version snapshots.
+
+    Maps to the user_canvas_version table. Stores immutable snapshots of
+    canvas DSL with optional release flag for published version tracking.
+    """
+    id = CharField(max_length=32, primary_key=True)
+    user_canvas_id = CharField(max_length=255, null=False, help_text="user_canvas_id", index=True)
+    title = CharField(max_length=255, null=True, help_text="Canvas title")
+    description = TextField(null=True, help_text="Canvas description")
+    release = BooleanField(null=False, help_text="is released", default=False, index=True)
+    dsl = JSONField(null=True, default={})
+
+    class Meta:
+        db_table = "user_canvas_version"
+
+
 class MCPServer(DataBaseModel):
     id = CharField(max_length=32, primary_key=True)
     name = CharField(max_length=255, null=False, help_text="MCP Server name")

@@ -91,7 +91,8 @@ dependencies = [
     "infinity-sdk>=0.6.0",
     "valkey>=6.0.0",
     "json_repair>=0.28.0",
-    "pypdf>=4.0.0",
+    "pypdf>=6.8.0",
+    "ebooklib>=0.18",
     "litellm>=1.0.0",
     "ollama>=0.3.0",
 
