@@ -51,7 +51,7 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     guidelineFeatureId: 'ai-search',
     fullBleed: true,
   },
-  '/data-studio/glossary': {
+  '/glossary': {
     titleKey: 'glossary.title',
   },
   '/data-studio/datasets': {
@@ -115,7 +115,7 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     titleKey: 'llmProviders.title',
     fullBleed: true,
   },
-  '/data-studio/api-keys': {
+  '/api-keys': {
     titleKey: 'apiKeys.title',
   },
   '/data-studio/datasets/:id/settings': {

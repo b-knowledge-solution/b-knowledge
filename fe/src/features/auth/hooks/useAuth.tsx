@@ -38,7 +38,7 @@ export interface User {
   /** Avatar URL (from Azure AD or generated) */
   avatar?: string;
   /** User's role: admin, manager, or user */
-  role: 'admin' | 'leader' | 'user';
+  role: 'super-admin' | 'admin' | 'leader' | 'user';
   /** List of granted permissions */
   permissions: string[];
   /** User's department (from Azure AD) */

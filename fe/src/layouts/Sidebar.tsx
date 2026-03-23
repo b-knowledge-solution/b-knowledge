@@ -179,7 +179,7 @@ export function Sidebar() {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent side="top" align="start" className="w-56">
-              <DropdownMenuItem onClick={() => navigate('/data-studio/api-keys')} className="cursor-pointer">
+              <DropdownMenuItem onClick={() => navigate('/api-keys')} className="cursor-pointer">
                 <KeyRound className="mr-2 h-4 w-4" />
                 {t('nav.apiKeys')}
               </DropdownMenuItem>

@@ -129,9 +129,9 @@ function App() {
                 <Route path="search" element={<FeatureErrorBoundary><AiSearchPage /></FeatureErrorBoundary>} />
               )}
               {/* Glossary route */}
-              <Route path="data-studio/glossary" element={
+              <Route path="glossary" element={
                 <FeatureErrorBoundary>
-                  <RoleRoute allowedRoles={['admin', 'leader']}>
+                  <RoleRoute allowedRoles={['super-admin', 'admin', 'leader']}>
                     <GlossaryPage />
                   </RoleRoute>
                 </FeatureErrorBoundary>
@@ -140,28 +140,28 @@ function App() {
               {/* Dataset routes */}
               <Route path="data-studio/datasets" element={
                 <FeatureErrorBoundary>
-                  <RoleRoute allowedRoles={['admin', 'leader']}>
+                  <RoleRoute allowedRoles={['super-admin', 'admin', 'leader']}>
                     <DatasetsPage />
                   </RoleRoute>
                 </FeatureErrorBoundary>
               } />
               <Route path="data-studio/datasets/:id" element={
                 <FeatureErrorBoundary>
-                  <RoleRoute allowedRoles={['admin', 'leader']}>
+                  <RoleRoute allowedRoles={['super-admin', 'admin', 'leader']}>
                     <DatasetDetailPage />
                   </RoleRoute>
                 </FeatureErrorBoundary>
               } />
               <Route path="data-studio/datasets/:id/documents/:docId" element={
                 <FeatureErrorBoundary>
-                  <RoleRoute allowedRoles={['admin', 'leader']}>
+                  <RoleRoute allowedRoles={['super-admin', 'admin', 'leader']}>
                     <DocumentReviewerPage />
                   </RoleRoute>
                 </FeatureErrorBoundary>
               } />
               <Route path="data-studio/datasets/:id/documents/:docId/chunks" element={
                 <FeatureErrorBoundary>
-                  <RoleRoute allowedRoles={['admin', 'leader']}>
+                  <RoleRoute allowedRoles={['super-admin', 'admin', 'leader']}>
                     <ChunkDetailPage />
                   </RoleRoute>
                 </FeatureErrorBoundary>
@@ -170,14 +170,14 @@ function App() {
               {/* Project routes */}
               <Route path="data-studio/projects" element={
                 <FeatureErrorBoundary>
-                  <RoleRoute allowedRoles={['admin', 'leader']}>
+                  <RoleRoute allowedRoles={['super-admin', 'admin', 'leader']}>
                     <ProjectListPage />
                   </RoleRoute>
                 </FeatureErrorBoundary>
               } />
               <Route path="data-studio/projects/:projectId" element={
                 <FeatureErrorBoundary>
-                  <RoleRoute allowedRoles={['admin', 'leader']}>
+                  <RoleRoute allowedRoles={['super-admin', 'admin', 'leader']}>
                     <ProjectDetailPage />
                   </RoleRoute>
                 </FeatureErrorBoundary>
@@ -214,12 +214,10 @@ function App() {
               <Route path="data-studio/histories" element={<FeatureErrorBoundary><AdminRoute><HistoriesPage /></AdminRoute></FeatureErrorBoundary>} />
               <Route path="data-studio/llm-providers" element={<FeatureErrorBoundary><AdminRoute><LLMProviderPage /></AdminRoute></FeatureErrorBoundary>} />
 
-              {/* API Keys (admin, leader) */}
-              <Route path="data-studio/api-keys" element={
+              {/* API Keys (all authenticated users) */}
+              <Route path="api-keys" element={
                 <FeatureErrorBoundary>
-                  <RoleRoute allowedRoles={['admin', 'leader']}>
-                    <ApiKeysPage />
-                  </RoleRoute>
+                  <ApiKeysPage />
                 </FeatureErrorBoundary>
               } />
             </Route>

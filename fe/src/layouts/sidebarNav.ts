@@ -130,11 +130,6 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
         icon: FolderOpen,
       },
       {
-        path: '/data-studio/glossary',
-        labelKey: 'nav.glossary',
-        icon: BookOpen,
-      },
-      {
         path: '/data-studio/chat-assistants',
         labelKey: 'nav.chatAssistants',
         icon: MessageSquare,
@@ -165,7 +160,13 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
       },
     ],
   },
-
+  {
+    path: '/glossary',
+    labelKey: 'nav.glossary',
+    roles: ['super-admin', 'admin', 'leader'],
+    icon: BookOpen,
+    iconSize: 20,
+  },
   // ── IAM (super-admin / admin) ───────────────────────────────────
   {
     labelKey: 'nav.iam',
