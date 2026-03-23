@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-03-23T04:06:33.683Z"
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-03-23T04:08:06.659Z"
 last_activity: 2026-03-23
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 16
-  completed_plans: 12
+  completed_plans: 13
   percent: 100
 ---
 
@@ -95,6 +95,7 @@ Progress: [██████████] 100%
 | Phase 01 P10 | 9min | 2 tasks | 16 files |
 | Phase 02 P01 | 3min | 2 tasks | 8 files |
 | Phase 02 P02 | 6min | 2 tasks | 7 files |
+| Phase 02 P03 | 7min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -209,6 +210,8 @@ Recent decisions affecting current work:
 - [Phase 02]: CHECK constraints on storage_type, extraction_mode, permission, scope_type for database-level data integrity
 - [Phase 02]: FIFO enforcement uses search-then-delete because OpenSearch deleteByQuery does not support sort
 - [Phase 02]: Empty embedding vector in memory search controller as placeholder until extraction plan wires llmClientService
+- [Phase 02]: Bitmask checkbox group with XOR toggle for memory type selection in create/edit dialogs
+- [Phase 02]: Agents sidebar entry converted from SidebarNavItem to SidebarNavGroup with Agent List + Memory children (D-12)
 
 ### Roadmap Evolution
 
@@ -230,6 +233,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-23T04:06:33.676Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-03-23T04:08:06.651Z
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None
