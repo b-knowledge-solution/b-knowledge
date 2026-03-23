@@ -150,3 +150,19 @@ export function useForgetMemoryMessage() {
     },
   })
 }
+
+/**
+ * @description Import chat history into a memory pool and invalidate message cache on success
+ * @returns TanStack useMutation result for importing chat history
+ */
+export function useImportChatHistory() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ memoryId, sessionId }: { memoryId: string; sessionId: string }) =>
+      memoryApi.importChatHistory(memoryId, sessionId),
+    onSuccess: (_result, { memoryId }) => {
+      // Refresh message list to include newly imported memories
+      queryClient.invalidateQueries({ queryKey: queryKeys.memory.messages(memoryId) })
+    },
+  })
+}
