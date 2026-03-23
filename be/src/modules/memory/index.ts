@@ -28,6 +28,7 @@ export type {
 export { memoryService } from './services/memory.service.js'
 export { memoryMessageService } from './services/memory-message.service.js'
 export type { MemoryMessageDoc, MemorySearchResult } from './services/memory-message.service.js'
+export { memoryExtractionService } from './services/memory-extraction.service.js'
 
 // Controller
 export { memoryController } from './controllers/memory.controller.js'
