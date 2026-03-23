@@ -592,6 +592,37 @@ export class ChatConversationService {
   }
 
   /**
+   * @description Deletes all conversation sessions for a given dialog/assistant.
+   * Upstream port: dialog_service delete_all_sessions concept.
+   * Also removes all associated messages for the deleted sessions.
+   * @param {string} dialogId - Dialog/assistant ID whose sessions to delete
+   * @param {string} userId - User ID for ownership filtering
+   * @returns {Promise<number>} Number of sessions deleted
+   */
+  async deleteAllSessions(dialogId: string, userId: string): Promise<number> {
+    // Find all session IDs owned by this user for the given dialog
+    const sessionIds: string[] = await ModelFactory.chatSession.getKnex()
+      .where('dialog_id', dialogId)
+      .andWhere('user_id', userId)
+      .pluck('id')
+
+    if (sessionIds.length === 0) return 0
+
+    // Bulk delete all messages belonging to these sessions
+    await ModelFactory.chatMessage.getKnex()
+      .whereIn('session_id', sessionIds)
+      .delete()
+
+    // Bulk delete the sessions themselves
+    const count = await ModelFactory.chatSession.getKnex()
+      .whereIn('id', sessionIds)
+      .delete()
+
+    log.info('All sessions deleted for dialog', { dialogId, userId, count })
+    return count
+  }
+
+  /**
    * @description Delete a specific message from a conversation.
    * Verifies conversation ownership before allowing deletion.
    * @param {string} conversationId - The conversation ID
@@ -966,6 +997,10 @@ Requirements and restriction:
 
         // Sort by score desc
         allChunks.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+
+        // Filter out empty or invalid chunks before further processing.
+        // Upstream port: dialog_service empty doc filter to prevent null reference errors.
+        allChunks = allChunks.filter(chunk => chunk && chunk.chunk_id)
       }
 
       // ── Step 8: Web search (Tavily) ─────────────────────────────────────

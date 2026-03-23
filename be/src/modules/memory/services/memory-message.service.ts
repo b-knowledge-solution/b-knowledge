@@ -63,6 +63,8 @@ export interface MemoryMessageDoc {
   tenant_id: string
   /** Optional source reference (e.g., chat session or agent run ID) */
   source_id?: string
+  /** UUID of the user who created this memory message (upstream port: user_id tracking) */
+  user_id?: string
   /** ISO timestamp when the memory starts being valid */
   valid_at?: string
   /** ISO timestamp when the memory stops being valid */

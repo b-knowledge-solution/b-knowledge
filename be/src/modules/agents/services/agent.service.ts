@@ -7,6 +7,7 @@
  * @module modules/agents/services/agent
  */
 import { ModelFactory } from '@/shared/models/factory.js'
+import { db } from '@/shared/db/knex.js'
 import { log } from '@/shared/services/logger.service.js'
 import type { Agent } from '../models/agent.model.js'
 import type { CreateAgentDto, UpdateAgentDto, ListAgentsQuery } from '../schemas/agent.schemas.js'
@@ -349,6 +350,56 @@ class AgentService {
    */
   async exportJson(id: string, tenantId: string): Promise<Agent> {
     return this.getById(id, tenantId)
+  }
+
+  // -------------------------------------------------------------------------
+  // Canvas Version Release (upstream port)
+  // -------------------------------------------------------------------------
+
+  /**
+   * @description Marks a canvas version as released (published).
+   * Only one version can be released at a time per canvas -- existing release flags
+   * are cleared before setting the new one.
+   * Upstream port: canvas_service release version workflow.
+   * @param {string} canvasId - Canvas/agent ID
+   * @param {string} versionId - Version ID to release
+   * @param {string} tenantId - Tenant ID for access control
+   * @returns {Promise<void>}
+   */
+  async releaseVersion(canvasId: string, versionId: string, tenantId: string): Promise<void> {
+    // Clear any existing release flag for this canvas (only one active release)
+    await db('user_canvas_version')
+      .where('canvas_id', canvasId)
+      .where('tenant_id', tenantId)
+      .update({ release: false })
+
+    // Set the release flag on the specified version
+    await db('user_canvas_version')
+      .where('id', versionId)
+      .where('canvas_id', canvasId)
+      .where('tenant_id', tenantId)
+      .update({ release: true })
+
+    log.info('Canvas version released', { canvasId, versionId, tenantId })
+  }
+
+  /**
+   * @description Gets the currently released version of a canvas.
+   * Returns the version row with release=true, or null if none released.
+   * Upstream port: canvas_service get_released_version concept.
+   * @param {string} canvasId - Canvas/agent ID
+   * @param {string} tenantId - Tenant ID for access control
+   * @returns {Promise<Record<string, unknown> | null>} Released version row or null
+   */
+  async getReleasedVersion(canvasId: string, tenantId: string): Promise<Record<string, unknown> | null> {
+    // Query for the version with release=true, ordered by creation time desc
+    const version = await db('user_canvas_version')
+      .where('canvas_id', canvasId)
+      .where('tenant_id', tenantId)
+      .where('release', true)
+      .orderBy('create_time', 'desc')
+      .first()
+    return version || null
   }
 }
 
