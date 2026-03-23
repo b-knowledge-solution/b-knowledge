@@ -13,15 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-"""Pipeline orchestrator for the RAG processing flow.
-
-Manages the execution of a sequence of processing components (File -> Parser
--> Splitter -> Tokenizer -> Extractor, etc.) defined by a DSL configuration.
-Handles progress tracking via Redis-backed logs, task cancellation detection,
-and error propagation. Each component runs asynchronously with its output
-feeding into the next component in the pipeline path.
-"""
-
 import asyncio
 import datetime
 import json
@@ -29,23 +20,12 @@ import logging
 import random
 from timeit import default_timer as timer
 from agent.canvas import Graph
-from db.services.document_service import DocumentService
-from db.services.task_service import has_canceled, TaskService, CANVAS_DEBUG_DOC_ID
+from api.db.services.document_service import DocumentService
+from api.db.services.task_service import has_canceled, TaskService, CANVAS_DEBUG_DOC_ID
 from rag.utils.redis_conn import REDIS_CONN
 
 
 class Pipeline(Graph):
-    """Orchestrates the execution of a RAG processing pipeline.
-
-    Extends Graph to manage component execution order, progress
-    reporting via Redis, task cancellation, and error handling.
-
-    Attributes:
-        _doc_id: Document ID being processed, or None for uploads.
-        _flow_id: Flow definition ID for log key construction.
-        _kb_id: Knowledge base ID associated with the document.
-        error: Error message string, empty if no errors.
-    """
     def __init__(self, dsl: str|dict, tenant_id=None, doc_id=None, task_id=None, flow_id=None):
         if isinstance(dsl, dict):
             dsl = json.dumps(dsl, ensure_ascii=False)
@@ -61,20 +41,6 @@ class Pipeline(Graph):
                 self._doc_id = None
 
     def callback(self, component_name: str, progress: float | int | None = None, message: str = "") -> None:
-        """Report progress and check for task cancellation.
-
-        Appends progress trace entries to Redis-stored logs,
-        updates overall task progress, and raises TaskCanceledException
-        if the task has been cancelled.
-
-        Args:
-            component_name: ID of the reporting component.
-            progress: Progress value (0-1 for normal, -1 for error).
-            message: Human-readable status message.
-
-        Raises:
-            TaskCanceledException: If the task has been cancelled.
-        """
         from common.exceptions import TaskCanceledException
         log_key = f"{self._flow_id}-{self.task_id}-logs"
         timestamp = timer()
@@ -138,12 +104,6 @@ class Pipeline(Graph):
             raise TaskCanceledException(message)
 
     def fetch_logs(self):
-        """Retrieve the current pipeline execution logs from Redis.
-
-        Returns:
-            A list of log entry dicts with component traces,
-            or an empty list if no logs exist.
-        """
         log_key = f"{self._flow_id}-{self.task_id}-logs"
         try:
             bin = REDIS_CONN.get(log_key)
@@ -155,17 +115,6 @@ class Pipeline(Graph):
 
 
     async def run(self, **kwargs):
-        """Execute the full pipeline from start to finish.
-
-        Initializes Redis log storage, invokes each component in
-        sequence following the pipeline path, and propagates errors.
-
-        Args:
-            **kwargs: Initial input parameters (e.g., uploaded file).
-
-        Returns:
-            Output dict from the last component, or empty dict on error.
-        """
         log_key = f"{self._flow_id}-{self.task_id}-logs"
         try:
             REDIS_CONN.set_obj(log_key, [], 60 * 10)

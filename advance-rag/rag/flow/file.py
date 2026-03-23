@@ -13,23 +13,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-"""File component for the RAG processing flow pipeline.
-
-The File component is typically the first stage in the pipeline. It
-retrieves file metadata (name) and content (blob) either from the
-document service (when processing a stored document) or from an
-upload payload (when processing a user-uploaded file).
-"""
-
-from db.services.document_service import DocumentService
+from api.db.services.document_service import DocumentService
 from rag.flow.base import ProcessBase, ProcessParamBase
 
 
 class FileParam(ProcessParamBase):
-    """Parameter class for the File pipeline component.
-
-    Currently has no additional parameters beyond the base defaults.
-    """
     def __init__(self):
         super().__init__()
 
@@ -41,12 +29,6 @@ class FileParam(ProcessParamBase):
 
 
 class File(ProcessBase):
-    """File retrieval component for the pipeline.
-
-    Fetches file name and content from either the document service
-    (for stored documents) or from the upload payload. Sets the
-    file name and blob as outputs for downstream components.
-    """
     component_name = "File"
 
     async def _invoke(self, **kwargs):

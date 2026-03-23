@@ -13,37 +13,20 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-"""
-Application-wide constants and enumerations for the RAG worker.
 
-Defines return codes, task statuses, parser types, file sources, storage backends,
-LLM types, MCP server types, memory types, and other shared constants used across
-the advance-rag system. All enums extend CustomEnum for convenient validation
-and introspection helpers.
-"""
-
+import os
 from enum import Enum, IntEnum
 from strenum import StrEnum
 
-# Path to the main YAML service configuration file
 SERVICE_CONF = "service_conf.yaml"
-# Identifier used when looking up host/port settings in the service config
 RAG_FLOW_SERVICE_NAME = "ragflow"
+SANDBOX_ARTIFACT_BUCKET = os.environ.get("SANDBOX_ARTIFACT_BUCKET", "sandbox-artifacts")
+SANDBOX_ARTIFACT_EXPIRE_DAYS = int(os.environ.get("SANDBOX_ARTIFACT_EXPIRE_DAYS", "7"))
 
 
 class CustomEnum(Enum):
-    """Base enum mixin providing helper class methods for validation and listing."""
-
     @classmethod
     def valid(cls, value):
-        """Check whether *value* is a valid member of this enum.
-
-        Args:
-            value: The value to test against enum members.
-
-        Returns:
-            True if *value* corresponds to a member, False otherwise.
-        """
         try:
             cls(value)
             return True
@@ -52,17 +35,14 @@ class CustomEnum(Enum):
 
     @classmethod
     def values(cls):
-        """Return a list of all member values in this enum."""
         return [member.value for member in cls.__members__.values()]
 
     @classmethod
     def names(cls):
-        """Return a list of all member names in this enum."""
         return [member.name for member in cls.__members__.values()]
 
 
 class RetCode(IntEnum, CustomEnum):
-    """Standard integer return / error codes used across API responses and services."""
     SUCCESS = 0
     NOT_EFFECTIVE = 10
     EXCEPTION_ERROR = 100
@@ -82,19 +62,16 @@ class RetCode(IntEnum, CustomEnum):
 
 
 class StatusEnum(Enum):
-    """Generic validity status for database records."""
     VALID = "1"
     INVALID = "0"
 
 
 class ActiveEnum(Enum):
-    """Activation state for toggleable resources."""
     ACTIVE = "1"
     INACTIVE = "0"
 
 
 class LLMType(StrEnum):
-    """Categories of large-language-model capabilities supported by the system."""
     CHAT = "chat"
     EMBEDDING = "embedding"
     SPEECH2TEXT = "speech2text"
@@ -105,7 +82,6 @@ class LLMType(StrEnum):
 
 
 class TaskStatus(StrEnum):
-    """Lifecycle states for document-processing tasks."""
     UNSTART = "0"
     RUNNING = "1"
     CANCEL = "2"
@@ -114,12 +90,10 @@ class TaskStatus(StrEnum):
     SCHEDULE = "5"
 
 
-# All recognised task statuses (used for validation)
 VALID_TASK_STATUS = {TaskStatus.UNSTART, TaskStatus.RUNNING, TaskStatus.CANCEL, TaskStatus.DONE, TaskStatus.FAIL, TaskStatus.SCHEDULE}
 
 
 class ParserType(StrEnum):
-    """Document parser strategies, each tailored to a specific document layout."""
     PRESENTATION = "presentation"
     LAWS = "laws"
     MANUAL = "manual"
@@ -135,14 +109,9 @@ class ParserType(StrEnum):
     EMAIL = "email"
     KG = "knowledge_graph"
     TAG = "tag"
-    CODE = "code"
-    OPENAPI = "openapi"
-    ADR = "adr"
-    CLINICAL = "clinical"
 
 
 class FileSource(StrEnum):
-    """Origin / connector type indicating where a file was ingested from."""
     LOCAL = ""
     KNOWLEDGEBASE = "knowledgebase"
     S3 = "s3"
@@ -176,7 +145,6 @@ class FileSource(StrEnum):
 
 
 class PipelineTaskType(StrEnum):
-    """Types of pipeline processing stages that can be queued."""
     PARSE = "Parse"
     DOWNLOAD = "Download"
     RAPTOR = "RAPTOR"
@@ -185,22 +153,18 @@ class PipelineTaskType(StrEnum):
     MEMORY = "Memory"
 
 
-# Pipeline task types that can be enqueued (Memory is handled separately)
 VALID_PIPELINE_TASK_TYPES = {PipelineTaskType.PARSE, PipelineTaskType.DOWNLOAD, PipelineTaskType.RAPTOR, PipelineTaskType.GRAPH_RAG, PipelineTaskType.MINDMAP}
 
 
 class MCPServerType(StrEnum):
-    """Transport protocols supported for MCP (Model Context Protocol) servers."""
     SSE = "sse"
     STREAMABLE_HTTP = "streamable-http"
 
 
-# Accepted MCP transport types for validation
 VALID_MCP_SERVER_TYPES = {MCPServerType.SSE, MCPServerType.STREAMABLE_HTTP}
 
 
 class Storage(Enum):
-    """Supported object-storage backends (used by StorageFactory)."""
     MINIO = 1
     AZURE_SPN = 2
     AZURE_SAS = 3
@@ -211,7 +175,6 @@ class Storage(Enum):
 
 
 class MemoryType(Enum):
-    """Bitmask flags for different memory categories (combinable via bitwise OR)."""
     RAW = 0b0001  # 1 << 0 = 1 (0b00000001)
     SEMANTIC = 0b0010  # 1 << 1 = 2 (0b00000010)
     EPISODIC = 0b0100  # 1 << 2 = 4 (0b00000100)
@@ -219,13 +182,11 @@ class MemoryType(Enum):
 
 
 class MemoryStorageType(StrEnum):
-    """Backend storage strategies for memory data."""
     TABLE = "table"
     GRAPH = "graph"
 
 
 class ForgettingPolicy(StrEnum):
-    """Eviction policies for memory items when capacity is reached."""
     FIFO = "FIFO"
 
 
@@ -261,6 +222,9 @@ class ForgettingPolicy(StrEnum):
 # ENV_MINERU_OUTPUT_DIR = "MINERU_OUTPUT_DIR"
 # ENV_MINERU_BACKEND = "MINERU_BACKEND"
 # ENV_MINERU_DELETE_OUTPUT = "MINERU_DELETE_OUTPUT"
+# ENV_DOCLING_SERVER_URL = "DOCLING_SERVER_URL"
+# ENV_DOCLING_OUTPUT_DIR = "DOCLING_OUTPUT_DIR"
+# ENV_DOCLING_DELETE_OUTPUT = "DOCLING_DELETE_OUTPUT"
 # ENV_TCADP_OUTPUT_DIR = "TCADP_OUTPUT_DIR"
 # ENV_LM_TIMEOUT_SECONDS = "LM_TIMEOUT_SECONDS"
 # ENV_LLM_MAX_RETRIES = "LLM_MAX_RETRIES"
@@ -274,17 +238,12 @@ class ForgettingPolicy(StrEnum):
 # ENV_WORKER_HEARTBEAT_TIMEOUT = "WORKER_HEARTBEAT_TIMEOUT"
 # ENV_TRACE_MALLOC_ENABLED = "TRACE_MALLOC_ENABLED"
 
-# OpenSearch/Elasticsearch field name for the PageRank feature score
 PAGERANK_FLD = "pagerank_fea"
-# Redis stream name for the server task queue
 SVR_QUEUE_NAME = "rag_flow_svr_queue"
-# Redis consumer group for the server task broker
 SVR_CONSUMER_GROUP_NAME = "rag_flow_svr_task_broker"
-# OpenSearch/Elasticsearch field name for tag features
 TAG_FLD = "tag_feas"
 
 
-# Environment variable keys and defaults for MinerU document parser integration
 MINERU_ENV_KEYS = ["MINERU_APISERVER", "MINERU_OUTPUT_DIR", "MINERU_BACKEND", "MINERU_SERVER_URL", "MINERU_DELETE_OUTPUT"]
 MINERU_DEFAULT_CONFIG = {
     "MINERU_APISERVER": "",
@@ -294,7 +253,6 @@ MINERU_DEFAULT_CONFIG = {
     "MINERU_DELETE_OUTPUT": 1,
 }
 
-# Environment variable keys and defaults for PaddleOCR integration
 PADDLEOCR_ENV_KEYS = ["PADDLEOCR_API_URL", "PADDLEOCR_ACCESS_TOKEN", "PADDLEOCR_ALGORITHM"]
 PADDLEOCR_DEFAULT_CONFIG = {
     "PADDLEOCR_API_URL": "",

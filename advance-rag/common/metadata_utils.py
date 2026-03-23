@@ -13,18 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-"""
-Metadata filtering and schema utilities for RAG retrieval.
-
-Supports three filtering modes used during document retrieval:
-
-- **auto**: An LLM generates filter conditions from the user query and available metadata.
-- **semi_auto**: The LLM generates conditions but is restricted to user-selected metadata keys.
-- **manual**: Filter conditions are provided directly by the caller.
-
-Also provides helpers to merge metadata dicts, deduplicate lists, convert
-metadata definitions to JSON Schema, and normalise legacy formats.
-"""
 import ast
 import logging
 from typing import Any, Callable, Dict
@@ -32,18 +20,6 @@ from typing import Any, Callable, Dict
 import json_repair
 
 def convert_conditions(metadata_condition):
-    """Convert frontend filter conditions into the internal operator format.
-
-    Maps human-readable operators (e.g. ``"is"``, ``"not is"``) to their
-    symbolic equivalents (``"="``, ``"!="``) and restructures each condition
-    into ``{"op", "key", "value"}`` dicts.
-
-    Args:
-        metadata_condition: Dict with a ``"conditions"`` list, or None.
-
-    Returns:
-        List of condition dicts with ``op``, ``key``, and ``value`` keys.
-    """
     if metadata_condition is None:
         metadata_condition = {}
     op_mapping = {
@@ -64,33 +40,9 @@ def convert_conditions(metadata_condition):
 
 
 def meta_filter(metas: dict, filters: list[dict], logic: str = "and"):
-    """Apply metadata filters against an inverted index of metadata values.
-
-    Each entry in *metas* maps a metadata key to a dict of
-    ``{value: [doc_id, ...]}`` pairs.  Filters are applied sequentially using
-    AND or OR logic as specified.
-
-    Args:
-        metas: Inverted metadata index ``{key: {value: [doc_ids]}}``.
-        filters: List of filter dicts, each with ``op``, ``key``, and ``value``.
-        logic: Combination logic -- ``"and"`` (intersection) or ``"or"`` (union).
-
-    Returns:
-        List of matching document IDs.
-    """
     doc_ids = set([])
 
     def filter_out(v2docs, operator, value):
-        """Evaluate a single filter operator against all values in v2docs.
-
-        Args:
-            v2docs: Mapping of metadata values to lists of document IDs.
-            operator: Comparison operator string (e.g. "=", "contains", ">=").
-            value: The target value to compare against.
-
-        Returns:
-            List of document IDs that match the filter.
-        """
         ids = []
         for input, docids in v2docs.items():
 
@@ -132,13 +84,12 @@ def meta_filter(metas: dict, filters: list[dict], logic: str = "and"):
                     try:
                         if isinstance(input, list):
                             input = input[0]
-                        # Safely evaluate string literals to their Python types
                         input = ast.literal_eval(input)
                         value = ast.literal_eval(value)
                     except Exception:
                         pass
 
-                    # Convert strings to lowercase for case-insensitive comparison
+                    # Convert strings to lowercase
                     if isinstance(input, str):
                         input = input.lower()
                     if isinstance(value, str):
@@ -187,7 +138,6 @@ def meta_filter(metas: dict, filters: list[dict], logic: str = "and"):
                 ids.extend(docids)
         return ids
 
-    # Apply each filter sequentially, combining results with AND/OR logic
     for f in filters:
         k = f["key"]
         if k not in metas:
@@ -225,14 +175,6 @@ async def apply_meta_data_filter(
     - semi_auto: generate conditions using selected metadata keys only
     - manual: directly filter based on provided conditions
 
-    Args:
-        meta_data_filter: Configuration dict with ``method`` and mode-specific params.
-        metas: Inverted metadata index ``{key: {value: [doc_ids]}}``.
-        question: The user's query text (used by auto/semi_auto modes).
-        chat_mdl: Chat model instance for LLM-based filter generation.
-        base_doc_ids: Pre-existing document ID list to extend.
-        manual_value_resolver: Optional callback to transform manual filter values.
-
     Returns:
         list of doc_ids, ["-999"] when manual filters yield no result, or None
         when auto/semi_auto filters return empty.
@@ -247,13 +189,11 @@ async def apply_meta_data_filter(
     method = meta_data_filter.get("method")
 
     if method == "auto":
-        # Let the LLM generate filter conditions from all available metadata
         filters: dict = await gen_meta_filter(chat_mdl, metas, question)
         doc_ids.extend(meta_filter(metas, filters["conditions"], filters.get("logic", "and")))
         if not doc_ids:
             return None
     elif method == "semi_auto":
-        # Restrict LLM-generated filters to user-selected metadata keys
         selected_keys = []
         constraints = {}
         for item in meta_data_filter.get("semi_auto", []):
@@ -274,12 +214,10 @@ async def apply_meta_data_filter(
                 if not doc_ids:
                     return None
     elif method == "manual":
-        # Apply caller-provided filter conditions directly
         filters = meta_data_filter.get("manual", [])
         if manual_value_resolver:
             filters = [manual_value_resolver(flt) for flt in filters]
         doc_ids.extend(meta_filter(metas, filters, meta_data_filter.get("logic", "and")))
-        # Return sentinel ["-999"] when manual filters explicitly match nothing
         if filters and not doc_ids:
             doc_ids = ["-999"]
 
@@ -287,14 +225,6 @@ async def apply_meta_data_filter(
 
 
 def dedupe_list(values: list) -> list:
-    """Remove duplicate items from a list while preserving insertion order.
-
-    Args:
-        values: List of items (stringified for dedup comparison).
-
-    Returns:
-        De-duplicated list in original order.
-    """
     seen = set()
     deduped = []
     for item in values:
@@ -307,18 +237,6 @@ def dedupe_list(values: list) -> list:
 
 
 def update_metadata_to(metadata, meta):
-    """Merge *meta* values into *metadata*, deduplicating list entries.
-
-    Handles *meta* as either a dict or a JSON string. Only string and list
-    values are accepted; other types are silently skipped.
-
-    Args:
-        metadata: Target metadata dict to update in place.
-        meta: Source metadata (dict or JSON string) to merge from.
-
-    Returns:
-        The updated *metadata* dict.
-    """
     if not meta:
         return metadata
     if isinstance(meta, str):
@@ -331,7 +249,6 @@ def update_metadata_to(metadata, meta):
         return metadata
 
     for k, v in meta.items():
-        # Filter list values to only include strings
         if isinstance(v, list):
             v = [vv for vv in v if isinstance(vv, str)]
             if not v:
@@ -339,7 +256,6 @@ def update_metadata_to(metadata, meta):
             v = dedupe_list(v)
         if not isinstance(v, list) and not isinstance(v, str):
             continue
-        # Insert new key or merge into existing
         if k not in metadata:
             metadata[k] = v
             continue
@@ -356,14 +272,6 @@ def update_metadata_to(metadata, meta):
 
 
 def metadata_schema(metadata: dict|list|None) -> Dict[str, Any]:
-    """Convert a list of metadata field definitions into a JSON Schema object.
-
-    Args:
-        metadata: List of dicts with ``key``, optional ``description``, and optional ``enum``.
-
-    Returns:
-        JSON Schema dict with ``type: "object"`` and ``additionalProperties: false``.
-    """
     if not metadata:
         return {}
     properties = {}
@@ -392,14 +300,6 @@ def metadata_schema(metadata: dict|list|None) -> Dict[str, Any]:
 
 
 def _is_json_schema(obj: dict) -> bool:
-    """Check if *obj* looks like a JSON Schema definition.
-
-    Args:
-        obj: Dict to inspect.
-
-    Returns:
-        True if *obj* has a ``$schema`` key or ``type: "object"`` with ``properties``.
-    """
     if not isinstance(obj, dict):
         return False
     if "$schema" in obj:
@@ -408,17 +308,6 @@ def _is_json_schema(obj: dict) -> bool:
 
 
 def _is_metadata_list(obj: list) -> bool:
-    """Check if *obj* is a list of metadata field definitions.
-
-    Each item must be a dict with a non-empty string ``key`` and optional
-    ``enum`` (list), ``description`` (str), and ``descriptions`` (str) fields.
-
-    Args:
-        obj: List to inspect.
-
-    Returns:
-        True if *obj* matches the metadata-list shape.
-    """
     if not isinstance(obj, list) or not obj:
         return False
     for item in obj:
@@ -437,17 +326,6 @@ def _is_metadata_list(obj: list) -> bool:
 
 
 def turn2jsonschema(obj: dict | list) -> Dict[str, Any]:
-    """Normalise *obj* into a JSON Schema, regardless of input format.
-
-    Accepts either an already-valid JSON Schema dict or a legacy metadata list
-    and returns a standardised JSON Schema object.
-
-    Args:
-        obj: JSON Schema dict or list of metadata field definitions.
-
-    Returns:
-        JSON Schema dict, or empty dict if the input is unrecognised.
-    """
     if isinstance(obj, dict) and _is_json_schema(obj):
         return obj
     if isinstance(obj, list) and _is_metadata_list(obj):

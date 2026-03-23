@@ -1,10 +1,3 @@
-"""Chinese administrative region lookup table for resume parsing.
-
-Contains a hierarchical mapping of region IDs to region names (provinces,
-cities, districts) covering mainland China, Hong Kong, Macau, Taiwan, and
-international countries. Used to resolve numeric region IDs from resume
-data into human-readable location names.
-"""
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -765,20 +758,10 @@ TBL = {
     "7084": {"name": "天门市", "parent": "18"},
 }
 
-# Pre-computed set of all region names for fast membership testing
 NM_SET = set([v["name"] for _, v in TBL.items()])
 
 
 def get_names(id):
-    """Resolve a region ID to a list of region names (self + ancestors).
-
-    Args:
-        id: A numeric region ID string, or a name string if non-numeric.
-
-    Returns:
-        A list of region names from the given ID up through its parent chain,
-        or an empty list if not found.
-    """
     if not id or str(id).lower() == "none":
         return []
     id = str(id)
@@ -797,16 +780,6 @@ def get_names(id):
 
 
 def isName(nm):
-    """Check if a string matches a known Chinese region name.
-
-    Handles variations like city suffix and province/autonomous region suffixes.
-
-    Args:
-        nm: A region name string to check.
-
-    Returns:
-        True if the name matches a known region, False otherwise.
-    """
     if nm in NM_SET:
         return True
     if nm + "市" in NM_SET:

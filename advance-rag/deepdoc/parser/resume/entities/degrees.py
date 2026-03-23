@@ -13,13 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-"""Degree entity lookup for resume parsing.
 
-Maps numeric degree IDs (from resume data sources) to Chinese degree names.
-Used during resume parsing to normalize degree fields into human-readable labels.
-"""
-
-# Mapping from numeric degree IDs to Chinese degree names
 TBL = {
     "94": "EMBA",
     "6": "MBA",
@@ -37,31 +31,14 @@ TBL = {
     "89": "高中",
 }
 
-# Reverse mapping: degree name -> ID
 TBL_ = {v: k for k, v in TBL.items()}
 
 
 def get_name(id):
-    """Look up a degree name by its numeric ID.
-
-    Args:
-        id: The numeric degree ID (as string or int).
-
-    Returns:
-        The Chinese degree name, or empty string if not found.
-    """
     return TBL.get(str(id), "")
 
 
 def get_id(nm):
-    """Look up a degree ID by its name.
-
-    Args:
-        nm: The degree name to look up.
-
-    Returns:
-        The numeric degree ID string, or empty string if not found.
-    """
     if not nm:
         return ""
     return TBL_.get(nm.upper().strip(), "")

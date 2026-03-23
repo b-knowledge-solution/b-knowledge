@@ -13,17 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-"""OceanBase (OB) vector database connector for CRUD and search operations.
-
-Extends OBConnectionBase with concrete implementations for search, insert,
-update, delete, and field management using OceanBase's SQL-based vector
-search capabilities. Uses SQLAlchemy column definitions for schema management
-and supports full-text search, vector similarity search, metadata filtering,
-and rank-feature boosting.
-
-OceanBase stores data in MySQL-compatible tables with JSON and ARRAY column
-types, requiring special handling for serialization/deserialization.
-"""
 import json
 import logging
 import re
@@ -31,7 +20,7 @@ import time
 from typing import Any, Optional
 
 import numpy as np
-from opensearchpy import Q, Search
+from elasticsearch_dsl import Q, Search
 from pydantic import BaseModel
 from pymysql.converters import escape_string
 from pyobvector import ARRAY
@@ -657,7 +646,7 @@ class OBConnection(OBConnectionBase):
                 start_time = time.time()
                 res = self.es.search(index=index_name,
                                      body=q,
-                                     timeout=600,
+                                     timeout="600s",
                                      track_total_hits=True,
                                      _source=True)
                 elapsed_time = time.time() - start_time
@@ -672,7 +661,7 @@ class OBConnection(OBConnectionBase):
 
         output_fields = select_fields.copy()
         if "*" in output_fields:
-            if index_names[0].startswith("knowledge_doc_meta_"):
+            if index_names[0].startswith("ragflow_doc_meta_"):
                 output_fields = doc_meta_column_names.copy()
             else:
                 output_fields = column_names.copy()
@@ -1066,7 +1055,7 @@ class OBConnection(OBConnectionBase):
             return []
 
         # For doc_meta tables, use simple insert without field transformation
-        if index_name.startswith("knowledge_doc_meta_"):
+        if index_name.startswith("ragflow_doc_meta_"):
             return self._insert_doc_meta(documents, index_name)
 
         docs: list[dict] = []
@@ -1176,7 +1165,7 @@ class OBConnection(OBConnectionBase):
             return True
 
         # For doc_meta tables, don't force kb_id in condition
-        if not index_name.startswith("knowledge_doc_meta_"):
+        if not index_name.startswith("ragflow_doc_meta_"):
             condition["kb_id"] = knowledgebase_id
         filters = get_filters(condition)
         set_values: list[str] = []

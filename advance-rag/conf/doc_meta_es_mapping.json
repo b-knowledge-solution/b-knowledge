@@ -1,69 +1,29 @@
 {
   "settings": {
     "index": {
-      "number_of_shards": 1,
+      "number_of_shards": 2,
       "number_of_replicas": 0,
-      "max_result_window": 100000
-    },
-    "analysis": {
-      "analyzer": {
-        "default": {
-          "type": "standard"
-        }
-      }
+      "refresh_interval": "1000ms"
     }
   },
   "mappings": {
-    "dynamic_templates": [
-      {
-        "tks_fields": {
-          "match": "*_tks",
-          "mapping": {
-            "type": "text",
-            "analyzer": "standard"
-          }
-        }
-      },
-      {
-        "ltks_fields": {
-          "match": "*_ltks",
-          "mapping": {
-            "type": "text",
-            "analyzer": "standard"
-          }
-        }
-      },
-      {
-        "kwd_fields": {
-          "match": "*_kwd",
-          "mapping": {
-            "type": "keyword"
-          }
-        }
-      },
-      {
-        "int_fields": {
-          "match": "*_int",
-          "mapping": {
-            "type": "integer"
-          }
-        }
-      },
-      {
-        "flt_fields": {
-          "match": "*_flt",
-          "mapping": {
-            "type": "float"
-          }
-        }
-      }
-    ],
+    "_source": {
+      "enabled": true
+    },
+    "dynamic": "runtime",
     "properties": {
-      "kb_id": { "type": "keyword" },
-      "doc_id": { "type": "keyword" },
-      "docnm_kwd": { "type": "keyword" },
-      "create_time": { "type": "keyword" },
-      "create_timestamp_flt": { "type": "float" }
+      "id": {
+        "type": "keyword",
+        "store": true
+      },
+      "kb_id": {
+        "type": "keyword",
+        "store": true
+      },
+      "meta_fields": {
+        "type": "object",
+        "dynamic": true
+      }
     }
   }
 }

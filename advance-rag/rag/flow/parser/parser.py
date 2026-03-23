@@ -12,17 +12,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Parser component for the RAG processing flow pipeline.
-
-The central document parsing component that handles all supported file
-types: PDF, Word (DOC/DOCX), spreadsheets (XLS/XLSX/CSV), slides
-(PPT/PPTX), images, audio, video, email, and text/markdown files.
-Delegates to format-specific parsing methods and supports multiple
-layout recognition engines (DeepDOC, MinerU, TCADP, PaddleOCR, VLM).
-Outputs structured JSON, markdown, text, or HTML depending on
-configuration.
-"""
-
 import asyncio
 import io
 import json
@@ -35,14 +24,15 @@ from litellm import logging
 import numpy as np
 from PIL import Image
 
-from db.services.file2document_service import File2DocumentService
-from db.services.file_service import FileService
-from db.services.llm_service import LLMBundle
-from db.joint_services.tenant_model_service import get_model_config_by_type_and_name, get_tenant_default_model_by_type
+from api.db.services.file2document_service import File2DocumentService
+from api.db.services.file_service import FileService
+from api.db.services.llm_service import LLMBundle
+from api.db.joint_services.tenant_model_service import get_model_config_by_type_and_name, get_tenant_default_model_by_type
 from common import settings
 from common.constants import LLMType
 from common.misc_utils import get_uuid
 from deepdoc.parser import ExcelParser
+from deepdoc.parser.docling_parser import DoclingParser
 from deepdoc.parser.pdf_parser import PlainParser, RAGFlowPdfParser, VisionParser
 from deepdoc.parser.tcadp_parser import TCADPParser
 from rag.app.naive import Docx
@@ -53,21 +43,10 @@ from rag.nlp import BULLET_PATTERN, bullets_category, docx_question_level, not_b
 from rag.utils.base64_image import image2id
 
 
-
-
 from common.misc_utils import thread_pool_exec
 
+
 class ParserParam(ProcessParamBase):
-    """Parameter class for the Parser component.
-
-    Defines allowed output formats and parsing configurations for each
-    supported file type (PDF, spreadsheet, word, slides, image, email,
-    audio, video, text/markdown).
-
-    Attributes:
-        allowed_output_format: Dict mapping file types to allowed output formats.
-        setups: Dict mapping file types to their parsing configuration.
-    """
     def __init__(self):
         super().__init__()
         self.allowed_output_format = {
@@ -102,6 +81,10 @@ class ParserParam(ProcessParamBase):
                 "json",
             ],
             "video": [],
+            "epub": [
+                "text",
+                "json",
+            ],
         }
 
         self.setups = {
@@ -186,6 +169,12 @@ class ParserParam(ProcessParamBase):
                 "output_format": "text",
                 "prompt": "",
             },
+            "epub": {
+                "suffix": [
+                    "epub",
+                ],
+                "output_format": "json",
+            },
         }
 
     def check(self):
@@ -194,7 +183,7 @@ class ParserParam(ProcessParamBase):
             pdf_parse_method = pdf_config.get("parse_method", "")
             self.check_empty(pdf_parse_method, "Parse method abnormal.")
 
-            if pdf_parse_method.lower() not in ["deepdoc", "plain_text", "mineru", "tcadp parser", "paddleocr"]:
+            if pdf_parse_method.lower() not in ["deepdoc", "plain_text", "mineru", "docling", "tcadp parser", "paddleocr"]:
                 self.check_empty(pdf_config.get("lang", ""), "PDF VLM language")
 
             pdf_output_format = pdf_config.get("output_format", "")
@@ -239,18 +228,16 @@ class ParserParam(ProcessParamBase):
             email_output_format = email_config.get("output_format", "")
             self.check_valid_value(email_output_format, "Email output format abnormal.", self.allowed_output_format["email"])
 
+        epub_config = self.setups.get("epub", "")
+        if epub_config:
+            epub_output_format = epub_config.get("output_format", "")
+            self.check_valid_value(epub_output_format, "EPUB output format abnormal.", self.allowed_output_format["epub"])
+
     def get_input_form(self) -> dict[str, dict]:
         return {}
 
 
 class Parser(ProcessBase):
-    """Multi-format document parser pipeline component.
-
-    Routes documents to format-specific parsing methods based on file
-    extension. Supports PDF, Word, spreadsheet, slides, image, audio,
-    video, email, and text/markdown formats with configurable parsing
-    engines and output formats.
-    """
     component_name = "Parser"
 
     @staticmethod
@@ -367,7 +354,7 @@ class Parser(ProcessBase):
                 if not tenant_id:
                     return None
 
-                from db.services.tenant_llm_service import TenantLLMService
+                from api.db.services.tenant_llm_service import TenantLLMService
 
                 env_name = TenantLLMService.ensure_mineru_from_env(tenant_id)
                 candidates = TenantLLMService.query(tenant_id=tenant_id, llm_factory="MinerU", model_type=LLMType.OCR.value)
@@ -397,6 +384,27 @@ class Parser(ProcessBase):
                     "image": pdf_parser.crop(poss, 1),
                     "positions": [[pos[0][-1], *pos[1:]] for pos in pdf_parser.extract_positions(poss)],
                     "text": t,
+                }
+                bboxes.append(box)
+        elif parse_method.lower() == "docling":
+            pdf_parser = DoclingParser(docling_server_url=os.environ.get("DOCLING_SERVER_URL", ""))
+            lines, _ = pdf_parser.parse_pdf(
+                filepath=name,
+                binary=blob,
+                callback=self.callback,
+                parse_method=conf.get("docling_parse_method", "raw"),
+                docling_server_url=os.environ.get("DOCLING_SERVER_URL", ""),
+            )
+            bboxes = []
+            for item in lines:
+                if not isinstance(item, tuple) or not item:
+                    continue
+                text = item[0]
+                poss = item[-1] if len(item) >= 2 else ""
+                box = {
+                    "text": text,
+                    "image": pdf_parser.crop(poss, 1) if isinstance(poss, str) and poss else None,
+                    "positions": [[pos[0][-1], *pos[1:]] for pos in pdf_parser.extract_positions(poss)] if isinstance(poss, str) and poss else [],
                 }
                 bboxes.append(box)
         elif parse_method.lower() == "tcadp parser":
@@ -449,7 +457,7 @@ class Parser(ProcessBase):
                 if not tenant_id:
                     return None
 
-                from db.services.tenant_llm_service import TenantLLMService
+                from api.db.services.tenant_llm_service import TenantLLMService
 
                 env_name = TenantLLMService.ensure_paddleocr_from_env(tenant_id)
                 candidates = TenantLLMService.query(tenant_id=tenant_id, llm_factory="PaddleOCR", model_type=LLMType.OCR.value)
@@ -702,7 +710,6 @@ class Parser(ProcessBase):
             markdown_text = docx_parser.to_markdown(name, binary=blob)
             self.set_output("markdown", markdown_text)
 
-
     def _slides(self, name, blob, **kwargs):
         self.callback(random.randint(1, 5) / 100.0, "Start to work on a PowerPoint Document")
 
@@ -843,11 +850,13 @@ class Parser(ProcessBase):
             else:
                 txt = cv_model.describe(img_binary.read())
 
-        json_result = [{
-            "text": txt,
-            "image": img,
-            "doc_type_kwd": "image",
-        }]
+        json_result = [
+            {
+                "text": txt,
+                "image": img,
+                "doc_type_kwd": "image",
+            }
+        ]
         self.set_output("json", json_result)
 
     def _audio(self, name, blob, **kwargs):
@@ -959,9 +968,10 @@ class Parser(ProcessBase):
                 email_content["attachments"] = attachments
         else:
             # handle msg file
-            import msglite
+            import extract_msg
 
-            msg = msglite.Message(blob)
+            print("handle a msg file.")
+            msg = extract_msg.Message(blob)
             # handle header info
             basic_content = {
                 "from": msg.sender,
@@ -1016,6 +1026,22 @@ class Parser(ProcessBase):
                             content_txt += fb
             self.set_output("text", content_txt)
 
+    def _epub(self, name, blob, **kwargs):
+        from deepdoc.parser import EpubParser
+
+        self.callback(random.randint(1, 5) / 100.0, "Start to work on an EPUB.")
+        conf = self._param.setups["epub"]
+        self.set_output("output_format", conf["output_format"])
+
+        epub_parser = EpubParser()
+        sections = epub_parser(name, binary=blob)
+
+        if conf.get("output_format") == "json":
+            json_results = [{"text": s} for s in sections if s]
+            self.set_output("json", json_results)
+        else:
+            self.set_output("text", "\n".join(s for s in sections if s))
+
     async def _invoke(self, **kwargs):
         function_map = {
             "pdf": self._pdf,
@@ -1027,6 +1053,7 @@ class Parser(ProcessBase):
             "audio": self._audio,
             "video": self._video,
             "email": self._email,
+            "epub": self._epub,
         }
 
         try:

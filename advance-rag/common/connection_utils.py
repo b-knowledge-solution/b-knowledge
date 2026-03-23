@@ -13,14 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-"""
-Timeout decorator for synchronous and asynchronous functions.
-
-Provides a ``timeout`` decorator that wraps both sync and async callables,
-enforcing an execution time limit with configurable retry attempts and an
-optional callback or custom exception on timeout.  Timeout enforcement is
-controlled by the ``ENABLE_TIMEOUT_ASSERTION`` environment variable.
-"""
 
 import os
 import queue
@@ -28,45 +20,21 @@ import threading
 from typing import Any, Callable, Coroutine, Optional, Type, Union
 import asyncio
 from functools import wraps
+from quart import make_response, jsonify
+from common.constants import RetCode
 
-# Type aliases for the decorator parameters
 TimeoutException = Union[Type[BaseException], BaseException]
 OnTimeoutCallback = Union[Callable[..., Any], Coroutine[Any, Any, Any]]
 
 
 def timeout(seconds: float | int | str = None, attempts: int = 2, *, exception: Optional[TimeoutException] = None,
             on_timeout: Optional[OnTimeoutCallback] = None):
-    """Decorator factory that adds a timeout to synchronous or async functions.
-
-    For **sync** functions a daemon thread is used; for **async** functions
-    ``asyncio.wait_for`` is used.  The timeout is only enforced when the
-    ``ENABLE_TIMEOUT_ASSERTION`` environment variable is set (to any truthy
-    value), allowing it to be disabled in development.
-
-    Args:
-        seconds: Maximum execution time in seconds (accepts str for env-driven config).
-            If None, no timeout is applied to async functions.
-        attempts: Number of attempts before giving up (default 2).
-        exception: Custom exception type or instance to raise on timeout.
-            If None, a standard ``TimeoutError`` is raised.
-        on_timeout: Callback (sync or async) invoked when timeout is reached
-            instead of raising an exception.  Its return value becomes the
-            function's return value.
-
-    Returns:
-        A decorator that wraps the target function with timeout logic.
-
-    Raises:
-        TimeoutError: When the function exceeds *seconds* across all *attempts*
-            and no *on_timeout* or *exception* override is provided.
-    """
     if isinstance(seconds, str):
         seconds = float(seconds)
 
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            """Sync wrapper: runs *func* in a daemon thread with a timeout."""
             result_queue = queue.Queue(maxsize=1)
 
             def target():
@@ -80,7 +48,6 @@ def timeout(seconds: float | int | str = None, attempts: int = 2, *, exception: 
             thread.daemon = True
             thread.start()
 
-            # Attempt to get the result within the timeout window
             for a in range(attempts):
                 try:
                     if os.environ.get("ENABLE_TIMEOUT_ASSERTION"):
@@ -96,7 +63,6 @@ def timeout(seconds: float | int | str = None, attempts: int = 2, *, exception: 
 
         @wraps(func)
         async def async_wrapper(*args, **kwargs) -> Any:
-            """Async wrapper: uses asyncio.wait_for with a timeout."""
             if seconds is None:
                 return await func(*args, **kwargs)
 
@@ -109,7 +75,6 @@ def timeout(seconds: float | int | str = None, attempts: int = 2, *, exception: 
                 except asyncio.TimeoutError:
                     if a < attempts - 1:
                         continue
-                    # All attempts exhausted -- invoke callback or raise
                     if on_timeout is not None:
                         if callable(on_timeout):
                             result = on_timeout()
@@ -129,9 +94,47 @@ def timeout(seconds: float | int | str = None, attempts: int = 2, *, exception: 
 
                     raise RuntimeError("Invalid exception type provided")
 
-        # Return the appropriate wrapper based on whether func is async
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         return wrapper
 
     return decorator
+
+
+async def construct_response(code=RetCode.SUCCESS, message="success", data=None, auth=None):
+    result_dict = {"code": code, "message": message, "data": data}
+    response_dict = {}
+    for key, value in result_dict.items():
+        if value is None and key != "code":
+            continue
+        else:
+            response_dict[key] = value
+    response = await make_response(jsonify(response_dict))
+    if auth:
+        response.headers["Authorization"] = auth
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Method"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Access-Control-Expose-Headers"] = "Authorization"
+    return response
+
+
+def sync_construct_response(code=RetCode.SUCCESS, message="success", data=None, auth=None):
+    import flask
+    result_dict = {"code": code, "message": message, "data": data}
+    response_dict = {}
+    for key, value in result_dict.items():
+        if value is None and key != "code":
+            continue
+        else:
+            response_dict[key] = value
+    response = flask.make_response(flask.jsonify(response_dict))
+    if auth:
+        response.headers["Authorization"] = auth
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Method"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Access-Control-Expose-Headers"] = "Authorization"
+    return response

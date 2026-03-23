@@ -1,18 +1,3 @@
-"""OCR (Optical Character Recognition) module for text detection and recognition.
-
-Provides text detection (locating text regions in images) and text recognition
-(reading characters from detected regions) using ONNX Runtime inference sessions.
-Supports both CPU and CUDA GPU execution with configurable memory limits and
-multi-GPU model caching.
-
-Key classes:
-- TextDetector: Locates text bounding boxes in images using a DB (Differentiable
-  Binarization) detection model.
-- TextRecognizer: Reads text from cropped text region images using a CTC-based
-  recognition model with multiple resize strategies.
-- OCR: High-level orchestrator combining detection and recognition with automatic
-  text box sorting and rotation handling for vertical text.
-"""
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -48,20 +33,9 @@ import onnxruntime as ort
 
 from .postprocess import build_post_process
 
-# Global cache of loaded ONNX models keyed by (file_path + device_id)
 loaded_models = {}
 
-
 def transform(data, ops=None):
-    """Apply a sequence of preprocessing operators to data.
-
-    Args:
-        data: Input data dict (typically containing 'image' key).
-        ops: List of callable operators to apply in sequence.
-
-    Returns:
-        The transformed data, or None if any operator returns None.
-    """
     """ transform """
     if ops is None:
         ops = []
@@ -95,22 +69,6 @@ def create_operators(op_param_list, global_config=None):
 
 
 def load_model(model_dir, nm, device_id: int | None = None):
-    """Load an ONNX model with caching, supporting CPU and CUDA execution.
-
-    Models are cached globally by file path + device ID to avoid redundant loading.
-    GPU memory limits and arena strategies are configurable via environment variables.
-
-    Args:
-        model_dir: Directory containing the .onnx model files.
-        nm: Model name (without .onnx extension).
-        device_id: GPU device ID for CUDA execution, or None for auto-detection.
-
-    Returns:
-        A tuple of (InferenceSession, RunOptions) for model execution.
-
-    Raises:
-        ValueError: If the model file does not exist.
-    """
     model_file_path = os.path.join(model_dir, nm + ".onnx")
     model_cached_tag = model_file_path + str(device_id) if device_id is not None else model_file_path
 
@@ -179,20 +137,7 @@ def load_model(model_dir, nm, device_id: int | None = None):
 
 
 class TextRecognizer:
-    """CTC-based text recognition model for reading characters from text region images.
-
-    Supports multiple image resize strategies (standard, VL, SRN, SAR, SPIN, SVTR,
-    ABINet, CAN) for different recognition model architectures. Processes images
-    in batches sorted by aspect ratio for efficiency.
-    """
-
     def __init__(self, model_dir, device_id: int | None = None):
-        """Initialize the text recognizer with an ONNX model.
-
-        Args:
-            model_dir: Directory containing 'rec.onnx' and 'ocr.res' character dict.
-            device_id: GPU device ID, or None for default.
-        """
         self.rec_image_shape = [int(v) for v in "3, 48, 320".split(",")]
         self.rec_batch_num = 16
         postprocess_params = {
@@ -473,20 +418,7 @@ class TextRecognizer:
 
 
 class TextDetector:
-    """DB (Differentiable Binarization) text detection model.
-
-    Locates text regions in images by predicting a probability map and applying
-    post-processing (thresholding, contour finding, polygon expansion) to extract
-    quadrilateral bounding boxes.
-    """
-
     def __init__(self, model_dir, device_id: int | None = None):
-        """Initialize the text detector with an ONNX model.
-
-        Args:
-            model_dir: Directory containing 'det.onnx' model file.
-            device_id: GPU device ID, or None for default.
-        """
         pre_process_list = [{
             'DetResizeForTest': {
                 'limit_side_len': 960,

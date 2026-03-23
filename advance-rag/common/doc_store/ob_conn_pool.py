@@ -13,14 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-"""
-Singleton connection pool for OceanBase vector database.
-
-Manages an ``ObVecClient`` (and optional ``HybridSearch`` client) as a
-per-process singleton. Validates that the OceanBase server version is
->= 4.3.5.1, configures the query timeout, and optionally enables the
-hybrid-search (full-text + vector) feature.
-"""
 import logging
 import os
 import time
@@ -33,9 +25,7 @@ from pyobvector.util import ObVersion
 from common import settings
 from common.decorator import singleton
 
-# Number of connection attempts before giving up
 ATTEMPT_TIME = 2
-# Default query timeout in microseconds (100 seconds)
 OB_QUERY_TIMEOUT = int(os.environ.get("OB_QUERY_TIMEOUT", "100_000_000"))
 
 logger = logging.getLogger('ragflow.ob_conn_pool')
@@ -43,15 +33,6 @@ logger = logging.getLogger('ragflow.ob_conn_pool')
 
 @singleton
 class OceanBaseConnectionPool:
-    """Process-scoped singleton managing OceanBase client connections.
-
-    Supports two connection schemes:
-    - ``mysql``: Uses shared MySQL config from ``settings``.
-    - Custom: Uses OceanBase-specific config from ``settings.OB``.
-
-    Optionally initialises a ``HybridSearch`` client when the
-    ``ENABLE_HYBRID_SEARCH`` environment variable is set.
-    """
 
     def __init__(self):
         self.client = None
@@ -65,7 +46,6 @@ class OceanBaseConnectionPool:
         scheme = self.OB_CONFIG.get("scheme")
         ob_config = self.OB_CONFIG.get("config", {})
 
-        # Select connection parameters based on scheme
         if scheme and scheme.lower() == "mysql":
             mysql_config = settings.get_base_config("mysql", {})
             logger.info("Use MySQL scheme to create OceanBase connection.")
@@ -90,7 +70,6 @@ class OceanBaseConnectionPool:
         max_overflow = int(os.environ.get("OB_MAX_OVERFLOW", max(max_connections // 2, 10)))
         pool_timeout = int(os.environ.get("OB_POOL_TIMEOUT", "30"))
 
-        # Attempt to create the main vector client
         for _ in range(ATTEMPT_TIME):
             try:
                 self.client = ObVecClient(
@@ -121,11 +100,6 @@ class OceanBaseConnectionPool:
         logger.info(f"OceanBase {self.uri} is healthy.")
 
     def _check_ob_version(self):
-        """Verify that the OceanBase server version is >= 4.3.5.1.
-
-        Raises:
-            Exception: If the version cannot be determined or is too old.
-        """
         try:
             res = self.client.perform_raw_text_sql("SELECT OB_VERSION() FROM DUAL").fetchone()
             version_str = res[0] if res else None
@@ -143,7 +117,6 @@ class OceanBaseConnectionPool:
             )
 
     def _try_to_update_ob_query_timeout(self):
-        """Increase the global ob_query_timeout if it is below the configured minimum."""
         try:
             rows = self.client.perform_raw_text_sql("SHOW VARIABLES LIKE 'ob_query_timeout'")
             for row in rows:
@@ -156,20 +129,12 @@ class OceanBaseConnectionPool:
         try:
             self.client.perform_raw_text_sql(f"SET GLOBAL ob_query_timeout={OB_QUERY_TIMEOUT}")
             logger.info("Set GLOBAL variable 'ob_query_timeout' to %d.", OB_QUERY_TIMEOUT)
-            # Dispose all pooled connections so they pick up the new setting
             self.client.engine.dispose()
             logger.info("Disposed all connections in engine pool to refresh connection pool")
         except Exception as e:
             logger.warning(f"Failed to set 'ob_query_timeout' variable: {str(e)}")
 
     def _init_hybrid_search(self, max_connections, max_overflow, pool_timeout):
-        """Optionally initialise the HybridSearch client for combined full-text + vector search.
-
-        Args:
-            max_connections: SQLAlchemy pool size.
-            max_overflow: SQLAlchemy max overflow connections.
-            pool_timeout: SQLAlchemy pool timeout in seconds.
-        """
         enable_hybrid_search = os.getenv('ENABLE_HYBRID_SEARCH', 'false').lower() in ['true', '1', 'yes', 'y']
         if enable_hybrid_search:
             try:
@@ -190,27 +155,18 @@ class OceanBaseConnectionPool:
                 self.es = None
 
     def get_client(self) -> ObVecClient:
-        """Return the primary OceanBase vector client."""
         return self.client
 
     def get_hybrid_search_client(self) -> HybridSearch | None:
-        """Return the HybridSearch client, or None if not enabled."""
         return self.es
 
     def get_db_name(self) -> str:
-        """Return the database name."""
         return self.db_name
 
     def get_uri(self) -> str:
-        """Return the ``host:port`` connection URI string."""
         return self.uri
 
     def refresh_client(self) -> ObVecClient:
-        """Check client health and dispose connections if unhealthy.
-
-        Returns:
-            The (possibly refreshed) ``ObVecClient`` instance.
-        """
         try:
             self.client.perform_raw_text_sql("SELECT 1 FROM DUAL")
             return self.client
@@ -232,5 +188,4 @@ class OceanBaseConnectionPool:
                 pass
 
 
-# Module-level singleton -- instantiated once per process
 OB_CONN = OceanBaseConnectionPool()

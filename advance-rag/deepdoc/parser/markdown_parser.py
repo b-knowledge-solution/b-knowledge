@@ -1,12 +1,3 @@
-"""Markdown document parser for the RAG document processing pipeline.
-
-Provides two main components:
-- RAGFlowMarkdownParser: Extracts and separates tables (both Markdown and HTML)
-  from the rest of the document content, optionally rendering Markdown tables to HTML.
-- MarkdownElementExtractor: Parses Markdown content into individual structural
-  elements (headers, code blocks, lists, blockquotes, text paragraphs) with
-  optional line-number metadata for precise chunk boundary tracking.
-"""
 # -*- coding: utf-8 -*-
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
@@ -30,36 +21,10 @@ from markdown import markdown
 
 
 class RAGFlowMarkdownParser:
-    """Parser that separates tables from non-table content in Markdown documents.
-
-    Handles both standard Markdown tables (pipe-delimited) and inline HTML tables,
-    optionally rendering Markdown tables to HTML or removing them entirely.
-    """
-
     def __init__(self, chunk_token_num=128):
-        """Initialize the Markdown parser.
-
-        Args:
-            chunk_token_num: Target number of tokens per chunk (used by callers).
-        """
         self.chunk_token_num = int(chunk_token_num)
 
     def extract_tables_and_remainder(self, markdown_text, separate_tables=True):
-        """Extract all tables from Markdown text and return them separately.
-
-        Identifies standard Markdown tables, borderless Markdown tables, and
-        HTML tables. When separate_tables is True, tables are removed from the
-        text; when False, they are rendered to HTML inline.
-
-        Args:
-            markdown_text: The raw Markdown text to process.
-            separate_tables: If True, remove tables from text and return them
-                separately. If False, render tables as HTML inline.
-
-        Returns:
-            A tuple of (remaining_text, tables_list) where tables_list contains
-            the raw table strings extracted from the document.
-        """
         tables = []
         working_text = markdown_text
 
@@ -158,32 +123,11 @@ class RAGFlowMarkdownParser:
 
 
 class MarkdownElementExtractor:
-    """Extracts individual structural elements from Markdown content.
-
-    Parses Markdown into headers, code blocks, lists, blockquotes, and text
-    paragraphs. Supports custom delimiter-based splitting and optional metadata
-    (start/end line numbers) for each extracted element.
-    """
-
     def __init__(self, markdown_content):
-        """Initialize the extractor with Markdown content.
-
-        Args:
-            markdown_content: The full Markdown text to parse.
-        """
         self.markdown_content = markdown_content
         self.lines = markdown_content.split("\n")
 
     def get_delimiters(self, delimiters):
-        """Parse backtick-quoted delimiter tokens from a delimiter specification string.
-
-        Args:
-            delimiters: A string containing delimiter patterns enclosed in backticks.
-
-        Returns:
-            A pipe-separated regex pattern string for splitting, sorted by length
-            (longest first) to avoid partial matches.
-        """
         toks = re.findall(r"`([^`]+)`", delimiters)
         toks = sorted(set(toks), key=lambda x: -len(x))
         return "|".join(re.escape(t) for t in toks if t)
@@ -264,14 +208,6 @@ class MarkdownElementExtractor:
         return sections
 
     def _extract_header(self, start_pos):
-        """Extract a header element (single line).
-
-        Args:
-            start_pos: The line index of the header.
-
-        Returns:
-            A dict with type, content, start_line, and end_line.
-        """
         return {
             "type": "header",
             "content": self.lines[start_pos],
@@ -280,14 +216,6 @@ class MarkdownElementExtractor:
         }
 
     def _extract_code_block(self, start_pos):
-        """Extract a fenced code block delimited by triple backticks.
-
-        Args:
-            start_pos: The line index of the opening fence.
-
-        Returns:
-            A dict with type, content, start_line, and end_line.
-        """
         end_pos = start_pos
         content_lines = [self.lines[start_pos]]
 
@@ -306,14 +234,6 @@ class MarkdownElementExtractor:
         }
 
     def _extract_list_block(self, start_pos):
-        """Extract a contiguous list block (ordered or unordered, with nesting).
-
-        Args:
-            start_pos: The line index of the first list item.
-
-        Returns:
-            A dict with type, content, start_line, and end_line.
-        """
         end_pos = start_pos
         content_lines = []
 
@@ -343,14 +263,6 @@ class MarkdownElementExtractor:
         }
 
     def _extract_blockquote(self, start_pos):
-        """Extract a blockquote section (lines starting with '>').
-
-        Args:
-            start_pos: The line index of the first blockquote line.
-
-        Returns:
-            A dict with type, content, start_line, and end_line.
-        """
         end_pos = start_pos
         content_lines = []
 

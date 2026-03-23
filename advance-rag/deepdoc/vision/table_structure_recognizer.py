@@ -1,17 +1,3 @@
-"""Table structure recognition module for extracting tabular data from images.
-
-Detects table structural components (rows, columns, headers, spanning cells) and
-reconstructs the table into HTML or descriptive text format. Combines structural
-detection with OCR text to produce complete table representations.
-
-Key capabilities:
-- Detects table rows, columns, column headers, projected row headers, and spanning cells
-- Aligns row/column boundaries for consistent structure
-- Computes row/column spans for merged cells
-- Generates HTML tables with proper <th>/<td>/colspan/rowspan attributes
-- Generates descriptive text tables with header context for each data row
-- Supports both ONNX and Ascend NPU backends
-"""
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -42,13 +28,6 @@ from .recognizer import Recognizer
 
 
 class TableStructureRecognizer(Recognizer):
-    """Recognizer for table internal structure (rows, columns, headers, spans).
-
-    Extends the base Recognizer with table-specific post-processing that aligns
-    row/column boundaries, constructs a 2D cell grid, handles spanning cells,
-    and outputs either HTML or descriptive text format.
-    """
-
     labels = [
         "table",
         "table column",

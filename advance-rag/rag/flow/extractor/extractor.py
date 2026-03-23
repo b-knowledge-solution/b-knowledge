@@ -12,14 +12,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Extractor component for the RAG processing flow pipeline.
-
-Uses an LLM to extract or generate additional fields from document chunks.
-Can generate table-of-contents (TOC) summaries, or apply custom LLM prompts
-to each chunk to extract specific information into named fields (e.g.,
-keywords, summaries, questions).
-"""
-
 import json
 import logging
 import random
@@ -33,11 +25,6 @@ from rag.prompts.generator import run_toc_from_text
 
 
 class ExtractorParam(ProcessParamBase, LLMParam):
-    """Parameter class for the Extractor component.
-
-    Attributes:
-        field_name: Name of the output field to store extracted content.
-    """
     def __init__(self):
         super().__init__()
         self.field_name = ""
@@ -48,12 +35,6 @@ class ExtractorParam(ProcessParamBase, LLMParam):
 
 
 class Extractor(ProcessBase, LLM):
-    """LLM-based content extractor pipeline component.
-
-    Processes document chunks through an LLM to extract structured
-    information or generate additional metadata fields. Supports
-    TOC generation and custom field extraction.
-    """
     component_name = "Extractor"
 
     async def _build_TOC(self, docs):

@@ -13,17 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-"""Redis/Valkey connection manager and message queue client.
-
-Provides singleton RedisDB and RedisDistributedLock classes for all Redis
-operations in the RAG pipeline. Handles key-value storage, sorted sets,
-stream-based message queues (XADD/XREADGROUP), distributed locking,
-auto-increment ID generation, and Lua-script-based atomic operations
-(conditional delete, token bucket rate limiting).
-
-The module-level REDIS_CONN singleton is imported throughout the codebase
-for direct Redis access.
-"""
 
 import asyncio
 import logging
@@ -46,19 +35,6 @@ except Exception:
 
 
 class RedisMsg:
-    """Wrapper for a Redis Stream message with acknowledgement support.
-
-    Encapsulates a message consumed from a Redis stream consumer group,
-    providing methods to acknowledge processing and access the parsed payload.
-
-    Attributes:
-        __consumer: Redis client for sending XACK.
-        __queue_name: Stream key name.
-        __group_name: Consumer group name.
-        __msg_id: Redis stream message ID.
-        __message: Parsed JSON message payload.
-    """
-
     def __init__(self, consumer, queue_name, group_name, msg_id, message):
         self.__consumer = consumer
         self.__queue_name = queue_name
@@ -67,11 +43,6 @@ class RedisMsg:
         self.__message = json.loads(message["message"])
 
     def ack(self):
-        """Acknowledge the message as processed in the consumer group.
-
-        Returns:
-            True on success, False on failure.
-        """
         try:
             self.__consumer.xack(self.__queue_name, self.__group_name, self.__msg_id)
             return True
@@ -80,27 +51,14 @@ class RedisMsg:
         return False
 
     def get_message(self):
-        """Return the parsed message payload dict."""
         return self.__message
 
     def get_msg_id(self):
-        """Return the Redis stream message ID."""
         return self.__msg_id
 
 
 @singleton
 class RedisDB:
-    """Singleton Redis client providing key-value, sorted set, stream, and scripting operations.
-
-    Manages a persistent Redis connection with automatic reconnection on failures.
-    Registers Lua scripts for atomic operations (conditional delete, token bucket
-    rate limiting) on initialization.
-
-    Attributes:
-        REDIS: The underlying StrictRedis client instance.
-        config: Redis configuration dict (host, port, password, db).
-    """
-
     lua_delete_if_equal = None
     lua_token_bucket = None
     LUA_DELETE_IF_EQUAL_SCRIPT = """
@@ -166,17 +124,9 @@ class RedisDB:
 
     def __open__(self):
         try:
-            # Parse host — may be "host:port" or just "host"
-            raw_host = self.config.get("host", "localhost")
-            if ":" in str(raw_host):
-                host = str(raw_host).split(":")[0]
-                port = int(str(raw_host).split(":")[1])
-            else:
-                host = str(raw_host)
-                port = int(self.config.get("port", 6379))
             conn_params = {
-                "host": host,
-                "port": port,
+                "host": self.config["host"].split(":")[0],
+                "port": int(self.config.get("host", ":6379").split(":")[1]),
                 "db": int(self.config.get("db", 1)),
                 "decode_responses": True,
             }
@@ -500,13 +450,10 @@ class RedisDB:
                     group_info = self.REDIS.xinfo_groups(queue_name)
                 except Exception as e:
                     if str(e) == 'no such key':
-                        # Stream doesn't exist yet — created on first task publish
-                        logging.debug(f"RedisDB.get_unacked_iterator queue {queue_name} doesn't exist yet")
-                    else:
-                        logging.warning(f"RedisDB.get_unacked_iterator queue {queue_name} error: {e}")
-                    continue
+                        logging.warning(f"RedisDB.get_unacked_iterator queue {queue_name} doesn't exist")
+                        continue
                 if not any(gi["name"] == group_name for gi in group_info):
-                    logging.debug(f"RedisDB.get_unacked_iterator queue {queue_name} group {group_name} doesn't exist yet")
+                    logging.warning(f"RedisDB.get_unacked_iterator queue {queue_name} group {group_name} doesn't exist")
                     continue
                 current_min = 0
                 while True:
@@ -533,61 +480,6 @@ class RedisDB:
                 )
         return []
 
-    def get_pending_messages_with_payload(self, queue: str, group_name: str,
-                                          count: int = 50) -> list[tuple[str, dict]]:
-        """Read pending message IDs and their payloads from the stream.
-
-        Uses XPENDING to get pending message IDs, then XRANGE to read their content.
-
-        Args:
-            queue: Redis Stream key name.
-            group_name: Consumer group name.
-            count: Maximum number of pending messages to return.
-
-        Returns:
-            List of (msg_id, parsed_payload_dict) tuples.
-        """
-        result = []
-        try:
-            pending = self.REDIS.xpending_range(queue, group_name, '-', '+', count)
-            if not pending:
-                return result
-            for entry in pending:
-                msg_id = entry.get("message_id") or entry.get("msg_id")
-                if not msg_id:
-                    continue
-                # Read the actual message payload via XRANGE
-                messages = self.REDIS.xrange(queue, msg_id, msg_id)
-                if messages:
-                    _, payload = messages[0]
-                    try:
-                        parsed = json.loads(payload.get(b"message") or payload.get("message", "{}"))
-                    except (json.JSONDecodeError, TypeError):
-                        parsed = {}
-                    result.append((msg_id, parsed))
-        except Exception as e:
-            if 'no such key' not in str(e).lower():
-                logging.warning(f"RedisDB.get_pending_messages_with_payload {queue} exception: {e}")
-        return result
-
-    def ack_message(self, queue: str, group_name: str, msg_id) -> bool:
-        """Acknowledge a single message in the consumer group.
-
-        Args:
-            queue: Redis Stream key name.
-            group_name: Consumer group name.
-            msg_id: Message ID to acknowledge.
-
-        Returns:
-            True on success, False on failure.
-        """
-        try:
-            self.REDIS.xack(queue, group_name, msg_id)
-            return True
-        except Exception as e:
-            logging.warning(f"RedisDB.ack_message {queue} {msg_id} exception: {e}")
-            return False
-
     def requeue_msg(self, queue: str, group_name: str, msg_id: str):
         for _ in range(3):
             try:
@@ -609,10 +501,6 @@ class RedisDB:
                     if group["name"] == group_name:
                         return group
             except Exception as e:
-                if 'no such key' in str(e).lower():
-                    # Stream doesn't exist yet — created on first task publish
-                    logging.debug("RedisDB.queue_info %s doesn't exist yet", queue)
-                    return None
                 logging.warning(
                     "RedisDB.queue_info " + str(queue) + " got exception: " + str(e)
                 )
@@ -640,19 +528,6 @@ REDIS_CONN = RedisDB()
 
 
 class RedisDistributedLock:
-    """Redis-backed distributed lock using the Redlock algorithm.
-
-    Provides mutual exclusion across multiple processes/workers by
-    leveraging Redis's atomic SET NX and Lua-based conditional delete.
-    Supports both synchronous and async (spin-wait) acquisition.
-
-    Attributes:
-        lock_key: Redis key name for the lock.
-        lock_value: Unique token identifying this lock holder.
-        timeout: Lock expiration time in seconds.
-        lock: Underlying valkey Lock instance.
-    """
-
     def __init__(self, lock_key, lock_value=None, timeout=10, blocking_timeout=1):
         self.lock_key = lock_key
         if lock_value:
@@ -663,16 +538,10 @@ class RedisDistributedLock:
         self.lock = Lock(REDIS_CONN.REDIS, lock_key, timeout=timeout, blocking_timeout=blocking_timeout)
 
     def acquire(self):
-        """Attempt to acquire the lock (non-blocking, single attempt).
-
-        Returns:
-            True if the lock was acquired, False otherwise.
-        """
         REDIS_CONN.delete_if_equal(self.lock_key, self.lock_value)
         return self.lock.acquire(token=self.lock_value)
 
     async def spin_acquire(self):
-        """Acquire the lock with async spin-wait, retrying every 10 seconds."""
         REDIS_CONN.delete_if_equal(self.lock_key, self.lock_value)
         while True:
             if self.lock.acquire(token=self.lock_value):
@@ -680,5 +549,4 @@ class RedisDistributedLock:
             await asyncio.sleep(10)
 
     def release(self):
-        """Release the lock by deleting the key if it holds our token."""
         REDIS_CONN.delete_if_equal(self.lock_key, self.lock_value)

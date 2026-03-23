@@ -1,13 +1,3 @@
-"""MinerU-based PDF parser that delegates parsing to an external MinerU API server.
-
-MinerU is a document parsing engine supporting multiple backends (traditional pipeline,
-vision-language models via Transformers/vLLM/MLX, or HTTP client). This parser sends
-PDFs to a MinerU API endpoint, receives structured content blocks (text, tables, images,
-equations, code, lists), and converts them into the section/table tuple format used by
-the RAG pipeline.
-
-Extends RAGFlowPdfParser to inherit image cropping and position extraction utilities.
-"""
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -84,6 +74,7 @@ LANGUAGE_TO_MINERU_MAP = {
     'Greek': 'el',
     'Hindi': 'devanagari',
     'Bulgarian': 'cyrillic',
+    'Turkish': 'latin',
 }
 
 
@@ -144,21 +135,7 @@ class MinerUParseOptions:
 
 
 class MinerUParser(RAGFlowPdfParser):
-    """PDF parser that delegates parsing to an external MinerU API server.
-
-    Sends PDF files to a MinerU API endpoint, receives structured content blocks
-    (text, tables, images, equations, code, lists) as a ZIP archive, and converts
-    them into the section/table tuple format used by the RAG pipeline.
-    """
-
     def __init__(self, mineru_path: str = "mineru", mineru_api: str = "", mineru_server_url: str = ""):
-        """Initialize the MinerU parser.
-
-        Args:
-            mineru_path: Path to the mineru CLI binary (unused with API mode).
-            mineru_api: Base URL of the MinerU API server.
-            mineru_server_url: URL of the vLLM server for vlm-http-client backend.
-        """
         self.mineru_api = mineru_api.rstrip("/")
         self.mineru_server_url = mineru_server_url.rstrip("/")
         self.outlines = []
@@ -364,6 +341,11 @@ class MinerUParser(RAGFlowPdfParser):
         pn = [bx["page_idx"] + 1]
         positions = bx.get("bbox", (0, 0, 0, 0))
         x0, top, x1, bott = positions
+        # Normalize flipped coordinates (MinerU may report inverted bbox for flipped images)
+        if x0 > x1:
+            x0, x1 = x1, x0
+        if top > bott:
+            top, bott = bott, top
 
         if hasattr(self, "page_images") and self.page_images and len(self.page_images) > bx["page_idx"]:
             page_width, page_height = self.page_images[bx["page_idx"]].size
@@ -453,6 +435,12 @@ class MinerUParser(RAGFlowPdfParser):
 
             img0 = self.page_images[pns[0]]
             x0, y0, x1, y1 = int(left), int(top), int(right), int(min(bottom, img0.size[1]))
+            if x0 > x1:
+                x0, x1 = x1, x0
+            if y0 > y1:
+                y0, y1 = y1, y0
+            if x1 <= x0 or y1 <= y0:
+                continue
             crop0 = img0.crop((x0, y0, x1, y1))
             imgs.append(crop0)
             if 0 < ii < len(poss) - 1:
@@ -466,6 +454,13 @@ class MinerUParser(RAGFlowPdfParser):
                     continue
                 page = self.page_images[pn]
                 x0, y0, x1, y1 = int(left), 0, int(right), int(min(bottom, page.size[1]))
+                if x0 > x1:
+                    x0, x1 = x1, x0
+                if y0 > y1:
+                    y0, y1 = y1, y0
+                if x1 <= x0 or y1 <= y0:
+                    bottom -= page.size[1]
+                    continue
                 cimgp = page.crop((x0, y0, x1, y1))
                 imgs.append(cimgp)
                 if 0 < ii < len(poss) - 1:

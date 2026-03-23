@@ -13,14 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-"""
-POSIX signal handlers for runtime memory diagnostics.
-
-Designed to be registered with ``signal.signal(signal.SIGUSR1, ...)`` and
-``signal.signal(signal.SIGUSR2, ...)``.  Sending SIGUSR1 to the process
-starts ``tracemalloc`` (if not already running) and writes a heap snapshot
-to the ``logs/`` directory.  Sending SIGUSR2 stops tracing.
-"""
 
 import os
 import sys
@@ -31,16 +23,6 @@ from common.log_utils import get_project_base_directory
 
 # SIGUSR1 handler: start tracemalloc and take snapshot
 def start_tracemalloc_and_snapshot(signum, frame):
-    """Signal handler that starts tracemalloc tracing and saves a memory snapshot.
-
-    If tracemalloc is not already running it is started first.  A snapshot
-    file is written to ``<project>/logs/<pid>_snapshot_<timestamp>.trace``
-    and current / peak memory usage is logged.
-
-    Args:
-        signum: Signal number (expected to be SIGUSR1).
-        frame: Current stack frame (unused).
-    """
     if not tracemalloc.is_tracing():
         logging.info("start tracemalloc")
         tracemalloc.start()
@@ -54,7 +36,6 @@ def start_tracemalloc_and_snapshot(signum, frame):
     snapshot = tracemalloc.take_snapshot()
     snapshot.dump(snapshot_file)
     current, peak = tracemalloc.get_traced_memory()
-    # Retrieve max RSS from OS -- platform-dependent
     if sys.platform == "win32":
         import  psutil
         process = psutil.Process()
@@ -67,12 +48,6 @@ def start_tracemalloc_and_snapshot(signum, frame):
 
 # SIGUSR2 handler: stop tracemalloc
 def stop_tracemalloc(signum, frame):
-    """Signal handler that stops tracemalloc tracing.
-
-    Args:
-        signum: Signal number (expected to be SIGUSR2).
-        frame: Current stack frame (unused).
-    """
     if tracemalloc.is_tracing():
         logging.info("stop tracemalloc")
         tracemalloc.stop()

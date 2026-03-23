@@ -12,29 +12,12 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Pydantic schema for validating Hierarchical Merger upstream inputs.
-
-Defines the expected shape of data passed from upstream pipeline components
-to the HierarchicalMerger. Structurally identical to the Extractor schema,
-supporting multiple output formats.
-"""
-
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class HierarchicalMergerFromUpstream(BaseModel):
-    """Schema for data flowing into the HierarchicalMerger from upstream.
-
-    Validates and normalizes the upstream output, supporting JSON,
-    markdown, text, HTML, and pre-split chunks formats.
-
-    Attributes:
-        name: Original filename of the document.
-        chunks: Pre-split chunk dicts from upstream.
-        output_format: Format indicator for the payload data.
-    """
     created_time: float | None = Field(default=None, alias="_created_time")
     elapsed_time: float | None = Field(default=None, alias="_elapsed_time")
 

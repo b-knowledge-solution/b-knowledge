@@ -1,14 +1,3 @@
-"""Document layout recognition module for identifying structural regions in pages.
-
-Provides layout recognizers that detect document regions such as Text, Title, Figure,
-Table, Header, Footer, Reference, Equation, and their captions. Combines layout
-detection with OCR results to tag each text box with its layout type.
-
-Supports three backend implementations:
-- LayoutRecognizer: Standard DETR-based ONNX model
-- LayoutRecognizer4YOLOv10: YOLOv10-based detection with letterbox preprocessing
-- AscendLayoutRecognizer: Huawei Ascend NPU inference via ais_bench
-"""
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -28,7 +17,7 @@ Supports three backend implementations:
 import logging
 import math
 import os
-# import re
+import re
 from collections import Counter
 from copy import deepcopy
 
@@ -42,14 +31,6 @@ from deepdoc.vision.operators import nms
 
 
 class LayoutRecognizer(Recognizer):
-    """DETR-based document layout recognizer.
-
-    Detects 10 layout region types in document page images and associates
-    OCR text boxes with their containing layout regions. Filters garbage
-    regions (headers, footers, references) and handles figure/equation
-    regions that may not contain OCR text.
-    """
-
     labels = [
         "_background_",
         "Text",
@@ -81,9 +62,8 @@ class LayoutRecognizer(Recognizer):
 
     def __call__(self, image_list, ocr_res, scale_factor=3, thr=0.2, batch_size=16, drop=True):
         def __is_garbage(b):
-            return False
-            # patt = [r"^•+$", "^[0-9]{1,2} / ?[0-9]{1,2}$", r"^[0-9]{1,2} of [0-9]{1,2}$", "^http://[^ ]{12,}", "\\(cid *: *[0-9]+ *\\)"]
-            # return any([re.search(p, b["text"]) for p in patt])
+            patt = [r"\(cid\s*:\s*\d+\s*\)"]
+            return any([re.search(p, b.get("text", "")) for p in patt])
 
         if self.client:
             layouts = self.client.predict(image_list)
@@ -181,11 +161,6 @@ class LayoutRecognizer(Recognizer):
 
 
 class LayoutRecognizer4YOLOv10(LayoutRecognizer):
-    """YOLOv10-based layout recognizer with letterbox preprocessing.
-
-    Uses YOLOv10 detection format with center-padded letterbox resizing
-    and direct [x1,y1,x2,y2,score,class] output (no NMS needed from model).
-    """
     labels = [
         "title",
         "Text",
@@ -263,12 +238,6 @@ class LayoutRecognizer4YOLOv10(LayoutRecognizer):
 
 
 class AscendLayoutRecognizer(Recognizer):
-    """Layout recognizer for Huawei Ascend NPU hardware via ais_bench.
-
-    Uses .om (Ascend offline model) format with the same label set as
-    LayoutRecognizer4YOLOv10. Preprocessing uses letterbox with constant
-    border padding; postprocessing handles [x1,y1,x2,y2,score,cls] format.
-    """
     labels = [
         "title",
         "Text",

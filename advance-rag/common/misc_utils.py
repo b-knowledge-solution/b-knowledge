@@ -13,13 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-"""
-Miscellaneous utility functions used throughout the RAG worker.
-
-Includes UUID generation, image downloading, hashing, byte-size formatting,
-a thread-safe ``once`` decorator, lazy PyTorch installation, and a shared
-thread-pool executor for offloading blocking work from async code.
-"""
 
 import asyncio
 import base64
@@ -34,59 +27,27 @@ import uuid
 
 from concurrent.futures import ThreadPoolExecutor
 
-import requests
 
 def get_uuid():
-    """Generate a new UUID4 hex string (random, 32 hex characters).
-
-    Standardized to UUID4 to match the Node.js backend's UUID generation.
-    UUID4 uses cryptographically random bytes, avoiding UUID1's MAC address
-    leakage and providing consistent behavior across Python and Node.js.
-
-    Returns:
-        A 32-character lowercase hex UUID string.
-    """
-    return uuid.uuid4().hex
+    return uuid.uuid1().hex
 
 
-def download_img(url):
-    """Download an image from *url* and return it as a data-URI string.
-
-    Args:
-        url: HTTP(S) URL of the image to download. If falsy, returns "".
-
-    Returns:
-        A ``data:<content-type>;base64,...`` string, or "" if *url* is empty.
-    """
+async def download_img(url):
     if not url:
         return ""
-    response = requests.get(url)
+    from common.http_client import async_request
+    response = await async_request("GET", url)
     return "data:" + \
         response.headers.get('Content-Type', 'image/jpg') + ";" + \
         "base64," + base64.b64encode(response.content).decode("utf-8")
 
 
 def hash_str2int(line: str, mod: int = 10 ** 8) -> int:
-    """Hash a string to an integer using SHA-1, modulo *mod*.
-
-    Args:
-        line: Input string to hash.
-        mod: Modulus for the resulting integer (default 10^8).
-
-    Returns:
-        Integer hash in the range [0, mod).
-    """
     return int(hashlib.sha1(line.encode("utf-8")).hexdigest(), 16) % mod
 
 def convert_bytes(size_in_bytes: int) -> str:
     """
-    Format size in bytes into a human-readable string with appropriate units.
-
-    Args:
-        size_in_bytes: Number of bytes.
-
-    Returns:
-        Formatted string like "1.23 MB" or "512 B".
+    Format size in bytes.
     """
     if size_in_bytes == 0:
         return "0 B"
@@ -95,12 +56,10 @@ def convert_bytes(size_in_bytes: int) -> str:
     i = 0
     size = float(size_in_bytes)
 
-    # Scale up through units until the value is under 1024
     while size >= 1024 and i < len(units) - 1:
         size /= 1024
         i += 1
 
-    # Choose decimal precision based on magnitude
     if i == 0 or size >= 100:
         return f"{size:.0f} {units[i]}"
     elif size >= 10:
@@ -146,11 +105,6 @@ def once(func):
 
 @once
 def pip_install_torch():
-    """Install PyTorch via pip if a GPU device is configured.
-
-    Only runs once (guarded by ``@once``). Skipped entirely when the
-    ``DEVICE`` environment variable is ``"cpu"`` or unset.
-    """
     device = os.getenv("DEVICE", "cpu")
     if device=="cpu":
         return
@@ -161,14 +115,6 @@ def pip_install_torch():
 
 @once
 def _thread_pool_executor():
-    """Create and return a shared ThreadPoolExecutor (singleton via ``@once``).
-
-    The pool size is controlled by the ``THREAD_POOL_MAX_WORKERS`` environment
-    variable (default 128, minimum 1).
-
-    Returns:
-        A ``ThreadPoolExecutor`` instance.
-    """
     max_workers_env = os.getenv("THREAD_POOL_MAX_WORKERS", "128")
     try:
         max_workers = int(max_workers_env)
@@ -180,19 +126,6 @@ def _thread_pool_executor():
 
 
 async def thread_pool_exec(func, *args, **kwargs):
-    """Run a blocking function in the shared thread pool from an async context.
-
-    Wraps ``loop.run_in_executor`` with the singleton thread pool.  If keyword
-    arguments are provided, ``functools.partial`` is used to bind them.
-
-    Args:
-        func: The synchronous callable to execute.
-        *args: Positional arguments for *func*.
-        **kwargs: Keyword arguments for *func*.
-
-    Returns:
-        The return value of *func*.
-    """
     loop = asyncio.get_running_loop()
     if kwargs:
         func = functools.partial(func, *args, **kwargs)

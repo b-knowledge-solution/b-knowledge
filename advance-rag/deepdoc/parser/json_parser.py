@@ -14,15 +14,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-"""JSON and JSONL file parser for the RAG pipeline.
-
-Splits JSON documents into size-limited chunks while preserving the nested
-structure. Supports both standard JSON files and JSONL (JSON Lines) format.
-Adapted from langchain's JSON text splitter.
-
-Reference:
-    https://github.com/langchain-ai/langchain/blob/master/libs/text-splitters/langchain_text_splitters/json.py
-"""
 
 # The following documents are mainly referenced, and only adaptation modifications have been made
 # from https://github.com/langchain-ai/langchain/blob/master/libs/text-splitters/langchain_text_splitters/json.py
@@ -34,42 +25,12 @@ from rag.nlp import find_codec
 
 
 class RAGFlowJsonParser:
-    """Parser for JSON and JSONL files that splits content into size-limited chunks.
-
-    Recursively traverses JSON structures and splits them into chunks that
-    stay within configurable size limits while preserving the hierarchical
-    key paths.
-
-    Attributes:
-        max_chunk_size: Maximum character count per JSON chunk (doubled from input).
-        min_chunk_size: Minimum chunk size before starting a new chunk.
-    """
-
     def __init__(self, max_chunk_size: int = 2000, min_chunk_size: int | None = None):
-        """Initialize the JSON parser.
-
-        Args:
-            max_chunk_size: Maximum number of characters per chunk (will be
-                internally doubled for JSON overhead).
-            min_chunk_size: Minimum chunk size. Defaults to max_chunk_size - 200
-                (but at least 50).
-        """
         super().__init__()
         self.max_chunk_size = max_chunk_size * 2
         self.min_chunk_size = min_chunk_size if min_chunk_size is not None else max(max_chunk_size - 200, 50)
 
     def __call__(self, binary):
-        """Parse binary JSON/JSONL data into string chunks.
-
-        Automatically detects whether the input is JSONL format and delegates
-        to the appropriate parser.
-
-        Args:
-            binary: Raw bytes of the JSON or JSONL file.
-
-        Returns:
-            A list of JSON-formatted strings, each representing one chunk.
-        """
         encoding = find_codec(binary)
         txt = binary.decode(encoding, errors="ignore")
 
@@ -81,43 +42,17 @@ class RAGFlowJsonParser:
 
     @staticmethod
     def _json_size(data: dict) -> int:
-        """Calculate the size of the serialized JSON object.
-
-        Args:
-            data: A dictionary to measure.
-
-        Returns:
-            The character count of the JSON-serialized representation.
-        """
+        """Calculate the size of the serialized JSON object."""
         return len(json.dumps(data, ensure_ascii=False))
 
     @staticmethod
     def _set_nested_dict(d: dict, path: list[str], value: Any) -> None:
-        """Set a value in a nested dictionary based on the given path.
-
-        Creates intermediate dictionaries as needed.
-
-        Args:
-            d: The root dictionary to modify.
-            path: A list of keys representing the path to the target.
-            value: The value to set at the target path.
-        """
+        """Set a value in a nested dictionary based on the given path."""
         for key in path[:-1]:
             d = d.setdefault(key, {})
         d[path[-1]] = value
 
     def _list_to_dict_preprocessing(self, data: Any) -> Any:
-        """Convert all lists in a nested structure to dicts with string-index keys.
-
-        This preprocessing step allows the JSON splitter to handle lists
-        the same way it handles dicts.
-
-        Args:
-            data: The data structure to process (dict, list, or scalar).
-
-        Returns:
-            The processed data with all lists converted to index-keyed dicts.
-        """
         if isinstance(data, dict):
             # Process each key-value pair in the dictionary
             return {k: self._list_to_dict_preprocessing(v) for k, v in data.items()}
@@ -134,18 +69,8 @@ class RAGFlowJsonParser:
         current_path: list[str] | None,
         chunks: list[dict] | None,
     ) -> list[dict]:
-        """Split json into maximum size dictionaries while preserving structure.
-
-        Recursively walks the JSON tree and distributes key-value pairs across
-        chunks, starting a new chunk when the current one exceeds the max size.
-
-        Args:
-            data: The JSON data to split (dict or scalar).
-            current_path: The current key path in the JSON tree.
-            chunks: Accumulator list of chunk dictionaries.
-
-        Returns:
-            A list of dictionaries, each representing one chunk.
+        """
+        Split json into maximum size dictionaries while preserving structure.
         """
         current_path = current_path or []
         chunks = chunks or [{}]
@@ -176,15 +101,7 @@ class RAGFlowJsonParser:
         json_data,
         convert_lists: bool = False,
     ) -> list[dict]:
-        """Split JSON data into a list of JSON chunk dicts.
-
-        Args:
-            json_data: The parsed JSON data to split.
-            convert_lists: If True, convert lists to index-keyed dicts first.
-
-        Returns:
-            A list of dictionary chunks.
-        """
+        """Splits JSON into a list of JSON chunks"""
 
         if convert_lists:
             preprocessed_data = self._list_to_dict_preprocessing(json_data)
@@ -203,16 +120,7 @@ class RAGFlowJsonParser:
         convert_lists: bool = False,
         ensure_ascii: bool = True,
     ) -> list[str]:
-        """Split JSON data into a list of JSON-formatted strings.
-
-        Args:
-            json_data: The parsed JSON data to split.
-            convert_lists: If True, convert lists to index-keyed dicts first.
-            ensure_ascii: If True, escape non-ASCII characters in output.
-
-        Returns:
-            A list of JSON-formatted strings, one per chunk.
-        """
+        """Splits JSON into a list of JSON formatted strings"""
 
         chunks = self.split_json(json_data=json_data, convert_lists=convert_lists)
 
@@ -220,14 +128,6 @@ class RAGFlowJsonParser:
         return [json.dumps(chunk, ensure_ascii=ensure_ascii) for chunk in chunks]
 
     def _parse_json(self, content: str) -> list[str]:
-        """Parse a standard JSON string into chunks.
-
-        Args:
-            content: The raw JSON string.
-
-        Returns:
-            A list of JSON-formatted chunk strings.
-        """
         sections = []
         try:
             json_data = json.loads(content)
@@ -238,16 +138,6 @@ class RAGFlowJsonParser:
         return sections
 
     def _parse_jsonl(self, content: str) -> list[str]:
-        """Parse JSONL (JSON Lines) content into chunks.
-
-        Each line is parsed as a separate JSON object and split independently.
-
-        Args:
-            content: The raw JSONL string (one JSON object per line).
-
-        Returns:
-            A list of JSON-formatted chunk strings from all lines combined.
-        """
         lines = content.strip().splitlines()
         all_chunks = []
         for line in lines:
@@ -262,25 +152,10 @@ class RAGFlowJsonParser:
         return all_chunks
 
     def is_jsonl_format(self, txt: str, sample_limit: int = 10, threshold: float = 0.8) -> bool:
-        """Detect whether text is in JSONL format.
-
-        Samples the first few lines and checks if enough of them are valid
-        JSON objects. Also verifies that the entire text is NOT valid as a
-        single JSON document (which would indicate standard JSON format).
-
-        Args:
-            txt: The text content to analyze.
-            sample_limit: Maximum number of lines to sample.
-            threshold: Fraction of valid JSON lines required to declare JSONL.
-
-        Returns:
-            True if the text appears to be JSONL format.
-        """
         lines = [line.strip() for line in txt.strip().splitlines() if line.strip()]
         if not lines:
             return False
 
-        # If it parses as a single JSON document, it's not JSONL
         try:
             json.loads(txt)
             return False
@@ -297,14 +172,6 @@ class RAGFlowJsonParser:
         return (valid_lines / len(sample_lines)) >= threshold
 
     def _is_valid_json(self, line: str) -> bool:
-        """Check if a string is valid JSON.
-
-        Args:
-            line: The string to validate.
-
-        Returns:
-            True if the string can be parsed as JSON.
-        """
         try:
             json.loads(line)
             return True

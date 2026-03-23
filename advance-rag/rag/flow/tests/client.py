@@ -13,13 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-"""Test client for running the RAG processing pipeline locally.
-
-Provides a command-line interface for testing pipeline execution with
-a DSL configuration file, document ID, and tenant ID. Runs the pipeline
-asynchronously and prints execution logs at 5-second intervals.
-"""
-
 import argparse
 import asyncio
 import json
@@ -32,14 +25,6 @@ from rag.flow.pipeline import Pipeline
 
 
 def print_logs(pipeline: Pipeline):
-    """Continuously poll and print pipeline execution logs.
-
-    Runs in a background thread, fetching logs from the pipeline
-    every 5 seconds and printing them when they change.
-
-    Args:
-        pipeline: The Pipeline instance to monitor.
-    """
     last_logs = "[]"
     while True:
         time.sleep(5)

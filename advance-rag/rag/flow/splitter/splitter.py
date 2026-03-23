@@ -12,15 +12,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Splitter component for the RAG processing flow pipeline.
-
-Splits parsed document content into appropriately sized chunks for
-indexing and retrieval. Supports configurable chunk token size,
-custom delimiters, overlap percentage between chunks, and child
-delimiters for sub-splitting. Handles both text-based and JSON-based
-inputs with image and position tracking.
-"""
-
 import asyncio
 import logging
 import random
@@ -38,16 +29,6 @@ from common import settings
 
 
 class SplitterParam(ProcessParamBase):
-    """Parameter class for the Splitter component.
-
-    Attributes:
-        chunk_token_size: Target number of tokens per chunk.
-        delimiters: List of delimiter strings for splitting.
-        overlapped_percent: Fraction of overlap between adjacent chunks.
-        children_delimiters: Additional delimiters for sub-splitting.
-        table_context_size: Number of surrounding chunks for table context.
-        image_context_size: Number of surrounding chunks for image context.
-    """
     def __init__(self):
         super().__init__()
         self.chunk_token_size = 512
@@ -69,12 +50,6 @@ class SplitterParam(ProcessParamBase):
 
 
 class Splitter(ProcessBase):
-    """Text chunking pipeline component.
-
-    Splits document content into chunks using naive merge strategy
-    with configurable delimiters and overlap. Handles position
-    tracking and image association for JSON-formatted inputs.
-    """
     component_name = "Splitter"
 
     async def _invoke(self, **kwargs):

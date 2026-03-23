@@ -317,47 +317,6 @@ class CryptoUtil:
         return decrypted
 
 
-def decrypt(value: str) -> str:
-    """
-    Convenience function to decrypt an API key or other secret string.
-
-    Uses RAGFLOW_CRYPTO_KEY env var for the key and RAGFLOW_CRYPTO_ALGORITHM
-    for the algorithm (default: aes-256-cbc). Returns the value as-is if
-    encryption is not enabled or the value is not encrypted.
-
-    Args:
-        value: The potentially encrypted string to decrypt.
-
-    Returns:
-        The decrypted plaintext string.
-    """
-    if not value:
-        return value
-
-    # Check if encryption is enabled
-    crypto_enabled = os.environ.get("RAGFLOW_CRYPTO_ENABLED", "false").lower() == "true"
-    if not crypto_enabled:
-        return value
-
-    crypto_key = os.environ.get("RAGFLOW_CRYPTO_KEY")
-    if not crypto_key:
-        return value
-
-    try:
-        algorithm = os.environ.get("RAGFLOW_CRYPTO_ALGORITHM", "aes-256-cbc")
-        crypto = CryptoUtil(algorithm=algorithm, key=crypto_key)
-        # Value is stored as bytes encoded in latin-1 or as raw bytes
-        if isinstance(value, str):
-            value_bytes = value.encode("latin-1")
-        else:
-            value_bytes = value
-        decrypted = crypto.decrypt(value_bytes)
-        return decrypted.decode("utf-8")
-    except Exception:
-        # If decryption fails, return value as-is (likely not encrypted)
-        return value if isinstance(value, str) else value.decode("utf-8", errors="replace")
-
-
 # Test code
 if __name__ == "__main__":
     # Test AES encryption

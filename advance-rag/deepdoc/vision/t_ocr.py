@@ -1,15 +1,3 @@
-"""CLI tool for running OCR on images or PDFs with multi-GPU support.
-
-Reads images from an input directory or single file, runs OCR (text detection +
-recognition) using the deepdoc OCR engine, and saves annotated output images
-with detected text boxes and a companion .txt file with extracted text.
-
-Supports multi-GPU execution via asyncio with per-device semaphores to prevent
-GPU memory contention.
-
-Usage:
-    python t_ocr.py --inputs <path> --output_dir <dir>
-"""
 #
 #  Copyright 2025 The InfiniFlow Authors. All Rights Reserved.
 #
@@ -53,11 +41,6 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0' #1 gpu
 
 
 def main(args):
-    """Run OCR on all input images with multi-GPU parallel processing.
-
-    Args:
-        args: Parsed CLI arguments with 'inputs' and 'output_dir' fields.
-    """
     import torch.cuda
 
     cuda_devices = torch.cuda.device_count()

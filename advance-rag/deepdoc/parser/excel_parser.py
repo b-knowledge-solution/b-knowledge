@@ -1,10 +1,3 @@
-"""Excel and CSV file parser for the RAG document processing pipeline.
-
-Parses Excel (.xlsx, .xls) and CSV files into structured text or HTML table
-chunks. Supports multiple sheets, embedded images extraction, and automatic
-format detection (Excel binary vs CSV). Falls back through multiple parsing
-engines (openpyxl -> pandas default -> pandas calamine) for maximum compatibility.
-"""
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -29,31 +22,13 @@ from PIL import Image
 
 from rag.nlp import find_codec
 
-# Regex to strip control characters illegal in XML/Excel cells (copied from openpyxl)
+# copied from `/openpyxl/cell/cell.py`
 ILLEGAL_CHARACTERS_RE = re.compile(r"[\000-\010]|[\013-\014]|[\016-\037]")
 
 
 class RAGFlowExcelParser:
-    """Parser for Excel spreadsheets and CSV files.
-
-    Converts spreadsheet data into plain text lines (key-value pairs per row),
-    HTML table chunks, or Markdown format. Handles multi-sheet workbooks,
-    embedded images, and gracefully falls back across parsing engines.
-    """
-
     @staticmethod
     def _load_excel_to_workbook(file_like_object):
-        """Load a file into an openpyxl Workbook, auto-detecting format.
-
-        Args:
-            file_like_object: File path string or bytes/BytesIO of the file content.
-
-        Returns:
-            An openpyxl Workbook instance.
-
-        Raises:
-            Exception: If the file cannot be parsed by any supported engine.
-        """
         if isinstance(file_like_object, bytes):
             file_like_object = BytesIO(file_like_object)
 
@@ -92,14 +67,6 @@ class RAGFlowExcelParser:
 
     @staticmethod
     def _clean_dataframe(df: pd.DataFrame):
-        """Remove illegal XML characters from all string cells in a DataFrame.
-
-        Args:
-            df: The pandas DataFrame to clean.
-
-        Returns:
-            A cleaned DataFrame with illegal characters replaced by spaces.
-        """
         def clean_string(s):
             if isinstance(s, str):
                 return ILLEGAL_CHARACTERS_RE.sub(" ", s)
@@ -109,12 +76,6 @@ class RAGFlowExcelParser:
 
     @staticmethod
     def _fill_worksheet_from_dataframe(ws, df: pd.DataFrame):
-        """Write DataFrame content into an openpyxl worksheet, row by row.
-
-        Args:
-            ws: The openpyxl worksheet to populate.
-            df: The pandas DataFrame containing the data.
-        """
         for col_num, column_name in enumerate(df.columns, 1):
             ws.cell(row=1, column=col_num, value=column_name)
         for row_num, row in enumerate(df.values, 2):
@@ -123,14 +84,6 @@ class RAGFlowExcelParser:
 
     @staticmethod
     def _dataframe_to_workbook(df):
-        """Convert a single DataFrame (or dict of DataFrames) into an openpyxl Workbook.
-
-        Args:
-            df: A pandas DataFrame, or a dict mapping sheet names to DataFrames.
-
-        Returns:
-            An openpyxl Workbook populated with the DataFrame data.
-        """
         if isinstance(df, dict) and len(df) > 1:
             return RAGFlowExcelParser._dataframes_to_workbook(df)
 
@@ -143,14 +96,6 @@ class RAGFlowExcelParser:
 
     @staticmethod
     def _dataframes_to_workbook(dfs: dict):
-        """Convert multiple DataFrames into a multi-sheet openpyxl Workbook.
-
-        Args:
-            dfs: Dict mapping sheet names to pandas DataFrames.
-
-        Returns:
-            An openpyxl Workbook with one sheet per DataFrame.
-        """
         wb = Workbook()
         default_sheet = wb.active
         wb.remove(default_sheet)
@@ -209,17 +154,6 @@ class RAGFlowExcelParser:
 
     @staticmethod
     def _get_actual_row_count(ws):
-        """Determine the actual number of rows with data using binary search.
-
-        For large worksheets (>10000 rows), uses binary search to efficiently
-        find the last row containing data, avoiding scanning all empty rows.
-
-        Args:
-            ws: An openpyxl worksheet.
-
-        Returns:
-            The 1-based index of the last row containing data, or 0 if empty.
-        """
         max_row = ws.max_row
         if not max_row:
             return 0
@@ -262,32 +196,12 @@ class RAGFlowExcelParser:
 
     @staticmethod
     def _get_rows_limited(ws):
-        """Get worksheet rows limited to the actual data range.
-
-        Args:
-            ws: An openpyxl worksheet.
-
-        Returns:
-            A list of row tuples, or empty list if no data.
-        """
         actual_rows = RAGFlowExcelParser._get_actual_row_count(ws)
         if actual_rows == 0:
             return []
         return list(ws.iter_rows(min_row=1, max_row=actual_rows))
 
     def html(self, fnm, chunk_rows=256):
-        """Convert spreadsheet to a list of HTML table chunks.
-
-        Each chunk contains up to `chunk_rows` data rows (plus the header row).
-        Multi-sheet workbooks produce separate chunks per sheet.
-
-        Args:
-            fnm: File path string or bytes of the spreadsheet.
-            chunk_rows: Maximum number of data rows per HTML chunk.
-
-        Returns:
-            A list of HTML table strings.
-        """
         from html import escape
 
         file_like_object = BytesIO(fnm) if not isinstance(fnm, str) else fnm
@@ -333,14 +247,6 @@ class RAGFlowExcelParser:
         return tb_chunks
 
     def markdown(self, fnm):
-        """Convert a spreadsheet to Markdown table format.
-
-        Args:
-            fnm: File path string or bytes of the spreadsheet.
-
-        Returns:
-            A Markdown-formatted table string.
-        """
         import pandas as pd
 
         file_like_object = BytesIO(fnm) if not isinstance(fnm, str) else fnm
@@ -355,17 +261,6 @@ class RAGFlowExcelParser:
         return df.to_markdown(index=False)
 
     def __call__(self, fnm):
-        """Parse spreadsheet into plain text lines (one per data row).
-
-        Each line contains header-value pairs joined by semicolons.
-        Non-default sheet names are appended as a suffix.
-
-        Args:
-            fnm: File path string or bytes of the spreadsheet.
-
-        Returns:
-            A list of text strings, one per data row.
-        """
         file_like_object = BytesIO(fnm) if not isinstance(fnm, str) else fnm
         wb = RAGFlowExcelParser._load_excel_to_workbook(file_like_object)
 
@@ -398,15 +293,6 @@ class RAGFlowExcelParser:
 
     @staticmethod
     def row_number(fnm, binary):
-        """Count the total number of data rows across all sheets.
-
-        Args:
-            fnm: The original filename (used to determine file type by extension).
-            binary: The raw file bytes.
-
-        Returns:
-            The total row count, or None if the file type is unsupported.
-        """
         if fnm.split(".")[-1].lower().find("xls") >= 0:
             wb = RAGFlowExcelParser._load_excel_to_workbook(BytesIO(binary))
             total = 0

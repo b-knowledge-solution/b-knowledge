@@ -13,13 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-"""Synonym expansion dealer for query enrichment.
-
-Manages a synonym dictionary loaded from a JSON file and optionally
-refreshed from Redis. Used during query construction to expand search
-terms with synonyms, improving recall. Falls back to WordNet for
-English words when no custom synonyms are found.
-"""
 
 import logging
 import json
@@ -30,27 +23,16 @@ from nltk.corpus import wordnet
 from common.file_utils import get_project_base_directory
 
 
+# Forces NLTK to load the corpus synchronously once, preventing concurrent tasks
+# from triggering the lazy-loading race condition.
+try:
+    wordnet.ensure_loaded()
+except Exception:
+    logging.warning("Fail to load wordnet.ensure_loaded()")
+
 class Dealer:
-    """Synonym dictionary manager with Redis-backed hot-reloading.
-
-    Loads synonyms from a local JSON file on initialization and
-    periodically refreshes from Redis (if connected). Provides
-    synonym lookup for both Chinese and English terms.
-
-    Attributes:
-        lookup_num: Counter of lookups since last Redis reload.
-        load_tm: Timestamp of last Redis reload.
-        dictionary: Dict mapping terms to lists of synonyms.
-        redis: Optional Redis connection for real-time synonym updates.
-    """
-
     def __init__(self, redis=None):
-        """Initialize the synonym dealer.
 
-        Args:
-            redis: Optional Redis connection. If None, real-time
-                synonym updates from Redis are disabled.
-        """
         self.lookup_num = 100000000
         self.load_tm = time.time() - 1000000
         self.dictionary = None
@@ -72,27 +54,17 @@ class Dealer:
         self.load()
 
     def load(self):
-        """Reload synonym dictionary from Redis if conditions are met.
-
-        Reloads only when: (1) Redis is connected, (2) at least 100
-        lookups have occurred since last reload, and (3) at least 1 hour
-        has passed since last reload. This throttling prevents excessive
-        Redis reads while keeping synonyms reasonably fresh.
-        """
         if not self.redis:
             return
 
-        # Throttle: skip if fewer than 100 lookups since last reload
         if self.lookup_num < 100:
             return
         tm = time.time()
-        # Throttle: skip if less than 1 hour since last reload
         if tm - self.load_tm < 3600:
             return
 
         self.load_tm = time.time()
         self.lookup_num = 0
-        # Fetch the full synonym dictionary from Redis
         d = self.redis.get("kevin_synonyms")
         if not d:
             return
@@ -104,19 +76,6 @@ class Dealer:
 
 
     def lookup(self, tk, topn=8):
-        """Look up synonyms for a given token.
-
-        Checks the custom dictionary first, then falls back to WordNet
-        for purely alphabetic English tokens. Triggers a Redis reload
-        check on each call.
-
-        Args:
-            tk: Token string to find synonyms for.
-            topn: Maximum number of synonyms to return (default 8).
-
-        Returns:
-            List of synonym strings, up to topn entries.
-        """
         if not tk or not isinstance(tk, str):
             return []
 

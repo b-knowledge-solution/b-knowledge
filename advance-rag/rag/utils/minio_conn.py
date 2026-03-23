@@ -13,18 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-"""MinIO / S3-compatible object storage connector.
-
-Primary storage backend for the RAG pipeline, used by default with
-RustFS in development. Supports two operating modes:
-
-- **Multi-bucket mode**: Each logical bucket maps to a physical MinIO bucket.
-- **Single-bucket mode**: All objects are stored in one physical bucket
-  with logical bucket names used as key prefixes.
-
-The use_default_bucket and use_prefix_path decorators transparently
-handle path rewriting so callers always use the same interface.
-"""
 
 import logging
 import ssl
@@ -41,10 +29,10 @@ from common import settings
 def _build_minio_http_client():
     """
     Build an optional urllib3 HTTP client for MinIO when using SSL/TLS.
-    Respects S3.verify (default True) to allow self-signed certificates
+    Respects MINIO.verify (default True) to allow self-signed certificates
     when set to False.
     """
-    verify = settings.S3.get("verify", True)
+    verify = settings.MINIO.get("verify", True)
     if verify is True or verify == "true" or verify == "1":
         return None
     return urllib3.PoolManager(cert_reqs=ssl.CERT_NONE)
@@ -52,40 +40,16 @@ def _build_minio_http_client():
 
 @singleton
 class RAGFlowMinio:
-    """MinIO client implementing the unified storage interface.
-
-    Supports single-bucket and multi-bucket modes via decorator-based
-    path rewriting. Handles SSL, self-signed certificates, and
-    automatic reconnection on failures.
-
-    Attributes:
-        conn: The Minio client instance.
-        bucket: Default physical bucket name (None for multi-bucket mode).
-        prefix_path: Optional path prefix prepended to all object keys.
-    """
-
     def __init__(self):
         self.conn = None
         # Use `or None` to convert empty strings to None, ensuring single-bucket
         # mode is truly disabled when not configured
-        self.bucket = settings.S3.get('bucket', None) or None
-        self.prefix_path = settings.S3.get('prefix_path', None) or None
+        self.bucket = settings.MINIO.get('bucket', None) or None
+        self.prefix_path = settings.MINIO.get('prefix_path', None) or None
         self.__open__()
 
     @staticmethod
     def use_default_bucket(method):
-        """Decorator that redirects the bucket argument to the default physical bucket.
-
-        When single-bucket mode is active, replaces the caller's bucket
-        argument with the configured default bucket and passes the
-        original bucket name forward as _orig_bucket for path construction.
-
-        Args:
-            method: The decorated method.
-
-        Returns:
-            Wrapped method with bucket redirection.
-        """
         def wrapper(self, bucket, *args, **kwargs):
             # If there is a default bucket, use the default bucket
             # but preserve the original bucket identifier so it can be
@@ -101,17 +65,6 @@ class RAGFlowMinio:
 
     @staticmethod
     def use_prefix_path(method):
-        """Decorator that prepends prefix_path and original bucket to the file name.
-
-        Constructs the full object key path based on the configured
-        prefix_path and whether single-bucket mode is active.
-
-        Args:
-            method: The decorated method.
-
-        Returns:
-            Wrapped method with path prefix prepended to fnm.
-        """
         def wrapper(self, bucket, fnm, *args, **kwargs):
             # If a default MINIO bucket is configured, the use_default_bucket
             # decorator will have replaced the `bucket` arg with the physical
@@ -137,7 +90,6 @@ class RAGFlowMinio:
         return wrapper
 
     def __open__(self):
-        """Establish a connection to MinIO using settings from the S3 config section."""
         try:
             if self.conn:
                 self.__close__()
@@ -145,33 +97,28 @@ class RAGFlowMinio:
             pass
 
         try:
-            # Parse the secure flag from string or boolean config values
-            secure = settings.S3.get("secure", False)
+            secure = settings.MINIO.get("secure", False)
             if isinstance(secure, str):
                 secure = secure.lower() in ("true", "1", "yes")
             http_client = _build_minio_http_client()
             self.conn = Minio(
-                settings.S3["host"],
-                access_key=settings.S3["user"],
-                secret_key=settings.S3["password"],
+                settings.MINIO["host"],
+                access_key=settings.MINIO["user"],
+                secret_key=settings.MINIO["password"],
                 secure=secure,
                 http_client=http_client,
             )
         except Exception:
             logging.exception(
-                "Fail to connect %s " % settings.S3["host"])
+                "Fail to connect %s " % settings.MINIO["host"])
 
     def __close__(self):
-        """Release the MinIO client connection."""
         del self.conn
         self.conn = None
 
     def health(self):
         """
         Check MinIO service availability.
-
-        Returns:
-            True if the service is reachable, False otherwise.
         """
         try:
             if self.bucket:
@@ -196,17 +143,6 @@ class RAGFlowMinio:
     @use_default_bucket
     @use_prefix_path
     def put(self, bucket, fnm, binary, tenant_id=None):
-        """Upload binary data to MinIO. Retries up to 3 times.
-
-        Args:
-            bucket: Bucket name (may be rewritten by decorators).
-            fnm: Object key (may be rewritten by decorators).
-            binary: Raw bytes to upload.
-            tenant_id: Tenant ID (unused, kept for interface compatibility).
-
-        Returns:
-            MinIO put_object result on success, or None after retries.
-        """
         for _ in range(3):
             try:
                 # Note: bucket must already exist - we don't have permission to create buckets
@@ -226,13 +162,6 @@ class RAGFlowMinio:
     @use_default_bucket
     @use_prefix_path
     def rm(self, bucket, fnm, tenant_id=None):
-        """Delete an object from MinIO.
-
-        Args:
-            bucket: Bucket name (may be rewritten by decorators).
-            fnm: Object key (may be rewritten by decorators).
-            tenant_id: Tenant ID (unused, kept for interface compatibility).
-        """
         try:
             self.conn.remove_object(bucket, fnm)
         except Exception:
@@ -241,16 +170,6 @@ class RAGFlowMinio:
     @use_default_bucket
     @use_prefix_path
     def get(self, bucket, filename, tenant_id=None):
-        """Download an object's content as bytes from MinIO.
-
-        Args:
-            bucket: Bucket name (may be rewritten by decorators).
-            filename: Object key (may be rewritten by decorators).
-            tenant_id: Tenant ID (unused, kept for interface compatibility).
-
-        Returns:
-            Raw bytes of the object, or None on failure.
-        """
         for _ in range(1):
             try:
                 r = self.conn.get_object(bucket, filename)
@@ -264,16 +183,6 @@ class RAGFlowMinio:
     @use_default_bucket
     @use_prefix_path
     def obj_exist(self, bucket, filename, tenant_id=None):
-        """Check whether an object exists in MinIO.
-
-        Args:
-            bucket: Bucket name (may be rewritten by decorators).
-            filename: Object key (may be rewritten by decorators).
-            tenant_id: Tenant ID (unused, kept for interface compatibility).
-
-        Returns:
-            True if the object exists, False otherwise.
-        """
         try:
             if not self.conn.bucket_exists(bucket):
                 return False
@@ -290,14 +199,6 @@ class RAGFlowMinio:
 
     @use_default_bucket
     def bucket_exists(self, bucket):
-        """Check whether a bucket exists in MinIO.
-
-        Args:
-            bucket: Bucket name to check (may be rewritten by decorator).
-
-        Returns:
-            True if the bucket exists, False otherwise.
-        """
         try:
             if not self.conn.bucket_exists(bucket):
                 return False
@@ -313,19 +214,6 @@ class RAGFlowMinio:
     @use_default_bucket
     @use_prefix_path
     def get_presigned_url(self, bucket, fnm, expires, tenant_id=None):
-        """Generate a presigned URL for temporary object access.
-
-        Retries up to 10 times on failure.
-
-        Args:
-            bucket: Bucket name (may be rewritten by decorators).
-            fnm: Object key (may be rewritten by decorators).
-            expires: Expiration time for the URL.
-            tenant_id: Tenant ID (unused, kept for interface compatibility).
-
-        Returns:
-            Presigned URL string, or None after exhausting retries.
-        """
         for _ in range(10):
             try:
                 return self.conn.get_presigned_url("GET", bucket, fnm, expires)
@@ -337,15 +225,6 @@ class RAGFlowMinio:
 
     @use_default_bucket
     def remove_bucket(self, bucket, **kwargs):
-        """Remove all objects in a bucket (or prefix) and optionally the bucket itself.
-
-        In single-bucket mode, only removes objects matching the logical prefix.
-        In multi-bucket mode, removes all objects and the physical bucket.
-
-        Args:
-            bucket: Bucket name (may be rewritten by decorator).
-            **kwargs: May contain _orig_bucket from the decorator chain.
-        """
         orig_bucket = kwargs.pop('_orig_bucket', None)
         try:
             if self.bucket:
@@ -371,18 +250,6 @@ class RAGFlowMinio:
             logging.exception(f"Fail to remove bucket {bucket}")
 
     def _resolve_bucket_and_path(self, bucket, fnm):
-        """Resolve the physical bucket and full object key path.
-
-        Used by copy/move operations that need to resolve paths without
-        going through the decorator chain.
-
-        Args:
-            bucket: Logical bucket name.
-            fnm: Object key.
-
-        Returns:
-            Tuple of (physical_bucket, full_object_key).
-        """
         if self.bucket:
             if self.prefix_path:
                 fnm = f"{self.prefix_path}/{bucket}/{fnm}"
@@ -394,17 +261,6 @@ class RAGFlowMinio:
         return bucket, fnm
 
     def copy(self, src_bucket, src_path, dest_bucket, dest_path):
-        """Copy an object within or across buckets.
-
-        Args:
-            src_bucket: Source logical bucket.
-            src_path: Source object key.
-            dest_bucket: Destination logical bucket.
-            dest_path: Destination object key.
-
-        Returns:
-            True on success, False on failure.
-        """
         try:
             src_bucket, src_path = self._resolve_bucket_and_path(src_bucket, src_path)
             dest_bucket, dest_path = self._resolve_bucket_and_path(dest_bucket, dest_path)
@@ -412,7 +268,6 @@ class RAGFlowMinio:
             if not self.conn.bucket_exists(dest_bucket):
                 self.conn.make_bucket(dest_bucket)
 
-            # Verify source exists before copying
             try:
                 self.conn.stat_object(src_bucket, src_path)
             except Exception as e:
@@ -431,17 +286,6 @@ class RAGFlowMinio:
             return False
 
     def move(self, src_bucket, src_path, dest_bucket, dest_path):
-        """Move an object by copying then deleting the source.
-
-        Args:
-            src_bucket: Source logical bucket.
-            src_path: Source object key.
-            dest_bucket: Destination logical bucket.
-            dest_path: Destination object key.
-
-        Returns:
-            True on success, False on failure.
-        """
         try:
             if self.copy(src_bucket, src_path, dest_bucket, dest_path):
                 self.rm(src_bucket, src_path)

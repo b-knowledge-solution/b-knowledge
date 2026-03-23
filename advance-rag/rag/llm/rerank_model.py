@@ -13,83 +13,38 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-"""Reranking model integrations for RAG retrieval refinement.
-
-Provides reranking capabilities that score the relevance of candidate text
-passages against a query. Used as a second-stage retrieval step after initial
-vector/keyword search to improve result quality.
-
-Supported providers:
-    - OpenAI-API-Compatible: Generic rerank endpoint via HTTP POST
-    - Cohere: Native Cohere rerank SDK
-    - RAGcon: LiteLLM proxy-based reranking
-
-Typical usage:
-    reranker = CoHereRerank(key="co-...", model_name="rerank-v3.5")
-    scores, token_count = reranker.similarity("user query", ["doc1", "doc2"])
-"""
-
+import json
 from abc import ABC
 from urllib.parse import urljoin
 
+import httpx
 import numpy as np
 import requests
+from yarl import URL
 
 from common.log_utils import log_exception
 from common.token_utils import num_tokens_from_string, truncate, total_token_count_from_response
 
-
 class Base(ABC):
-    """Abstract base class for all reranking provider implementations.
-
-    Defines the ``similarity`` interface that scores query-document relevance,
-    plus a shared ``_normalize_rank`` utility for min-max normalization of
-    relevance scores to the [0, 1] range.
-    """
-
     def __init__(self, key, model_name, **kwargs):
-        """Initialize the reranking base class.
-
-        Args:
-            key: API key or authentication token for the provider.
-            model_name: Identifier of the reranking model.
-            **kwargs: Additional provider-specific configuration.
+        """
+        Abstract base class constructor.
+        Parameters are not stored; initialization is left to subclasses.
         """
         pass
 
     def similarity(self, query: str, texts: list):
-        """Compute relevance scores for texts against a query.
-
-        Args:
-            query: The search query string.
-            texts: List of candidate text passages to score.
-
-        Returns:
-            A tuple of (rank_array, token_count) where rank_array is a
-            numpy array of relevance scores and token_count tracks usage.
-
-        Raises:
-            NotImplementedError: If not overridden by a subclass.
-        """
         raise NotImplementedError("Please implement encode method!")
 
     @staticmethod
     def _normalize_rank(rank: np.ndarray) -> np.ndarray:
-        """Normalize relevance scores to the [0, 1] range using min-max scaling.
-
-        Handles the edge case where all scores are identical (or nearly so)
-        by returning a zero vector to avoid division-by-zero errors.
-
-        Args:
-            rank: Raw relevance scores as a numpy array.
-
-        Returns:
-            Normalized scores in [0, 1], or zeros if all values are equal.
+        """
+        Normalize rank values to the range 0 to 1.
+        Avoids division by zero if all ranks are identical.
         """
         min_rank = np.min(rank)
         max_rank = np.max(rank)
 
-        # Avoid division by zero when all scores are effectively equal
         if not np.isclose(min_rank, max_rank, atol=1e-3):
             rank = (rank - min_rank) / (max_rank - min_rank)
         else:
@@ -98,50 +53,72 @@ class Base(ABC):
         return rank
 
 
-class OpenAI_APIRerank(Base):
-    """OpenAI-API-Compatible reranking provider.
+class JinaRerank(Base):
+    _FACTORY_NAME = "Jina"
 
-    Sends rerank requests via HTTP POST to a generic /rerank endpoint.
-    Compatible with any service that implements the standard rerank API
-    format (e.g. Jina, custom deployments).
-    """
+    def __init__(self, key, model_name="jina-reranker-v2-base-multilingual", base_url="https://api.jina.ai/v1/rerank"):
+        self.base_url = "https://api.jina.ai/v1/rerank"
+        self.headers = {"Content-Type": "application/json", "Authorization": f"Bearer {key}"}
+        self.model_name = model_name
 
-    _FACTORY_NAME = "OpenAI-API-Compatible"
+    def similarity(self, query: str, texts: list):
+        texts = [truncate(t, 8196) for t in texts]
+        data = {"model": self.model_name, "query": query, "documents": texts, "top_n": len(texts)}
+        res = requests.post(self.base_url, headers=self.headers, json=data).json()
+        rank = np.zeros(len(texts), dtype=float)
+        try:
+            for d in res["results"]:
+                rank[d["index"]] = d["relevance_score"]
+        except Exception as _e:
+            log_exception(_e, res)
+        return rank, total_token_count_from_response(res)
+
+
+class XInferenceRerank(Base):
+    _FACTORY_NAME = "Xinference"
+
+    def __init__(self, key="x", model_name="", base_url=""):
+        if base_url.find("/v1") == -1:
+            base_url = urljoin(base_url, "/v1/rerank")
+        if base_url.find("/rerank") == -1:
+            base_url = urljoin(base_url, "/v1/rerank")
+        self.model_name = model_name
+        self.base_url = base_url
+        self.headers = {"Content-Type": "application/json", "accept": "application/json"}
+        if key and key != "x":
+            self.headers["Authorization"] = f"Bearer {key}"
+
+    def similarity(self, query: str, texts: list):
+        if len(texts) == 0:
+            return np.array([]), 0
+        pairs = [(query, truncate(t, 4096)) for t in texts]
+        token_count = 0
+        for _, t in pairs:
+            token_count += num_tokens_from_string(t)
+        data = {"model": self.model_name, "query": query, "return_documents": "true", "return_len": "true", "documents": texts}
+        res = requests.post(self.base_url, headers=self.headers, json=data).json()
+        rank = np.zeros(len(texts), dtype=float)
+        try:
+            for d in res["results"]:
+                rank[d["index"]] = d["relevance_score"]
+        except Exception as _e:
+            log_exception(_e, res)
+        return rank, token_count
+
+
+class LocalAIRerank(Base):
+    _FACTORY_NAME = "LocalAI"
 
     def __init__(self, key, model_name, base_url):
-        """Initialize the OpenAI-API-compatible reranker.
-
-        Args:
-            key: API key for Bearer token authentication.
-            model_name: Model identifier. Triple-underscore suffixes
-                (e.g. "model___variant") are stripped to extract the
-                base model name.
-            base_url: Base URL of the rerank API. If the URL does not
-                already contain "/rerank", it is appended automatically.
-        """
-        # Normalize the base URL to point to the /rerank endpoint
-        normalized_base_url = (base_url or "").strip()
-        if "/rerank" in normalized_base_url:
-            self.base_url = normalized_base_url.rstrip("/")
+        if base_url.find("/rerank") == -1:
+            self.base_url = urljoin(base_url, "/rerank")
         else:
-            self.base_url = urljoin(f"{normalized_base_url.rstrip('/')}/", "rerank").rstrip("/")
+            self.base_url = base_url
         self.headers = {"Content-Type": "application/json", "Authorization": f"Bearer {key}"}
-        # Strip triple-underscore suffixes used for variant identification
         self.model_name = model_name.split("___")[0]
 
     def similarity(self, query: str, texts: list):
-        """Score document relevance against a query via the rerank API.
-
-        Args:
-            query: The search query string.
-            texts: List of candidate documents to rerank. Each is
-                truncated to 500 tokens before sending.
-
-        Returns:
-            A tuple of (normalized_ranks, token_count) where
-            normalized_ranks is a numpy array of scores in [0, 1].
-        """
-        # Truncate documents to prevent exceeding API token limits
+        # noway to config Ragflow , use fix setting
         texts = [truncate(t, 500) for t in texts]
         data = {
             "model": self.model_name,
@@ -155,38 +132,107 @@ class OpenAI_APIRerank(Base):
         res = requests.post(self.base_url, headers=self.headers, json=data).json()
         rank = np.zeros(len(texts), dtype=float)
         try:
-            # Map each result's relevance score back to its original index
             for d in res["results"]:
                 rank[d["index"]] = d["relevance_score"]
         except Exception as _e:
             log_exception(_e, res)
 
-        # Normalize scores to [0, 1] for consistent downstream usage
+        rank = Base._normalize_rank(rank)
+
+        return rank, token_count
+
+
+class NvidiaRerank(Base):
+    _FACTORY_NAME = "NVIDIA"
+
+    def __init__(self, key, model_name, base_url="https://ai.api.nvidia.com/v1/retrieval/nvidia/"):
+        if not base_url:
+            base_url = "https://ai.api.nvidia.com/v1/retrieval/nvidia/"
+        self.model_name = model_name
+
+        if self.model_name == "nvidia/nv-rerankqa-mistral-4b-v3":
+            self.base_url = urljoin(base_url, "nv-rerankqa-mistral-4b-v3/reranking")
+
+        if self.model_name == "nvidia/rerank-qa-mistral-4b":
+            self.base_url = urljoin(base_url, "reranking")
+            self.model_name = "nv-rerank-qa-mistral-4b:1"
+
+        self.headers = {
+            "accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {key}",
+        }
+
+    def similarity(self, query: str, texts: list):
+        token_count = num_tokens_from_string(query) + sum([num_tokens_from_string(t) for t in texts])
+        data = {
+            "model": self.model_name,
+            "query": {"text": query},
+            "passages": [{"text": text} for text in texts],
+            "truncate": "END",
+            "top_n": len(texts),
+        }
+        res = requests.post(self.base_url, headers=self.headers, json=data).json()
+        rank = np.zeros(len(texts), dtype=float)
+        try:
+            for d in res["rankings"]:
+                rank[d["index"]] = d["logit"]
+        except Exception as _e:
+            log_exception(_e, res)
+        return rank, token_count
+
+
+class LmStudioRerank(Base):
+    _FACTORY_NAME = "LM-Studio"
+
+    def __init__(self, key, model_name, base_url, **kwargs):
+        pass
+
+    def similarity(self, query: str, texts: list):
+        raise NotImplementedError("The LmStudioRerank has not been implement")
+
+
+class OpenAI_APIRerank(Base):
+    _FACTORY_NAME = "OpenAI-API-Compatible"
+
+    def __init__(self, key, model_name, base_url):
+        normalized_base_url = (base_url or "").strip()
+        if "/rerank" in normalized_base_url:
+            self.base_url = normalized_base_url.rstrip("/")
+        else:
+            self.base_url = urljoin(f"{normalized_base_url.rstrip('/')}/", "rerank").rstrip("/")
+        self.headers = {"Content-Type": "application/json", "Authorization": f"Bearer {key}"}
+        self.model_name = model_name.split("___")[0]
+
+    def similarity(self, query: str, texts: list):
+        # noway to config Ragflow , use fix setting
+        texts = [truncate(t, 500) for t in texts]
+        data = {
+            "model": self.model_name,
+            "query": query,
+            "documents": texts,
+            "top_n": len(texts),
+        }
+        token_count = 0
+        for t in texts:
+            token_count += num_tokens_from_string(t)
+        res = requests.post(self.base_url, headers=self.headers, json=data).json()
+        rank = np.zeros(len(texts), dtype=float)
+        try:
+            for d in res["results"]:
+                rank[d["index"]] = d["relevance_score"]
+        except Exception as _e:
+            log_exception(_e, res)
+
         rank = Base._normalize_rank(rank)
 
         return rank, token_count
 
 
 class CoHereRerank(Base):
-    """Cohere reranking provider using the native Cohere SDK.
-
-    Also used as the reranker for VLLM deployments that expose
-    a Cohere-compatible rerank interface.
-    """
-
     _FACTORY_NAME = ["Cohere", "VLLM"]
 
     def __init__(self, key, model_name, base_url=None):
-        """Initialize the Cohere reranker.
-
-        Args:
-            key: Cohere API key.
-            model_name: Cohere model name (e.g. "rerank-v3.5").
-                Triple-underscore suffixes are stripped.
-            base_url: Optional custom base URL for self-hosted
-                Cohere-compatible endpoints. If empty, uses the
-                default Cohere API endpoint.
-        """
         from cohere import Client
 
         # Only pass base_url if it's a non-empty string, otherwise use default Cohere API endpoint
@@ -197,16 +243,6 @@ class CoHereRerank(Base):
         self.model_name = model_name.split("___")[0]
 
     def similarity(self, query: str, texts: list):
-        """Score document relevance using Cohere's rerank API.
-
-        Args:
-            query: The search query string.
-            texts: List of candidate documents to rerank.
-
-        Returns:
-            A tuple of (rank_array, token_count) where rank_array
-            contains the raw relevance scores from Cohere.
-        """
         token_count = num_tokens_from_string(query) + sum([num_tokens_from_string(t) for t in texts])
         res = self.client.rerank(
             model=self.model_name,
@@ -217,7 +253,6 @@ class CoHereRerank(Base):
         )
         rank = np.zeros(len(texts), dtype=float)
         try:
-            # Map each result's relevance score back to its original index
             for d in res.results:
                 rank[d.index] = d.relevance_score
         except Exception as _e:
@@ -225,49 +260,275 @@ class CoHereRerank(Base):
         return rank, token_count
 
 
-class RAGconRerank(Base):
-    """RAGcon reranking provider - routes through LiteLLM proxy.
+class TogetherAIRerank(Base):
+    _FACTORY_NAME = "TogetherAI"
 
-    Sends rerank requests to the RAGcon gateway which proxies them to
-    the appropriate upstream reranking model provider.
-
-    Default Base URL: https://connect.ragcon.ai/v1
-    """
-
-    _FACTORY_NAME = "RAGcon"
-
-    def __init__(self, key, model_name, base_url=None, **kwargs):
-        """Initialize the RAGcon reranker.
-
-        Args:
-            key: RAGcon API key for authentication.
-            model_name: Model identifier routed through LiteLLM.
-            base_url: RAGcon proxy URL. Falls back to default if not provided.
-            **kwargs: Additional configuration (unused).
-        """
-        if not base_url:
-            base_url = "https://connect.ragcon.com/v1"
-
-        self._api_key = key
-        self._base_url = base_url
-
-        self.headers = {"Content-Type": "application/json", "Authorization": f"Bearer {key}"}
-        self.model_name = model_name
-
+    def __init__(self, key, model_name, base_url, **kwargs):
+        pass
 
     def similarity(self, query: str, texts: list):
-        """Score document relevance through the RAGcon rerank proxy.
+        raise NotImplementedError("The api has not been implement")
 
-        Args:
-            query: The search query string.
-            texts: List of candidate documents to rerank. Each is
-                truncated to 500 tokens before sending.
 
-        Returns:
-            A tuple of (normalized_ranks, token_count) where
-            normalized_ranks is a numpy array of scores in [0, 1].
-        """
-        # Truncate documents to prevent exceeding API token limits
+class SILICONFLOWRerank(Base):
+    _FACTORY_NAME = "SILICONFLOW"
+
+    def __init__(self, key, model_name, base_url="https://api.siliconflow.cn/v1/rerank"):
+        normalized_base_url = (base_url or "").strip()
+        if not normalized_base_url:
+            normalized_base_url = "https://api.siliconflow.cn/v1/rerank"
+        if "/rerank" not in normalized_base_url:
+            normalized_base_url = urljoin(f"{normalized_base_url.rstrip('/')}/", "rerank").rstrip("/")
+        self.model_name = model_name
+        self.base_url = normalized_base_url
+        self.headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "authorization": f"Bearer {key}",
+        }
+
+    def similarity(self, query: str, texts: list):
+        payload = {
+            "model": self.model_name,
+            "query": query,
+            "documents": texts,
+            "top_n": len(texts),
+            "return_documents": False,
+            "max_chunks_per_doc": 1024,
+            "overlap_tokens": 80,
+        }
+        response = requests.post(self.base_url, json=payload, headers=self.headers).json()
+        rank = np.zeros(len(texts), dtype=float)
+        try:
+            for d in response["results"]:
+                rank[d["index"]] = d["relevance_score"]
+        except Exception as _e:
+            log_exception(_e, response)
+        return (
+            rank,
+            total_token_count_from_response(response),
+        )
+
+
+class BaiduYiyanRerank(Base):
+    _FACTORY_NAME = "BaiduYiyan"
+
+    def __init__(self, key, model_name, base_url=None):
+        from qianfan.resources import Reranker
+
+        key = json.loads(key)
+        ak = key.get("yiyan_ak", "")
+        sk = key.get("yiyan_sk", "")
+        self.client = Reranker(ak=ak, sk=sk)
+        self.model_name = model_name
+
+    def similarity(self, query: str, texts: list):
+        res = self.client.do(
+            model=self.model_name,
+            query=query,
+            documents=texts,
+            top_n=len(texts),
+        ).body
+        rank = np.zeros(len(texts), dtype=float)
+        try:
+            for d in res["results"]:
+                rank[d["index"]] = d["relevance_score"]
+        except Exception as _e:
+            log_exception(_e, res)
+        return rank, total_token_count_from_response(res)
+
+
+class VoyageRerank(Base):
+    _FACTORY_NAME = "Voyage AI"
+
+    def __init__(self, key, model_name, base_url=None):
+        import voyageai
+
+        self.client = voyageai.Client(api_key=key)
+        self.model_name = model_name
+
+    def similarity(self, query: str, texts: list):
+        if not texts:
+            return np.array([]), 0
+        rank = np.zeros(len(texts), dtype=float)
+
+        res = self.client.rerank(query=query, documents=texts, model=self.model_name, top_k=len(texts))
+        try:
+            for r in res.results:
+                rank[r.index] = r.relevance_score
+        except Exception as _e:
+            log_exception(_e, res)
+        return rank, res.total_tokens
+
+
+class QWenRerank(Base):
+    _FACTORY_NAME = "Tongyi-Qianwen"
+
+    def __init__(self, key, model_name="gte-rerank", base_url=None, **kwargs):
+        import dashscope
+
+        self.api_key = key
+        self.model_name = dashscope.TextReRank.Models.gte_rerank if model_name is None else model_name
+
+    def similarity(self, query: str, texts: list):
+        from http import HTTPStatus
+
+        import dashscope
+
+        resp = dashscope.TextReRank.call(api_key=self.api_key, model=self.model_name, query=query, documents=texts, top_n=len(texts), return_documents=False)
+        rank = np.zeros(len(texts), dtype=float)
+        if resp.status_code == HTTPStatus.OK:
+            try:
+                for r in resp.output.results:
+                    rank[r.index] = r.relevance_score
+            except Exception as _e:
+                log_exception(_e, resp)
+            return rank, total_token_count_from_response(resp)
+        else:
+            raise ValueError(f"Error calling QWenRerank model {self.model_name}: {resp.status_code} - {resp.text}")
+
+
+class HuggingfaceRerank(Base):
+    _FACTORY_NAME = "HuggingFace"
+
+    @staticmethod
+    def post(query: str, texts: list, url="127.0.0.1"):
+        exc = None
+        scores = [0 for _ in range(len(texts))]
+        batch_size = 8
+        for i in range(0, len(texts), batch_size):
+            try:
+                res = requests.post(
+                    f"http://{url}/rerank", headers={"Content-Type": "application/json"}, json={"query": query, "texts": texts[i : i + batch_size], "raw_scores": False, "truncate": True}
+                )
+
+                for o in res.json():
+                    scores[o["index"] + i] = o["score"]
+            except Exception as e:
+                exc = e
+
+        if exc:
+            raise exc
+        return np.array(scores)
+
+    def __init__(self, key, model_name="BAAI/bge-reranker-v2-m3", base_url="http://127.0.0.1"):
+        self.model_name = model_name.split("___")[0]
+        self.base_url = base_url
+
+    def similarity(self, query: str, texts: list) -> tuple[np.ndarray, int]:
+        if not texts:
+            return np.array([]), 0
+        token_count = 0
+        for t in texts:
+            token_count += num_tokens_from_string(t)
+        return HuggingfaceRerank.post(query, texts, self.base_url), token_count
+
+
+class GPUStackRerank(Base):
+    _FACTORY_NAME = "GPUStack"
+
+    def __init__(self, key, model_name, base_url):
+        if not base_url:
+            raise ValueError("url cannot be None")
+
+        self.model_name = model_name
+        self.base_url = str(URL(base_url) / "v1" / "rerank")
+        self.headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "authorization": f"Bearer {key}",
+        }
+
+    def similarity(self, query: str, texts: list):
+        payload = {
+            "model": self.model_name,
+            "query": query,
+            "documents": texts,
+            "top_n": len(texts),
+        }
+
+        try:
+            response = requests.post(self.base_url, json=payload, headers=self.headers)
+            response.raise_for_status()
+            response_json = response.json()
+
+            rank = np.zeros(len(texts), dtype=float)
+
+            token_count = 0
+            for t in texts:
+                token_count += num_tokens_from_string(t)
+            try:
+                for result in response_json["results"]:
+                    rank[result["index"]] = result["relevance_score"]
+            except Exception as _e:
+                log_exception(_e, response)
+
+            return (
+                rank,
+                token_count,
+            )
+
+        except httpx.HTTPStatusError as e:
+            raise ValueError(f"Error calling GPUStackRerank model {self.model_name}: {e.response.status_code} - {e.response.text}")
+
+
+class NovitaRerank(JinaRerank):
+    _FACTORY_NAME = "NovitaAI"
+
+    def __init__(self, key, model_name, base_url="https://api.novita.ai/v3/openai/rerank"):
+        if not base_url:
+            base_url = "https://api.novita.ai/v3/openai/rerank"
+        super().__init__(key, model_name, base_url)
+
+
+class GiteeRerank(JinaRerank):
+    _FACTORY_NAME = "GiteeAI"
+
+    def __init__(self, key, model_name, base_url="https://ai.gitee.com/v1/rerank"):
+        if not base_url:
+            base_url = "https://ai.gitee.com/v1/rerank"
+        super().__init__(key, model_name, base_url)
+
+
+class Ai302Rerank(Base):
+    _FACTORY_NAME = "302.AI"
+
+    def __init__(self, key, model_name, base_url="https://api.302.ai/v1/rerank"):
+        if not base_url:
+            base_url = "https://api.302.ai/v1/rerank"
+        super().__init__(key, model_name, base_url)
+
+
+class JiekouAIRerank(JinaRerank):
+    _FACTORY_NAME = "Jiekou.AI"
+
+    def __init__(self, key, model_name, base_url="https://api.jiekou.ai/openai/v1/rerank"):
+        if not base_url:
+            base_url = "https://api.jiekou.ai/openai/v1/rerank"
+        super().__init__(key, model_name, base_url)
+
+class RAGconRerank(Base):
+    """
+    RAGcon Rerank Provider - routes through LiteLLM proxy
+    
+    Assumes LiteLLM proxy supports /rerank endpoint.
+    Default Base URL: https://connect.ragcon.ai/v1
+    """
+    _FACTORY_NAME = "RAGcon"
+    
+    def __init__(self, key, model_name, base_url=None, **kwargs):
+        if not base_url:
+            base_url = "https://connect.ragcon.com/v1"
+        
+        self._api_key = key
+        self._base_url = base_url
+        
+        self.headers = {"Content-Type": "application/json", "Authorization": f"Bearer {key}"}
+        self.model_name = model_name
+        
+    
+    def similarity(self, query: str, texts: list):
+        # noway to config Ragflow , use fix setting
         texts = [truncate(t, 500) for t in texts]
         data = {
             "model": self.model_name,
@@ -281,13 +542,11 @@ class RAGconRerank(Base):
         res = requests.post(self._base_url + "/rerank", headers=self.headers, json=data).json()
         rank = np.zeros(len(texts), dtype=float)
         try:
-            # Map each result's relevance score back to its original index
             for d in res["results"]:
                 rank[d["index"]] = d["relevance_score"]
         except Exception as _e:
             log_exception(_e, res)
 
-        # Normalize scores to [0, 1] for consistent downstream usage
         rank = Base._normalize_rank(rank)
 
         return rank, token_count

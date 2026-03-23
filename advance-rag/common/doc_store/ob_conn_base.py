@@ -13,15 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-"""OceanBase document store connection base implementation.
-
-Provides the abstract base class for connecting to OceanBase as a
-vector-capable document store. Handles table management, document
-CRUD, fulltext + dense vector search with SQL-based queries, and
-schema management for RAG chunk storage. Uses pymysql for MySQL-
-compatible OceanBase connections.
-"""
-
 import json
 import logging
 import os
@@ -104,13 +95,6 @@ def _try_with_lock(lock_name: str, process_func, check_func, timeout: int = None
 
 
 class OBConnectionBase(DocStoreConnection):
-    """Base class for OceanBase document store connections.
-
-    Implements DocStoreConnection interface for OceanBase, providing
-    table creation/deletion, document insert/update/delete, hybrid
-    search (fulltext + vector with SQL MATCH and cosine distance),
-    and field retrieval. Uses MySQL-compatible pymysql driver.
-    """
     """Base class for OceanBase document store connections."""
 
     def __init__(self, logger_name: str = 'ragflow.ob_conn'):
@@ -289,7 +273,7 @@ class OBConnectionBase(DocStoreConnection):
         """
         Create a document metadata table.
 
-        Table name pattern: knowledge_doc_meta_{tenant_id}
+        Table name pattern: ragflow_doc_meta_{tenant_id}
         - Per-tenant metadata table for storing document metadata fields
         """
         table_name = index_name
@@ -322,7 +306,7 @@ class OBConnectionBase(DocStoreConnection):
     def delete_idx(self, index_name: str, dataset_id: str):
         """Delete index/table."""
         # For doc_meta tables, use index_name directly as table name
-        if index_name.startswith("knowledge_doc_meta_"):
+        if index_name.startswith("ragflow_doc_meta_"):
             table_name = index_name
         else:
             table_name = self.get_table_name(index_name, dataset_id)
@@ -337,7 +321,7 @@ class OBConnectionBase(DocStoreConnection):
         """Check if index/table exists."""
         # For doc_meta tables, use index_name directly and only check table existence
         # (metadata tables don't have fulltext/vector indexes that chunk tables have)
-        if index_name.startswith("knowledge_doc_meta_"):
+        if index_name.startswith("ragflow_doc_meta_"):
             if index_name in self._table_exists_cache:
                 return True
             if not self.client.check_table_exists(index_name):
@@ -674,7 +658,7 @@ class OBConnectionBase(DocStoreConnection):
         if not self._check_table_exists_cached(index_name):
             return 0
         # For doc_meta tables, don't add dataset_id to condition
-        if not index_name.startswith("knowledge_doc_meta_"):
+        if not index_name.startswith("ragflow_doc_meta_"):
             condition[self._get_dataset_id_field()] = dataset_id
         try:
             from sqlalchemy import text

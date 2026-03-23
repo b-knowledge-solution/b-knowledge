@@ -13,18 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-"""
-Global application settings for the RAG worker.
-
-This module acts as the central registry for all runtime configuration:
-database connections, LLM model defaults, storage backends, doc-engine
-connectors, authentication, SMTP, and resource limits.  Most values are
-populated lazily by ``init_settings()`` which must be called once at
-startup (see ``executor_wrapper.py``).
-
-Module-level globals are used intentionally so that any module can do
-``from common import settings`` and read the current values.
-"""
 import os
 import json
 import secrets
@@ -39,6 +27,7 @@ import rag.utils
 import rag.utils.es_conn
 import rag.utils.infinity_conn
 import rag.utils.ob_conn
+import rag.utils.opensearch_conn
 from rag.utils.azure_sas_conn import RAGFlowAzureSasBlob
 from rag.utils.azure_spn_conn import RAGFlowAzureSpnBlob
 from rag.utils.gcs_conn import RAGFlowGCS
@@ -54,9 +43,6 @@ import memory.utils.es_conn as memory_es_conn
 import memory.utils.infinity_conn as memory_infinity_conn
 import memory.utils.ob_conn as memory_ob_conn
 
-# ---------------------------------------------------------------------------
-# LLM model configuration globals (populated by init_settings)
-# ---------------------------------------------------------------------------
 LLM = None
 LLM_FACTORY = None
 LLM_BASE_URL = None
@@ -76,19 +62,14 @@ API_KEY = None
 PARSERS = None
 HOST_IP = None
 HOST_PORT = None
-
+SECRET_KEY = None
 FACTORY_LLM_INFOS = None
 ALLOWED_LLM_FACTORIES = None
 
-# ---------------------------------------------------------------------------
-# Database configuration
-# ---------------------------------------------------------------------------
-DATABASE_TYPE = os.getenv("DB_TYPE", "postgres")
+DATABASE_TYPE = os.getenv("DB_TYPE", "mysql")
 DATABASE = decrypt_database_config(name=DATABASE_TYPE)
 
-# ---------------------------------------------------------------------------
-# Authentication globals
-# ---------------------------------------------------------------------------
+# authentication
 AUTHENTICATION_CONF = None
 
 # client
@@ -97,19 +78,14 @@ HTTP_APP_KEY = None
 GITHUB_OAUTH = None
 FEISHU_OAUTH = None
 OAUTH_CONFIG = None
-
-# ---------------------------------------------------------------------------
-# Document engine configuration
-# ---------------------------------------------------------------------------
-DOC_ENGINE = os.getenv('DOC_ENGINE', 'opensearch')
+DOC_ENGINE = os.getenv('DOC_ENGINE', 'elasticsearch')
 DOC_ENGINE_INFINITY = (DOC_ENGINE.lower() == "infinity")
 DOC_ENGINE_OCEANBASE = (DOC_ENGINE.lower() == "oceanbase")
 
-# Document store connections (set by init_settings based on DOC_ENGINE)
+
 docStoreConn = None
 msgStoreConn = None
 
-# Search retriever instances
 retriever = None
 kg_retriever = None
 
@@ -123,9 +99,6 @@ DISABLE_PASSWORD_LOGIN = False
 SANDBOX_HOST = None
 STRONG_TEST_COUNT = int(os.environ.get("STRONG_TEST_COUNT", "8"))
 
-# ---------------------------------------------------------------------------
-# SMTP / email configuration
-# ---------------------------------------------------------------------------
 SMTP_CONF = None
 MAIL_SERVER = ""
 MAIL_PORT = 000
@@ -136,62 +109,53 @@ MAIL_PASSWORD = ""
 MAIL_DEFAULT_SENDER = ()
 MAIL_FRONTEND_URL = ""
 
-# ---------------------------------------------------------------------------
-# Storage and vector DB configuration dicts (populated by init_settings)
-# ---------------------------------------------------------------------------
-VECTORDB = {}
+# move from rag.settings
+ES = {}
 INFINITY = {}
 AZURE = {}
 S3 = {}
+MINIO = {}
 OB = {}
 OSS = {}
 OS = {}
 GCS = {}
 
-# ---------------------------------------------------------------------------
-# Resource limits
-# ---------------------------------------------------------------------------
 DOC_MAXIMUM_SIZE: int = 128 * 1024 * 1024
 DOC_BULK_SIZE: int = 4
 EMBEDDING_BATCH_SIZE: int = 16
 
 PARALLEL_DEVICES: int = 0
 
-# ---------------------------------------------------------------------------
-# Object-storage backend selection
-# ---------------------------------------------------------------------------
 STORAGE_IMPL_TYPE = os.getenv('STORAGE_IMPL', 'MINIO')
 STORAGE_IMPL = None
 
 def get_svr_queue_name(priority: int) -> str:
-    """Return the Redis stream name for a given task priority level.
-
-    Args:
-        priority: Task priority (0 = default queue, >0 = priority-suffixed queue).
-
-    Returns:
-        Redis stream name string.
-    """
     if priority == 0:
         return SVR_QUEUE_NAME
     return f"{SVR_QUEUE_NAME}_{priority}"
 
 def get_svr_queue_names():
-    """Return all server queue names ordered by descending priority.
-
-    Returns:
-        List of Redis stream name strings (priority 1 first, then 0).
-    """
     return [get_svr_queue_name(priority) for priority in [1, 0]]
 
+def _get_or_create_secret_key():
+    # secret_key = os.environ.get("RAGFLOW_SECRET_KEY")
+    # if secret_key and len(secret_key) >= 32:
+    #     return secret_key
+    #
+    # # Check if there's a configured secret key
+    # configured_key = get_base_config(RAG_FLOW_SERVICE_NAME, {}).get("secret_key")
+    # if configured_key and configured_key != str(date.today()) and len(configured_key) >= 32:
+    #     return configured_key
 
+    # Generate a new secure key and warn about it
+    import logging
+
+    generated_key = secrets.token_hex(32)
+    secret_key = REDIS_CONN.get_or_create_secret_key("ragflow:system:secret_key", generated_key)
+    logging.warning("SECURITY WARNING: Using auto-generated SECRET_KEY.")
+    return secret_key
 
 class StorageFactory:
-    """Factory for creating object-storage backend instances.
-
-    Maps ``Storage`` enum members to their concrete implementation classes
-    and instantiates them on demand.
-    """
     storage_mapping = {
         Storage.MINIO: RAGFlowMinio,
         Storage.AZURE_SPN: RAGFlowAzureSpnBlob,
@@ -204,29 +168,14 @@ class StorageFactory:
 
     @classmethod
     def create(cls, storage: Storage):
-        """Instantiate the storage backend for the given ``Storage`` enum value.
-
-        Args:
-            storage: A ``Storage`` enum member.
-
-        Returns:
-            An initialised storage backend instance.
-        """
         return cls.storage_mapping[storage]()
 
 
 def init_settings():
-    """Initialise all global settings from config files and environment variables.
-
-    Must be called once at application startup. Populates LLM model defaults,
-    database config, authentication, doc-engine connections, object storage,
-    search retrievers, SMTP, and resource limits.
-    """
     global DATABASE_TYPE, DATABASE
-    DATABASE_TYPE = os.getenv("DB_TYPE", "postgres")
+    DATABASE_TYPE = os.getenv("DB_TYPE", "mysql")
     DATABASE = decrypt_database_config(name=DATABASE_TYPE)
-
-    # ---- LLM defaults ----
+    
     global ALLOWED_LLM_FACTORIES, LLM_FACTORY, LLM_BASE_URL
     llm_settings = get_base_config("user_default_llm", {}) or {}
     llm_default_models = llm_settings.get("default_models", {}) or {}
@@ -266,7 +215,6 @@ def init_settings():
         "parsers", "naive:General,qa:Q&A,resume:Resume,manual:Manual,table:Table,paper:Paper,book:Book,laws:Laws,presentation:Presentation,picture:Picture,one:One,audio:Audio,email:Email,tag:Tag"
     )
 
-    # ---- Resolve per-model configs for each LLM type ----
     global CHAT_MDL, EMBEDDING_MDL, RERANK_MDL, ASR_MDL, IMAGE2TEXT_MDL
     chat_entry = _parse_model_entry(llm_default_models.get("chat_model", CHAT_MDL))
     embedding_entry = _parse_model_entry(llm_default_models.get("embedding_model", EMBEDDING_MDL))
@@ -283,7 +231,6 @@ def init_settings():
 
     CHAT_MDL = CHAT_CFG.get("model", "") or ""
     EMBEDDING_MDL = EMBEDDING_CFG.get("model", "") or ""
-    # Override embedding model when TEI is configured via Docker Compose profiles
     compose_profiles = os.getenv("COMPOSE_PROFILES", "")
     if "tei-" in compose_profiles:
         EMBEDDING_MDL = os.getenv("TEI_MODEL", EMBEDDING_MDL or "BAAI/bge-small-en-v1.5")
@@ -295,10 +242,11 @@ def init_settings():
     HOST_IP = get_base_config(RAG_FLOW_SERVICE_NAME, {}).get("host", "127.0.0.1")
     HOST_PORT = get_base_config(RAG_FLOW_SERVICE_NAME, {}).get("http_port")
 
+    global SECRET_KEY
+    SECRET_KEY = _get_or_create_secret_key()
 
 
-
-    # ---- Authentication ----
+    # authentication
     authentication_conf = get_base_config("authentication", {})
 
     global CLIENT_AUTHENTICATION, HTTP_APP_KEY, GITHUB_OAUTH, FEISHU_OAUTH, OAUTH_CONFIG
@@ -309,14 +257,13 @@ def init_settings():
     FEISHU_OAUTH = get_base_config("oauth", {}).get("feishu")
     OAUTH_CONFIG = get_base_config("oauth", {})
 
-    # ---- Document engine ----
-    global DOC_ENGINE, DOC_ENGINE_INFINITY, DOC_ENGINE_OCEANBASE, docStoreConn, VECTORDB, OB, OS, INFINITY
-    DOC_ENGINE = os.environ.get("DOC_ENGINE", "opensearch").strip()
+    global DOC_ENGINE, DOC_ENGINE_INFINITY, DOC_ENGINE_OCEANBASE, docStoreConn, ES, OB, OS, INFINITY
+    DOC_ENGINE = os.environ.get("DOC_ENGINE", "elasticsearch").strip()
     DOC_ENGINE_INFINITY = (DOC_ENGINE.lower() == "infinity")
     DOC_ENGINE_OCEANBASE = (DOC_ENGINE.lower() == "oceanbase")
     lower_case_doc_engine = DOC_ENGINE.lower()
-    if lower_case_doc_engine in ("elasticsearch", "opensearch"):
-        VECTORDB = get_base_config("vectordb", {})
+    if lower_case_doc_engine == "elasticsearch":
+        ES = get_base_config("es", {})
         docStoreConn = rag.utils.es_conn.ESConnection()
     elif lower_case_doc_engine == "infinity":
         INFINITY = get_base_config("infinity", {
@@ -325,6 +272,9 @@ def init_settings():
             "db_name": "default_db"
         })
         docStoreConn = rag.utils.infinity_conn.InfinityConnection()
+    elif lower_case_doc_engine == "opensearch":
+        OS = get_base_config("os", {})
+        docStoreConn = rag.utils.opensearch_conn.OSConnection()
     elif lower_case_doc_engine == "oceanbase":
         OB = get_base_config("oceanbase", {})
         docStoreConn = rag.utils.ob_conn.OBConnection()
@@ -334,12 +284,12 @@ def init_settings():
     else:
         raise Exception(f"Not supported doc engine: {DOC_ENGINE}")
 
-    # Message store uses the same engine type as the document store
     global msgStoreConn
-    if lower_case_doc_engine in ("elasticsearch", "opensearch"):
-        VECTORDB = get_base_config("vectordb", {})
+    # use the same engine for message store
+    if DOC_ENGINE == "elasticsearch":
+        ES = get_base_config("es", {})
         msgStoreConn = memory_es_conn.ESConnection()
-    elif lower_case_doc_engine == "infinity":
+    elif DOC_ENGINE == "infinity":
         INFINITY = get_base_config("infinity", {
             "uri": "infinity:23817",
             "postgres_port": 5432,
@@ -349,21 +299,13 @@ def init_settings():
     elif lower_case_doc_engine in ["oceanbase", "seekdb"]:
         msgStoreConn = memory_ob_conn.OBConnection()
 
-    # ---- Object storage ----
-    global AZURE, S3, OSS, GCS
+    global AZURE, S3, MINIO, OSS, GCS
     if STORAGE_IMPL_TYPE in ['AZURE_SPN', 'AZURE_SAS']:
         AZURE = get_base_config("azure", {})
     elif STORAGE_IMPL_TYPE == 'AWS_S3':
         S3 = get_base_config("s3", {})
     elif STORAGE_IMPL_TYPE == 'MINIO':
-        S3 = decrypt_database_config(name="s3")
-        # Allow env vars to override YAML for single-bucket mode config,
-        # matching RAGFlow's MINIO_BUCKET / MINIO_PREFIX_PATH convention
-        # but using S3_BUCKET / S3_PREFIX_PATH naming.
-        if os.environ.get("S3_BUCKET"):
-            S3["bucket"] = os.environ["S3_BUCKET"]
-        if os.environ.get("S3_PREFIX_PATH"):
-            S3["prefix_path"] = os.environ["S3_PREFIX_PATH"]
+        MINIO = decrypt_database_config(name="minio")
     elif STORAGE_IMPL_TYPE == 'OSS':
         OSS = get_base_config("oss", {})
     elif STORAGE_IMPL_TYPE == 'GCS':
@@ -371,19 +313,20 @@ def init_settings():
 
     global STORAGE_IMPL
     storage_impl = StorageFactory.create(Storage[STORAGE_IMPL_TYPE])
-
-    # Optionally wrap storage with encryption layer
+    
+    # Define crypto settings
     crypto_enabled = os.environ.get("RAGFLOW_CRYPTO_ENABLED", "false").lower() == "true"
-
+    
+    # Check if encryption is enabled
     if crypto_enabled:
         try:
             from rag.utils.encrypted_storage import create_encrypted_storage
             algorithm = os.environ.get("RAGFLOW_CRYPTO_ALGORITHM", "aes-256-cbc")
             crypto_key = os.environ.get("RAGFLOW_CRYPTO_KEY")
-
-            STORAGE_IMPL = create_encrypted_storage(storage_impl,
-                algorithm=algorithm,
-                key=crypto_key,
+            
+            STORAGE_IMPL = create_encrypted_storage(storage_impl, 
+                algorithm=algorithm, 
+                key=crypto_key, 
                 encryption_enabled=crypto_enabled)
         except Exception as e:
             logging.error(f"Failed to initialize encrypted storage: {e}")
@@ -391,19 +334,16 @@ def init_settings():
     else:
         STORAGE_IMPL = storage_impl
 
-    # ---- Search retrievers ----
     global retriever, kg_retriever
     retriever = search.Dealer(docStoreConn)
     from rag.graphrag import search as kg_search
 
     kg_retriever = kg_search.KGSearch(docStoreConn)
 
-    # ---- Sandbox ----
     global SANDBOX_HOST
     if int(os.environ.get("SANDBOX_ENABLED", "0")):
         SANDBOX_HOST = os.environ.get("SANDBOX_HOST", "sandbox-executor-manager")
 
-    # ---- SMTP / email ----
     global SMTP_CONF
     SMTP_CONF = get_base_config("smtp", {})
 
@@ -419,7 +359,6 @@ def init_settings():
         MAIL_DEFAULT_SENDER = (mail_default_sender[0], mail_default_sender[1])
     MAIL_FRONTEND_URL = SMTP_CONF.get("mail_frontend_url", "")
 
-    # ---- Resource limits ----
     global DOC_MAXIMUM_SIZE, DOC_BULK_SIZE, EMBEDDING_BATCH_SIZE
     DOC_MAXIMUM_SIZE = int(os.environ.get("MAX_CONTENT_LENGTH", 128 * 1024 * 1024))
     DOC_BULK_SIZE = int(os.environ.get("DOC_BULK_SIZE", 4))
@@ -429,11 +368,6 @@ def init_settings():
 
 
 def check_and_install_torch():
-    """Attempt to install PyTorch and detect available GPU devices.
-
-    Sets ``PARALLEL_DEVICES`` to the number of CUDA-capable GPUs found.
-    Logs a warning if torch cannot be imported.
-    """
     global PARALLEL_DEVICES
     try:
         pip_install_torch()
@@ -444,15 +378,6 @@ def check_and_install_torch():
         logging.info("can't import package 'torch'")
 
 def _parse_model_entry(entry):
-    """Normalise a model config entry (string or dict) into a standard dict.
-
-    Args:
-        entry: Model name string or config dict with optional ``factory``,
-            ``api_key``, and ``base_url`` keys.
-
-    Returns:
-        Dict with ``name``, ``factory``, ``api_key``, and ``base_url`` keys.
-    """
     if isinstance(entry, str):
         return {"name": entry, "factory": None, "api_key": None, "base_url": None}
     if isinstance(entry, dict):
@@ -467,26 +392,11 @@ def _parse_model_entry(entry):
 
 
 def _resolve_per_model_config(entry_dict, backup_factory, backup_api_key, backup_base_url):
-    """Resolve a complete model configuration, falling back to global defaults.
-
-    If the model name does not already contain an ``@factory`` suffix and a
-    factory is available, the suffix is appended automatically.
-
-    Args:
-        entry_dict: Parsed model entry from ``_parse_model_entry``.
-        backup_factory: Fallback LLM factory name.
-        backup_api_key: Fallback API key.
-        backup_base_url: Fallback base URL.
-
-    Returns:
-        Dict with ``model``, ``factory``, ``api_key``, and ``base_url`` keys.
-    """
     name = (entry_dict.get("name") or "").strip()
     m_factory = entry_dict.get("factory") or backup_factory or ""
     m_api_key = entry_dict.get("api_key") or backup_api_key or ""
     m_base_url = entry_dict.get("base_url") or backup_base_url or ""
 
-    # Append factory suffix if not already present
     if name and "@" not in name and m_factory:
         name = f"{name}@{m_factory}"
 
@@ -498,6 +408,6 @@ def _resolve_per_model_config(entry_dict, backup_factory, backup_api_key, backup
     }
 
 def print_rag_settings():
-    """Log key RAG resource-limit settings for debugging."""
     logging.info(f"MAX_CONTENT_LENGTH: {DOC_MAXIMUM_SIZE}")
     logging.info(f"MAX_FILE_COUNT_PER_USER: {int(os.environ.get('MAX_FILE_NUM_PER_USER', 0))}")
+
