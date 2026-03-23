@@ -153,8 +153,8 @@ export interface ChatLlmSetting {
 export interface PromptConfig {
   /** System-level instruction */
   system?: string | undefined
-  /** Welcome message displayed at start */
-  prologue?: string | undefined
+  /** Welcome message displayed at start (string or per-locale map) */
+  prologue?: string | Record<string, string> | undefined
   /** Number of top documents to retrieve */
   top_n?: number | undefined
   /** Number of top keywords / reranker input size */
@@ -171,8 +171,8 @@ export interface PromptConfig {
   keyword?: boolean | undefined
   /** Include source citations in response */
   quote?: boolean | undefined
-  /** Response when no relevant content found */
-  empty_response?: string | undefined
+  /** Response when no relevant content found (string or per-locale map) */
+  empty_response?: string | Record<string, string> | undefined
   /** Enable table of contents enhancement */
   toc_enhance?: boolean | undefined
   /** Tavily API key for web search */

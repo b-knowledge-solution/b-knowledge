@@ -127,8 +127,10 @@
     "glossary": "Từ điển",
     "apiKeys": "Khóa API",
     "agents": "Tác tử",
+    "agentStudio": "Agent Studio",
     "agentList": "Danh sách Tác tử",
-    "memory": "Bộ nhớ"
+    "memory": "Bộ nhớ",
+    "aiManagement": "Quản lý AI"
   },
   "iam": {
     "title": "Quản lý Định danh & Truy cập",
@@ -2545,5 +2547,16 @@
     "systemPrompt": "Prompt hệ thống",
     "userPrompt": "Prompt người dùng",
     "forgettingPolicy": "Chính sách quên"
+  },
+  "kbPicker": {
+    "searchPlaceholder": "Tìm bộ dữ liệu và dự án...",
+    "datasets": "Bộ dữ liệu",
+    "projects": "Dự án",
+    "dataset": "Bộ dữ liệu",
+    "project": "Dự án",
+    "noResults": "Không tìm thấy kết quả",
+    "selectKnowledgeBases": "Chọn cơ sở kiến thức...",
+    "selected": "{{count}} đã chọn",
+    "docs": "{{count}} tài liệu"
   }
 }

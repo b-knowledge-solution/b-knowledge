@@ -30,7 +30,7 @@ export function CreateChatAssistantAgentLink() {
    * @description Navigate to agent canvas with chat mode pre-configured
    */
   const handleClick = () => {
-    navigate('/agents/new?mode=chat')
+    navigate('/agent-studio/agents/new?mode=chat')
   }
 
   return (

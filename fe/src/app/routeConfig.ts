@@ -41,20 +41,20 @@ export interface RouteMetadata {
  * For dynamic routes (e.g. `/datasets/:id`), use the `matchRoute()` helper.
  */
 export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
-  '/agents': {
+  '/agent-studio/agents': {
     titleKey: 'agents.pageTitle',
     fullBleed: true,
   },
-  '/agents/:id': {
+  '/agent-studio/agents/:id': {
     titleKey: 'agents.canvasTitle',
     fullBleed: true,
     hideHeader: true,
   },
-  '/memory': {
+  '/agent-studio/memory': {
     titleKey: 'memory.title',
     fullBleed: true,
   },
-  '/memory/:id': {
+  '/agent-studio/memory/:id': {
     titleKey: 'memory.detail',
     fullBleed: true,
   },
@@ -169,12 +169,12 @@ export function getRouteMetadata(pathname: string): RouteMetadata {
     return ROUTE_CONFIG['/data-studio/datasets/:id/documents/:docId/chunks']!;
   }
   // Match agent canvas route with dynamic ID
-  if (pathname.startsWith('/agents/')) {
-    return ROUTE_CONFIG['/agents/:id']!;
+  if (pathname.startsWith('/agent-studio/agents/')) {
+    return ROUTE_CONFIG['/agent-studio/agents/:id']!;
   }
   // Match memory detail route with dynamic ID
-  if (pathname.startsWith('/memory/')) {
-    return ROUTE_CONFIG['/memory/:id']!;
+  if (pathname.startsWith('/agent-studio/memory/')) {
+    return ROUTE_CONFIG['/agent-studio/memory/:id']!;
   }
   if (pathname.startsWith('/data-studio/datasets/')) {
     return ROUTE_CONFIG['/data-studio/datasets']!;

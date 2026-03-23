@@ -67,14 +67,14 @@ export function AgentCard({ agent, onDuplicate, onDelete, onExport }: AgentCardP
    * @description Navigate to the agent canvas editor for this agent
    */
   const handleEdit = () => {
-    navigate(`/agents/${agent.id}`)
+    navigate(`/agent-studio/agents/${agent.id}`)
   }
 
   /**
    * @description Navigate to agent canvas on card body click (not dropdown)
    */
   const handleCardClick = () => {
-    navigate(`/agents/${agent.id}`)
+    navigate(`/agent-studio/agents/${agent.id}`)
   }
 
   // Format the last modified date for display

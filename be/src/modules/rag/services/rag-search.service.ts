@@ -507,13 +507,15 @@ export class RagSearchService {
             must.push({ term: { available_int: options.available ? 1 : 0 } })
         }
 
+        // NOTE: tenant isolation is provided by the index name (knowledge_{tenantId}).
+        // The Python RAG worker does NOT store tenant_id as a document field in chunks,
+        // so we must NOT filter by tenant_id here — it would match zero documents.
         const res = await client.search({
             index: getIndexName(tenantId),
             body: {
                 query: {
                     bool: {
                         must,
-                        filter: this.getFilters(tenantId),
                     },
                 },
                 from: offset,
@@ -661,6 +663,7 @@ export class RagSearchService {
      */
     async deleteChunksByDocId(tenantId: string, datasetId: string, docId: string): Promise<{ deleted: number }> {
         const client = getClient()
+        // NOTE: tenant isolation is provided by the index name — Python chunks have no tenant_id field
         const res = await client.deleteByQuery({
             index: getIndexName(tenantId),
             body: {
@@ -669,7 +672,6 @@ export class RagSearchService {
                         must: [
                             { term: { kb_id: datasetId.replace(/-/g, '') } },
                             { term: { doc_id: docId.replace(/-/g, '') } },
-                            { term: { tenant_id: tenantId } },
                         ],
                     },
                 },
@@ -697,6 +699,7 @@ export class RagSearchService {
         available: boolean,
     ): Promise<number> {
         const client = getClient()
+        // NOTE: tenant isolation is provided by the index name — Python chunks have no tenant_id field
         const res = await client.updateByQuery({
             index: getIndexName(tenantId),
             body: {
@@ -704,8 +707,7 @@ export class RagSearchService {
                     bool: {
                         must: [
                             { term: { kb_id: datasetId.replace(/-/g, '') } },
-                            { term: { doc_id: docId } },
-                            { term: { tenant_id: tenantId } },
+                            { term: { doc_id: docId.replace(/-/g, '') } },
                         ],
                     },
                 },
@@ -731,6 +733,7 @@ export class RagSearchService {
     async deleteDocumentChunks(tenantId: string, docId: string): Promise<number> {
         try {
             const client = getClient()
+            // NOTE: tenant isolation is provided by the index name — Python chunks have no tenant_id field
             const res = await client.deleteByQuery({
                 index: getIndexName(tenantId),
                 body: {
@@ -738,7 +741,6 @@ export class RagSearchService {
                         bool: {
                             must: [
                                 { term: { doc_id: docId.replace(/-/g, '') } },
-                                { term: { tenant_id: tenantId } },
                             ],
                         },
                     },

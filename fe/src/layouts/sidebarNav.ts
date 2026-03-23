@@ -31,9 +31,9 @@ import {
   FolderOpen,
   LayoutDashboard,
   BrainCircuit,
-  KeyRound,
   Workflow,
   Brain,
+  Sparkles,
 } from 'lucide-react'
 import type { config } from '@/config'
 
@@ -104,15 +104,6 @@ export function isNavGroup(entry: SidebarNavEntry): entry is SidebarNavGroup {
  *  3. Add the `<Route>` element in `App.tsx`
  */
 export const SIDEBAR_NAV: SidebarNavEntry[] = [
-  // ── Agents group (with Memory child) ────────────────────────────
-  {
-    labelKey: 'nav.agents',
-    icon: Workflow,
-    children: [
-      { path: '/agents', labelKey: 'nav.agentList', icon: Workflow, iconSize: 18 },
-      { path: '/memory', labelKey: 'nav.memory', icon: Brain, iconSize: 18 },
-    ],
-  },
   {
     path: '/chat',
     labelKey: 'nav.aiChat',
@@ -128,34 +119,17 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
     featureFlag: 'enableAiSearch',
   },
 
+
   // ── Data Studio (super-admin / admin / leader) ─────────────────
   {
     labelKey: 'nav.dataStudio',
     icon: LayoutDashboard,
     roles: ['super-admin', 'admin', 'leader'],
     children: [
-
       {
         path: '/data-studio/projects',
         labelKey: 'nav.projects',
         icon: FolderOpen,
-      },
-      {
-        path: '/data-studio/glossary',
-        labelKey: 'nav.glossary',
-        icon: BookOpen,
-      },
-      {
-        path: '/data-studio/chat-assistants',
-        labelKey: 'nav.chatAssistants',
-        icon: MessageSquare,
-        roles: ['super-admin', 'admin'],
-      },
-      {
-        path: '/data-studio/search-apps',
-        labelKey: 'nav.searchApps',
-        icon: Search,
-        roles: ['super-admin', 'admin'],
       },
       {
         path: '/data-studio/datasets',
@@ -168,21 +142,49 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
         icon: BrainCircuit,
         roles: ['super-admin', 'admin'],
       },
+    ],
+  },
+
+  // ── AI Management (super-admin / admin) ─────────────────────────
+  {
+    labelKey: 'nav.aiManagement',
+    icon: Sparkles,
+    roles: ['super-admin', 'admin'],
+    children: [
       {
-        path: '/data-studio/api-keys',
-        labelKey: 'nav.apiKeys',
-        icon: KeyRound,
-        roles: ['super-admin', 'admin', 'leader'],
+        path: '/data-studio/chat-assistants',
+        labelKey: 'nav.chatAssistants',
+        icon: MessageSquare,
+      },
+      {
+        path: '/data-studio/search-apps',
+        labelKey: 'nav.searchApps',
+        icon: Search,
       },
       {
         path: '/data-studio/histories',
         labelKey: 'nav.histories',
         icon: History,
-        roles: ['super-admin', 'admin'],
       },
     ],
   },
 
+  // ── Agent Studio (with Agent List & Memory children) ────────────
+  {
+    labelKey: 'nav.agentStudio',
+    icon: Workflow,
+    children: [
+      { path: '/agent-studio/agents', labelKey: 'nav.agentList', icon: Workflow, iconSize: 18 },
+      { path: '/agent-studio/memory', labelKey: 'nav.memory', icon: Brain, iconSize: 18 },
+    ],
+  },
+  {
+    path: '/glossary',
+    labelKey: 'nav.glossary',
+    icon: BookOpen,
+    iconSize: 20,
+    roles: ['super-admin', 'admin', 'leader'],
+  },
   // ── IAM (super-admin / admin) ───────────────────────────────────
   {
     labelKey: 'nav.iam',

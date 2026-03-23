@@ -30,7 +30,7 @@ export function CreateSearchAppAgentLink() {
    * @description Navigate to agent canvas with search mode pre-configured
    */
   const handleClick = () => {
-    navigate('/agents/new?mode=search')
+    navigate('/agent-studio/agents/new?mode=search')
   }
 
   return (

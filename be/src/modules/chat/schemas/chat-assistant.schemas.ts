@@ -44,12 +44,12 @@ const metadataFilterSchema = z.object({
 const promptConfigSchema = z.object({
   /** System prompt template (may contain {variable_name} placeholders) */
   system: z.string().optional(),
-  prologue: z.string().optional(),
+  prologue: z.union([z.string(), z.record(z.string(), z.string())]).optional(),
   refine_multiturn: z.boolean().optional(),
   cross_languages: z.string().optional(),
   keyword: z.boolean().optional(),
   quote: z.boolean().optional(),
-  empty_response: z.string().optional(),
+  empty_response: z.union([z.string(), z.record(z.string(), z.string())]).optional(),
   toc_enhance: z.boolean().optional(),
   tavily_api_key: z.string().optional(),
   use_kg: z.boolean().optional(),

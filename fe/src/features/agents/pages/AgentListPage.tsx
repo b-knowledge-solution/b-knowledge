@@ -171,7 +171,7 @@ export default function AgentListPage() {
       setCreateForm({ name: '', description: '', mode: 'agent' })
       globalMessage.success(t('agents.agentCreated'))
       // Navigate to the new agent's canvas
-      navigate(`/agents/${newAgent.id}`)
+      navigate(`/agent-studio/agents/${newAgent.id}`)
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : t('common.error')
       globalMessage.error(msg)
@@ -243,7 +243,7 @@ export default function AgentListPage() {
         ...(template.description ? { description: template.description } : {}),
       })
       globalMessage.success(t('agents.agentCreated'))
-      navigate(`/agents/${newAgent.id}`)
+      navigate(`/agent-studio/agents/${newAgent.id}`)
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : t('common.error')
       globalMessage.error(msg)

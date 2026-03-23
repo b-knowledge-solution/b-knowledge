@@ -21,6 +21,8 @@ import { LlmSettingFields, type LlmSettingValue } from '@/components/llm-setting
 import { RerankSelector } from '@/components/rerank-selector/RerankSelector'
 import { MetadataFilterEditor } from '@/components/metadata-filter/MetadataFilterEditor'
 import { CrossLanguageSelector } from '@/components/cross-language/CrossLanguageSelector'
+import { KnowledgeBasePicker, type KnowledgeBaseItem } from '@/components/knowledge-base-picker/KnowledgeBasePicker'
+import MultiLangInput from '@/components/multi-lang-input/MultiLangInput'
 import ChatVariableForm from './ChatVariableForm'
 import type {
   ChatAssistant,
@@ -65,7 +67,9 @@ interface ChatAssistantConfigProps {
   /** Existing dialog data for editing (null for new) */
   dialog?: ChatAssistant | null
   /** Available datasets for selection */
-  datasets?: { id: string; name: string }[]
+  datasets?: KnowledgeBaseItem[]
+  /** Available projects for selection */
+  projects?: KnowledgeBaseItem[]
 }
 
 // ============================================================================
@@ -88,6 +92,7 @@ function ChatAssistantConfig({
   onSave,
   dialog,
   datasets = [],
+  projects = [],
 }: ChatAssistantConfigProps) {
   const { t } = useTranslation()
 
@@ -100,8 +105,8 @@ function ChatAssistantConfig({
 
   // ---- Prompt config state ----
   const [systemPrompt, setSystemPrompt] = useState('')
-  const [prologue, setPrologue] = useState('')
-  const [emptyResponse, setEmptyResponse] = useState('')
+  const [prologue, setPrologue] = useState<Record<string, string>>({ en: '', vi: '', ja: '' })
+  const [emptyResponse, setEmptyResponse] = useState<Record<string, string>>({ en: '', vi: '', ja: '' })
   const [variables, setVariables] = useState<PromptVariable[]>([])
 
   // ---- Feature flags ----
@@ -154,8 +159,18 @@ function ChatAssistantConfig({
       // Prompt config fields
       const pc = dialog.prompt_config
       setSystemPrompt(pc.system ?? '')
-      setPrologue(pc.prologue ?? '')
-      setEmptyResponse(pc.empty_response ?? '')
+      // Handle both legacy string and per-locale Record for prologue
+      setPrologue(
+        typeof pc.prologue === 'object' && pc.prologue !== null
+          ? pc.prologue as Record<string, string>
+          : { en: (pc.prologue as string) ?? '', vi: '', ja: '' }
+      )
+      // Handle both legacy string and per-locale Record for empty_response
+      setEmptyResponse(
+        typeof pc.empty_response === 'object' && pc.empty_response !== null
+          ? pc.empty_response as Record<string, string>
+          : { en: (pc.empty_response as string) ?? '', vi: '', ja: '' }
+      )
       setLanguage(pc.language ?? '')
 
       // Feature flags
@@ -189,8 +204,8 @@ function ChatAssistantConfig({
       setIsPublic(false)
       setLanguage('')
       setSystemPrompt('')
-      setPrologue('')
-      setEmptyResponse('')
+      setPrologue({ en: '', vi: '', ja: '' })
+      setEmptyResponse({ en: '', vi: '', ja: '' })
       setVariables([])
       setQuote(true)
       setKeyword(false)
@@ -219,16 +234,6 @@ function ChatAssistantConfig({
   }, [dialog, open])
 
   /**
-   * @description Toggle a knowledge base in the selection.
-   * @param kbId - Knowledge base ID to toggle
-   */
-  const toggleKb = (kbId: string) => {
-    setSelectedKbs((prev) =>
-      prev.includes(kbId) ? prev.filter((id) => id !== kbId) : [...prev, kbId],
-    )
-  }
-
-  /**
    * @description Validate and submit the form, building a full prompt config payload.
    */
   const handleSave = () => {
@@ -241,8 +246,9 @@ function ChatAssistantConfig({
     // Build prompt_config with all fields
     const prompt_config: Partial<PromptConfig> = {
       system: systemPrompt || undefined,
-      prologue: prologue || undefined,
-      empty_response: emptyResponse || undefined,
+      // Send per-locale map; strip empty values
+      prologue: Object.values(prologue).some(v => v.trim()) ? prologue : undefined,
+      empty_response: Object.values(emptyResponse).some(v => v.trim()) ? emptyResponse : undefined,
       language: language || undefined,
       // Feature flags
       quote,
@@ -345,50 +351,35 @@ function ChatAssistantConfig({
             <Switch checked={isPublic} onCheckedChange={setIsPublic} />
           </div>
 
-          {/* Knowledge bases multi-select */}
+          {/* Knowledge bases multi-select (datasets + projects) */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium">{t('chat.knowledgeBases')}</label>
-            <div className="border rounded-lg p-2 max-h-32 overflow-y-auto space-y-1 dark:border-gray-600">
-              {datasets.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-1">{t('chat.noDatasets')}</p>
-              ) : (
-                datasets.map((ds) => (
-                  <label
-                    key={ds.id}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedKbs.includes(ds.id)}
-                      onChange={() => toggleKb(ds.id)}
-                      className="rounded border-input"
-                    />
-                    <span>{ds.name}</span>
-                  </label>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Empty Response */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">{t('chatSettings.emptyResponse')}</label>
-            <textarea
-              value={emptyResponse}
-              onChange={(e) => setEmptyResponse(e.target.value)}
-              placeholder={t('chatSettings.emptyResponsePlaceholder')}
-              className="w-full min-h-[60px] rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-y dark:border-gray-600"
+            <KnowledgeBasePicker
+              value={selectedKbs}
+              onChange={setSelectedKbs}
+              datasets={datasets}
+              projects={projects}
             />
           </div>
 
-          {/* Welcome Message (prologue) */}
+          {/* Empty Response (per-language) */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">{t('chatSettings.emptyResponse')}</label>
+            <MultiLangInput
+              value={emptyResponse}
+              onChange={setEmptyResponse}
+              placeholder={t('chatSettings.emptyResponsePlaceholder')}
+              multiline
+            />
+          </div>
+
+          {/* Welcome Message — per-language (prologue) */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium">{t('chat.welcomeMessage')}</label>
-            <input
+            <MultiLangInput
               value={prologue}
-              onChange={(e) => setPrologue(e.target.value)}
+              onChange={setPrologue}
               placeholder={t('chat.welcomeMessagePlaceholder')}
-              className="w-full h-9 px-3 text-sm rounded-md border bg-background focus:outline-none focus:ring-2 focus:ring-ring dark:border-gray-600"
             />
           </div>
 

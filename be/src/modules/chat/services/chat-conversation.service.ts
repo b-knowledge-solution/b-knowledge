@@ -56,8 +56,8 @@ import { v4 as uuidv4 } from 'uuid'
 interface PromptConfig {
   /** System prompt template */
   system?: string
-  /** Welcome message for new conversations */
-  prologue?: string
+  /** Welcome message for new conversations (string or per-locale map) */
+  prologue?: string | Record<string, string>
   /** Enable multi-turn question synthesis */
   refine_multiturn?: boolean
   /** Enable cross-language query expansion */
@@ -66,8 +66,8 @@ interface PromptConfig {
   keyword?: boolean
   /** Enable citation insertion in answer */
   quote?: boolean
-  /** Response when no knowledge base results found */
-  empty_response?: string
+  /** Response when no knowledge base results found (string or per-locale map) */
+  empty_response?: string | Record<string, string>
   /** Enable table-of-contents re-ranking */
   toc_enhance?: boolean
   /** Tavily API key for web search integration */
@@ -106,6 +106,32 @@ interface PipelineMetrics {
   generationMs?: number
   totalChunks?: number
   totalTokens?: number
+}
+
+// ---------------------------------------------------------------------------
+// i18n Field Resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * @description Resolve an i18n field value.
+ * Supports both legacy plain strings and per-locale Record<string, string> maps.
+ * Falls back: userLang → 'en' → first non-empty value → empty string.
+ * @param {string | Record<string, string> | undefined} value - Field value
+ * @param {string} [userLang] - Preferred language code (e.g. 'vi', 'ja')
+ * @returns {string} Resolved string for the user's language
+ */
+function resolveI18nField(
+  value: string | Record<string, string> | undefined,
+  userLang?: string
+): string {
+  if (!value) return ''
+  if (typeof value === 'string') return value
+
+  // Per-locale map: try user lang → en → first non-empty
+  if (userLang && value[userLang]?.trim()) return value[userLang]
+  if (value.en?.trim()) return value.en
+  const firstNonEmpty = Object.values(value).find(v => v?.trim())
+  return firstNonEmpty ?? ''
 }
 
 // ---------------------------------------------------------------------------
@@ -465,12 +491,15 @@ export class ChatConversationService {
       ? JSON.parse(assistant.prompt_config)
       : assistant.prompt_config
     if (promptConfig?.prologue) {
-      await ModelFactory.chatMessage.create({
-        session_id: session.id,
-        role: 'assistant',
-        content: promptConfig.prologue,
-        created_by: 'system',
-      } as any)
+      const resolvedPrologue = resolveI18nField(promptConfig.prologue)
+      if (resolvedPrologue) {
+        await ModelFactory.chatMessage.create({
+          session_id: session.id,
+          role: 'assistant',
+          content: resolvedPrologue,
+          created_by: 'system',
+        } as any)
+      }
     }
 
     log.info('Conversation created', { sessionId: session.id, dialogId, userId })
@@ -1051,19 +1080,23 @@ Requirements and restriction:
       // ── Step 10: Handle empty results ───────────────────────────────────
       if (allChunks.length === 0 && cfg.empty_response && kbIds.length > 0) {
         // No chunks found and empty_response is configured
-        res.write(`data: ${JSON.stringify({ delta: cfg.empty_response })}\n\n`)
-        res.write(`data: [DONE]\n\n`)
+        // Resolve per-locale value based on user query language
+        const resolvedEmptyResponse = resolveI18nField(cfg.empty_response, detectedLang)
+        if (resolvedEmptyResponse) {
+          res.write(`data: ${JSON.stringify({ delta: resolvedEmptyResponse })}\n\n`)
+          res.write(`data: [DONE]\n\n`)
 
-        // Store the empty response
-        await ModelFactory.chatMessage.create({
-          session_id: conversationId,
-          role: 'assistant',
-          content: cfg.empty_response,
-          created_by: userId,
-        } as any)
+          // Store the empty response
+          await ModelFactory.chatMessage.create({
+            session_id: conversationId,
+            role: 'assistant',
+            content: resolvedEmptyResponse,
+            created_by: userId,
+          } as any)
 
-        res.end()
-        return
+          res.end()
+          return
+        }
       }
 
       // ── Step 10b: Inject relevant memories into context (D-09 auto-inject) ──

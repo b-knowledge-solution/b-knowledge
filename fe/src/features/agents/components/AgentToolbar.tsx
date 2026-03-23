@@ -83,7 +83,7 @@ export function AgentToolbar({
    * @description Navigates back to the agent list page
    */
   const handleBack = () => {
-    navigate('/agents')
+    navigate('/agent-studio/agents')
   }
 
   /**
@@ -237,7 +237,7 @@ export function AgentToolbar({
               className="text-destructive"
               onClick={() => {
                 // Delete is handled at page level; for now just navigate back
-                navigate('/agents')
+                navigate('/agent-studio/agents')
               }}
             >
               <Trash2 className="h-4 w-4 mr-2" />

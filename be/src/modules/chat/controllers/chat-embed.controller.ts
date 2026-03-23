@@ -130,12 +130,22 @@ export class ChatEmbedController {
       }
 
       // Return only public-safe info
+      // Resolve prologue from per-locale map if needed (backward compatible with string)
       const promptConfig = assistant.prompt_config as Record<string, unknown>
+      const rawPrologue = promptConfig?.prologue
+      let resolvedPrologue: string | null = null
+      if (typeof rawPrologue === 'string') {
+        resolvedPrologue = rawPrologue || null
+      } else if (typeof rawPrologue === 'object' && rawPrologue !== null) {
+        const map = rawPrologue as Record<string, string>
+        resolvedPrologue = map.en?.trim() || Object.values(map).find(v => v?.trim()) || null
+      }
+
       res.json({
         name: assistant.name,
         icon: assistant.icon ?? null,
         description: assistant.description ?? null,
-        prologue: promptConfig?.prologue ?? null,
+        prologue: resolvedPrologue,
       })
     } catch (error) {
       log.error('Error getting embed info', { error: (error as Error).message })

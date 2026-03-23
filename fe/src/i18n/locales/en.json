@@ -126,8 +126,10 @@
     "glossary": "Glossary",
     "apiKeys": "API Keys",
     "agents": "Agents",
+    "agentStudio": "Agent Studio",
     "agentList": "Agent List",
-    "memory": "Memory"
+    "memory": "Memory",
+    "aiManagement": "AI Management"
   },
   "iam": {
     "title": "Identity & Access Management",
@@ -2799,5 +2801,16 @@
     "systemPrompt": "System Prompt",
     "userPrompt": "User Prompt",
     "forgettingPolicy": "Forgetting Policy"
+  },
+  "kbPicker": {
+    "searchPlaceholder": "Search datasets and projects...",
+    "datasets": "Datasets",
+    "projects": "Projects",
+    "dataset": "Dataset",
+    "project": "Project",
+    "noResults": "No results found",
+    "selectKnowledgeBases": "Select knowledge bases...",
+    "selected": "{{count}} selected",
+    "docs": "{{count}} docs"
   }
 }

@@ -90,7 +90,7 @@ export default function MemoryDetailPage() {
         <p className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
           {t('common.notFound', { defaultValue: 'Not Found' })}
         </p>
-        <Button variant="outline" onClick={() => navigate('/memory')}>
+        <Button variant="outline" onClick={() => navigate('/agent-studio/memory')}>
           <ArrowLeft size={16} className="mr-1" />
           {t('common.back', { defaultValue: 'Back' })}
         </Button>
@@ -106,7 +106,7 @@ export default function MemoryDetailPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/memory')}
+            onClick={() => navigate('/agent-studio/memory')}
             className="h-8 w-8 p-0"
           >
             <ArrowLeft size={18} />

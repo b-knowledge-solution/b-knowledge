@@ -132,13 +132,13 @@ function App() {
               {config.features.enableAiSearch && (
                 <Route path="search" element={<FeatureErrorBoundary><AiSearchPage /></FeatureErrorBoundary>} />
               )}
-              {/* Agent routes */}
-              <Route path="agents" element={<FeatureErrorBoundary><AgentListPage /></FeatureErrorBoundary>} />
-              <Route path="agents/:id" element={<FeatureErrorBoundary><AgentCanvasPage /></FeatureErrorBoundary>} />
+              {/* Agent Studio routes */}
+              <Route path="agent-studio/agents" element={<FeatureErrorBoundary><AgentListPage /></FeatureErrorBoundary>} />
+              <Route path="agent-studio/agents/:id" element={<FeatureErrorBoundary><AgentCanvasPage /></FeatureErrorBoundary>} />
 
               {/* Memory routes */}
-              <Route path="memory" element={<FeatureErrorBoundary><MemoryListPage /></FeatureErrorBoundary>} />
-              <Route path="memory/:id" element={<FeatureErrorBoundary><MemoryDetailPage /></FeatureErrorBoundary>} />
+              <Route path="agent-studio/memory" element={<FeatureErrorBoundary><MemoryListPage /></FeatureErrorBoundary>} />
+              <Route path="agent-studio/memory/:id" element={<FeatureErrorBoundary><MemoryDetailPage /></FeatureErrorBoundary>} />
 
               {/* Glossary route */}
               <Route path="glossary" element={
