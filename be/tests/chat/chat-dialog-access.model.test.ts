@@ -7,6 +7,27 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+// Mock knex DB layer to prevent real DB connections during model imports
+vi.mock('../../src/shared/db/knex.js', () => ({
+  db: vi.fn(),
+}))
+
+// Mock Redis service (transitive dependency of ability.service)
+vi.mock('../../src/shared/services/redis.service.js', () => ({
+  getRedisClient: vi.fn(() => null),
+  initRedis: vi.fn(),
+}))
+
+// Mock config (transitive dependency used at module scope)
+vi.mock('../../src/shared/config/index.js', () => ({
+  config: {
+    session: { ttlSeconds: 604800 },
+    sessionSecret: 'test-secret',
+    redis: { host: 'localhost', port: 6379 },
+    opensearch: { systemTenantId: 'test-tenant' },
+  },
+}))
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

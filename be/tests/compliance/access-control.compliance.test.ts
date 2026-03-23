@@ -35,6 +35,27 @@ vi.mock('../../src/shared/db/index.js', () => ({
   db: { query: vi.fn() },
 }))
 
+// Mock knex DB layer used by embed-token.service and models
+vi.mock('../../src/shared/db/knex.js', () => ({
+  db: vi.fn(),
+}))
+
+// Mock Redis service used by ability.service for caching
+vi.mock('../../src/shared/services/redis.service.js', () => ({
+  getRedisClient: vi.fn(() => null),
+  initRedis: vi.fn(),
+}))
+
+// Mock config used by ability.service at module scope
+vi.mock('../../src/shared/config/index.js', () => ({
+  config: {
+    session: { ttlSeconds: 604800 },
+    sessionSecret: 'test-secret',
+    sessionStore: { type: 'memory' },
+    redis: { host: 'localhost', port: 6379 },
+  },
+}))
+
 // ============================================================================
 // ISO 13485 §4.1 — Authentication Middleware
 // ============================================================================
