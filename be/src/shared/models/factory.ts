@@ -62,6 +62,9 @@ import { AgentRunStepModel } from '@/modules/agents/models/agent-run-step.model.
 import { AgentTemplateModel } from '@/modules/agents/models/agent-template.model.js';
 import { AgentToolCredentialModel } from '@/modules/agents/models/agent-tool-credential.model.js';
 
+// Memory Models
+import { MemoryModel } from '@/modules/memory/models/memory.model.js';
+
 /**
  * @description ModelFactory class implementing the Factory Pattern.
  * Provides lazy-loaded singletons for all data models.
@@ -188,6 +191,10 @@ export class ModelFactory {
   private static agentTemplateModel: AgentTemplateModel;
   /** AgentToolCredential model singleton instance */
   private static agentToolCredentialModel: AgentToolCredentialModel;
+
+  // Memory Models
+  /** Memory model singleton instance */
+  private static memoryModel: MemoryModel;
 
   /**
    * Get the User model singleton.
@@ -712,5 +719,18 @@ export class ModelFactory {
   static get agentToolCredential() {
     if (!this.agentToolCredentialModel) this.agentToolCredentialModel = new AgentToolCredentialModel();
     return this.agentToolCredentialModel;
+  }
+
+  // -------------------------------------------------------------------------
+  // Memory Models
+  // -------------------------------------------------------------------------
+
+  /**
+   * Get the Memory model singleton.
+   * @returns MemoryModel instance for memory pool CRUD operations
+   */
+  static get memory() {
+    if (!this.memoryModel) this.memoryModel = new MemoryModel();
+    return this.memoryModel;
   }
 }
