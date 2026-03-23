@@ -85,7 +85,8 @@
     "saving": "Saving...",
     "comingSoon": "Coming Soon",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "ok": "OK"
   },
   "dialog": {
     "confirm": "Confirm",
@@ -1981,6 +1982,11 @@
       "noCategoriesHint": "No Categories Hint",
       "deleteConfirm": "Delete Confirm"
     },
+    "categoryDesc": {
+      "office": "Upload and manage office documents like Word, Excel, PDF",
+      "datasync": "Sync data from external sources like SharePoint, JIRA",
+      "source_code": "Import and index source code repositories"
+    },
     "tabs": {
       "documents": "Documents",
       "chat": "Chat",
@@ -2812,5 +2818,10 @@
     "selectKnowledgeBases": "Select knowledge bases...",
     "selected": "{{count}} selected",
     "docs": "{{count}} docs"
+  },
+  "projects": {
+    "error": {
+      "removeMember": "Failed to remove member"
+    }
   }
 }

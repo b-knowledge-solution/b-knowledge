@@ -86,7 +86,8 @@
     "saving": "Saving...",
     "comingSoon": "Coming Soon",
     "yes": "Yes",
-    "no": "No"
+    "no": "いいえ",
+    "ok": "OK"
   },
   "dialog": {
     "confirm": "確認",
@@ -2217,6 +2218,11 @@
       "deleteConfirm": "Delete Confirm",
       "title": "Title",
       "noPermissions": "No Permissions"
+    },
+    "categoryDesc": {
+      "office": "Word、Excel、PDFなどのオフィスドキュメントをアップロードして管理",
+      "datasync": "SharePoint、JIRAなどの外部ソースからデータを同期",
+      "source_code": "ソースコードリポジトリをインポートしてインデックス作成"
     }
   },
   "embed": {
@@ -2544,5 +2550,10 @@
     "selectKnowledgeBases": "ナレッジベースを選択...",
     "selected": "{{count}} 件選択済み",
     "docs": "{{count}} 件"
+  },
+  "projects": {
+    "error": {
+      "removeMember": "メンバーの削除に失敗しました"
+    }
   }
 }

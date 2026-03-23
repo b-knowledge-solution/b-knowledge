@@ -86,7 +86,8 @@
     "saving": "Saving...",
     "comingSoon": "Coming Soon",
     "yes": "Yes",
-    "no": "No"
+    "no": "Không",
+    "ok": "OK"
   },
   "dialog": {
     "confirm": "Xác nhận",
@@ -1965,6 +1966,11 @@
       "noCategoriesHint": "No Categories Hint",
       "deleteConfirm": "Delete Confirm"
     },
+    "categoryDesc": {
+      "office": "Tải lên và quản lý tài liệu văn phòng như Word, Excel, PDF",
+      "datasync": "Đồng bộ dữ liệu từ nguồn bên ngoài như SharePoint, JIRA",
+      "source_code": "Nhập và lập chỉ mục kho mã nguồn"
+    },
     "tabs": {
       "documents": "Tài liệu",
       "chat": "Trò chuyện",
@@ -2558,5 +2564,10 @@
     "selectKnowledgeBases": "Chọn cơ sở kiến thức...",
     "selected": "{{count}} đã chọn",
     "docs": "{{count}} tài liệu"
+  },
+  "projects": {
+    "error": {
+      "removeMember": "Không thể xóa thành viên"
+    }
   }
 }
