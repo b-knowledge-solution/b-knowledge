@@ -144,4 +144,26 @@ export const memoryApi = {
    */
   forgetMemoryMessage: (id: string, messageId: string) =>
     api.put(`/api/memory/${id}/messages/${messageId}/forget`),
+
+  // --------------------------------------------------------------------------
+  // Import
+  // --------------------------------------------------------------------------
+
+  /**
+   * @description Import chat history from an existing conversation into a memory pool
+   * @param {string} memoryId - Memory pool UUID to import into
+   * @param {string} sessionId - Chat conversation session ID to import from
+   * @returns {Promise<{ imported: number }>} Count of imported memory messages
+   */
+  importChatHistory: (memoryId: string, sessionId: string) =>
+    api.post<{ imported: number }>(`/api/memory/${memoryId}/import`, {
+      session_id: sessionId,
+    }),
+
+  /**
+   * @description List available chat conversations for import selection
+   * @returns {Promise<Array<{ id: string; name: string; created_at: string }>>} Chat sessions
+   */
+  getChatSessions: () =>
+    api.get<Array<{ id: string; name: string; created_at: string }>>('/api/chat/conversations'),
 }
