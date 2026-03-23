@@ -46,6 +46,6 @@
     "node": ">=18.0.0"
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "^4.59.0"
+    "@rollup/rollup-linux-x64-gnu": "^4.60.0"
   }
 }
