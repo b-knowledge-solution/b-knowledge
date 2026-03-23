@@ -2720,6 +2720,19 @@
         "maxTokens": "Max Tokens",
         "historyWindow": "Message History Window",
         "historyWindowHint": "Number of recent messages to include as context for rewriting"
+      },
+      "memoryOperator": {
+        "title": "Memory",
+        "operationMode": "Operation",
+        "read": "Read",
+        "write": "Write",
+        "selectPool": "Select Memory Pool",
+        "noPoolsAvailable": "No memory pools available",
+        "topK": "Top K Results",
+        "vectorWeight": "Vector Weight",
+        "messageType": "Message Type",
+        "readDescription": "Retrieves relevant memories from the selected pool using hybrid search",
+        "writeDescription": "Stores content as a new memory in the selected pool"
       }
     }
   },

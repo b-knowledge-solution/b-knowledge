@@ -37,6 +37,7 @@ import { ExcelProcessorForm } from './forms/ExcelProcessorForm'
 import { FillUpForm } from './forms/FillUpForm'
 import { AgentWithToolsForm } from './forms/AgentWithToolsForm'
 import { RewriteForm } from './forms/RewriteForm'
+import { MemoryForm } from './forms/MemoryForm'
 
 /**
  * @description Maps operator type to its dedicated configuration form component.
@@ -67,6 +68,8 @@ const FORM_MAP: Partial<Record<OperatorType, React.ComponentType<NodeFormProps>>
   fillup: FillUpForm,
   agent_with_tools: AgentWithToolsForm,
   rewrite: RewriteForm,
+  memory_read: MemoryForm,
+  memory_write: MemoryForm,
 }
 
 /**

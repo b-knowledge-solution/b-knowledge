@@ -2453,7 +2453,20 @@
     "agentDeleted": "エージェントを削除しました",
     "agentDuplicated": "エージェントを複製しました",
     "createAsAgentWorkflow": "エージェントワークフローとして作成（上級）",
-    "agentWorkflowDescription": "ビジュアルエージェントキャンバスで多段階AIワークフローを構築"
+    "agentWorkflowDescription": "ビジュアルエージェントキャンバスで多段階AIワークフローを構築",
+    "memoryOperator": {
+      "title": "メモリ",
+      "operationMode": "操作",
+      "read": "読み取り",
+      "write": "書き込み",
+      "selectPool": "メモリプールを選択",
+      "noPoolsAvailable": "利用可能なメモリプールがありません",
+      "topK": "上位K件の結果",
+      "vectorWeight": "ベクトル重み",
+      "messageType": "メッセージタイプ",
+      "readDescription": "ハイブリッド検索を使用して、選択したプールから関連するメモリを取得します",
+      "writeDescription": "選択したプールに新しいメモリとしてコンテンツを保存します"
+    }
   },
   "memory": {
     "title": "メモリ",
