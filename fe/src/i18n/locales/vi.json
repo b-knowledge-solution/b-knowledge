@@ -1849,7 +1849,8 @@
     "maxTokensPlaceholder": "Nhập số token tối đa",
     "testConnection": "Kiểm tra kết nối",
     "connectionSuccess": "Kết nối thành công ({{latency}}ms)",
-    "connectionFailed": "Kết nối thất bại: {{error}}"
+    "connectionFailed": "Kết nối thất bại: {{error}}",
+    "cloneProvider": "Nhân bản"
   },
   "chatAdmin": {
     "title": "Trợ lý chat",

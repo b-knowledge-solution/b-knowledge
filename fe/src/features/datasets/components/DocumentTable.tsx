@@ -84,15 +84,11 @@ function formatDate(raw: number | string | undefined | null): string {
   return d.toLocaleDateString()
 }
 
-/** Format document creation date from RAGFlow fields */
-function formatDocDate(doc: Document): string {
-  return formatDate(doc.create_time || doc.create_date || doc.created_at)
-}
-
 /** Format document update date — falls back to creation date if never updated */
 function formatDocUpdateDate(doc: Document): string {
   return formatDate(doc.update_date || doc.update_time || doc.updated_at || doc.create_time || doc.create_date)
 }
+
 
 /**
  * @description Map document run/progress fields to status badge label and variant.
@@ -263,15 +259,15 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
               <TableHead className="w-[140px]">{t('datasets.docStatus')}</TableHead>
               {isAdmin && <TableHead className="w-[80px]">{t('datasets.enabled')}</TableHead>}
               <TableHead className="w-[100px] text-right">{t('datasets.chunkCount')}</TableHead>
-              <TableHead className="w-[140px]">{t('datasets.docUploadDate')}</TableHead>
               <TableHead className="w-[140px]">{t('datasets.docUpdateDate')}</TableHead>
+
               {isAdmin && <TableHead className="w-[100px]">{t('common.actions')}</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {documents.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={isAdmin ? 10 : 7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={isAdmin ? 9 : 6} className="text-center py-8 text-muted-foreground">
                   {t('common.noData')}
                 </TableCell>
               </TableRow>
@@ -359,11 +355,10 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
                   {/* Chunk count */}
                   <TableCell className="text-right">{doc.chunk_num ?? doc.chunk_count ?? 0}</TableCell>
 
-                  {/* Upload date */}
-                  <TableCell>{formatDocDate(doc)}</TableCell>
-
                   {/* Update date */}
                   <TableCell>{formatDocUpdateDate(doc)}</TableCell>
+
+
 
                   {/* Actions */}
                   {isAdmin && (

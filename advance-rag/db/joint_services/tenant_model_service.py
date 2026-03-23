@@ -146,15 +146,36 @@ def get_tenant_default_model_by_type(tenant_id: str, model_type: str|enum.Enum):
                TenantLLM.is_default == True)
         .first())
 
-    model_name: str = ""
-
     if default_model:
-        model_name = f"{default_model.llm_name}@{default_model.llm_factory}"
+        # Build config directly from the already-found record to avoid
+        # a wasteful round-trip through get_model_config_by_type_and_name
+        # which can fail to re-find the model by name@factory format
+        config = default_model.to_dict() if hasattr(default_model, 'to_dict') else {
+            "llm_factory": default_model.llm_factory,
+            "llm_name": default_model.llm_name,
+            "api_key": default_model.api_key,
+            "api_base": getattr(default_model, 'api_base', ''),
+            "model_type": default_model.model_type,
+        }
+        # Convert Peewee model to dict if to_dict returned a model object
+        if not isinstance(config, dict):
+            config = {
+                "llm_factory": default_model.llm_factory,
+                "llm_name": default_model.llm_name,
+                "api_key": default_model.api_key,
+                "api_base": getattr(default_model, 'api_base', ''),
+                "model_type": default_model.model_type,
+            }
+        # Enrich with tool-calling capability from the global LLM catalog
+        llm = LLMService.query(llm_name=config.get("llm_name", ""))
+        if llm:
+            config["is_tools"] = llm[0].is_tools
     else:
         # Fallback: read from legacy tenant.*_id columns
         exist, tenant = TenantService.get_by_id(tenant_id)
         if not exist:
             raise LookupError("Tenant not found")
+        model_name: str = ""
         match model_type_val:
             case LLMType.EMBEDDING.value:
                 model_name = tenant.embd_id
@@ -171,10 +192,11 @@ def get_tenant_default_model_by_type(tenant_id: str, model_type: str|enum.Enum):
             case _:
                 raise Exception(f"Unknown model type {model_type}")
 
-    if not model_name:
-        raise Exception(f"No default {model_type} model is set.")
+        if not model_name:
+            raise Exception(f"No default {model_type} model is set.")
 
-    config = get_model_config_by_type_and_name(tenant_id, model_type, model_name)
+        config = get_model_config_by_type_and_name(tenant_id, model_type, model_name)
+
     # For IMAGE2TEXT, annotate with vision=True so model_instance() uses CvModel
     if model_type_val == LLMType.IMAGE2TEXT.value:
         config["vision"] = True

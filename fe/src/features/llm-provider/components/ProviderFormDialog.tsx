@@ -67,6 +67,8 @@ interface ProviderFormDialogProps {
   onSubmit: (data: CreateProviderDTO | UpdateProviderDTO) => Promise<void>
   /** Existing provider for edit mode; null/undefined for create */
   provider?: ModelProvider | null
+  /** Source provider to clone settings from (create mode with pre-populated fields) */
+  cloningFrom?: ModelProvider | null
   /** Factory presets loaded from the API */
   presets?: FactoryPreset[]
 }
@@ -88,6 +90,7 @@ export function ProviderFormDialog({
   onClose,
   onSubmit,
   provider,
+  cloningFrom,
   presets = [],
 }: ProviderFormDialogProps) {
   const { t } = useTranslation()
@@ -132,9 +135,10 @@ export function ProviderFormDialog({
   // Compute API base placeholder for the selected factory
   const apiBasePlaceholder = API_BASE_PLACEHOLDERS[factoryName] ?? t('llmProviders.apiBasePlaceholder')
 
-  // -- Populate form when provider changes (edit mode) -----------------------
+  // -- Populate form when provider changes (edit or clone mode) --------------
   useEffect(() => {
     if (provider) {
+      // Edit mode — populate from existing provider
       setFactoryName(provider.factory_name)
       setModelType(provider.model_type)
       setModelName(provider.model_name)
@@ -143,11 +147,20 @@ export function ProviderFormDialog({
       setApiBase(provider.api_base ?? '')
       setMaxTokens(provider.max_tokens != null ? String(provider.max_tokens) : '')
       setIsDefault(provider.is_default)
-
-      // Read vision flag directly from the provider record
       setSupportsVision(provider.vision === true)
+    } else if (cloningFrom) {
+      // Clone mode — pre-populate from source provider with "(Copy)" suffix
+      setFactoryName(cloningFrom.factory_name)
+      setModelType(cloningFrom.model_type)
+      setModelName(`${cloningFrom.model_name} (Copy)`)
+      // API key is intentionally blank — user can enter a new key or leave empty
+      setApiKey('')
+      setApiBase(cloningFrom.api_base ?? '')
+      setMaxTokens(cloningFrom.max_tokens != null ? String(cloningFrom.max_tokens) : '')
+      setIsDefault(false)
+      setSupportsVision(cloningFrom.vision === true)
     } else {
-      // Reset to defaults for create mode
+      // Create mode — reset to defaults
       setFactoryName('')
       setModelType('chat')
       setModelName('')
@@ -158,7 +171,7 @@ export function ProviderFormDialog({
       setSupportsVision(false)
     }
     setShowKey(false)
-  }, [provider, open])
+  }, [provider, cloningFrom, open])
 
   /**
    * Handle factory selection change.

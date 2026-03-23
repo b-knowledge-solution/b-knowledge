@@ -1835,7 +1835,8 @@
     "maxTokensPlaceholder": "最大トークン数を入力",
     "testConnection": "接続テスト",
     "connectionSuccess": "接続成功 ({{latency}}ms)",
-    "connectionFailed": "接続失敗: {{error}}"
+    "connectionFailed": "接続失敗: {{error}}",
+    "cloneProvider": "複製"
   },
   "chatAdmin": {
     "title": "チャットアシスタント",

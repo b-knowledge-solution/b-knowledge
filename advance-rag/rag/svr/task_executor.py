@@ -496,10 +496,17 @@ async def build_chunks(task, progress_callback):
     el = timer() - st
     logging.info("MINIO PUT({}) cost {:.3f} s".format(task["name"], el))
 
+    # Resolve the chat model config once — fall back to tenant default when llm_id is empty
+    def _resolve_chat_model_config():
+        """Resolve the chat model config for this task, falling back to tenant default."""
+        if task["llm_id"]:
+            return get_model_config_by_type_and_name(task["tenant_id"], LLMType.CHAT, task["llm_id"])
+        return get_tenant_default_model_by_type(task["tenant_id"], LLMType.CHAT)
+
     if task["parser_config"].get("auto_keywords", 0):
         st = timer()
         progress_callback(msg="Start to generate keywords for every chunk ...")
-        chat_model_config = get_model_config_by_type_and_name(task["tenant_id"], LLMType.CHAT, task["llm_id"])
+        chat_model_config = _resolve_chat_model_config()
         chat_mdl = LLMBundle(task["tenant_id"], chat_model_config, lang=task["language"])
 
         async def doc_keyword_extraction(chat_mdl, d, topn):
@@ -533,7 +540,7 @@ async def build_chunks(task, progress_callback):
     if task["parser_config"].get("auto_questions", 0):
         st = timer()
         progress_callback(msg="Start to generate questions for every chunk ...")
-        chat_model_config = get_model_config_by_type_and_name(task["tenant_id"], LLMType.CHAT, task["llm_id"])
+        chat_model_config = _resolve_chat_model_config()
         chat_mdl = LLMBundle(task["tenant_id"], chat_model_config, lang=task["language"])
 
         async def doc_question_proposal(chat_mdl, d, topn):
@@ -566,7 +573,7 @@ async def build_chunks(task, progress_callback):
     if task["parser_config"].get("enable_metadata", False) and task["parser_config"].get("metadata"):
         st = timer()
         progress_callback(msg="Start to generate meta-data for every chunk ...")
-        chat_model_config = get_model_config_by_type_and_name(task["tenant_id"], LLMType.CHAT, task["llm_id"])
+        chat_model_config = _resolve_chat_model_config()
         chat_mdl = LLMBundle(task["tenant_id"], chat_model_config, lang=task["language"])
 
         async def gen_metadata_task(chat_mdl, d):
@@ -613,7 +620,7 @@ async def build_chunks(task, progress_callback):
     if task["parser_id"] == ParserType.CLINICAL.value:
         st = timer()
         progress_callback(msg="Start clinical document classification ...")
-        chat_model_config = get_model_config_by_type_and_name(task["tenant_id"], LLMType.CHAT, task["llm_id"])
+        chat_model_config = _resolve_chat_model_config()
         chat_mdl = LLMBundle(task["tenant_id"], chat_model_config, lang=task["language"])
 
         # Combine all chunk text for classification (use first chunk or full text)
@@ -662,7 +669,7 @@ async def build_chunks(task, progress_callback):
             set_tags_to_cache(kb_ids, all_tags)
         else:
             all_tags = json.loads(all_tags)
-        chat_model_config = get_model_config_by_type_and_name(tenant_id, LLMType.CHAT, task["llm_id"])
+        chat_model_config = _resolve_chat_model_config()
         chat_mdl = LLMBundle(task["tenant_id"], chat_model_config, lang=task["language"])
 
         docs_to_tag = []
@@ -732,7 +739,11 @@ def build_TOC(task, docs, progress_callback):
         A TOC chunk dict to insert, or None if no TOC was generated.
     """
     progress_callback(msg="Start to generate table of content ...")
-    chat_model_config = get_model_config_by_type_and_name(task["tenant_id"], LLMType.CHAT, task["llm_id"])
+    # Fall back to tenant default chat model when llm_id is empty
+    if task["llm_id"]:
+        chat_model_config = get_model_config_by_type_and_name(task["tenant_id"], LLMType.CHAT, task["llm_id"])
+    else:
+        chat_model_config = get_tenant_default_model_by_type(task["tenant_id"], LLMType.CHAT)
     chat_mdl = LLMBundle(task["tenant_id"], chat_model_config, lang=task["language"])
     docs = sorted(docs, key=lambda d: (
         d.get("page_num_int", 0)[0] if isinstance(d.get("page_num_int", 0), list) else d.get("page_num_int", 0),
@@ -1312,7 +1323,11 @@ async def do_handle_task(task):
             return
 
         # bind LLM for raptor
-        chat_model_config = get_model_config_by_type_and_name(task_dataset_id, LLMType.CHAT, kb_task_llm_id)
+        # Fall back to tenant default chat model when llm_id is empty
+        if kb_task_llm_id:
+            chat_model_config = get_model_config_by_type_and_name(task_tenant_id, LLMType.CHAT, kb_task_llm_id)
+        else:
+            chat_model_config = get_tenant_default_model_by_type(task_tenant_id, LLMType.CHAT)
         chat_model = LLMBundle(task_tenant_id, chat_model_config, lang=task_language)
         # run RAPTOR
         async with kg_limiter:
@@ -1357,7 +1372,11 @@ async def do_handle_task(task):
 
         graphrag_conf = kb_parser_config.get("graphrag", {})
         start_ts = timer()
-        chat_model_config = get_model_config_by_type_and_name(task_tenant_id, LLMType.CHAT, kb_task_llm_id)
+        # Fall back to tenant default chat model when llm_id is empty
+        if kb_task_llm_id:
+            chat_model_config = get_model_config_by_type_and_name(task_tenant_id, LLMType.CHAT, kb_task_llm_id)
+        else:
+            chat_model_config = get_tenant_default_model_by_type(task_tenant_id, LLMType.CHAT)
         chat_model = LLMBundle(task_tenant_id, chat_model_config, lang=task_language)
         with_resolution = graphrag_conf.get("resolution", False)
         with_community = graphrag_conf.get("community", False)

@@ -1865,7 +1865,8 @@
     "maxTokensPlaceholder": "Enter max tokens",
     "testConnection": "Test Connection",
     "connectionSuccess": "Connection successful ({{latency}}ms)",
-    "connectionFailed": "Connection failed: {{error}}"
+    "connectionFailed": "Connection failed: {{error}}",
+    "cloneProvider": "Clone"
   },
   "chatAdmin": {
     "title": "Chat Assistants",

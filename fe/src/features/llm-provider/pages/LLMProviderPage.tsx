@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/queryKeys'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, Eye, Plug, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Eye, Plug, Loader2, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -102,6 +102,9 @@ export function LLMProviderPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingProvider, setEditingProvider] = useState<ModelProvider | null>(null)
 
+  // Provider to clone from — used to pre-populate Create dialog with source config
+  const [cloningFrom, setCloningFrom] = useState<ModelProvider | null>(null)
+
   // Track which providers are currently being tested for connection
   const [testingIds, setTestingIds] = useState<Set<string>>(new Set())
 
@@ -154,6 +157,18 @@ export function LLMProviderPage() {
   /** Open dialog in edit mode */
   const handleEdit = (provider: ModelProvider) => {
     setEditingProvider(provider)
+    setCloningFrom(null)
+    setDialogOpen(true)
+  }
+
+  /**
+   * Open dialog in create mode, pre-populated with settings from the source provider.
+   * API key is intentionally left blank — user can enter a new one or skip.
+   * @param provider - The source provider to clone settings from
+   */
+  const handleClone = (provider: ModelProvider) => {
+    setEditingProvider(null)
+    setCloningFrom(provider)
     setDialogOpen(true)
   }
 
@@ -337,6 +352,14 @@ export function LLMProviderPage() {
                             ? <Loader2 size={14} className="animate-spin" />
                             : <Plug size={14} />}
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleClone(row.primary)}
+                          title={t('llmProviders.cloneProvider')}
+                        >
+                          <Copy size={14} />
+                        </Button>
                         <Button variant="ghost" size="sm" onClick={() => handleEdit(row.primary)}>
                           <Pencil size={14} />
                         </Button>
@@ -383,12 +406,13 @@ export function LLMProviderPage() {
         )}
       </div>
 
-      {/* -- Create / Edit dialog -------------------------------------------- */}
+      {/* -- Create / Edit / Clone dialog ----------------------------------- */}
       <ProviderFormDialog
         open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
+        onClose={() => { setDialogOpen(false); setCloningFrom(null) }}
         onSubmit={handleSubmit}
         provider={editingProvider}
+        cloningFrom={cloningFrom}
         presets={presets}
       />
     </div>

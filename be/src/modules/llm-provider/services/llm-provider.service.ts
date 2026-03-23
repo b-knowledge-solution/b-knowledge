@@ -158,6 +158,18 @@ export class LlmProviderService {
         if (data.vision !== undefined) updateData.vision = data.vision;
         if (user) updateData.updated_by = user.id;
 
+        // When marking a provider as default, clear existing defaults for the same model_type
+        if (data.is_default === true) {
+            const existing = await ModelFactory.modelProvider.findById(id);
+            if (existing) {
+                await db('model_providers')
+                    .where('model_type', existing.model_type)
+                    .where('status', 'active')
+                    .whereNot('id', id)
+                    .update({ is_default: false });
+            }
+        }
+
         const provider = await ModelFactory.modelProvider.update(id, updateData);
         if (!provider) return undefined;
 
