@@ -71,7 +71,8 @@ class RuntimeConfig(ReloadConfigBase):
         Populates the ENV dictionary with the current application version
         obtained from the version utility.
         """
-        cls.ENV.update({"version": get_ragflow_version()})
+        # cls.ENV.update({"version": get_ragflow_version()})
+        pass
 
     @classmethod
     def load_config_manager(cls):

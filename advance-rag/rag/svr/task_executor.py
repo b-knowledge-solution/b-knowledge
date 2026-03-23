@@ -80,7 +80,6 @@ from db.services.llm_service import LLMBundle
 from db.services.task_service import TaskService, has_canceled, CANVAS_DEBUG_DOC_ID, GRAPH_RAPTOR_FAKE_DOC_ID
 from db.services.file2document_service import File2DocumentService
 from db.joint_services.tenant_model_service import get_model_config_by_id, get_model_config_by_type_and_name, get_tenant_default_model_by_type
-from common.versions import get_ragflow_version
 from db.db_models import close_connection
 from rag.app import laws, paper, presentation, manual, qa, table, book, resume, picture, naive, one, audio, \
     email, tag, code, openapi, adr, clinical
@@ -1742,14 +1741,13 @@ async def main():
         pass  # Non-standard consumer name, skip delay
 
     logging.info(r"""
-    ____                      __  _
-   /  _/___  ____ ____  _____/ /_(_)___  ____     ________  ______   _____  _____
-   / // __ \/ __ `/ _ \/ ___/ __/ / __ \/ __ \   / ___/ _ \/ ___/ | / / _ \/ ___/
- _/ // / / / /_/ /  __(__  ) /_/ / /_/ / / / /  (__  )  __/ /   | |/ /  __/ /
-/___/_/ /_/\__, /\___/____/\__/_/\____/_/ /_/  /____/\___/_/    |___/\___/_/
-          /____/
+               __                                                                            __
+  ____ _  ____/ /   ______ _____  ________     _________ _____ _   ___  _  _____  _______  __/ /_____  _____
+ / __ `/ / __  / | / / __ `/ __ \/ ___/ _ \   / ___/ __ `/ __ `/  / _ \| |/_/ _ \/ ___/ / / / __/ __ \/ ___/
+/ /_/ / / /_/ /| |/ / /_/ / / / / /__/  __/  / /  / /_/ / /_/ /  /  __/>  </  __/ /__/ /_/ / /_/ /_/ / /
+\__,_/  \__,_/ |___/\__,_/_/ /_/\___/\___/  /_/   \__,_/\__, /   \___/_/|_|\___/\___/\__,_/\__/\____/_/
+                                                        /____/
     """)
-    logging.info(f'RAGFlow version: {get_ragflow_version()}')
     show_configs()
     settings.init_settings()
     settings.check_and_install_torch()
@@ -1768,7 +1766,7 @@ async def main():
     report_task = asyncio.create_task(report_status())
     tasks = []
 
-    logging.info(f"RAGFlow ingestion is ready after {time.time() - start_ts}s initialization.")
+    logging.info(f"Advance RAG Executor is ready after {time.time() - start_ts}s initialization.")
     try:
         while not stop_event.is_set():
             await task_limiter.acquire()
