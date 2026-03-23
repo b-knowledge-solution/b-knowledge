@@ -67,6 +67,16 @@ Plans:
 - [x] 02-05-PLAN.md — FE detail page (message browser + settings panel + import dialog)
 - [x] 02-06-PLAN.md — Agent Memory operator (Python handlers + canvas form) + import endpoint
 
+### Phase 3: Standardize UUID generation between advance-rag and backend
+
+**Goal:** Standardize all advance-rag UUID generation from UUID1 (time+MAC based) to UUID4 (random) to match the Node.js backend, eliminating MAC address leakage and cross-service UUID version mismatch. Python-only changes — no data migration, no BE modifications.
+**Requirements**: UUID-STD-01, UUID-STD-02, UUID-STD-03
+**Depends on:** Phase 2
+**Plans:** 1 plan
+
+Plans:
+- [ ] 03-01-PLAN.md — Switch get_uuid() to UUID4, replace html_parser uuid1 calls, add validation tests
+
 ---
 *Roadmap created: 2026-03-18*
 *v1.0 shipped: 2026-03-19*
