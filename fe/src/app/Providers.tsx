@@ -20,6 +20,7 @@ import { HeaderActionsProvider } from '@/components/HeaderActions';
 import { NavigationProvider } from '@/components/NavigationLoader'
 import { useSocketQueryInvalidation } from '@/hooks/useSocket';
 import SettingsDialog from '@/components/SettingsDialog';
+import { ApiKeysDialog } from '@/features/api-keys';
 
 // ============================================================================
 // Global Notification Bridge
@@ -98,6 +99,7 @@ export function Providers({ children }: ProvidersProps) {
                 <SocketQueryBridge />
                 {children}
                 <SettingsDialog />
+                <ApiKeysDialog />
                 <Toaster />
               </NavigationProvider>
             </HeaderActionsProvider>

@@ -7,8 +7,8 @@
  *
  * @module modules/agents/services/agent-tool-credential
  */
-import { v4 as uuidv4 } from 'uuid'
 import { cryptoService } from '@/shared/services/crypto.service.js'
+import { getUuid } from '@/shared/utils/uuid.js'
 import { ModelFactory } from '@/shared/models/factory.js'
 import type { AgentToolCredential } from '../models/agent-tool-credential.model.js'
 import { logger } from '@/shared/services/logger.service.js'
@@ -50,7 +50,7 @@ class AgentToolCredentialService {
     const encrypted = cryptoService.encrypt(JSON.stringify(data.credentials))
 
     const record = {
-      id: uuidv4(),
+      id: getUuid(),
       tenant_id: tenantId,
       agent_id: data.agent_id ?? null,
       tool_type: data.tool_type,

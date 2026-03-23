@@ -11,6 +11,7 @@ import { config } from '@/shared/config/index.js'
 import { updateAuthTimestamp, getCurrentUser } from '@/shared/middleware/auth.middleware.js'
 import { abilityService } from '@/shared/services/ability.service.js'
 import { db } from '@/shared/db/knex.js'
+import { getUuid } from '@/shared/utils/uuid.js'
 
 /**
  * @description Handles Azure AD OAuth, root/local login, token refresh, and session lifecycle management
@@ -40,7 +41,7 @@ export class AuthController {
           const now = Date.now()
           const nowDate = new Date().toISOString().replace('T', ' ').slice(0, 19)
           await db('user_tenant').insert({
-            id: db.raw("gen_random_uuid()::TEXT"),
+            id: getUuid(),
             user_id: user.id,
             tenant_id: systemTenantId,
             role: user.role || 'user',

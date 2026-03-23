@@ -124,7 +124,7 @@ export class RagSearchService {
                 query: {
                     bool: {
                         must: [
-                            { term: { kb_id: datasetId.replace(/-/g, '') } },
+                            { term: { kb_id: datasetId } },
                             { match: { content_with_weight: { query, minimum_should_match: '30%' } } },
                         ],
                         filter: [
@@ -187,7 +187,7 @@ export class RagSearchService {
                 query: {
                     bool: {
                         must: [
-                            { term: { kb_id: datasetId.replace(/-/g, '') } },
+                            { term: { kb_id: datasetId } },
                         ],
                         filter: [
                             { term: { available_int: 1 } },
@@ -399,7 +399,7 @@ export class RagSearchService {
         }
 
         // Strip hyphens from UUIDs to match OpenSearch kb_id format (32-char hex)
-        const kbIds = cappedIds.map(id => id.replace(/-/g, ''))
+        const kbIds = cappedIds.map(id => id)
 
         const client = getClient()
         const method = req.method || 'full_text'
@@ -497,10 +497,10 @@ export class RagSearchService {
 
         // OpenSearch stores kb_id and doc_id as 32-char hex (no hyphens)
         const must: Record<string, unknown>[] = [
-            { term: { kb_id: datasetId.replace(/-/g, '') } },
+            { term: { kb_id: datasetId } },
         ]
         if (options.doc_id) {
-            must.push({ term: { doc_id: options.doc_id.replace(/-/g, '') } })
+            must.push({ term: { doc_id: options.doc_id } })
         }
         // Filter by availability status when explicitly specified
         if (options.available !== undefined) {
@@ -551,11 +551,11 @@ export class RagSearchService {
     async addChunk(tenantId: string, datasetId: string, data: { content: string; doc_id?: string; important_keywords?: string[]; question_keywords?: string[] }): Promise<{ chunk_id: string }> {
         const client = getClient()
         const body: Record<string, unknown> = {
-            kb_id: datasetId.replace(/-/g, ''),
+            kb_id: datasetId,
             tenant_id: tenantId,
             content_with_weight: data.content,
             content_ltks: data.content,
-            doc_id: (data.doc_id || '').replace(/-/g, ''),
+            doc_id: (data.doc_id || ''),
             docnm_kwd: '',
             create_time: new Date().toISOString(),
             create_timestamp_flt: Date.now() / 1000,
@@ -670,8 +670,8 @@ export class RagSearchService {
                 query: {
                     bool: {
                         must: [
-                            { term: { kb_id: datasetId.replace(/-/g, '') } },
-                            { term: { doc_id: docId.replace(/-/g, '') } },
+                            { term: { kb_id: datasetId } },
+                            { term: { doc_id: docId } },
                         ],
                     },
                 },
@@ -706,8 +706,8 @@ export class RagSearchService {
                 query: {
                     bool: {
                         must: [
-                            { term: { kb_id: datasetId.replace(/-/g, '') } },
-                            { term: { doc_id: docId.replace(/-/g, '') } },
+                            { term: { kb_id: datasetId } },
+                            { term: { doc_id: docId } },
                         ],
                     },
                 },
@@ -740,7 +740,7 @@ export class RagSearchService {
                     query: {
                         bool: {
                             must: [
-                                { term: { doc_id: docId.replace(/-/g, '') } },
+                                { term: { doc_id: docId } },
                             ],
                         },
                     },
@@ -781,7 +781,7 @@ export class RagSearchService {
         // Scope to specific datasets if provided (strip hyphens per OpenSearch convention)
         if (datasetIds?.length) {
             filter.push({
-                terms: { kb_id: datasetIds.map(id => id.replace(/-/g, '')) },
+                terms: { kb_id: datasetIds.map(id => id) },
             })
         }
 

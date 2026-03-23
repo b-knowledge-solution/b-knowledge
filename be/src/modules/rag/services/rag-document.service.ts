@@ -13,6 +13,7 @@ import { log } from '@/shared/services/logger.service.js';
 import { getRedisClient } from '@/shared/services/redis.service.js';
 import { DocumentRow, TaskRow, KnowledgebaseRow } from '@/shared/models/types.js';
 import { ragSearchService } from './rag-search.service.js';
+import { getUuid } from '@/shared/utils/uuid.js';
 
 /**
  * @description Service layer for RAG document and task metadata operations.
@@ -413,8 +414,8 @@ export class RagDocumentService {
         const dataset = await this.getKnowledgebase(datasetId)
         if (!dataset) throw new Error('Dataset not found')
 
-        // Generate a UUID hex string (32 chars, no hyphens) matching RAGFlow format
-        const docId = crypto.randomUUID().replace(/-/g, '')
+        // Generate a 32-char hex UUID matching the standardized format
+        const docId = getUuid()
 
         // Create placeholder document through the service API
         await this.createDocument({

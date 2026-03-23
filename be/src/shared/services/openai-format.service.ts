@@ -9,7 +9,7 @@
  * @module shared/services/openai-format
  */
 
-import { v4 as uuidv4 } from 'uuid'
+import { getUuid } from '@/shared/utils/uuid.js'
 
 // ---------------------------------------------------------------------------
 // Interfaces
@@ -80,7 +80,7 @@ export function buildOaiCompletion(
   }
 
   return {
-    id: `chatcmpl-${uuidv4()}`,
+    id: `chatcmpl-${getUuid()}`,
     object: 'chat.completion',
     created: Math.floor(Date.now() / 1000),
     model,

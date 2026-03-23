@@ -20,7 +20,7 @@ import {
   PROCEDURAL_EXTRACTION_PROMPT,
 } from '../prompts/extraction.prompts.js'
 import type { PromptTemplate } from '../prompts/extraction.prompts.js'
-import { v4 as uuidv4 } from 'uuid'
+import { getUuid } from '@/shared/utils/uuid.js'
 
 // ============================================================================
 // Constants
@@ -105,7 +105,7 @@ class MemoryExtractionService {
 
           // Store the extracted memory message in OpenSearch
           await memoryMessageService.insertMessage(tenantId, {
-            message_id: uuidv4(),
+            message_id: getUuid(),
             memory_id: memoryId,
             content,
             content_embed: embedding,

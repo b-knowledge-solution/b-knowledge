@@ -36,8 +36,8 @@
  */
 
 import { Knex } from 'knex'
-import { v4 as uuidv4 } from 'uuid'
 import bcryptjs from 'bcryptjs'
+import { getUuid } from '@/shared/utils/uuid.js'
 
 // ──────────────────────────────────────────────
 // Constants
@@ -129,7 +129,7 @@ function generateUsers(
   return Array.from({ length: count }, (_, i) => {
     const num = i + 1
     return {
-      id: uuidv4(),
+      id: getUuid(),
       email: `${role}${num}@baoda.vn`,
       display_name: `${role.charAt(0).toUpperCase() + role.slice(1)} User ${num}`,
       role,
@@ -221,7 +221,7 @@ export async function seed(knex: Knex): Promise<void> {
       teamsSkipped++
       teamIds.push({ id: existing.id, name: existing.name })
     } else {
-      const teamId = uuidv4()
+      const teamId = getUuid()
       await knex('teams').insert({
         id: teamId,
         ...teamDef,

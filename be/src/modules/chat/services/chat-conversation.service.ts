@@ -46,7 +46,7 @@ import type { LangfuseTraceClient } from 'langfuse'
 import { ChunkResult, ChatAssistant } from '@/shared/models/types.js'
 import { memoryExtractionService, memoryMessageService } from '@/modules/memory/index.js'
 import { Response as ExpressResponse } from 'express'
-import { v4 as uuidv4 } from 'uuid'
+import { getUuid } from '@/shared/utils/uuid.js'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -723,7 +723,7 @@ export class ChatConversationService {
 
     try {
       // ── Step 1: Store user message ──────────────────────────────────────
-      const userMsgId = uuidv4()
+      const userMsgId = getUuid()
       await ModelFactory.chatMessage.create({
         id: userMsgId,
         session_id: conversationId,

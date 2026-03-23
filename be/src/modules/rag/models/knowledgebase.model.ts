@@ -42,7 +42,7 @@ export class KnowledgebaseModel {
     /**
      * @description Create a new knowledgebase record with RAGFlow-compatible defaults
      * @param {object} data - Knowledgebase creation data
-     * @param {string} data.id - UUID of the knowledgebase (will be stripped of hyphens)
+     * @param {string} data.id - UUID of the knowledgebase (32-char hex, no hyphens)
      * @param {string} data.name - Display name
      * @param {string} [data.description] - Optional description
      * @param {string} [data.language] - Document language (defaults to 'English')
@@ -65,7 +65,7 @@ export class KnowledgebaseModel {
     }): Promise<void> {
         const now = nowMs();
         await db(this.tableName).insert({
-            id: data.id.replace(/-/g, ''),
+            id: data.id,
             tenant_id: SYSTEM_TENANT_ID,
             name: data.name,
             description: data.description || '',
@@ -92,7 +92,7 @@ export class KnowledgebaseModel {
 
     /**
      * @description Update a knowledgebase record, mapping Node.js field names to Peewee column names
-     * @param {string} id - UUID of the knowledgebase (hyphens stripped automatically)
+     * @param {string} id - UUID of the knowledgebase (32-char hex, no hyphens)
      * @param {Record<string, unknown>} data - Fields to update (supports Node.js naming like embedding_model)
      * @returns {Promise<void>}
      */
@@ -111,7 +111,7 @@ export class KnowledgebaseModel {
         if ('parser_config' in updateData && typeof updateData['parser_config'] === 'object') {
             updateData['parser_config'] = JSON.stringify(updateData['parser_config']);
         }
-        await db(this.tableName).where({ id: id.replace(/-/g, '') }).update(updateData);
+        await db(this.tableName).where({ id: id }).update(updateData);
     }
 
     /**
@@ -120,7 +120,7 @@ export class KnowledgebaseModel {
      * @returns {Promise<void>}
      */
     async softDelete(id: string): Promise<void> {
-        await db(this.tableName).where({ id: id.replace(/-/g, '') }).update({
+        await db(this.tableName).where({ id: id }).update({
             status: '0',
             update_time: nowMs(),
             update_date: nowDatetime(),
@@ -128,12 +128,12 @@ export class KnowledgebaseModel {
     }
 
     /**
-     * @description Find a knowledgebase by ID (hyphens stripped automatically)
+     * @description Find a knowledgebase by ID (32-char hex, no hyphens)
      * @param {string} id - UUID of the knowledgebase
      * @returns {Promise<KnowledgebaseRow | undefined>} The knowledgebase row or undefined
      */
     async findById(id: string): Promise<KnowledgebaseRow | undefined> {
-        return db(this.tableName).where({ id: id.replace(/-/g, '') }).first();
+        return db(this.tableName).where({ id: id }).first();
     }
 
     /**
@@ -144,7 +144,7 @@ export class KnowledgebaseModel {
      */
     async incrementDocCount(id: string, count: number): Promise<void> {
         await db(this.tableName)
-            .where({ id: id.replace(/-/g, '') })
+            .where({ id: id })
             .increment('doc_num', count);
     }
 }

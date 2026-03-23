@@ -47,6 +47,12 @@ interface SettingsContextType {
   openSettings: () => void;
   /** Close the settings dialog */
   closeSettings: () => void;
+  /** Whether the API keys dialog is open */
+  isApiKeysOpen: boolean;
+  /** Open the API keys dialog */
+  openApiKeys: () => void;
+  /** Close the API keys dialog */
+  closeApiKeys: () => void;
 }
 
 // ============================================================================
@@ -122,11 +128,16 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   const [language, setLanguageState] = useState<LanguageCode>(getStoredLanguage);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isApiKeysOpen, setIsApiKeysOpen] = useState(false);
 
   /** Open settings dialog */
   const openSettings = useCallback(() => setIsSettingsOpen(true), []);
   /** Close settings dialog */
   const closeSettings = useCallback(() => setIsSettingsOpen(false), []);
+  /** Open API keys dialog */
+  const openApiKeys = useCallback(() => setIsApiKeysOpen(true), []);
+  /** Close API keys dialog */
+  const closeApiKeys = useCallback(() => setIsApiKeysOpen(false), []);
 
   /**
    * Effect: Apply dark mode based on theme setting.
@@ -196,6 +207,9 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
         isSettingsOpen,
         openSettings,
         closeSettings,
+        isApiKeysOpen,
+        openApiKeys,
+        closeApiKeys,
       }}
     >
       {children}

@@ -1,7 +1,7 @@
 /**
- * @fileoverview Unit tests for the ApiKeysPage component.
+ * @fileoverview Unit tests for the ApiKeysDialog component.
  *
- * Tests page rendering with fully mocked dependencies.
+ * Tests dialog rendering with fully mocked dependencies.
  * Follows the project pattern of mocking all heavy UI dependencies.
  */
 
@@ -30,6 +30,27 @@ vi.mock('@/features/api-keys/api/apiKeyQueries', () => ({
   useDeleteApiKey: () => ({
     mutate: mockDeleteMutate,
     isPending: false,
+  }),
+}))
+
+// Mock SettingsContext to control dialog open state
+const mockCloseApiKeys = vi.fn()
+let mockIsApiKeysOpen = true
+
+vi.mock('@/app/contexts/SettingsContext', () => ({
+  useSettings: () => ({
+    isApiKeysOpen: mockIsApiKeysOpen,
+    closeApiKeys: mockCloseApiKeys,
+    theme: 'light',
+    setTheme: vi.fn(),
+    language: 'en',
+    setLanguage: vi.fn(),
+    isDarkMode: false,
+    resolvedTheme: 'light',
+    isSettingsOpen: false,
+    openSettings: vi.fn(),
+    closeSettings: vi.fn(),
+    openApiKeys: vi.fn(),
   }),
 }))
 
@@ -83,13 +104,6 @@ vi.mock('@/components/ui/button', () => ({
   ),
 }))
 
-vi.mock('@/components/ui/card', () => ({
-  Card: ({ children }: any) => <div data-testid="card">{children}</div>,
-  CardContent: ({ children, className }: any) => (
-    <div data-testid="card-content" className={className}>{children}</div>
-  ),
-}))
-
 vi.mock('@/components/ui/input', () => ({
   Input: (props: any) => <input {...props} />,
 }))
@@ -108,7 +122,7 @@ vi.mock('@/components/ConfirmDialog', () => ({
   useConfirm: () => vi.fn(() => Promise.resolve(true)),
 }))
 
-import ApiKeysPage from '@/features/api-keys/pages/ApiKeysPage'
+import ApiKeysDialog from '@/features/api-keys/components/ApiKeysDialog'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -137,20 +151,21 @@ function buildKey(overrides: Record<string, unknown> = {}) {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('ApiKeysPage', () => {
+describe('ApiKeysDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockIsApiKeysOpen = true
   })
 
   it('shows loading state', () => {
     mockUseApiKeys.mockReturnValue({ data: undefined, isLoading: true })
-    render(<ApiKeysPage />)
+    render(<ApiKeysDialog />)
     expect(screen.getByText(/common.loading/i)).toBeInTheDocument()
   })
 
   it('shows empty state when no keys exist', () => {
     mockUseApiKeys.mockReturnValue({ data: [], isLoading: false })
-    render(<ApiKeysPage />)
+    render(<ApiKeysDialog />)
     expect(screen.getByText('apiKeys.noKeys')).toBeInTheDocument()
   })
 
@@ -160,15 +175,15 @@ describe('ApiKeysPage', () => {
       buildKey({ id: 'key-2', name: 'Staging Key' }),
     ]
     mockUseApiKeys.mockReturnValue({ data: keys, isLoading: false })
-    render(<ApiKeysPage />)
+    render(<ApiKeysDialog />)
 
     expect(screen.getByText('Production Key')).toBeInTheDocument()
     expect(screen.getByText('Staging Key')).toBeInTheDocument()
   })
 
-  it('displays the page title and create button', () => {
+  it('displays the dialog title and create button', () => {
     mockUseApiKeys.mockReturnValue({ data: [], isLoading: false })
-    render(<ApiKeysPage />)
+    render(<ApiKeysDialog />)
 
     expect(screen.getByText('apiKeys.title')).toBeInTheDocument()
     expect(screen.getByText('apiKeys.createKey')).toBeInTheDocument()
@@ -179,20 +194,22 @@ describe('ApiKeysPage', () => {
       data: [buildKey({ key_prefix: 'bk-abc1234' })],
       isLoading: false,
     })
-    render(<ApiKeysPage />)
+    render(<ApiKeysDialog />)
     expect(screen.getByText('bk-abc1234...')).toBeInTheDocument()
   })
 
   it('opens create dialog on button click', async () => {
     mockUseApiKeys.mockReturnValue({ data: [], isLoading: false })
-    render(<ApiKeysPage />)
+    render(<ApiKeysDialog />)
 
     // The create button text is the i18n key
     const buttons = screen.getAllByText('apiKeys.createKey')
     fireEvent.click(buttons[0]!)
 
     await waitFor(() => {
-      expect(screen.getByTestId('dialog')).toBeInTheDocument()
+      // Two dialogs should be open: the main API keys dialog and the create dialog
+      const dialogs = screen.getAllByTestId('dialog')
+      expect(dialogs.length).toBeGreaterThanOrEqual(2)
     })
   })
 
@@ -201,7 +218,7 @@ describe('ApiKeysPage', () => {
       data: [buildKey({ scopes: ['chat', 'search'] })],
       isLoading: false,
     })
-    render(<ApiKeysPage />)
+    render(<ApiKeysDialog />)
 
     // Since t() returns the key, scope badges will show i18n keys
     expect(screen.getByText('apiKeys.scopeChat')).toBeInTheDocument()
@@ -213,7 +230,7 @@ describe('ApiKeysPage', () => {
       data: [buildKey({ is_active: true })],
       isLoading: false,
     })
-    render(<ApiKeysPage />)
+    render(<ApiKeysDialog />)
     expect(screen.getByText('apiKeys.active')).toBeInTheDocument()
   })
 
@@ -222,7 +239,14 @@ describe('ApiKeysPage', () => {
       data: [buildKey({ is_active: false })],
       isLoading: false,
     })
-    render(<ApiKeysPage />)
+    render(<ApiKeysDialog />)
     expect(screen.getByText('apiKeys.inactive')).toBeInTheDocument()
+  })
+
+  it('does not render when dialog is closed', () => {
+    mockIsApiKeysOpen = false
+    mockUseApiKeys.mockReturnValue({ data: [], isLoading: false })
+    render(<ApiKeysDialog />)
+    expect(screen.queryByText('apiKeys.title')).not.toBeInTheDocument()
   })
 })

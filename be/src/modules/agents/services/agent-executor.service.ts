@@ -13,8 +13,8 @@
  * @module modules/agents/services/agent-executor
  */
 
-import { v4 as uuidv4 } from 'uuid'
 import { Response as ExpressResponse } from 'express'
+import { getUuid } from '@/shared/utils/uuid.js'
 import { ModelFactory } from '@/shared/models/factory.js'
 import { log } from '@/shared/services/logger.service.js'
 import { agentRedisService, type AgentNodeTask } from './agent-redis.service.js'
@@ -135,7 +135,7 @@ class AgentExecutorService {
     // Validate graph structure before creating the run
     this.validateGraph(dsl)
 
-    const runId = uuidv4()
+    const runId = getUuid()
     const nodeCount = Object.keys(dsl.nodes).length
 
     // Create the agent_run record with pending status
@@ -400,7 +400,7 @@ class AgentExecutorService {
         const inputData = this.collectInputData(currentNodeId, edges, nodeOutputs, input, node)
 
         // Create step record
-        const stepId = uuidv4()
+        const stepId = getUuid()
         await ModelFactory.agentRunStep.create({
           id: stepId,
           run_id: runId,

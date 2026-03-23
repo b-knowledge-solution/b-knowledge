@@ -24,8 +24,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const mockFetch = vi.fn()
 global.fetch = mockFetch as any
 
-const mockRandomUUID = vi.fn(() => 'mock-uuid-1234')
-vi.stubGlobal('crypto', { randomUUID: mockRandomUUID })
+vi.mock('@/shared/utils/uuid.js', () => ({
+  getUuid: vi.fn(() => 'aabbccdd11223344aabbccdd11223344'),
+}))
 
 const mockLog = vi.hoisted(() => ({
   error: vi.fn(),

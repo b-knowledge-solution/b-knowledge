@@ -10,7 +10,7 @@
  */
 
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth, User } from '@/features/auth'
 import { useAppAbility } from '@/lib/ability'
@@ -78,14 +78,13 @@ function UserAvatar({ user, size = 'md' }: { user: User; size?: 'sm' | 'md' }) {
  */
 export function Sidebar() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
 
   // Track whether the sidebar is in collapsed (icon-only) mode
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   const { user } = useAuth()
   const ability = useAppAbility()
-  const { openSettings } = useSettings()
+  const { openSettings, openApiKeys } = useSettings()
 
   return (
     <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-sidebar-bg dark:bg-slate-900 text-white flex flex-col transition-all duration-300 border-r border-white/10 dark:border-slate-700`}>
@@ -179,7 +178,7 @@ export function Sidebar() {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent side="top" align="start" className="w-56">
-              <DropdownMenuItem onClick={() => navigate('/api-keys')} className="cursor-pointer">
+              <DropdownMenuItem onClick={() => openApiKeys()} className="cursor-pointer">
                 <KeyRound className="mr-2 h-4 w-4" />
                 {t('nav.apiKeys')}
               </DropdownMenuItem>

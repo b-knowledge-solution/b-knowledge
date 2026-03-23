@@ -10,8 +10,8 @@
  */
 
 import { Request, Response } from 'express'
-import { v4 as uuidv4 } from 'uuid'
 import { log } from '@/shared/services/logger.service.js'
+import { getUuid } from '@/shared/utils/uuid.js'
 import { chatEmbedTokenService } from '@/shared/services/embed-token.service.js'
 import { chatConversationService } from '../services/chat-conversation.service.js'
 import {
@@ -73,7 +73,7 @@ export class ChatOpenaiController {
       }
 
       const resolvedModel = model || MODEL_ID
-      const completionId = `chatcmpl-${uuidv4()}`
+      const completionId = `chatcmpl-${getUuid()}`
 
       if (stream) {
         // ── Streaming mode: SSE with OpenAI chunk format ─────────────────

@@ -247,7 +247,7 @@ export class RagController {
                         : versionDataset.parser_config
                     await ragDocumentService.createDocument({
                         id: docId,
-                        kb_id: versionDataset.id.replace(/-/g, ''),
+                        kb_id: versionDataset.id,
                         parser_id: versionDataset.parser_id || 'naive',
                         parser_config: parserConfig || { pages: [[1, 1000000]] },
                         name: filename,
@@ -480,7 +480,7 @@ export class RagController {
                     : dataset.parser_config;
                 await ragDocumentService.createDocument({
                     id: docId,
-                    kb_id: datasetId.replace(/-/g, ''),
+                    kb_id: datasetId,
                     parser_id: dataset.parser_id || 'naive',
                     parser_config: parserConfig || { pages: [[1, 1000000]] },
                     name: filename,
@@ -1374,7 +1374,7 @@ export class RagController {
 
         try {
             const { ragGraphragService } = await import('../services/rag-graphrag.service.js');
-            const kbId = datasetId.replace(/-/g, '');
+            const kbId = datasetId;
 
             // Fetch entities and relations from OpenSearch
             const entities = await ragGraphragService.getRelevantEntsByTypes([kbId], [], 200);
@@ -1422,8 +1422,7 @@ export class RagController {
 
         try {
             // Strip dashes from UUID for OpenSearch kb_id format
-            const kbId = datasetId.replace(/-/g, '')
-            const metrics = await ragGraphragService.getGraphMetrics([kbId])
+            const kbId = datasetId            const metrics = await ragGraphragService.getGraphMetrics([kbId])
 
             res.json({
                 entity_count: metrics.entityCount,
@@ -1455,8 +1454,7 @@ export class RagController {
 
         try {
             const mode: 'light' | 'full' = req.body.mode || 'light'
-            const kbId = datasetId.replace(/-/g, '')
-
+            const kbId = datasetId
             // Check if a graphrag task is already running
             const isRunning = await ragDocumentService.isAdvancedTaskRunning(datasetId, 'graphrag')
             if (isRunning) {

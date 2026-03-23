@@ -13,6 +13,7 @@ import { log } from '@/shared/services/logger.service.js';
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js';
 import { Dataset, Document, AccessControl, UserContext } from '@/shared/models/types.js';
 import { teamService } from '@/modules/teams/services/team.service.js';
+import { getUuid } from '@/shared/utils/uuid.js';
 
 /**
  * @description Core service for dataset CRUD, RBAC access control, and document operations.
@@ -93,7 +94,9 @@ export class RagService {
                 throw new Error('A dataset with this name already exists')
             }
 
+            // Generate 32-char hex UUID upfront so datasets and knowledgebase tables share the same ID format
             const dataset = await ModelFactory.dataset.create({
+                id: getUuid(),
                 name: data.name,
                 description: data.description || null,
                 language: data.language || 'English',

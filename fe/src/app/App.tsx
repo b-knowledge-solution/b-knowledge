@@ -53,7 +53,6 @@ const ProjectDetailPage = lazy(() => import('@/features/projects/pages/ProjectDe
 const LLMProviderPage = lazy(() => import('@/features/llm-provider/pages/LLMProviderPage'));
 const DocumentReviewerPage = lazy(() => import('@/features/datasets/pages/DocumentReviewerPage'));
 const ChunkDetailPage = lazy(() => import('@/features/datasets/pages/ChunkDetailPage'));
-const ApiKeysPage = lazy(() => import('@/features/api-keys/pages/ApiKeysPage'));
 const AgentListPage = lazy(() => import('@/features/agents/pages/AgentListPage'));
 const AgentCanvasPage = lazy(() => import('@/features/agents/pages/AgentCanvasPage'));
 const MemoryListPage = lazy(() => import('@/features/memory/pages/MemoryListPage'));
@@ -220,18 +219,12 @@ function App() {
               <Route path="admin/broadcast-messages" element={<FeatureErrorBoundary><AdminRoute><BroadcastMessagePage /></AdminRoute></FeatureErrorBoundary>} />
               <Route path="admin/dashboard" element={<FeatureErrorBoundary><AdminRoute><AdminDashboardPage /></AdminRoute></FeatureErrorBoundary>} />
 
-              {/* Data Studio — Chat & Search config, Histories, LLM Providers (admin) */}
-              <Route path="data-studio/chat-assistants" element={<FeatureErrorBoundary><AdminRoute><ChatAssistantManagementPage /></AdminRoute></FeatureErrorBoundary>} />
-              <Route path="data-studio/search-apps" element={<FeatureErrorBoundary><AdminRoute><SearchAppManagementPage /></AdminRoute></FeatureErrorBoundary>} />
-              <Route path="data-studio/histories" element={<FeatureErrorBoundary><AdminRoute><HistoriesPage /></AdminRoute></FeatureErrorBoundary>} />
+              {/* AI Management — Chat & Search config, Histories (admin) */}
+              <Route path="ai/chat-assistants" element={<FeatureErrorBoundary><AdminRoute><ChatAssistantManagementPage /></AdminRoute></FeatureErrorBoundary>} />
+              <Route path="ai/search-apps" element={<FeatureErrorBoundary><AdminRoute><SearchAppManagementPage /></AdminRoute></FeatureErrorBoundary>} />
+              <Route path="ai/histories" element={<FeatureErrorBoundary><AdminRoute><HistoriesPage /></AdminRoute></FeatureErrorBoundary>} />
               <Route path="data-studio/llm-providers" element={<FeatureErrorBoundary><AdminRoute><LLMProviderPage /></AdminRoute></FeatureErrorBoundary>} />
 
-              {/* API Keys (all authenticated users) */}
-              <Route path="api-keys" element={
-                <FeatureErrorBoundary>
-                  <ApiKeysPage />
-                </FeatureErrorBoundary>
-              } />
             </Route>
           </Route>
 

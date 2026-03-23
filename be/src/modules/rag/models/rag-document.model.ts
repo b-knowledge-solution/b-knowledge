@@ -96,12 +96,12 @@ export class RagDocumentModel {
 
     /**
      * @description Update a document record by ID, automatically setting update timestamps
-     * @param {string} docId - Document UUID (hyphens stripped automatically)
+     * @param {string} docId - Document UUID (32-char hex, no hyphens)
      * @param {Record<string, unknown>} data - Fields to update
      * @returns {Promise<void>}
      */
     async update(docId: string, data: Record<string, unknown>): Promise<void> {
-        await db(this.tableName).where({ id: docId.replace(/-/g, '') }).update({
+        await db(this.tableName).where({ id: docId }).update({
             ...data,
             update_time: nowMs(),
             update_date: nowDatetime(),
@@ -110,32 +110,32 @@ export class RagDocumentModel {
 
     /**
      * @description Find a document by ID
-     * @param {string} docId - Document UUID (hyphens stripped automatically)
+     * @param {string} docId - Document UUID (32-char hex, no hyphens)
      * @returns {Promise<DocumentRow | undefined>} The document row or undefined
      */
     async findById(docId: string): Promise<DocumentRow | undefined> {
-        return db(this.tableName).where({ id: docId.replace(/-/g, '') }).first();
+        return db(this.tableName).where({ id: docId }).first();
     }
 
     /**
      * @description Find all documents in a dataset, ordered by creation time descending
-     * @param {string} datasetId - Dataset/knowledgebase UUID (hyphens stripped automatically)
+     * @param {string} datasetId - Dataset/knowledgebase UUID (32-char hex, no hyphens)
      * @returns {Promise<DocumentRow[]>} Array of document rows
      */
     async findByDatasetId(datasetId: string): Promise<DocumentRow[]> {
         return db(this.tableName)
-            .where({ kb_id: datasetId.replace(/-/g, '') })
+            .where({ kb_id: datasetId })
             .orderBy('create_time', 'desc');
     }
 
     /**
      * @description Find active documents in a dataset, ordered ascending (for advanced task processing)
-     * @param {string} datasetId - Dataset/knowledgebase UUID (hyphens stripped automatically)
+     * @param {string} datasetId - Dataset/knowledgebase UUID (32-char hex, no hyphens)
      * @returns {Promise<DocumentRow[]>} Array of active document rows
      */
     async findByDatasetIdAsc(datasetId: string): Promise<DocumentRow[]> {
         return db(this.tableName)
-            .where({ kb_id: datasetId.replace(/-/g, ''), status: '1' })
+            .where({ kb_id: datasetId, status: '1' })
             .orderBy('create_time', 'asc');
     }
 
@@ -158,10 +158,10 @@ export class RagDocumentModel {
 
     /**
      * @description Hard-delete a document row from the table
-     * @param {string} docId - Document UUID (hyphens stripped automatically)
+     * @param {string} docId - Document UUID (32-char hex, no hyphens)
      * @returns {Promise<void>}
      */
     async softDelete(docId: string): Promise<void> {
-        await db(this.tableName).where({ id: docId.replace(/-/g, '') }).delete();
+        await db(this.tableName).where({ id: docId }).delete();
     }
 }

@@ -8,8 +8,8 @@
  * @module modules/memory/controllers/memory
  */
 import { Request, Response } from 'express'
-import { v4 as uuidv4 } from 'uuid'
 import { memoryService } from '../services/memory.service.js'
+import { getUuid } from '@/shared/utils/uuid.js'
 import { memoryMessageService } from '../services/memory-message.service.js'
 import { memoryExtractionService } from '../services/memory-extraction.service.js'
 import { getTenantId } from '@/shared/middleware/tenant.middleware.js'
@@ -256,7 +256,7 @@ class MemoryController {
     try {
       const tenantId = getTenantId(req) || ''
       const { content, message_type } = req.body as { content: string; message_type?: number }
-      const messageId = uuidv4()
+      const messageId = getUuid()
 
       // Ensure the OpenSearch index exists before inserting
       await memoryMessageService.ensureIndex(tenantId)

@@ -37,8 +37,8 @@ vi.mock('../../src/shared/services/logger.service.js', () => ({
   },
 }))
 
-vi.mock('uuid', () => ({
-  v4: () => 'mock-uuid',
+vi.mock('@/shared/utils/uuid.js', () => ({
+  getUuid: () => 'aabbccdd11223344aabbccdd11223344',
 }))
 
 const mockChatCompletion = vi.fn()

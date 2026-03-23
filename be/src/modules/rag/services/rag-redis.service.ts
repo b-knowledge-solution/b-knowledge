@@ -10,8 +10,8 @@
 
 import { getRedisClient, type RedisClient } from '@/shared/services/redis.service.js';
 import { log } from '@/shared/services/logger.service.js';
-import { randomUUID } from 'crypto';
 import { TaskMessage } from '@/shared/models/types.js';
+import { getUuid } from '@/shared/utils/uuid.js';
 
 // Must match advance-rag/common/constants.py
 const SVR_QUEUE_NAME = 'rag_flow_svr_queue';
@@ -30,13 +30,8 @@ function getQueueName(priority: number): string {
     return `${SVR_QUEUE_NAME}_${priority}`;
 }
 
-/**
- * @description Generate a UUID without hyphens (matches Python get_uuid())
- * @returns {string} 32-char hex UUID string
- */
-export function getUuid(): string {
-    return randomUUID().replace(/-/g, '');
-}
+// Re-export shared UUID utility for backward compatibility
+export { getUuid } from '@/shared/utils/uuid.js';
 
 /**
  * @description Format current time as 'HH:MM:SS' for progress messages

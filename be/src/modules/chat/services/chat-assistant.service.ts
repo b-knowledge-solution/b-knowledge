@@ -47,17 +47,19 @@ export class ChatAssistantService {
     }
 
     // Insert assistant record with creator info
-    const assistant = await ModelFactory.chatAssistant.create({
+    // JSONB columns must be stringified before Knex insert
+    const insertData: Record<string, unknown> = {
       name: data.name,
       description: data.description || null,
       icon: data.icon || null,
-      kb_ids: data.kb_ids,
+      kb_ids: JSON.stringify(data.kb_ids),
       llm_id: data.llm_id || null,
-      prompt_config: data.prompt_config || {},
+      prompt_config: JSON.stringify(data.prompt_config || {}),
       is_public: data.is_public ?? false,
       created_by: userId,
       updated_by: userId,
-    } as Partial<ChatAssistant>)
+    }
+    const assistant = await ModelFactory.chatAssistant.create(insertData as Partial<ChatAssistant>)
 
     log.info('Chat assistant created', { assistantId: assistant.id, userId })
     return assistant
@@ -274,11 +276,13 @@ export class ChatAssistantService {
     data: Partial<Pick<ChatAssistant, 'name' | 'description' | 'icon' | 'kb_ids' | 'llm_id' | 'prompt_config' | 'is_public'>>,
     userId: string
   ): Promise<ChatAssistant | undefined> {
+    // Stringify JSONB columns before update
+    const updateData: Record<string, unknown> = { ...data, updated_by: userId }
+    if (data.kb_ids !== undefined) updateData.kb_ids = JSON.stringify(data.kb_ids)
+    if (data.prompt_config !== undefined) updateData.prompt_config = JSON.stringify(data.prompt_config)
+
     // Update record with updated_by tracking
-    const updated = await ModelFactory.chatAssistant.update(assistantId, {
-      ...data,
-      updated_by: userId,
-    } as Partial<ChatAssistant>)
+    const updated = await ModelFactory.chatAssistant.update(assistantId, updateData as Partial<ChatAssistant>)
 
     if (updated) {
       log.info('Chat assistant updated', { assistantId, userId })

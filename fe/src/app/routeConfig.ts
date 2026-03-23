@@ -89,11 +89,11 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     guidelineFeatureId: 'teams',
     fullBleed: true,
   },
-  '/data-studio/chat-assistants': {
+  '/ai/chat-assistants': {
     titleKey: 'chatAdmin.title',
     fullBleed: true,
   },
-  '/data-studio/search-apps': {
+  '/ai/search-apps': {
     titleKey: 'searchAdmin.title',
     fullBleed: true,
   },
@@ -123,7 +123,7 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     titleKey: 'admin.broadcastMessages',
     guidelineFeatureId: 'broadcast',
   },
-  '/data-studio/histories': {
+  '/ai/histories': {
     titleKey: 'histories.title',
     guidelineFeatureId: 'global-histories',
     fullBleed: true,
@@ -132,10 +132,7 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     titleKey: 'llmProviders.title',
     fullBleed: true,
   },
-  '/api-keys': {
-    titleKey: 'apiKeys.title',
-  },
-  '/data-studio/datasets/:id/settings': {
+'/data-studio/datasets/:id/settings': {
     titleKey: 'datasetSettings.title',
     fullBleed: true,
   },

@@ -116,8 +116,8 @@ vi.mock('@/shared/services/ability.service.js', () => ({
   buildOpenSearchAbacFilters: () => [],
 }))
 
-vi.mock('uuid', () => ({
-  v4: () => 'mock-uuid-1234',
+vi.mock('@/shared/utils/uuid.js', () => ({
+  getUuid: () => 'aabbccdd11223344aabbccdd11223344',
 }))
 
 // Import after mocking

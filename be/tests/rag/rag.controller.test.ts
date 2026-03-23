@@ -68,7 +68,10 @@ vi.mock('../../src/modules/rag/services/rag-search.service.js', () => ({ ragSear
 vi.mock('../../src/modules/rag/services/rag-document.service.js', () => ({ ragDocumentService: mockRagDocumentService }))
 vi.mock('../../src/modules/rag/services/rag-redis.service.js', () => ({
   ragRedisService: mockRagRedisService,
-  getUuid: vi.fn().mockReturnValue('mock-uuid'),
+  getUuid: vi.fn().mockReturnValue('aabbccdd11223344aabbccdd11223344'),
+}))
+vi.mock('@/shared/utils/uuid.js', () => ({
+  getUuid: vi.fn().mockReturnValue('aabbccdd11223344aabbccdd11223344'),
 }))
 vi.mock('../../src/modules/rag/services/rag-storage.service.js', () => ({ ragStorageService: mockRagStorageService }))
 vi.mock('../../src/shared/services/redis.service.js', () => ({ getRedisClient: vi.fn() }))

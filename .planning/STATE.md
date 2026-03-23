@@ -225,6 +225,7 @@ Recent decisions affecting current work:
 - [Phase 1, Plan 01]: COALESCE-based unique index on agent_tool_credentials handles NULL agent_id for tenant-level defaults
 - Phase 2 added: Migration memory feature from RAGFlow to B-Knowledge
 - Phase 3 added: Standardize UUID generation between advance-rag and backend
+- Phase 4 added: Standardize UUID format to 32-char hex across Knex and Peewee tables — eliminate hyphen stripping
 
 ### Pending Todos
 

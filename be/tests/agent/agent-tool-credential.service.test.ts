@@ -40,8 +40,8 @@ vi.mock('../../src/shared/services/logger.service.js', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }))
 
-vi.mock('uuid', () => ({
-  v4: vi.fn().mockReturnValue('cred-uuid'),
+vi.mock('@/shared/utils/uuid.js', () => ({
+  getUuid: vi.fn().mockReturnValue('aabbccdd11223344eeff556677889900'),
 }))
 
 import { agentToolCredentialService } from '../../src/modules/agents/services/agent-tool-credential.service.js'
@@ -63,7 +63,7 @@ describe('AgentToolCredentialService', () => {
     it('encrypts credentials and creates a record', async () => {
       mockCryptoService.encrypt.mockReturnValue('encrypted-payload')
       const created = {
-        id: 'cred-uuid',
+        id: 'aabbccdd11223344eeff556677889900',
         tenant_id: 'tenant-1',
         tool_type: 'tavily',
         name: 'My Tavily Key',
@@ -87,7 +87,7 @@ describe('AgentToolCredentialService', () => {
       )
       expect(mockCredentialModel.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          id: 'cred-uuid',
+          id: 'aabbccdd11223344eeff556677889900',
           tenant_id: 'tenant-1',
           tool_type: 'tavily',
           name: 'My Tavily Key',

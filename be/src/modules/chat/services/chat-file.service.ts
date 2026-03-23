@@ -10,8 +10,8 @@
  * @module services/chat-file
  */
 
-import { v4 as uuidv4 } from 'uuid'
 import { minioClient } from '@/shared/services/minio.service.js'
+import { getUuid } from '@/shared/utils/uuid.js'
 import { log } from '@/shared/services/logger.service.js'
 import { config } from '@/shared/config/index.js'
 import { ModelFactory } from '@/shared/models/factory.js'
@@ -88,7 +88,7 @@ export class ChatFileService {
     sessionId: string,
     userId: string,
   ): Promise<ChatFile> {
-    const fileId = uuidv4()
+    const fileId = getUuid()
     const s3Key = `chat-files/${sessionId}/${fileId}/${file.originalname}`
 
     // Ensure bucket exists

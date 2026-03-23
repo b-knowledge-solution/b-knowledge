@@ -50,8 +50,8 @@ vi.mock('../../src/modules/agents/services/agent-executor.service.js', () => ({
   agentExecutorService: {},
 }))
 
-vi.mock('uuid', () => ({
-  v4: vi.fn().mockReturnValue('debug-run-uuid'),
+vi.mock('@/shared/utils/uuid.js', () => ({
+  getUuid: vi.fn().mockReturnValue('aabbccdd11223344eeff556677889900'),
 }))
 
 import { agentDebugService } from '../../src/modules/agents/services/agent-debug.service.js'
@@ -100,10 +100,10 @@ describe('AgentDebugService', () => {
 
       const runId = await agentDebugService.startDebugRun('agent-1', 'test input', 'tenant-1', 'user-1')
 
-      expect(runId).toBe('debug-run-uuid')
+      expect(runId).toBe('aabbccdd11223344eeff556677889900')
       expect(mockAgentRunModel.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          id: 'debug-run-uuid',
+          id: 'aabbccdd11223344eeff556677889900',
           agent_id: 'agent-1',
           status: 'pending',
           trigger_type: 'manual',

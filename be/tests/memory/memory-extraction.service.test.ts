@@ -50,8 +50,8 @@ vi.mock('../../src/shared/services/logger.service.js', () => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }))
 
-vi.mock('uuid', () => ({
-  v4: vi.fn(() => 'generated-uuid'),
+vi.mock('@/shared/utils/uuid.js', () => ({
+  getUuid: vi.fn(() => 'aabbccdd11223344aabbccdd11223344'),
 }))
 
 import { memoryExtractionService } from '../../src/modules/memory/services/memory-extraction.service.js'

@@ -78,7 +78,7 @@ export class RagTaskModel {
      */
     async findByDocId(docId: string): Promise<TaskRow[]> {
         return db(this.tableName)
-            .where({ doc_id: docId.replace(/-/g, '') })
+            .where({ doc_id: docId })
             .orderBy('create_time', 'desc');
     }
 
@@ -94,7 +94,7 @@ export class RagTaskModel {
         options: { page?: number; limit?: number; status?: string } = {}
     ): Promise<{ logs: (TaskRow & { document_name?: string; document_suffix?: string })[]; total: number }> {
         const { page = 1, limit = 20, status } = options;
-        const normalizedKbId = kbId.replace(/-/g, '');
+        const normalizedKbId = kbId;
 
         let baseQuery = db(this.tableName)
             .join('document', 'task.doc_id', '=', 'document.id')
@@ -139,7 +139,7 @@ export class RagTaskModel {
         processing: number;
         cancelled: number;
     }> {
-        const normalizedKbId = kbId.replace(/-/g, '');
+        const normalizedKbId = kbId;
 
         // Count documents for this dataset
         const docCount = await db('document')

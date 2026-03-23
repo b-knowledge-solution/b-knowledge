@@ -76,8 +76,8 @@ vi.mock('@/modules/users/services/user.service.js', () => ({
   userService: { updateUserPermissions: mocks.mockUpdateUserPermissions }
 }))
 
-vi.mock('uuid', () => ({
-  v4: () => 'test-uuid',
+vi.mock('@/shared/utils/uuid.js', () => ({
+  getUuid: () => 'aabbccdd11223344aabbccdd11223344',
 }))
 
 // Lazy import service to ensure mocks apply
@@ -102,15 +102,15 @@ describe('TeamService', () => {
 
     it('successfully creates a team', async () => {
       mockKnex.first.mockResolvedValueOnce(null)
-      mockTeam.create.mockResolvedValueOnce({ id: 'test-uuid', ...dto })
+      mockTeam.create.mockResolvedValueOnce({ id: 'aabbccdd11223344aabbccdd11223344', ...dto })
 
       const result = await teamService.createTeam(dto, user)
 
-      expect(result.id).toBe('test-uuid')
+      expect(result.id).toBe('aabbccdd11223344aabbccdd11223344')
       expect(mockTeam.create).toHaveBeenCalled()
       expect(mockAudit.log).toHaveBeenCalledWith(expect.objectContaining({
         action: 'CREATE_TEAM',
-        resourceId: 'test-uuid'
+        resourceId: 'aabbccdd11223344aabbccdd11223344'
       }))
     })
 

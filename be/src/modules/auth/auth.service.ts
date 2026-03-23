@@ -7,6 +7,7 @@ import { log } from "@/shared/services/logger.service.js";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { ModelFactory } from "@/shared/models/factory.js";
+import { getUuid } from "@/shared/utils/uuid.js";
 
 /**
  * @description User profile data retrieved from Azure AD via Microsoft Graph
@@ -289,7 +290,7 @@ export class AuthService {
    * @description Generates a random state token for OAuth flow.
    */
   generateState(): string {
-    return crypto.randomUUID();
+    return getUuid();
   }
 
 

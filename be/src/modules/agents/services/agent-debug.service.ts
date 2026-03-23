@@ -9,8 +9,8 @@
  * @module modules/agents/services/agent-debug
  */
 
-import { v4 as uuidv4 } from 'uuid'
 import { ModelFactory } from '@/shared/models/factory.js'
+import { getUuid } from '@/shared/utils/uuid.js'
 import { socketService } from '@/shared/services/socket.service.js'
 import { log } from '@/shared/services/logger.service.js'
 import type { AgentRunStep } from '../models/agent-run-step.model.js'
@@ -101,7 +101,7 @@ class AgentDebugService {
       throw Object.assign(new Error('Agent DSL is empty or invalid'), { statusCode: 400 })
     }
 
-    const runId = uuidv4()
+    const runId = getUuid()
     const nodeIds = Object.keys(dsl.nodes)
     const nodeCount = nodeIds.length
 
@@ -295,7 +295,7 @@ class AgentDebugService {
     })
 
     // Create step record in DB
-    const stepId = uuidv4()
+    const stepId = getUuid()
     const stepStart = Date.now()
     await ModelFactory.agentRunStep.create({
       id: stepId,

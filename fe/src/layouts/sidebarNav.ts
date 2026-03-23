@@ -152,17 +152,17 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
     roles: ['super-admin', 'admin'],
     children: [
       {
-        path: '/data-studio/chat-assistants',
+        path: '/ai/chat-assistants',
         labelKey: 'nav.chatAssistants',
         icon: MessageSquare,
       },
       {
-        path: '/data-studio/search-apps',
+        path: '/ai/search-apps',
         labelKey: 'nav.searchApps',
         icon: Search,
       },
       {
-        path: '/data-studio/histories',
+        path: '/ai/histories',
         labelKey: 'nav.histories',
         icon: History,
       },

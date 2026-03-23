@@ -96,7 +96,7 @@ export class RagFileModel {
      * @returns {Promise<void>}
      */
     async deleteByDocumentId(documentId: string): Promise<void> {
-        const docIdClean = documentId.replace(/-/g, '');
+        const docIdClean = documentId;
 
         // Find linked file IDs via file2document join table
         const links = await db('file2document')

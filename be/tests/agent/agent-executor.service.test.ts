@@ -50,10 +50,10 @@ vi.mock('../../src/shared/services/logger.service.js', () => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }))
 
-const mockUuidV4 = vi.hoisted(() => vi.fn().mockReturnValue('mock-uuid'))
+const mockGetUuid = vi.hoisted(() => vi.fn().mockReturnValue('aabbccdd11223344aabbccdd11223344'))
 
-vi.mock('uuid', () => ({
-  v4: mockUuidV4,
+vi.mock('@/shared/utils/uuid.js', () => ({
+  getUuid: mockGetUuid,
 }))
 
 import { agentExecutorService } from '../../src/modules/agents/services/agent-executor.service.js'
@@ -105,7 +105,7 @@ describe('AgentExecutorService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Re-apply uuid mock return value after clearAllMocks resets it
-    mockUuidV4.mockReturnValue('mock-uuid')
+    mockGetUuid.mockReturnValue('aabbccdd11223344aabbccdd11223344')
     vi.useFakeTimers()
   })
 
@@ -131,10 +131,10 @@ describe('AgentExecutorService', () => {
         'agent-1', 'Hello', 'tenant-1', 'user-1', 'manual',
       )
 
-      expect(runId).toBe('mock-uuid')
+      expect(runId).toBe('aabbccdd11223344aabbccdd11223344')
       expect(mockAgentRunModel.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          id: 'mock-uuid',
+          id: 'aabbccdd11223344aabbccdd11223344',
           agent_id: 'agent-1',
           tenant_id: 'tenant-1',
           status: 'pending',
@@ -259,7 +259,7 @@ describe('AgentExecutorService', () => {
       const runId = await agentExecutorService.startRun(
         'agent-1', 'Hello', 'tenant-1', 'user-1', 'manual',
       )
-      expect(runId).toBe('mock-uuid')
+      expect(runId).toBe('aabbccdd11223344aabbccdd11223344')
     })
 
     it('accepts a graph with no edges (single begin node)', async () => {
@@ -281,7 +281,7 @@ describe('AgentExecutorService', () => {
       const runId = await agentExecutorService.startRun(
         'agent-1', 'Hello', 'tenant-1', 'user-1', 'manual',
       )
-      expect(runId).toBe('mock-uuid')
+      expect(runId).toBe('aabbccdd11223344aabbccdd11223344')
     })
   })
 

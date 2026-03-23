@@ -77,6 +77,16 @@ Plans:
 Plans:
 - [x] 03-01-PLAN.md — Switch get_uuid() to UUID4, replace html_parser uuid1 calls, add validation tests
 
+### Phase 4: Standardize UUID format to 32-char hex across Knex and Peewee tables — eliminate hyphen stripping
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 3
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 4 to break down)
+
 ---
 *Roadmap created: 2026-03-18*
 *v1.0 shipped: 2026-03-19*

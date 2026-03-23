@@ -33,7 +33,7 @@ from db.db_models import LLM
 from db.services.common_service import CommonService
 from db.services.tenant_llm_service import LLM4Tenant, TenantLLMService
 from common.constants import LLMType
-from common.token_utils import num_tokens_from_string
+from common.token_utils import num_tokens_from_string, truncate
 
 
 class LLMService(CommonService):
@@ -107,8 +107,8 @@ class LLMBundle(LLM4Tenant):
         for text in texts:
             token_size = num_tokens_from_string(text)
             if token_size > self.max_length:
-                target_len = int(self.max_length * 0.95)
-                safe_texts.append(text[:target_len])
+                # Truncate by token count (not characters) to stay within model context
+                safe_texts.append(truncate(text, int(self.max_length * 0.95)))
             else:
                 safe_texts.append(text)
 

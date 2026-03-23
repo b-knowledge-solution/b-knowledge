@@ -53,10 +53,10 @@ vi.mock('../../src/shared/services/logger.service.js', () => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }))
 
-const mockUuidV4 = vi.hoisted(() => vi.fn(() => 'generated-uuid'))
+const mockGetUuid = vi.hoisted(() => vi.fn(() => 'aabbccdd11223344aabbccdd11223344'))
 
-vi.mock('uuid', () => ({
-  v4: mockUuidV4,
+vi.mock('@/shared/utils/uuid.js', () => ({
+  getUuid: mockGetUuid,
 }))
 
 import { memoryController } from '../../src/modules/memory/controllers/memory.controller.js'
@@ -85,7 +85,7 @@ describe('MemoryController', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Re-establish uuid mock after clearAllMocks resets implementations
-    mockUuidV4.mockReturnValue('generated-uuid')
+    mockGetUuid.mockReturnValue('aabbccdd11223344aabbccdd11223344')
   })
 
   // -----------------------------------------------------------------------
@@ -498,12 +498,12 @@ describe('MemoryController', () => {
       await memoryController.addMessage(req, res)
 
       expect(res.status).toHaveBeenCalledWith(201)
-      expect(res.json).toHaveBeenCalledWith({ message_id: 'generated-uuid' })
+      expect(res.json).toHaveBeenCalledWith({ message_id: 'aabbccdd11223344aabbccdd11223344' })
       expect(mockMemoryMessageService.ensureIndex).toHaveBeenCalledWith('tenant-1')
       expect(mockMemoryMessageService.insertMessage).toHaveBeenCalledWith(
         'tenant-1',
         expect.objectContaining({
-          message_id: 'generated-uuid',
+          message_id: 'aabbccdd11223344aabbccdd11223344',
           memory_id: 'pool-1',
           content: 'Direct message',
           message_type: 2,

@@ -7,8 +7,8 @@
  * @module services/team
  */
 
-import { v4 as uuidv4 } from 'uuid';
 import { ModelFactory } from '@/shared/models/factory.js';
+import { getUuid } from '@/shared/utils/uuid.js';
 import { log } from '@/shared/services/logger.service.js';
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js';
 import { Team } from '@/shared/models/types.js';
@@ -61,7 +61,7 @@ export class TeamService {
             throw new Error(`Team with name "${data.name}" already exists${data.project_name ? ` in project "${data.project_name}"` : ''}`);
         }
 
-        const id = uuidv4();
+        const id = getUuid();
 
         // Create team using model factory
         const team = await ModelFactory.team.create({

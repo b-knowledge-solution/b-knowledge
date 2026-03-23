@@ -12,7 +12,7 @@
  */
 
 import { Knex } from 'knex'
-import { v4 as uuidv4 } from 'uuid'
+import { getUuid } from '@/shared/utils/uuid.js'
 
 // ============================================================================
 // Helper: Build minimal DSL graph
@@ -312,7 +312,7 @@ function buildTemplates(): Array<Record<string, unknown>> {
   ]
 
   return templates.map((t) => ({
-    id: uuidv4(),
+    id: getUuid(),
     name: t.name,
     description: t.description,
     avatar: null,

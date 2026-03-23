@@ -64,12 +64,15 @@ vi.mock('@/modules/rag/services/rag-document.service.js', () => ({
 }))
 
 const mockQueueParseInit = vi.fn()
-const mockGetUuid = vi.fn()
+const mockGetUuid = vi.fn().mockReturnValue('aabbccdd11223344aabbccdd11223344')
 
 vi.mock('@/modules/rag/services/rag-redis.service.js', () => ({
   ragRedisService: {
     queueParseInit: (...args: any[]) => mockQueueParseInit(...args),
   },
+  getUuid: (...args: any[]) => mockGetUuid(...args),
+}))
+vi.mock('@/shared/utils/uuid.js', () => ({
   getUuid: (...args: any[]) => mockGetUuid(...args),
 }))
 
