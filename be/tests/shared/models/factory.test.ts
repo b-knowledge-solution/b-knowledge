@@ -2,7 +2,28 @@
  * @fileoverview Unit tests for ModelFactory singleton pattern.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Mock the knex DB layer so models can instantiate without a real database connection
+vi.mock('../../../src/shared/db/knex.js', () => ({
+  db: vi.fn(),
+}))
+
+// Mock Redis service used by ability.service (transitive dependency from some models)
+vi.mock('../../../src/shared/services/redis.service.js', () => ({
+  getRedisClient: vi.fn(() => null),
+  initRedis: vi.fn(),
+}))
+
+// Mock config used at module scope by various services and models
+vi.mock('../../../src/shared/config/index.js', () => ({
+  config: {
+    session: { ttlSeconds: 604800 },
+    sessionStore: { type: 'memory' },
+    redis: { host: 'localhost', port: 6379 },
+    opensearch: { systemTenantId: 'test-tenant-id' },
+  },
+}))
 
 describe('ModelFactory', () => {
   let ModelFactory: any;

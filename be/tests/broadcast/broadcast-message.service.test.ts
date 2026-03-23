@@ -37,7 +37,7 @@ vi.mock('../../src/shared/services/logger.service.js', () => ({
   log: mockLog,
 }));
 
-vi.mock('../../src/modules/audit/services/audit.service.js', () => ({
+vi.mock('../../src/modules/audit/index.js', () => ({
   auditService: mockAuditService,
   AuditAction: {
     CREATE_BROADCAST: 'create_broadcast',
