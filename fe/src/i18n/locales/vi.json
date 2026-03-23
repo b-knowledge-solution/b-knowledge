@@ -2467,7 +2467,20 @@
     "agentDeleted": "Đã xóa tác tử",
     "agentDuplicated": "Đã nhân bản tác tử",
     "createAsAgentWorkflow": "Tạo bằng quy trình Agent (Nâng cao)",
-    "agentWorkflowDescription": "Xây dựng quy trình AI đa bước với canvas agent trực quan"
+    "agentWorkflowDescription": "Xây dựng quy trình AI đa bước với canvas agent trực quan",
+    "memoryOperator": {
+      "title": "Bộ nhớ",
+      "operationMode": "Thao tác",
+      "read": "Đọc",
+      "write": "Ghi",
+      "selectPool": "Chọn Bộ nhớ",
+      "noPoolsAvailable": "Chưa có bộ nhớ nào",
+      "topK": "Số kết quả tối đa",
+      "vectorWeight": "Trọng số Vector",
+      "messageType": "Loại tin nhắn",
+      "readDescription": "Truy xuất các bộ nhớ liên quan từ pool đã chọn bằng tìm kiếm kết hợp",
+      "writeDescription": "Lưu nội dung dưới dạng bộ nhớ mới trong pool đã chọn"
+    }
   },
   "memory": {
     "title": "Bộ nhớ",

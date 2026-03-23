@@ -52,6 +52,7 @@ export type OperatorType =
   | 'data_operations' | 'list_operations'               // data ops
   | 'string_transform'                                   // string ops
   | 'docs_generator' | 'excel_processor' | 'fillup'     // document ops
+  | 'memory_read' | 'memory_write'                       // memory ops
 
 // ============================================================================
 // DSL Schema Types (stored as JSONB)
@@ -263,6 +264,8 @@ export const NODE_CATEGORY_MAP: Record<OperatorType, NodeCategory> = {
   variable_assigner: 'data', variable_aggregator: 'data',
   data_operations: 'data', list_operations: 'data',
   string_transform: 'data', docs_generator: 'data', excel_processor: 'data',
+  // memory ops
+  memory_read: 'retrieval', memory_write: 'data',
 } as const
 
 /**
