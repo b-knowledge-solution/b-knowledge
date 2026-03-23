@@ -17,7 +17,6 @@ import { ragCitationService } from '@/modules/rag/services/rag-citation.service.
 import { llmClientService } from '@/shared/services/llm-client.service.js'
 import { askSummaryPrompt, citationPrompt, relatedQuestionPrompt } from '@/shared/prompts/index.js'
 import { htmlToMarkdown } from '@/shared/utils/html-to-markdown.js'
-import { detectLanguage, buildLanguageInstruction, buildLanguageReminder } from '@/shared/utils/language-detect.js'
 import { log } from '@/shared/services/logger.service.js'
 import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
 import { queryLogService } from '@/modules/rag/index.js'
@@ -593,13 +592,8 @@ export class SearchService {
     res.write(`data: ${JSON.stringify({ status: 'generating' })}\n\n`)
     res.write(`data: ${JSON.stringify({ reference })}\n\n`)
 
-    // Detect user input language so the LLM responds in the same language
-    const detectedLang = detectLanguage(query)
-    const langInstruction = buildLanguageInstruction(detectedLang)
-    const langReminder = buildLanguageReminder(detectedLang)
-
-    // Build system prompt: language instruction → knowledge context → language reminder → citation rules
-    const systemPrompt = `${langInstruction}\n\n${askSummaryPrompt.build(knowledge)}${langReminder}\n\n${citationPrompt.system}`
+    // Build system prompt with knowledge context and citation instructions
+    const systemPrompt = `${askSummaryPrompt.build(knowledge)}\n\n${citationPrompt.system}`
 
     // Create main-completion span for the LLM streaming call
     let mainSpan: ReturnType<typeof langfuseTraceService.createSpan> | undefined
@@ -687,12 +681,9 @@ export class SearchService {
    *   and parses the response lines into an array
    */
   private async generateRelatedQuestions(query: string, providerId?: string): Promise<string[]> {
-    // Detect user language so related questions are generated in the same language
-    const detectedLang = detectLanguage(query)
-    const langInstruction = buildLanguageInstruction(detectedLang)
     const response = await llmClientService.chatCompletion(
       [
-        { role: 'system', content: `${langInstruction}\n\n${relatedQuestionPrompt.system}` },
+        { role: 'system', content: relatedQuestionPrompt.system },
         { role: 'user', content: query },
       ],
       { providerId }
