@@ -473,11 +473,26 @@ export class RagDocumentService {
      */
     async cancelParse(docId: string): Promise<void> {
         try {
+            // 1. Update document status in PG
             await ModelFactory.ragDocument.update(docId, {
                 run: '2',
                 progress: 0,
                 progress_msg: '',
             });
+
+            // 2. Set Redis cancel keys for each task so Python executor detects cancellation.
+            //    This mirrors Python's cancel_all_task_of(doc_id) which sets "{task_id}-cancel" keys.
+            const redisClient = getRedisClient();
+            if (redisClient) {
+                const tasks = await ModelFactory.ragTask.findByDocId(docId);
+                for (const task of tasks) {
+                    try {
+                        await redisClient.set(`${task.id}-cancel`, 'x');
+                    } catch (redisErr) {
+                        log.warn('Failed to set cancel key in Redis', { taskId: task.id, error: String(redisErr) });
+                    }
+                }
+            }
         } catch (err) {
             log.error('Failed to cancel parse', { docId, error: String(err) });
             throw err;

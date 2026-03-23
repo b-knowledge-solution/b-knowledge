@@ -10,7 +10,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Play, Trash2, XCircle, Settings2, Globe, MoreHorizontal, Upload, Tags } from 'lucide-react'
+import { Play, Square, Trash2, XCircle, Settings2, Globe, MoreHorizontal, Upload, Tags } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -384,16 +384,34 @@ const DocumentTable: React.FC<DocumentTableProps> = ({
                             </Tooltip>
                           </TooltipProvider>
                         )}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onParse(doc.id)}>
-                                <Play size={14} />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>{t('datasets.parse')}</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                        {doc.run === '1' ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-destructive"
+                                  onClick={() => onBulkParse?.([doc.id], 2)}
+                                >
+                                  <Square size={14} />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{t('datasets.stop', 'Stop')}</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onParse(doc.id)}>
+                                  <Play size={14} />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{t('datasets.parse')}</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>

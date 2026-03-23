@@ -98,10 +98,6 @@ export function DefaultModelsPanel({ providers, onDefaultChanged }: DefaultModel
     }
   }
 
-  // VLM providers: models with model_type 'image2text' (auto-created companions)
-  const vlmProviders = providers.filter((p) => p.model_type === 'image2text')
-  // Current VLM default (among image2text providers)
-  const currentVlmDefault = vlmProviders.find((p) => p.is_default)
 
   return (
     <Card>
@@ -158,36 +154,6 @@ export function DefaultModelsPanel({ providers, onDefaultChanged }: DefaultModel
               </div>
             )
           })}
-
-          {/* VLM selector — chat models with vision=true */}
-          <div className="flex items-center gap-1.5">
-            <Eye size={14} className="text-purple-600 dark:text-purple-400" />
-            <span className="text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
-              {t('llmProviders.modelTypes.vision')}:
-            </span>
-
-            {vlmProviders.length > 0 ? (
-              <Select
-                value={currentVlmDefault?.id ?? ''}
-                onValueChange={handleDefaultChange}
-              >
-                <SelectTrigger className="h-7 w-auto min-w-[120px] max-w-[200px] text-xs">
-                  <SelectValue placeholder={t('llmProviders.defaultNotSet')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {vlmProviders.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.factory_name} / {p.model_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <span className="text-xs text-gray-400 dark:text-gray-500 italic">
-                {t('llmProviders.defaultNotSet')}
-              </span>
-            )}
-          </div>
         </div>
       </CardContent>
     </Card>

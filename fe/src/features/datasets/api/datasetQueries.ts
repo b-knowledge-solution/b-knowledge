@@ -356,8 +356,12 @@ export function useDocuments(datasetId: string | undefined): UseDocumentsReturn 
   const bulkParseMutation = useMutation({
     mutationFn: ({ docIds, run }: { docIds: string[]; run: number }) =>
       datasetApi.bulkParseDocuments(datasetId!, docIds, run),
-    meta: { successMessage: t('datasets.bulkParseStarted') },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      // Show different messages for parse vs cancel
+      const message = variables.run === 2
+        ? t('datasets.parseCancelled', 'Parsing cancelled')
+        : t('datasets.bulkParseStarted')
+      globalMessage.success(message)
       queryClient.invalidateQueries({ queryKey: queryKeys.datasets.documents(datasetId!) })
     },
   })
