@@ -50,6 +50,10 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     fullBleed: true,
     hideHeader: true,
   },
+  '/memory': {
+    titleKey: 'memory.title',
+    fullBleed: true,
+  },
   '/chat': {
     titleKey: 'pages.aiChat.title',
     guidelineFeatureId: 'ai-chat',

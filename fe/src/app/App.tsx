@@ -56,6 +56,7 @@ const ChunkDetailPage = lazy(() => import('@/features/datasets/pages/ChunkDetail
 const ApiKeysPage = lazy(() => import('@/features/api-keys/pages/ApiKeysPage'));
 const AgentListPage = lazy(() => import('@/features/agents/pages/AgentListPage'));
 const AgentCanvasPage = lazy(() => import('@/features/agents/pages/AgentCanvasPage'));
+const MemoryListPage = lazy(() => import('@/features/memory/pages/MemoryListPage'));
 
 // ============================================================================
 // Loading Component
@@ -133,6 +134,9 @@ function App() {
               {/* Agent routes */}
               <Route path="agents" element={<FeatureErrorBoundary><AgentListPage /></FeatureErrorBoundary>} />
               <Route path="agents/:id" element={<FeatureErrorBoundary><AgentCanvasPage /></FeatureErrorBoundary>} />
+
+              {/* Memory route */}
+              <Route path="memory" element={<FeatureErrorBoundary><MemoryListPage /></FeatureErrorBoundary>} />
 
               {/* Glossary route */}
               <Route path="glossary" element={

@@ -125,7 +125,9 @@
     "collapseMenu": "Collapse menu",
     "glossary": "Glossary",
     "apiKeys": "API Keys",
-    "agents": "Agents"
+    "agents": "Agents",
+    "agentList": "Agent List",
+    "memory": "Memory"
   },
   "iam": {
     "title": "Identity & Access Management",
@@ -2720,5 +2722,37 @@
         "historyWindowHint": "Number of recent messages to include as context for rewriting"
       }
     }
+  },
+  "memory": {
+    "title": "Memory",
+    "create": "Create Memory Pool",
+    "edit": "Edit Memory Pool",
+    "delete": "Delete Memory Pool",
+    "deleteConfirm": "Are you sure you want to delete \"{{name}}\"? All stored memories will be permanently lost.",
+    "name": "Name",
+    "description": "Description",
+    "memoryType": "Memory Types",
+    "raw": "Raw",
+    "semantic": "Semantic",
+    "episodic": "Episodic",
+    "procedural": "Procedural",
+    "storageType": "Storage Type",
+    "table": "Table",
+    "graph": "Graph",
+    "extractionMode": "Extraction Mode",
+    "batch": "Batch",
+    "realtime": "Real-time",
+    "permission": "Permission",
+    "permMe": "Me only",
+    "permTeam": "Team",
+    "scopeType": "Scope",
+    "scopeUser": "User",
+    "scopeAgent": "Agent",
+    "scopeTeam": "Team",
+    "empty": "No memory pools yet",
+    "emptyHint": "Create a memory pool to help your agents remember across sessions",
+    "created": "Memory pool created",
+    "updated": "Memory pool updated",
+    "deleted": "Memory pool deleted"
   }
 }

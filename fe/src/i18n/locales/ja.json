@@ -126,7 +126,9 @@
     "collapseMenu": "メニューを折りたたむ",
     "glossary": "用語集",
     "apiKeys": "APIキー",
-    "agents": "エージェント"
+    "agents": "エージェント",
+    "agentList": "エージェント一覧",
+    "memory": "メモリ"
   },
   "iam": {
     "title": "ID管理とアクセス制御",
@@ -2452,5 +2454,37 @@
     "agentDuplicated": "エージェントを複製しました",
     "createAsAgentWorkflow": "エージェントワークフローとして作成（上級）",
     "agentWorkflowDescription": "ビジュアルエージェントキャンバスで多段階AIワークフローを構築"
+  },
+  "memory": {
+    "title": "メモリ",
+    "create": "メモリプール作成",
+    "edit": "メモリプール編集",
+    "delete": "メモリプール削除",
+    "deleteConfirm": "「{{name}}」を削除してもよろしいですか？保存されたすべてのメモリが完全に失われます。",
+    "name": "名前",
+    "description": "説明",
+    "memoryType": "メモリタイプ",
+    "raw": "生データ",
+    "semantic": "意味記憶",
+    "episodic": "エピソード記憶",
+    "procedural": "手続き記憶",
+    "storageType": "ストレージタイプ",
+    "table": "テーブル",
+    "graph": "グラフ",
+    "extractionMode": "抽出モード",
+    "batch": "バッチ",
+    "realtime": "リアルタイム",
+    "permission": "権限",
+    "permMe": "自分のみ",
+    "permTeam": "チーム",
+    "scopeType": "スコープ",
+    "scopeUser": "ユーザー",
+    "scopeAgent": "エージェント",
+    "scopeTeam": "チーム",
+    "empty": "メモリプールがありません",
+    "emptyHint": "メモリプールを作成してエージェントがセッション間で記憶を保持できるようにしましょう",
+    "created": "メモリプールを作成しました",
+    "updated": "メモリプールを更新しました",
+    "deleted": "メモリプールを削除しました"
   }
 }

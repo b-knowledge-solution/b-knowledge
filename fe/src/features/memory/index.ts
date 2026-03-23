@@ -22,3 +22,20 @@ export type {
 
 // Constants + helpers
 export { MemoryType, hasMemoryType } from './types/memory.types'
+
+// API
+export { memoryApi } from './api/memoryApi'
+export {
+  useMemories,
+  useMemory,
+  useCreateMemory,
+  useUpdateMemory,
+  useDeleteMemory,
+  useMemoryMessages,
+  useSearchMemoryMessages,
+  useDeleteMemoryMessage,
+  useForgetMemoryMessage,
+} from './api/memoryQueries'
+
+// Components
+export { MemoryCard } from './components/MemoryCard'
