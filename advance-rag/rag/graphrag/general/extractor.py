@@ -100,6 +100,36 @@ class Extractor:
         self._language = language
         self._entity_types = entity_types or DEFAULT_ENTITY_TYPES
 
+    @staticmethod
+    def _normalize_response_text(response):
+        """Normalize LLM response to a plain string.
+
+        Handles list/tuple responses from async_chat and None values.
+
+        Args:
+            response: Raw response from LLM (may be str, list, tuple, or None).
+
+        Returns:
+            Normalized string response.
+        """
+        if isinstance(response, (list, tuple)):
+            response = response[0] if response else ""
+        if response is None:
+            return ""
+        return response if isinstance(response, str) else str(response)
+
+    @staticmethod
+    def _is_truncated_cache(response):
+        """Check if a cached response appears truncated or empty.
+
+        Args:
+            response: The cached response string.
+
+        Returns:
+            True if the response is empty or a single character (truncated).
+        """
+        return len((response or "").strip()) <= 1
+
     @timeout(60 * 20)
     def _chat(self, system, history, gen_conf={}, task_id=""):
         """Send a chat request to the LLM with caching and retry logic.
@@ -122,8 +152,11 @@ class Extractor:
         """
         hist = deepcopy(history)
         conf = deepcopy(gen_conf)
-        # Check cache first
+        # Check cache first — normalize and reject truncated entries
         response = get_llm_cache(self._llm.llm_name, system, hist, conf)
+        response = self._normalize_response_text(response)
+        if self._is_truncated_cache(response):
+            response = ""
         if response:
             return response
         # Truncate system message to fit within model context
@@ -136,11 +169,14 @@ class Extractor:
                     raise TaskCanceledException(f"Task {task_id} was cancelled")
             try:
                 response = asyncio.run(self._llm.async_chat(system_msg[0]["content"], hist, conf))
+                response = self._normalize_response_text(response)
                 # Strip any chain-of-thought reasoning wrapped in <think> tags
-                response = re.sub(r"^.*</think>", "", response[0], flags=re.DOTALL)
+                response = re.sub(r"^.*</think>", "", response, flags=re.DOTALL)
                 if response.find("**ERROR**") >= 0:
                     raise Exception(response)
-                set_llm_cache(self._llm.llm_name, system, response, history, gen_conf)
+                # Only cache non-truncated responses
+                if not self._is_truncated_cache(response):
+                    set_llm_cache(self._llm.llm_name, system, response, history, gen_conf)
                 break
             except Exception as e:
                 logging.exception(e)

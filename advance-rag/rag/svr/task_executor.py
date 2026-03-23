@@ -1033,6 +1033,16 @@ async def run_raptor_for_kb(row, kb_parser_config, chat_mdl, embd_mdl, vector_si
     res = []
     tk_count = 0
     max_errors = int(os.environ.get("RAPTOR_MAX_ERRORS", 3))
+    # Build cross-KB document name lookup to prevent name collisions
+    # when multiple documents share a knowledge base
+    doc_name_by_id = {}
+    for doc_id in set(doc_ids):
+        ok, source_doc = DocumentService.get_by_id(doc_id)
+        if not ok or not source_doc:
+            continue
+        source_name = getattr(source_doc, "name", "")
+        if source_name:
+            doc_name_by_id[doc_id] = source_name
 
     async def generate(chunks, did):
         nonlocal tk_count, res
@@ -1047,11 +1057,13 @@ async def run_raptor_for_kb(row, kb_parser_config, chat_mdl, embd_mdl, vector_si
         )
         original_length = len(chunks)
         chunks = await raptor(chunks, kb_parser_config["raptor"]["random_seed"], callback, row["id"])
+        # Use actual document name when available to avoid cross-KB naming collisions
+        effective_doc_name = row["name"] if did == fake_doc_id else doc_name_by_id.get(did, row["name"])
         doc = {
             "doc_id": did,
             "kb_id": [str(row["kb_id"])],
-            "docnm_kwd": row["name"],
-            "title_tks": rag_tokenizer.tokenize(row["name"]),
+            "docnm_kwd": effective_doc_name,
+            "title_tks": rag_tokenizer.tokenize(effective_doc_name),
             "raptor_kwd": "raptor"
         }
         if row["pagerank"]:
