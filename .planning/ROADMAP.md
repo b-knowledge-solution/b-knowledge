@@ -24,7 +24,7 @@
 | Phase | Milestone | Plans | Status | Completed |
 |-------|-----------|-------|--------|-----------|
 | 1. Migration Stabilization | 6/10 | In Progress|  | 2026-03-18 |
-| 2. Access Control | v1.0 | 1/6 | In Progress|  |
+| 2. Access Control | v1.0 | 2/6 | In Progress|  |
 | 3. Document Management | v1.0 | 8/8 | Complete | 2026-03-19 |
 | 4. Domain-Specific Parsers | v1.0 | 3/3 | Complete | 2026-03-19 |
 | 5. Advanced Retrieval | v1.0 | 4/4 | Complete | 2026-03-19 |
@@ -57,11 +57,11 @@ Plans:
 **Goal:** Full parity migration of RAGFlow's memory system — 4 memory types (Raw/Semantic/Episodic/Procedural) via bitmask, OpenSearch storage with hybrid vector+text search, LLM-powered extraction pipeline with configurable prompts, FIFO forgetting, chat auto-save/inject integration, agent canvas Memory operator node, chat history import, and management UI (pool list, message browser, settings panel).
 **Requirements**: MEM-SCHEMA, MEM-CRUD-API, MEM-MESSAGES, MEM-EXTRACTION, MEM-CHAT-INTEGRATION, MEM-AGENT-INTEGRATION, MEM-FE-TYPES, MEM-LIST-UI, MEM-DETAIL-UI, MEM-IMPORT, MEM-SIDEBAR-NAV
 **Depends on:** Phase 1
-**Plans:** 1/6 plans executed
+**Plans:** 2/6 plans executed
 
 Plans:
 - [x] 02-01-PLAN.md — Database migration + Knex model + Zod schemas + extraction prompts + FE types
-- [ ] 02-02-PLAN.md — BE memory service + message service (OpenSearch) + controller + routes
+- [x] 02-02-PLAN.md — BE memory service + message service (OpenSearch) + controller + routes
 - [ ] 02-03-PLAN.md — FE API layer + Memory list page + sidebar nav + routing + i18n
 - [ ] 02-04-PLAN.md — Memory extraction pipeline + chat integration (auto-save/inject)
 - [ ] 02-05-PLAN.md — FE detail page (message browser + settings panel + import dialog)
