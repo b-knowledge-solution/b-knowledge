@@ -173,3 +173,4 @@ advance-rag/**/*.pth
 worktrees
 .claude/settings.local.json
 advance-rag/rag/res/deepdoc/updown_concat_xgb.model
+.gitnexus
