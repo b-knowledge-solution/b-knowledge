@@ -1,0 +1,992 @@
+openapi: 3.1.1
+info:
+  title: B-Knowledge External API
+  description: |
+    External APIs for RAG Chat, Search, and Retrieval evaluation.
+    Includes evaluation endpoints (`/api/v1/external/*`) with structured JSON responses
+    and OpenAI-compatible endpoints (`/api/v1/chat/completions`, `/api/v1/search/completions`).
+  version: 1.0.0
+  contact:
+    name: B-Knowledge
+  license:
+    name: MIT
+    identifier: MIT
+
+servers:
+  - url: '{protocol}://{host}:{port}'
+    description: B-Knowledge API Server
+    variables:
+      protocol:
+        default: http
+        enum: [http, https]
+      host:
+        default: localhost
+      port:
+        default: '3001'
+
+security:
+  - BearerApiKey: []
+
+tags:
+  - name: Evaluation — Chat
+    description: Full RAG chat with structured response for evaluation
+  - name: Evaluation — Search
+    description: Search with AI summary and structured response for evaluation
+  - name: Evaluation — Retrieval
+    description: Retrieval-only (no LLM generation) for context evaluation
+  - name: OpenAI-Compatible — Chat
+    description: OpenAI-compatible chat completion endpoint
+  - name: OpenAI-Compatible — Search
+    description: OpenAI-compatible search completion endpoint
+  - name: OpenAI-Compatible — Models
+    description: List available models
+  - name: API Key Management
+    description: CRUD operations for API keys (session auth required)
+
+paths:
+  # ===========================================================================
+  # Evaluation API
+  # ===========================================================================
+  /api/v1/external/chat:
+    post:
+      operationId: externalChat
+      summary: RAG Chat (Evaluation)
+      description: |
+        Full RAG pipeline: retrieve context from knowledge bases, generate an LLM answer
+        with citations, and return everything in a structured JSON response.
+        Designed for integration with evaluation tools like promptfoo.
+      tags: [Evaluation — Chat]
+      security:
+        - BearerApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalChatRequest'
+            examples:
+              withAssistant:
+                summary: Using an assistant
+                value:
+                  query: What is our refund policy?
+                  assistant_id: 550e8400-e29b-41d4-a716-446655440000
+                  options:
+                    top_k: 5
+                    method: hybrid
+              withDatasets:
+                summary: Using direct dataset IDs
+                value:
+                  query: What is our refund policy?
+                  dataset_ids:
+                    - 550e8400-e29b-41d4-a716-446655440001
+                    - 550e8400-e29b-41d4-a716-446655440002
+                  options:
+                    top_k: 10
+                    method: semantic
+                    temperature: 0.5
+      responses:
+        '200':
+          description: Successful RAG chat response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvalChatResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InsufficientScope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/v1/external/search:
+    post:
+      operationId: externalSearch
+      summary: Search with AI Summary (Evaluation)
+      description: |
+        Search with AI summary: retrieve from search apps or datasets,
+        generate a summary with citations, and return structured JSON.
+      tags: [Evaluation — Search]
+      security:
+        - BearerApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalSearchRequest'
+            examples:
+              withSearchApp:
+                summary: Using a search app
+                value:
+                  query: How to configure SSO?
+                  search_app_id: 660e8400-e29b-41d4-a716-446655440000
+                  options:
+                    top_k: 5
+                    method: hybrid
+              withDatasets:
+                summary: Using direct dataset IDs
+                value:
+                  query: How to configure SSO?
+                  dataset_ids:
+                    - 550e8400-e29b-41d4-a716-446655440001
+      responses:
+        '200':
+          description: Successful search response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvalChatResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InsufficientScope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/v1/external/retrieval:
+    post:
+      operationId: externalRetrieval
+      summary: Retrieval Only (Evaluation)
+      description: |
+        Retrieval-only endpoint — returns raw retrieved chunks without LLM generation.
+        Useful for evaluating retrieval quality independently.
+      tags: [Evaluation — Retrieval]
+      security:
+        - BearerApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalRetrievalRequest'
+            example:
+              query: authentication methods
+              dataset_ids:
+                - 550e8400-e29b-41d4-a716-446655440001
+                - 550e8400-e29b-41d4-a716-446655440002
+              options:
+                top_k: 20
+                method: hybrid
+                similarity_threshold: 0.3
+      responses:
+        '200':
+          description: Successful retrieval response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvalRetrievalResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InsufficientScope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  # ===========================================================================
+  # OpenAI-Compatible API
+  # ===========================================================================
+  /api/v1/chat/completions:
+    post:
+      operationId: chatCompletion
+      summary: Chat Completion (OpenAI-Compatible)
+      description: |
+        OpenAI-compatible chat completion endpoint. Supports both streaming (SSE)
+        and non-streaming response modes. Uses the RAG pipeline internally.
+      tags: [OpenAI-Compatible — Chat]
+      security:
+        - BearerEmbedToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenAIChatRequest'
+            example:
+              model: gpt-4o
+              messages:
+                - role: system
+                  content: You are a helpful assistant.
+                - role: user
+                  content: What is our refund policy?
+              stream: true
+              temperature: 0.7
+              max_tokens: 1024
+      responses:
+        '200':
+          description: Chat completion response (non-streaming or SSE stream)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAIChatResponse'
+            text/event-stream:
+              schema:
+                description: SSE stream of OpenAI-format chunks, terminated by `data: [DONE]`
+                type: string
+        '401':
+          $ref: '#/components/responses/OpenAIUnauthorized'
+        '404':
+          $ref: '#/components/responses/OpenAIModelNotFound'
+        '429':
+          $ref: '#/components/responses/OpenAIRateLimited'
+        '500':
+          $ref: '#/components/responses/OpenAIInternalError'
+
+  /api/v1/search/completions:
+    post:
+      operationId: searchCompletion
+      summary: Search Completion (OpenAI-Compatible)
+      description: |
+        OpenAI-compatible search completion endpoint. Same request/response format
+        as chat completions but routes to the search pipeline.
+      tags: [OpenAI-Compatible — Search]
+      security:
+        - BearerEmbedToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenAIChatRequest'
+            example:
+              model: gpt-4o
+              messages:
+                - role: user
+                  content: How to configure SSO?
+              stream: false
+      responses:
+        '200':
+          description: Search completion response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAIChatResponse'
+            text/event-stream:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/OpenAIUnauthorized'
+        '429':
+          $ref: '#/components/responses/OpenAIRateLimited'
+        '500':
+          $ref: '#/components/responses/OpenAIInternalError'
+
+  /api/v1/models:
+    get:
+      operationId: listModels
+      summary: List Models
+      description: List available models in OpenAI format. No authentication required.
+      tags: [OpenAI-Compatible — Models]
+      security: []
+      responses:
+        '200':
+          description: List of available models
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenAIModelList'
+
+  # ===========================================================================
+  # API Key Management (session auth)
+  # ===========================================================================
+  /api/external/api-keys:
+    post:
+      operationId: createApiKey
+      summary: Create API Key
+      description: Create a new API key for the authenticated user.
+      tags: [API Key Management]
+      security:
+        - SessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiKeyRequest'
+            example:
+              name: Promptfoo Evaluation
+              scopes: [chat, search, retrieval]
+              expires_at: '2025-12-31T23:59:59Z'
+      responses:
+        '201':
+          description: API key created (raw key shown only once)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyCreatedResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      operationId: listApiKeys
+      summary: List API Keys
+      description: List all API keys for the authenticated user.
+      tags: [API Key Management]
+      security:
+        - SessionAuth: []
+      responses:
+        '200':
+          description: List of API keys (keys are masked)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApiKeyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/external/api-keys/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: API key UUID
+
+    patch:
+      operationId: updateApiKey
+      summary: Update API Key
+      description: Update an API key's name, scopes, or active status.
+      tags: [API Key Management]
+      security:
+        - SessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateApiKeyRequest'
+      responses:
+        '200':
+          description: API key updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: API key not found
+
+    delete:
+      operationId: deleteApiKey
+      summary: Delete API Key
+      description: Permanently delete an API key.
+      tags: [API Key Management]
+      security:
+        - SessionAuth: []
+      responses:
+        '204':
+          description: API key deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: API key not found
+
+# =============================================================================
+# Components
+# =============================================================================
+components:
+  securitySchemes:
+    BearerApiKey:
+      type: http
+      scheme: bearer
+      description: |
+        API key generated in B-Knowledge admin UI.
+        Format: `Bearer bk-xxxxxxxxxxxxxxxxxxxx`
+
+    BearerEmbedToken:
+      type: http
+      scheme: bearer
+      description: |
+        Embed token generated when creating embeddable assistants or search apps.
+        Chat tokens from `chat_embed_tokens`, search tokens from `search_embed_tokens`.
+
+    SessionAuth:
+      type: apiKey
+      in: cookie
+      name: connect.sid
+      description: Session cookie from authenticated login
+
+  # ---------------------------------------------------------------------------
+  # Request Schemas
+  # ---------------------------------------------------------------------------
+  schemas:
+    EvaluationOptions:
+      type: object
+      description: Options for controlling retrieval and generation behavior
+      properties:
+        top_k:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+          description: Maximum number of chunks to retrieve
+        method:
+          type: string
+          enum: [full_text, semantic, hybrid]
+          default: hybrid
+          description: Search method to use
+        similarity_threshold:
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 0.2
+          description: Minimum similarity score for retrieved chunks
+        vector_similarity_weight:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Weight for vector similarity in hybrid search (0 = full-text only, 1 = vector only)
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+          default: 0.7
+          description: LLM generation temperature
+        max_tokens:
+          type: integer
+          minimum: 1
+          maximum: 32768
+          description: Maximum tokens for LLM response
+        include_contexts:
+          type: boolean
+          default: true
+          description: Whether to include retrieved chunks in the response
+        include_metadata:
+          type: boolean
+          default: true
+          description: Whether to include timing and pipeline metadata
+
+    ExternalChatRequest:
+      type: object
+      required: [query]
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 10000
+          description: The user's question
+        assistant_id:
+          type: string
+          format: uuid
+          description: Chat assistant to use (resolves datasets and LLM config)
+        dataset_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Direct dataset targeting (alternative to assistant_id)
+        options:
+          $ref: '#/components/schemas/EvaluationOptions'
+
+    ExternalSearchRequest:
+      type: object
+      required: [query]
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 10000
+          description: The search query
+        search_app_id:
+          type: string
+          format: uuid
+          description: Search app to use (resolves datasets and LLM config)
+        dataset_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Direct dataset targeting (alternative to search_app_id)
+        options:
+          $ref: '#/components/schemas/EvaluationOptions'
+
+    ExternalRetrievalRequest:
+      type: object
+      required: [query, dataset_ids]
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 10000
+          description: The search query
+        dataset_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 1
+          description: At least one dataset ID is required
+        options:
+          $ref: '#/components/schemas/EvaluationOptions'
+
+    # -------------------------------------------------------------------------
+    # Response Schemas — Evaluation API
+    # -------------------------------------------------------------------------
+    EvalContext:
+      type: object
+      description: A single retrieved context chunk
+      properties:
+        text:
+          type: string
+          description: The chunk text content
+        doc_id:
+          type: string
+          description: Source document ID
+        doc_name:
+          type: string
+          description: Source document name
+        chunk_id:
+          type: string
+          description: Chunk identifier
+        score:
+          type: number
+          description: Relevance score (0–1)
+        page_num:
+          type: array
+          items:
+            type: integer
+          description: Page numbers where the chunk appears
+        token_count:
+          type: integer
+          description: Token count of the chunk text
+
+    EvalSource:
+      type: object
+      description: Source document aggregation
+      properties:
+        doc_id:
+          type: string
+          description: Document ID
+        doc_name:
+          type: string
+          description: Document name
+        chunk_count:
+          type: integer
+          description: Number of chunks retrieved from this document
+
+    EvalMetadata:
+      type: object
+      description: Performance and pipeline metadata
+      properties:
+        model:
+          type: string
+          description: Model identifier used for generation
+        assistant_id:
+          type: string
+          format: uuid
+          description: Assistant ID (chat endpoint only)
+        search_app_id:
+          type: string
+          format: uuid
+          description: Search app ID (search endpoint only)
+        retrieval_ms:
+          type: integer
+          description: Time spent on retrieval in milliseconds
+        generation_ms:
+          type: integer
+          description: Time spent on LLM generation in milliseconds
+        total_ms:
+          type: integer
+          description: Total request processing time in milliseconds
+        chunks_retrieved:
+          type: integer
+          description: Total chunks retrieved before reranking
+        chunks_after_rerank:
+          type: integer
+          description: Chunks remaining after reranking/truncation
+        search_method:
+          type: string
+          enum: [full_text, semantic, hybrid]
+          description: Search method used
+
+    EvalChatResponse:
+      type: object
+      description: Full evaluation response for chat and search endpoints
+      properties:
+        answer:
+          type: string
+          description: LLM-generated answer with citation markers
+        contexts:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvalContext'
+          description: Retrieved context chunks
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvalSource'
+          description: Aggregated source documents
+        metadata:
+          $ref: '#/components/schemas/EvalMetadata'
+
+    EvalRetrievalResponse:
+      type: object
+      description: Response for retrieval-only endpoint (no LLM generation)
+      properties:
+        contexts:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvalContext'
+          description: Retrieved context chunks
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvalSource'
+          description: Aggregated source documents
+        metadata:
+          type: object
+          description: Retrieval-only metadata (no generation timing)
+          properties:
+            retrieval_ms:
+              type: integer
+            total_ms:
+              type: integer
+            chunks_retrieved:
+              type: integer
+            chunks_after_rerank:
+              type: integer
+            search_method:
+              type: string
+              enum: [full_text, semantic, hybrid]
+
+    # -------------------------------------------------------------------------
+    # OpenAI-Compatible Schemas
+    # -------------------------------------------------------------------------
+    OpenAIChatMessage:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [system, user, assistant]
+          description: Message role
+        content:
+          type: string
+          description: Message content
+
+    OpenAIChatRequest:
+      type: object
+      required: [model, messages]
+      properties:
+        model:
+          type: string
+          description: Model ID (e.g., gpt-4o). The actual model used is determined by the assistant/search app config.
+          examples: ['gpt-4o']
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpenAIChatMessage'
+          minItems: 1
+          description: Conversation messages array
+        stream:
+          type: boolean
+          default: false
+          description: Whether to stream the response via SSE
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+          description: Sampling temperature
+        max_tokens:
+          type: integer
+          minimum: 1
+          description: Maximum tokens to generate
+
+    OpenAIChatResponse:
+      type: object
+      description: Non-streaming chat completion response
+      properties:
+        id:
+          type: string
+          description: Unique completion ID
+          examples: ['chatcmpl-abc123']
+        object:
+          type: string
+          const: chat.completion
+        created:
+          type: integer
+          description: Unix timestamp of creation
+        model:
+          type: string
+          description: Model ID
+        choices:
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              message:
+                $ref: '#/components/schemas/OpenAIChatMessage'
+              finish_reason:
+                type: string
+                enum: [stop, length]
+        usage:
+          type: object
+          properties:
+            prompt_tokens:
+              type: integer
+            completion_tokens:
+              type: integer
+            total_tokens:
+              type: integer
+
+    OpenAIModelList:
+      type: object
+      properties:
+        object:
+          type: string
+          const: list
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                description: Model ID
+              object:
+                type: string
+                const: model
+              owned_by:
+                type: string
+                description: Model owner
+
+    # -------------------------------------------------------------------------
+    # API Key Management Schemas
+    # -------------------------------------------------------------------------
+    CreateApiKeyRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Human-readable key name
+        scopes:
+          type: array
+          items:
+            type: string
+            enum: [chat, search, retrieval]
+          minItems: 1
+          default: [chat, search, retrieval]
+          description: Endpoint scopes the key can access
+        expires_at:
+          type: string
+          format: date-time
+          description: Optional expiration date (null for no expiry)
+
+    UpdateApiKeyRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        scopes:
+          type: array
+          items:
+            type: string
+            enum: [chat, search, retrieval]
+          minItems: 1
+        is_active:
+          type: boolean
+          description: Enable or disable the key
+
+    ApiKeyCreatedResponse:
+      type: object
+      description: Response when creating an API key (raw key shown only once)
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        key:
+          type: string
+          description: The raw API key (only returned on creation)
+        scopes:
+          type: array
+          items:
+            type: string
+            enum: [chat, search, retrieval]
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    ApiKeyResponse:
+      type: object
+      description: API key metadata (key is masked)
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+            enum: [chat, search, retrieval]
+        is_active:
+          type: boolean
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # -------------------------------------------------------------------------
+    # Error Schema
+    # -------------------------------------------------------------------------
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          required: [message, type]
+          properties:
+            message:
+              type: string
+              description: Human-readable error message
+            type:
+              type: string
+              description: Error type category
+            code:
+              type: string
+              description: Machine-readable error code (OpenAI-compatible endpoints only)
+
+  # ---------------------------------------------------------------------------
+  # Reusable Responses
+  # ---------------------------------------------------------------------------
+  responses:
+    InvalidRequest:
+      description: Invalid request (validation error or missing resource)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              message: 'No datasets specified. Provide assistant_id or dataset_ids.'
+              type: invalid_request_error
+
+    Unauthorized:
+      description: Missing or invalid API key
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              message: Invalid or expired API key.
+              type: authentication_error
+              code: invalid_api_key
+
+    InsufficientScope:
+      description: API key lacks the required scope
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              message: "API key does not have the 'chat' scope."
+              type: permission_error
+              code: insufficient_scope
+
+    RateLimited:
+      description: Rate limit exceeded (100 requests/minute)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              message: Rate limit exceeded. Maximum 100 requests per minute.
+              type: rate_limit_error
+
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              message: Internal server error
+              type: server_error
+
+    OpenAIUnauthorized:
+      description: Invalid Bearer token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              message: Invalid authentication token
+              type: invalid_request_error
+              code: invalid_api_key
+
+    OpenAIModelNotFound:
+      description: Requested model not available
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              message: Model not found
+              type: invalid_request_error
+              code: model_not_found
+
+    OpenAIRateLimited:
+      description: Too many requests
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              message: Rate limit exceeded
+              type: rate_limit_error
+              code: rate_limit_exceeded
+
+    OpenAIInternalError:
+      description: Internal pipeline failure
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              message: Internal server error
+              type: server_error
+              code: internal_error
