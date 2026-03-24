@@ -143,8 +143,7 @@ stateDiagram-v2
     [*] --> Active: Manually inserted
     [*] --> Active: Imported from chat history
 
-    Active --> Forgotten: Forget command
-    Forgotten --> Active: Restore command
+    Active --> Forgotten: Forget command (one-way)
 
     Active --> Deleted: Delete command
     Active --> Deleted: FIFO eviction
@@ -317,3 +316,13 @@ This means:
 | `fe/src/features/memory/types/memory.types.ts` | Frontend type definitions |
 | `fe/src/features/memory/pages/MemoryListPage.tsx` | Pool list page |
 | `fe/src/features/memory/pages/MemoryDetailPage.tsx` | Pool detail + messages |
+
+## Current Limitations
+
+| Limitation | Description |
+|-----------|-------------|
+| **Vector search is text-only** | The search controller currently passes an empty vector `[]` to OpenSearch. Hybrid search falls back to text-only BM25 matching. Full embedding wiring is planned. |
+| **Direct message insert lacks embeddings** | Messages added via `POST /:id/messages` (used by memory_write agent node) have empty `content_embed`, so they are not semantically searchable until re-indexed. |
+| **Forget is one-directional** | There is no restore/unforgot endpoint. Once a message is forgotten (status=0), it cannot be reactivated via the API. |
+| **Realtime extraction not wired** | The `extraction_mode: 'realtime'` is supported in the schema but the chat pipeline currently only triggers batch extraction. |
+| **Temperature fallback inconsistency** | The Zod schema defaults temperature to `0.1`, but the extraction service uses `memory.temperature ?? 0.3` as fallback. |

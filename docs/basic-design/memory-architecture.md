@@ -117,8 +117,8 @@ erDiagram
         enum storage_type "table | graph"
         int memory_size "Max pool size in bytes (default 5MB)"
         text forgetting_policy
-        text embd_id FK "Per-pool embedding model override"
-        text llm_id FK "Per-pool LLM model override"
+        varchar embd_id "Per-pool embedding model override (references tenant_llm)"
+        varchar llm_id "Per-pool LLM model override (references tenant_llm)"
         float temperature "LLM temperature for extraction"
         text system_prompt "Custom extraction system prompt"
         text user_prompt "Custom extraction user prompt"
@@ -127,7 +127,7 @@ erDiagram
         enum scope_type "user | agent | team"
         text scope_id "Owner entity UUID"
         text tenant_id
-        text created_by FK
+        varchar created_by "Creator user UUID (no FK constraint)"
         timestamp created_at
         timestamp updated_at
     }
@@ -139,17 +139,19 @@ Index name: `memory_{tenantId}` (per-tenant isolation)
 
 ```json
 {
+  "settings": { "index": { "knn": true } },
   "mappings": {
     "properties": {
       "message_id":    { "type": "keyword" },
       "memory_id":     { "type": "keyword" },
       "content":       { "type": "text", "analyzer": "standard" },
       "content_embed": { "type": "knn_vector", "dimension": 1024,
-                         "method": { "name": "hnsw", "space_type": "cosinesimil" } },
+                         "method": { "name": "hnsw", "space_type": "cosinesimil", "engine": "nmslib" } },
       "message_type":  { "type": "integer" },
       "status":        { "type": "integer" },
       "tenant_id":     { "type": "keyword" },
       "source_id":     { "type": "keyword" },
+      "user_id":       { "type": "keyword" },
       "valid_at":      { "type": "date" },
       "invalid_at":    { "type": "date" },
       "created_at":    { "type": "date" }
@@ -195,7 +197,7 @@ flowchart TD
 ```
 
 - Approximate message size: 9KB
-- Default pool size: 5MB (~555 messages)
+- Default pool size: 5MB (~582 messages)
 - FIFO enforcement is non-blocking (failures logged, not thrown)
 
 ## Access Control Model
@@ -270,7 +272,7 @@ fe/src/features/memory/
 | GET | `/api/memory/:id/messages` | manage Memory | List messages (paginated) |
 | DELETE | `/api/memory/:id/messages/:mid` | manage Memory | Delete message |
 | POST | `/api/memory/:id/search` | manage Memory | Hybrid vector+text search |
-| PUT | `/api/memory/:id/messages/:mid/forget` | manage Memory | Toggle forgotten status |
+| PUT | `/api/memory/:id/messages/:mid/forget` | manage Memory | Mark message as forgotten |
 | POST | `/api/memory/:id/import` | manage Memory | Import chat history |
 | POST | `/api/memory/:id/messages` | manage Memory | Direct message insert |
 
@@ -287,3 +289,12 @@ Agent DSL includes two memory-specific node types:
 - Chat completion pipeline can trigger realtime memory extraction after each turn
 - Chat sessions can be imported into memory pools via the import API
 - Memory search results can be injected into chat context for personalized responses
+
+## Current Limitations
+
+| Limitation | Description | Status |
+|-----------|-------------|--------|
+| **Vector search stub** | Search endpoint currently passes empty vector `[]`; relies on text-only search fallback | Planned for full embedding wiring |
+| **Forget is one-way** | No restore/unforgot endpoint; forgotten messages (status=0) cannot be reactivated via API | By design |
+| **Realtime extraction** | Schema supports `realtime` mode but chat pipeline currently only uses `batch` mode | Future enhancement |
+| **Knowledge graph storage** | Schema supports `storage_type: 'graph'` but only `table` is implemented | Future enhancement |

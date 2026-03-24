@@ -67,7 +67,7 @@ flowchart TD
 
 | Category | Nodes | Execution |
 |----------|-------|-----------|
-| **Inline** | begin, answer, message, switch, condition, merge, note, concentrator, variable_assigner, variable_aggregator | Synchronous in Node.js — pure logic, no external I/O |
+| **Inline** | begin, answer, message, switch, condition, merge, note, concentrator, template, keyword_extract | Synchronous in Node.js — pure logic, no external I/O |
 | **Dispatch** | generate, categorize, rewrite, relevant, retrieval, code, api, email, sql, all search/finance/tool nodes | Queued to Python via Redis Streams — LLM, network, or sandbox I/O |
 
 ### SSE Streaming Protocol
@@ -115,6 +115,7 @@ erDiagram
         enum mode "agent | pipeline"
         enum status "draft | published"
         jsonb dsl "Workflow graph"
+        int dsl_version "DSL schema version"
         jsonb policy_rules "ABAC rules"
         text parent_id FK "NULL for root, root_id for versions"
         int version_number "0 for root, 1+ for snapshots"
@@ -149,8 +150,11 @@ erDiagram
         enum status "pending | running | completed | failed | skipped"
         jsonb input_data
         jsonb output_data
+        text error
         int execution_order
         int duration_ms
+        timestamp started_at
+        timestamp completed_at
     }
 
     AGENT_TEMPLATES {
@@ -202,7 +206,7 @@ interface AgentDSL {
 
 interface AgentNodeDef {
   id: string
-  type: OperatorType  // 60+ supported types
+  type: OperatorType  // 55 supported types
   position: { x: number; y: number }
   config: Record<string, unknown>
   label: string
@@ -222,10 +226,10 @@ interface AgentEdgeDef {
 |----------|-------|-------|---------|
 | Input/Output | Blue | 4 | begin, answer, message, fillup |
 | LLM/AI | Purple | 5 | generate, categorize, rewrite, relevant, agent_with_tools |
-| Retrieval | Green | 6 | retrieval, wikipedia, tavily, pubmed, arxiv, google_scholar |
-| Logic Flow | Amber | 10 | switch, condition, loop, loop_item, iteration, merge, note |
+| Retrieval | Green | 5 | retrieval, wikipedia, tavily, pubmed, memory_read |
+| Logic Flow | Amber | 10 | switch, condition, loop, loop_item, iteration, iteration_item, exit_loop, merge, note, concentrator |
 | Code/Tool | Pink | 6 | code, github, sql, api, email, invoke |
-| Data | Cyan | 20+ | template, keyword_extract, web search, finance APIs, data ops |
+| Data | Cyan | 25 | template, keyword_extract, web search (baidu, bing, duckduckgo, google), finance APIs, data_operations, list_operations, string_transform, arxiv, google_scholar, deepl, qweather, crawler, exesql, docs_generator, excel_processor, variable_assigner, variable_aggregator, memory_write |
 
 ## Security Architecture
 
@@ -308,8 +312,9 @@ fe/src/features/agents/
 │   │   ├── CanvasNode.tsx        — Node renderer
 │   │   ├── NodeConfigPanel.tsx   — Node property editor
 │   │   ├── NodePalette.tsx       — Categorized operator palette
-│   │   ├── SmartEdge.tsx         — Animated edge renderer
-│   │   └── forms/               — 35+ node-specific config forms
+│   │   ├── edges/
+│   │   │   └── SmartEdge.tsx     — Animated edge renderer
+│   │   └── forms/               — 24 node-specific config forms
 │   └── debug/
 │       └── DebugPanel.tsx        — Step-by-step execution UI
 ├── hooks/
@@ -322,7 +327,7 @@ fe/src/features/agents/
 ├── store/
 │   └── canvasStore.ts            — Zustand for canvas UI state
 ├── types/
-│   └── agent.types.ts            — 60+ type definitions
+│   └── agent.types.ts            — 55 operator types + interfaces
 └── index.ts
 ```
 
@@ -337,15 +342,27 @@ fe/src/features/agents/
 | DELETE | `/api/agents/:id` | requireAuth + manage Agent | Delete agent |
 | POST | `/api/agents/:id/duplicate` | requireAuth + manage Agent | Clone agent |
 | GET | `/api/agents/:id/export` | requireAuth + read Agent | Export as JSON |
-| GET | `/api/agents/:id/versions` | requireAuth + read Agent | List versions |
-| POST | `/api/agents/:id/versions` | requireAuth + manage Agent | Save version |
-| POST | `/api/agents/:id/versions/:vid/restore` | requireAuth + manage Agent | Restore version |
+| GET | `/api/agents/:id/versions` | requireAuth + requireTenant | List versions |
+| POST | `/api/agents/:id/versions` | requireAuth + requireTenant | Save version |
+| POST | `/api/agents/:id/versions/:vid/restore` | requireAuth + requireTenant | Restore version |
+| DELETE | `/api/agents/:id/versions/:vid` | requireAuth + requireTenant | Delete version |
 | POST | `/api/agents/:id/run` | requireAuth + read Agent | Start run |
 | GET | `/api/agents/:id/run/:rid/stream` | requireAuth + read Agent | SSE stream |
 | POST | `/api/agents/:id/run/:rid/cancel` | requireAuth + manage Agent | Cancel run |
 | GET | `/api/agents/:id/runs` | requireAuth + read Agent | List run history |
-| POST | `/api/agents/:id/debug` | requireAuth + manage Agent | Start debug |
+| POST | `/api/agents/:id/debug` | requireAuth + requireTenant | Start debug |
+| POST | `/api/agents/:id/debug/:rid/step` | requireAuth + requireTenant | Debug step forward |
+| POST | `/api/agents/:id/debug/:rid/continue` | requireAuth + requireTenant | Debug continue |
+| POST | `/api/agents/:id/debug/:rid/breakpoint` | requireAuth + requireTenant | Add breakpoint |
+| DELETE | `/api/agents/:id/debug/:rid/breakpoint/:nid` | requireAuth + requireTenant | Remove breakpoint |
+| GET | `/api/agents/:id/debug/:rid/steps/:nid` | requireAuth + requireTenant | Get step details |
+| GET | `/api/agents/templates` | requireAuth + requireTenant | List templates |
 | POST | `/agents/webhook/:agentId` | Public (rate-limited) | Webhook trigger |
 | GET/POST | `/api/agents/embed/:token/:id/*` | Token-based | Embed widget |
-| GET | `/api/agents/tools/credentials` | requireAuth + manage Agent | List credentials |
-| POST | `/api/agents/tools/credentials` | requireAuth + manage Agent | Create credential |
+| GET | `/api/agents/tools/credentials` | requireAuth + requireTenant | List credentials |
+| POST | `/api/agents/tools/credentials` | requireAuth + requireTenant | Create credential |
+| PUT | `/api/agents/tools/credentials/:id` | requireAuth + requireTenant | Update credential |
+| DELETE | `/api/agents/tools/credentials/:id` | requireAuth + requireTenant | Delete credential |
+| POST | `/api/agents/:id/embed-token` | requireAuth + requireTenant | Create embed token |
+| GET | `/api/agents/:id/embed-tokens` | requireAuth + requireTenant | List embed tokens |
+| DELETE | `/api/agents/embed-tokens/:tid` | requireAuth + requireTenant | Revoke embed token |

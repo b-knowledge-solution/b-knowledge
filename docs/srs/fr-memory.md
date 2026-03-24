@@ -70,10 +70,11 @@ Memory types are combined using a bitmask integer (default: 15 = all types):
   - `message_id` (UUID, used as document _id)
   - `memory_id` (parent pool reference)
   - `content` (extracted text)
-  - `content_embed` (knn_vector, dimension 1024, HNSW with cosine similarity)
+  - `content_embed` (knn_vector, dimension 1024, HNSW with cosine similarity, engine: nmslib)
   - `message_type` (bitmask value: 1, 2, 4, or 8)
   - `status` (1=active, 0=forgotten)
   - `source_id` (originating session/run ID)
+  - `user_id` (originating user, optional)
   - `valid_at` / `invalid_at` (temporal validity range)
   - `tenant_id` (multi-tenant isolation)
 
@@ -96,7 +97,7 @@ Memory types are combined using a bitmask integer (default: 15 = all types):
 
 - List messages with pagination, keyword search, and type filter
 - Delete individual messages
-- Forget/restore messages (status toggle: active ↔ forgotten)
+- Forget messages (set status to forgotten; one-way operation)
 - Forgotten messages excluded from search results but not deleted
 
 ### FR-MEM-08: Chat History Import
@@ -134,7 +135,7 @@ Memory types are combined using a bitmask integer (default: 15 = all types):
 |-------------|--------|
 | Extraction latency | < 5s per conversation turn (realtime mode) |
 | Search latency | < 200ms for hybrid search |
-| Default pool size | 5MB (~555 messages) |
+| Default pool size | 5MB (~582 messages at ~9KB per message) |
 | Embedding dimension | 1024 (HNSW with cosine similarity) |
 | Index creation | Idempotent with in-memory cache |
 | Multi-tenant isolation | Per-tenant OpenSearch index |
