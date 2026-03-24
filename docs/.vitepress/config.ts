@@ -169,12 +169,18 @@ export default withMermaid(
             text: 'Agent Workflows',
             items: [
               { text: 'Agent Overview', link: '/detail-design/agent-overview' },
+              { text: 'Execution Engine', link: '/detail-design/agent-execution-engine' },
+              { text: 'Canvas Editor & Frontend', link: '/detail-design/agent-canvas-editor' },
+              { text: 'Sandbox & MCP Integration', link: '/detail-design/agent-sandbox-mcp' },
+              { text: 'Triggers & Embed Widget', link: '/detail-design/agent-triggers-embed' },
             ],
           },
           {
             text: 'AI Memory',
             items: [
               { text: 'Memory Overview', link: '/detail-design/memory-overview' },
+              { text: 'Extraction Pipeline', link: '/detail-design/memory-extraction-pipeline' },
+              { text: 'Chat Integration', link: '/detail-design/memory-chat-integration' },
             ],
           },
           {
