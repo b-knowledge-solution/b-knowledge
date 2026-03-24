@@ -1,193 +1,340 @@
 # Database Design: RAG Tables
 
+## Overview
+
+The RAG pipeline uses two sets of tables managed by different ORMs:
+
+- **Knex-managed (primary):** `datasets`, `documents`, `model_providers` — used by the Node.js backend for all CRUD operations.
+- **Peewee-managed (legacy):** `knowledgebase`, `document`, `file`, `file2document`, `task`, `pipeline_operation_log` — inherited from RAGFlow, used by the Python advance-rag worker for data read/write. Schema migrations for these tables are still owned by Knex.
+
+Both sets coexist in the same PostgreSQL database. The Knex tables are the canonical source for the Node.js backend; the Peewee tables are used by the Python RAG worker.
+
 ## ER Diagram
 
 ```mermaid
 erDiagram
-    knowledgebase {
-        uuid id PK
-        uuid tenant_id FK
-        varchar name
-        varchar avatar
+    datasets {
+        text id PK
+        varchar name "128 chars"
         text description
-        varchar embedding_model
-        varchar parser_id
+        varchar language "32 chars, default English"
+        varchar embedding_model "128 chars"
+        varchar parser_id "32 chars, default naive"
         jsonb parser_config
-        varchar permission "me | team | all"
-        varchar language "en | vi | ja | multi"
-        int status "0=inactive 1=active"
+        jsonb access_control "default public true"
+        varchar status "16 chars, default active"
+        int doc_count
+        int chunk_count
+        int token_count
+        int pagerank
+        text parent_dataset_id FK "self-referencing"
+        int version_number
+        text change_summary
+        text version_created_by FK "users.id"
+        jsonb metadata_config
+        text version_label
+        text tenant_id
+        float similarity_threshold "default 0.2"
+        float vector_similarity_weight "default 0.3"
+        text graphrag_task_id
+        text raptor_task_id
+        text mindmap_task_id
+        text pipeline_id
+        text tenant_embd_id
+        text created_by FK "users.id"
+        text updated_by FK "users.id"
         timestamp created_at
         timestamp updated_at
+    }
+
+    documents {
+        text id PK
+        text dataset_id FK "datasets.id CASCADE"
+        varchar name "255 chars"
+        bigint size
+        varchar type "32 chars"
+        varchar status "16 chars, default pending"
+        float progress
+        text progress_msg
+        int chunk_count
+        int token_count
+        varchar storage_path "512 chars"
+        text created_by FK "users.id"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    model_providers {
+        text id PK
+        varchar factory_name "128 chars"
+        varchar model_type "128 chars"
+        varchar model_name "128 chars"
+        text api_key "encrypted at rest"
+        varchar api_base "512 chars"
+        int max_tokens
+        boolean vision "default false"
+        varchar status "16 chars, default active"
+        boolean is_default "default false"
+        varchar tenant_id "32 chars"
+        int used_tokens "default 0"
+        text created_by FK "users.id"
+        text updated_by FK "users.id"
+        timestamp created_at
+        timestamp updated_at
+        bigint create_time "Peewee legacy"
+        bigint update_time "Peewee legacy"
+    }
+
+    knowledgebase {
+        varchar id PK "32 chars"
+        text avatar
+        varchar tenant_id "32 chars"
+        varchar name "128 chars"
+        varchar language "32 chars, default English"
+        text description
+        varchar embd_id "128 chars"
+        text tenant_embd_id
+        varchar permission "me | team | all"
+        varchar created_by "32 chars"
+        int doc_num
+        int token_num
+        int chunk_num
+        float similarity_threshold "default 0.2"
+        float vector_similarity_weight "default 0.3"
+        varchar parser_id "32 chars, default naive"
+        varchar pipeline_id "32 chars"
+        jsonb parser_config
+        int pagerank
+        varchar graphrag_task_id "32 chars"
+        varchar raptor_task_id "32 chars"
+        varchar mindmap_task_id "32 chars"
+        jsonb policy_rules "ABAC rules"
+        varchar status "1 char, default 1"
+        bigint create_time
+        bigint update_time
     }
 
     document {
-        uuid id PK
-        uuid kb_id FK
-        varchar name
-        varchar location "S3 key"
-        bigint size
-        varchar type "pdf | docx | txt | md | html | xlsx"
-        varchar parser_id
+        varchar id PK "32 chars"
+        text thumbnail
+        varchar kb_id "256 chars"
+        varchar parser_id "32 chars"
+        varchar pipeline_id "32 chars"
         jsonb parser_config
-        float progress "0.0 to 1.0"
-        int status "0=unprocessed 1=parsing 2=parsed 3=indexing 4=indexed"
-        int run "0=stop 1=run"
+        varchar source_type "128 chars, default local"
+        varchar type "32 chars"
+        varchar created_by "32 chars"
+        varchar name "255 chars"
+        varchar location "S3 key, 255 chars"
+        int size
         int token_num
         int chunk_num
-        timestamp created_at
-        timestamp updated_at
+        float progress "0.0 to 1.0"
+        text progress_msg
+        float process_duration
+        varchar run "1 char, 0=stop 1=run"
+        varchar status "1 char"
+        varchar source_url "2048 chars"
+        jsonb policy_overrides "ABAC overrides"
+        bigint create_time
+        bigint update_time
     }
 
     file {
-        uuid id PK
-        uuid tenant_id FK
-        varchar name
-        varchar location "S3 key"
-        bigint size
-        varchar type
-        uuid created_by FK
-        timestamp created_at
+        varchar id PK "32 chars"
+        varchar parent_id "32 chars"
+        varchar tenant_id "32 chars"
+        varchar created_by "32 chars"
+        varchar name "255 chars"
+        varchar location "S3 key, 255 chars"
+        int size
+        varchar type "32 chars"
+        varchar source_type "128 chars"
+        bigint create_time
+        bigint update_time
     }
 
     file2document {
-        uuid file_id FK
-        uuid document_id FK
+        varchar id PK "32 chars"
+        varchar file_id "32 chars"
+        varchar document_id "32 chars"
+        bigint create_time
+        bigint update_time
     }
 
     task {
-        uuid id PK
-        uuid doc_id FK
+        varchar id PK "32 chars"
+        varchar doc_id "32 chars"
+        int from_page "default 0"
+        int to_page "default 100000000"
+        varchar task_type "32 chars"
+        int priority "default 0"
+        timestamp begin_at
+        float process_duration
         float progress "0.0 to 1.0"
-        int status "0=pending 1=running 2=done 3=failed 4=cancelled"
-        varchar type "parse | chunk | embed | index"
+        text progress_msg
         int retry_count
-        jsonb error_detail
-        timestamp created_at
-        timestamp updated_at
+        text digest
+        text chunk_ids
+        bigint create_time
+        bigint update_time
     }
 
-    document_version {
-        uuid id PK
-        uuid document_id FK
-        int version_number
-        varchar status "draft | active | archived"
-        uuid created_by FK
-        timestamp created_at
+    pipeline_operation_log {
+        varchar id PK "32 chars"
+        varchar document_id "32 chars"
+        varchar tenant_id "32 chars"
+        varchar kb_id "32 chars"
+        varchar pipeline_id "32 chars"
+        varchar pipeline_title "32 chars"
+        varchar parser_id "32 chars"
+        varchar document_name "255 chars"
+        varchar document_suffix "255 chars"
+        varchar document_type "255 chars"
+        varchar source_from "255 chars"
+        float progress
+        text progress_msg
+        float process_duration
+        text dsl
+        varchar task_type "32 chars"
+        varchar operation_status "32 chars"
+        text avatar
+        varchar status "1 char, default 1"
+        bigint create_time
+        bigint update_time
     }
 
-    document_version_file {
-        uuid id PK
-        uuid version_id FK
-        uuid file_id FK
-        int sort_order
-    }
-
-    converter_job {
-        uuid id PK
-        uuid file_id FK
-        varchar source_type "docx | xlsx | pptx"
-        varchar target_type "pdf"
-        int status "0=pending 1=processing 2=done 3=failed"
-        varchar output_location "S3 key"
-        int retry_count
-        jsonb error_detail
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    tenant_llm {
-        uuid id PK
-        uuid tenant_id FK
-        varchar provider "openai | azure | anthropic | ollama"
-        varchar model_name
-        varchar model_type "chat | embedding | rerank"
-        jsonb config "API keys, endpoints, params"
-        boolean is_default
-        timestamp created_at
-    }
-
-    knowledgebase ||--o{ document : "contains"
+    datasets ||--o{ documents : "contains"
+    knowledgebase ||--o{ document : "contains (legacy)"
     document ||--o{ task : "processed by"
     file ||--o{ file2document : "linked to"
     document ||--o{ file2document : "sourced from"
-    document ||--o{ document_version : "has versions"
-    document_version ||--o{ document_version_file : "includes files"
-    file ||--o{ document_version_file : "attached to version"
-    file ||--o{ converter_job : "converted by"
+    document ||--o{ pipeline_operation_log : "logs"
 ```
 
 ## Document Processing Pipeline
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Unprocessed: Upload file
-    Unprocessed --> Parsing: Task executor picks up
+    [*] --> Pending: Upload file
+    Pending --> Parsing: Task executor picks up
     Parsing --> Parsed: Text extraction complete
     Parsed --> Indexing: Chunk + embed + index
     Indexing --> Indexed: OpenSearch indexed
     Parsing --> Failed: Error
     Indexing --> Failed: Error
-    Failed --> Unprocessed: Retry (reset status)
+    Failed --> Pending: Retry (reset status)
 ```
 
-## Document Status Enum
+## Document Status Values
 
-| Value | Status | Description |
-|-------|--------|-------------|
-| 0 | Unprocessed | File uploaded but not yet processed |
-| 1 | Parsing | Text extraction in progress (PDF/Office parsing) |
-| 2 | Parsed | Text extracted, ready for chunking and embedding |
-| 3 | Indexing | Chunking, embedding, and OpenSearch indexing in progress |
-| 4 | Indexed | Fully processed and searchable |
+### `documents` (Knex-managed)
 
-## Task Status Enum
+String-based status values:
 
-| Value | Status | Description |
-|-------|--------|-------------|
-| 0 | Pending | Queued for processing |
-| 1 | Running | Actively being processed by worker |
-| 2 | Done | Completed successfully |
-| 3 | Failed | Failed after retries; see `error_detail` |
-| 4 | Cancelled | Manually cancelled by user |
+| Value | Description |
+|-------|-------------|
+| `pending` | File uploaded but not yet processed (default) |
+| `parsing` | Text extraction in progress |
+| `parsed` | Text extracted, ready for chunking |
+| `indexing` | Chunking, embedding, and OpenSearch indexing in progress |
+| `indexed` | Fully processed and searchable |
+| `failed` | Processing failed |
+
+### `document` (Peewee legacy)
+
+Single-character status and run flags:
+
+| Column | Value | Description |
+|--------|-------|-------------|
+| `status` | `1` | Active (default) |
+| `status` | `0` | Inactive/deleted |
+| `run` | `0` | Stopped (default) |
+| `run` | `1` | Running/processing |
+
+Progress is tracked via `progress` (0.0-1.0) and `progress_msg` (text description of current step).
+
+## Dataset Status Values
+
+### `datasets` (Knex-managed)
+
+| Value | Description |
+|-------|-------------|
+| `active` | Dataset is active and searchable (default) |
+| `deleted` | Soft-deleted, excluded from queries and unique name constraint |
+
+### `knowledgebase` (Peewee legacy)
+
+| Value | Description |
+|-------|-------------|
+| `1` | Active (default) |
+| `0` | Inactive |
+
+## Model Provider Status Values
+
+| Value | Description |
+|-------|-------------|
+| `active` | Provider is active and available for use (default) |
+| `inactive` | Provider is disabled |
 
 ## Table Descriptions
 
-### knowledgebase
+### datasets (Knex-managed, primary)
 
-A dataset (knowledge base) is a collection of documents with shared embedding and parser configuration. The `parser_config` JSONB stores chunking strategy, overlap size, separators, and other parsing parameters. Permission controls visibility: `me` (creator only), `team` (team members), `all` (tenant-wide).
+The primary dataset table used by the Node.js backend. A dataset is a collection of documents with shared embedding model, parser configuration, and access control. Supports versioning via `parent_dataset_id`, `version_number`, and `version_label`. The `access_control` JSONB stores IAM-style permissions (default: public). Advanced RAG features are tracked via `graphrag_task_id`, `raptor_task_id`, and `mindmap_task_id`. A partial unique index enforces unique names among non-deleted datasets.
 
-### document
+### documents (Knex-managed, primary)
 
-Represents a single file within a knowledge base. Tracks processing progress and status through the RAG pipeline. The `run` flag controls whether the document should be actively processed (allows pause/resume). `token_num` and `chunk_num` are populated after parsing.
+The primary document table used by the Node.js backend. Represents a single file within a dataset. Tracks processing status (`pending` through `indexed`), progress percentage, chunk/token counts, and S3 storage path. Cascades on dataset deletion.
 
-### file
+### model_providers (Knex-managed)
 
-Tenant-scoped file registry pointing to S3 objects in RustFS. Files are decoupled from documents via `file2document` to support file reuse across knowledge bases.
+System-wide LLM model provider configuration, replacing the legacy `tenant_llm` pattern. Stores API keys (encrypted at rest), endpoints, token limits, and vision capability flags. Each provider is scoped to a tenant and can be marked as default. A partial unique index prevents duplicate active entries for the same tenant/factory/model/type combination. Includes Peewee legacy timestamp columns (`create_time`, `update_time`) for compatibility with the advance-rag worker.
 
-### task
+### knowledgebase (Peewee legacy)
 
-Granular processing tasks for the RAG pipeline. Each document may generate multiple tasks (parse, chunk, embed, index). Retry logic with `retry_count` and `error_detail` for debugging failed operations.
+Legacy dataset container inherited from RAGFlow. Used by the Python advance-rag worker for RAG processing. Contains parser configuration, embedding model reference (`embd_id`), permission level (`me`/`team`/`all`), and ABAC policy rules. The `parser_config` JSONB stores chunking strategy, page ranges, and context sizes.
 
-### document_version / document_version_file
+### document (Peewee legacy)
 
-Version control for documents. Each version can reference multiple files with ordering. Supports draft/active/archived lifecycle for content review workflows.
+Legacy document table used by the Python advance-rag worker. Tracks RAG processing state including progress, page ranges, content hashing, and S3 location. The `run` flag controls whether the document should be actively processed (pause/resume). `token_num` and `chunk_num` are populated after parsing. Supports ABAC permission overrides via `policy_overrides` JSONB.
 
-### converter_job
+### file (Peewee legacy)
 
-Tracks Office-to-PDF conversion jobs processed by the Converter service via Redis queue. Source files are fetched from RustFS, converted using LibreOffice, and output written back to RustFS.
+Tenant-scoped file registry pointing to S3 objects in RustFS. Files are decoupled from documents via `file2document` to support file reuse across knowledge bases. Organized in a tree structure via `parent_id`.
 
-### tenant_llm
+### file2document (Peewee legacy)
 
-Tenant-specific LLM provider configuration. Supports multiple providers and model types (chat, embedding, rerank). The `config` JSONB stores API keys, endpoints, and model parameters. One model per type can be marked `is_default`.
+Junction table linking files to documents. Enables many-to-many relationships between S3 files and RAG documents, supporting file reuse across multiple knowledge bases.
 
-## ORM Management Note
+### task (Peewee legacy)
+
+RAG processing task queue used by the advance-rag worker. Each document may generate multiple tasks for different page ranges (`from_page`/`to_page`). Tracks processing progress, retry count, and stores chunk IDs and digest after completion. Tasks are prioritized via the `priority` field.
+
+### pipeline_operation_log (Peewee legacy)
+
+Tracks pipeline execution history for RAG processing operations. Records document processing metadata including parser used, pipeline configuration (DSL), timing, and operation status. Used for debugging and auditing RAG pipeline runs.
+
+## ORM Management
 
 These tables are managed by two ORMs with distinct responsibilities:
 
 | Concern | Owner | Tool |
 |---------|-------|------|
-| Schema migrations | Backend (Node.js) | Knex |
-| Data read/write (Python) | Task Executor / Converter | Peewee |
+| Schema migrations (all tables) | Backend (Node.js) | Knex |
+| Data read/write (Python) | advance-rag worker | Peewee |
 | Data read/write (Node.js) | Backend API | Knex |
 
-All schema changes (CREATE TABLE, ALTER, indexes) go through Knex migrations. Peewee models mirror the schema for Python data access. Never use Peewee migrators.
+**All schema changes** (CREATE TABLE, ALTER, indexes) go through Knex migrations — including schema changes to Peewee-managed tables (`knowledgebase`, `document`, `task`, `file`, etc.). Never use Peewee migrators. The backend owns the migration lifecycle; Python workers only read/write data via their ORM.
+
+### Dual Table Pattern
+
+Both `datasets`/`documents` (Knex) and `knowledgebase`/`document` (Peewee) coexist:
+
+| Knex Table | Peewee Table | Used By |
+|------------|-------------|---------|
+| `datasets` | `knowledgebase` | Node.js backend uses `datasets`; Python worker uses `knowledgebase` |
+| `documents` | `document` | Node.js backend uses `documents`; Python worker uses `document` |
+| `model_providers` | _(reads via Peewee BaseModel)_ | Both Node.js and Python access `model_providers` |
+
+The Knex tables (`datasets`, `documents`) are the primary tables for the Node.js backend API. The Peewee tables (`knowledgebase`, `document`) are legacy tables used by the Python advance-rag worker inherited from RAGFlow.

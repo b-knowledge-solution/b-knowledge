@@ -6,11 +6,18 @@
 erDiagram
     projects {
         uuid id PK
-        uuid tenant_id FK
         varchar name
         text description
-        varchar status "active | archived"
+        varchar avatar
+        uuid ragflow_server_id
+        varchar default_embedding_model
+        varchar default_chunk_method
+        jsonb default_parser_config
+        varchar status "default 'active'"
+        boolean is_private
+        varchar tenant_id "default 'default'"
         uuid created_by FK
+        uuid updated_by FK
         timestamp created_at
         timestamp updated_at
     }
@@ -20,82 +27,135 @@ erDiagram
         uuid project_id FK
         varchar grantee_type "user | team"
         uuid grantee_id
-        varchar permission "view | edit | manage"
+        varchar tab_documents "none | view | manage"
+        varchar tab_chat "none | view | manage"
+        varchar tab_settings "none | view | manage"
+        uuid created_by FK
+        uuid updated_by FK
+        timestamp created_at
+        timestamp updated_at
     }
 
     project_datasets {
-        uuid project_id FK
-        uuid dataset_id FK "knowledgebase reference"
-    }
-
-    project_sync_config {
         uuid id PK
         uuid project_id FK
-        varchar source_type "sharepoint | confluence | gdrive"
-        jsonb connection_config "credentials, URLs, schedules"
-        varchar status "active | paused | error"
+        uuid dataset_id FK "datasets reference"
+        varchar role "primary | secondary"
+        uuid created_by FK
+        timestamp created_at
+    }
+
+    project_sync_configs {
+        uuid id PK
+        uuid project_id FK "unique"
+        varchar schedule
+        boolean auto_sync_enabled
         timestamp last_synced_at
+        jsonb settings
+        uuid created_by FK
+        uuid updated_by FK
         timestamp created_at
         timestamp updated_at
     }
 
-    document_category {
+    document_categories {
         uuid id PK
         uuid project_id FK
         varchar name
-        uuid parent_id FK "self-referencing for tree"
+        text description
         int sort_order
+        jsonb dataset_config
+        text category_type "default 'documents' (migration 20260324)"
+        uuid dataset_id FK "datasets SET NULL (migration 20260324)"
+        uuid created_by FK
+        uuid updated_by FK
         timestamp created_at
         timestamp updated_at
     }
 
-    document_category_version {
+    document_category_versions {
         uuid id PK
         uuid category_id FK
-        varchar label
-        varchar status "draft | review | approved | archived"
+        varchar version_label
+        varchar ragflow_dataset_id
+        varchar ragflow_dataset_name
+        varchar status "default 'active'"
+        timestamp last_synced_at
+        jsonb metadata
         uuid created_by FK
+        uuid updated_by FK
         timestamp created_at
         timestamp updated_at
     }
 
-    document_category_version_file {
+    document_category_version_files {
         uuid id PK
         uuid version_id FK
-        uuid file_id FK "file table reference"
-        int sort_order
+        varchar file_name
+        varchar ragflow_doc_id
+        varchar status "pending | uploaded | parsing | completed | failed"
+        text error
+        timestamp created_at
+        timestamp updated_at
     }
 
-    project_chat {
-        uuid project_id FK
-        uuid assistant_id FK "chat_assistants reference"
-    }
-
-    project_search {
-        uuid project_id FK
-        uuid search_app_id FK "search_apps reference"
-    }
-
-    project_entity_permission {
+    project_chats {
         uuid id PK
         uuid project_id FK
-        varchar entity_type "chat | search | dataset | category"
+        varchar name
+        varchar ragflow_chat_id
+        jsonb dataset_ids
+        jsonb ragflow_dataset_ids
+        jsonb llm_config
+        jsonb prompt_config
+        varchar status "default 'active'"
+        timestamp last_synced_at
+        uuid created_by FK
+        uuid updated_by FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    project_searches {
+        uuid id PK
+        uuid project_id FK
+        varchar name
+        text description
+        varchar ragflow_search_id
+        jsonb dataset_ids
+        jsonb ragflow_dataset_ids
+        jsonb search_config
+        varchar status "default 'active'"
+        timestamp last_synced_at
+        uuid created_by FK
+        uuid updated_by FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    project_entity_permissions {
+        uuid id PK
+        uuid project_id FK
+        varchar entity_type "category | chat | search"
         uuid entity_id
         varchar grantee_type "user | team"
         uuid grantee_id
-        varchar permission "view | use | edit | manage"
+        varchar permission_level "none | view | create | edit | delete"
+        uuid created_by FK
+        uuid updated_by FK
+        timestamp created_at
+        timestamp updated_at
     }
 
     projects ||--o{ project_permissions : "access controlled by"
     projects ||--o{ project_datasets : "contains datasets"
-    projects ||--o{ project_sync_config : "syncs from"
-    projects ||--o{ document_category : "organizes into"
-    document_category ||--o{ document_category : "parent-child"
-    document_category ||--o{ document_category_version : "has versions"
-    document_category_version ||--o{ document_category_version_file : "includes files"
-    projects ||--o{ project_chat : "links assistants"
-    projects ||--o{ project_search : "links search apps"
-    projects ||--o{ project_entity_permission : "fine-grained access"
+    projects ||--o| project_sync_configs : "syncs with"
+    projects ||--o{ document_categories : "organizes into"
+    document_categories ||--o{ document_category_versions : "has versions"
+    document_category_versions ||--o{ document_category_version_files : "includes files"
+    projects ||--o{ project_chats : "links chat assistants"
+    projects ||--o{ project_searches : "links search apps"
+    projects ||--o{ project_entity_permissions : "fine-grained access"
 ```
 
 ## Hierarchical Category Structure
@@ -107,65 +167,64 @@ graph TD
     P --> C2["Category: Architecture"]
     P --> C3["Category: Onboarding"]
 
-    C1 --> C1a["Subcategory: REST APIs"]
-    C1 --> C1b["Subcategory: WebSocket APIs"]
-
-    C2 --> C2a["Subcategory: System Design"]
-    C2 --> C2b["Subcategory: Database"]
-
-    C1a --> V1["Version 1.0 (approved)"]
-    C1a --> V2["Version 1.1 (draft)"]
+    C1 --> V1["Version 1.0 (active)"]
+    C1 --> V2["Version 1.1 (active)"]
     V1 --> F1["file: rest-api-v1.pdf"]
     V1 --> F2["file: auth-endpoints.pdf"]
     V2 --> F3["file: rest-api-v1.1.pdf"]
 ```
 
-The `document_category` table uses a self-referencing `parent_id` to build an unlimited-depth tree. Categories are scoped to a project and ordered via `sort_order`. Each category can have multiple versions, enabling a review/approval workflow before content goes live.
+The `document_categories` table organizes documents within a project. Categories are scoped to a project and ordered via `sort_order`. Each category can have multiple versions via `document_category_versions`, enabling content snapshots tied to RAGFlow datasets. The `category_type` column (added by migration 20260324) distinguishes between different kinds of categories (default `'documents'`), and the `dataset_id` foreign key (also added by migration 20260324) allows linking a category directly to a dataset.
 
-### Category Version Lifecycle
+### Category Version File Lifecycle
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Draft: Create version
-    Draft --> Review: Submit for review
-    Review --> Approved: Reviewer approves
-    Review --> Draft: Reviewer requests changes
-    Approved --> Archived: New version approved
-    Archived --> [*]
+    [*] --> pending: File added
+    pending --> uploaded: Upload complete
+    uploaded --> parsing: RAGFlow parsing
+    parsing --> completed: Parse success
+    parsing --> failed: Parse error
+    failed --> pending: Retry
+    completed --> [*]
 ```
 
 ## Table Descriptions
 
 ### projects
 
-Top-level organizational container that groups datasets, chat assistants, search apps, and document categories. Projects enable cross-functional teams to manage related knowledge resources as a unit.
+Top-level organizational container that groups datasets, chat assistants, search apps, and document categories. Projects enable cross-functional teams to manage related knowledge resources as a unit. Each project can have a default embedding model, chunk method, and parser config applied to its categories. The `is_private` flag controls visibility, and `tenant_id` scopes the project to a tenant (default `'default'`).
 
 ### project_permissions
 
-Project-level RBAC grants. Controls who can access the project itself. Users with `manage` permission can modify project settings and grant access to others.
+Project-level access control with tab-granular permissions. Instead of a single permission level, access is controlled per tab: `tab_documents`, `tab_chat`, and `tab_settings`, each accepting `none`, `view`, or `manage`. Unique constraint on `(project_id, grantee_type, grantee_id)`.
 
 ### project_datasets
 
-Many-to-many link between projects and knowledge bases. A single dataset can be shared across multiple projects. Documents within linked datasets are searchable through the project's chat and search apps.
+Many-to-many link between projects and datasets. Each association has a `role` of either `primary` or `secondary`. Unique constraint on `(project_id, dataset_id)`. Cascades on project deletion; cascades on dataset deletion.
 
-### project_sync_config
+### project_sync_configs
 
-External data source synchronization configuration. Supports pulling documents from SharePoint, Confluence, Google Drive, and other sources. The `connection_config` JSONB stores source-specific credentials, folder paths, file filters, and sync schedules.
+Per-project synchronization configuration. Each project has at most one sync config (unique on `project_id`). Stores a `schedule`, `auto_sync_enabled` toggle, and a `settings` JSONB column for sync-specific parameters.
 
-### document_category / document_category_version / document_category_version_file
+### document_categories / document_category_versions / document_category_version_files
 
 Three-tier structure for organizing documents within a project:
-1. **Category** -- tree node with optional parent for hierarchy
-2. **Version** -- snapshot of category content with approval workflow
-3. **Version File** -- ordered list of files in a version
+1. **Category** — flat list per project (no parent hierarchy), with `dataset_config` JSONB for category-level dataset settings. The `category_type` column (migration 20260324) classifies the category, and the optional `dataset_id` FK (migration 20260324) links to a dataset directly.
+2. **Version** — content snapshot tied to a RAGFlow dataset (`ragflow_dataset_id`, `ragflow_dataset_name`). Unique constraint on `(category_id, version_label)`.
+3. **Version File** — individual files within a version, tracked through RAGFlow with `ragflow_doc_id` and a status lifecycle (`pending` → `uploaded` → `parsing` → `completed` / `failed`). Unique constraint on `(version_id, file_name)`.
 
-### project_chat / project_search
+### project_chats
 
-Join tables linking chat assistants and search apps to projects. Enables a project to aggregate multiple AI interfaces for different use cases (e.g., general Q&A assistant, technical search).
+Chat assistant configurations within a project. Each chat has its own `ragflow_chat_id`, `dataset_ids` and `ragflow_dataset_ids` (JSONB arrays), plus `llm_config` and `prompt_config` (JSONB) for model and prompt settings. Cascades on project deletion.
 
-### project_entity_permission
+### project_searches
 
-Fine-grained ABAC permissions for individual entities within a project. While `project_permissions` controls project-level access, this table controls access to specific chat assistants, search apps, datasets, or categories within the project scope.
+Search app configurations within a project. Each search has its own `ragflow_search_id`, `dataset_ids` and `ragflow_dataset_ids` (JSONB arrays), plus `search_config` (JSONB) for search parameters. Cascades on project deletion.
+
+### project_entity_permissions
+
+Fine-grained permissions for individual entities within a project. While `project_permissions` controls project-level tab access, this table controls access to specific categories, chats, or searches. The `permission_level` supports `none`, `view`, `create`, `edit`, and `delete`. Unique constraint on `(project_id, entity_type, entity_id, grantee_type, grantee_id)`.
 
 ## RBAC + ABAC Dual Authorization Model
 
@@ -174,10 +233,10 @@ flowchart TD
     req["Access Request"] --> rbac{"RBAC Check<br/>project_permissions"}
     rbac -->|"No project access"| deny["403 Forbidden"]
     rbac -->|"Has project access"| entity{"Accessing specific<br/>entity?"}
-    entity -->|"Project-level action"| allow["Allow (project permission sufficient)"]
-    entity -->|"Entity-level action"| abac{"ABAC Check<br/>project_entity_permission"}
+    entity -->|"Project-level action"| allow["Allow (tab permission sufficient)"]
+    entity -->|"Entity-level action"| abac{"ABAC Check<br/>project_entity_permissions"}
     abac -->|"Explicit grant exists"| check_level{"Permission level<br/>sufficient?"}
-    abac -->|"No grant"| fallback{"Fallback to<br/>project permission?"}
+    abac -->|"No grant"| fallback{"Fallback to<br/>tab permission?"}
     fallback -->|"manage permission"| allow
     fallback -->|"Other"| deny
     check_level -->|"Yes"| allow
@@ -186,17 +245,16 @@ flowchart TD
 
 Authorization resolves in two layers:
 
-1. **Project-level (RBAC)**: Does the user/team have a `project_permissions` grant? This gates all access to the project.
-2. **Entity-level (ABAC)**: For specific resources within the project, `project_entity_permission` provides fine-grained control. Users with project `manage` permission bypass entity-level checks.
+1. **Project-level (RBAC)**: Does the user/team have a `project_permissions` grant? Tab-level permissions (`tab_documents`, `tab_chat`, `tab_settings`) gate access to each section of the project.
+2. **Entity-level (ABAC)**: For specific resources within the project, `project_entity_permissions` provides fine-grained control. Users with tab `manage` permission bypass entity-level checks for that tab's entities.
 
-## Indexing Strategy
+## Unique Constraints
 
-| Table | Index | Type | Purpose |
-|-------|-------|------|---------|
-| `projects` | `tenant_id, status` | Composite | Tenant project listing |
-| `project_permissions` | `grantee_type, grantee_id` | Composite | User/team access lookup |
-| `project_datasets` | `project_id` | B-tree | Project dataset listing |
-| `project_datasets` | `dataset_id` | B-tree | Dataset project membership |
-| `document_category` | `project_id, parent_id` | Composite | Category tree traversal |
-| `document_category_version` | `category_id, status` | Composite | Active version lookup |
-| `project_entity_permission` | `project_id, entity_type, grantee_type, grantee_id` | Composite | Permission resolution |
+| Table | Columns | Purpose |
+|-------|---------|---------|
+| `project_permissions` | `(project_id, grantee_type, grantee_id)` | One grant per grantee per project |
+| `project_datasets` | `(project_id, dataset_id)` | No duplicate dataset links |
+| `project_sync_configs` | `(project_id)` | One sync config per project |
+| `document_category_versions` | `(category_id, version_label)` | Unique version labels per category |
+| `document_category_version_files` | `(version_id, file_name)` | No duplicate files per version |
+| `project_entity_permissions` | `(project_id, entity_type, entity_id, grantee_type, grantee_id)` | One permission per entity-grantee pair |
