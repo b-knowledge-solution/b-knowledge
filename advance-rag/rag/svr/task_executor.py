@@ -440,6 +440,19 @@ async def build_chunks(task, progress_callback):
                 tenant_id=task["tenant_id"],
             )
         logging.info("Chunking({}) {}/{} done".format(timer() - st, task["location"], task["name"]))
+
+        # Code Graph extraction: if parser is 'code', also extract graph to Memgraph
+        if task["parser_id"].lower() == "code":
+            try:
+                from rag.app.code import chunk_with_graph
+                chunk_with_graph(
+                    filename=task["name"],
+                    binary=binary,
+                    kb_id=str(task["kb_id"]),
+                    callback=progress_callback,
+                )
+            except Exception as e:
+                logging.warning("Code graph extraction skipped for %s: %s", task["name"], e)
     except TaskCanceledException:
         raise
     except Exception as e:

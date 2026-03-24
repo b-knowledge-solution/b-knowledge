@@ -772,3 +772,34 @@ def chunk(filename, binary=None, from_page=0, to_page=100000,
 
     callback(1.0, f"Code chunking complete: {len(chunks)} chunks")
     return chunks
+
+
+def chunk_with_graph(filename, binary, kb_id="", callback=None, **kwargs):
+    """Extract code knowledge graph and store in Memgraph.
+
+    Called after chunk() during pipeline execution for code files.
+    Runs the 12-language parser pipeline to extract function/class definitions,
+    import mappings, and call relationships into a graph database.
+
+    Args:
+        filename: Name of the source code file.
+        binary: Raw file content as bytes.
+        kb_id: Knowledge base ID for tenant isolation.
+        callback: Progress callback function (prog: float, msg: str).
+        **kwargs: Additional config (ignored).
+
+    Returns:
+        True if graph extraction succeeded, False otherwise.
+    """
+    try:
+        from rag.app.code_graph import extract_code_graph
+        return extract_code_graph(
+            filename=filename,
+            binary=binary,
+            kb_id=kb_id,
+            callback=callback,
+        )
+    except Exception as e:
+        import logging
+        logging.warning(f"Code graph extraction failed for {filename}: {e}")
+        return False
