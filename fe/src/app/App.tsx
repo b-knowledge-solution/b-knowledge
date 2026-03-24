@@ -88,6 +88,7 @@ const AgentListPage = lazy(() => import('@/features/agents/pages/AgentListPage')
 const AgentCanvasPage = lazy(() => import('@/features/agents/pages/AgentCanvasPage'));
 const MemoryListPage = lazy(() => import('@/features/memory/pages/MemoryListPage'));
 const MemoryDetailPage = lazy(() => import('@/features/memory/pages/MemoryDetailPage'));
+const CodeGraphPage = lazy(() => import('@/features/code-graph/pages/CodeGraphPage'));
 
 // ============================================================================
 // Loading Component
@@ -185,6 +186,8 @@ function App() {
               <Route path="data-studio/projects" element={<FeatureErrorBoundary><NavRoleGuard><ProjectListPage /></NavRoleGuard></FeatureErrorBoundary>} />
               <Route path="data-studio/projects/:projectId" element={<FeatureErrorBoundary><NavRoleGuard><ProjectDetailPage /></NavRoleGuard></FeatureErrorBoundary>} />
 
+              {/* Code Graph */}
+              <Route path="code-graph/:kbId" element={<FeatureErrorBoundary><NavRoleGuard><CodeGraphPage /></NavRoleGuard></FeatureErrorBoundary>} />
 
 
               {/* IAM */}

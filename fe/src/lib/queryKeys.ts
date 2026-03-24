@@ -272,4 +272,16 @@ export const queryKeys = {
     templates: () => ['agent-templates'] as const,
     templatesByCategory: (category: string) => ['agent-templates', category] as const,
   },
+
+  // --------------------------------------------------------------------------
+  // Code Graph (Memgraph)
+  // --------------------------------------------------------------------------
+  codeGraph: {
+    all: ['code-graph'] as const,
+    stats: (kbId: string) => [...queryKeys.codeGraph.all, kbId, 'stats'] as const,
+    graph: (kbId: string, limit: number) => [...queryKeys.codeGraph.all, kbId, 'graph', limit] as const,
+    callers: (kbId: string, name: string) => [...queryKeys.codeGraph.all, kbId, 'callers', name] as const,
+    callees: (kbId: string, name: string) => [...queryKeys.codeGraph.all, kbId, 'callees', name] as const,
+    snippet: (kbId: string, name: string) => [...queryKeys.codeGraph.all, kbId, 'snippet', name] as const,
+  },
 } as const
