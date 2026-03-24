@@ -2875,6 +2875,32 @@
   "projects": {
     "error": {
       "removeMember": "Failed to remove member"
-    }
+    },
+    "documentsTab": "Documents",
+    "standardTab": "Standard",
+    "codeTab": "Code",
+    "newCategory": "New Category",
+    "newVersion": "New Version",
+    "createProject": "Create Project",
+    "selectCategory": "Select a category to view its contents",
+    "datasetNotAvailable": "Dataset not available for this category",
+    "emptyTitle": "No projects yet",
+    "emptyDescription": "Create your first project to organize documents, code, and knowledge bases.",
+    "emptyCategoryTitle": "No categories",
+    "emptyCategoryDescription": "Create a category to start adding files.",
+    "emptyVersionTitle": "No versions",
+    "emptyVersionDescription": "Create the first version to upload documents.",
+    "loadError": "Failed to load project. Check your connection and try again.",
+    "deleteConfirm": "This will permanently delete the project and all its categories, versions, and files. Type the project name to confirm.",
+    "deleteCategoryConfirm": "This will delete the category and its dataset. This action cannot be undone.",
+    "deleteVersionConfirm": "This will delete this version and its files. Other versions are not affected.",
+    "settingsTitle": "Project Settings",
+    "gitSyncTitle": "Git Sync",
+    "gitSyncComingSoon": "Git repository sync coming soon",
+    "connectRepository": "Connect Repository",
+    "parserConfig": "Parser Config",
+    "uploadFiles": "Upload Files",
+    "versionCount": "{{count}} version(s)",
+    "categoryCount": "{{count}} category(ies)"
   }
 }

@@ -2607,6 +2607,32 @@
   "projects": {
     "error": {
       "removeMember": "メンバーの削除に失敗しました"
-    }
+    },
+    "documentsTab": "ドキュメント",
+    "standardTab": "スタンダード",
+    "codeTab": "コード",
+    "newCategory": "新しいカテゴリ",
+    "newVersion": "新しいバージョン",
+    "createProject": "プロジェクト作成",
+    "selectCategory": "カテゴリを選択して内容を表示",
+    "datasetNotAvailable": "このカテゴリのデータセットは利用できません",
+    "emptyTitle": "プロジェクトがありません",
+    "emptyDescription": "最初のプロジェクトを作成して、ドキュメント、コード、ナレッジベースを整理しましょう。",
+    "emptyCategoryTitle": "カテゴリがありません",
+    "emptyCategoryDescription": "カテゴリを作成してファイルの追加を開始します。",
+    "emptyVersionTitle": "バージョンがありません",
+    "emptyVersionDescription": "最初のバージョンを作成してドキュメントをアップロードします。",
+    "loadError": "プロジェクトの読み込みに失敗しました。接続を確認してもう一度お試しください。",
+    "deleteConfirm": "プロジェクトとすべてのカテゴリ、バージョン、ファイルが完全に削除されます。確認のためプロジェクト名を入力してください。",
+    "deleteCategoryConfirm": "カテゴリとデータセットが削除されます。この操作は元に戻せません。",
+    "deleteVersionConfirm": "このバージョンとファイルが削除されます。他のバージョンには影響しません。",
+    "settingsTitle": "プロジェクト設定",
+    "gitSyncTitle": "Git同期",
+    "gitSyncComingSoon": "Gitリポジトリ同期は近日公開",
+    "connectRepository": "リポジトリ接続",
+    "parserConfig": "パーサー設定",
+    "uploadFiles": "ファイルアップロード",
+    "versionCount": "{{count}} バージョン",
+    "categoryCount": "{{count}} カテゴリ"
   }
 }

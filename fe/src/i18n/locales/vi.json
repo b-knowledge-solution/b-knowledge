@@ -2621,6 +2621,32 @@
   "projects": {
     "error": {
       "removeMember": "Không thể xóa thành viên"
-    }
+    },
+    "documentsTab": "Tài liệu",
+    "standardTab": "Tiêu chuẩn",
+    "codeTab": "Mã nguồn",
+    "newCategory": "Danh mục mới",
+    "newVersion": "Phiên bản mới",
+    "createProject": "Tạo dự án",
+    "selectCategory": "Chọn danh mục để xem nội dung",
+    "datasetNotAvailable": "Tập dữ liệu không khả dụng cho danh mục này",
+    "emptyTitle": "Chưa có dự án",
+    "emptyDescription": "Tạo dự án đầu tiên để tổ chức tài liệu, mã nguồn và cơ sở tri thức.",
+    "emptyCategoryTitle": "Chưa có danh mục",
+    "emptyCategoryDescription": "Tạo danh mục để bắt đầu thêm tệp.",
+    "emptyVersionTitle": "Chưa có phiên bản",
+    "emptyVersionDescription": "Tạo phiên bản đầu tiên để tải lên tài liệu.",
+    "loadError": "Không thể tải dự án. Kiểm tra kết nối và thử lại.",
+    "deleteConfirm": "Thao tác này sẽ xóa vĩnh viễn dự án và tất cả danh mục, phiên bản, tệp. Nhập tên dự án để xác nhận.",
+    "deleteCategoryConfirm": "Thao tác này sẽ xóa danh mục và tập dữ liệu. Không thể hoàn tác.",
+    "deleteVersionConfirm": "Thao tác này sẽ xóa phiên bản và các tệp. Các phiên bản khác không bị ảnh hưởng.",
+    "settingsTitle": "Cài đặt dự án",
+    "gitSyncTitle": "Đồng bộ Git",
+    "gitSyncComingSoon": "Đồng bộ kho Git sẽ có sớm",
+    "connectRepository": "Kết nối kho",
+    "parserConfig": "Cấu hình phân tích",
+    "uploadFiles": "Tải lên tệp",
+    "versionCount": "{{count}} phiên bản",
+    "categoryCount": "{{count}} danh mục"
   }
 }

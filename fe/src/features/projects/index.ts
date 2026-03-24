@@ -64,3 +64,11 @@ export {
   type UpdateDatasetParams,
   type ListDatasetsParams,
 } from "./api/ragflowApi";
+
+// Component exports
+export { default as CategorySidebar } from "./components/CategorySidebar";
+export { default as ProjectSettingsSheet } from "./components/ProjectSettingsSheet";
+export { default as StandardCategoryView } from "./components/StandardCategoryView";
+export { default as CodeCategoryView } from "./components/CodeCategoryView";
+export { default as VersionList } from "./components/VersionList";
+export { default as VersionCard } from "./components/VersionCard";
