@@ -69,6 +69,8 @@ export default function UserManagementPage() {
                             departmentFilter={mgmt.departmentFilter}
                             onDepartmentFilterChange={mgmt.setDepartmentFilter}
                             departments={mgmt.departments}
+                            sourceFilter={mgmt.sourceFilter}
+                            onSourceFilterChange={mgmt.setSourceFilter}
                             onCreateUser={() => setIsCreateOpen(true)}
                         />
 

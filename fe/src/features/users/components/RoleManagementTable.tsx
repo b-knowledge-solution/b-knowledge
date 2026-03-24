@@ -8,7 +8,7 @@
 
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Loader2, Users } from 'lucide-react'
+import { Loader2, Users, KeyRound, Cloud } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -138,6 +138,7 @@ export function RoleManagementTable({
           <TableRow>
             <TableHead>{t('userManagement.user')}</TableHead>
             <TableHead>{t('userManagement.email')}</TableHead>
+            <TableHead>{t('userManagement.source')}</TableHead>
             <TableHead>{t('userManagement.role')}</TableHead>
             <TableHead className="text-right">{t('userManagement.actions')}</TableHead>
           </TableRow>
@@ -148,6 +149,7 @@ export function RoleManagementTable({
             <TableRow key={i}>
               <TableCell><div className="h-4 w-32 rounded bg-muted animate-pulse" /></TableCell>
               <TableCell><div className="h-4 w-48 rounded bg-muted animate-pulse" /></TableCell>
+              <TableCell><div className="h-6 w-20 rounded bg-muted animate-pulse" /></TableCell>
               <TableCell><div className="h-6 w-16 rounded bg-muted animate-pulse" /></TableCell>
               <TableCell className="text-right"><div className="h-9 w-28 ml-auto rounded bg-muted animate-pulse" /></TableCell>
             </TableRow>
@@ -178,6 +180,7 @@ export function RoleManagementTable({
         <TableRow>
           <TableHead>{t('userManagement.user')}</TableHead>
           <TableHead>{t('userManagement.email')}</TableHead>
+          <TableHead>{t('userManagement.source')}</TableHead>
           <TableHead>{t('userManagement.role')}</TableHead>
           <TableHead className="text-right">{t('userManagement.actions')}</TableHead>
         </TableRow>
@@ -210,6 +213,21 @@ export function RoleManagementTable({
                 <span className="text-slate-600 dark:text-slate-300">
                   {member.email}
                 </span>
+              </TableCell>
+
+              {/* Source badge */}
+              <TableCell>
+                {member.source === 'local' ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                    <KeyRound className="h-3 w-3" />
+                    {t('userManagement.sourceLocal')}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                    <Cloud className="h-3 w-3" />
+                    {t('userManagement.sourceAzureAD')}
+                  </span>
+                )}
               </TableCell>
 
               {/* Current role badge */}

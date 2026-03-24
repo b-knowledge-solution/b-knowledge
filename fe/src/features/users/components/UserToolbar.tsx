@@ -5,7 +5,7 @@
 import { useTranslation } from 'react-i18next'
 import { Search, Filter, X, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { RoleFilter } from '../api/userQueries'
+import type { RoleFilter, SourceFilter } from '../api/userQueries'
 
 interface UserToolbarProps {
     /** Current search query */
@@ -22,6 +22,10 @@ interface UserToolbarProps {
     onDepartmentFilterChange: (d: string) => void
     /** Available department names */
     departments: string[]
+    /** Current source filter */
+    sourceFilter: SourceFilter
+    /** Update source filter */
+    onSourceFilterChange: (s: SourceFilter) => void
     /** Handler to open the Create User dialog */
     onCreateUser?: () => void
 }
@@ -39,6 +43,8 @@ export function UserToolbar({
     departmentFilter,
     onDepartmentFilterChange,
     departments,
+    sourceFilter,
+    onSourceFilterChange,
     onCreateUser,
 }: UserToolbarProps) {
     const { t } = useTranslation()
@@ -95,6 +101,20 @@ export function UserToolbar({
                         {departments.map(dept => (
                             <option key={dept} value={dept}>{dept}</option>
                         ))}
+                    </select>
+                    <Filter className="absolute right-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                </div>
+
+                {/* Source Filter */}
+                <div className="relative min-w-[140px]">
+                    <select
+                        value={sourceFilter}
+                        onChange={(e) => onSourceFilterChange(e.target.value as SourceFilter)}
+                        className="w-full appearance-none pl-3 pr-8 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                    >
+                        <option value="all">{t('userManagement.allSources', 'All Sources')}</option>
+                        <option value="local">{t('userManagement.sourceLocal', 'Local')}</option>
+                        <option value="azure_ad">{t('userManagement.sourceAzureAD', 'Azure AD')}</option>
                     </select>
                     <Filter className="absolute right-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 </div>

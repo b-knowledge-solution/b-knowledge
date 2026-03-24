@@ -20,7 +20,7 @@
  */
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 /**
  * Options for configuring the confirmation dialog.
@@ -130,9 +130,9 @@ export const ConfirmProvider: React.FC<ConfirmProviderProps> = ({ children }) =>
             case 'warning':
                 return 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500';
             case 'info':
-                return 'bg-primary-600 hover:bg-primary-700 focus:ring-primary-500';
+                return 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500';
             default:
-                return 'bg-primary-600 hover:bg-primary-700 focus:ring-primary-500';
+                return 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500';
         }
     };
 
@@ -150,7 +150,7 @@ export const ConfirmProvider: React.FC<ConfirmProviderProps> = ({ children }) =>
                         <div className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap py-4">
                             {options.message}
                         </div>
-                        <DialogFooter>
+                        <div className="flex flex-row justify-end gap-2 pt-2">
                             {/* Cancel Button */}
                             <button
                                 onClick={handleCancel}
@@ -166,7 +166,7 @@ export const ConfirmProvider: React.FC<ConfirmProviderProps> = ({ children }) =>
                             >
                                 {options.confirmText || t('dialog.confirm')}
                             </button>
-                        </DialogFooter>
+                        </div>
                     </DialogContent>
                 </Dialog>
             )}

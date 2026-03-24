@@ -16,7 +16,6 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { Pagination } from '@/components/ui/pagination'
-import { HeaderActions } from '@/components/HeaderActions'
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
 import { useTeams } from '../api/teamQueries'
 import { useTeamMembers } from '../api/teamQueries'
@@ -98,7 +97,7 @@ export default function TeamManagementPage() {
 
     return (
         <div className="h-full flex flex-col p-6 max-w-7xl mx-auto">
-            {/* Search + Project Filter */}
+            {/* Search + Project Filter + Create Button */}
             <div className="flex flex-col sm:flex-row gap-4 mb-6 shrink-0">
                 <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
@@ -122,6 +121,10 @@ export default function TeamManagementPage() {
                         ))}
                     </SelectContent>
                 </Select>
+                <Button onClick={openCreate} className="flex items-center gap-2 h-10 shrink-0">
+                    <Plus size={20} />
+                    {t('iam.teams.create')}
+                </Button>
             </div>
 
             {/* Team Cards Grid */}
@@ -155,14 +158,6 @@ export default function TeamManagementPage() {
                     />
                 </div>
             )}
-
-            {/* Create Button */}
-            <HeaderActions>
-                <Button onClick={openCreate} className="flex items-center gap-2">
-                    <Plus size={20} />
-                    {t('iam.teams.create')}
-                </Button>
-            </HeaderActions>
 
             {/* Create/Edit Dialog */}
             <TeamFormDialog

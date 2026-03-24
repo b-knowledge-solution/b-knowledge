@@ -27,9 +27,11 @@ export class UserController {
       // Fetch users via service
       const users = await userService.getAllUsers(roles as any)
       // Map snake_case to camelCase for frontend compatibility
-      const mappedUsers = users.map(u => ({
+      // Derive source from password_hash presence (in-memory, zero-cost)
+      const mappedUsers = users.map(({ password_hash, ...u }) => ({
         ...u,
         displayName: u.display_name,
+        source: password_hash ? 'local' : 'azure_ad',
       }))
       res.json(mappedUsers)
     } catch (error) {

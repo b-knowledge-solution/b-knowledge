@@ -22,6 +22,11 @@ import { queryKeys } from '@/lib/queryKeys'
 export type RoleFilter = 'all' | 'admin' | 'leader' | 'user'
 
 /**
+ * @description Source filter type for user management.
+ */
+export type SourceFilter = 'all' | 'local' | 'azure_ad'
+
+/**
  * @description Return type for the useUserManagement hook.
  */
 export interface UseUserManagementReturn {
@@ -43,6 +48,10 @@ export interface UseUserManagementReturn {
     departmentFilter: string
     /** Set department filter */
     setDepartmentFilter: (d: string) => void
+    /** Source filter */
+    sourceFilter: SourceFilter
+    /** Set source filter */
+    setSourceFilter: (s: SourceFilter) => void
     /** Unique department names */
     departments: string[]
     /** Filtered + paginated users */
@@ -83,6 +92,7 @@ export const useUserManagement = (): UseUserManagementReturn => {
     const searchQuery = searchParams.get('q') || ''
     const roleFilter = (searchParams.get('role') || 'all') as RoleFilter
     const departmentFilter = searchParams.get('dept') || 'all'
+    const sourceFilter = (searchParams.get('source') || 'all') as SourceFilter
     const currentPage = Number(searchParams.get('page') || '1')
     const pageSize = Number(searchParams.get('size') || '20')
 
@@ -112,6 +122,9 @@ export const useUserManagement = (): UseUserManagementReturn => {
 
     /** @description Set the department filter param. */
     const setDepartmentFilter = (d: string) => updateParam('dept', d, true)
+
+    /** @description Set the source filter param. */
+    const setSourceFilter = (s: SourceFilter) => updateParam('source', s, true)
 
     /** @description Handle pagination changes via URL params. */
     const handlePaginationChange = (page: number, size: number) => {
@@ -153,7 +166,9 @@ export const useUserManagement = (): UseUserManagementReturn => {
         const matchesRole = roleFilter === 'all' || user.role === roleFilter
         // Match department filter
         const matchesDepartment = departmentFilter === 'all' || user.department === departmentFilter
-        return matchesSearch && matchesRole && matchesDepartment
+        // Match source filter
+        const matchesSource = sourceFilter === 'all' || user.source === sourceFilter
+        return matchesSearch && matchesRole && matchesDepartment && matchesSource
     })
 
     /** @description Paginated slice of filtered users. */
@@ -202,6 +217,8 @@ export const useUserManagement = (): UseUserManagementReturn => {
         setRoleFilter,
         departmentFilter,
         setDepartmentFilter,
+        sourceFilter,
+        setSourceFilter,
         departments,
         paginatedUsers,
         filteredCount: filteredUsers.length,

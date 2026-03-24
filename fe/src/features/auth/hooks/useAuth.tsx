@@ -47,6 +47,8 @@ export interface User {
   job_title?: string;
   /** User's mobile phone (from Azure AD) */
   mobile_phone?: string;
+  /** Authentication source: local password or Azure AD SSO */
+  source?: 'local' | 'azure_ad';
 }
 
 /**

@@ -6,7 +6,7 @@
  *   - leader ×5   (team management access)
  *   - user   ×100 (basic access)
  *
- * Also creates 5 teams, each with all 5 leader accounts as members.
+ * Also creates 5 teams, each with one unique leader and a subset of users.
  *
  * Default password for every account: `password123`
  *
@@ -84,7 +84,13 @@ const USER_PERMISSIONS = JSON.stringify([
   'chat:view'
 ])
 
-/** Team definitions — each team will have all 5 leaders as members */
+/** Number of regular users to add to each team as members */
+const USERS_PER_TEAM = 10
+
+/**
+ * Team definitions — index maps 1:1 with leaders (leader1 → Alpha, leader2 → Beta, …).
+ * Each team gets exactly one leader plus a rotating subset of users.
+ */
 const TEAMS = [
   { name: 'Alpha Team', project_name: 'Project Alpha', description: 'Core product development team' },
   { name: 'Beta Team', project_name: 'Project Beta', description: 'Platform engineering team' },
@@ -157,7 +163,7 @@ function generateUsers(
  *   2. Generate admin ×5, leader ×5, user ×100.
  *   3. Upsert users (skip duplicates by email).
  *   4. Create 5 teams (skip duplicates by name).
- *   5. Assign all 5 leaders to every team with role = 'leader'.
+ *   5. Assign one unique leader + a subset of users to each team.
  *   6. Log summary.
  */
 export async function seed(knex: Knex): Promise<void> {
@@ -202,10 +208,16 @@ export async function seed(knex: Knex): Promise<void> {
   console.log(`[USERS] Inserted: ${usersInserted}, Skipped: ${usersSkipped}, Total: ${allUsers.length}`)
 
   // ── 4. Create teams ───────────────────────────────────────────────────────
-  // We need to look up actual leader IDs from the database (could be pre-existing)
+  // Look up actual leader & user IDs from the database (could be pre-existing)
   const leaderRows = await knex('users')
     .whereIn('email', leaders.map(l => l.email))
     .select('id', 'email')
+    .orderBy('email', 'asc')
+
+  const userRows = await knex('users')
+    .where({ role: 'user' })
+    .select('id', 'email')
+    .orderBy('email', 'asc')
 
   let teamsInserted = 0
   let teamsSkipped = 0
@@ -235,18 +247,23 @@ export async function seed(knex: Knex): Promise<void> {
 
   console.log(`[TEAMS] Inserted: ${teamsInserted}, Skipped: ${teamsSkipped}, Total: ${TEAMS.length}`)
 
-  // ── 5. Assign leaders to teams ─────────────────────────────────────────────
+  // ── 5. Assign one leader + users to each team ─────────────────────────────
+  // Each team gets exactly ONE leader (1:1 mapping by index) plus a rotating
+  // subset of regular users, so every team has a different leader for testing.
   let membershipsInserted = 0
   let membershipsSkipped = 0
 
-  for (const team of teamIds) {
-    for (const leader of leaderRows) {
-      // Check if membership already exists (composite PK: user_id + team_id)
-      const existing = await knex('user_teams')
+  for (let teamIdx = 0; teamIdx < teamIds.length; teamIdx++) {
+    const team = teamIds[teamIdx]!
+    const leader = leaderRows[teamIdx]
+
+    // ── 5a. Assign the unique leader ──────────────────────────────────────
+    if (leader) {
+      const existingLeader = await knex('user_teams')
         .where({ user_id: leader.id, team_id: team.id })
         .first()
 
-      if (existing) {
+      if (existingLeader) {
         membershipsSkipped++
       } else {
         await knex('user_teams').insert({
@@ -258,9 +275,33 @@ export async function seed(knex: Knex): Promise<void> {
         membershipsInserted++
       }
     }
+
+    // ── 5b. Assign a rotating slice of regular users as members ───────────
+    // Team 0 gets users 0‥9, team 1 gets users 10‥19, etc.
+    const startIdx = teamIdx * USERS_PER_TEAM
+    const teamUsers = userRows.slice(startIdx, startIdx + USERS_PER_TEAM)
+
+    for (const user of teamUsers) {
+      const existingMember = await knex('user_teams')
+        .where({ user_id: user.id, team_id: team.id })
+        .first()
+
+      if (existingMember) {
+        membershipsSkipped++
+      } else {
+        await knex('user_teams').insert({
+          user_id: user.id,
+          team_id: team.id,
+          role: 'member',
+          joined_at: knex.fn.now()
+        })
+        membershipsInserted++
+      }
+    }
   }
 
-  console.log(`[MEMBERSHIPS] Inserted: ${membershipsInserted}, Skipped: ${membershipsSkipped}, Total: ${teamIds.length * leaderRows.length}`)
+  const totalExpected = teamIds.length * (1 + USERS_PER_TEAM)
+  console.log(`[MEMBERSHIPS] Inserted: ${membershipsInserted}, Skipped: ${membershipsSkipped}, Total: ${totalExpected}`)
 
   // ── 6. Summary ─────────────────────────────────────────────────────────────
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(2)
@@ -273,7 +314,12 @@ export async function seed(knex: Knex): Promise<void> {
   console.log(`  - Leader accounts:  5  (leader1@baoda.vn – leader5@baoda.vn)`)
   console.log(`  - User accounts:    100 (user1@baoda.vn – user100@baoda.vn)`)
   console.log(`  - Teams:            5  (Alpha, Beta, Gamma, Delta, Epsilon)`)
-  console.log(`  - Team memberships: 25 (5 leaders × 5 teams)`)
+  console.log(`  - Members/team:     1 leader + ${USERS_PER_TEAM} users`)
+  console.log('')
+  console.log('Team ↔ Leader Mapping:')
+  TEAMS.forEach((t, i) => {
+    console.log(`  ${t.name.padEnd(16)} → leader${i + 1}@baoda.vn`)
+  })
   console.log('')
   console.log('Default password: password123')
   console.log('')
