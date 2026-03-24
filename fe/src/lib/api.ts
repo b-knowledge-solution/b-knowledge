@@ -31,21 +31,31 @@ export class AuthenticationError extends Error {
 // ============================================================================
 
 /**
- * @description Handles 401 Unauthorized responses by redirecting to login with a return URL
+ * @description Handles 401 Unauthorized responses by redirecting to login with a return URL.
+ * Skips redirect if already on a public page (login, logout, landing) to prevent infinite loops.
  * @throws {AuthenticationError} Always throws after initiating redirect to stop further execution
  */
 function handleUnauthorized(): never {
-  // Capture current path for redirect after login
-  const currentPath = window.location.pathname + window.location.search;
-  const loginUrl = `/login?redirect=${encodeURIComponent(currentPath)}`;
+  const currentPath = window.location.pathname;
 
-  console.log('[API] Unauthorized (401), redirecting to login:', loginUrl);
+  // Skip redirect if already on login or other public pages to prevent redirect loops
+  const publicPaths = ['/login', '/logout', '/403', '/404', '/500']
+  if (currentPath === '/' || publicPaths.some(p => currentPath.startsWith(p))) {
+    console.log('[API] Unauthorized (401) on public path, skipping redirect:', currentPath)
+    throw new AuthenticationError()
+  }
+
+  // Capture current path + query for redirect back after login
+  const fullPath = currentPath + window.location.search
+  const loginUrl = `/login?redirect=${encodeURIComponent(fullPath)}`
+
+  console.log('[API] Unauthorized (401), redirecting to login:', loginUrl)
 
   // Force full page redirect to clear any stale state
-  window.location.href = loginUrl;
+  window.location.href = loginUrl
 
   // Throw to stop further execution
-  throw new AuthenticationError();
+  throw new AuthenticationError()
 }
 
 // ============================================================================

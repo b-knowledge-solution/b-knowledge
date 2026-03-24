@@ -219,10 +219,10 @@ function App() {
               <Route path="admin/broadcast-messages" element={<FeatureErrorBoundary><AdminRoute><BroadcastMessagePage /></AdminRoute></FeatureErrorBoundary>} />
               <Route path="admin/dashboard" element={<FeatureErrorBoundary><AdminRoute><AdminDashboardPage /></AdminRoute></FeatureErrorBoundary>} />
 
-              {/* AI Management — Chat & Search config, Histories (admin) */}
-              <Route path="ai/chat-assistants" element={<FeatureErrorBoundary><AdminRoute><ChatAssistantManagementPage /></AdminRoute></FeatureErrorBoundary>} />
-              <Route path="ai/search-apps" element={<FeatureErrorBoundary><AdminRoute><SearchAppManagementPage /></AdminRoute></FeatureErrorBoundary>} />
-              <Route path="ai/histories" element={<FeatureErrorBoundary><AdminRoute><HistoriesPage /></AdminRoute></FeatureErrorBoundary>} />
+              {/* Agent Studio — Chat & Search config, Histories (admin) */}
+              <Route path="agent-studio/chat-assistants" element={<FeatureErrorBoundary><AdminRoute><ChatAssistantManagementPage /></AdminRoute></FeatureErrorBoundary>} />
+              <Route path="agent-studio/search-apps" element={<FeatureErrorBoundary><AdminRoute><SearchAppManagementPage /></AdminRoute></FeatureErrorBoundary>} />
+              <Route path="agent-studio/histories" element={<FeatureErrorBoundary><AdminRoute><HistoriesPage /></AdminRoute></FeatureErrorBoundary>} />
               <Route path="data-studio/llm-providers" element={<FeatureErrorBoundary><AdminRoute><LLMProviderPage /></AdminRoute></FeatureErrorBoundary>} />
 
             </Route>

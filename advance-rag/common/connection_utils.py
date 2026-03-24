@@ -20,7 +20,6 @@ import threading
 from typing import Any, Callable, Coroutine, Optional, Type, Union
 import asyncio
 from functools import wraps
-from quart import make_response, jsonify
 from common.constants import RetCode
 
 TimeoutException = Union[Type[BaseException], BaseException]
@@ -102,6 +101,7 @@ def timeout(seconds: float | int | str = None, attempts: int = 2, *, exception: 
 
 
 async def construct_response(code=RetCode.SUCCESS, message="success", data=None, auth=None):
+    from quart import make_response, jsonify
     result_dict = {"code": code, "message": message, "data": data}
     response_dict = {}
     for key, value in result_dict.items():

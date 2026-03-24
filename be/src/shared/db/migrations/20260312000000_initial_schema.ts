@@ -4,6 +4,9 @@
  *   Tables are organized into logical groups: core, chat, knowledge base,
  *   broadcast, history tracking, glossary, RAG pipeline, sync, access control,
  *   and projects. Also encrypts any existing plaintext API keys at rest.
+ *
+ *   All UUID columns use TEXT type with 32-char hex (no hyphens) format to
+ *   eliminate the format mismatch between Node.js and Python Peewee.
  */
 import type { Knex } from 'knex'
 import { cryptoService } from '../../services/crypto.service.js'
@@ -14,6 +17,9 @@ import { cryptoService } from '../../services/crypto.service.js'
  * @param {Knex} knex - Knex instance for schema operations
  * @returns {Promise<void>}
  */
+/** @description The 32-char hex default expression for new rows */
+const HEX_UUID_DEFAULT = "REPLACE(gen_random_uuid()::TEXT, '-', '')"
+
 export async function up(knex: Knex): Promise<void> {
   // ──────────────────────────────────────────────
   // 1. Core tables (no foreign key dependencies)
@@ -99,7 +105,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Chat assistants - chat assistant configurations (RAGFlow "dialog")
   await knex.schema.createTable('chat_assistants', (table) => {
-    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.string('name', 128).notNullable()
     table.text('description')
     table.string('icon', 256)
@@ -116,13 +122,13 @@ export async function up(knex: Knex): Promise<void> {
 
   // Chat assistant access - RBAC junction table for assistant sharing
   await knex.schema.createTable('chat_assistant_access', (table) => {
-    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     // Reference to the assistant being shared
-    table.uuid('assistant_id').notNullable().references('id').inTable('chat_assistants').onDelete('CASCADE')
+    table.text('assistant_id').notNullable().references('id').inTable('chat_assistants').onDelete('CASCADE')
     // Entity type: 'user' or 'team'
     table.string('entity_type', 16).notNullable()
     // UUID of the user or team granted access
-    table.uuid('entity_id').notNullable()
+    table.text('entity_id').notNullable()
     // User who created this access entry
     table.text('created_by').references('id').inTable('users').onDelete('SET NULL')
     table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
@@ -139,8 +145,8 @@ export async function up(knex: Knex): Promise<void> {
 
   // Chat embed tokens - tokens for external chat widget authentication
   await knex.schema.createTable('chat_embed_tokens', (table) => {
-    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
-    table.uuid('assistant_id').notNullable().references('id').inTable('chat_assistants').onDelete('CASCADE')
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
+    table.text('assistant_id').notNullable().references('id').inTable('chat_assistants').onDelete('CASCADE')
     table.string('token', 64).notNullable().unique()
     table.string('name', 128).notNullable()
     table.boolean('is_active').defaultTo(true)
@@ -156,7 +162,7 @@ export async function up(knex: Knex): Promise<void> {
     table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
     table.text('user_id').notNullable()
     table.text('title').notNullable()
-    table.uuid('dialog_id').nullable()
+    table.text('dialog_id').nullable()
     table.text('created_by')
     table.text('updated_by')
     table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
@@ -180,7 +186,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Chat files - file attachments uploaded during chat conversations
   await knex.schema.createTable('chat_files', (table) => {
-    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     // session_id must be text to match chat_sessions.id which is defined as text
     table.text('session_id').notNullable().references('id').inTable('chat_sessions').onDelete('CASCADE')
     table.text('message_id').nullable()
@@ -203,7 +209,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Search apps - saved search configurations
   await knex.schema.createTable('search_apps', (table) => {
-    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.string('name', 128).notNullable()
     table.text('description')
     table.jsonb('dataset_ids').defaultTo('[]')
@@ -216,13 +222,13 @@ export async function up(knex: Knex): Promise<void> {
 
   // Search app access - RBAC junction table for search app sharing
   await knex.schema.createTable('search_app_access', (table) => {
-    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     // Reference to the search app being shared
-    table.uuid('app_id').notNullable().references('id').inTable('search_apps').onDelete('CASCADE')
+    table.text('app_id').notNullable().references('id').inTable('search_apps').onDelete('CASCADE')
     // Entity type: 'user' or 'team'
     table.string('entity_type', 16).notNullable()
     // UUID of the user or team granted access
-    table.uuid('entity_id').notNullable()
+    table.text('entity_id').notNullable()
     // User who created this access entry
     table.text('created_by').references('id').inTable('users').onDelete('SET NULL')
     table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
@@ -239,9 +245,9 @@ export async function up(knex: Knex): Promise<void> {
 
   // Search embed tokens - tokens for external search widget authentication
   await knex.schema.createTable('search_embed_tokens', (table) => {
-    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     // Reference to the search app this token grants access to
-    table.uuid('app_id').notNullable().references('id').inTable('search_apps').onDelete('CASCADE')
+    table.text('app_id').notNullable().references('id').inTable('search_apps').onDelete('CASCADE')
     // Unique 64-char hex token for API authentication
     table.string('token', 64).notNullable().unique()
     // Human-readable label for the token
@@ -307,7 +313,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Broadcast messages - system-wide notifications
   await knex.schema.createTable('broadcast_messages', (table) => {
-    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.text('message').notNullable()
     table.timestamp('starts_at', { useTz: true }).notNullable()
     table.timestamp('ends_at', { useTz: true }).notNullable()
@@ -325,7 +331,7 @@ export async function up(knex: Knex): Promise<void> {
   // User dismissed broadcasts - tracks which users dismissed which broadcasts
   await knex.schema.createTable('user_dismissed_broadcasts', (table) => {
     table.text('user_id').notNullable()
-    table.uuid('broadcast_id').notNullable()
+    table.text('broadcast_id').notNullable()
     table.timestamp('dismissed_at', { useTz: true }).defaultTo(knex.fn.now())
     table.primary(['user_id', 'broadcast_id'])
     table.foreign('user_id').references('users.id').onDelete('CASCADE')
@@ -339,7 +345,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // History chat sessions - chat sessions from external clients
   await knex.schema.createTable('history_chat_sessions', (table) => {
-    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.text('session_id').unique().notNullable()
     table.text('share_id')
     table.text('user_email')
@@ -354,7 +360,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // History chat messages - messages within history chat sessions
   await knex.schema.createTable('history_chat_messages', (table) => {
-    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.text('session_id').notNullable()
     table.text('user_prompt').notNullable()
     table.text('llm_response').notNullable()
@@ -375,7 +381,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // History search sessions - search sessions from external clients
   await knex.schema.createTable('history_search_sessions', (table) => {
-    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.text('session_id').unique().notNullable()
     table.text('share_id')
     table.text('user_email')
@@ -390,7 +396,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // History search records - individual search results within sessions
   await knex.schema.createTable('history_search_records', (table) => {
-    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.text('session_id').notNullable()
     table.text('search_input').notNullable()
     table.text('ai_summary')
@@ -713,6 +719,47 @@ export async function up(knex: Knex): Promise<void> {
     })
   }
 
+  // UserCanvasVersion — immutable snapshots of canvas DSL (Peewee-managed)
+  if (!(await knex.schema.hasTable('user_canvas_version'))) {
+    await knex.schema.createTable('user_canvas_version', (t) => {
+      t.string('id', 32).primary()
+      t.string('user_canvas_id', 255).notNullable().index()
+      t.string('title', 255).nullable()
+      t.text('description').nullable()
+      t.boolean('release').notNullable().defaultTo(false).index()
+      t.text('dsl').nullable()
+      t.bigInteger('create_time').nullable().index()
+      t.timestamp('create_date').nullable().index()
+      t.bigInteger('update_time').nullable().index()
+      t.timestamp('update_date').nullable().index()
+    })
+  }
+
+  // API4Conversation — agent chat conversation sessions (Peewee-managed)
+  if (!(await knex.schema.hasTable('api_4_conversation'))) {
+    await knex.schema.createTable('api_4_conversation', (t) => {
+      t.string('id', 32).primary()
+      t.string('name', 255).nullable()
+      t.string('dialog_id', 32).notNullable().index()
+      t.string('user_id', 255).notNullable().index()
+      t.string('exp_user_id', 255).nullable().index()
+      t.jsonb('message').nullable()
+      t.jsonb('reference').nullable()
+      t.integer('tokens').defaultTo(0)
+      t.string('source', 16).nullable().index()
+      t.text('dsl').nullable()
+      t.float('duration').defaultTo(0).index()
+      t.integer('round').defaultTo(0).index()
+      t.integer('thumb_up').defaultTo(0).index()
+      t.text('errors').nullable()
+      t.string('version_title', 255).nullable()
+      t.bigInteger('create_time').nullable().index()
+      t.timestamp('create_date').nullable().index()
+      t.bigInteger('update_time').nullable().index()
+      t.timestamp('update_date').nullable().index()
+    })
+  }
+
   // CanvasTemplate — predefined canvas templates (Peewee-managed)
   if (!(await knex.schema.hasTable('canvas_template'))) {
     await knex.schema.createTable('canvas_template', (t) => {
@@ -846,7 +893,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Datasets - system-level resource with IAM access control
   await knex.schema.createTable('datasets', (table) => {
-    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.string('name', 128).notNullable()
     table.text('description')
     table.string('language', 32).defaultTo('English')
@@ -861,7 +908,7 @@ export async function up(knex: Knex): Promise<void> {
     // Pagerank for search result boosting (positive = boost, negative = suppress)
     table.integer('pagerank').defaultTo(0)
     // Versioning columns
-    table.uuid('parent_dataset_id').nullable().references('id').inTable('datasets').onDelete('SET NULL')
+    table.text('parent_dataset_id').nullable().references('id').inTable('datasets').onDelete('SET NULL')
     table.integer('version_number').nullable()
     table.text('change_summary').nullable()
     table.text('version_created_by').nullable().references('id').inTable('users').onDelete('SET NULL')
@@ -900,8 +947,8 @@ export async function up(knex: Knex): Promise<void> {
 
   // Documents - files within a dataset
   await knex.schema.createTable('documents', (table) => {
-    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
-    table.uuid('dataset_id').notNullable().references('id').inTable('datasets').onDelete('CASCADE')
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
+    table.text('dataset_id').notNullable().references('id').inTable('datasets').onDelete('CASCADE')
     table.string('name', 255).notNullable()
     table.bigInteger('size').defaultTo(0)
     table.string('type', 32)
@@ -919,7 +966,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Model providers - system-wide LLM model provider configuration
   await knex.schema.createTable('model_providers', (table) => {
-    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.string('factory_name', 128).notNullable()
     table.string('model_type', 128).notNullable()
     table.string('model_name', 128).notNullable()
@@ -959,7 +1006,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Connectors - external data source connection configurations
   await knex.schema.createTable('connectors', (table) => {
-    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.string('name', 255).notNullable()
     table.string('source_type', 64).notNullable()
     // References the RAGFlow Peewee knowledgebase table (no FK constraint
@@ -980,8 +1027,8 @@ export async function up(knex: Knex): Promise<void> {
 
   // Sync logs - tracks individual sync task executions
   await knex.schema.createTable('sync_logs', (table) => {
-    table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'))
-    table.uuid('connector_id').notNullable().references('id').inTable('connectors').onDelete('CASCADE')
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
+    table.text('connector_id').notNullable().references('id').inTable('connectors').onDelete('CASCADE')
     table.string('kb_id', 255).notNullable()
     table.string('status', 16).defaultTo('pending')
     table.integer('docs_synced').defaultTo(0)
@@ -1212,7 +1259,7 @@ export async function up(knex: Knex): Promise<void> {
     // Reference to the parent project
     table.text('project_id').notNullable()
     // Reference to the dataset
-    table.uuid('dataset_id').notNullable()
+    table.text('dataset_id').notNullable()
     // Role within the project: 'primary' | 'secondary'
     table.text('role').notNullable().defaultTo('primary')
     table.text('created_by')
@@ -1565,6 +1612,8 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists('connector')
   await knex.schema.dropTableIfExists('pipeline_operation_log')
   await knex.schema.dropTableIfExists('mcp_server')
+  await knex.schema.dropTableIfExists('api_4_conversation')
+  await knex.schema.dropTableIfExists('user_canvas_version')
   await knex.schema.dropTableIfExists('canvas_template')
   await knex.schema.dropTableIfExists('user_canvas')
   await knex.schema.dropTableIfExists('tenant_langfuse')

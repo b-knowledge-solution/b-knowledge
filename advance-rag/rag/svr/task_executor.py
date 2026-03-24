@@ -82,7 +82,7 @@ from db.services.file2document_service import File2DocumentService
 from db.joint_services.tenant_model_service import get_model_config_by_id, get_model_config_by_type_and_name, get_tenant_default_model_by_type
 from db.db_models import close_connection
 from rag.app import laws, paper, presentation, manual, qa, table, book, resume, picture, naive, one, audio, \
-    email, tag, code, openapi, adr, clinical
+    email, tag, code, openapi, adr, clinical, sdlc_checklist
 from rag.nlp import search, rag_tokenizer, add_positions
 from rag.raptor import RecursiveAbstractiveProcessing4TreeOrganizedRetrieval as Raptor
 from common.token_utils import num_tokens_from_string, truncate
@@ -115,7 +115,8 @@ FACTORY = {
     ParserType.CODE.value: code,
     ParserType.OPENAPI.value: openapi,
     ParserType.ADR.value: adr,
-    ParserType.CLINICAL.value: clinical
+    ParserType.CLINICAL.value: clinical,
+    ParserType.SDLC_CHECKLIST.value: sdlc_checklist,
 }
 
 TASK_TYPE_TO_PIPELINE_TASK_TYPE = {
@@ -654,6 +655,50 @@ async def build_chunks(task, progress_callback):
 
         progress_callback(msg="Clinical classification completed in {:.2f}s: {}".format(
             timer() - st, cached if cached else "skipped"))
+
+    # SDLC checklist phase classification -- runs only for sdlc_checklist parser
+    # Auto-classifies unclassified chunks into SDLC phases using LLM
+    if task["parser_id"] == ParserType.SDLC_CHECKLIST.value:
+        # Check if any chunks are unclassified and need LLM phase detection
+        unclassified = [d for d in docs if d.get("sdlc_phase_kwd") == "unclassified"]
+        if unclassified:
+            st = timer()
+            progress_callback(msg="Start SDLC phase classification for unclassified items ...")
+            chat_model_config = _resolve_chat_model_config()
+            chat_mdl = LLMBundle(task["tenant_id"], chat_model_config, lang=task["language"])
+
+            # Combine all chunk text for phase classification
+            full_text = "\n\n".join(d["content_with_weight"] for d in docs)
+            doc_title = task.get("name", "")
+
+            # Cache-aware classification using same pattern as clinical
+            cached = get_llm_cache(chat_mdl.llm_name, full_text[:4000], "sdlc_phase_classification", {})
+            if not cached:
+                if has_canceled(task["id"]):
+                    progress_callback(-1, msg="Task has been canceled.")
+                    return None
+                async with chat_limiter:
+                    from rag.app.sdlc_checklist import classify_phase
+                    cached = await classify_phase(chat_mdl, full_text, doc_title)
+                set_llm_cache(chat_mdl.llm_name, full_text[:4000], cached, "sdlc_phase_classification", {})
+
+            if cached:
+                phase = cached.strip().lower().replace(" ", "_")
+                # Update unclassified chunks with detected phase
+                for d in unclassified:
+                    d["sdlc_phase_kwd"] = phase
+                    existing_tags = d.get("tag_kwd", [])
+                    if phase not in existing_tags and phase != "unclassified":
+                        d["tag_kwd"] = existing_tags + [phase]
+
+                # Store phase in document metadata
+                existing_meta = DocMetadataService.get_document_metadata(task["doc_id"])
+                existing_meta = existing_meta if isinstance(existing_meta, dict) else {}
+                existing_meta["sdlc_phase"] = phase
+                DocMetadataService.update_document_metadata(task["doc_id"], existing_meta)
+
+            progress_callback(msg="SDLC phase classification completed in {:.2f}s: {}".format(
+                timer() - st, cached if cached else "skipped"))
 
     if task["kb_parser_config"].get("tag_kb_ids", []):
         progress_callback(msg="Start to tag for every chunk ...")

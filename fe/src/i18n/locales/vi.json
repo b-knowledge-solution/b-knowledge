@@ -130,8 +130,7 @@
     "agents": "Tác tử",
     "agentStudio": "Agent Studio",
     "agentList": "Danh sách Tác tử",
-    "memory": "Bộ nhớ",
-    "aiManagement": "Quản lý AI"
+    "memory": "Bộ nhớ"
   },
   "iam": {
     "title": "Quản lý Định danh & Truy cập",

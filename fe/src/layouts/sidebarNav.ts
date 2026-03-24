@@ -33,7 +33,6 @@ import {
   BrainCircuit,
   Workflow,
   Brain,
-  Sparkles,
 } from 'lucide-react'
 import type { config } from '@/config'
 
@@ -145,37 +144,32 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
     ],
   },
 
-  // ── AI Management (super-admin / admin) ─────────────────────────
-  {
-    labelKey: 'nav.aiManagement',
-    icon: Sparkles,
-    roles: ['super-admin', 'admin'],
-    children: [
-      {
-        path: '/ai/chat-assistants',
-        labelKey: 'nav.chatAssistants',
-        icon: MessageSquare,
-      },
-      {
-        path: '/ai/search-apps',
-        labelKey: 'nav.searchApps',
-        icon: Search,
-      },
-      {
-        path: '/ai/histories',
-        labelKey: 'nav.histories',
-        icon: History,
-      },
-    ],
-  },
-
-  // ── Agent Studio (with Agent List & Memory children) ────────────
+  // ── Agent Studio (Agents, Memory, Chat Assistants, Search Apps, Histories) ──
   {
     labelKey: 'nav.agentStudio',
     icon: Workflow,
     children: [
+      {
+        path: '/agent-studio/chat-assistants',
+        labelKey: 'nav.chatAssistants',
+        icon: MessageSquare,
+        roles: ['super-admin', 'admin'],
+      },
+      {
+        path: '/agent-studio/search-apps',
+        labelKey: 'nav.searchApps',
+        icon: Search,
+        roles: ['super-admin', 'admin'],
+      },
+      {
+        path: '/agent-studio/histories',
+        labelKey: 'nav.histories',
+        icon: History,
+        roles: ['super-admin', 'admin'],
+      },
       { path: '/agent-studio/agents', labelKey: 'nav.agentList', icon: Workflow, iconSize: 18 },
       { path: '/agent-studio/memory', labelKey: 'nav.memory', icon: Brain, iconSize: 18 },
+
     ],
   },
   {

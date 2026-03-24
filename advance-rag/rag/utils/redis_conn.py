@@ -480,6 +480,60 @@ class RedisDB:
                 )
         return []
 
+    def get_pending_messages_with_payload(self, queue, group_name, count=50):
+        """Get pending messages from the consumer group PEL with their full payloads.
+
+        @param queue: Stream name.
+        @param group_name: Consumer group name.
+        @param count: Maximum number of pending messages to fetch.
+        @returns: List of (msg_id, payload_dict) tuples, or empty list on error.
+        """
+        try:
+            # Get pending message IDs from the PEL
+            pending = self.REDIS.xpending_range(queue, group_name, '-', '+', count)
+            if not pending:
+                return []
+
+            results = []
+            for entry in pending:
+                msg_id = entry.get('message_id') or entry.get('msg_id', '')
+                if not msg_id:
+                    continue
+                # Read the actual message payload from the stream
+                messages = self.REDIS.xrange(queue, msg_id, msg_id)
+                if messages:
+                    # messages is [(msg_id, {field: value}), ...]
+                    _, payload = messages[0]
+                    # Decode bytes keys/values if needed
+                    decoded = {}
+                    for k, v in payload.items():
+                        key = k.decode() if isinstance(k, bytes) else k
+                        val = v.decode() if isinstance(v, bytes) else v
+                        decoded[key] = val
+                    results.append((msg_id, decoded))
+            return results
+        except Exception as e:
+            if 'No such key' not in (str(e) or ''):
+                logging.warning(
+                    "RedisDB.get_pending_messages_with_payload " + str(queue) + " got exception: " + str(e)
+                )
+            return []
+
+    def ack_message(self, queue, group_name, msg_id):
+        """Acknowledge a message in a consumer group stream.
+
+        @param queue: Stream name.
+        @param group_name: Consumer group name.
+        @param msg_id: Message ID to acknowledge.
+        """
+        try:
+            self.REDIS.xack(queue, group_name, msg_id)
+        except Exception as e:
+            logging.warning(
+                "RedisDB.ack_message " + str(queue) + " " + str(msg_id) + " got exception: " + str(e)
+            )
+
+
     def requeue_msg(self, queue: str, group_name: str, msg_id: str):
         for _ in range(3):
             try:

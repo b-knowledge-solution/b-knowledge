@@ -140,7 +140,9 @@ def decrypt_database_config(database=None, passwd_key="password", name="database
     if not database:
         database = get_base_config(name, {})
 
-    database[passwd_key] = decrypt_database_password(database[passwd_key])
+    # Use .get() to handle configs without a password key (e.g. env-var based configs)
+    if passwd_key in database:
+        database[passwd_key] = decrypt_database_password(database[passwd_key])
     return database
 
 

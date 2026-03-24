@@ -47,7 +47,10 @@ from deepdoc.parser import DocxParser, EpubParser, ExcelParser, HtmlParser, Json
 from deepdoc.parser.figure_parser import VisionFigureParser, vision_figure_parser_docx_wrapper_naive, vision_figure_parser_pdf_wrapper
 from deepdoc.parser.pdf_parser import PlainParser, VisionParser
 from deepdoc.parser.docling_parser import DoclingParser
-from deepdoc.parser.tcadp_parser import TCADPParser
+try:
+    from deepdoc.parser.tcadp_parser import TCADPParser
+except (ImportError, ModuleNotFoundError):
+    TCADPParser = None  # tencentcloud SDK not installed
 from common.float_utils import normalize_overlapped_percent
 from common.parser_config_utils import normalize_layout_recognizer
 from common.text_utils import normalize_arabic_presentation_forms

@@ -171,10 +171,10 @@ export const PARSER_OPTIONS = [
   { value: 'picture', label: 'Picture' },
   { value: 'audio', label: 'Audio' },
   { value: 'email', label: 'Email' },
-  { value: 'code', label: 'Code' },
   { value: 'openapi', label: 'API Spec' },
   { value: 'adr', label: 'ADR' },
   { value: 'clinical', label: 'Clinical' },
+  { value: 'sdlc_checklist', label: 'SDLC Checklist' },
 ] as const;
 
 /** PDF layout recognition engine options */
@@ -325,6 +325,16 @@ export const PARSER_DESCRIPTIONS: Record<string, { title: string; description: s
       '• Classification stored as metadata tag for filtering and ABAC policies.\n' +
       '• Uses general chunking with LLM-based classification.',
     formats: 'Supported: PDF, DOCX, TXT, MD.',
+  },
+  sdlc_checklist: {
+    title: '"SDLC Checklist" Chunking method description',
+    description:
+      'This method parses Software Development Life Cycle checklists.\n' +
+      '• Detects checkboxes, status prefixes ([DONE], [PASS], [FAIL]), and tabular layouts.\n' +
+      '• Each checklist item becomes a chunk with phase, status, priority, and assignee metadata.\n' +
+      '• Auto-detects SDLC phase: requirements, design review, code review, testing, security, deployment, UAT, maintenance.\n' +
+      '• Supports grouped mode to combine items by section.',
+    formats: 'Supported: MD, XLSX, CSV, TXT, PDF, DOCX.',
   },
 };
 

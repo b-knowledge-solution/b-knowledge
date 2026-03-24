@@ -23,8 +23,6 @@ from strenum import StrEnum
 
 
 class SupportedLiteLLMProvider(StrEnum):
-    Tongyi_Qianwen = "Tongyi-Qianwen"
-    Dashscope = "Dashscope"
     Bedrock = "Bedrock"
     Moonshot = "Moonshot"
     xAI = "xAI"
@@ -62,8 +60,6 @@ class SupportedLiteLLMProvider(StrEnum):
 
 
 FACTORY_DEFAULT_BASE_URL = {
-    SupportedLiteLLMProvider.Tongyi_Qianwen: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    SupportedLiteLLMProvider.Dashscope: "https://dashscope.aliyuncs.com/compatible-mode/v1",
     SupportedLiteLLMProvider.Moonshot: "https://api.moonshot.cn/v1",
     SupportedLiteLLMProvider.Ollama: "",
     SupportedLiteLLMProvider.LongCat: "https://api.longcat.chat/openai",
@@ -91,8 +87,6 @@ FACTORY_DEFAULT_BASE_URL = {
 
 
 LITELLM_PROVIDER_PREFIX = {
-    SupportedLiteLLMProvider.Tongyi_Qianwen: "dashscope/",
-    SupportedLiteLLMProvider.Dashscope: "dashscope/",
     SupportedLiteLLMProvider.Bedrock: "bedrock/",
     SupportedLiteLLMProvider.Moonshot: "moonshot/",
     SupportedLiteLLMProvider.xAI: "xai/",
@@ -150,9 +144,15 @@ MODULE_MAPPING = {
 
 package_name = __name__
 
+import logging as _llm_logging
+
 for module_name, mapping_dict in MODULE_MAPPING.items():
     full_module_name = f"{package_name}.{module_name}"
-    module = importlib.import_module(full_module_name)
+    try:
+        module = importlib.import_module(full_module_name)
+    except (ImportError, ModuleNotFoundError) as _import_err:
+        _llm_logging.warning(f"Skipping LLM module {full_module_name}: {_import_err}")
+        continue
 
     base_class = None
     lite_llm_base_class = None

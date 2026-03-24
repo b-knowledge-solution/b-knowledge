@@ -23,11 +23,7 @@ from common.config_utils import get_base_config, decrypt_database_config
 from common.misc_utils import pip_install_torch
 from common.constants import SVR_QUEUE_NAME, Storage
 
-import rag.utils
-import rag.utils.es_conn
-import rag.utils.infinity_conn
-import rag.utils.ob_conn
-import rag.utils.opensearch_conn
+from rag.utils.opensearch_conn import OSConnection as OpenSearchConnection
 from rag.utils.azure_sas_conn import RAGFlowAzureSasBlob
 from rag.utils.azure_spn_conn import RAGFlowAzureSpnBlob
 from rag.utils.gcs_conn import RAGFlowGCS
@@ -38,10 +34,6 @@ from rag.utils.s3_conn import RAGFlowS3
 from rag.utils.oss_conn import RAGFlowOSS
 
 from rag.nlp import search
-
-import memory.utils.es_conn as memory_es_conn
-import memory.utils.infinity_conn as memory_infinity_conn
-import memory.utils.ob_conn as memory_ob_conn
 
 LLM = None
 LLM_FACTORY = None
@@ -66,7 +58,7 @@ SECRET_KEY = None
 FACTORY_LLM_INFOS = None
 ALLOWED_LLM_FACTORIES = None
 
-DATABASE_TYPE = os.getenv("DB_TYPE", "mysql")
+DATABASE_TYPE = os.getenv("DB_TYPE", "postgres")
 DATABASE = decrypt_database_config(name=DATABASE_TYPE)
 
 # authentication
@@ -78,7 +70,7 @@ HTTP_APP_KEY = None
 GITHUB_OAUTH = None
 FEISHU_OAUTH = None
 OAUTH_CONFIG = None
-DOC_ENGINE = os.getenv('DOC_ENGINE', 'elasticsearch')
+DOC_ENGINE = os.getenv('DOC_ENGINE', 'opensearch')
 DOC_ENGINE_INFINITY = (DOC_ENGINE.lower() == "infinity")
 DOC_ENGINE_OCEANBASE = (DOC_ENGINE.lower() == "oceanbase")
 
@@ -110,7 +102,6 @@ MAIL_DEFAULT_SENDER = ()
 MAIL_FRONTEND_URL = ""
 
 # move from rag.settings
-ES = {}
 INFINITY = {}
 AZURE = {}
 S3 = {}
@@ -173,7 +164,7 @@ class StorageFactory:
 
 def init_settings():
     global DATABASE_TYPE, DATABASE
-    DATABASE_TYPE = os.getenv("DB_TYPE", "mysql")
+    DATABASE_TYPE = os.getenv("DB_TYPE", "postgres")
     DATABASE = decrypt_database_config(name=DATABASE_TYPE)
     
     global ALLOWED_LLM_FACTORIES, LLM_FACTORY, LLM_BASE_URL
@@ -257,39 +248,40 @@ def init_settings():
     FEISHU_OAUTH = get_base_config("oauth", {}).get("feishu")
     OAUTH_CONFIG = get_base_config("oauth", {})
 
-    global DOC_ENGINE, DOC_ENGINE_INFINITY, DOC_ENGINE_OCEANBASE, docStoreConn, ES, OB, OS, INFINITY
-    DOC_ENGINE = os.environ.get("DOC_ENGINE", "elasticsearch").strip()
+    global DOC_ENGINE, DOC_ENGINE_INFINITY, DOC_ENGINE_OCEANBASE, docStoreConn, OB, OS, INFINITY
+    DOC_ENGINE = os.environ.get("DOC_ENGINE", "opensearch").strip()
     DOC_ENGINE_INFINITY = (DOC_ENGINE.lower() == "infinity")
     DOC_ENGINE_OCEANBASE = (DOC_ENGINE.lower() == "oceanbase")
     lower_case_doc_engine = DOC_ENGINE.lower()
-    if lower_case_doc_engine == "elasticsearch":
-        ES = get_base_config("es", {})
-        docStoreConn = rag.utils.es_conn.ESConnection()
+    if lower_case_doc_engine == "opensearch":
+        OS = get_base_config("os", {})
+        docStoreConn = OpenSearchConnection()
     elif lower_case_doc_engine == "infinity":
+        from rag.utils.infinity_conn import InfinityConnection
         INFINITY = get_base_config("infinity", {
             "uri": "infinity:23817",
             "postgres_port": 5432,
             "db_name": "default_db"
         })
-        docStoreConn = rag.utils.infinity_conn.InfinityConnection()
-    elif lower_case_doc_engine == "opensearch":
-        OS = get_base_config("os", {})
-        docStoreConn = rag.utils.opensearch_conn.OSConnection()
+        docStoreConn = InfinityConnection()
     elif lower_case_doc_engine == "oceanbase":
+        from rag.utils.ob_conn import OBConnection
         OB = get_base_config("oceanbase", {})
-        docStoreConn = rag.utils.ob_conn.OBConnection()
+        docStoreConn = OBConnection()
     elif lower_case_doc_engine == "seekdb":
+        from rag.utils.ob_conn import OBConnection as SeekDBConnection
         OB = get_base_config("seekdb", {})
-        docStoreConn = rag.utils.ob_conn.OBConnection()
+        docStoreConn = SeekDBConnection()
     else:
         raise Exception(f"Not supported doc engine: {DOC_ENGINE}")
 
     global msgStoreConn
     # use the same engine for message store
-    if DOC_ENGINE == "elasticsearch":
-        ES = get_base_config("es", {})
-        msgStoreConn = memory_es_conn.ESConnection()
-    elif DOC_ENGINE == "infinity":
+    if lower_case_doc_engine == "opensearch":
+        # OpenSearch reuses the same docStoreConn for messages
+        msgStoreConn = docStoreConn
+    elif lower_case_doc_engine == "infinity":
+        import memory.utils.infinity_conn as memory_infinity_conn
         INFINITY = get_base_config("infinity", {
             "uri": "infinity:23817",
             "postgres_port": 5432,
@@ -297,6 +289,7 @@ def init_settings():
         })
         msgStoreConn = memory_infinity_conn.InfinityConnection()
     elif lower_case_doc_engine in ["oceanbase", "seekdb"]:
+        import memory.utils.ob_conn as memory_ob_conn
         msgStoreConn = memory_ob_conn.OBConnection()
 
     global AZURE, S3, MINIO, OSS, GCS

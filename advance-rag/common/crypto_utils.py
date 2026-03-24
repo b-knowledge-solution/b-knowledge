@@ -317,6 +317,35 @@ class CryptoUtil:
         return decrypted
 
 
+def decrypt(value: str) -> str:
+    """Decrypt an API key value, or return as-is if not encrypted.
+
+    B-Knowledge stores API keys in plain text. This function is a no-op
+    for plain-text values and only performs AES decryption when the value
+    carries the ragflow RAGF magic header.
+
+    @param value: The API key string (plain-text or encrypted).
+    @returns: The decrypted (or original) API key string.
+    """
+    if not value:
+        return value
+    # Check for the RAGF magic header (encrypted values are base64 or raw bytes)
+    try:
+        raw = value.encode('utf-8') if isinstance(value, str) else value
+        if raw.startswith(BaseCrypto.ENCRYPTED_MAGIC):
+            # Encrypted — attempt decryption with default key
+            crypto_key = os.environ.get('RAGFLOW_CRYPTO_KEY', '')
+            if not crypto_key:
+                # No key configured, return as-is
+                return value
+            util = CryptoUtil(key=crypto_key)
+            return util.decrypt(raw).decode('utf-8')
+    except Exception:
+        pass
+    # Plain text — return as-is
+    return value
+
+
 # Test code
 if __name__ == "__main__":
     # Test AES encryption

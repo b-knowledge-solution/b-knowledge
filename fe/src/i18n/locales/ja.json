@@ -130,8 +130,7 @@
     "agents": "エージェント",
     "agentStudio": "エージェントスタジオ",
     "agentList": "エージェント一覧",
-    "memory": "メモリ",
-    "aiManagement": "AI管理"
+    "memory": "メモリ"
   },
   "iam": {
     "title": "ID管理とアクセス制御",

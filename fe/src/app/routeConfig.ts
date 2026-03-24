@@ -89,11 +89,11 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     guidelineFeatureId: 'teams',
     fullBleed: true,
   },
-  '/ai/chat-assistants': {
+  '/agent-studio/chat-assistants': {
     titleKey: 'chatAdmin.title',
     fullBleed: true,
   },
-  '/ai/search-apps': {
+  '/agent-studio/search-apps': {
     titleKey: 'searchAdmin.title',
     fullBleed: true,
   },
@@ -123,7 +123,7 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     titleKey: 'admin.broadcastMessages',
     guidelineFeatureId: 'broadcast',
   },
-  '/ai/histories': {
+  '/agent-studio/histories': {
     titleKey: 'histories.title',
     guidelineFeatureId: 'global-histories',
     fullBleed: true,

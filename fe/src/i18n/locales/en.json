@@ -129,8 +129,7 @@
     "agents": "Agents",
     "agentStudio": "Agent Studio",
     "agentList": "Agent List",
-    "memory": "Memory",
-    "aiManagement": "AI Management"
+    "memory": "Memory"
   },
   "iam": {
     "title": "Identity & Access Management",

@@ -9,7 +9,7 @@
     "fe"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:be\" \"npm run dev:fe\" \"npm run dev:worker\" \"npm run dev:converter\"",
+    "dev": "concurrently --names BE,FE,WORKER,CONVERTER --prefix-colors blue,green,magenta,yellow --prefix \"{name}\" \"npm run dev:be\" \"npm run dev:fe\" \"npm run dev:worker\" \"npm run dev:converter\"",
     "dev:be": "npm run dev --workspace=be",
     "dev:fe": "npm run dev --workspace=fe",
     "dev:worker": "node scripts/wait-for-backend.js && node scripts/run-worker.js",
@@ -24,7 +24,7 @@
     "docker:up": "docker compose -f docker/docker-compose.yml up -d --build",
     "docker:litellm": "docker compose -f docker/docker-compose-litellm.yml up -d",
     "docker:litellm:down": "docker compose -f docker/docker-compose-litellm.yml down",
-    "dev:https": "concurrently \"npm run dev:be\" \"npm run dev:fe\"",
+    "dev:https": "concurrently --names BE,FE --prefix-colors blue,green --prefix \"{name}\" \"npm run dev:be\" \"npm run dev:fe\"",
     "generate:cert": "node scripts/generate-cert.js",
     "build": "npm run build --workspaces",
     "build:prod": "npm run build:prod --workspaces",
@@ -32,6 +32,11 @@
     "build:fe": "npm run build --workspace=fe",
     "lint": "npm run lint --workspaces",
     "test": "npm run test --workspaces --if-present",
+    "db:migrate": "npm run db:migrate --workspace=be",
+    "db:migrate:make": "npm run db:migrate:make --workspace=be --",
+    "db:migrate:rollback": "npm run db:migrate:rollback --workspace=be",
+    "db:seed": "npm run db:seed --workspace=be",
+    "db:setup": "npm run db:migrate --workspace=be && npm run db:seed --workspace=be",
     "docs:dev": "cd docs && npx vitepress dev",
     "docs:build": "cd docs && npx vitepress build",
     "docs:preview": "cd docs && npx vitepress preview"
