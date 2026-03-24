@@ -34,3 +34,27 @@ export const cypherBodySchema = z.object({
 export const graphDataQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(5000).optional().default(500),
 })
+
+/**
+ * @description Validates NL query request body for AI-powered Cypher generation.
+ */
+export const nlQueryBodySchema = z.object({
+  question: z.string().min(1, 'Question is required').max(2000),
+  providerId: z.string().optional(),
+})
+
+/**
+ * @description Validates search query for code search endpoint.
+ */
+export const searchQuerySchema = z.object({
+  query: z.string().min(1, 'Search query is required'),
+  limit: z.coerce.number().int().min(1).max(500).optional().default(50),
+})
+
+/**
+ * @description Validates optional name filter for dependency analysis.
+ */
+export const dependencyQuerySchema = z.object({
+  name: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(500).optional().default(100),
+})

@@ -165,6 +165,173 @@ class CodeGraphService {
   }
 
   /**
+   * @description Get graph schema (node labels + relationship types) for a KB.
+   * Used internally for NL query prompt context and externally for schema UI.
+   * @param kbId - Knowledge base ID
+   * @returns Object with labels array and relationshipTypes array
+   */
+  async getSchema(kbId: string) {
+    const [labels, relTypes] = await Promise.all([
+      this.query(
+        `MATCH (n {kb_id: $kbId})
+         UNWIND labels(n) AS label
+         RETURN DISTINCT label ORDER BY label`,
+        { kbId },
+      ),
+      this.query(
+        `MATCH (n {kb_id: $kbId})-[r]->(m {kb_id: $kbId})
+         RETURN DISTINCT type(r) AS type ORDER BY type`,
+        { kbId },
+      ),
+    ])
+    return {
+      labels: labels.map(r => r['label'] as string),
+      relationshipTypes: relTypes.map(r => r['type'] as string),
+      nodeProperties: [
+        'qualified_name', 'name', 'source_code', 'path', 'language',
+        'start_line', 'end_line', 'parameters', 'return_type', 'kb_id',
+      ],
+    }
+  }
+
+  /**
+   * @description Natural language query: converts question to Cypher via LLM,
+   * then executes the generated Cypher against Memgraph.
+   * @param kbId - Knowledge base ID
+   * @param question - Natural language question about the codebase
+   * @param providerId - Optional LLM provider ID (uses default chat model if omitted)
+   * @returns Object with generated cypher, raw results, and result count
+   */
+  async nlQuery(kbId: string, question: string, providerId?: string) {
+    // Lazy import to avoid circular dependency at module level
+    const { llmClientService } = await import('@/shared/services/llm-client.service.js')
+
+    // Get current graph schema for prompt context
+    const schema = await this.getSchema(kbId)
+
+    // Build system prompt with graph schema context
+    const systemPrompt = `You are a Cypher query generator for a code knowledge graph stored in Memgraph.
+
+GRAPH SCHEMA:
+- Node labels: ${schema.labels.join(', ') || 'Function, Method, Class, Interface, Module, File'}
+- Relationship types: ${schema.relationshipTypes.join(', ') || 'CALLS, IMPORTS, INHERITS, CONTAINS'}
+- Node properties: ${schema.nodeProperties.join(', ')}
+
+RULES:
+1. Generate ONLY a valid Cypher query. No explanation, no markdown, no code fences.
+2. ALWAYS filter nodes by kb_id: WHERE n.kb_id = $kbId
+3. Use LIMIT 20 unless the user specifies a different count.
+4. Use case-insensitive matching with toLower() for name searches.
+5. Return useful properties: name, qualified_name, path, source_code, parameters, return_type.
+6. For pattern matching use CONTAINS or regex with =~ operator.
+7. Do NOT use CREATE, DELETE, SET, MERGE, or any write operations.`
+
+    // Call LLM to generate Cypher from the question
+    const cypher = await llmClientService.chatCompletion(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: question },
+      ],
+      {
+        providerId,
+        temperature: 0.1,
+        max_tokens: 1024,
+      },
+    )
+
+    // Clean up LLM response (strip markdown fences if present)
+    const cleanCypher = cypher
+      .replace(/^```(?:cypher|sql)?\n?/i, '')
+      .replace(/\n?```$/i, '')
+      .trim()
+
+    // Safety check: block write operations
+    const writeOps = /\b(CREATE|DELETE|SET|MERGE|REMOVE|DROP|DETACH)\b/i
+    if (writeOps.test(cleanCypher)) {
+      return {
+        cypher: cleanCypher,
+        results: [],
+        count: 0,
+        error: 'Generated query contains write operations which are blocked for safety.',
+      }
+    }
+
+    // Execute the generated Cypher
+    try {
+      const results = await this.query(cleanCypher, { kbId })
+      return {
+        cypher: cleanCypher,
+        results,
+        count: results.length,
+      }
+    } catch (error) {
+      return {
+        cypher: cleanCypher,
+        results: [],
+        count: 0,
+        error: `Cypher execution failed: ${error instanceof Error ? error.message : String(error)}`,
+      }
+    }
+  }
+
+  /**
+   * @description Search for code entities by name pattern.
+   * Supports substring matching across all node types.
+   * @param kbId - Knowledge base ID
+   * @param searchQuery - Search term (case-insensitive substring match)
+   * @param limit - Maximum results to return
+   * @returns Array of matching nodes with name, type, path, and source code
+   */
+  async searchCode(kbId: string, searchQuery: string, limit = 50) {
+    const lowerQuery = searchQuery.toLowerCase()
+    return this.query(
+      `MATCH (n {kb_id: $kbId})
+       WHERE toLower(n.name) CONTAINS $query
+          OR toLower(n.qualified_name) CONTAINS $query
+       RETURN labels(n) AS labels, n.name AS name, n.qualified_name AS qualified_name,
+              n.path AS path, n.language AS language, n.source_code AS source_code,
+              n.parameters AS parameters, n.return_type AS return_type,
+              n.start_line AS start_line, n.end_line AS end_line
+       ORDER BY n.name
+       LIMIT $limit`,
+      { kbId, query: lowerQuery, limit: neo4j.int(limit) },
+    )
+  }
+
+  /**
+   * @description Analyze import dependencies for a knowledge base.
+   * When name is provided, shows imports for that specific entity.
+   * Otherwise returns all import relationships.
+   * @param kbId - Knowledge base ID
+   * @param name - Optional function/module name to filter by
+   * @param limit - Maximum results
+   * @returns Array of import relationship records
+   */
+  async getDependencies(kbId: string, name?: string, limit = 100) {
+    // Specific entity dependencies
+    if (name) {
+      return this.query(
+        `MATCH (source {kb_id: $kbId})-[:IMPORTS]->(target)
+         WHERE source.name = $name OR source.qualified_name ENDS WITH $dotName
+         RETURN source.qualified_name AS source, source.path AS source_path,
+                target.qualified_name AS dependency, target.path AS dep_path
+         LIMIT $limit`,
+        { kbId, name, dotName: `.${name}`, limit: neo4j.int(limit) },
+      )
+    }
+
+    // All dependencies across the KB
+    return this.query(
+      `MATCH (source {kb_id: $kbId})-[:IMPORTS]->(target {kb_id: $kbId})
+       RETURN source.qualified_name AS source, source.path AS source_path,
+              target.qualified_name AS dependency, target.path AS dep_path
+       ORDER BY source.qualified_name
+       LIMIT $limit`,
+      { kbId, limit: neo4j.int(limit) },
+    )
+  }
+
+  /**
    * @description Close the Bolt driver. Called on app shutdown.
    */
   async close() {

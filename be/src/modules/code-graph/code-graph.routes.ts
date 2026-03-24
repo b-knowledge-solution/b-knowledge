@@ -14,6 +14,9 @@ import {
   nameQuerySchema,
   cypherBodySchema,
   graphDataQuerySchema,
+  nlQueryBodySchema,
+  searchQuerySchema,
+  dependencyQuerySchema,
 } from './code-graph.schemas.js'
 
 const router = Router()
@@ -89,6 +92,54 @@ router.get(
   requireAuth,
   validate({ params: kbIdParamSchema, query: graphDataQuerySchema }),
   controller.getGraphData.bind(controller),
+)
+
+/**
+ * @route GET /api/code-graph/:kbId/schema
+ * @description Get graph schema (node labels + relationship types) for a KB.
+ * @access Private
+ */
+router.get(
+  '/:kbId/schema',
+  requireAuth,
+  validate({ params: kbIdParamSchema }),
+  controller.getSchema.bind(controller),
+)
+
+/**
+ * @route GET /api/code-graph/:kbId/search
+ * @description Search for code entities by name pattern (case-insensitive).
+ * @access Private
+ */
+router.get(
+  '/:kbId/search',
+  requireAuth,
+  validate({ params: kbIdParamSchema, query: searchQuerySchema }),
+  controller.searchCode.bind(controller),
+)
+
+/**
+ * @route GET /api/code-graph/:kbId/dependencies
+ * @description Get import/dependency relationships. Optionally filter by name.
+ * @access Private
+ */
+router.get(
+  '/:kbId/dependencies',
+  requireAuth,
+  validate({ params: kbIdParamSchema, query: dependencyQuerySchema }),
+  controller.getDependencies.bind(controller),
+)
+
+/**
+ * @route POST /api/code-graph/:kbId/nl-query
+ * @description Natural language query — AI generates Cypher from the question.
+ * @access Private
+ */
+router.post(
+  '/:kbId/nl-query',
+  requireAuth,
+  validate({ params: kbIdParamSchema, body: nlQueryBodySchema }),
+  controller.nlQuery.bind(controller),
 )
 
 /**

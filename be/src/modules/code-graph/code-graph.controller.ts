@@ -129,4 +129,72 @@ export class CodeGraphController {
       res.status(500).json({ error: 'Failed to execute Cypher query' })
     }
   }
+
+  /**
+   * @description Natural language query with AI-powered Cypher generation.
+   * Takes a plain English question, generates Cypher via LLM, executes it.
+   * @param req - Express request with kbId param and question body
+   * @param res - Express response with cypher, results, and count
+   */
+  async nlQuery(req: Request, res: Response): Promise<void> {
+    try {
+      const { kbId } = req.params
+      const { question, providerId } = req.body as { question: string; providerId?: string }
+      const result = await codeGraphService.nlQuery(kbId!, question, providerId)
+      res.json(result)
+    } catch (error) {
+      log.error('Error executing NL query', error as Record<string, unknown>)
+      res.status(500).json({ error: 'Failed to execute natural language query' })
+    }
+  }
+
+  /**
+   * @description Search for code entities by name pattern.
+   * @param req - Express request with kbId param and query/limit params
+   * @param res - Express response with matching code entities
+   */
+  async searchCode(req: Request, res: Response): Promise<void> {
+    try {
+      const { kbId } = req.params
+      const { query, limit } = req.query as { query: string; limit?: string }
+      const results = await codeGraphService.searchCode(kbId!, query, limit ? parseInt(limit, 10) : undefined)
+      res.json({ results, count: results.length })
+    } catch (error) {
+      log.error('Error searching code', error as Record<string, unknown>)
+      res.status(500).json({ error: 'Failed to search code entities' })
+    }
+  }
+
+  /**
+   * @description Get import/dependency relationships for a KB or specific entity.
+   * @param req - Express request with kbId param and optional name query
+   * @param res - Express response with dependency records
+   */
+  async getDependencies(req: Request, res: Response): Promise<void> {
+    try {
+      const { kbId } = req.params
+      const { name, limit } = req.query as { name?: string; limit?: string }
+      const results = await codeGraphService.getDependencies(kbId!, name, limit ? parseInt(limit, 10) : undefined)
+      res.json({ results, count: results.length })
+    } catch (error) {
+      log.error('Error fetching dependencies', error as Record<string, unknown>)
+      res.status(500).json({ error: 'Failed to fetch dependencies' })
+    }
+  }
+
+  /**
+   * @description Get graph schema (node labels + relationship types) for a KB.
+   * @param req - Express request with kbId param
+   * @param res - Express response with schema
+   */
+  async getSchema(req: Request, res: Response): Promise<void> {
+    try {
+      const { kbId } = req.params
+      const schema = await codeGraphService.getSchema(kbId!)
+      res.json(schema)
+    } catch (error) {
+      log.error('Error fetching schema', error as Record<string, unknown>)
+      res.status(500).json({ error: 'Failed to fetch graph schema' })
+    }
+  }
 }
