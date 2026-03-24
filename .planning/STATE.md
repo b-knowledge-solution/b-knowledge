@@ -34,6 +34,7 @@ Progress: [██████████] 100%
 - Phase 1 added: Migrate latest RAGFlow upstream to b-knowledge (Option A selective copy)
 - Phase 2 added: Investigate mem0 for memory feature
 - Phase 3 added: Refactor project feature - separate project creation, category management (documents/standard/code), and versioned datasets
+- Phase 4 added: Enhance code parser with Code-Graph-RAG - Tree-sitter Knowledge Graph and Code RAG API
 
 ### Decisions
 

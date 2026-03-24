@@ -46,6 +46,18 @@ Plans:
 - [ ] **03-04**: FE detail page refactor — 3 category tabs, CategorySidebar, ProjectSettingsSheet, updated CategoryModal
 - [ ] **03-05**: FE content views + i18n — StandardCategoryView, CodeCategoryView, VersionList/VersionCard, all i18n keys in 3 locales
 
+### Phase 4: Enhance code parser with Code-Graph-RAG - Tree-sitter Knowledge Graph and Code RAG API
+
+**Goal:** Enhance the existing Tree-sitter code parser to extract code structure relationships (CONTAINS, CALLS, IMPORTS, INHERITS) as a NetworkX knowledge graph, store it via the existing GraphRAG/OpenSearch infrastructure, and add a Code-RAG query module for natural language queries about codebase structure.
+**Requirements**: Code graph extraction from AST, relationship detection (calls, imports, inheritance), OpenSearch graph storage, code-specific RAG query API
+**Depends on:** Phase 3
+**Plans:** 3 plans
+
+Plans:
+- [ ] **04-01**: Code Graph Extraction Module — Create `code_graph.py` with relationship extraction (CONTAINS, CALLS, IMPORTS, INHERITS) + add `chunk_with_graph()` to `code.py`
+- [ ] **04-02**: Code-RAG Query API — Create `code_rag_query.py` with CodeGraphSearch extending KGSearch for code-specific retrieval
+- [ ] **04-03**: Task Executor Integration + Tests — Wire graph into task executor pipeline, add unit tests for code_graph and code_rag_query
+
 ---
 
 <!-- phases:start -->
