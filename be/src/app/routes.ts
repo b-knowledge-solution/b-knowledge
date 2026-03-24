@@ -45,6 +45,7 @@ import agentRoutes from '@/modules/agents/routes/agent.routes.js';
 import agentWebhookRoutes from '@/modules/agents/routes/agent-webhook.routes.js';
 import agentEmbedRoutes from '@/modules/agents/routes/agent-embed.routes.js';
 import memoryRoutes from '@/modules/memory/routes/memory.routes.js';
+import codeGraphRoutes from '@/modules/code-graph/code-graph.routes.js';
 import { agentController } from '@/modules/agents/controllers/agent.controller.js';
 import { agentEmbedController } from '@/modules/agents/controllers/agent-embed.controller.js';
 import { requireAuth, requireAbility } from '@/shared/middleware/auth.middleware.js';
@@ -208,6 +209,9 @@ function registerRoutes(apiRouter: Router): void {
 
     // Memory pools (persistent knowledge store for agents/chat)
     apiRouter.use('/memory', memoryRoutes);
+
+    // Code knowledge graph (Memgraph Bolt queries)
+    apiRouter.use('/code-graph', codeGraphRoutes);
 
     // External API key management (session auth)
     apiRouter.use('/external/api-keys', apiKeyRoutes);
