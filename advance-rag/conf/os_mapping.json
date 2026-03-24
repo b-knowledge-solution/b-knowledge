@@ -130,13 +130,22 @@
         }
       },
       {
-        "string": {
-          "match_pattern": "regex",
-          "match": "^.*_(with_weight|list)$",
+        "string_list": {
+          "match": "*_list",
           "mapping": {
             "type": "text",
-            "index": "false",
+            "index": false,
             "store": true
+          }
+        }
+      },
+      {
+        "string_with_weight": {
+          "match": "*_with_weight",
+          "mapping": {
+            "type": "text",
+            "store": true,
+            "analyzer": "standard"
           }
         }
       },

@@ -235,8 +235,8 @@ export class RagGraphragService {
               should: [
                 // Match entity name
                 { match: { entity_kwd: { query: queryText, boost: 3 } } },
-                // Match entity description
-                { match: { content_with_weight: { query: queryText, boost: 1 } } },
+                // Match entity description (content_ltks is the indexed text field)
+                { match: { content_ltks: { query: queryText, boost: 1 } } },
               ],
               minimum_should_match: 1,
             },
@@ -321,8 +321,8 @@ export class RagGraphragService {
                 { term: { knowledge_graph_kwd: 'relation' } },
               ],
               should: [
-                // Match relation description
-                { match: { content_with_weight: { query, boost: 1 } } },
+                // Match relation description (content_ltks is the indexed text field)
+                { match: { content_ltks: { query, boost: 1 } } },
                 // Match source or target entity names
                 { match: { from_entity_kwd: { query, boost: 2 } } },
                 { match: { to_entity_kwd: { query, boost: 2 } } },

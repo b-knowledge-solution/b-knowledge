@@ -147,8 +147,8 @@ describe('RagSearchService — similarity threshold bypass', () => {
   describe('threshold bypassed when doc_ids provided', () => {
     it('uses fallback 0.2 threshold instead of high configured threshold when doc_ids present', async () => {
       // When doc_ids are provided, the computed threshold is set to 0.
-      // The filter then applies: (threshold || 0.2) = 0.2, bypassing the configured 0.9.
-      // So chunks scoring >= 0.2 pass, but those below 0.2 are still filtered.
+      // When doc_ids are provided, threshold is bypassed to 0 (RAGFlow behavior).
+      // All chunks from explicitly selected documents are included regardless of score.
       mockSearch.mockResolvedValue(
         osResponse([
           makeHit('c1', 'above fallback threshold', 0.3, { doc_id: 'doc-a' }),
@@ -164,11 +164,10 @@ describe('RagSearchService — similarity threshold bypass', () => {
       })
 
       // Without doc_ids, threshold=0.9 would filter out both (0.3 and 0.1 < 0.9).
-      // With doc_ids, threshold becomes 0 -> fallback 0.2 is used.
-      // c1 (0.3) passes the 0.2 fallback, c2 (0.1) does not.
+      // With doc_ids, threshold is fully bypassed to 0 — all chunks pass.
       const ids = result.chunks.map(c => c.chunk_id)
       expect(ids).toContain('c1')
-      expect(ids).not.toContain('c2')
+      expect(ids).toContain('c2')
     })
 
     it('adds doc_ids terms filter to the OpenSearch query', async () => {

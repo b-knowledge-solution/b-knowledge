@@ -252,6 +252,23 @@ describe('createCategorySchema', () => {
   it('should reject negative sort_order', () => {
     expect(() => createCategorySchema.parse({ name: 'Test', sort_order: -1 })).toThrow()
   })
+
+  /** @description Should default category_type to 'documents' when not provided */
+  it('should default category_type to documents', () => {
+    const result = createCategorySchema.parse({ name: 'No Type' })
+    expect(result.category_type).toBe('documents')
+  })
+
+  /** @description Should accept all valid category_type values */
+  it.each(['documents', 'standard', 'code'])('should accept category_type "%s"', (type) => {
+    const result = createCategorySchema.parse({ name: 'Typed', category_type: type })
+    expect(result.category_type).toBe(type)
+  })
+
+  /** @description Should reject invalid category_type values */
+  it('should reject invalid category_type', () => {
+    expect(() => createCategorySchema.parse({ name: 'Bad', category_type: 'wiki' })).toThrow()
+  })
 })
 
 describe('updateCategorySchema', () => {

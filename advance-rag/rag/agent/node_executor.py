@@ -455,36 +455,36 @@ def handle_retrieval(input_data: dict, config: dict, tenant_id: str) -> dict:
     except Exception as emb_err:
         logger.warning(f"Could not load embedding model, falling back to text-only search: {emb_err}")
 
-    # Build the search request
-    req = {
-        "question": query_text,
-        "topk": top_k,
-        "similarity": similarity,
-        "size": top_k,
-        "page": 1,
-        "kb_ids": kb_ids or None,
-    }
+    # Use full retrieval() pipeline instead of raw search().
+    # retrieval() adds: reranking (content x1, title x2, important x5, question x6),
+    # hybrid vector+token fusion, zero-result fallback, and score normalization.
+    # Raw search() skips all of these quality-critical steps.
+    vector_similarity_weight = float(config.get("vector_similarity_weight", 0.3))
 
-    search_result = _run_async(settings.retriever.search(req, idx_names, kb_ids, emb_mdl))
+    ranks = _run_async(settings.retriever.retrieval(
+        question=query_text,
+        embd_mdl=emb_mdl,
+        tenant_ids=tenant_id,
+        kb_ids=kb_ids,
+        page=1,
+        page_size=top_k,
+        similarity_threshold=similarity,
+        vector_similarity_weight=vector_similarity_weight,
+        top=1024,
+        aggs=False,
+        highlight=True,
+    ))
 
-    # Format chunks from field data
-    chunks = []
-    if search_result.field:
-        for doc_id in search_result.ids:
-            chunk_data = {}
-            for field_name, field_dict in search_result.field.items():
-                if doc_id in field_dict:
-                    chunk_data[field_name] = field_dict[doc_id]
-            chunk_data["id"] = doc_id
-            # Use highlight content if available, else fall back to raw content
-            if search_result.highlight and doc_id in search_result.highlight:
-                chunk_data["highlight"] = search_result.highlight[doc_id]
-            chunks.append(chunk_data)
+    chunks = ranks.get("chunks", [])
 
-    # Build a concatenated text output from retrieved chunks
+    # Clean up internal fields from chunks before returning to agent
+    for c in chunks:
+        c.pop("vector", None)
+
+    # Build concatenated text output from retrieved chunks
     output_parts = []
     for c in chunks:
-        content = c.get("content_ltks", c.get("highlight", ""))
+        content = c.get("content_with_weight", c.get("highlight", c.get("content_ltks", "")))
         if content:
             output_parts.append(str(content))
 
@@ -493,8 +493,8 @@ def handle_retrieval(input_data: dict, config: dict, tenant_id: str) -> dict:
     return {"output_data": {
         "output": output_text,
         "chunks": chunks,
-        "total": search_result.total,
-        "keywords": search_result.keywords or [],
+        "total": ranks.get("total", 0),
+        "keywords": [],
     }}
 
 

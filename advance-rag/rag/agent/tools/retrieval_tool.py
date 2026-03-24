@@ -89,16 +89,18 @@ class RetrievalTool(BaseTool):
             if len(embd_names) != 1:
                 return {"error": "Knowledge bases use different embedding models -- retrieval requires a single model"}
 
-            # Perform the hybrid retrieval
+            # Perform the hybrid retrieval using the full RAGFlow pipeline.
+            # retrieval() is async so we must bridge into sync execute() context.
             from common.constants import LLMType
             from db.joint_services.tenant_model_service import get_model_config_by_type_and_name
             from db.services.llm_service import LLMBundle
+            from rag.agent.node_executor import _run_async
 
             tenant_id = kbs[0].tenant_id
             embd_config = get_model_config_by_type_and_name(tenant_id, LLMType.EMBEDDING, embd_names[0])
             embd_mdl = LLMBundle(tenant_id, embd_config)
 
-            kbinfos = settings.retriever.retrieval(
+            kbinfos = _run_async(settings.retriever.retrieval(
                 query,
                 embd_mdl,
                 [kb.tenant_id for kb in kbs],
@@ -108,7 +110,7 @@ class RetrievalTool(BaseTool):
                 similarity_threshold,
                 1 - keywords_weight,
                 aggs=False,
-            )
+            ))
 
             # Clean up internal fields from chunks before returning
             chunks = kbinfos.get("chunks", [])

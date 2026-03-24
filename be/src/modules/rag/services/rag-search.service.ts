@@ -117,6 +117,7 @@ export class RagSearchService {
         topK: number,
         extraFilters: Record<string, unknown>[] = [],
         abacFilters: Record<string, unknown>[] = [],
+        minMatch: string = '30%',
     ): Promise<{ chunks: ChunkResult[]; total: number }> {
         const client = getClient()
         let res
@@ -126,11 +127,27 @@ export class RagSearchService {
                     bool: {
                         must: [
                             { term: { kb_id: datasetId } },
-                            // Search on content_ltks — the indexed text field.
-                            // content_with_weight has "index: false" in the OpenSearch mapping
-                            // (dynamic template *_with_weight), so match queries against it
-                            // silently return 0 results. Python search also uses content_ltks.
-                            { match: { content_ltks: { query, minimum_should_match: '30%' } } },
+                            // Multi-field boosted search matching RAGFlow field weights.
+                            // Searches title (x10), important keywords (x30), questions (x20), content (x2).
+                            // content_with_weight is now indexed with standard analyzer for raw query matching.
+                            // content_ltks has pre-tokenized text from Python worker (whitespace analyzer).
+                            {
+                                multi_match: {
+                                    query,
+                                    fields: [
+                                        'content_ltks^2',
+                                        'content_sm_ltks',
+                                        'content_with_weight^2',
+                                        'title_tks^10',
+                                        'title_sm_tks^5',
+                                        'important_kwd^30',
+                                        'important_tks^20',
+                                        'question_tks^20',
+                                    ],
+                                    type: 'best_fields',
+                                    minimum_should_match: minMatch,
+                                },
+                            },
                         ],
                         filter: [
                             // Exclude chunks explicitly marked as unavailable (available_int < 1).
@@ -154,9 +171,9 @@ export class RagSearchService {
                 },
                 size: topK,
                 _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
-                // Highlight matching terms in content for retrieval test display
                 highlight: {
                     fields: {
+                        content_ltks: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
                         content_with_weight: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
                     },
                 },
@@ -166,7 +183,7 @@ export class RagSearchService {
 
             res = await client.search({
                 index: getIndexName(tenantId),
-                body: searchBody,
+                body: searchBody as any,
             })
         } catch (err: any) {
             if (String(err).includes('index_not_found_exception')) return { chunks: [], total: 0 }
@@ -236,9 +253,9 @@ export class RagSearchService {
                 },
                 size: topK,
                 _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
-                // Highlight matching terms in content for retrieval test display
                 highlight: {
                     fields: {
+                        content_ltks: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
                         content_with_weight: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
                     },
                 },
@@ -285,8 +302,9 @@ export class RagSearchService {
         vectorWeight: number = 0.5,
         extraFilters: Record<string, unknown>[] = [],
         abacFilters: Record<string, unknown>[] = [],
+        minMatch: string = '30%',
     ): Promise<{ chunks: ChunkResult[]; total: number }> {
-        const textResult = await this.fullTextSearch(tenantId, datasetId, query, topK, extraFilters, abacFilters)
+        const textResult = await this.fullTextSearch(tenantId, datasetId, query, topK, extraFilters, abacFilters, minMatch)
 
         if (!queryVector || queryVector.length === 0) {
             return textResult
@@ -389,6 +407,22 @@ export class RagSearchService {
                 break
         }
 
+        // Zero-result fallback: retry with relaxed minimum_should_match (RAGFlow behavior).
+        // RAGFlow retries with min_match=10% when initial search returns 0 results.
+        if (result.chunks.length === 0 && req.query && !req.doc_ids?.length) {
+            log.debug('Zero results from initial search, retrying with relaxed min_match=10%')
+            const relaxedExtra = this.buildMetadataFilters(req.metadata_filter)
+            switch (method) {
+                case 'full_text':
+                    result = await this.fullTextSearch(tenantId, datasetId, req.query, topK, relaxedExtra, abacFilters, '10%')
+                    break
+                case 'hybrid':
+                default:
+                    result = await this.hybridSearch(tenantId, datasetId, req.query, queryVector ?? null, topK, Math.min(threshold, 0.17), vectorWeight, relaxedExtra, abacFilters, '10%')
+                    break
+            }
+        }
+
         // Populate similarity breakdown fields for non-hybrid search methods
         if (method === 'full_text') {
             result.chunks = result.chunks.map(c => ({ ...c, term_similarity: c.score ?? 0 }))
@@ -397,8 +431,10 @@ export class RagSearchService {
         }
 
         // Apply similarity threshold filter to remove low-scoring results.
-        // Uses the computed threshold which is already set to 0 when doc_ids are provided.
-        result.chunks = result.chunks.filter((chunk) => (chunk.score ?? 0) >= (threshold || 0.2))
+        // Default to 0.2 only when threshold was never set (undefined/null).
+        // Explicit threshold=0 must be respected (e.g., when doc_ids are provided).
+        const effectiveThreshold = threshold > 0 ? threshold : (req.similarity_threshold != null ? 0 : 0.2)
+        result.chunks = result.chunks.filter((chunk) => (chunk.score ?? 0) >= effectiveThreshold)
 
         return result
     }
@@ -458,11 +494,19 @@ export class RagSearchService {
             { terms: { kb_id: kbIds } },
         ]
 
-        // Add text match for full_text and hybrid methods
+        // Add multi-field text match for full_text and hybrid methods (RAGFlow field boosts)
         if (method === 'full_text' || method === 'hybrid') {
             mustClauses.push({
-                // Use content_ltks (indexed) instead of content_with_weight (not indexed)
-                match: { content_ltks: { query: req.query, minimum_should_match: '30%' } },
+                multi_match: {
+                    query: req.query,
+                    fields: [
+                        'content_ltks^2', 'content_sm_ltks', 'content_with_weight^2',
+                        'title_tks^10', 'title_sm_tks^5',
+                        'important_kwd^30', 'important_tks^20', 'question_tks^20',
+                    ],
+                    type: 'best_fields',
+                    minimum_should_match: '30%',
+                },
             })
         }
 
@@ -504,6 +548,7 @@ export class RagSearchService {
                     _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd', 'kb_id'],
                     highlight: {
                         fields: {
+                            content_ltks: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
                             content_with_weight: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
                         },
                     },
@@ -907,7 +952,9 @@ export class RagSearchService {
                 token_count: Math.ceil((src.content_with_weight || '').length / 4),
                 ...(method ? { method } : {}),
                 ...(src.img_id ? { img_id: src.img_id } : {}),
-                ...(highlightFields.content_with_weight?.[0] ? { highlight: highlightFields.content_with_weight[0] } : {}),
+                ...((highlightFields.content_ltks?.[0] || highlightFields.content_with_weight?.[0])
+                    ? { highlight: highlightFields.content_ltks?.[0] || highlightFields.content_with_weight?.[0] }
+                    : {}),
                 // Include source dataset ID for cross-dataset result attribution
                 ...(src.kb_id ? { kb_id: src.kb_id } : {}),
             }

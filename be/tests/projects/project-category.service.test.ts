@@ -311,6 +311,47 @@ describe('ProjectCategoryService', () => {
         auto_created: true,
       })
     })
+
+    /** @description Should default category_type to 'documents' when not explicitly set */
+    it('should default category_type to documents when omitted', async () => {
+      const created = { id: 'cat-7', name: 'No Type' }
+      mockCategoryCreate.mockResolvedValue(created)
+
+      const result = await service.createCategory('p1', {
+        name: 'No Type',
+      }, createUser())
+
+      // category_type defaults to 'documents' via the || fallback in service
+      expect(mockCategoryCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category_type: 'documents',
+        }),
+      )
+      // No dataset auto-creation for documents type
+      expect(mockDatasetCreate).not.toHaveBeenCalled()
+      expect(result).toEqual(created)
+    })
+
+    /** @description Dataset creation failure should be non-blocking — category is still returned */
+    it('should return category even when dataset auto-creation fails', async () => {
+      const created = { id: 'cat-8', name: 'Failing DS', category_type: 'standard' }
+      mockCategoryCreate.mockResolvedValue(created)
+      mockProjectFindById.mockResolvedValue(mockProject)
+      // Simulate dataset creation failure
+      mockDatasetCreate.mockRejectedValue(new Error('DB connection lost'))
+
+      const result = await service.createCategory('p1', {
+        name: 'Failing DS',
+        category_type: 'standard',
+      }, createUser())
+
+      // Category is still returned despite dataset creation failure
+      expect(result).toEqual(created)
+      // Dataset creation was attempted
+      expect(mockDatasetCreate).toHaveBeenCalled()
+      // Category update with dataset_id is NOT called since creation failed
+      expect(mockCategoryUpdate).not.toHaveBeenCalled()
+    })
   })
 
   describe('type-discriminated category deletion', () => {
