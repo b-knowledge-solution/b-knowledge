@@ -124,6 +124,8 @@ export const createCategorySchema = z.object({
   name: z.string().min(1, 'Category name is required').max(255),
   description: z.string().max(2000).optional(),
   sort_order: z.number().int().min(0).optional(),
+  /** Per D-01: category type is implicit from the active tab */
+  category_type: z.enum(['documents', 'standard', 'code']).default('documents'),
   dataset_config: z.record(z.unknown()).optional(),
 })
 

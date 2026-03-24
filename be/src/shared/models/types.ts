@@ -882,6 +882,10 @@ export interface DocumentCategory {
   description?: string | null
   /** Display sort order */
   sort_order: number
+  /** Category type discriminator: documents (versioned), standard (single dataset), code (code parser) */
+  category_type: 'documents' | 'standard' | 'code'
+  /** Direct dataset reference for standard/code categories (null for documents type) */
+  dataset_id?: string | null
   /** Dataset configuration overrides (JSONB) */
   dataset_config: any
   /** User ID who created this record */
