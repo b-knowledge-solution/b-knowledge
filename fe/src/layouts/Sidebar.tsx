@@ -13,7 +13,6 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth, User } from '@/features/auth'
-import { useAppAbility } from '@/lib/ability'
 import { useSettings } from '@/app/contexts/SettingsContext'
 import { config } from '@/config'
 import { LogOut, ChevronLeft, ChevronRight, Settings, KeyRound } from 'lucide-react'
@@ -83,7 +82,6 @@ export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   const { user } = useAuth()
-  const ability = useAppAbility()
   const { openSettings, openApiKeys } = useSettings()
 
   return (
@@ -109,21 +107,7 @@ export function Sidebar() {
         {SIDEBAR_NAV.map((entry) => {
           // ── Expandable group ──────────────────────────────────
           if (isNavGroup(entry)) {
-            // Use CASL ability checks for permission-gated nav groups
-            // Data Studio requires dataset creation ability (leaders, admins, super-admins)
-            if (entry.labelKey === 'nav.dataStudio' && !ability.can('create', 'Dataset')) {
-              return null
-            }
-            // IAM (User Management) requires user management ability (admins, super-admins)
-            if (entry.labelKey === 'nav.iam' && !ability.can('manage', 'User')) {
-              return null
-            }
-            // Administration requires audit log read ability (admins, super-admins)
-            if (entry.labelKey === 'nav.administrators' && !ability.can('read', 'AuditLog')) {
-              return null
-            }
-
-            // Fallback: skip group if user lacks required role (for groups without CASL mapping)
+            // Skip group if user lacks required role
             if (entry.roles && (!user?.role || !entry.roles.includes(user.role))) {
               return null
             }
@@ -143,6 +127,10 @@ export function Sidebar() {
           // ── Standalone link ───────────────────────────────────
           // Skip if feature flag is disabled
           if (entry.featureFlag && !config.features[entry.featureFlag]) {
+            return null
+          }
+          // Skip if user lacks required role
+          if (entry.roles && (!user?.role || !entry.roles.includes(user.role))) {
             return null
           }
 

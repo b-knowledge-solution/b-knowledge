@@ -148,6 +148,7 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
   {
     labelKey: 'nav.agentStudio',
     icon: Workflow,
+    roles: ['super-admin', 'admin'],
     children: [
       {
         path: '/agent-studio/chat-assistants',
@@ -177,7 +178,7 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
     labelKey: 'nav.glossary',
     icon: BookOpen,
     iconSize: 20,
-    roles: ['super-admin', 'admin', 'leader'],
+    roles: ['super-admin', 'admin'],
   },
   // ── IAM (super-admin / admin) ───────────────────────────────────
   {
@@ -237,3 +238,54 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
     ],
   },
 ]
+
+// ============================================================================
+// Role Resolution Helper
+// ============================================================================
+
+/**
+ * Flat map of route path → effective roles[], built once from SIDEBAR_NAV.
+ * Child items inherit the parent group's roles when they don't define their own.
+ */
+const ROUTE_ROLES_MAP: Record<string, string[]> = {}
+
+// Build the map at module load time
+for (const entry of SIDEBAR_NAV) {
+  if (isNavGroup(entry)) {
+    const groupRoles = entry.roles || []
+    for (const child of entry.children) {
+      // Child-level roles take precedence; fall back to group-level roles
+      const effectiveRoles = child.roles?.length ? child.roles : groupRoles
+      if (effectiveRoles.length) {
+        ROUTE_ROLES_MAP[child.path] = effectiveRoles
+      }
+    }
+  } else if (entry.roles?.length) {
+    ROUTE_ROLES_MAP[entry.path] = entry.roles
+  }
+}
+
+/**
+ * @description Resolve the allowed roles for a given pathname from the nav config.
+ *   Uses exact match first, then longest-prefix match for detail pages
+ *   (e.g. `/data-studio/datasets/abc` matches `/data-studio/datasets`).
+ * @param {string} pathname - The current URL pathname
+ * @returns {string[] | undefined} Allowed roles array, or undefined if no restriction
+ */
+export function getRouteRoles(pathname: string): string[] | undefined {
+  // Exact match
+  if (ROUTE_ROLES_MAP[pathname]) {
+    return ROUTE_ROLES_MAP[pathname]
+  }
+
+  // Prefix match — find the longest matching path
+  let bestMatch: string | undefined
+  let bestLength = 0
+  for (const path of Object.keys(ROUTE_ROLES_MAP)) {
+    if (pathname.startsWith(path + '/') && path.length > bestLength) {
+      bestMatch = path
+      bestLength = path.length
+    }
+  }
+  return bestMatch ? ROUTE_ROLES_MAP[bestMatch] : undefined
+}

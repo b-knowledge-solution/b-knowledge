@@ -13,7 +13,7 @@ const controller = new AdminHistoryController();
  * Route Definitions
  * Define endpoints for accessing chat and search history.
  * All routes are protected by authentication and role-based access control (RBAC).
- * Only users with 'admin' or 'leader' roles can access these endpoints.
+ * Only users with 'admin' role can access these endpoints.
  */
 
 /**
@@ -22,7 +22,7 @@ const controller = new AdminHistoryController();
  * @access Private (Admin, Leader)
  */
 // Ensure user is authenticated and has admin or leader privileges
-router.get('/chat', requireAuth, requireRole('admin', 'leader'), controller.getChatHistory.bind(controller));
+router.get('/chat', requireAuth, requireRole('admin'), controller.getChatHistory.bind(controller));
 
 /**
  * @route GET /api/admin/history/chat/:sessionId
@@ -30,7 +30,7 @@ router.get('/chat', requireAuth, requireRole('admin', 'leader'), controller.getC
  * @access Private (Admin, Leader)
  */
 // Ensure user is authenticated and authorized before fetching session details
-router.get('/chat/:sessionId', requireAuth, requireRole('admin', 'leader'), controller.getChatSessionDetails.bind(controller));
+router.get('/chat/:sessionId', requireAuth, requireRole('admin'), controller.getChatSessionDetails.bind(controller));
 
 /**
  * @route GET /api/admin/history/search
@@ -38,7 +38,7 @@ router.get('/chat/:sessionId', requireAuth, requireRole('admin', 'leader'), cont
  * @access Private (Admin, Leader)
  */
 // Ensure user is authenticated and authorized before listing search history
-router.get('/search', requireAuth, requireRole('admin', 'leader'), controller.getSearchHistory.bind(controller));
+router.get('/search', requireAuth, requireRole('admin'), controller.getSearchHistory.bind(controller));
 
 /**
  * @route GET /api/admin/history/search/:sessionId
@@ -46,7 +46,7 @@ router.get('/search', requireAuth, requireRole('admin', 'leader'), controller.ge
  * @access Private (Admin, Leader)
  */
 // Ensure user is authenticated and authorized before fetching search session details
-router.get('/search/:sessionId', requireAuth, requireRole('admin', 'leader'), controller.getSearchSessionDetails.bind(controller));
+router.get('/search/:sessionId', requireAuth, requireRole('admin'), controller.getSearchSessionDetails.bind(controller));
 
 /**
  * @route GET /api/admin/history/system-chat
@@ -54,6 +54,6 @@ router.get('/search/:sessionId', requireAuth, requireRole('admin', 'leader'), co
  * @access Private (Admin, Leader)
  */
 // Ensure user is authenticated and authorized before listing system chat history
-router.get('/system-chat', requireAuth, requireRole('admin', 'leader'), controller.getSystemChatHistory.bind(controller));
+router.get('/system-chat', requireAuth, requireRole('admin'), controller.getSystemChatHistory.bind(controller));
 
 export default router;

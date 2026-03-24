@@ -36,10 +36,10 @@ router.use(requireTenant)
 // Tool Credentials (placed BEFORE /:id routes to avoid param collision)
 // -------------------------------------------------------------------------
 
-router.get('/tools/credentials', agentToolController.listCredentials.bind(agentToolController))
-router.post('/tools/credentials', validate(createCredentialSchema), agentToolController.createCredential.bind(agentToolController))
-router.put('/tools/credentials/:id', validate({ params: agentIdParamSchema, body: updateCredentialSchema }), agentToolController.updateCredential.bind(agentToolController))
-router.delete('/tools/credentials/:id', validate({ params: agentIdParamSchema }), agentToolController.deleteCredential.bind(agentToolController))
+router.get('/tools/credentials', requireAbility('manage', 'Agent'), agentToolController.listCredentials.bind(agentToolController))
+router.post('/tools/credentials', requireAbility('manage', 'Agent'), validate(createCredentialSchema), agentToolController.createCredential.bind(agentToolController))
+router.put('/tools/credentials/:id', requireAbility('manage', 'Agent'), validate({ params: agentIdParamSchema, body: updateCredentialSchema }), agentToolController.updateCredential.bind(agentToolController))
+router.delete('/tools/credentials/:id', requireAbility('manage', 'Agent'), validate({ params: agentIdParamSchema }), agentToolController.deleteCredential.bind(agentToolController))
 
 // -------------------------------------------------------------------------
 // Agent CRUD (ABAC-protected: read for GET, manage for mutations)
@@ -71,20 +71,20 @@ router.get('/:id/runs', requireAbility('read', 'Agent'), validate({ params: agen
 // Debug Mode
 // -------------------------------------------------------------------------
 
-router.post('/:id/debug', agentDebugController.startDebug.bind(agentDebugController))
-router.post('/:id/debug/:runId/step', agentDebugController.stepNext.bind(agentDebugController))
-router.post('/:id/debug/:runId/continue', agentDebugController.continueDebug.bind(agentDebugController))
-router.post('/:id/debug/:runId/breakpoint', agentDebugController.setBreakpoint.bind(agentDebugController))
-router.delete('/:id/debug/:runId/breakpoint/:nodeId', agentDebugController.removeBreakpoint.bind(agentDebugController))
-router.get('/:id/debug/:runId/steps/:nodeId', agentDebugController.getStepDetails.bind(agentDebugController))
+router.post('/:id/debug', requireAbility('manage', 'Agent'), agentDebugController.startDebug.bind(agentDebugController))
+router.post('/:id/debug/:runId/step', requireAbility('manage', 'Agent'), agentDebugController.stepNext.bind(agentDebugController))
+router.post('/:id/debug/:runId/continue', requireAbility('manage', 'Agent'), agentDebugController.continueDebug.bind(agentDebugController))
+router.post('/:id/debug/:runId/breakpoint', requireAbility('manage', 'Agent'), agentDebugController.setBreakpoint.bind(agentDebugController))
+router.delete('/:id/debug/:runId/breakpoint/:nodeId', requireAbility('manage', 'Agent'), agentDebugController.removeBreakpoint.bind(agentDebugController))
+router.get('/:id/debug/:runId/steps/:nodeId', requireAbility('manage', 'Agent'), agentDebugController.getStepDetails.bind(agentDebugController))
 
 // -------------------------------------------------------------------------
 // Versioning
 // -------------------------------------------------------------------------
 
-router.get('/:id/versions', validate({ params: agentIdParamSchema }), agentController.listVersions.bind(agentController))
-router.post('/:id/versions', validate({ params: agentIdParamSchema, body: saveVersionSchema }), agentController.saveVersion.bind(agentController))
-router.post('/:id/versions/:versionId/restore', validate({ params: versionIdParamSchema }), agentController.restoreVersion.bind(agentController))
-router.delete('/:id/versions/:versionId', validate({ params: versionIdParamSchema }), agentController.deleteVersion.bind(agentController))
+router.get('/:id/versions', requireAbility('read', 'Agent'), validate({ params: agentIdParamSchema }), agentController.listVersions.bind(agentController))
+router.post('/:id/versions', requireAbility('manage', 'Agent'), validate({ params: agentIdParamSchema, body: saveVersionSchema }), agentController.saveVersion.bind(agentController))
+router.post('/:id/versions/:versionId/restore', requireAbility('manage', 'Agent'), validate({ params: versionIdParamSchema }), agentController.restoreVersion.bind(agentController))
+router.delete('/:id/versions/:versionId', requireAbility('manage', 'Agent'), validate({ params: versionIdParamSchema }), agentController.deleteVersion.bind(agentController))
 
 export default router

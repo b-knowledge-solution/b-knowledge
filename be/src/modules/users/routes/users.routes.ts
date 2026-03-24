@@ -46,7 +46,7 @@ const controller = new UserController();
  * List all users in the system.
  * @requires requireAuth
  */
-router.get('/', requireAuth, controller.getUsers.bind(controller));
+router.get('/', requireAuth, requirePermission('manage_users'), controller.getUsers.bind(controller));
 
 /**
  * POST /api/users

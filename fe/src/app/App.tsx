@@ -13,16 +13,47 @@
  */
 
 import { Suspense, lazy, useEffect } from 'react';
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { ProtectedRoute, AdminRoute, RoleRoute } from '@/features/auth';
+import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { ProtectedRoute, useAuth } from '@/features/auth';
 import { Providers } from '@/app/Providers';
 import Layout from '@/layouts/MainLayout';
 import { config } from '@/config';
 import { FeatureErrorBoundary } from '@/components/ErrorBoundary'
+import { getRouteRoles } from '@/layouts/sidebarNav'
 import '@/i18n';
 
 // Re-export globalMessage for backward compatibility
 export { globalMessage } from '@/app/Providers';
+
+// ============================================================================
+// NavRoleGuard — auto-resolves roles from sidebarNav config
+// ============================================================================
+
+/**
+ * @description Route guard that reads allowed roles from sidebarNav.ts config.
+ *   Resolves the current pathname against the nav role map (exact + prefix match).
+ *   Redirects to /403 when the user's role is not in the allowed list.
+ * @param {{ children: React.ReactNode }} props - Child content to render when authorized
+ * @returns {JSX.Element} The children when authorized, or a redirect to /403
+ */
+function NavRoleGuard({ children }: { children: React.ReactNode }) {
+  const { pathname } = useLocation();
+  const { user } = useAuth();
+  const allowedRoles = getRouteRoles(pathname);
+
+  // No roles defined for this path → unrestricted
+  if (!allowedRoles) {
+    return <>{children}</>;
+  }
+
+  // User has no role or role not in allowed list → deny
+  if (!user?.role || !allowedRoles.includes(user.role)) {
+    return <Navigate to="/403" replace />;
+  }
+
+  return <>{children}</>;
+}
+
 
 // ============================================================================
 // Lazy-loaded Pages (Code Splitting)
@@ -131,99 +162,41 @@ function App() {
               {config.features.enableAiSearch && (
                 <Route path="search" element={<FeatureErrorBoundary><AiSearchPage /></FeatureErrorBoundary>} />
               )}
-              {/* Agent Studio routes */}
-              <Route path="agent-studio/agents" element={<FeatureErrorBoundary><AgentListPage /></FeatureErrorBoundary>} />
-              <Route path="agent-studio/agents/:id" element={<FeatureErrorBoundary><AgentCanvasPage /></FeatureErrorBoundary>} />
+              {/* ── All role-gated routes use NavRoleGuard ────────────────── */}
+              {/* Roles are resolved automatically from sidebarNav.ts config */}
 
-              {/* Memory routes */}
-              <Route path="agent-studio/memory" element={<FeatureErrorBoundary><MemoryListPage /></FeatureErrorBoundary>} />
-              <Route path="agent-studio/memory/:id" element={<FeatureErrorBoundary><MemoryDetailPage /></FeatureErrorBoundary>} />
+              {/* Agent Studio */}
+              <Route path="agent-studio/agents" element={<FeatureErrorBoundary><NavRoleGuard><AgentListPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="agent-studio/agents/:id" element={<FeatureErrorBoundary><NavRoleGuard><AgentCanvasPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="agent-studio/memory" element={<FeatureErrorBoundary><NavRoleGuard><MemoryListPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="agent-studio/memory/:id" element={<FeatureErrorBoundary><NavRoleGuard><MemoryDetailPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="agent-studio/chat-assistants" element={<FeatureErrorBoundary><NavRoleGuard><ChatAssistantManagementPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="agent-studio/search-apps" element={<FeatureErrorBoundary><NavRoleGuard><SearchAppManagementPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="agent-studio/histories" element={<FeatureErrorBoundary><NavRoleGuard><HistoriesPage /></NavRoleGuard></FeatureErrorBoundary>} />
 
-              {/* Glossary route */}
-              <Route path="glossary" element={
-                <FeatureErrorBoundary>
-                  <RoleRoute allowedRoles={['super-admin', 'admin', 'leader']}>
-                    <GlossaryPage />
-                  </RoleRoute>
-                </FeatureErrorBoundary>
-              } />
+              {/* Glossary */}
+              <Route path="glossary" element={<FeatureErrorBoundary><NavRoleGuard><GlossaryPage /></NavRoleGuard></FeatureErrorBoundary>} />
 
-              {/* Dataset routes */}
-              <Route path="data-studio/datasets" element={
-                <FeatureErrorBoundary>
-                  <RoleRoute allowedRoles={['super-admin', 'admin', 'leader']}>
-                    <DatasetsPage />
-                  </RoleRoute>
-                </FeatureErrorBoundary>
-              } />
-              <Route path="data-studio/datasets/:id" element={
-                <FeatureErrorBoundary>
-                  <RoleRoute allowedRoles={['super-admin', 'admin', 'leader']}>
-                    <DatasetDetailPage />
-                  </RoleRoute>
-                </FeatureErrorBoundary>
-              } />
-              <Route path="data-studio/datasets/:id/documents/:docId" element={
-                <FeatureErrorBoundary>
-                  <RoleRoute allowedRoles={['super-admin', 'admin', 'leader']}>
-                    <DocumentReviewerPage />
-                  </RoleRoute>
-                </FeatureErrorBoundary>
-              } />
-              <Route path="data-studio/datasets/:id/documents/:docId/chunks" element={
-                <FeatureErrorBoundary>
-                  <RoleRoute allowedRoles={['super-admin', 'admin', 'leader']}>
-                    <ChunkDetailPage />
-                  </RoleRoute>
-                </FeatureErrorBoundary>
-              } />
+              {/* Data Studio */}
+              <Route path="data-studio/datasets" element={<FeatureErrorBoundary><NavRoleGuard><DatasetsPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="data-studio/datasets/:id" element={<FeatureErrorBoundary><NavRoleGuard><DatasetDetailPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="data-studio/datasets/:id/documents/:docId" element={<FeatureErrorBoundary><NavRoleGuard><DocumentReviewerPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="data-studio/datasets/:id/documents/:docId/chunks" element={<FeatureErrorBoundary><NavRoleGuard><ChunkDetailPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="data-studio/projects" element={<FeatureErrorBoundary><NavRoleGuard><ProjectListPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="data-studio/projects/:projectId" element={<FeatureErrorBoundary><NavRoleGuard><ProjectDetailPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="data-studio/llm-providers" element={<FeatureErrorBoundary><NavRoleGuard><LLMProviderPage /></NavRoleGuard></FeatureErrorBoundary>} />
 
-              {/* Project routes */}
-              <Route path="data-studio/projects" element={
-                <FeatureErrorBoundary>
-                  <RoleRoute allowedRoles={['super-admin', 'admin', 'leader']}>
-                    <ProjectListPage />
-                  </RoleRoute>
-                </FeatureErrorBoundary>
-              } />
-              <Route path="data-studio/projects/:projectId" element={
-                <FeatureErrorBoundary>
-                  <RoleRoute allowedRoles={['super-admin', 'admin', 'leader']}>
-                    <ProjectDetailPage />
-                  </RoleRoute>
-                </FeatureErrorBoundary>
-              } />
+              {/* IAM */}
+              <Route path="iam/users" element={<FeatureErrorBoundary><NavRoleGuard><UserManagementPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="iam/teams" element={<FeatureErrorBoundary><NavRoleGuard><TeamManagementPage /></NavRoleGuard></FeatureErrorBoundary>} />
 
-              {/* IAM routes */}
-              <Route path="iam/users" element={
-                <FeatureErrorBoundary>
-                  <AdminRoute>
-                    <UserManagementPage />
-                  </AdminRoute>
-                </FeatureErrorBoundary>
-              } />
-
-              <Route path="iam/teams" element={
-                <FeatureErrorBoundary>
-                  <AdminRoute>
-                    <TeamManagementPage />
-                  </AdminRoute>
-                </FeatureErrorBoundary>
-              } />
-
-              {/* Admin routes */}
-              <Route path="admin/audit-log" element={<FeatureErrorBoundary><AdminRoute><AuditLogPage /></AdminRoute></FeatureErrorBoundary>} />
-              <Route path="admin/system-tools" element={<FeatureErrorBoundary><AdminRoute><SystemToolsPage /></AdminRoute></FeatureErrorBoundary>} />
-              <Route path="admin/system-monitor" element={<FeatureErrorBoundary><AdminRoute><SystemMonitorPage /></AdminRoute></FeatureErrorBoundary>} />
-              <Route path="admin/tokenizer" element={<FeatureErrorBoundary><AdminRoute><TokenizerPage /></AdminRoute></FeatureErrorBoundary>} />
-              <Route path="admin/broadcast-messages" element={<FeatureErrorBoundary><AdminRoute><BroadcastMessagePage /></AdminRoute></FeatureErrorBoundary>} />
-              <Route path="admin/dashboard" element={<FeatureErrorBoundary><AdminRoute><AdminDashboardPage /></AdminRoute></FeatureErrorBoundary>} />
-
-              {/* Agent Studio — Chat & Search config, Histories (admin) */}
-              <Route path="agent-studio/chat-assistants" element={<FeatureErrorBoundary><AdminRoute><ChatAssistantManagementPage /></AdminRoute></FeatureErrorBoundary>} />
-              <Route path="agent-studio/search-apps" element={<FeatureErrorBoundary><AdminRoute><SearchAppManagementPage /></AdminRoute></FeatureErrorBoundary>} />
-              <Route path="agent-studio/histories" element={<FeatureErrorBoundary><AdminRoute><HistoriesPage /></AdminRoute></FeatureErrorBoundary>} />
-              <Route path="data-studio/llm-providers" element={<FeatureErrorBoundary><AdminRoute><LLMProviderPage /></AdminRoute></FeatureErrorBoundary>} />
+              {/* Administration */}
+              <Route path="admin/audit-log" element={<FeatureErrorBoundary><NavRoleGuard><AuditLogPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="admin/system-tools" element={<FeatureErrorBoundary><NavRoleGuard><SystemToolsPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="admin/system-monitor" element={<FeatureErrorBoundary><NavRoleGuard><SystemMonitorPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="admin/tokenizer" element={<FeatureErrorBoundary><NavRoleGuard><TokenizerPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="admin/broadcast-messages" element={<FeatureErrorBoundary><NavRoleGuard><BroadcastMessagePage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="admin/dashboard" element={<FeatureErrorBoundary><NavRoleGuard><AdminDashboardPage /></NavRoleGuard></FeatureErrorBoundary>} />
 
             </Route>
           </Route>

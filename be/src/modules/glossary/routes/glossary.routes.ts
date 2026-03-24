@@ -37,7 +37,7 @@ router.get("/tasks/:id", requireAuth, GlossaryController.getTask);
 // Create a new task
 router.post(
   "/tasks",
-  requireRole("admin", "leader"),
+  requireRole("admin"),
   validate(createTaskSchema),
   GlossaryController.createTask,
 );
@@ -45,7 +45,7 @@ router.post(
 // Update a task
 router.put(
   "/tasks/:id",
-  requireRole("admin", "leader"),
+  requireRole("admin"),
   validate({ params: uuidParamSchema, body: updateTaskSchema }),
   GlossaryController.updateTask,
 );
@@ -53,7 +53,7 @@ router.put(
 // Delete a task
 router.delete(
   "/tasks/:id",
-  requireRole("admin", "leader"),
+  requireRole("admin"),
   GlossaryController.deleteTask,
 );
 
@@ -70,7 +70,7 @@ router.get("/keywords", requireAuth, GlossaryController.listKeywords);
 // Create a keyword
 router.post(
   "/keywords",
-  requireRole("admin", "leader"),
+  requireRole("admin"),
   validate(createKeywordSchema),
   GlossaryController.createKeyword,
 );
@@ -78,7 +78,7 @@ router.post(
 // Update a keyword
 router.put(
   "/keywords/:id",
-  requireRole("admin", "leader"),
+  requireRole("admin"),
   validate({ params: uuidParamSchema, body: updateKeywordSchema }),
   GlossaryController.updateKeyword,
 );
@@ -86,7 +86,7 @@ router.put(
 // Delete a keyword
 router.delete(
   "/keywords/:id",
-  requireRole("admin", "leader"),
+  requireRole("admin"),
   GlossaryController.deleteKeyword,
 );
 
@@ -97,14 +97,14 @@ router.delete(
 // Bulk import tasks from Excel data
 router.post(
   "/bulk-import",
-  requireRole("admin", "leader"),
+  requireRole("admin"),
   GlossaryController.bulkImport,
 );
 
 // Bulk import keywords from Excel data
 router.post(
   "/keywords/bulk-import",
-  requireRole("admin", "leader"),
+  requireRole("admin"),
   GlossaryController.bulkImportKeywords,
 );
 
