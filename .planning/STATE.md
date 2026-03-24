@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 5 of 5
-status: complete
-stopped_at: Phase 3 planned (5 plans, 4 waves)
-last_updated: "2026-03-24T09:36:05.604Z"
+current_plan: 1
+status: Executing Phase 03
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-03-24T11:16:17.215Z"
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 13
-  completed_plans: 5
+  completed_plans: 6
   percent: 100
 ---
 
@@ -19,12 +19,12 @@ progress:
 ## Current Phase
 
 Phase 1: Migrate latest RAGFlow upstream to b-knowledge — **Complete**
-Current Plan: 5 of 5
+Current Plan: 1
 Progress: [██████████] 100%
 
 ### Last Session
 
-- **Stopped at:** Phase 3 planned (5 plans, 4 waves)
+- **Stopped at:** Completed 03-01-PLAN.md
 - **Timestamp:** 2026-03-23T12:39:00Z
 
 ## Accumulated Context
@@ -50,6 +50,9 @@ Progress: [██████████] 100%
 - Threshold bypass applies to both search dispatch and post-filter for consistency
 - Pre-existing TS build error in guideline components fixed as blocking issue (super-admin missing from roleHierarchy)
 - Pre-existing test failures (6 BE, FE hanging) documented but not fixed per scope boundary rules
+- [Phase 03]: category_type defaults to documents for backward compatibility
+- [Phase 03]: category_type is immutable after creation (excluded from updateCategorySchema)
+- [Phase 03]: dataset_id FK uses ON DELETE SET NULL to preserve category if dataset removed
 
 ### Performance Metrics
 
@@ -60,6 +63,7 @@ Progress: [██████████] 100%
 | 01    | 03   | 5min     | 2     | 8     |
 | 01    | 04   | 5min     | 2     | 7     |
 | 01    | 05   | 44min    | 2     | 3     |
+| Phase 03 P01 | 1min | 2 tasks | 3 files |
 
 ### Pending Todos
 
