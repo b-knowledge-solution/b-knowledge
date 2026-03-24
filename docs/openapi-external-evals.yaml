@@ -1,0 +1,618 @@
+openapi: 3.1.0
+info:
+  title: Knowledge Base External Evals API
+  description: |
+    External API for LLM evaluation, tracing, and history collection.
+
+    This API enables external applications to:
+    - Submit LLM execution traces to Langfuse for observability
+    - Collect user feedback scores for evaluation
+    - Persist chat and search history for analytics and audit
+
+    ## Authentication
+
+    Two API key schemes are used depending on the endpoint group:
+
+    | Endpoint Group | Header |
+    |---------------|--------|
+    | Trace API (`/trace/*`) | `X-External-API-Key` |
+    | History API (`/history/*`) | `x-api-key` |
+  version: 1.0.0
+  contact:
+    name: Knowledge Base Team
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://localhost:3001/api
+    description: Development
+  - url: https://your-domain.com/api
+    description: Production
+
+tags:
+  - name: Health
+    description: Service health check
+  - name: Trace
+    description: LLM trace submission and feedback (Langfuse integration)
+  - name: History
+    description: Chat and search history collection (PostgreSQL persistence)
+
+security: []
+
+paths:
+  /external/health:
+    get:
+      operationId: getExternalHealth
+      summary: Health check
+      description: Returns the current health status of the external trace service.
+      tags:
+        - Health
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+                service: external-trace
+                timestamp: "2026-03-24T08:00:00.000Z"
+
+  /external/trace/submit:
+    post:
+      operationId: submitTrace
+      summary: Submit an LLM trace
+      description: |
+        Records an LLM interaction (user prompt or assistant response) in Langfuse.
+
+        The `email` must belong to a registered user in the system. Email validation
+        is cached in Redis to reduce database load.
+
+        For a complete conversation, submit two traces:
+        1. `role: "user"` with the user's prompt
+        2. `role: "assistant"` with the LLM response and token usage
+
+        Use a consistent `metadata.chatId` to group messages into a single conversation trace.
+      tags:
+        - Trace
+      security:
+        - TraceApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TraceSubmitRequest"
+            examples:
+              userPrompt:
+                summary: Log a user prompt
+                value:
+                  email: user@company.com
+                  message: What is retrieval-augmented generation?
+                  metadata:
+                    chatId: session-abc-123
+                    source: internal-chatbot
+              assistantResponse:
+                summary: Log an LLM response with token usage
+                value:
+                  email: user@company.com
+                  message: What is retrieval-augmented generation?
+                  role: assistant
+                  response: "RAG is a technique that combines information retrieval with text generation..."
+                  share_id: 8ba5b33ed9c111f0883b8ade979b1598
+                  metadata:
+                    chatId: session-abc-123
+                    model: gpt-4
+                    modelName: GPT-4
+                    source: internal-chatbot
+                    tags:
+                      - production
+                      - customer-support
+                    usage:
+                      promptTokens: 45
+                      completionTokens: 120
+                      totalTokens: 165
+      responses:
+        "200":
+          description: Trace submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TraceSubmitSuccess"
+              example:
+                success: true
+                traceId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/TraceSubmitFailure"
+                  - $ref: "#/components/schemas/ServerError"
+              examples:
+                invalidEmail:
+                  summary: Unregistered email
+                  value:
+                    success: false
+                    error: "Invalid email: not registered in system"
+                serverError:
+                  summary: Internal server error
+                  value:
+                    error: Failed to submit trace
+
+  /external/trace/feedback:
+    post:
+      operationId: submitFeedback
+      summary: Submit feedback for a trace
+      description: |
+        Attaches a user feedback score to an existing Langfuse trace.
+        Use this to capture thumbs up/down or numeric quality ratings for LLM evaluation.
+
+        The feedback is stored with a deterministic ID (`{traceId}-user-feedback`),
+        so re-submitting for the same trace updates the existing score.
+      tags:
+        - Trace
+      security:
+        - TraceApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedbackRequest"
+            examples:
+              thumbsUp:
+                summary: Positive feedback
+                value:
+                  traceId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                  value: 1
+                  comment: Accurate answer with good citations
+              thumbsDown:
+                summary: Negative feedback
+                value:
+                  traceId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                  value: 0
+                  comment: Response was off-topic
+      responses:
+        "200":
+          description: Feedback submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerError"
+              example:
+                error: Failed to submit feedback
+
+  /external/history/chat:
+    post:
+      operationId: collectChatHistory
+      summary: Collect chat history
+      description: |
+        Persists a chat conversation turn (user prompt + LLM response) to PostgreSQL
+        for analytics dashboards and audit trails.
+
+        Messages are grouped by `session_id`. The session is upserted automatically —
+        if the session already exists, its timestamp and user email are updated.
+
+        Data is stored with full-text search indexes for efficient querying.
+      tags:
+        - History
+      security:
+        - HistoryApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatHistoryRequest"
+            example:
+              session_id: chat-session-001
+              share_id: 8ba5b33ed9c111f0883b8ade979b1598
+              user_email: user@company.com
+              user_prompt: What are the Q3 revenue numbers?
+              llm_response: "According to the quarterly report, Q3 revenue was $4.2M..."
+              citations:
+                - source: q3-report.pdf
+                  page: 3
+      responses:
+        "201":
+          description: Chat history saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              example:
+                message: Chat history saved successfully
+        "400":
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Missing required fields
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Unauthorized
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Internal server error
+
+  /external/history/search:
+    post:
+      operationId: collectSearchHistory
+      summary: Collect search history
+      description: |
+        Persists a search query and its results to PostgreSQL for usage analytics.
+
+        If no `session_id` is provided, one is auto-generated as `search-{timestamp}`.
+        Data is stored with full-text search indexes for efficient querying.
+      tags:
+        - History
+      security:
+        - HistoryApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchHistoryRequest"
+            example:
+              session_id: search-session-001
+              share_id: 9ca6c44fd0d222f1994c9bef080c2699
+              user_email: user@company.com
+              search_input: annual report 2024
+              ai_summary: Found 3 documents related to the 2024 annual report...
+              file_results:
+                - annual_report_2024.pdf
+                - board_presentation.pptx
+      responses:
+        "201":
+          description: Search history saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              example:
+                message: Search history saved successfully
+        "400":
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Missing required fields
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Unauthorized
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Internal server error
+
+components:
+  securitySchemes:
+    TraceApiKey:
+      type: apiKey
+      in: header
+      name: X-External-API-Key
+      description: API key for trace endpoints (env var `EXTERNAL_TRACE_API_KEY`)
+    HistoryApiKey:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: API key for history endpoints (env var `EXTERNAL_API_KEY`)
+
+  schemas:
+    # --- Request Schemas ---
+
+    TraceSubmitRequest:
+      type: object
+      required:
+        - email
+        - message
+      properties:
+        email:
+          type: string
+          format: email
+          description: Registered user email (validated against user database)
+          example: user@company.com
+        message:
+          type: string
+          description: The user prompt or input text
+          example: What is retrieval-augmented generation?
+        share_id:
+          type: string
+          description: Knowledge base source share ID (added as Langfuse tag `share_id:<value>`)
+          example: 8ba5b33ed9c111f0883b8ade979b1598
+        role:
+          type: string
+          enum:
+            - user
+            - assistant
+          default: user
+          description: |
+            `user` for logging prompts, `assistant` for logging LLM responses.
+            When `assistant`, a Langfuse generation event is created with token usage tracking.
+        response:
+          type: string
+          description: The LLM response text (use with `role: "assistant"`)
+          example: "RAG stands for Retrieval-Augmented Generation..."
+        metadata:
+          $ref: "#/components/schemas/TraceMetadata"
+
+    TraceMetadata:
+      type: object
+      description: Additional context attached to the Langfuse trace
+      properties:
+        chatId:
+          type: string
+          description: Groups messages into a single conversation trace (used as Langfuse sessionId)
+          example: session-abc-123
+        sessionId:
+          type: string
+          description: Fallback for chatId
+        model:
+          type: string
+          description: Model identifier
+          example: gpt-4
+        modelName:
+          type: string
+          description: Human-readable model name
+          example: GPT-4 Turbo
+        source:
+          type: string
+          description: Source application name (added as a Langfuse tag)
+          example: internal-chatbot
+        task:
+          type: string
+          description: Custom task type (added as tag, unless `user_response` or `llm_response`)
+          example: document-qa
+        tags:
+          type: array
+          items:
+            type: string
+          description: Additional tags for Langfuse filtering
+          example:
+            - production
+            - customer-support
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp override (defaults to server time)
+        usage:
+          $ref: "#/components/schemas/TokenUsage"
+      additionalProperties: true
+
+    TokenUsage:
+      type: object
+      description: Token consumption metrics for LLM generation tracking
+      properties:
+        promptTokens:
+          type: integer
+          description: Number of input tokens
+          example: 45
+        completionTokens:
+          type: integer
+          description: Number of output tokens
+          example: 120
+        totalTokens:
+          type: integer
+          description: Total tokens consumed
+          example: 165
+
+    FeedbackRequest:
+      type: object
+      description: |
+        Either `traceId` or `messageId` is required.
+        Either `value` or `score` is required.
+      properties:
+        traceId:
+          type: string
+          description: Trace ID returned from the submit endpoint
+          example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        messageId:
+          type: string
+          description: Alternative to traceId
+        value:
+          type: number
+          description: "Feedback score (typically 1 = positive, 0 = negative)"
+          example: 1
+        score:
+          type: number
+          description: Alternative to value
+        comment:
+          type: string
+          description: Free-text feedback explanation
+          example: Accurate answer with good citations
+      anyOf:
+        - required: [traceId]
+        - required: [messageId]
+
+    ChatHistoryRequest:
+      type: object
+      required:
+        - session_id
+        - user_prompt
+        - llm_response
+      properties:
+        session_id:
+          type: string
+          description: Unique session identifier (groups messages in the same conversation)
+          example: chat-session-001
+        user_prompt:
+          type: string
+          description: The user's message/question
+          example: What are the Q3 revenue numbers?
+        llm_response:
+          type: string
+          description: The AI assistant's response
+          example: "According to the quarterly report, Q3 revenue was $4.2M..."
+        share_id:
+          type: string
+          description: Knowledge base source share ID
+          example: 8ba5b33ed9c111f0883b8ade979b1598
+        user_email:
+          type: string
+          format: email
+          description: Email of the user who asked the question
+          example: user@company.com
+        citations:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+          default: []
+          description: Citation/source reference objects (flexible schema)
+          example:
+            - source: q3-report.pdf
+              page: 3
+
+    SearchHistoryRequest:
+      type: object
+      required:
+        - search_input
+      properties:
+        search_input:
+          type: string
+          description: The search query text
+          example: annual report 2024
+        session_id:
+          type: string
+          description: Session identifier (auto-generated if omitted)
+          example: search-session-001
+        share_id:
+          type: string
+          description: Knowledge base source share ID
+          example: 9ca6c44fd0d222f1994c9bef080c2699
+        user_email:
+          type: string
+          format: email
+          description: Email of the user who performed the search
+          example: user@company.com
+        ai_summary:
+          type: string
+          description: AI-generated summary of search results
+          example: Found 3 documents related to the 2024 annual report...
+        file_results:
+          type: array
+          items:
+            type: string
+          default: []
+          description: List of file names returned by the search
+          example:
+            - annual_report_2024.pdf
+            - board_presentation.pptx
+
+    # --- Response Schemas ---
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+          example: ok
+        service:
+          type: string
+          example: external-trace
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-03-24T08:00:00.000Z"
+
+    TraceSubmitSuccess:
+      type: object
+      required:
+        - success
+        - traceId
+      properties:
+        success:
+          type: boolean
+          const: true
+        traceId:
+          type: string
+          description: Langfuse trace ID (save this for submitting feedback)
+          example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+
+    TraceSubmitFailure:
+      type: object
+      required:
+        - success
+        - error
+      properties:
+        success:
+          type: boolean
+          const: false
+        error:
+          type: string
+          example: "Invalid email: not registered in system"
+
+    SuccessResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+          const: true
+
+    MessageResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+
+    ServerError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: Failed to submit trace
