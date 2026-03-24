@@ -9,18 +9,17 @@ import { api, apiFetch } from "@/lib/api";
 // Types
 // ============================================================================
 
-/** Project category type. */
-export type ProjectCategory = 'office' | 'datasync' | 'source_code';
+/** Category type discriminator per D-01: documents (versioned), standard (single dataset), code (code parser) */
+export type DocumentCategoryType = 'documents' | 'standard' | 'code'
 
 /**
- * Represents a project.
+ * Represents a project (type-agnostic container per D-01).
  */
 export interface Project {
   id: string;
   name: string;
   description: string | null;
   avatar: string | null;
-  category: ProjectCategory;
   default_embedding_model: string | null;
   default_chunk_method: string;
   default_parser_config: Record<string, unknown> | null;
@@ -111,7 +110,7 @@ export interface ProjectPermission {
 }
 
 /**
- * Represents a document category.
+ * Represents a document category with type discriminator.
  */
 export interface DocumentCategory {
   id: string;
@@ -119,6 +118,10 @@ export interface DocumentCategory {
   name: string;
   description: string | null;
   sort_order: number;
+  /** Category type: documents (versioned), standard (single dataset), code (code parser) */
+  category_type: DocumentCategoryType;
+  /** Dataset ID for standard/code categories (null for documents) */
+  dataset_id: string | null;
   dataset_config: Record<string, any> | null;
   created_by: string | null;
   created_at: string;
@@ -188,7 +191,6 @@ export const createProject = (data: {
   name: string;
   description?: string;
   avatar?: string;
-  category?: ProjectCategory;
   default_embedding_model?: string;
   default_chunk_method?: string;
   default_parser_config?: Record<string, unknown>;
@@ -285,6 +287,7 @@ export const createDocumentCategory = (
     name: string;
     description?: string;
     sort_order?: number;
+    category_type?: DocumentCategoryType;
     dataset_config?: Record<string, any>;
   },
 ): Promise<DocumentCategory> =>

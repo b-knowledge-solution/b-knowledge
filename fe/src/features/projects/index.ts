@@ -48,7 +48,7 @@ export {
   type DocumentCategoryVersion,
   type ProjectChat,
   type ProjectSearch,
-  type ProjectCategory,
+  type DocumentCategoryType,
   type ProjectDataset,
   type ProjectSyncConfig,
   type SyncSourceType,

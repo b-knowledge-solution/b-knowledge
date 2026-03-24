@@ -9,7 +9,7 @@
  */
 
 export type {
-  ProjectCategory,
+  DocumentCategoryType,
   Project,
   ProjectDataset,
   SyncSourceType,
