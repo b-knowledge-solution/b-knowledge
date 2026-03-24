@@ -34,24 +34,76 @@ export class ProjectCategoryService {
   }
 
   /**
-   * @description Create a new document category within a project
+   * @description Create a new document category within a project.
+   *   For 'standard' and 'code' types, auto-creates a linked dataset.
+   *   For 'documents' type, dataset creation is deferred to version creation.
    * @param {string} projectId - UUID of the project
-   * @param {any} data - Category creation data including name, description, sort_order, dataset_config
+   * @param {any} data - Category creation data including name, description, sort_order, dataset_config, category_type
    * @param {UserContext} user - Authenticated user context
-   * @returns {Promise<DocumentCategory>} Created category record
+   * @returns {Promise<DocumentCategory>} Created category record (with dataset_id if standard/code)
    */
   async createCategory(projectId: string, data: any, user: UserContext): Promise<DocumentCategory> {
-    return ModelFactory.documentCategory.create({
+    // Default category_type to 'documents' for backward compatibility
+    const categoryType = data.category_type || 'documents'
+
+    const category = await ModelFactory.documentCategory.create({
       project_id: projectId,
       name: data.name,
       description: data.description || null,
       // Default sort_order to 0 when not specified
       sort_order: data.sort_order ?? 0,
+      category_type: categoryType,
       // Serialize dataset_config as JSON string for storage
       dataset_config: JSON.stringify(data.dataset_config || {}),
       created_by: user.id,
       updated_by: user.id,
     })
+
+    // Auto-create a dataset for standard and code category types
+    if (categoryType === 'standard' || categoryType === 'code') {
+      try {
+        // Look up the project to get default embedding model and parser settings
+        const project = await ModelFactory.project.findById(projectId)
+        if (!project) throw new Error('Project not found')
+
+        // Code categories force parser_id='code'; standard uses project default or 'naive'
+        const parserId = categoryType === 'code' ? 'code' : (project.default_chunk_method || 'naive')
+
+        // Create a dataset named <projectname>_<categoryname>
+        const dataset = await ModelFactory.dataset.create({
+          name: `${project.name}_${data.name}`,
+          description: `Auto-created dataset for project "${project.name}", category "${data.name}"`,
+          language: 'English',
+          embedding_model: project.default_embedding_model || null,
+          parser_id: parserId,
+          parser_config: JSON.stringify({}),
+          access_control: JSON.stringify({ public: !project.is_private }),
+          status: 'active',
+          created_by: user.id,
+          updated_by: user.id,
+        })
+
+        // Link the dataset to the project
+        await ModelFactory.projectDataset.create({
+          project_id: projectId,
+          dataset_id: dataset.id,
+          auto_created: true,
+        })
+
+        // Store the dataset reference on the category
+        await ModelFactory.documentCategory.update(category.id, { dataset_id: dataset.id })
+
+        // Return updated category with dataset_id
+        return { ...category, dataset_id: dataset.id }
+      } catch (dsError) {
+        // Non-blocking: category is still created even if dataset creation fails
+        log.warn('Failed to auto-create dataset for category', {
+          error: String(dsError), projectId, categoryName: data.name, categoryType,
+        })
+      }
+    }
+
+    return category
   }
 
   /**
@@ -74,11 +126,27 @@ export class ProjectCategoryService {
   }
 
   /**
-   * @description Delete a document category by ID, cascading to versions and files via DB constraints
+   * @description Delete a document category by ID. For standard/code categories with a linked
+   *   dataset, soft-deletes the dataset first. Cascades to versions and files via DB constraints.
    * @param {string} categoryId - UUID of the category
    * @returns {Promise<void>}
    */
   async deleteCategory(categoryId: string): Promise<void> {
+    // Look up the category to check for linked dataset before deletion
+    const category = await ModelFactory.documentCategory.findById(categoryId)
+
+    // Soft-delete linked dataset if this is a standard/code category with a dataset_id
+    if (category?.dataset_id) {
+      try {
+        await ModelFactory.dataset.update(category.dataset_id, { status: 'inactive' })
+      } catch (err) {
+        // Non-blocking: proceed with category deletion even if dataset cleanup fails
+        log.warn('Failed to soft-delete linked dataset for category', {
+          error: String(err), categoryId, datasetId: category.dataset_id,
+        })
+      }
+    }
+
     await ModelFactory.documentCategory.delete(categoryId)
   }
 
