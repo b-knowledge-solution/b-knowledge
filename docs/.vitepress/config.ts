@@ -16,93 +16,181 @@ export default withMermaid(
       nav: [
         { text: 'Home', link: '/' },
         { text: 'SRS', link: '/srs/' },
-        { text: 'Basic Design', link: '/basic-design/system-architecture' },
+        { text: 'Basic Design', link: '/basic-design/system-infra/system-architecture' },
         { text: 'Detail Design', link: '/detail-design/auth/overview' },
         { text: 'RAG Pipeline', link: '/detail-design/rag-pipeline/overview' },
       ],
 
       sidebar: {
+        '/srs/core-platform/': [
+          {
+            text: 'Core Platform',
+            items: [
+              { text: 'RAG Strategy & Architecture', link: '/srs/core-platform/fr-rag-strategy' },
+              { text: 'Authentication', link: '/srs/core-platform/fr-authentication' },
+              { text: 'User & Team Management', link: '/srs/core-platform/fr-user-team-management' },
+              { text: 'Dataset Management', link: '/srs/core-platform/fr-dataset-management' },
+              { text: 'Document Processing', link: '/srs/core-platform/fr-document-processing' },
+            ],
+          },
+        ],
+
+        '/srs/ai-features/': [
+          {
+            text: 'AI Features',
+            items: [
+              { text: 'AI Chat', link: '/srs/ai-features/fr-ai-chat' },
+              { text: 'AI Search', link: '/srs/ai-features/fr-ai-search' },
+              { text: 'Agents', link: '/srs/ai-features/fr-agents' },
+              { text: 'Memory', link: '/srs/ai-features/fr-memory' },
+            ],
+          },
+        ],
+
+        '/srs/management/': [
+          {
+            text: 'Management & Operations',
+            items: [
+              { text: 'Project Management', link: '/srs/management/fr-project-management' },
+              { text: 'Glossary', link: '/srs/management/fr-glossary' },
+              { text: 'LLM Provider', link: '/srs/management/fr-llm-provider' },
+              { text: 'Admin Operations', link: '/srs/management/fr-admin-operations' },
+              { text: 'Audit & Compliance', link: '/srs/management/fr-audit-compliance' },
+            ],
+          },
+        ],
+
+        '/srs/integrations/': [
+          {
+            text: 'Integrations & Extensions',
+            items: [
+              { text: 'Embed Widgets', link: '/srs/integrations/fr-embed-widgets' },
+              { text: 'Sync Connectors', link: '/srs/integrations/fr-sync-connectors' },
+              { text: 'Document Converter', link: '/srs/integrations/fr-document-converter' },
+            ],
+          },
+        ],
+
         '/srs/': [
           {
             text: 'Software Requirements Specification',
             items: [
               { text: 'Overview & Scope', link: '/srs/' },
-              { text: 'RAG Strategy & Architecture', link: '/srs/fr-rag-strategy' },
-              { text: 'Authentication', link: '/srs/fr-authentication' },
-              { text: 'User & Team Management', link: '/srs/fr-user-team-management' },
-              { text: 'Dataset Management', link: '/srs/fr-dataset-management' },
-              { text: 'Document Processing', link: '/srs/fr-document-processing' },
-              { text: 'AI Chat', link: '/srs/fr-ai-chat' },
-              { text: 'AI Search', link: '/srs/fr-ai-search' },
-              { text: 'Project Management', link: '/srs/fr-project-management' },
-              { text: 'Glossary', link: '/srs/fr-glossary' },
-              { text: 'LLM Provider', link: '/srs/fr-llm-provider' },
-              { text: 'Admin Operations', link: '/srs/fr-admin-operations' },
-              { text: 'Audit & Compliance', link: '/srs/fr-audit-compliance' },
-              { text: 'Embed Widgets', link: '/srs/fr-embed-widgets' },
-              { text: 'Sync Connectors', link: '/srs/fr-sync-connectors' },
-              { text: 'Document Converter', link: '/srs/fr-document-converter' },
-              { text: 'Agents', link: '/srs/fr-agents' },
-              { text: 'Memory', link: '/srs/fr-memory' },
               { text: 'Non-Functional Requirements', link: '/srs/nfr' },
+            ],
+          },
+          {
+            text: 'Core Platform',
+            collapsed: false,
+            items: [
+              { text: 'RAG Strategy & Architecture', link: '/srs/core-platform/fr-rag-strategy' },
+              { text: 'Authentication', link: '/srs/core-platform/fr-authentication' },
+              { text: 'User & Team Management', link: '/srs/core-platform/fr-user-team-management' },
+              { text: 'Dataset Management', link: '/srs/core-platform/fr-dataset-management' },
+              { text: 'Document Processing', link: '/srs/core-platform/fr-document-processing' },
+            ],
+          },
+          {
+            text: 'AI Features',
+            collapsed: false,
+            items: [
+              { text: 'AI Chat', link: '/srs/ai-features/fr-ai-chat' },
+              { text: 'AI Search', link: '/srs/ai-features/fr-ai-search' },
+              { text: 'Agents', link: '/srs/ai-features/fr-agents' },
+              { text: 'Memory', link: '/srs/ai-features/fr-memory' },
+            ],
+          },
+          {
+            text: 'Management & Operations',
+            collapsed: false,
+            items: [
+              { text: 'Project Management', link: '/srs/management/fr-project-management' },
+              { text: 'Glossary', link: '/srs/management/fr-glossary' },
+              { text: 'LLM Provider', link: '/srs/management/fr-llm-provider' },
+              { text: 'Admin Operations', link: '/srs/management/fr-admin-operations' },
+              { text: 'Audit & Compliance', link: '/srs/management/fr-audit-compliance' },
+            ],
+          },
+          {
+            text: 'Integrations & Extensions',
+            collapsed: false,
+            items: [
+              { text: 'Embed Widgets', link: '/srs/integrations/fr-embed-widgets' },
+              { text: 'Sync Connectors', link: '/srs/integrations/fr-sync-connectors' },
+              { text: 'Document Converter', link: '/srs/integrations/fr-document-converter' },
             ],
           },
         ],
 
-        '/basic-design/': [
+        '/basic-design/system-infra/': [
           {
             text: 'System & Infrastructure',
             items: [
-              { text: 'System Architecture', link: '/basic-design/system-architecture' },
-              { text: 'Infrastructure & Deployment', link: '/basic-design/infrastructure-deployment' },
-              { text: 'Security Architecture', link: '/basic-design/security-architecture' },
+              { text: 'System Architecture', link: '/basic-design/system-infra/system-architecture' },
+              { text: 'Infrastructure & Deployment', link: '/basic-design/system-infra/infrastructure-deployment' },
+              { text: 'Security Architecture', link: '/basic-design/system-infra/security-architecture' },
             ],
           },
+        ],
+
+        '/basic-design/database/': [
           {
             text: 'Database Design',
             items: [
-              { text: 'Core Tables', link: '/basic-design/database-design-core' },
-              { text: 'RAG Tables', link: '/basic-design/database-design-rag' },
-              { text: 'Chat & Search Tables', link: '/basic-design/database-design-chat-search' },
-              { text: 'Project Tables', link: '/basic-design/database-design-projects' },
-              { text: 'Support Tables', link: '/basic-design/database-design-support' },
-              { text: 'Agent & Memory Tables', link: '/basic-design/database-design-agents-memory' },
+              { text: 'Core Tables', link: '/basic-design/database/database-design-core' },
+              { text: 'RAG Tables', link: '/basic-design/database/database-design-rag' },
+              { text: 'Chat & Search Tables', link: '/basic-design/database/database-design-chat-search' },
+              { text: 'Project Tables', link: '/basic-design/database/database-design-projects' },
+              { text: 'Support Tables', link: '/basic-design/database/database-design-support' },
+              { text: 'Agent & Memory Tables', link: '/basic-design/database/database-design-agents-memory' },
             ],
           },
+        ],
+
+        '/basic-design/component/': [
           {
             text: 'Component Architecture',
             items: [
-              { text: 'Backend Architecture', link: '/basic-design/backend-architecture' },
-              { text: 'Frontend Architecture', link: '/basic-design/frontend-architecture' },
-              { text: 'API Design: Overview', link: '/basic-design/api-design-overview' },
-              { text: 'API Design: Endpoints', link: '/basic-design/api-design-endpoints' },
+              { text: 'Backend Architecture', link: '/basic-design/component/backend-architecture' },
+              { text: 'Frontend Architecture', link: '/basic-design/component/frontend-architecture' },
+              { text: 'API Design: Overview', link: '/basic-design/component/api-design-overview' },
+              { text: 'API Design: Endpoints', link: '/basic-design/component/api-design-endpoints' },
             ],
           },
+        ],
+
+        '/basic-design/rag-pipeline/': [
           {
             text: 'RAG Pipeline',
             items: [
-              { text: 'Pipeline Overview', link: '/basic-design/rag-pipeline-overview' },
-              { text: 'Step 1: Document Ingestion', link: '/basic-design/rag-step-document-ingestion' },
-              { text: 'Step 2: Parser Selection', link: '/basic-design/rag-step-parser-selection' },
-              { text: 'Step 3: Content Extraction', link: '/basic-design/rag-step-content-extraction' },
-              { text: 'Step 4: LLM Enhancement', link: '/basic-design/rag-step-llm-enhancement' },
-              { text: 'Step 5: Chunking', link: '/basic-design/rag-step-chunking' },
-              { text: 'Step 6: Embedding & Indexing', link: '/basic-design/rag-step-embedding-indexing' },
-              { text: 'Advanced: GraphRAG', link: '/basic-design/rag-advanced-graphrag' },
-              { text: 'Advanced: Search Execution', link: '/basic-design/rag-advanced-search' },
+              { text: 'Pipeline Overview', link: '/basic-design/rag-pipeline/rag-pipeline-overview' },
+              { text: 'Step 1: Document Ingestion', link: '/basic-design/rag-pipeline/rag-step-document-ingestion' },
+              { text: 'Step 2: Parser Selection', link: '/basic-design/rag-pipeline/rag-step-parser-selection' },
+              { text: 'Step 3: Content Extraction', link: '/basic-design/rag-pipeline/rag-step-content-extraction' },
+              { text: 'Step 4: LLM Enhancement', link: '/basic-design/rag-pipeline/rag-step-llm-enhancement' },
+              { text: 'Step 5: Chunking', link: '/basic-design/rag-pipeline/rag-step-chunking' },
+              { text: 'Step 6: Embedding & Indexing', link: '/basic-design/rag-pipeline/rag-step-embedding-indexing' },
+              { text: 'Advanced: GraphRAG', link: '/basic-design/rag-pipeline/rag-advanced-graphrag' },
+              { text: 'Advanced: Search Execution', link: '/basic-design/rag-pipeline/rag-advanced-search' },
             ],
           },
+        ],
+
+        '/basic-design/agent-memory/': [
           {
             text: 'Agent & Memory',
             items: [
-              { text: 'Agent Architecture', link: '/basic-design/agent-architecture' },
-              { text: 'Memory Architecture', link: '/basic-design/memory-architecture' },
+              { text: 'Agent Architecture', link: '/basic-design/agent-memory/agent-architecture' },
+              { text: 'Memory Architecture', link: '/basic-design/agent-memory/memory-architecture' },
             ],
           },
+        ],
+
+        '/basic-design/converter/': [
           {
             text: 'Converter',
             items: [
-              { text: 'Converter Pipeline', link: '/basic-design/converter-pipeline' },
+              { text: 'Converter Pipeline', link: '/basic-design/converter/converter-pipeline' },
             ],
           },
         ],
