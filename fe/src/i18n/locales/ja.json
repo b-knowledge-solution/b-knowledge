@@ -506,7 +506,15 @@
     },
     "user": "User",
     "email": "Email",
-    "emailPlaceholder": "user@example.com"
+    "emailPlaceholder": "user@example.com",
+    "viewIpAndSessions": "IP & セッションを表示",
+    "ipAndSessions": "IP & セッション",
+    "ipHistoryTab": "IPアクセス履歴",
+    "activeSessionsTab": "アクティブセッション",
+    "sessionId": "セッション",
+    "noActiveSessions": "アクティブなセッションはありません",
+    "lastActivity": "最終アクティビティ",
+    "moreActions": "その他のアクション"
   },
   "systemTools": {
     "title": "システム監視ツール",
@@ -529,45 +537,81 @@
     "controls": {
       "autoRefresh": "自動更新",
       "refreshNow": "今すぐ更新",
-      "refreshInterval": "Refresh Interval"
+      "refreshInterval": "更新間隔"
     },
     "sections": {
-      "services": "サービスの健全性",
+      "services": "インフラサービス",
+      "workers": "ワーカーとプロセッサ",
       "system": "システムリソース",
-      "backendSpecs": "Backend Specs"
+      "backendSpecs": "バックエンド仕様"
     },
     "metrics": {
       "uptime": "稼働時間",
-      "memory": "メモリ",
+      "memory": "メモリ (RSS)",
       "cpuLoad": "CPU負荷",
       "serverInfo": "サーバー情報",
-      "diskStorage": "Disk Storage",
-      "unknown": "Unknown",
-      "diskFreeOf": "Disk Free Of",
-      "checkFailed": "Check Failed",
-      "heapUsage": "Heap Usage",
-      "loadAvgLabel": "Load Avg Label"
+      "diskStorage": "ディスクストレージ",
+      "unknown": "不明",
+      "diskFreeOf": "{{total}} の空き",
+      "checkFailed": "チェック失敗",
+      "heapUsage": "ヒープ: {{used}} / {{total}}",
+      "loadAvgLabel": "1分間の負荷平均",
+      "used": "使用中",
+      "free": "空き",
+      "memoryPercent": "{{percent}}% 使用中"
     },
     "status": {
       "healthy": "正常",
       "disabled": "無効",
       "error": "エラー",
       "connecting": "接続中",
-      "notConfigured": "未設定"
+      "notConfigured": "未設定",
+      "online": "オンライン",
+      "offline": "オフライン",
+      "degraded": "低下"
     },
     "error": "データの取得に失敗しました: {{error}}",
     "services": {
-      "database": "Database",
-      "redis": "Redis",
-      "minio": "Minio",
-      "langfuse": "Langfuse"
+      "database": "PostgreSQL",
+      "redis": "Redis / Valkey",
+      "s3": "S3ストレージ",
+      "opensearch": "OpenSearch",
+      "langfuse": "Langfuse",
+      "databaseDesc": "プライマリリレーショナルDB",
+      "redisDesc": "キャッシュ、セッション、キュー",
+      "s3Desc": "S3互換ファイルストレージ",
+      "opensearchDesc": "ベクトル＆テキスト検索エンジン",
+      "langfuseDesc": "LLM監視プラットフォーム",
+      "s3Objects": "オブジェクト",
+      "s3Buckets": "バケット"
+    },
+    "workers": {
+      "taskExecutor": "RAGワーカー",
+      "converter": "コンバーターワーカー",
+      "taskExecutorDesc": "文書解析、埋め込み、インデックス作成",
+      "converterDesc": "Office→PDF変換",
+      "noWorkers": "登録済みワーカーなし",
+      "lastSeen": "最終確認",
+      "bootedAt": "起動",
+      "pending": "保留中",
+      "done": "完了",
+      "failed": "失敗",
+      "lag": "遅延",
+      "idle": "アイドル",
+      "converting": "変換中",
+      "sleeping": "スリープ"
     },
     "specs": {
-      "runtimeEnv": "Runtime Env",
-      "cpu": "Cpu",
-      "cores": "Cores",
-      "memoryCapacity": "Memory Capacity",
-      "totalSystemMemory": "Total System Memory"
+      "runtimeEnv": "ランタイム",
+      "cpu": "CPU",
+      "cores": "{{count}} コア",
+      "memoryCapacity": "システムメモリ",
+      "totalSystemMemory": "システム総メモリ"
+    },
+    "overview": {
+      "allOperational": "全システム正常稼働中",
+      "someIssues": "{{count}} サービスに注意が必要",
+      "servicesUp": "{{up}} / {{total}} サービス稼働中"
     }
   },
   "errorPage": {

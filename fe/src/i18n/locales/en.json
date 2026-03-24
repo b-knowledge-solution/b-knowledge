@@ -503,7 +503,15 @@
       "manage_users": "Manage Users",
       "view_system_monitor": "System Monitor"
     },
-    "emailPlaceholder": "user@example.com"
+    "emailPlaceholder": "user@example.com",
+    "viewIpAndSessions": "View IP & Sessions",
+    "ipAndSessions": "IP & Sessions",
+    "ipHistoryTab": "IP History",
+    "activeSessionsTab": "Active Sessions",
+    "sessionId": "Session",
+    "noActiveSessions": "No active sessions",
+    "lastActivity": "Last Activity",
+    "moreActions": "More actions"
   },
   "systemTools": {
     "title": "System Monitoring Tools",
@@ -529,42 +537,78 @@
       "refreshInterval": "Refresh Interval"
     },
     "sections": {
-      "services": "Service Health",
+      "services": "Infrastructure Services",
+      "workers": "Workers & Processors",
       "system": "System Resources",
       "backendSpecs": "Backend Specs"
     },
     "metrics": {
       "uptime": "Uptime",
-      "memory": "Memory",
+      "memory": "Memory (RSS)",
       "cpuLoad": "CPU Load",
       "serverInfo": "Server Info",
       "diskStorage": "Disk Storage",
       "unknown": "Unknown",
-      "diskFreeOf": "Disk Free Of",
+      "diskFreeOf": "Free of {{total}}",
       "checkFailed": "Check Failed",
-      "heapUsage": "Heap Usage",
-      "loadAvgLabel": "Load Avg Label"
+      "heapUsage": "Heap: {{used}} / {{total}}",
+      "loadAvgLabel": "1 min load average",
+      "used": "Used",
+      "free": "Free",
+      "memoryPercent": "{{percent}}% used"
     },
     "status": {
       "healthy": "Healthy",
       "disabled": "Disabled",
       "error": "Error",
       "connecting": "Connecting",
-      "notConfigured": "Not Configured"
+      "notConfigured": "Not Configured",
+      "online": "Online",
+      "offline": "Offline",
+      "degraded": "Degraded"
     },
     "error": "Failed to fetch health data: {{error}}",
     "services": {
-      "database": "Database",
-      "redis": "Redis",
-      "minio": "Minio",
-      "langfuse": "Langfuse"
+      "database": "PostgreSQL",
+      "redis": "Redis / Valkey",
+      "s3": "S3 Storage",
+      "opensearch": "OpenSearch",
+      "langfuse": "Langfuse",
+      "databaseDesc": "Primary relational database",
+      "redisDesc": "Cache, sessions & message queue",
+      "s3Desc": "S3-compatible file storage",
+      "opensearchDesc": "Vector & text search engine",
+      "langfuseDesc": "LLM observability platform",
+      "s3Objects": "objects",
+      "s3Buckets": "bucket(s)"
+    },
+    "workers": {
+      "taskExecutor": "RAG Worker",
+      "converter": "Converter Worker",
+      "taskExecutorDesc": "Document parsing, embedding & indexing",
+      "converterDesc": "Office-to-PDF conversion",
+      "noWorkers": "No workers registered",
+      "lastSeen": "Last seen",
+      "bootedAt": "Booted",
+      "pending": "Pending",
+      "done": "Done",
+      "failed": "Failed",
+      "lag": "Lag",
+      "idle": "Idle",
+      "converting": "Converting",
+      "sleeping": "Sleeping"
     },
     "specs": {
-      "runtimeEnv": "Runtime Env",
-      "cpu": "Cpu",
-      "cores": "Cores",
-      "memoryCapacity": "Memory Capacity",
-      "totalSystemMemory": "Total System Memory"
+      "runtimeEnv": "Runtime",
+      "cpu": "CPU",
+      "cores": "{{count}} cores",
+      "memoryCapacity": "System Memory",
+      "totalSystemMemory": "Total system memory"
+    },
+    "overview": {
+      "allOperational": "All systems operational",
+      "someIssues": "{{count}} service(s) need attention",
+      "servicesUp": "{{up}} / {{total}} services up"
     }
   },
   "errorPage": {

@@ -506,7 +506,15 @@
       "view_system_monitor": "Giám sát hệ thống"
     },
     "user": "User",
-    "emailPlaceholder": "user@example.com"
+    "emailPlaceholder": "user@example.com",
+    "viewIpAndSessions": "Xem IP & Phiên",
+    "ipAndSessions": "IP & Phiên",
+    "ipHistoryTab": "Lịch sử IP",
+    "activeSessionsTab": "Phiên đang hoạt động",
+    "sessionId": "Phiên",
+    "noActiveSessions": "Không có phiên nào đang hoạt động",
+    "lastActivity": "Hoạt động cuối",
+    "moreActions": "Thêm hành động"
   },
   "systemTools": {
     "title": "Công cụ Giám sát Hệ thống",
@@ -529,45 +537,81 @@
     "controls": {
       "autoRefresh": "Tự động làm mới",
       "refreshNow": "Làm mới ngay",
-      "refreshInterval": "Refresh Interval"
+      "refreshInterval": "Khoảng thời gian"
     },
     "sections": {
-      "services": "Tình trạng Dịch vụ",
+      "services": "Dịch vụ Hạ tầng",
+      "workers": "Workers & Bộ xử lý",
       "system": "Tài nguyên Hệ thống",
-      "backendSpecs": "Backend Specs"
+      "backendSpecs": "Thông số Backend"
     },
     "metrics": {
       "uptime": "Thời gian hoạt động",
-      "memory": "Bộ nhớ",
+      "memory": "Bộ nhớ (RSS)",
       "cpuLoad": "Tải CPU",
       "serverInfo": "Thông tin Máy chủ",
-      "diskStorage": "Disk Storage",
-      "unknown": "Unknown",
-      "diskFreeOf": "Disk Free Of",
-      "checkFailed": "Check Failed",
-      "heapUsage": "Heap Usage",
-      "loadAvgLabel": "Load Avg Label"
+      "diskStorage": "Lưu trữ Đĩa",
+      "unknown": "Không xác định",
+      "diskFreeOf": "Trống của {{total}}",
+      "checkFailed": "Kiểm tra thất bại",
+      "heapUsage": "Heap: {{used}} / {{total}}",
+      "loadAvgLabel": "Tải trung bình 1 phút",
+      "used": "Đã dùng",
+      "free": "Trống",
+      "memoryPercent": "Đã dùng {{percent}}%"
     },
     "status": {
       "healthy": "Ổn định",
       "disabled": "Vô hiệu hóa",
       "error": "Lỗi",
       "connecting": "Đang kết nối",
-      "notConfigured": "Chưa cấu hình"
+      "notConfigured": "Chưa cấu hình",
+      "online": "Trực tuyến",
+      "offline": "Ngoại tuyến",
+      "degraded": "Suy giảm"
     },
     "error": "Không thể tải dữ liệu: {{error}}",
     "services": {
-      "database": "Database",
-      "redis": "Redis",
-      "minio": "Minio",
-      "langfuse": "Langfuse"
+      "database": "PostgreSQL",
+      "redis": "Redis / Valkey",
+      "s3": "Lưu trữ S3",
+      "opensearch": "OpenSearch",
+      "langfuse": "Langfuse",
+      "databaseDesc": "Cơ sở dữ liệu quan hệ chính",
+      "redisDesc": "Cache, phiên & hàng đợi tin nhắn",
+      "s3Desc": "Lưu trữ file tương thích S3",
+      "opensearchDesc": "Công cụ tìm kiếm vector & văn bản",
+      "langfuseDesc": "Nền tảng giám sát LLM",
+      "s3Objects": "đối tượng",
+      "s3Buckets": "bucket"
+    },
+    "workers": {
+      "taskExecutor": "Worker RAG",
+      "converter": "Worker Chuyển đổi",
+      "taskExecutorDesc": "Phân tích, nhúng & lập chỉ mục tài liệu",
+      "converterDesc": "Chuyển đổi Office sang PDF",
+      "noWorkers": "Không có worker nào đăng ký",
+      "lastSeen": "Lần cuối",
+      "bootedAt": "Khởi động",
+      "pending": "Đang chờ",
+      "done": "Hoàn thành",
+      "failed": "Thất bại",
+      "lag": "Độ trễ",
+      "idle": "Rảnh",
+      "converting": "Đang chuyển đổi",
+      "sleeping": "Ngủ"
     },
     "specs": {
-      "runtimeEnv": "Runtime Env",
-      "cpu": "Cpu",
-      "cores": "Cores",
-      "memoryCapacity": "Memory Capacity",
-      "totalSystemMemory": "Total System Memory"
+      "runtimeEnv": "Môi trường",
+      "cpu": "CPU",
+      "cores": "{{count}} nhân",
+      "memoryCapacity": "Bộ nhớ Hệ thống",
+      "totalSystemMemory": "Tổng bộ nhớ hệ thống"
+    },
+    "overview": {
+      "allOperational": "Tất cả hệ thống hoạt động bình thường",
+      "someIssues": "{{count}} dịch vụ cần chú ý",
+      "servicesUp": "{{up}} / {{total}} dịch vụ hoạt động"
     }
   },
   "errorPage": {

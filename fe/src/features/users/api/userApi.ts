@@ -5,7 +5,7 @@
  */
 import { api } from '@/lib/api'
 import type { User } from '@/features/auth'
-import type { IpHistoryMap, CreateUserDto, UpdateUserDto } from '../types/user.types'
+import type { IpHistoryMap, CreateUserDto, UpdateUserDto, UserIpHistory, UserSession } from '../types/user.types'
 
 const BASE_URL = '/api/users'
 
@@ -85,5 +85,23 @@ export const userApi = {
      */
     getIpHistory(): Promise<IpHistoryMap> {
         return api.get<IpHistoryMap>(`${BASE_URL}/ip-history`)
+    },
+
+    /**
+     * Fetch IP access history for a specific user.
+     * @param userId - User ID.
+     * @returns Array of IP history records for the user.
+     */
+    getUserIpHistory(userId: string): Promise<UserIpHistory[]> {
+        return api.get<UserIpHistory[]>(`${BASE_URL}/${userId}/ip-history`)
+    },
+
+    /**
+     * Fetch active sessions for a specific user.
+     * @param userId - User ID.
+     * @returns Array of active session records.
+     */
+    getUserSessions(userId: string): Promise<UserSession[]> {
+        return api.get<UserSession[]>(`${BASE_URL}/${userId}/sessions`)
     },
 }

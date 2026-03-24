@@ -82,6 +82,8 @@ export const queryKeys = {
     all: ['users'] as const,
     list: (roles?: string[]) => [...queryKeys.users.all, 'list', { roles }] as const,
     ipHistory: () => [...queryKeys.users.all, 'ip-history'] as const,
+    userIpHistory: (userId: string) => [...queryKeys.users.all, userId, 'ip-history'] as const,
+    sessions: (userId: string) => [...queryKeys.users.all, userId, 'sessions'] as const,
   },
 
   // --------------------------------------------------------------------------

@@ -32,6 +32,7 @@ Progress: [██████████] 100%
 ### Roadmap Evolution
 
 - Phase 1 added: Migrate latest RAGFlow upstream to b-knowledge (Option A selective copy)
+- Phase 2 added: Investigate mem0 for memory feature
 
 ### Decisions
 

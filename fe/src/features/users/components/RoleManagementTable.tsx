@@ -1,14 +1,15 @@
 /**
  * @fileoverview Role management table for admin users to view and assign roles.
  * Displays org members with name, email, current role badge, and a role select dropdown.
- * Includes confirmation dialogs for role changes and loading/empty states.
+ * Includes confirmation dialogs for role changes, action dropdown with view IP & sessions,
+ * and loading/empty states.
  *
  * @module features/users/components/RoleManagementTable
  */
 
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Loader2, Users, KeyRound, Cloud } from 'lucide-react'
+import { Loader2, Users, KeyRound, Cloud, MoreHorizontal, Globe } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -24,10 +25,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
 import { RoleBadge } from '@/components/ui/role-badge'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { useAuth } from '@/features/auth'
+import { UserSessionDialog } from './UserSessionDialog'
 import type { User } from '@/features/auth'
 
 // ============================================================================
@@ -59,6 +68,7 @@ const ROLE_OPTIONS = ['admin', 'leader', 'user'] as const
  * @description Table displaying org members with role assignment dropdowns.
  * Each row shows user name, email, current role as a colored badge,
  * and a Select to change their role with confirmation dialogs.
+ * Actions column includes a dropdown menu with "View IP & Sessions".
  *
  * @param {RoleManagementTableProps} props - Members data, loading state, and role change callback
  * @returns {JSX.Element} Rendered role management table with loading/empty/data states
@@ -78,6 +88,9 @@ export function RoleManagementTable({
     userId: string
     newRole: string
   } | null>(null)
+
+  // Track which user's IP/Session dialog is open
+  const [sessionDialogUser, setSessionDialogUser] = useState<User | null>(null)
 
   /**
    * @description Handle role select change with appropriate confirmation dialog.
@@ -175,94 +188,123 @@ export function RoleManagementTable({
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>{t('userManagement.user')}</TableHead>
-          <TableHead>{t('userManagement.email')}</TableHead>
-          <TableHead>{t('userManagement.source')}</TableHead>
-          <TableHead>{t('userManagement.role')}</TableHead>
-          <TableHead className="text-right">{t('userManagement.actions')}</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {members.map((member) => {
-          // Check if this specific user is being updated
-          const isUpdating =
-            updatingUserId === member.id ||
-            (pendingChange?.userId === member.id)
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t('userManagement.user')}</TableHead>
+            <TableHead>{t('userManagement.email')}</TableHead>
+            <TableHead>{t('userManagement.source')}</TableHead>
+            <TableHead>{t('userManagement.role')}</TableHead>
+            <TableHead className="text-right">{t('userManagement.actions')}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {members.map((member) => {
+            // Check if this specific user is being updated
+            const isUpdating =
+              updatingUserId === member.id ||
+              (pendingChange?.userId === member.id)
 
-          return (
-            <TableRow key={member.id}>
-              {/* Name column with avatar */}
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium text-sm">
-                      {(member.displayName || member.email || '?').charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="font-medium text-slate-900 dark:text-white">
-                    {member.displayName || member.email}
+            return (
+              <TableRow key={member.id}>
+                {/* Name column with avatar */}
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium text-sm">
+                        {(member.displayName || member.email || '?').charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="font-medium text-slate-900 dark:text-white">
+                      {member.displayName || member.email}
+                    </span>
+                  </div>
+                </TableCell>
+
+                {/* Email column */}
+                <TableCell>
+                  <span className="text-slate-600 dark:text-slate-300">
+                    {member.email}
                   </span>
-                </div>
-              </TableCell>
+                </TableCell>
 
-              {/* Email column */}
-              <TableCell>
-                <span className="text-slate-600 dark:text-slate-300">
-                  {member.email}
-                </span>
-              </TableCell>
-
-              {/* Source badge */}
-              <TableCell>
-                {member.source === 'local' ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                    <KeyRound className="h-3 w-3" />
-                    {t('userManagement.sourceLocal')}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                    <Cloud className="h-3 w-3" />
-                    {t('userManagement.sourceAzureAD')}
-                  </span>
-                )}
-              </TableCell>
-
-              {/* Current role badge */}
-              <TableCell>
-                <RoleBadge role={member.role || 'user'} />
-              </TableCell>
-
-              {/* Role change select */}
-              <TableCell className="text-right">
-                <div className="flex items-center justify-end gap-2">
-                  {isUpdating && (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                {/* Source badge */}
+                <TableCell>
+                  {member.source === 'local' ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                      <KeyRound className="h-3 w-3" />
+                      {t('userManagement.sourceLocal')}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                      <Cloud className="h-3 w-3" />
+                      {t('userManagement.sourceAzureAD')}
+                    </span>
                   )}
-                  <Select
-                    value={member.role || 'user'}
-                    onValueChange={(value: string) => handleRoleSelect(member, value)}
-                    disabled={isUpdating}
-                  >
-                    <SelectTrigger className="w-28 h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ROLE_OPTIONS.map((role) => (
-                        <SelectItem key={role} value={role}>
-                          {t(`accessControl.roles.${role}`)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </TableCell>
-            </TableRow>
-          )
-        })}
-      </TableBody>
-    </Table>
+                </TableCell>
+
+                {/* Current role badge */}
+                <TableCell>
+                  <RoleBadge role={member.role || 'user'} />
+                </TableCell>
+
+                {/* Actions: role select + dropdown menu */}
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    {isUpdating && (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                    <Select
+                      value={member.role || 'user'}
+                      onValueChange={(value: string) => handleRoleSelect(member, value)}
+                      disabled={isUpdating}
+                    >
+                      <SelectTrigger className="w-28 h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ROLE_OPTIONS.map((role) => (
+                          <SelectItem key={role} value={role}>
+                            {t(`accessControl.roles.${role}`)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {/* Actions dropdown menu */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          aria-label={t('userManagement.moreActions', 'More actions')}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setSessionDialogUser(member)}>
+                          <Globe className="h-4 w-4 mr-2" />
+                          {t('userManagement.viewIpAndSessions', 'View IP & Sessions')}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+
+      {/* IP & Session Dialog */}
+      <UserSessionDialog
+        open={!!sessionDialogUser}
+        onClose={() => setSessionDialogUser(null)}
+        user={sessionDialogUser}
+      />
+    </>
   )
 }

@@ -46,15 +46,76 @@ export interface SystemToolsResponse {
 }
 
 /**
- * System health response.
+ * @description Worker heartbeat entry from Redis sorted-set
+ */
+export interface WorkerHeartbeat {
+    /** Worker name / identifier */
+    name: string;
+    /** 'online' if heartbeat within timeout, 'offline' otherwise */
+    status: 'online' | 'offline' | 'unknown';
+    /** ISO timestamp of last heartbeat */
+    lastSeen: string;
+    /** Parsed heartbeat payload (varies by worker type) */
+    details: {
+        name?: string;
+        now?: string;
+        boot_at?: string;
+        pid?: number;
+        ip_address?: string;
+        /** Task executor specific */
+        pending?: number;
+        lag?: number;
+        done?: number;
+        failed?: number;
+        current?: Record<string, unknown>[];
+        /** Converter specific */
+        status?: string;
+        current_job?: string | null;
+    } | null;
+}
+
+/**
+ * @description OpenSearch service status with cluster details
+ */
+export interface OpenSearchServiceStatus {
+    status: 'connected' | 'disconnected' | 'not_configured';
+    enabled: boolean;
+    host: string;
+    /** Cluster health color: green, yellow, red */
+    clusterStatus?: string;
+    /** Number of nodes in cluster */
+    nodeCount?: number;
+}
+
+/**
+ * @description System health response from GET /api/system-tools/health
  */
 export interface SystemHealth {
     timestamp: string;
     services: {
-        database: { status: 'connected' | 'disconnected', enabled: boolean, host: string };
-        redis: { status: 'connected' | 'connecting' | 'disconnected' | 'not_initialized' | 'not_configured', enabled: boolean, host: string };
-        minio: { status: 'connected' | 'disconnected', enabled: boolean, host: string };
-        langfuse: { status: 'connected' | 'disconnected', enabled: boolean, host: string };
+        database: { status: 'connected' | 'disconnected'; enabled: boolean; host: string };
+        redis: { status: 'connected' | 'connecting' | 'disconnected' | 'not_initialized' | 'not_configured'; enabled: boolean; host: string };
+        s3: {
+            status: 'connected' | 'disconnected';
+            enabled: boolean;
+            host: string;
+            /** Detected S3 provider name (MinIO, RustFS, or generic S3) */
+            provider?: string;
+            /** Configured bucket name */
+            bucket?: string;
+            /** Number of buckets found */
+            bucketCount?: number;
+            /** Total storage size in bytes across all buckets */
+            totalSize?: number;
+            /** Total number of objects across all buckets */
+            objectCount?: number;
+        };
+        opensearch: OpenSearchServiceStatus;
+        langfuse: { status: 'enabled' | 'disabled' | 'connected' | 'disconnected'; enabled: boolean; host: string };
+    };
+    workers: {
+        taskExecutors: WorkerHeartbeat[];
+        converters: WorkerHeartbeat[];
     };
     system: {
         uptime: number;

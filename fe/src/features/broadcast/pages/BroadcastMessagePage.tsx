@@ -124,7 +124,7 @@ const BroadcastMessagePage: React.FC = () => {
                             message: '',
                             starts_at: new Date().toISOString().slice(0, 16),
                             ends_at: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
-                            color: '#4043e7ff',
+                            color: '#4043e7',
                             font_color: '#FFFFFF',
                             is_active: true,
                             is_dismissible: true,
@@ -314,11 +314,11 @@ const BroadcastMessagePage: React.FC = () => {
                             <div className="flex items-center gap-2">
                                 <input
                                     type="color"
-                                    value={(editingMessage?.color || '#4043e7ff').slice(0, 7)}
+                                    value={editingMessage?.color || '#4043e7'}
                                     onChange={(e) => setEditingMessage({ ...editingMessage, color: e.target.value })}
                                     className="h-9 w-12 rounded border border-gray-300 dark:border-slate-600 cursor-pointer"
                                 />
-                                <span className="text-sm text-slate-500 font-mono">{editingMessage?.color || '#4043e7ff'}</span>
+                                <span className="text-sm text-slate-500 font-mono">{editingMessage?.color || '#4043e7'}</span>
                             </div>
                         </div>
                         <div>

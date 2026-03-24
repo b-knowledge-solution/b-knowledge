@@ -75,6 +75,13 @@ router.get('/ip-history', requirePermission('manage_users'), controller.getAllIp
 router.get('/:id/ip-history', requirePermission('manage_users'), controller.getUserIpHistory.bind(controller));
 
 /**
+ * GET /api/users/:id/sessions
+ * Get active sessions for a specific user from the session store.
+ * @requires manage_users permission
+ */
+router.get('/:id/sessions', requirePermission('manage_users'), controller.getUserSessions.bind(controller));
+
+/**
  * PUT /api/users/:id/role
  * Update a user's role within the current tenant.
  * @requires authentication + tenant context + CASL manage User ability + recent auth

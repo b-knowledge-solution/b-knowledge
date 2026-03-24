@@ -31,7 +31,9 @@ Environment variables:
 - POLL_INTERVAL: Seconds between queue checks (default: 30)
 - CONVERTER_OUTPUT_DIR: Directory for converted PDFs (default: /app/.data/converted)
 """
+import json
 import os
+import socket
 import sys
 import time
 import signal
@@ -87,8 +89,17 @@ FILE_KEY_PREFIX = 'converter:file:'
 MANUAL_TRIGGER_KEY = 'converter:manual_trigger'
 SCHEDULE_CONFIG_KEY = 'converter:schedule:config'
 
+# Heartbeat Redis keys (read by backend system-tools health check)
+CONVERTER_WORKERS_SET = 'CONVERTER_WORKERS'
+CONVERTER_HEARTBEAT_INTERVAL = 30  # seconds between heartbeat reports
+CONVERTER_HEARTBEAT_TIMEOUT = 120  # seconds before worker considered dead
+
 # Graceful shutdown flag
 _shutdown = False
+
+# Boot timestamp for heartbeat reporting
+_BOOT_AT = datetime.now().astimezone().isoformat(timespec='milliseconds')
+_WORKER_NAME = f'converter_{socket.gethostname()}_{os.getpid()}'
 
 
 def _signal_handler(signum, frame):
@@ -534,6 +545,65 @@ def process_version_job(r: redis.Redis, job_data: dict) -> None:
 
 
 # ============================================================================
+# Heartbeat
+# ============================================================================
+
+def report_heartbeat(r: redis.Redis, status: str = 'idle', current_job: str | None = None):
+    """Report converter worker heartbeat to Redis for backend health monitoring.
+
+    Writes a sorted-set entry keyed by worker name with a JSON payload and
+    registers the worker in the CONVERTER_WORKERS set.
+
+    Args:
+        r: Redis client.
+        status: Current worker status ('idle', 'converting', 'sleeping').
+        current_job: Active version job ID, if any.
+    """
+    now = datetime.now()
+    now_ts = now.timestamp()
+
+    heartbeat = json.dumps({
+        'name': _WORKER_NAME,
+        'now': now.astimezone().isoformat(timespec='milliseconds'),
+        'boot_at': _BOOT_AT,
+        'status': status,
+        'current_job': current_job,
+    })
+
+    try:
+        # Register this worker in the global converter workers set
+        r.sadd(CONVERTER_WORKERS_SET, _WORKER_NAME)
+        # Store heartbeat with timestamp score for recency checks
+        r.zadd(_WORKER_NAME, {heartbeat: now_ts})
+        # Expire old heartbeat entries (older than 30 minutes)
+        r.zremrangebyscore(_WORKER_NAME, 0, now_ts - 60 * 30)
+    except Exception as e:
+        logger.warning(f'Failed to report heartbeat: {e}')
+
+
+def cleanup_stale_converters(r: redis.Redis):
+    """Remove converter workers that have not reported heartbeat within timeout.
+
+    Args:
+        r: Redis client.
+    """
+    now_ts = datetime.now().timestamp()
+    try:
+        workers = r.smembers(CONVERTER_WORKERS_SET) or set()
+        for worker_name in workers:
+            if worker_name == _WORKER_NAME:
+                continue
+            # Check last heartbeat score
+            last = r.zrevrange(worker_name, 0, 0, withscores=True)
+            if not last or now_ts - last[0][1] > CONVERTER_HEARTBEAT_TIMEOUT:
+                logger.info(f'Converter worker {worker_name} expired, removing')
+                r.srem(CONVERTER_WORKERS_SET, worker_name)
+                r.delete(worker_name)
+    except Exception as e:
+        logger.warning(f'Failed to clean stale converter workers: {e}')
+
+
+# ============================================================================
 # Main Loop
 # ============================================================================
 
@@ -565,9 +635,23 @@ def main():
     if _shutdown or r is None:
         return
 
+    # Track heartbeat and stale-cleanup intervals
+    last_heartbeat_time = 0.0
+    heartbeat_cycle = 0
+
     # Main polling loop
     while not _shutdown:
         try:
+            # Report heartbeat periodically (every CONVERTER_HEARTBEAT_INTERVAL seconds)
+            now_mono = time.monotonic()
+            if now_mono - last_heartbeat_time >= CONVERTER_HEARTBEAT_INTERVAL:
+                report_heartbeat(r, status='idle')
+                last_heartbeat_time = now_mono
+                heartbeat_cycle += 1
+                # Clean stale converters every 10 cycles (~5 min)
+                if heartbeat_cycle % 10 == 0:
+                    cleanup_stale_converters(r)
+
             within_schedule = is_within_schedule(r)
             manual_trigger = is_manual_trigger_active(r)
             should_process = within_schedule or manual_trigger
@@ -591,6 +675,10 @@ def main():
                 time.sleep(POLL_INTERVAL)
                 continue
 
+            # Report heartbeat with active job info before processing
+            job_id = job_data.get('id', 'unknown')
+            report_heartbeat(r, status='converting', current_job=job_id)
+
             # Process the entire version job (all pending files)
             process_version_job(r, job_data)
 
@@ -609,6 +697,14 @@ def main():
         except Exception as e:
             logger.error(f'Unexpected error in worker loop: {e}')
             time.sleep(5)
+
+    # Deregister on clean shutdown
+    try:
+        r.srem(CONVERTER_WORKERS_SET, _WORKER_NAME)
+        r.delete(_WORKER_NAME)
+        logger.info(f'Deregistered converter worker {_WORKER_NAME}')
+    except Exception:
+        pass
 
     logger.info('Converter worker stopped.')
 

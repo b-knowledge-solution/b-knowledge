@@ -9,7 +9,22 @@ import { log } from '@/shared/services/logger.service.js';
 import { AzureAdUser } from '@/modules/auth/auth.service.js';
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js';
 import { abilityService } from '@/shared/services/ability.service.js';
+import { getRedisClient } from '@/shared/services/redis.service.js';
 import { User, UserIpHistory } from '@/shared/models/types.js';
+
+/**
+ * @description Shape of an active user session returned to the frontend.
+ */
+export interface ActiveSession {
+    /** Masked session ID (first 8 chars) */
+    sid: string
+    /** Client IP address from the session cookie metadata or session data */
+    ip: string
+    /** Timestamp of session creation */
+    createdAt: string
+    /** Timestamp of last activity */
+    lastActivity: string
+}
 
 /**
  * @description Manages user lifecycle including creation, role/permission updates, Azure AD sync, IP tracking, and audit logging
@@ -499,6 +514,76 @@ export class UserService {
         }
 
         return historyMap;
+    }
+
+    /**
+     * @description Retrieve active sessions for a specific user from the Redis session store.
+     * Scans all session keys and filters by the target user ID.
+     * @param {string} userId - User ID to find sessions for
+     * @returns {Promise<ActiveSession[]>} Array of active session records
+     */
+    async getUserActiveSessions(userId: string): Promise<ActiveSession[]> {
+        const redisClient = getRedisClient()
+
+        // Redis not available — return empty (memory store sessions are not inspectable)
+        if (!redisClient || !redisClient.isReady) {
+            log.debug('Redis not available for session scanning', { userId })
+            return []
+        }
+
+        const sessions: ActiveSession[] = []
+        const prefix = 'sess:'
+
+        try {
+            // Use SCAN to iterate over session keys without blocking Redis
+            let cursor = 0
+            do {
+                const result = await redisClient.scan(cursor as any, {
+                    MATCH: `${prefix}*`,
+                    COUNT: 100,
+                })
+                cursor = Number(result.cursor)
+
+                // Fetch each session value and check if it belongs to the target user
+                for (const key of result.keys) {
+                    try {
+                        const raw = await redisClient.get(key)
+                        if (!raw) continue
+
+                        const sessionData = JSON.parse(raw)
+
+                        // Check if this session belongs to the target user
+                        if (sessionData?.user?.id !== userId) continue
+
+                        // Extract the session ID (strip prefix)
+                        const fullSid = key.replace(prefix, '')
+
+                        sessions.push({
+                            sid: fullSid.substring(0, 8) + '...',
+                            ip: sessionData.ip || 'unknown',
+                            createdAt: sessionData.cookie?._expires
+                                ? new Date(Date.now() - (sessionData.cookie?.originalMaxAge || 0)).toISOString()
+                                : new Date().toISOString(),
+                            lastActivity: sessionData.lastAuthAt
+                                ? new Date(sessionData.lastAuthAt).toISOString()
+                                : sessionData.lastReauthAt
+                                    ? new Date(sessionData.lastReauthAt).toISOString()
+                                    : new Date().toISOString(),
+                        })
+                    } catch (parseError) {
+                        // Skip corrupted session entries
+                        log.debug('Failed to parse session key', { key })
+                    }
+                }
+            } while (cursor !== 0)
+        } catch (error) {
+            log.warn('Failed to scan Redis sessions', {
+                error: error instanceof Error ? error.message : String(error),
+                userId,
+            })
+        }
+
+        return sessions
     }
 }
 

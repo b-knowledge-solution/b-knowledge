@@ -23,6 +23,20 @@ export interface UserIpHistory {
 export type IpHistoryMap = Record<string, UserIpHistory[]>
 
 /**
+ * Active session record returned from the backend.
+ */
+export interface UserSession {
+    /** Masked session ID (first 8 chars) */
+    sid: string
+    /** Client IP address */
+    ip: string
+    /** ISO timestamp of session creation */
+    createdAt: string
+    /** ISO timestamp of last activity */
+    lastActivity: string
+}
+
+/**
  * DTO for creating a new local user (admin only).
  */
 export interface CreateUserDto {

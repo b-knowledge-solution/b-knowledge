@@ -171,67 +171,72 @@ class SystemToolsService {
     }
 
     /**
-     * @description Aggregate service health (DB, Redis, Langfuse) plus host OS and disk metrics
-     * @returns {Promise<any>} Health status object with services and system info
+     * @description Aggregate service health (DB, Redis, S3, OpenSearch, Langfuse, Workers) plus host OS and disk metrics
+     * @returns {Promise<any>} Health status object with services, workers, and system info
      */
     async getSystemHealth(): Promise<any> {
         // Dynamic import of os module for system metrics
         const os = await import('os');
 
-        // Check Database - Knex
-        const { db } = await import('@/shared/db/knex.js');
-        let dbStatus = false;
-        try {
-            await db.raw('SELECT 1');
-            dbStatus = true;
-        } catch (e) {
-            dbStatus = false;
+        // Run all health checks concurrently for faster response
+        const [dbStatus, redisResult, s3Status, opensearchResult, langfuseResult] = await Promise.allSettled([
+            this.checkDatabase(),
+            this.checkRedis(),
+            this.checkS3(),
+            this.checkOpenSearch(),
+            this.checkLangfuse(),
+        ]);
+
+        // Extract worker heartbeats from Redis (only if Redis is connected)
+        const redisData = redisResult.status === 'fulfilled' ? redisResult.value : { status: 'disconnected', client: null };
+        const [workerHeartbeats, converterHeartbeats] = await Promise.all([
+            redisData.client ? this.getWorkerHeartbeats(redisData.client, 'TASKEXE') : [],
+            redisData.client ? this.getWorkerHeartbeats(redisData.client, 'CONVERTER_WORKERS') : [],
+        ]);
+
+        // Disconnect the temporary Redis client
+        if (redisData.client) {
+            try { await redisData.client.disconnect(); } catch { /* noop */ }
         }
 
-
-
-        // Check Langfuse availability based on required config keys
-        const langfuseEnabled = !!(config.langfuse.publicKey && config.langfuse.secretKey && config.langfuse.baseUrl);
-        const langfuseStatus = langfuseEnabled ? 'enabled' : 'disabled';
-
-        // Check Redis connectivity with a short timeout to avoid blocking
-        let redisStatus = 'disconnected';
-        try {
-            const { createClient } = await import('redis');
-            const client = createClient({
-                url: config.redis.url,
-                socket: {
-                    connectTimeout: 2000
-                }
-            });
-            client.on('error', () => { }); // Prevent crash on error
-            await client.connect();
-            await client.ping();
-            redisStatus = 'connected';
-            await client.disconnect();
-        } catch (e) {
-            redisStatus = 'disconnected';
-        }
-
-        // Build and return aggregated health response with service statuses and system metrics
+        // Build and return aggregated health response with service statuses, workers, and system metrics
         return {
             timestamp: new Date().toISOString(),
             services: {
                 database: {
-                    status: dbStatus ? 'connected' : 'disconnected',
+                    status: dbStatus.status === 'fulfilled' && dbStatus.value ? 'connected' : 'disconnected',
                     enabled: true,
                     host: config.database.host,
                 },
                 redis: {
-                    status: redisStatus,
+                    status: redisData.status,
                     enabled: true,
                     host: config.redis.host,
                 },
-                langfuse: {
-                    status: langfuseStatus,
-                    enabled: langfuseEnabled,
-                    host: config.langfuse.baseUrl ? new URL(config.langfuse.baseUrl).hostname : 'unknown',
+                s3: {
+                    status: s3Status.status === 'fulfilled' ? s3Status.value.status : 'disconnected',
+                    enabled: true,
+                    host: config.s3.endpoint,
+                    bucket: config.s3.bucket,
+                    provider: s3Status.status === 'fulfilled' ? s3Status.value.provider : 'S3',
+                    bucketCount: s3Status.status === 'fulfilled' ? s3Status.value.bucketCount : 0,
+                    totalSize: s3Status.status === 'fulfilled' ? s3Status.value.totalSize : 0,
+                    objectCount: s3Status.status === 'fulfilled' ? s3Status.value.objectCount : 0,
                 },
+                opensearch: opensearchResult.status === 'fulfilled' ? opensearchResult.value : {
+                    status: 'disconnected',
+                    enabled: true,
+                    host: config.opensearch.host,
+                },
+                langfuse: langfuseResult.status === 'fulfilled' ? langfuseResult.value : {
+                    status: 'disabled',
+                    enabled: false,
+                    host: 'unknown',
+                },
+            },
+            workers: {
+                taskExecutors: workerHeartbeats,
+                converters: converterHeartbeats,
             },
             system: {
                 uptime: process.uptime(),
@@ -260,6 +265,230 @@ class SystemToolsService {
                 })()
             }
         };
+    }
+
+    // ========================================================================
+    // Individual Health Check Methods
+    // ========================================================================
+
+    /**
+     * @description Check PostgreSQL connectivity by executing a simple query
+     * @returns {Promise<boolean>} True if database is reachable
+     */
+    private async checkDatabase(): Promise<boolean> {
+        const { db } = await import('@/shared/db/knex.js');
+        try {
+            await db.raw('SELECT 1');
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * @description Check Redis connectivity and return both status and client for reuse by heartbeat checks
+     * @returns {Promise<{ status: string, client: any }>} Redis status and connected client (or null)
+     */
+    private async checkRedis(): Promise<{ status: string; client: any }> {
+        try {
+            const { createClient } = await import('redis');
+            const client = createClient({
+                url: config.redis.url,
+                socket: { connectTimeout: 2000 }
+            });
+            client.on('error', () => { });
+            await client.connect();
+            await client.ping();
+            // Return client for reuse by heartbeat checks (caller is responsible for disconnect)
+            return { status: 'connected', client };
+        } catch {
+            return { status: 'disconnected', client: null };
+        }
+    }
+
+    /**
+     * @description Check S3-compatible storage (MinIO/RustFS) connectivity, detect provider, and gather bucket usage stats
+     * @returns {Promise<{ status: string, provider: string, bucketCount: number, totalSize: number, objectCount: number }>}
+     */
+    private async checkS3(): Promise<{ status: string; provider: string; bucketCount: number; totalSize: number; objectCount: number }> {
+        try {
+            const { minioClient } = await import('@/shared/services/minio.service.js');
+            // listBuckets verifies connectivity and returns all bucket metadata
+            const buckets = await minioClient.listBuckets();
+            const bucketCount = buckets.length;
+
+            // Detect S3 provider by probing the Server header from the S3 endpoint
+            let provider = 'S3';
+            try {
+                const protocol = config.s3.useSSL ? 'https' : 'http';
+                const probeUrl = `${protocol}://${config.s3.endpoint}:${config.s3.port}/minio/health/live`;
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 2000);
+                const probeRes = await fetch(probeUrl, { signal: controller.signal });
+                clearTimeout(timeout);
+                // MinIO health endpoint returns 200 on /minio/health/live
+                if (probeRes.ok) {
+                    provider = 'MinIO';
+                } else {
+                    // Check generic Server header
+                    const serverHeader = probeRes.headers.get('server') || '';
+                    if (serverHeader.toLowerCase().includes('minio')) provider = 'MinIO';
+                    else if (serverHeader.toLowerCase().includes('rustfs')) provider = 'RustFS';
+                }
+            } catch {
+                // If probe fails, try a simpler detection from generic response headers
+                try {
+                    const protocol = config.s3.useSSL ? 'https' : 'http';
+                    const genericUrl = `${protocol}://${config.s3.endpoint}:${config.s3.port}`;
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 2000);
+                    const res = await fetch(genericUrl, { method: 'HEAD', signal: controller.signal });
+                    clearTimeout(timeout);
+                    const serverHeader = res.headers.get('server') || '';
+                    if (serverHeader.toLowerCase().includes('minio')) provider = 'MinIO';
+                    else if (serverHeader.toLowerCase().includes('rustfs')) provider = 'RustFS';
+                } catch { /* keep default 'S3' */ }
+            }
+
+            // Aggregate object count and total size across all buckets
+            let totalSize = 0;
+            let objectCount = 0;
+
+            // Iterate each bucket and stream object listing to compute totals
+            await Promise.all(
+                buckets.map(
+                    (bucket) =>
+                        new Promise<void>((resolve) => {
+                            const stream = minioClient.listObjectsV2(bucket.name, '', true);
+                            stream.on('data', (obj) => {
+                                if (obj.size) {
+                                    totalSize += obj.size;
+                                }
+                                objectCount += 1;
+                            });
+                            // Resolve on end or error to avoid blocking other bucket scans
+                            stream.on('end', resolve);
+                            stream.on('error', () => resolve());
+                        })
+                )
+            );
+
+            return { status: 'connected', provider, bucketCount, totalSize, objectCount };
+        } catch {
+            return { status: 'disconnected', provider: 'S3', bucketCount: 0, totalSize: 0, objectCount: 0 };
+        }
+    }
+
+    /**
+     * @description Check OpenSearch/VectorDB cluster health via HTTP
+     * @returns {Promise<{ status: string, enabled: boolean, host: string, clusterStatus?: string, nodeCount?: number }>}
+     */
+    private async checkOpenSearch(): Promise<{ status: string; enabled: boolean; host: string; clusterStatus?: string | undefined; nodeCount?: number | undefined }> {
+        const host = config.opensearch.host;
+        if (!host) {
+            return { status: 'not_configured', enabled: false, host: 'unknown' };
+        }
+
+        try {
+            // Use native fetch to call OpenSearch cluster health endpoint
+            const url = `${host}/_cluster/health`;
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+            // Add basic auth if password is configured
+            if (config.opensearch.password) {
+                const credentials = Buffer.from(`admin:${config.opensearch.password}`).toString('base64');
+                headers['Authorization'] = `Basic ${credentials}`;
+            }
+
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 3000);
+
+            const response = await fetch(url, {
+                headers,
+                signal: controller.signal,
+            });
+            clearTimeout(timeout);
+
+            if (response.ok) {
+                const data = await response.json() as { status?: string; number_of_nodes?: number };
+                return {
+                    status: 'connected',
+                    enabled: true,
+                    host: new URL(host).hostname,
+                    clusterStatus: data.status,
+                    nodeCount: data.number_of_nodes,
+                };
+            }
+
+            return { status: 'disconnected', enabled: true, host: new URL(host).hostname };
+        } catch {
+            return { status: 'disconnected', enabled: true, host: host };
+        }
+    }
+
+    /**
+     * @description Check Langfuse availability based on required configuration keys
+     * @returns {Promise<{ status: string, enabled: boolean, host: string }>}
+     */
+    private async checkLangfuse(): Promise<{ status: string; enabled: boolean; host: string }> {
+        const langfuseEnabled = !!(config.langfuse.publicKey && config.langfuse.secretKey && config.langfuse.baseUrl);
+        return {
+            status: langfuseEnabled ? 'enabled' : 'disabled',
+            enabled: langfuseEnabled,
+            host: config.langfuse.baseUrl ? new URL(config.langfuse.baseUrl).hostname : 'unknown',
+        };
+    }
+
+    /**
+     * @description Read worker heartbeats from a Redis set + sorted-set pattern
+     * @param {any} redisClient - Connected Redis client
+     * @param {string} setKey - Redis set key containing worker names (e.g. 'TASKEXE', 'CONVERTER_WORKERS')
+     * @returns {Promise<Array<{ name: string, status: string, lastSeen: string, details: any }>>}
+     */
+    private async getWorkerHeartbeats(redisClient: any, setKey: string): Promise<Array<{ name: string; status: string; lastSeen: string; details: any }>> {
+        const results: Array<{ name: string; status: string; lastSeen: string; details: any }> = [];
+        const HEARTBEAT_TIMEOUT_SEC = 120;
+
+        try {
+            // Read all registered worker names from the set
+            const workers: string[] = await redisClient.sMembers(setKey);
+            if (!workers || workers.length === 0) return results;
+
+            const now = Date.now() / 1000;
+
+            for (const workerName of workers) {
+                try {
+                    // Get the most recent heartbeat entry (highest score = most recent timestamp)
+                    // Use ZRANGE with REV to get the last entry by score descending, limited to 1
+                    const entries = await redisClient.zRangeWithScores(workerName, 0, 0, { REV: true });
+                    if (!entries || entries.length === 0) {
+                        results.push({ name: workerName, status: 'offline', lastSeen: 'never', details: null });
+                        continue;
+                    }
+
+                    const lastEntry = entries[0];
+                    const age = now - lastEntry.score;
+                    const isAlive = age < HEARTBEAT_TIMEOUT_SEC;
+
+                    // Parse the heartbeat JSON payload
+                    let details = null;
+                    try { details = JSON.parse(lastEntry.value); } catch { /* noop */ }
+
+                    results.push({
+                        name: workerName,
+                        status: isAlive ? 'online' : 'offline',
+                        lastSeen: details?.now || new Date(lastEntry.score * 1000).toISOString(),
+                        details,
+                    });
+                } catch {
+                    results.push({ name: workerName, status: 'unknown', lastSeen: 'error', details: null });
+                }
+            }
+        } catch (e) {
+            log.warn('Failed to read worker heartbeats', { setKey, error: String(e) });
+        }
+
+        return results;
     }
 }
 

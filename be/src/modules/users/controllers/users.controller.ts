@@ -300,4 +300,33 @@ export class UserController {
       res.status(500).json({ error: 'Failed to fetch current user' })
     }
   }
+
+  /**
+   * @description Retrieve active sessions for a specific user from the Redis session store
+   * @param {Request} req - Express request object with user id in route params
+   * @param {Response} res - Express response object
+   * @returns {Promise<void>}
+   */
+  async getUserSessions(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+
+    // Validate user ID
+    if (!id) {
+      res.status(400).json({ error: 'User ID is required' })
+      return
+    }
+
+    try {
+      // Fetch active sessions from Redis
+      const sessions = await userService.getUserActiveSessions(id)
+      res.json(sessions)
+    } catch (error) {
+      // Log error and return 500 status
+      log.error('Failed to fetch user sessions', {
+        error: error instanceof Error ? error.message : String(error),
+        userId: id,
+      })
+      res.status(500).json({ error: 'Failed to fetch user sessions' })
+    }
+  }
 }

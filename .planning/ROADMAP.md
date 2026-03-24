@@ -20,6 +20,16 @@ Plans:
 - [ ] **01-04**: Tier 4 — Feature porting (aggregated parsing status, deadlock retry, PDF OCR fallback, similarity threshold bypass)
 - [ ] **01-05**: Tier 5 — Validation & patch doc (test pipeline, run tests, create patches/ragflow-port-v<NEW>-df2cc32.md)
 
+### Phase 2: Investigate mem0 for memory feature
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 1
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 2 to break down)
+
 ---
 
 <!-- phases:start -->

@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { userApi } from './userApi'
 import type { User } from '@/features/auth'
-import type { IpHistoryMap, CreateUserDto, UpdateUserDto } from '../types/user.types'
+import type { IpHistoryMap, CreateUserDto, UpdateUserDto, UserIpHistory, UserSession } from '../types/user.types'
 import { queryKeys } from '@/lib/queryKeys'
 
 // ============================================================================
@@ -308,6 +308,32 @@ export function useDeleteUser() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.users.list() })
         },
+    })
+}
+
+/**
+ * @description Hook to fetch IP history for a specific user.
+ * @param userId - User ID to fetch history for.
+ * @param enabled - Whether the query is enabled.
+ */
+export function useUserIpHistory(userId: string, enabled = true) {
+    return useQuery<UserIpHistory[]>({
+        queryKey: queryKeys.users.userIpHistory(userId),
+        queryFn: () => userApi.getUserIpHistory(userId),
+        enabled: !!userId && enabled,
+    })
+}
+
+/**
+ * @description Hook to fetch active sessions for a specific user.
+ * @param userId - User ID to fetch sessions for.
+ * @param enabled - Whether the query is enabled.
+ */
+export function useUserSessions(userId: string, enabled = true) {
+    return useQuery<UserSession[]>({
+        queryKey: queryKeys.users.sessions(userId),
+        queryFn: () => userApi.getUserSessions(userId),
+        enabled: !!userId && enabled,
     })
 }
 
