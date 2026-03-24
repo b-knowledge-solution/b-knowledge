@@ -21,7 +21,7 @@ created: 2026-03-24
 | Preset | new-york, slate base, CSS variables |
 | Component library | Radix UI (via shadcn) |
 | Icon library | lucide-react |
-| Font | Inter (400, 500, 600) via Google Fonts |
+| Font | Inter (400, 600) via Google Fonts |
 
 ---
 
@@ -39,7 +39,7 @@ Declared values (must be multiples of 4):
 | 2xl | 48px | Major section breaks between page zones |
 | 3xl | 64px | Not used in this phase |
 
-Exceptions: 44px minimum touch target for category sidebar items on mobile viewports.
+Exceptions: 44px minimum touch target for category sidebar items on mobile viewports (required by WCAG 2.5.5 Target Size (Enhanced), ensuring pointer inputs have adequate activation area on touch devices).
 
 ---
 
@@ -48,14 +48,14 @@ Exceptions: 44px minimum touch target for category sidebar items on mobile viewp
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Body | 14px | 400 (regular) | 1.5 |
-| Label | 14px | 500 (medium) | 1.4 |
+| Label | 14px | 600 (semibold) | 1.4 |
 | Heading | 20px | 600 (semibold) | 1.2 |
 | Display | 28px | 600 (semibold) | 1.2 |
 
 Notes:
 - Display is used only for project name on the detail page header.
 - Heading is used for tab section titles and category names.
-- Body/Label share 14px (established codebase pattern from existing project pages).
+- Body/Label share 14px (established codebase pattern from existing project pages). Labels use semibold weight to create visual distinction from body text without introducing a third weight.
 
 ---
 
