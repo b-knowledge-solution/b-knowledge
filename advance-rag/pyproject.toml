@@ -56,6 +56,9 @@ dependencies = [
     "tree-sitter==0.25.2",
     "tree-sitter-language-pack==0.13.0",
 
+    # Graph database (Memgraph via Bolt protocol)
+    "neo4j>=5.0.0",
+
     # OpenAPI/Swagger spec parsing
     "prance>=25.4.8.0",
     "openapi-spec-validator>=0.8.0",

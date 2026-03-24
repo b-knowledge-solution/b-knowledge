@@ -1,8 +1,8 @@
 # ==========================================================================
-# Infrastructure Base — PostgreSQL, Valkey, OpenSearch, RustFS
+# Infrastructure Base — PostgreSQL, Valkey, OpenSearch, RustFS, Memgraph
 # ==========================================================================
 # All services use OSI-approved open-source licenses:
-#   PostgreSQL (PostgreSQL License) | Valkey (BSD-3) | OpenSearch (Apache-2.0) | RustFS (Apache-2.0)
+#   PostgreSQL (PostgreSQL License) | Valkey (BSD-3) | OpenSearch (Apache-2.0) | RustFS (Apache-2.0) | Memgraph (BSL-1.1)
 #
 # This file is NOT run standalone. It is included by docker-compose.yml
 # via the `include` directive.
@@ -160,6 +160,29 @@ services:
     networks:
       - kb-network
 
+  # ==========================================================================
+  # Memgraph — graph database for code knowledge graph (BSL-1.1)
+  # https://memgraph.com
+  # ==========================================================================
+  memgraph:
+    image: memgraph/memgraph:latest
+    container_name: knowledge-memgraph
+    restart: unless-stopped
+    ports:
+      - "${MEMGRAPH_BOLT_PORT:-7687}:7687"
+      - "${MEMGRAPH_WEB_PORT:-7444}:7444"
+    volumes:
+      - memgraph_data:/var/lib/memgraph
+    command: ["--bolt-port=7687", "--log-level=WARNING", "--also-log-to-stderr"]
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'RETURN 1;' | mgconsole || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - kb-network
+
 # ==========================================================================
 # Networks
 # ==========================================================================
@@ -180,4 +203,6 @@ volumes:
   rustfs_data:
     driver: local
   rustfs_logs:
+    driver: local
+  memgraph_data:
     driver: local

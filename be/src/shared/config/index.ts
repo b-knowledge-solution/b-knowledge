@@ -449,6 +449,19 @@ export const config = {
   },
 
   // --------------------------------------------------------------------------
+  // Memgraph Configuration (Code Knowledge Graph)
+  // --------------------------------------------------------------------------
+
+  /**
+   * Memgraph graph database configuration.
+   * Used for storing and querying code knowledge graphs via Bolt protocol.
+   */
+  memgraph: {
+    /** Bolt protocol URL for Memgraph connection */
+    boltUrl: process.env['MEMGRAPH_BOLT_URL'] ?? 'bolt://localhost:7687',
+  },
+
+  // --------------------------------------------------------------------------
   // WebSocket Configuration
   // --------------------------------------------------------------------------
 
