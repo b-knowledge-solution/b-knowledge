@@ -9,7 +9,6 @@
  */
 
 import { ModelFactory } from '@/shared/models/factory.js';
-import { db } from '@/shared/db/knex.js';
 import { log } from '@/shared/services/logger.service.js';
 import { getRedisClient } from '@/shared/services/redis.service.js';
 import { DocumentRow, TaskRow, KnowledgebaseRow } from '@/shared/models/types.js';
@@ -164,10 +163,8 @@ export class RagDocumentService {
      * @returns {Promise<number>} Number of documents deleted
      */
     async deleteAllByDataset(datasetId: string, tenantId: string): Promise<number> {
-        // Delete all documents for this dataset, returning count of affected rows
-        const count = await db('document')
-            .where('kb_id', datasetId)
-            .del()
+        // Delete all documents for this dataset via model layer
+        const count = await ModelFactory.ragDocument.deleteAllByDataset(datasetId)
         log.info('Deleted all documents for dataset', { datasetId, tenantId, count })
         return count
     }

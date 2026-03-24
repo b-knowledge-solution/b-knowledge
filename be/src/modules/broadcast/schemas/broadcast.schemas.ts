@@ -3,12 +3,13 @@
  * @module schemas/broadcast
  */
 import { z } from 'zod';
+import { hexIdWith } from '@/shared/utils/uuid.js';
 
 /**
  * @description UUID v4 param validation schema for route parameters
  */
 export const uuidParamSchema = z.object({
-  id: z.string().uuid('Invalid UUID format'),
+  id: hexIdWith('Invalid UUID format'),
 });
 
 /**

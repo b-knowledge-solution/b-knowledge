@@ -154,6 +154,43 @@ export class ChatAssistantService {
   }
 
   /**
+   * List only public assistants (for unauthenticated users).
+   * @param options - Paging, sorting, and searching
+   * @returns Paginated object with public assistants
+   */
+  async listPublicAssistants(
+    options?: { page?: number; page_size?: number; search?: string; sort_by?: string; sort_order?: string }
+  ): Promise<{ data: ChatAssistant[]; total: number }> {
+    const page = Number(options?.page) || 1
+    const pageSize = Number(options?.page_size) || 20
+    const sortBy = options?.sort_by || 'created_at'
+    const sortOrder = options?.sort_order || 'desc'
+
+    // Only return public assistants
+    let query = ModelFactory.chatAssistant.getKnex().where('is_public', true)
+
+    // Apply search filter
+    if (options?.search) {
+      query = query.andWhere(function () {
+        this.whereILike('name', `%${options!.search}%`)
+          .orWhereILike('description', `%${options!.search}%`)
+      })
+    }
+
+    // Count total before pagination
+    const countResult = await query.clone().count('* as count').first()
+    const total = Number(countResult?.count ?? 0)
+
+    // Apply sort and pagination
+    const data = await query
+      .orderBy(sortBy, sortOrder)
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+
+    return { data, total }
+  }
+
+  /**
    * @description Get access control entries for an assistant, enriched with display names.
    * Joins with users and teams tables to resolve entity names.
    * @param {string} assistantId - UUID of the assistant
@@ -234,8 +271,8 @@ export class ChatAssistantService {
    */
   async checkUserAccess(
     assistantId: string,
-    userId: string,
-    userRole: string,
+    userId: string | undefined,
+    userRole: string | undefined,
     teamIds: string[]
   ): Promise<boolean> {
     // Admins always have access
@@ -249,13 +286,18 @@ export class ChatAssistantService {
       return false
     }
 
-    // Creator always has access to their own assistant
-    if (assistant.created_by === userId) {
+    // Public assistants are accessible to everyone (including anonymous)
+    if (assistant.is_public) {
       return true
     }
 
-    // Public assistants are accessible to everyone
-    if (assistant.is_public) {
+    // Anonymous users cannot access non-public assistants
+    if (!userId) {
+      return false
+    }
+
+    // Creator always has access to their own assistant
+    if (assistant.created_by === userId) {
       return true
     }
 

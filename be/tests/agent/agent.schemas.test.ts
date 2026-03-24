@@ -40,13 +40,13 @@ describe('createAgentSchema', () => {
       name: 'Pipeline Agent',
       description: 'A pipeline agent for document processing',
       mode: 'pipeline',
-      project_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-      template_id: 'b1ffcd00-0d1c-5fa9-cc7e-7cc0ce491b22',
+      project_id: 'a0eebc999c0b4ef8bb6d6bb9bd380a11',
+      template_id: 'b1ffcd000d1c5fa9cc7e7cc0ce491b22',
     })
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.mode).toBe('pipeline')
-      expect(result.data.project_id).toBe('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11')
+      expect(result.data.project_id).toBe('a0eebc999c0b4ef8bb6d6bb9bd380a11')
     }
   })
 
@@ -167,7 +167,7 @@ describe('saveVersionSchema', () => {
 
 describe('agentIdParamSchema', () => {
   it('accepts a valid UUID', () => {
-    const result = agentIdParamSchema.safeParse({ id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' })
+    const result = agentIdParamSchema.safeParse({ id: 'a0eebc999c0b4ef8bb6d6bb9bd380a11' })
     expect(result.success).toBe(true)
   })
 
@@ -189,15 +189,15 @@ describe('agentIdParamSchema', () => {
 describe('versionIdParamSchema', () => {
   it('accepts valid id and versionId UUIDs', () => {
     const result = versionIdParamSchema.safeParse({
-      id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-      versionId: 'b1ffcd00-0d1c-5fa9-cc7e-7cc0ce491b22',
+      id: 'a0eebc999c0b4ef8bb6d6bb9bd380a11',
+      versionId: 'b1ffcd000d1c5fa9cc7e7cc0ce491b22',
     })
     expect(result.success).toBe(true)
   })
 
   it('rejects when versionId is missing', () => {
     const result = versionIdParamSchema.safeParse({
-      id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      id: 'a0eebc999c0b4ef8bb6d6bb9bd380a11',
     })
     expect(result.success).toBe(false)
   })
@@ -295,15 +295,15 @@ describe('agentRunBodySchema', () => {
 describe('agentRunIdParamSchema', () => {
   it('accepts valid id and runId UUIDs', () => {
     const result = agentRunIdParamSchema.safeParse({
-      id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-      runId: 'b1ffcd00-0d1c-5fa9-cc7e-7cc0ce491b22',
+      id: 'a0eebc999c0b4ef8bb6d6bb9bd380a11',
+      runId: 'b1ffcd000d1c5fa9cc7e7cc0ce491b22',
     })
     expect(result.success).toBe(true)
   })
 
   it('rejects non-UUID runId', () => {
     const result = agentRunIdParamSchema.safeParse({
-      id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      id: 'a0eebc999c0b4ef8bb6d6bb9bd380a11',
       runId: 'invalid',
     })
     expect(result.success).toBe(false)
@@ -329,7 +329,7 @@ describe('createCredentialSchema', () => {
       tool_type: 'github',
       name: 'GH Token',
       credentials: { token: 'ghp_xxx' },
-      agent_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      agent_id: 'a0eebc999c0b4ef8bb6d6bb9bd380a11',
     })
     expect(result.success).toBe(true)
   })

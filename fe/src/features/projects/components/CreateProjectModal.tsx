@@ -54,6 +54,7 @@ interface CreateProjectModalProps {
     name: string
     description?: string
     category: ProjectCategory
+    first_version_label?: string
     sync_config?: {
       source_type: SyncSourceType
       connection_config: Record<string, unknown>
@@ -68,11 +69,13 @@ interface CreateProjectModalProps {
 interface ProjectFormData {
   name: string
   description: string
+  firstVersionLabel: string
 }
 
 const INITIAL_FORM: ProjectFormData = {
   name: '',
   description: '',
+  firstVersionLabel: 'v1',
 }
 
 // ============================================================================
@@ -117,8 +120,8 @@ const CreateProjectModal = ({
   const totalSteps = category === 'datasync' ? 3 : 2
 
   /** Auto-generated dataset name preview */
-  const datasetPreview = formData.name
-    ? `${formData.name}_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`
+  const datasetPreview = formData.name && formData.firstVersionLabel
+    ? `${formData.name}_${formData.firstVersionLabel}`
     : ''
 
   /**
@@ -158,6 +161,7 @@ const CreateProjectModal = ({
       onSubmit({
         name: formData.name,
         ...(formData.description ? { description: formData.description } : {}),
+        ...(formData.firstVersionLabel ? { first_version_label: formData.firstVersionLabel } : {}),
         category,
       })
       return
@@ -167,6 +171,7 @@ const CreateProjectModal = ({
     onSubmit({
       name: formData.name,
       ...(formData.description ? { description: formData.description } : {}),
+      ...(formData.firstVersionLabel ? { first_version_label: formData.firstVersionLabel } : {}),
       category,
       sync_config: {
         source_type: syncSourceType,
@@ -297,6 +302,21 @@ const CreateProjectModal = ({
                 value={formData.description}
                 onChange={(e) => updateField('description', e.target.value)}
               />
+            </div>
+
+            {/* First version label input */}
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                {t('projectManagement.firstVersionLabel')}
+              </label>
+              <Input
+                placeholder={t('projectManagement.firstVersionPlaceholder', 'e.g. v1')}
+                value={formData.firstVersionLabel}
+                onChange={(e) => updateField('firstVersionLabel', e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {t('projectManagement.firstVersionHint')}
+              </p>
             </div>
 
             {/* Auto-dataset name preview */}

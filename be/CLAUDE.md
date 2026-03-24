@@ -85,6 +85,7 @@ modules/<domain>/
 - Access via `ModelFactory.users`, `ModelFactory.chatSessions`, etc.
 - Always use Knex ORM; raw SQL only when Knex cannot support the query
 - Transaction support via optional `trx` parameter
+- **No direct DB in services:** Services must **never** import `db` from `@/shared/db/knex.js` or call `db('table')` directly. All database access from service files must go through `ModelFactory.<model>.<method>()`. If a model lacks the needed query, add a new method to the model class — do not bypass via raw `db()` in the service.
 
 ### Route Registration (`app/routes.ts`)
 - Rate limiting: General 1000/15min, Auth 20/15min
@@ -159,3 +160,7 @@ Copy `be/.env.example` → `be/.env`. Key variables:
 | `REDIS_HOST` | localhost | |
 | `HTTPS_ENABLED` | false | Set true + provide certs for HTTPS |
 | `CORS_ORIGINS` | (empty) | Comma-separated, defaults to FRONTEND_URL |
+
+## Built-in Pipeline / Parsing Method Guidelines (AI Agent Rule)
+
+When creating or adding any **new** built-in pipeline or document parser method (such as `Picture`, `Audio`, `Email`, etc.), you **MUST** include a unique sample file/image to be used for instructions. Do not reuse an existing image sample from another pipeline.

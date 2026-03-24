@@ -4,6 +4,7 @@
  * @module schemas/search
  */
 import { z } from 'zod'
+import { hexId, hexIdWith } from '@/shared/utils/uuid.js'
 
 /**
  * @description Shared LLM settings sub-schema for search app configuration
@@ -92,7 +93,7 @@ export const createSearchAppSchema = z.object({
   /** Description of the search app */
   description: z.string().optional(),
   /** Array of dataset IDs to search across */
-  dataset_ids: z.array(z.string().uuid()).min(1, 'At least one dataset ID is required'),
+  dataset_ids: z.array(hexId).min(1, 'At least one dataset ID is required'),
   /** Optional search configuration with LLM settings */
   search_config: searchConfigSchema,
   /** Whether the search app is publicly accessible */
@@ -108,7 +109,7 @@ export const updateSearchAppSchema = z.object({
   /** Description */
   description: z.string().optional(),
   /** Array of dataset IDs */
-  dataset_ids: z.array(z.string().uuid()).optional(),
+  dataset_ids: z.array(hexId).optional(),
   /** Search configuration with LLM settings */
   search_config: searchConfigSchema,
   /** Whether the search app is publicly accessible */
@@ -185,7 +186,7 @@ export const searchAppAccessSchema = z.object({
       /** Type of entity being granted access */
       entity_type: z.enum(['user', 'team']),
       /** UUID of the user or team */
-      entity_id: z.string().uuid(),
+      entity_id: hexId,
     })
   ),
 })
@@ -232,5 +233,5 @@ export const listSearchAppsSchema = z.object({
  * @description Validates the search app UUID path parameter
  */
 export const searchAppIdParamSchema = z.object({
-  id: z.string().uuid('Invalid search app ID'),
+  id: hexIdWith('Invalid search app ID'),
 })

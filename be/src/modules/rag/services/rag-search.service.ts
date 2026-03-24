@@ -118,40 +118,46 @@ export class RagSearchService {
         abacFilters: Record<string, unknown>[] = [],
     ): Promise<{ chunks: ChunkResult[]; total: number }> {
         const client = getClient()
-        const res = await client.search({
-            index: getIndexName(tenantId),
-            body: {
-                query: {
-                    bool: {
-                        must: [
-                            { term: { kb_id: datasetId } },
-                            { match: { content_with_weight: { query, minimum_should_match: '30%' } } },
-                        ],
-                        filter: [
-                            { term: { available_int: 1 } },
-                            ...this.getFilters(tenantId, abacFilters),
-                            ...extraFilters,
-                        ],
-                        should: [
-                            /**
-                             * Boost by pagerank (version recency) — newer versions have higher
-                             * pagerank values set during createVersionDataset. Uses linear scoring
-                             * so v2 scores ~2x v1. Documents without pagerank_fea are unaffected.
-                             */
-                            { rank_feature: { field: 'pagerank_fea', linear: {} } },
-                        ],
+        let res
+        try {
+            res = await client.search({
+                index: getIndexName(tenantId),
+                body: {
+                    query: {
+                        bool: {
+                            must: [
+                                { term: { kb_id: datasetId } },
+                                { match: { content_with_weight: { query, minimum_should_match: '30%' } } },
+                            ],
+                            filter: [
+                                { term: { available_int: 1 } },
+                                ...this.getFilters(tenantId, abacFilters),
+                                ...extraFilters,
+                            ],
+                            should: [
+                                /**
+                                 * Boost by pagerank (version recency) — newer versions have higher
+                                 * pagerank values set during createVersionDataset. Uses linear scoring
+                                 * so v2 scores ~2x v1. Documents without pagerank_fea are unaffected.
+                                 */
+                                { rank_feature: { field: 'pagerank_fea', linear: {} } },
+                            ],
+                        },
+                    },
+                    size: topK,
+                    _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
+                    // Highlight matching terms in content for retrieval test display
+                    highlight: {
+                        fields: {
+                            content_with_weight: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
+                        },
                     },
                 },
-                size: topK,
-                _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
-                // Highlight matching terms in content for retrieval test display
-                highlight: {
-                    fields: {
-                        content_with_weight: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
-                    },
-                },
-            },
-        })
+            })
+        } catch (err: any) {
+            if (String(err).includes('index_not_found_exception')) return { chunks: [], total: 0 }
+            throw err
+        }
 
         const hitsTotal = res.body.hits.total
         const total = typeof hitsTotal === 'number' ? hitsTotal : hitsTotal?.value ?? 0
@@ -181,47 +187,53 @@ export class RagSearchService {
         abacFilters: Record<string, unknown>[] = [],
     ): Promise<{ chunks: ChunkResult[]; total: number }> {
         const client = getClient()
-        const res = await client.search({
-            index: getIndexName(tenantId),
-            body: {
-                query: {
-                    bool: {
-                        must: [
-                            { term: { kb_id: datasetId } },
-                        ],
-                        filter: [
-                            { term: { available_int: 1 } },
-                            ...this.getFilters(tenantId, abacFilters),
-                            ...extraFilters,
-                        ],
-                        should: [
-                            {
-                                knn: {
-                                    q_vec: {
-                                        vector: queryVector,
-                                        k: topK,
+        let res
+        try {
+            res = await client.search({
+                index: getIndexName(tenantId),
+                body: {
+                    query: {
+                        bool: {
+                            must: [
+                                { term: { kb_id: datasetId } },
+                            ],
+                            filter: [
+                                { term: { available_int: 1 } },
+                                ...this.getFilters(tenantId, abacFilters),
+                                ...extraFilters,
+                            ],
+                            should: [
+                                {
+                                    knn: {
+                                        q_vec: {
+                                            vector: queryVector,
+                                            k: topK,
+                                        },
                                     },
                                 },
-                            },
-                            /**
-                             * Boost by pagerank (version recency) — newer versions have higher
-                             * pagerank values. Linear scoring gives proportional boost.
-                             * Documents without pagerank_fea are unaffected.
-                             */
-                            { rank_feature: { field: 'pagerank_fea', linear: {} } },
-                        ],
+                                /**
+                                 * Boost by pagerank (version recency) — newer versions have higher
+                                 * pagerank values. Linear scoring gives proportional boost.
+                                 * Documents without pagerank_fea are unaffected.
+                                 */
+                                { rank_feature: { field: 'pagerank_fea', linear: {} } },
+                            ],
+                        },
+                    },
+                    size: topK,
+                    _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
+                    // Highlight matching terms in content for retrieval test display
+                    highlight: {
+                        fields: {
+                            content_with_weight: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
+                        },
                     },
                 },
-                size: topK,
-                _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
-                // Highlight matching terms in content for retrieval test display
-                highlight: {
-                    fields: {
-                        content_with_weight: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
-                    },
-                },
-            },
-        })
+            })
+        } catch (err: any) {
+            if (String(err).includes('index_not_found_exception')) return { chunks: [], total: 0 }
+            throw err
+        }
 
         const hitsTotal = res.body.hits.total
         const total = typeof hitsTotal === 'number' ? hitsTotal : hitsTotal?.value ?? 0
@@ -449,29 +461,35 @@ export class RagSearchService {
             })
         }
 
-        const res = await client.search({
-            index: getIndexName(tenantId),
-            body: {
-                query: {
-                    bool: {
-                        must: mustClauses,
-                        filter: [
-                            { term: { available_int: 1 } },
-                            ...this.getFilters(tenantId, abacFilters),
-                            ...extraFilters,
-                        ],
-                        should: shouldClauses,
+        let res
+        try {
+            res = await client.search({
+                index: getIndexName(tenantId),
+                body: {
+                    query: {
+                        bool: {
+                            must: mustClauses,
+                            filter: [
+                                { term: { available_int: 1 } },
+                                ...this.getFilters(tenantId, abacFilters),
+                                ...extraFilters,
+                            ],
+                            should: shouldClauses,
+                        },
+                    },
+                    size: topK,
+                    _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd', 'kb_id'],
+                    highlight: {
+                        fields: {
+                            content_with_weight: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
+                        },
                     },
                 },
-                size: topK,
-                _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd', 'kb_id'],
-                highlight: {
-                    fields: {
-                        content_with_weight: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
-                    },
-                },
-            },
-        })
+            })
+        } catch (err: any) {
+            if (String(err).includes('index_not_found_exception')) return { chunks: [], total: 0 }
+            throw err
+        }
 
         const hitsTotal = res.body.hits.total
         const total = typeof hitsTotal === 'number' ? hitsTotal : hitsTotal?.value ?? 0
@@ -517,24 +535,30 @@ export class RagSearchService {
         // NOTE: tenant isolation is provided by the index name (knowledge_{tenantId}).
         // The Python RAG worker does NOT store tenant_id as a document field in chunks,
         // so we must NOT filter by tenant_id here — it would match zero documents.
-        const res = await client.search({
-            index: getIndexName(tenantId),
-            body: {
-                query: {
-                    bool: {
-                        must,
+        let res
+        try {
+            res = await client.search({
+                index: getIndexName(tenantId),
+                body: {
+                    query: {
+                        bool: {
+                            must,
+                        },
                     },
+                    from: offset,
+                    size: limit,
+                    sort: [
+                        { page_num_int: { order: 'asc' as const, unmapped_type: 'float' } },
+                        { top_int: { order: 'asc' as const, unmapped_type: 'float' } },
+                        { create_time: { order: 'asc' as const } },
+                    ],
+                    _source: ['content_with_weight', 'content_ltks', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
                 },
-                from: offset,
-                size: limit,
-                sort: [
-                    { page_num_int: { order: 'asc' as const, unmapped_type: 'float' } },
-                    { top_int: { order: 'asc' as const, unmapped_type: 'float' } },
-                    { create_time: { order: 'asc' as const } },
-                ],
-                _source: ['content_with_weight', 'content_ltks', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
-            },
-        })
+            })
+        } catch (err: any) {
+            if (String(err).includes('index_not_found_exception')) return { chunks: [], total: 0, page, limit }
+            throw err
+        }
 
         // OpenSearch returns total as an object with value property
         const hitsTotal = res.body.hits.total

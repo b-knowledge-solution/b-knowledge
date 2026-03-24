@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod'
+import { hexId, hexIdWith } from '@/shared/utils/uuid.js'
 
 // ============================================================================
 // API Key CRUD Schemas
@@ -35,7 +36,7 @@ export const updateApiKeySchema = z.object({
  * @description Schema for UUID path parameter
  */
 export const uuidParamSchema = z.object({
-  id: z.string().uuid('Invalid UUID format'),
+  id: hexIdWith('Invalid UUID format'),
 })
 
 // ============================================================================
@@ -61,8 +62,8 @@ const evaluationOptionsSchema = z.object({
  */
 export const externalChatSchema = z.object({
   query: z.string().min(1, 'Query is required').max(10000),
-  assistant_id: z.string().uuid().optional(),
-  dataset_ids: z.array(z.string().uuid()).optional(),
+  assistant_id: hexId.optional(),
+  dataset_ids: z.array(hexId).optional(),
   options: evaluationOptionsSchema,
 })
 
@@ -71,8 +72,8 @@ export const externalChatSchema = z.object({
  */
 export const externalSearchSchema = z.object({
   query: z.string().min(1, 'Query is required').max(10000),
-  search_app_id: z.string().uuid().optional(),
-  dataset_ids: z.array(z.string().uuid()).optional(),
+  search_app_id: hexId.optional(),
+  dataset_ids: z.array(hexId).optional(),
   options: evaluationOptionsSchema,
 })
 
@@ -81,6 +82,6 @@ export const externalSearchSchema = z.object({
  */
 export const externalRetrievalSchema = z.object({
   query: z.string().min(1, 'Query is required').max(10000),
-  dataset_ids: z.array(z.string().uuid()).min(1, 'At least one dataset_id is required'),
+  dataset_ids: z.array(hexId).min(1, 'At least one dataset_id is required'),
   options: evaluationOptionsSchema,
 })

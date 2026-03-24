@@ -246,6 +246,7 @@ class TenantLLMService(CommonService):
         kwargs.update({"provider": model_config["llm_factory"]})
         if model_config["model_type"] == LLMType.EMBEDDING.value:
             if model_config["llm_factory"] not in EmbeddingModel:
+                logging.error(f"DEBUG: Embedding factory {model_config.get('llm_factory')} not in EmbeddingModel. Keys: {list(EmbeddingModel.keys())}, config: {model_config}")
                 return None
             return EmbeddingModel[model_config["llm_factory"]](model_config["api_key"], model_config["llm_name"], base_url=model_config["api_base"])
 
@@ -600,7 +601,7 @@ class LLM4Tenant:
         Args:
             tenant_id (str): The tenant ID.
             model_config (dict): Model configuration including llm_factory,
-                llm_name, llm_type, api_key, api_base, max_tokens.
+                llm_name, model_type, api_key, api_base, max_tokens.
             lang (str): Language setting. Defaults to "Chinese".
             **kwargs: Additional arguments including verbose_tool_use.
 
@@ -611,7 +612,7 @@ class LLM4Tenant:
         self.llm_name = model_config["llm_name"]
         self.model_config = model_config
         self.mdl = TenantLLMService.model_instance(model_config, lang=lang, **kwargs)
-        assert self.mdl, "Can't find model for {}/{}/{}".format(tenant_id, model_config["llm_type"], model_config["llm_name"])
+        assert self.mdl, "Can't find model for {}/{}/{}".format(tenant_id, model_config.get("model_type", model_config.get("llm_type")), model_config["llm_name"])
         self.max_length = model_config.get("max_tokens", 8192)
 
         self.is_tools = model_config.get("is_tools", False)

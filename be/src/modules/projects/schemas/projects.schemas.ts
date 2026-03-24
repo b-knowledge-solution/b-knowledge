@@ -3,6 +3,7 @@
  * @module schemas/projects
  */
 import { z } from 'zod'
+import { hexIdWith } from '@/shared/utils/uuid.js'
 
 // ---------------------------------------------------------------------------
 // Param schemas
@@ -22,7 +23,7 @@ export const permissionParamSchema = z.object({
 /** @description Validates project ID and dataset UUID path parameters */
 export const projectDatasetParamSchema = z.object({
   id: z.string().min(1, 'Project ID is required'),
-  datasetId: z.string().uuid('Invalid dataset UUID'),
+  datasetId: hexIdWith('Invalid dataset UUID'),
 })
 
 /** @description Validates project ID and category ID path parameters */
@@ -75,6 +76,7 @@ export const createProjectSchema = z.object({
   default_chunk_method: z.string().max(128).optional(),
   default_parser_config: z.record(z.unknown()).optional(),
   is_private: z.boolean().optional(),
+  first_version_label: z.string().min(1).max(128).optional(),
 })
 
 /** @description Validates PUT /api/projects/:id request body for project updates */
@@ -108,7 +110,7 @@ export const setPermissionSchema = z.object({
 
 /** @description Validates POST /api/projects/:id/datasets body for dataset linking */
 export const linkDatasetSchema = z.object({
-  dataset_id: z.string().uuid('Invalid dataset UUID').optional(),
+  dataset_id: hexIdWith('Invalid dataset UUID').optional(),
   create_new: z.boolean().optional(),
   dataset_name: z.string().min(1).max(255).optional(),
 })
@@ -237,13 +239,13 @@ export const createEntityPermissionSchema = z.object({
 
 /** @description Validates POST /api/projects/:id/members body for adding a project member */
 export const addMemberSchema = z.object({
-  user_id: z.string().uuid('Invalid user UUID'),
+  user_id: hexIdWith('Invalid user UUID'),
 })
 
 /** @description Validates project ID and user ID path parameters for member removal */
 export const memberParamSchema = z.object({
   id: z.string().min(1, 'Project ID is required'),
-  userId: z.string().uuid('Invalid user UUID'),
+  userId: hexIdWith('Invalid user UUID'),
 })
 
 // ---------------------------------------------------------------------------
@@ -252,7 +254,7 @@ export const memberParamSchema = z.object({
 
 /** @description Validates POST /api/projects/:id/datasets/bind body for batch dataset binding */
 export const bindDatasetsSchema = z.object({
-  dataset_ids: z.array(z.string().uuid('Invalid dataset UUID')).min(1, 'At least one dataset required').max(50, 'Maximum 50 datasets per request'),
+  dataset_ids: z.array(hexIdWith('Invalid dataset UUID')).min(1, 'At least one dataset required').max(50, 'Maximum 50 datasets per request'),
 })
 
 // ---------------------------------------------------------------------------

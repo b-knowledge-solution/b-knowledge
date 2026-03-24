@@ -53,7 +53,7 @@ describe('createMemorySchema', () => {
       extraction_mode: 'realtime',
       permission: 'team',
       scope_type: 'agent',
-      scope_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      scope_id: 'a0eebc999c0b4ef8bb6d6bb9bd380a11',
     })
     expect(result.success).toBe(true)
     if (result.success) {
@@ -144,7 +144,7 @@ describe('createMemorySchema', () => {
     const result = createMemorySchema.safeParse({
       name: 'Test',
       scope_type: 'user',
-      scope_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      scope_id: 'a0eebc999c0b4ef8bb6d6bb9bd380a11',
     })
     expect(result.success).toBe(true)
   })
@@ -285,7 +285,7 @@ describe('queryMemoryMessagesSchema', () => {
 
 describe('memoryIdParamSchema', () => {
   it('accepts a valid UUID', () => {
-    const result = memoryIdParamSchema.safeParse({ id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' })
+    const result = memoryIdParamSchema.safeParse({ id: 'a0eebc999c0b4ef8bb6d6bb9bd380a11' })
     expect(result.success).toBe(true)
   })
 
@@ -307,7 +307,7 @@ describe('memoryIdParamSchema', () => {
 describe('importHistorySchema', () => {
   it('accepts a valid session_id UUID', () => {
     const result = importHistorySchema.safeParse({
-      session_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      session_id: 'a0eebc999c0b4ef8bb6d6bb9bd380a11',
     })
     expect(result.success).toBe(true)
   })

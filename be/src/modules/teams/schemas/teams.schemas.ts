@@ -3,12 +3,13 @@
  * @module schemas/teams
  */
 import { z } from 'zod';
+import { hexId, hexIdWith } from '@/shared/utils/uuid.js';
 
 /**
  * @description UUID v4 param schema for validating team route parameters
  */
 export const uuidParamSchema = z.object({
-  id: z.string().uuid('Invalid UUID format'),
+  id: hexIdWith('Invalid UUID format'),
 });
 
 /**
@@ -33,8 +34,8 @@ export const updateTeamSchema = z.object({
  * @description Validation schema for POST /api/teams/:id/members request body (supports single or batch)
  */
 export const addMembersSchema = z.object({
-  userId: z.string().uuid().optional(),
-  userIds: z.array(z.string().uuid()).optional(),
+  userId: hexId.optional(),
+  userIds: z.array(hexId).optional(),
 }).refine(
   (data) => data.userId || (data.userIds && data.userIds.length > 0),
   { message: 'Either userId or userIds must be provided' },
@@ -44,8 +45,8 @@ export const addMembersSchema = z.object({
  * @description Validation schema for DELETE /api/teams/:id/members/:userId route params
  */
 export const memberParamSchema = z.object({
-  id: z.string().uuid('Invalid team UUID'),
-  userId: z.string().uuid('Invalid user UUID'),
+  id: hexIdWith('Invalid team UUID'),
+  userId: hexIdWith('Invalid user UUID'),
 });
 
 /**

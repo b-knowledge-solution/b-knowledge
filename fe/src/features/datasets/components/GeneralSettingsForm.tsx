@@ -55,8 +55,6 @@ import table01 from '@/assets/svg/chunk-method/table-01.svg'
 import table02 from '@/assets/svg/chunk-method/table-02.svg'
 import one01 from '@/assets/svg/chunk-method/one-01.svg'
 import one02 from '@/assets/svg/chunk-method/one-02.svg'
-import media01 from '@/assets/svg/chunk-method/media-01.svg'
-import media02 from '@/assets/svg/chunk-method/media-02.svg'
 import knowledgeGraph01 from '@/assets/svg/chunk-method/knowledge-graph-01.svg'
 import knowledgeGraph02 from '@/assets/svg/chunk-method/knowledge-graph-02.svg'
 
@@ -72,9 +70,6 @@ const PARSER_IMAGES: Record<string, string[]> = {
   laws: [law01, law02],
   presentation: [presentation01, presentation02],
   one: [one01, one02],
-  picture: [media01, media02],
-  audio: [media01, media02],
-  email: [media01, media02],
   knowledge_graph: [knowledgeGraph01, knowledgeGraph02],
 }
 
@@ -381,7 +376,7 @@ const GeneralSettingsForm: React.FC<GeneralSettingsFormProps> = ({
 
   // Current parser description + images for the right panel
   const currentParserDesc = PARSER_DESCRIPTIONS[parserId] || PARSER_DESCRIPTIONS.naive
-  const currentParserImages = PARSER_IMAGES[parserId] || PARSER_IMAGES.naive
+  const currentParserImages = PARSER_IMAGES[parserId] || [`/parsers/${parserId}.svg`]
 
   return (
     <div className="flex gap-6">

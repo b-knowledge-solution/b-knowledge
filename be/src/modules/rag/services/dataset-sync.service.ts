@@ -10,7 +10,6 @@
 
 import { ModelFactory } from '@/shared/models/factory.js'
 import { log } from '@/shared/services/logger.service.js'
-import { db } from '@/shared/db/knex.js'
 import type { Dataset } from '@/shared/models/types.js'
 
 /**
@@ -19,11 +18,8 @@ import type { Dataset } from '@/shared/models/types.js'
  * @returns {Promise<string | null>} Provider UUID or null
  */
 async function resolveEmbeddingProviderId(modelName: string): Promise<string | null> {
-  const row = await db('model_providers')
-    .where('model_name', modelName)
-    .select('id')
-    .first()
-  return row?.id ?? null
+  const provider = await ModelFactory.modelProvider.findByModelName(modelName)
+  return provider?.id ?? null
 }
 
 /**

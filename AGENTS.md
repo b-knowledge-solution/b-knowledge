@@ -131,6 +131,7 @@ These apply to **both** `be/src/modules/` and `fe/src/features/`:
 - All mutations use Zod validation via `validate()` middleware
 - Config access only through `config` object, never `process.env`
 - Knex ORM for all models; raw SQL only when Knex cannot support the query
+- **No direct DB in services:** Services must never import `db` directly — all DB access goes through `ModelFactory.<model>.<method>()`
 - Migration naming: `YYYYMMDDhhmmss_<name>.ts`
 
 ### Frontend Conventions (details in `fe/CLAUDE.md`)
@@ -186,3 +187,11 @@ When using the **browser tool** to verify UI changes, you **MUST** log in with a
 > Default to **admin1@baoda.vn** unless the change specifically targets leader or user role permissions.
 
 **Production checklist:** Change all default passwords, set `ENABLE_LOCAL_LOGIN=false`, generate strong `SESSION_SECRET`, configure SSL.
+
+## Upstream Code Merge Guidelines (AI Agent Rule)
+
+When merging new code from the upstream RAGFlow project into the `advance-rag` or `converter` Python workers, you **MUST** ensure that all OpenSearch/Elasticsearch index name prefixes are renamed from `ragflow_` to `knowledge_`. 
+
+For example, in `advance-rag/rag/nlp/search.py`, `def index_name(uid): return f"ragflow_{uid}"` must be changed to `def index_name(uid): return f"knowledge_{uid}"`. 
+
+This renaming is critical to maintain consistency with the Node.js backend which expects the `knowledge_` prefix. Failure to do this will result in "0 chunks found" errors on the frontend.

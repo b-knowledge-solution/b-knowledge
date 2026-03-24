@@ -132,3 +132,15 @@ def search_vectors(self, query_embedding: list[float], index: str, top_k: int = 
 ## Environment
 
 Copy `advance-rag/.env.example` → `advance-rag/.env`
+
+## Upstream Code Merge Guidelines (AI Agent Rule)
+
+When merging new code from the upstream RAGFlow project into the `advance-rag` or `converter` Python workers, you **MUST** ensure that all OpenSearch/Elasticsearch index name prefixes are renamed from `ragflow_` to `knowledge_`. 
+
+For example, in `advance-rag/rag/nlp/search.py`, `def index_name(uid): return f"ragflow_{uid}"` must be changed to `def index_name(uid): return f"knowledge_{uid}"`. 
+
+This renaming is critical to maintain consistency with the Node.js backend which expects the `knowledge_` prefix. Failure to do this will result in "0 chunks found" errors on the frontend.
+
+## Built-in Pipeline / Parsing Method Guidelines (AI Agent Rule)
+
+When creating or adding any **new** built-in pipeline or document parser method (such as `Picture`, `Audio`, `Email`, etc.), you **MUST** include a unique sample file/image to be used for instructions. Do not reuse an existing image sample from another pipeline.

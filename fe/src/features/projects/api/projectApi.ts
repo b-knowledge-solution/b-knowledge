@@ -193,6 +193,7 @@ export const createProject = (data: {
   default_chunk_method?: string;
   default_parser_config?: Record<string, unknown>;
   is_private?: boolean;
+  first_version_label?: string;
 }): Promise<Project> => api.post("/api/projects", data);
 
 /**

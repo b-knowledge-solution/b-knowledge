@@ -6,6 +6,7 @@
  * @module modules/sync/schemas
  */
 import { z } from 'zod'
+import { hexIdWith } from '@/shared/utils/uuid.js'
 
 /**
  * Supported connector source types.
@@ -43,7 +44,7 @@ export const ConnectorSourceType = z.enum([
  * @description Validates that route params contain a valid UUID.
  */
 export const uuidParamSchema = z.object({
-  id: z.string().uuid('Invalid UUID format'),
+  id: hexIdWith('Invalid UUID format'),
 })
 
 /**
@@ -56,7 +57,7 @@ export const createConnectorSchema = z.object({
   /** External data source type */
   source_type: ConnectorSourceType,
   /** Target knowledge base ID to sync documents into */
-  kb_id: z.string().uuid('Invalid knowledge base ID'),
+  kb_id: hexIdWith('Invalid knowledge base ID'),
   /** Source-specific configuration (API keys, URLs, etc.) */
   config: z.record(z.unknown()).default({}),
   /** Optional description */

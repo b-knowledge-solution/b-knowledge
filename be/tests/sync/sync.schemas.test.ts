@@ -48,8 +48,8 @@ describe('ConnectorSourceType', () => {
 describe('uuidParamSchema', () => {
   /** @description Should accept a valid UUID */
   it('should accept a valid UUID', () => {
-    const result = uuidParamSchema.parse({ id: '550e8400-e29b-41d4-a716-446655440000' })
-    expect(result.id).toBe('550e8400-e29b-41d4-a716-446655440000')
+    const result = uuidParamSchema.parse({ id: '550e8400e29b41d4a716446655440000' })
+    expect(result.id).toBe('550e8400e29b41d4a716446655440000')
   })
 
   /** @description Should reject invalid UUID format */
@@ -73,7 +73,7 @@ describe('createConnectorSchema', () => {
     const payload = {
       name: 'My Connector',
       source_type: 'notion',
-      kb_id: '550e8400-e29b-41d4-a716-446655440000',
+      kb_id: '550e8400e29b41d4a716446655440000',
       config: { api_key: 'secret' },
       description: 'A test connector',
       schedule: '0 * * * *',
@@ -89,7 +89,7 @@ describe('createConnectorSchema', () => {
     const payload = {
       name: 'Minimal',
       source_type: 'github',
-      kb_id: '550e8400-e29b-41d4-a716-446655440000',
+      kb_id: '550e8400e29b41d4a716446655440000',
     }
     const result = createConnectorSchema.parse(payload)
     // Config defaults to empty object
@@ -101,7 +101,7 @@ describe('createConnectorSchema', () => {
     expect(() => createConnectorSchema.parse({
       name: '',
       source_type: 'notion',
-      kb_id: '550e8400-e29b-41d4-a716-446655440000',
+      kb_id: '550e8400e29b41d4a716446655440000',
     })).toThrow('Name is required')
   })
 
@@ -110,7 +110,7 @@ describe('createConnectorSchema', () => {
     expect(() => createConnectorSchema.parse({
       name: 'x'.repeat(256),
       source_type: 'notion',
-      kb_id: '550e8400-e29b-41d4-a716-446655440000',
+      kb_id: '550e8400e29b41d4a716446655440000',
     })).toThrow()
   })
 
@@ -128,7 +128,7 @@ describe('createConnectorSchema', () => {
     expect(() => createConnectorSchema.parse({
       name: 'Test',
       source_type: 'ftp',
-      kb_id: '550e8400-e29b-41d4-a716-446655440000',
+      kb_id: '550e8400e29b41d4a716446655440000',
     })).toThrow()
   })
 
@@ -137,7 +137,7 @@ describe('createConnectorSchema', () => {
     expect(() => createConnectorSchema.parse({
       name: 'Test',
       source_type: 'notion',
-      kb_id: '550e8400-e29b-41d4-a716-446655440000',
+      kb_id: '550e8400e29b41d4a716446655440000',
       description: 'x'.repeat(2001),
     })).toThrow()
   })

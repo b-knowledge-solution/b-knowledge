@@ -352,6 +352,28 @@ export class LlmProviderService {
         method: 'GET' | 'POST';
         body?: Record<string, unknown>;
     } {
+        if (provider.factory_name === 'Ollama') {
+            if (provider.model_type === 'embedding') {
+                return {
+                    endpoint: 'api/embed',
+                    method: 'POST',
+                    body: {
+                        model: provider.model_name,
+                        input: 'healthcheck',
+                    },
+                };
+            }
+            return {
+                endpoint: 'api/generate',
+                method: 'POST',
+                body: {
+                    model: provider.model_name,
+                    prompt: 'healthcheck',
+                    stream: false,
+                },
+            };
+        }
+
         switch (provider.model_type) {
             case 'chat': {
                 // Chat/VLM probe: send a real prompt to chat/completions

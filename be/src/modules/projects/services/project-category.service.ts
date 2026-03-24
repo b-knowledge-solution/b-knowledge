@@ -105,16 +105,65 @@ export class ProjectCategoryService {
   }
 
   /**
-   * @description Create a new version snapshot for a document category
+   * @description Create a new version snapshot for a document category.
+   *   Auto-creates a dataset named `<projectname>_<version_label>` and links it to the project.
    * @param {string} categoryId - UUID of the category
-   * @param {any} data - Version creation data including version_label and optional metadata
+   * @param {any} data - Version creation data including version_label, optional metadata, optional project_id
    * @param {UserContext} user - Authenticated user context
-   * @returns {Promise<DocumentCategoryVersion>} Created version record
+   * @returns {Promise<DocumentCategoryVersion>} Created version record with linked dataset
+   * @throws {Error} If the parent category or project is not found
    */
   async createVersion(categoryId: string, data: any, user: UserContext): Promise<DocumentCategoryVersion> {
+    // Look up the parent category to resolve the project_id
+    const category = await ModelFactory.documentCategory.findById(categoryId)
+    if (!category) throw new Error('Category not found')
+
+    // Use provided project_id or resolve from the category
+    const projectId = data.project_id || category.project_id
+
+    // Look up the project to build the dataset name
+    const project = await ModelFactory.project.findById(projectId)
+    if (!project) throw new Error('Project not found')
+
+    // Build dataset name as <projectname>_<version_label>
+    const datasetName = `${project.name}_${data.version_label}`
+
+    // Auto-create a dataset for this version
+    let datasetId: string | null = null
+    try {
+      const dataset = await ModelFactory.dataset.create({
+        name: datasetName,
+        description: `Auto-created dataset for project "${project.name}", version "${data.version_label}"`,
+        language: 'English',
+        embedding_model: project.default_embedding_model || null,
+        parser_id: project.default_chunk_method || 'naive',
+        parser_config: JSON.stringify({}),
+        access_control: JSON.stringify({ public: !project.is_private }),
+        status: 'active',
+        created_by: user.id,
+        updated_by: user.id,
+      })
+      datasetId = dataset.id
+
+      // Link the dataset to the project
+      await ModelFactory.projectDataset.create({
+        project_id: projectId,
+        dataset_id: dataset.id,
+        auto_created: true,
+      })
+    } catch (dsError) {
+      // Non-blocking: version is still created even if dataset creation fails
+      log.warn('Failed to auto-create dataset for version', {
+        error: String(dsError), categoryId, versionLabel: data.version_label,
+      })
+    }
+
+    // Create the version record with the linked dataset ID
     return ModelFactory.documentCategoryVersion.create({
       category_id: categoryId,
       version_label: data.version_label,
+      ragflow_dataset_id: datasetId,
+      ragflow_dataset_name: datasetId ? datasetName : null,
       status: 'active',
       // Serialize metadata as JSON string for storage
       metadata: JSON.stringify(data.metadata || {}),

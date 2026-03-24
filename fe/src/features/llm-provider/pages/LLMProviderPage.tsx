@@ -360,10 +360,20 @@ export function LLMProviderPage() {
                         >
                           <Copy size={14} />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(row.primary)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(row.primary)}
+                          title={t('llmProviders.editProvider')}
+                        >
                           <Pencil size={14} />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(row.primary)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(row.primary)}
+                          title={t('common.delete')}
+                        >
                           <Trash2 size={14} className="text-red-500" />
                         </Button>
                       </div>

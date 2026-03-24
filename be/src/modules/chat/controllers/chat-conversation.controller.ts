@@ -10,6 +10,7 @@
 import { Request, Response } from 'express'
 import { log } from '@/shared/services/logger.service.js'
 import { chatConversationService } from '../services/chat-conversation.service.js'
+import { chatAssistantService } from '../services/chat-assistant.service.js'
 import { ttsService } from '@/shared/services/tts.service.js'
 import { getTenantId } from '@/shared/middleware/tenant.middleware.js'
 
@@ -26,14 +27,20 @@ export class ChatConversationController {
    */
   async createConversation(req: Request, res: Response): Promise<void> {
     try {
-      // Guard: ensure authenticated user
-      const userId = req.user?.id
-      if (!userId) {
-        res.status(401).json({ error: 'Unauthorized' })
-        return
-      }
-
       const { name, dialog_id } = req.body
+
+      // Resolve user ID: use authenticated user or session-based anonymous ID
+      let userId = req.user?.id
+      if (!userId) {
+        // For anonymous users, check if the assistant is public
+        const assistant = await chatAssistantService.getAssistant(dialog_id)
+        if (!assistant || !assistant.is_public) {
+          res.status(401).json({ error: 'Unauthorized' })
+          return
+        }
+        // Generate session-based anonymous ID
+        userId = `anon_${req.sessionID}`
+      }
 
       // Create conversation in local DB
       const session = await chatConversationService.createConversation(dialog_id, name, userId)
@@ -52,12 +59,8 @@ export class ChatConversationController {
    */
   async getConversation(req: Request, res: Response): Promise<void> {
     try {
-      // Guard: ensure authenticated user
-      const userId = req.user?.id
-      if (!userId) {
-        res.status(401).json({ error: 'Unauthorized' })
-        return
-      }
+      // Resolve user ID: use authenticated user or session-based anonymous ID
+      const userId = req.user?.id || `anon_${req.sessionID}`
 
       const { id } = req.params
 
@@ -83,12 +86,8 @@ export class ChatConversationController {
    */
   async listConversations(req: Request, res: Response): Promise<void> {
     try {
-      // Guard: ensure authenticated user
-      const userId = req.user?.id
-      if (!userId) {
-        res.status(401).json({ error: 'Unauthorized' })
-        return
-      }
+      // Resolve user ID: use authenticated user or session-based anonymous ID
+      const userId = req.user?.id || `anon_${req.sessionID}`
 
       const dialogId = req.query.dialogId as string
 
@@ -205,15 +204,20 @@ export class ChatConversationController {
    */
   async streamChat(req: Request, res: Response): Promise<void> {
     try {
-      // Guard: ensure authenticated user
-      const userId = req.user?.id
-      if (!userId) {
-        res.status(401).json({ error: 'Unauthorized' })
-        return
-      }
-
       const { id } = req.params
       const { content, dialog_id, variables, metadata_condition, doc_ids, llm_id, temperature, max_tokens, file_ids } = req.body
+
+      // Resolve user ID: use authenticated user or session-based anonymous ID
+      let userId = req.user?.id
+      if (!userId) {
+        // For anonymous users, check if the assistant is public
+        const assistant = await chatAssistantService.getAssistant(dialog_id)
+        if (!assistant || !assistant.is_public) {
+          res.status(401).json({ error: 'Unauthorized' })
+          return
+        }
+        userId = `anon_${req.sessionID}`
+      }
 
       // Build per-message overrides from request body
       const overrides = (variables || metadata_condition || doc_ids || llm_id || temperature !== undefined || max_tokens !== undefined || file_ids)

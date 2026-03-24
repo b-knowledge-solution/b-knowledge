@@ -179,7 +179,7 @@ describe('createSearchAppSchema', () => {
   it('accepts valid input', () => {
     const result = createSearchAppSchema.safeParse({
       name: 'My Search App',
-      dataset_ids: ['a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'],
+      dataset_ids: ['a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d'],
     })
     expect(result.success).toBe(true)
   })
@@ -187,7 +187,7 @@ describe('createSearchAppSchema', () => {
   it('rejects empty name', () => {
     const result = createSearchAppSchema.safeParse({
       name: '',
-      dataset_ids: ['a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'],
+      dataset_ids: ['a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d'],
     })
     expect(result.success).toBe(false)
   })
@@ -195,7 +195,7 @@ describe('createSearchAppSchema', () => {
   it('rejects name > 128 chars', () => {
     const result = createSearchAppSchema.safeParse({
       name: 'a'.repeat(129),
-      dataset_ids: ['a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'],
+      dataset_ids: ['a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d'],
     })
     expect(result.success).toBe(false)
   })
@@ -219,7 +219,7 @@ describe('createSearchAppSchema', () => {
   it('accepts optional fields', () => {
     const result = createSearchAppSchema.safeParse({
       name: 'Test',
-      dataset_ids: ['a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'],
+      dataset_ids: ['a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d'],
       description: 'A description',
       search_config: { top_k: 10 },
       is_public: true,
@@ -308,14 +308,14 @@ describe('mindmapSchema', () => {
 describe('searchAppAccessSchema', () => {
   it('accepts valid user access entry', () => {
     const result = searchAppAccessSchema.safeParse({
-      entries: [{ entity_type: 'user', entity_id: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d' }],
+      entries: [{ entity_type: 'user', entity_id: 'a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d' }],
     })
     expect(result.success).toBe(true)
   })
 
   it('accepts valid team access entry', () => {
     const result = searchAppAccessSchema.safeParse({
-      entries: [{ entity_type: 'team', entity_id: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d' }],
+      entries: [{ entity_type: 'team', entity_id: 'a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d' }],
     })
     expect(result.success).toBe(true)
   })
@@ -327,7 +327,7 @@ describe('searchAppAccessSchema', () => {
 
   it('rejects invalid entity_type', () => {
     const result = searchAppAccessSchema.safeParse({
-      entries: [{ entity_type: 'group', entity_id: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d' }],
+      entries: [{ entity_type: 'group', entity_id: 'a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d' }],
     })
     expect(result.success).toBe(false)
   })
@@ -342,8 +342,8 @@ describe('searchAppAccessSchema', () => {
   it('accepts multiple entries', () => {
     const result = searchAppAccessSchema.safeParse({
       entries: [
-        { entity_type: 'user', entity_id: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d' },
-        { entity_type: 'team', entity_id: 'b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e' },
+        { entity_type: 'user', entity_id: 'a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d' },
+        { entity_type: 'team', entity_id: 'b2c3d4e5f6a74b8c9d0e1f2a3b4c5d6e' },
       ],
     })
     expect(result.success).toBe(true)
@@ -356,7 +356,7 @@ describe('searchAppAccessSchema', () => {
 
 describe('searchAppIdParamSchema', () => {
   it('accepts valid UUID', () => {
-    const result = searchAppIdParamSchema.safeParse({ id: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d' })
+    const result = searchAppIdParamSchema.safeParse({ id: 'a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d' })
     expect(result.success).toBe(true)
   })
 

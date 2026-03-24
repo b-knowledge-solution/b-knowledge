@@ -7,7 +7,7 @@
  */
 import { Router } from 'express'
 import { ChatConversationController } from '../controllers/chat-conversation.controller.js'
-import { requireAuth } from '@/shared/middleware/auth.middleware.js'
+import { requireAuth, checkSession } from '@/shared/middleware/auth.middleware.js'
 import { validate } from '@/shared/middleware/validate.middleware.js'
 import {
   createConversationSchema,
@@ -30,7 +30,7 @@ const controller = new ChatConversationController()
  */
 router.post(
   '/conversations',
-  requireAuth,
+  checkSession,
   validate(createConversationSchema),
   controller.createConversation.bind(controller)
 )
@@ -42,7 +42,7 @@ router.post(
  */
 router.get(
   '/conversations/:id',
-  requireAuth,
+  checkSession,
   validate({ params: conversationIdParamSchema }),
   controller.getConversation.bind(controller)
 )
@@ -54,7 +54,7 @@ router.get(
  */
 router.get(
   '/conversations',
-  requireAuth,
+  checkSession,
   controller.listConversations.bind(controller)
 )
 
@@ -101,7 +101,7 @@ router.delete(
  */
 router.post(
   '/conversations/:id/completion',
-  requireAuth,
+  checkSession,
   validate({ body: chatCompletionSchema, params: conversationIdParamSchema }),
   controller.streamChat.bind(controller)
 )
@@ -113,7 +113,7 @@ router.post(
  */
 router.post(
   '/conversations/:id/feedback',
-  requireAuth,
+  checkSession,
   validate({ body: feedbackSchema, params: conversationIdParamSchema }),
   controller.sendFeedback.bind(controller)
 )
@@ -125,7 +125,7 @@ router.post(
  */
 router.post(
   '/tts',
-  requireAuth,
+  checkSession,
   validate({ body: ttsSchema }),
   controller.textToSpeech.bind(controller)
 )

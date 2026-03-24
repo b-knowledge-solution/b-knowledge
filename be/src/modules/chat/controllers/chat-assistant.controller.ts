@@ -64,6 +64,12 @@ export class ChatAssistantController {
         return
       }
 
+      // If user is not authenticated, only allow access to public assistants
+      if (!req.user && !assistant.is_public) {
+        res.status(401).json({ error: 'Unauthorized' })
+        return
+      }
+
       res.json(assistant)
     } catch (error) {
       log.error('Error getting assistant', { error: (error as Error).message })
@@ -80,12 +86,13 @@ export class ChatAssistantController {
    */
   async listAssistants(req: Request, res: Response): Promise<void> {
     try {
-      // Guard: ensure authenticated user with a known role
       const userId = req.user?.id
       const userRole = req.user?.role
 
+      // Unauthenticated users only see public assistants
       if (!userId || !userRole) {
-        res.status(401).json({ error: 'Unauthorized' })
+        const result = await chatAssistantService.listPublicAssistants(req.query as any)
+        res.json(result)
         return
       }
 

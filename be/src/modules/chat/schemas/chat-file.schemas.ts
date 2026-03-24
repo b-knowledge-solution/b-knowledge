@@ -4,17 +4,18 @@
  * @module schemas/chat-file
  */
 import { z } from 'zod'
+import { hexId, hexIdWith } from '@/shared/utils/uuid.js'
 
 /**
  * @description Schema for the conversation ID path parameter on file upload.
  */
 export const fileUploadParamsSchema = z.object({
-  id: z.string().uuid('Invalid conversation ID'),
+  id: hexIdWith('Invalid conversation ID'),
 })
 
 /**
  * @description Schema for the file ID path parameter on file content retrieval.
  */
 export const fileContentParamsSchema = z.object({
-  fileId: z.string().uuid('Invalid file ID'),
+  fileId: hexIdWith('Invalid file ID'),
 })

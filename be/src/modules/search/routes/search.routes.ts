@@ -7,7 +7,7 @@
  */
 import { Router } from 'express'
 import { SearchController } from '../controllers/search.controller.js'
-import { requireAuth, requirePermission } from '@/shared/middleware/auth.middleware.js'
+import { requireAuth, requirePermission, checkSession } from '@/shared/middleware/auth.middleware.js'
 import { validate } from '@/shared/middleware/validate.middleware.js'
 import {
   createSearchAppSchema,
@@ -46,7 +46,7 @@ router.post(
  */
 router.get(
   '/apps',
-  requireAuth,
+  checkSession,
   validate({ query: listSearchAppsSchema }),
   controller.listSearchApps.bind(controller)
 )
@@ -58,7 +58,7 @@ router.get(
  */
 router.get(
   '/apps/:id',
-  requireAuth,
+  checkSession,
   validate({ params: searchAppIdParamSchema }),
   controller.getSearchApp.bind(controller)
 )
@@ -122,7 +122,7 @@ router.put(
  */
 router.post(
   '/apps/:id/retrieval-test',
-  requireAuth,
+  checkSession,
   validate({ body: retrievalTestSchema, params: searchAppIdParamSchema }),
   controller.retrievalTest.bind(controller)
 )
@@ -134,7 +134,7 @@ router.post(
  */
 router.post(
   '/apps/:id/feedback',
-  requireAuth,
+  checkSession,
   validate({ body: searchFeedbackSchema, params: searchAppIdParamSchema }),
   controller.sendFeedback.bind(controller)
 )
@@ -146,7 +146,7 @@ router.post(
  */
 router.post(
   '/apps/:id/search',
-  requireAuth,
+  checkSession,
   validate({ body: executeSearchSchema, params: searchAppIdParamSchema }),
   controller.executeSearch.bind(controller)
 )
@@ -158,7 +158,7 @@ router.post(
  */
 router.post(
   '/apps/:id/ask',
-  requireAuth,
+  checkSession,
   validate({ body: askSearchSchema, params: searchAppIdParamSchema }),
   controller.askSearch.bind(controller)
 )
@@ -170,7 +170,7 @@ router.post(
  */
 router.post(
   '/apps/:id/related-questions',
-  requireAuth,
+  checkSession,
   validate({ body: relatedQuestionsSchema, params: searchAppIdParamSchema }),
   controller.relatedQuestions.bind(controller)
 )
@@ -182,7 +182,7 @@ router.post(
  */
 router.post(
   '/apps/:id/mindmap',
-  requireAuth,
+  checkSession,
   validate({ body: mindmapSchema, params: searchAppIdParamSchema }),
   controller.mindmap.bind(controller)
 )

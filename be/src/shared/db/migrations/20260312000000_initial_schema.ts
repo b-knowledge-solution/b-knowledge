@@ -27,7 +27,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Users - central identity table referenced by most other tables
   await knex.schema.createTable('users', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.text('email').unique().notNullable()
     table.text('display_name').notNullable()
     table.text('role').notNullable().defaultTo('user')
@@ -63,7 +63,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Teams - organizational grouping for users
   await knex.schema.createTable('teams', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.text('name').notNullable()
     table.text('project_name')
     table.text('description')
@@ -159,7 +159,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Chat sessions - user conversation sessions
   await knex.schema.createTable('chat_sessions', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.text('user_id').notNullable()
     table.text('title').notNullable()
     table.text('dialog_id').nullable()
@@ -172,7 +172,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Chat messages - individual messages within sessions
   await knex.schema.createTable('chat_messages', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.text('session_id').notNullable()
     table.text('role').notNullable()
     table.text('content').notNullable()
@@ -421,7 +421,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Glossary tasks - prompt template instructions
   await knex.schema.createTable('glossary_tasks', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.text('name').unique().notNullable()
     table.text('description')
     table.text('task_instruction_en').notNullable()
@@ -442,7 +442,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Glossary keywords - standalone keyword entities
   await knex.schema.createTable('glossary_keywords', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.text('name').unique().notNullable()
     table.text('en_keyword')
     table.text('description')
@@ -1049,7 +1049,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // 12.1 Projects - core project entity
   await knex.schema.createTable('projects', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.text('name').notNullable()
     table.text('description')
     table.text('avatar')
@@ -1079,7 +1079,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // 12.2 Project permissions - tab-level access control
   await knex.schema.createTable('project_permissions', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     // Reference to the project
     table.text('project_id').notNullable()
     // Grantee type: 'user' or 'team'
@@ -1104,7 +1104,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // 12.3 Document categories - groupings within a project
   await knex.schema.createTable('document_categories', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     // Reference to the parent project
     table.text('project_id').notNullable()
     table.text('name').notNullable()
@@ -1125,7 +1125,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // 12.4 Document category versions - each maps to 1 RAGFlow dataset
   await knex.schema.createTable('document_category_versions', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     // Reference to the parent category
     table.text('category_id').notNullable()
     table.text('version_label').notNullable()
@@ -1150,7 +1150,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // 12.5 Document category version files - per-file records
   await knex.schema.createTable('document_category_version_files', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     // Reference to the parent version
     table.text('version_id').notNullable()
     table.text('file_name').notNullable()
@@ -1170,7 +1170,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // 12.6 Project chats - chat assistants linked to projects
   await knex.schema.createTable('project_chats', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     // Reference to the parent project
     table.text('project_id').notNullable()
     table.text('name').notNullable()
@@ -1199,7 +1199,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // 12.7 Project searches - search apps linked to projects
   await knex.schema.createTable('project_searches', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     // Reference to the parent project
     table.text('project_id').notNullable()
     table.text('name').notNullable()
@@ -1227,7 +1227,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // 12.8 Project entity permissions - granular entity-level access
   await knex.schema.createTable('project_entity_permissions', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     // Reference to the parent project
     table.text('project_id').notNullable()
     // Entity type: 'category', 'chat', 'search'
@@ -1255,7 +1255,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // 12.9 Project datasets - datasets linked to projects
   await knex.schema.createTable('project_datasets', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     // Reference to the parent project
     table.text('project_id').notNullable()
     // Reference to the dataset
@@ -1275,7 +1275,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // 12.10 Project sync configs - per-project RAGFlow sync settings
   await knex.schema.createTable('project_sync_configs', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     // Reference to the parent project
     table.text('project_id').notNullable()
     // Sync schedule (cron expression or keyword)
@@ -1302,7 +1302,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Answer feedback - user feedback on chat and search answers
   await knex.schema.createTable('answer_feedback', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.text('source').notNullable().checkIn(['chat', 'search'])
     table.text('source_id').notNullable()
     table.text('message_id').nullable()
@@ -1324,7 +1324,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Platform policies - super-admin managed ABAC policies
   await knex.schema.createTable('platform_policies', (table) => {
-    table.text('id').primary().defaultTo(knex.raw("gen_random_uuid()::TEXT"))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.text('name').notNullable()
     table.text('description').nullable()
     table.jsonb('rules').notNullable().defaultTo('[]')
@@ -1337,7 +1337,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Query log - search and chat query events for analytics
   await knex.schema.createTable('query_log', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.text('source').notNullable().checkIn(['chat', 'search'])
     table.text('source_id').notNullable()
     table.text('user_id').notNullable()
@@ -1357,7 +1357,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // API keys - hashed API keys for external API authentication
   await knex.schema.createTable('api_keys', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.text('user_id').notNullable().references('id').inTable('users').onDelete('CASCADE')
     table.text('name').notNullable()
     table.text('key_prefix').notNullable()
@@ -1378,7 +1378,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Agents - AI agent workflow definitions
   await knex.schema.createTable('agents', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.string('name', 255).notNullable()
     table.text('description').nullable()
     table.string('avatar', 512).nullable()
@@ -1403,7 +1403,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Agent runs - agent execution history
   await knex.schema.createTable('agent_runs', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.text('agent_id').notNullable().references('id').inTable('agents').onDelete('CASCADE')
     table.string('tenant_id', 64).notNullable()
     table.string('status', 20).notNullable().defaultTo('pending')
@@ -1426,7 +1426,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Agent run steps - per-node step logging for runs
   await knex.schema.createTable('agent_run_steps', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.text('run_id').notNullable().references('id').inTable('agent_runs').onDelete('CASCADE')
     table.string('node_id', 255).notNullable()
     table.string('node_type', 100).notNullable()
@@ -1446,7 +1446,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Agent tool credentials - encrypted credentials for external tools
   await knex.schema.createTable('agent_tool_credentials', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.string('tenant_id', 64).notNullable()
     table.text('agent_id').nullable().references('id').inTable('agents').onDelete('CASCADE')
     table.string('tool_type', 100).notNullable()
@@ -1465,7 +1465,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Agent templates - pre-built agent workflow templates
   await knex.schema.createTable('agent_templates', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.string('name', 255).notNullable()
     table.text('description').nullable()
     table.string('avatar', 512).nullable()
@@ -1488,7 +1488,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Memories - AI memory pool definitions
   await knex.schema.createTable('memories', (table) => {
-    table.text('id').primary().defaultTo(knex.raw('gen_random_uuid()::TEXT'))
+    table.text('id').primary().defaultTo(knex.raw(HEX_UUID_DEFAULT))
     table.string('name', 255).notNullable()
     table.text('description').nullable()
     table.text('avatar').nullable()

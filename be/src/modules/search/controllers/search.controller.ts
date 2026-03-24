@@ -62,9 +62,10 @@ export class SearchController {
       const userId = req.user?.id
       const userRole = req.user?.role
 
-      // Guard: require authentication for listing search apps
+      // Unauthenticated users only see public apps
       if (!userId || !userRole) {
-        res.status(401).json({ error: 'Unauthorized' })
+        const result = await searchService.listPublicApps(req.query as any)
+        res.json(result)
         return
       }
 
@@ -151,6 +152,12 @@ export class SearchController {
         return
       }
 
+      // If user is not authenticated, only allow access to public apps
+      if (!req.user && !app.is_public) {
+        res.status(401).json({ error: 'Unauthorized' })
+        return
+      }
+
       res.json(app)
     } catch (error) {
       log.error('Error getting search app', { error: (error as Error).message })
@@ -213,6 +220,17 @@ export class SearchController {
    */
   async askSearch(req: Request, res: Response): Promise<void> {
     try {
+      // Check public access for anonymous users
+      const app = await searchService.getSearchApp(req.params.id!)
+      if (!app) {
+        res.status(404).json({ error: 'Search app not found' })
+        return
+      }
+      if (!req.user && !app.is_public) {
+        res.status(401).json({ error: 'Unauthorized' })
+        return
+      }
+
       // Set SSE headers for streaming
       res.setHeader('Content-Type', 'text/event-stream')
       res.setHeader('Cache-Control', 'no-cache')
@@ -374,6 +392,17 @@ export class SearchController {
    */
   async executeSearch(req: Request, res: Response): Promise<void> {
     try {
+      // Check public access for anonymous users
+      const app = await searchService.getSearchApp(req.params.id!)
+      if (!app) {
+        res.status(404).json({ error: 'Search app not found' })
+        return
+      }
+      if (!req.user && !app.is_public) {
+        res.status(401).json({ error: 'Unauthorized' })
+        return
+      }
+
       const { query, top_k, method, similarity_threshold, vector_similarity_weight, page, page_size } = req.body
 
       // Execute search across configured datasets with pagination

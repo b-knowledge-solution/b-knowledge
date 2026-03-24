@@ -70,9 +70,15 @@ vi.mock('../../src/modules/rag/services/rag-redis.service.js', () => ({
   ragRedisService: mockRagRedisService,
   getUuid: vi.fn().mockReturnValue('aabbccdd11223344aabbccdd11223344'),
 }))
-vi.mock('@/shared/utils/uuid.js', () => ({
-  getUuid: vi.fn().mockReturnValue('aabbccdd11223344aabbccdd11223344'),
-}))
+vi.mock('@/shared/utils/uuid.js', () => {
+  const { z } = require('zod')
+  const re = /^[0-9a-f]{32}$/
+  return {
+    getUuid: vi.fn().mockReturnValue('aabbccdd11223344aabbccdd11223344'),
+    hexId: z.string().regex(re, 'Invalid ID format (expected 32-char hex)'),
+    hexIdWith: (msg: string) => z.string().regex(re, msg),
+  }
+})
 vi.mock('../../src/modules/rag/services/rag-storage.service.js', () => ({ ragStorageService: mockRagStorageService }))
 vi.mock('../../src/shared/services/redis.service.js', () => ({ getRedisClient: vi.fn() }))
 vi.mock('../../src/shared/utils/ip.js', () => ({ getClientIp: vi.fn().mockReturnValue('127.0.0.1') }))

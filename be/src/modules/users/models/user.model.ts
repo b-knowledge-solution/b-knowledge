@@ -27,4 +27,16 @@ export class UserModel extends BaseModel<User> {
     // Used by auth flow to bind sessions to existing users
     return this.knex(this.tableName).where({ email }).first()
   }
+
+  /**
+   * @description Batch-fetch display names for enrichment purposes
+   * @param {string[]} ids - Array of user UUIDs
+   * @returns {Promise<Array<{ id: string; display_name: string }>>} Matching users with id and display_name
+   */
+  async findDisplayNamesByIds(ids: string[]): Promise<Array<{ id: string; display_name: string }>> {
+    if (ids.length === 0) return []
+    return this.knex(this.tableName)
+      .select('id', 'display_name')
+      .whereIn('id', ids)
+  }
 }

@@ -24,9 +24,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const mockFetch = vi.fn()
 global.fetch = mockFetch as any
 
-vi.mock('@/shared/utils/uuid.js', () => ({
-  getUuid: vi.fn(() => 'aabbccdd11223344aabbccdd11223344'),
-}))
+vi.mock('@/shared/utils/uuid.js', () => {
+  const { z } = require('zod')
+  const re = /^[0-9a-f]{32}$/
+  return {
+    getUuid: vi.fn(() => 'aabbccdd11223344aabbccdd11223344'),
+    hexId: z.string().regex(re, 'Invalid ID format (expected 32-char hex)'),
+    hexIdWith: (msg: string) => z.string().regex(re, msg),
+  }
+})
 
 const mockLog = vi.hoisted(() => ({
   error: vi.fn(),

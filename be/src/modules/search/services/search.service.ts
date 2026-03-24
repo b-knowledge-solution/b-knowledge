@@ -168,6 +168,43 @@ export class SearchService {
   }
 
   /**
+   * List only public search apps (for unauthenticated users).
+   * @param options - Paging, sorting, and searching
+   * @returns Paginated object with public apps
+   */
+  async listPublicApps(
+    options?: { page?: number; page_size?: number; search?: string; sort_by?: string; sort_order?: string }
+  ): Promise<{ data: SearchApp[]; total: number }> {
+    const page = Number(options?.page) || 1
+    const pageSize = Number(options?.page_size) || 20
+    const sortBy = options?.sort_by || 'created_at'
+    const sortOrder = options?.sort_order || 'desc'
+
+    // Only return public apps
+    let baseQuery = ModelFactory.searchApp.getKnex().where('is_public', true)
+
+    // Apply search filter
+    if (options?.search) {
+      baseQuery = baseQuery.andWhere(function (this: any) {
+        this.where('name', 'ilike', `%${options!.search}%`)
+          .orWhere('description', 'ilike', `%${options!.search}%`)
+      })
+    }
+
+    // Count total before pagination
+    const countResult = await baseQuery.clone().clearSelect().clearOrder().count('* as count').first()
+    const total = Number((countResult as any)?.count || 0)
+
+    // Apply sort and pagination
+    const data = await baseQuery
+      .orderBy(sortBy, sortOrder)
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+
+    return { data, total }
+  }
+
+  /**
    * Get access control entries for a search app, enriched with display names.
    * Joins with users and teams tables to resolve entity names.
    * @param appId - UUID of the search app
@@ -248,8 +285,8 @@ export class SearchService {
    */
   async checkUserAccess(
     appId: string,
-    userId: string,
-    userRole: string,
+    userId: string | undefined,
+    userRole: string | undefined,
     teamIds: string[]
   ): Promise<boolean> {
     // Admins always have access
@@ -263,13 +300,18 @@ export class SearchService {
       return false
     }
 
-    // Creator always has access to their own app
-    if (app.created_by === userId) {
+    // Public apps are accessible to everyone (including anonymous)
+    if (app.is_public) {
       return true
     }
 
-    // Public apps are accessible to everyone
-    if (app.is_public) {
+    // Anonymous users cannot access non-public apps
+    if (!userId) {
+      return false
+    }
+
+    // Creator always has access to their own app
+    if (app.created_by === userId) {
       return true
     }
 

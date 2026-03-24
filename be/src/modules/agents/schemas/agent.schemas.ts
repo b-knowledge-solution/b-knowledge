@@ -7,14 +7,15 @@
  * @module modules/agents/schemas/agent
  */
 import { z } from 'zod'
+import { hexId } from '@/shared/utils/uuid.js'
 
 /** @description POST /api/agents — body schema for agent creation */
 export const createAgentSchema = z.object({
   name: z.string().min(1).max(255),
   description: z.string().max(2000).optional(),
   mode: z.enum(['agent', 'pipeline']).default('agent'),
-  project_id: z.string().uuid().optional(),
-  template_id: z.string().uuid().optional(),
+  project_id: hexId.optional(),
+  template_id: hexId.optional(),
 })
 
 /** @description PUT /api/agents/:id — body schema for agent update (all fields optional) */
@@ -33,20 +34,20 @@ export const saveVersionSchema = z.object({
 
 /** @description UUID path parameter schema — validates :id param */
 export const agentIdParamSchema = z.object({
-  id: z.string().uuid(),
+  id: hexId,
 })
 
 /** @description UUID path parameter schema — validates :id and :versionId params */
 export const versionIdParamSchema = z.object({
-  id: z.string().uuid(),
-  versionId: z.string().uuid(),
+  id: hexId,
+  versionId: hexId,
 })
 
 /** @description GET /api/agents — query schema for paginated agent listing with filters */
 export const listAgentsQuerySchema = z.object({
   mode: z.enum(['agent', 'pipeline']).optional(),
   status: z.enum(['draft', 'published']).optional(),
-  project_id: z.string().uuid().optional(),
+  project_id: hexId.optional(),
   page: z.coerce.number().int().positive().default(1),
   page_size: z.coerce.number().int().min(1).max(100).default(20),
   search: z.string().max(255).optional(),
@@ -59,8 +60,8 @@ export const agentRunBodySchema = z.object({
 
 /** @description UUID path parameter schema — validates :id and :runId params */
 export const agentRunIdParamSchema = z.object({
-  id: z.string().uuid(),
-  runId: z.string().uuid(),
+  id: hexId,
+  runId: hexId,
 })
 
 /** @description POST /api/agents/tools/credentials — body schema for creating a tool credential */
@@ -68,7 +69,7 @@ export const createCredentialSchema = z.object({
   tool_type: z.string().min(1).max(100),
   name: z.string().min(1).max(255),
   credentials: z.record(z.string()),
-  agent_id: z.string().uuid().optional(),
+  agent_id: hexId.optional(),
 })
 
 /** @description PUT /api/agents/tools/credentials/:id — body schema for updating a tool credential */

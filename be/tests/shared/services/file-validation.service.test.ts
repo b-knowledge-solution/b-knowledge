@@ -231,7 +231,7 @@ describe('File Validation Service', () => {
   describe('generateSafeFilename', () => {
     it('should generate UUID-based filename', () => {
       const safe = generateSafeFilename('original.pdf');
-      expect(safe).toMatch(/^[a-f0-9-]{36}\.pdf$/);
+      expect(safe).toMatch(/^[a-f0-9]{32}\.pdf$/);
     });
 
     it('should preserve extension', () => {

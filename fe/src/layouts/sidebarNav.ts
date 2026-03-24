@@ -135,12 +135,6 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
         labelKey: 'nav.datasets',
         icon: Database,
       },
-      {
-        path: '/data-studio/llm-providers',
-        labelKey: 'nav.llmProviders',
-        icon: BrainCircuit,
-        roles: ['super-admin', 'admin'],
-      },
     ],
   },
 
@@ -234,6 +228,11 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
         path: '/admin/broadcast-messages',
         labelKey: 'nav.broadcastMessages',
         icon: Megaphone,
+      },
+      {
+        path: '/admin/llm-providers',
+        labelKey: 'nav.llmProviders',
+        icon: BrainCircuit,
       },
     ],
   },

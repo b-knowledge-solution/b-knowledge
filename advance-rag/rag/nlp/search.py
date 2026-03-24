@@ -30,7 +30,7 @@ from common import settings
 
 from common.misc_utils import thread_pool_exec
 
-def index_name(uid): return f"ragflow_{uid}"
+def index_name(uid): return f"knowledge_{uid}"
 
 
 class Dealer:

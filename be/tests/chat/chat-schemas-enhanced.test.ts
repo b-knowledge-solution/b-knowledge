@@ -23,8 +23,8 @@ import {
   assistantIdParamSchema,
 } from '../../src/modules/chat/schemas/chat-assistant.schemas'
 
-const VALID_UUID = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
-const VALID_UUID_2 = 'b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e'
+const VALID_UUID = 'a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d'
+const VALID_UUID_2 = 'b2c3d4e5f6a74b8c9d0e1f2a3b4c5d6e'
 
 // ---------------------------------------------------------------------------
 // renameConversationSchema
@@ -393,23 +393,23 @@ describe('ttsSchema', () => {
 // conversationIdParamSchema / assistantIdParamSchema
 // ---------------------------------------------------------------------------
 
-describe('UUID param schemas', () => {
-  it('conversationIdParamSchema accepts valid UUID', () => {
+describe('hex ID param schemas', () => {
+  it('conversationIdParamSchema accepts valid hex ID', () => {
     const result = conversationIdParamSchema.safeParse({ id: VALID_UUID })
     expect(result.success).toBe(true)
   })
 
-  it('conversationIdParamSchema rejects invalid UUID', () => {
+  it('conversationIdParamSchema rejects invalid hex ID', () => {
     const result = conversationIdParamSchema.safeParse({ id: 'bad' })
     expect(result.success).toBe(false)
   })
 
-  it('assistantIdParamSchema accepts valid UUID', () => {
+  it('assistantIdParamSchema accepts valid hex ID', () => {
     const result = assistantIdParamSchema.safeParse({ id: VALID_UUID })
     expect(result.success).toBe(true)
   })
 
-  it('assistantIdParamSchema rejects invalid UUID', () => {
+  it('assistantIdParamSchema rejects invalid hex ID', () => {
     const result = assistantIdParamSchema.safeParse({ id: 'bad' })
     expect(result.success).toBe(false)
   })

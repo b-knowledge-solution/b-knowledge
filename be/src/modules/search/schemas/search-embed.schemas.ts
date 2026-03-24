@@ -3,6 +3,7 @@
  * @module schemas/search-embed
  */
 import { z } from 'zod'
+import { hexIdWith } from '@/shared/utils/uuid.js'
 
 /**
  * @description Validates request body for creating a new embed token for a search app
@@ -18,14 +19,14 @@ export const createEmbedTokenSchema = z.object({
  * @description Validates the search app UUID path parameter
  */
 export const embedAppIdParamSchema = z.object({
-  id: z.string().uuid('Invalid search app ID'),
+  id: hexIdWith('Invalid search app ID'),
 })
 
 /**
  * @description Validates the token UUID path parameter for revocation
  */
 export const embedTokenIdParamSchema = z.object({
-  tokenId: z.string().uuid('Invalid token ID'),
+  tokenId: hexIdWith('Invalid token ID'),
 })
 
 /**

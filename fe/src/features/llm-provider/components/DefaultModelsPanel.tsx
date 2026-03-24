@@ -132,7 +132,10 @@ export function DefaultModelsPanel({ providers, onDefaultChanged }: DefaultModel
                     value={currentDefault?.id ?? ''}
                     onValueChange={handleDefaultChange}
                   >
-                    <SelectTrigger className="h-7 w-auto min-w-[120px] max-w-[200px] text-xs">
+                    <SelectTrigger 
+                      className="h-7 w-auto min-w-[120px] max-w-[200px] text-xs"
+                      title={currentDefault ? `${currentDefault.factory_name} / ${currentDefault.model_name}` : undefined}
+                    >
                       <SelectValue placeholder={t('llmProviders.defaultNotSet')} />
                     </SelectTrigger>
                     <SelectContent>

@@ -1878,6 +1878,7 @@
     "title": "LLM Providers",
     "addProvider": "Add Provider",
     "editProvider": "Edit Provider",
+    "cloneProvider": "Clone Provider",
     "allTypes": "All Types",
     "modelTypes": {
       "chat": "LLM",
@@ -1962,7 +1963,10 @@
     "publicAccessDesc": "All authenticated users can access this project",
     "privateAccessDesc": "Only selected teams can access this project",
     "selectTeams": "Select Teams",
-    "autoDataset": "Auto-create dataset",
+    "autoDataset": "Auto-created dataset",
+    "firstVersionLabel": "First Version Label",
+    "firstVersionPlaceholder": "e.g. v1",
+    "firstVersionHint": "A dataset will be created with the name: ProjectName_VersionLabel",
     "common": {
       "vector": "vector",
       "fullText": "full-text"

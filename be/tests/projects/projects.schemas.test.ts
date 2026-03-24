@@ -74,9 +74,9 @@ describe('Param Schemas', () => {
     it('should accept valid UUID datasetId', () => {
       const result = projectDatasetParamSchema.parse({
         id: 'p1',
-        datasetId: '550e8400-e29b-41d4-a716-446655440000',
+        datasetId: '550e8400e29b41d4a716446655440000',
       })
-      expect(result.datasetId).toBe('550e8400-e29b-41d4-a716-446655440000')
+      expect(result.datasetId).toBe('550e8400e29b41d4a716446655440000')
     })
 
     /** @description Should reject invalid UUID datasetId */
@@ -103,7 +103,7 @@ describe('Param Schemas', () => {
     it('should accept valid UUID userId', () => {
       const result = memberParamSchema.parse({
         id: 'p1',
-        userId: '550e8400-e29b-41d4-a716-446655440000',
+        userId: '550e8400e29b41d4a716446655440000',
       })
       expect(result.userId).toBeDefined()
     })
@@ -485,7 +485,7 @@ describe('createEntityPermissionSchema', () => {
 describe('addMemberSchema', () => {
   /** @description Should accept valid UUID */
   it('should accept valid user UUID', () => {
-    const result = addMemberSchema.parse({ user_id: '550e8400-e29b-41d4-a716-446655440000' })
+    const result = addMemberSchema.parse({ user_id: '550e8400e29b41d4a716446655440000' })
     expect(result.user_id).toBeDefined()
   })
 
@@ -499,7 +499,7 @@ describe('bindDatasetsSchema', () => {
   /** @description Should accept array of valid UUIDs */
   it('should accept valid dataset UUIDs', () => {
     const result = bindDatasetsSchema.parse({
-      dataset_ids: ['550e8400-e29b-41d4-a716-446655440000'],
+      dataset_ids: ['550e8400e29b41d4a716446655440000'],
     })
     expect(result.dataset_ids).toHaveLength(1)
   })
@@ -511,7 +511,7 @@ describe('bindDatasetsSchema', () => {
 
   /** @description Should reject more than 50 datasets */
   it('should reject more than 50 datasets', () => {
-    const ids = Array.from({ length: 51 }, (_, i) => `550e8400-e29b-41d4-a716-${String(i).padStart(12, '0')}`)
+    const ids = Array.from({ length: 51 }, (_, i) => `550e8400e29b41d4a716${String(i).padStart(12, '0')}`)
     expect(() => bindDatasetsSchema.parse({ dataset_ids: ids })).toThrow('Maximum 50 datasets')
   })
 

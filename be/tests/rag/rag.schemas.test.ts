@@ -20,7 +20,7 @@ describe('RAG Zod Schemas', () => {
 
   describe('uuidParamSchema', () => {
     it('accepts valid UUID', () => {
-      expect(uuidParamSchema.safeParse({ id: '550e8400-e29b-41d4-a716-446655440000' }).success).toBe(true)
+      expect(uuidParamSchema.safeParse({ id: '550e8400e29b41d4a716446655440000' }).success).toBe(true)
     })
 
     it('rejects invalid UUID', () => {
@@ -48,7 +48,7 @@ describe('RAG Zod Schemas', () => {
         parser_config: { pages: [[1, 100]] },
         access_control: {
           public: true,
-          team_ids: ['550e8400-e29b-41d4-a716-446655440000'],
+          team_ids: ['550e8400e29b41d4a716446655440000'],
           user_ids: [],
         },
       })

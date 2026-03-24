@@ -1,5 +1,5 @@
 /**
- * @fileoverview Core project service handling CRUD, auto-create dataset, and RBAC.
+ * @fileoverview Core project service handling CRUD, default category/version creation, and RBAC.
  * @module services/projects
  */
 import { ModelFactory } from '@/shared/models/factory.js'
@@ -8,6 +8,7 @@ import { log } from '@/shared/services/logger.service.js'
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js'
 import { teamService } from '@/modules/teams/services/team.service.js'
 import { Project, ProjectPermission, ProjectDataset, UserContext } from '@/shared/models/types.js'
+import { projectCategoryService } from './project-category.service.js'
 
 /**
  * @description Core project service handling CRUD operations, auto-dataset creation on project setup,
@@ -66,8 +67,9 @@ export class ProjectsService {
   }
 
   /**
-   * @description Create a new project and auto-create a linked dataset for document ingestion
-   * @param {any} data - Project creation data including name, embedding model defaults
+   * @description Create a new project. If first_version_label is provided, also creates
+   *   a default document category and first version (which triggers auto-dataset creation).
+   * @param {any} data - Project creation data including name, embedding model defaults, optional first_version_label
    * @param {UserContext} user - Authenticated user context
    * @param {string} [tenantId] - Tenant ID for org-scoped audit logging
    * @returns {Promise<Project>} The created project
@@ -75,7 +77,17 @@ export class ProjectsService {
    */
   async createProject(data: any, user: UserContext, tenantId?: string): Promise<Project> {
     try {
-      // Create the project record
+      // Check for duplicate project name
+      const existingProject = await ModelFactory.project.getKnex()
+        .where('name', data.name)
+        .whereNot('status', 'deleted')
+        .first()
+
+      if (existingProject) {
+        throw new Error('Project with this name already exists')
+      }
+
+      // Create the project record (no dataset created here — datasets are tied to versions)
       const project = await ModelFactory.project.create({
         name: data.name,
         description: data.description || null,
@@ -89,32 +101,26 @@ export class ProjectsService {
         updated_by: user.id,
       })
 
-      // Auto-create a dataset for this project
-      const timestamp = Date.now()
-      const datasetName = `${data.name}_${timestamp}`
-      try {
-        const dataset = await ModelFactory.dataset.create({
-          name: datasetName,
-          description: `Auto-created dataset for project: ${data.name}`,
-          language: 'English',
-          embedding_model: data.default_embedding_model || null,
-          parser_id: data.default_chunk_method || 'naive',
-          parser_config: JSON.stringify(data.default_parser_config || {}),
-          access_control: JSON.stringify({ public: !data.is_private }),
-          status: 'active',
-          created_by: user.id,
-          updated_by: user.id,
-        })
+      // If first_version_label is provided, auto-create a default category + first version
+      if (data.first_version_label) {
+        try {
+          // Create a default document category for the project
+          const category = await projectCategoryService.createCategory(project.id, {
+            name: 'Default',
+            description: `Default document category for project: ${project.name}`,
+          }, user)
 
-        // Link the dataset to the project
-        await ModelFactory.projectDataset.create({
-          project_id: project.id,
-          dataset_id: dataset.id,
-          auto_created: true,
-        })
-      } catch (dsError) {
-        // Non-blocking: project is still created even if dataset creation fails
-        log.warn('Failed to auto-create dataset for project', { error: String(dsError), projectId: project.id })
+          // Create the first version (this triggers auto-dataset creation in category service)
+          await projectCategoryService.createVersion(category.id, {
+            version_label: data.first_version_label,
+            project_id: project.id,
+          }, user)
+        } catch (versionError) {
+          // Non-blocking: project is still created even if version setup fails
+          log.warn('Failed to auto-create default category/version for project', {
+            error: String(versionError), projectId: project.id,
+          })
+        }
       }
 
       // Audit log the project creation with tenant context

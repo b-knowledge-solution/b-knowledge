@@ -180,9 +180,22 @@ const ParserSettingsFields: React.FC<ParserSettingsFieldsProps> = ({
     <div className="space-y-4">
       {/* Parser description info block */}
       {desc && (
-        <div className="rounded-md bg-muted/50 dark:bg-slate-800/50 p-3 text-sm space-y-1">
-          <p className="whitespace-pre-line text-muted-foreground">{desc.description}</p>
-          <p className="text-xs text-muted-foreground/70">{desc.formats}</p>
+        <div className="rounded-md bg-muted/50 dark:bg-slate-800/50 p-4 text-sm space-y-4">
+          <div className="space-y-1">
+            <p className="whitespace-pre-line text-muted-foreground">{desc.description}</p>
+            <p className="text-xs text-muted-foreground/70">{desc.formats}</p>
+          </div>
+          <div className="flex justify-center mt-2 border rounded border-slate-200 dark:border-slate-700/50 p-2 bg-white dark:bg-slate-900 shadow-sm">
+            <img 
+              src={`/parsers/${parserId}.svg`} 
+              alt={`${desc.title} sample formatting`} 
+              className="max-w-full h-auto max-h-48 object-contain"
+              onError={(e) => {
+                // Hide broken images gracefully if a new parser forgets to add its sample
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          </div>
         </div>
       )}
 

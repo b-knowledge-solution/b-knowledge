@@ -72,9 +72,15 @@ vi.mock('@/modules/rag/services/rag-redis.service.js', () => ({
   },
   getUuid: (...args: any[]) => mockGetUuid(...args),
 }))
-vi.mock('@/shared/utils/uuid.js', () => ({
-  getUuid: (...args: any[]) => mockGetUuid(...args),
-}))
+vi.mock('@/shared/utils/uuid.js', () => {
+  const { z } = require('zod')
+  const re = /^[0-9a-f]{32}$/
+  return {
+    getUuid: (...args: any[]) => mockGetUuid(...args),
+    hexId: z.string().regex(re, 'Invalid ID format (expected 32-char hex)'),
+    hexIdWith: (msg: string) => z.string().regex(re, msg),
+  }
+})
 
 // Import after mocks
 import { SyncWorkerService, type ConnectorAdapter, type FetchedDocument } from '../../src/modules/sync/services/sync-worker.service'

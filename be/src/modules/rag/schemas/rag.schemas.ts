@@ -7,10 +7,11 @@
  * @module modules/rag/schemas/rag
  */
 import { z } from 'zod';
+import { hexId, hexIdWith } from '@/shared/utils/uuid.js'
 
 /** @description UUID v4 path parameter schema — validates :id param */
 export const uuidParamSchema = z.object({
-  id: z.string().uuid('Invalid UUID format'),
+  id: hexIdWith('Invalid UUID format'),
 });
 
 /** @description POST /api/rag/datasets — body schema for dataset creation */
@@ -23,8 +24,8 @@ export const createDatasetSchema = z.object({
   parser_config: z.record(z.unknown()).optional(),
   access_control: z.object({
     public: z.boolean().optional(),
-    team_ids: z.array(z.string().uuid()).optional(),
-    user_ids: z.array(z.string().uuid()).optional(),
+    team_ids: z.array(hexId).optional(),
+    user_ids: z.array(hexId).optional(),
   }).optional(),
   pagerank: z.number().int().min(0).optional(),
 });
@@ -39,8 +40,8 @@ export const updateDatasetSchema = z.object({
   parser_config: z.record(z.unknown()).optional(),
   access_control: z.object({
     public: z.boolean().optional(),
-    team_ids: z.array(z.string().uuid()).optional(),
-    user_ids: z.array(z.string().uuid()).optional(),
+    team_ids: z.array(hexId).optional(),
+    user_ids: z.array(hexId).optional(),
   }).optional(),
   pagerank: z.number().int().min(0).optional(),
 });
@@ -48,8 +49,8 @@ export const updateDatasetSchema = z.object({
 /** @description PUT /api/rag/datasets/:id/access — body schema for access control update */
 export const datasetAccessSchema = z.object({
   public: z.boolean().optional(),
-  team_ids: z.array(z.string().uuid()).optional().default([]),
-  user_ids: z.array(z.string().uuid()).optional().default([]),
+  team_ids: z.array(hexId).optional().default([]),
+  user_ids: z.array(hexId).optional().default([]),
 })
 
 // ---------------------------------------------------------------------------
@@ -58,8 +59,8 @@ export const datasetAccessSchema = z.object({
 
 /** @description UUID version path parameter schema — validates :id and :versionId params */
 export const versionParamSchema = z.object({
-  id: z.string().uuid('Invalid dataset UUID'),
-  versionId: z.string().uuid('Invalid version UUID'),
+  id: hexIdWith('Invalid dataset UUID'),
+  versionId: hexIdWith('Invalid version UUID'),
 })
 
 /** @description POST /api/rag/datasets/:id/versions — body schema for version creation with optional file upload */
@@ -83,7 +84,7 @@ export const updateVersionSchema = z.object({
 
 /** @description DELETE /api/rag/datasets/:id/versions/:versionId/documents — body schema for bulk file deletion */
 export const bulkDeleteFilesSchema = z.object({
-  file_ids: z.array(z.string().uuid()).min(1, 'At least one file ID is required'),
+  file_ids: z.array(hexId).min(1, 'At least one file ID is required'),
 })
 
 /** @description POST /api/rag/datasets/:id/search — body schema for chunk search */
@@ -140,7 +141,7 @@ export const bulkChunkSwitchSchema = z.object({
 
 /** @description Chunk path parameter schema — validates :id (dataset) and :chunkId params */
 export const chunkParamSchema = z.object({
-  id: z.string().uuid('Invalid dataset UUID'),
+  id: hexIdWith('Invalid dataset UUID'),
   chunkId: z.string().min(1, 'Chunk ID is required'),
 })
 
@@ -150,7 +151,7 @@ export const chunkParamSchema = z.object({
 
 /** @description Document path parameter schema — validates :id (dataset) and :docId params */
 export const docParamSchema = z.object({
-  id: z.string().uuid('Invalid dataset UUID'),
+  id: hexIdWith('Invalid dataset UUID'),
   docId: z.string().min(1, 'Document ID is required'),
 })
 
@@ -236,7 +237,7 @@ export const graphRunSchema = z.object({
  */
 export const bulkMetadataSchema = z.object({
   /** Array of dataset UUIDs to update */
-  dataset_ids: z.array(z.string().uuid()).min(1, 'At least one dataset ID is required'),
+  dataset_ids: z.array(hexId).min(1, 'At least one dataset ID is required'),
   /** Key-value pairs to set/merge into parser_config.metadata_tags */
   metadata_tags: z.record(z.string()),
   /** 'merge' adds to existing metadata_tags, 'overwrite' replaces metadata_tags entirely */

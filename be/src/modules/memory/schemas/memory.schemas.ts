@@ -7,6 +7,7 @@
  * @module modules/memory/schemas/memory
  */
 import { z } from 'zod'
+import { hexId } from '@/shared/utils/uuid.js'
 
 /** @description POST /api/memories — body schema for memory pool creation */
 export const createMemorySchema = z.object({
@@ -25,7 +26,7 @@ export const createMemorySchema = z.object({
   extraction_mode: z.enum(['batch', 'realtime']).default('batch'),
   permission: z.enum(['me', 'team']).default('me'),
   scope_type: z.enum(['user', 'agent', 'team']).default('user'),
-  scope_id: z.string().uuid().optional(),
+  scope_id: hexId.optional(),
 })
 
 /** @description PUT /api/memories/:id — body schema for memory pool update (all fields optional) */
@@ -42,12 +43,12 @@ export const queryMemoryMessagesSchema = z.object({
 
 /** @description UUID path parameter schema — validates :id param */
 export const memoryIdParamSchema = z.object({
-  id: z.string().uuid(),
+  id: hexId,
 })
 
 /** @description POST /api/memories/:id/import — body schema for importing chat history */
 export const importHistorySchema = z.object({
-  session_id: z.string().uuid(),
+  session_id: hexId,
 })
 
 /** @description POST /api/memories/:id/messages — body schema for direct message insertion */

@@ -27,7 +27,7 @@ export type ModelType = (typeof MODEL_TYPES)[number];
  * @description UUID v4 param validation schema for route parameters
  */
 export const uuidParamSchema = z.object({
-  id: z.string().uuid('Invalid UUID format'),
+  id: z.string().regex(/^[0-9a-fA-F]{32}$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, 'Invalid UUID format'),
 });
 
 /**

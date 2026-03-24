@@ -184,7 +184,8 @@ function App() {
               <Route path="data-studio/datasets/:id/documents/:docId/chunks" element={<FeatureErrorBoundary><NavRoleGuard><ChunkDetailPage /></NavRoleGuard></FeatureErrorBoundary>} />
               <Route path="data-studio/projects" element={<FeatureErrorBoundary><NavRoleGuard><ProjectListPage /></NavRoleGuard></FeatureErrorBoundary>} />
               <Route path="data-studio/projects/:projectId" element={<FeatureErrorBoundary><NavRoleGuard><ProjectDetailPage /></NavRoleGuard></FeatureErrorBoundary>} />
-              <Route path="data-studio/llm-providers" element={<FeatureErrorBoundary><NavRoleGuard><LLMProviderPage /></NavRoleGuard></FeatureErrorBoundary>} />
+
+
 
               {/* IAM */}
               <Route path="iam/users" element={<FeatureErrorBoundary><NavRoleGuard><UserManagementPage /></NavRoleGuard></FeatureErrorBoundary>} />
@@ -196,10 +197,15 @@ function App() {
               <Route path="admin/system-monitor" element={<FeatureErrorBoundary><NavRoleGuard><SystemMonitorPage /></NavRoleGuard></FeatureErrorBoundary>} />
               <Route path="admin/tokenizer" element={<FeatureErrorBoundary><NavRoleGuard><TokenizerPage /></NavRoleGuard></FeatureErrorBoundary>} />
               <Route path="admin/broadcast-messages" element={<FeatureErrorBoundary><NavRoleGuard><BroadcastMessagePage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="admin/llm-providers" element={<FeatureErrorBoundary><NavRoleGuard><LLMProviderPage /></NavRoleGuard></FeatureErrorBoundary>} />
               <Route path="admin/dashboard" element={<FeatureErrorBoundary><NavRoleGuard><AdminDashboardPage /></NavRoleGuard></FeatureErrorBoundary>} />
 
             </Route>
           </Route>
+
+          {/* Public access routes (no auth required — for is_public apps) */}
+          <Route path="/public/chat" element={<FeatureErrorBoundary><AiChatPage /></FeatureErrorBoundary>} />
+          <Route path="/public/search" element={<FeatureErrorBoundary><AiSearchPage /></FeatureErrorBoundary>} />
 
           {/* Error routes */}
           <Route path="/403" element={<ErrorPage code={403} />} />

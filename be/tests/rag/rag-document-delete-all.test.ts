@@ -74,9 +74,15 @@ vi.mock('../../src/modules/rag/services/rag-search.service.js', () => ({
   },
 }))
 
-vi.mock('../../src/shared/utils/uuid.js', () => ({
-  getUuid: () => 'aabbccdd11223344aabbccdd11223344',
-}))
+vi.mock('../../src/shared/utils/uuid.js', () => {
+  const { z } = require('zod')
+  const re = /^[0-9a-f]{32}$/
+  return {
+    getUuid: () => 'aabbccdd11223344aabbccdd11223344',
+    hexId: z.string().regex(re, 'Invalid ID format (expected 32-char hex)'),
+    hexIdWith: (msg: string) => z.string().regex(re, msg),
+  }
+})
 
 import { RagDocumentService } from '../../src/modules/rag/services/rag-document.service'
 

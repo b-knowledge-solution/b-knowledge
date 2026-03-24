@@ -169,3 +169,7 @@ Copy `fe/.env.example` → `fe/.env`. Key variables:
 | `VITE_ENABLE_AI_SEARCH` | true | Feature flag |
 | `VITE_ENABLE_HISTORY` | false | Feature flag |
 | `HTTPS_ENABLED` | false | Dev HTTPS |
+
+## Built-in Pipeline / Parsing Method Guidelines (AI Agent Rule)
+
+When creating or adding any **new** built-in pipeline or document parser method (such as `Picture`, `Audio`, `Email`, etc.), you **MUST** include a unique sample file/image to be used for instructions in the UI. Do not reuse an existing image sample from another pipeline.

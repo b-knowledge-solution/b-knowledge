@@ -23,4 +23,15 @@ export class ModelProviderModel extends BaseModel<ModelProvider> {
       .where('is_default', true)
       .where('status', 'active')
   }
+
+  /**
+   * @description Find a model provider by its model_name field
+   * @param {string} modelName - The model name to search for
+   * @returns {Promise<ModelProvider | undefined>} The matching provider or undefined
+   */
+  async findByModelName(modelName: string): Promise<ModelProvider | undefined> {
+    return this.knex(this.tableName)
+      .where('model_name', modelName)
+      .first()
+  }
 }

@@ -4,6 +4,7 @@
  * @module schemas/chat-conversation
  */
 import { z } from 'zod'
+import { hexId, hexIdWith } from '@/shared/utils/uuid.js'
 
 /**
  * @description Schema for creating a new conversation.
@@ -13,7 +14,7 @@ export const createConversationSchema = z.object({
   /** Name/title of the conversation */
   name: z.string().min(1, 'Name is required').max(256),
   /** Dialog ID this conversation belongs to */
-  dialog_id: z.string().uuid('Invalid dialog ID format'),
+  dialog_id: hexIdWith('Invalid dialog ID format'),
 })
 
 /**
@@ -22,7 +23,7 @@ export const createConversationSchema = z.object({
  */
 export const deleteConversationsSchema = z.object({
   /** Array of conversation IDs to delete */
-  ids: z.array(z.string().uuid()).min(1, 'At least one conversation ID is required'),
+  ids: z.array(hexId).min(1, 'At least one conversation ID is required'),
 })
 
 /**
@@ -33,7 +34,7 @@ export const chatCompletionSchema = z.object({
   /** User message text */
   content: z.string().min(1, 'Message content is required'),
   /** Dialog ID for the chat configuration */
-  dialog_id: z.string().uuid('Invalid dialog ID').optional(),
+  dialog_id: hexIdWith('Invalid dialog ID').optional(),
   /** Custom prompt variable values (key → value map) */
   variables: z.record(z.string(), z.string()).optional(),
   /** Per-message metadata filter conditions for RAG search */
@@ -59,7 +60,7 @@ export const chatCompletionSchema = z.object({
   /** Per-message max tokens override */
   max_tokens: z.number().int().min(1).max(128000).optional(),
   /** File attachment IDs from chat file uploads */
-  file_ids: z.array(z.string().uuid()).max(5).optional(),
+  file_ids: z.array(hexId).max(5).optional(),
 })
 
 /**
@@ -81,7 +82,7 @@ export const feedbackSchema = z.object({
  */
 export const deleteMessageParamsSchema = z.object({
   /** Conversation ID */
-  id: z.string().uuid('Invalid conversation ID'),
+  id: hexIdWith('Invalid conversation ID'),
   /** Message ID to delete */
   msgId: z.string().min(1, 'Message ID is required'),
 })
@@ -90,7 +91,7 @@ export const deleteMessageParamsSchema = z.object({
  * @description Schema for conversation UUID path param.
  */
 export const conversationIdParamSchema = z.object({
-  id: z.string().uuid('Invalid conversation ID'),
+  id: hexIdWith('Invalid conversation ID'),
 })
 
 /**

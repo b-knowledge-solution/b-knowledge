@@ -3,12 +3,13 @@
  * @module schemas/glossary
  */
 import { z } from 'zod';
+import { hexId, hexIdWith } from '@/shared/utils/uuid.js';
 
 /**
  * @description UUID v4 param validation schema for route parameters
  */
 export const uuidParamSchema = z.object({
-  id: z.string().uuid('Invalid UUID format'),
+  id: hexIdWith('Invalid UUID format'),
 });
 
 /**
@@ -50,6 +51,6 @@ export const updateKeywordSchema = createKeywordSchema.partial();
  * @description Validation schema for generating a prompt from task and keyword selections
  */
 export const generatePromptSchema = z.object({
-  taskId: z.string().uuid('Invalid task UUID'),
-  keywordIds: z.array(z.string().uuid()).min(1, 'At least one keyword is required'),
+  taskId: hexIdWith('Invalid task UUID'),
+  keywordIds: z.array(hexId).min(1, 'At least one keyword is required'),
 });

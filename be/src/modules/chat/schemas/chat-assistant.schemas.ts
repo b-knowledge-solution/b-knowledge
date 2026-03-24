@@ -4,6 +4,7 @@
  * @module schemas/chat-assistant
  */
 import { z } from 'zod'
+import { hexId, hexIdWith } from '@/shared/utils/uuid.js'
 
 /**
  * Reusable schema for prompt variable definitions.
@@ -98,8 +99,8 @@ export const createAssistantSchema = z.object({
   description: z.string().optional(),
   /** Icon identifier */
   icon: z.string().optional(),
-  /** Knowledge base IDs to associate */
-  kb_ids: z.array(z.string().uuid()).min(1, 'At least one knowledge base ID is required'),
+  /** Knowledge base IDs to associate (accepts both standard UUIDs and 32-char hex IDs) */
+  kb_ids: z.array(hexId).min(1, 'At least one knowledge base ID is required'),
   /** LLM model identifier */
   llm_id: z.string().optional(),
   /** Prompt configuration object */
@@ -119,8 +120,8 @@ export const updateAssistantSchema = z.object({
   description: z.string().optional(),
   /** Icon identifier */
   icon: z.string().optional(),
-  /** Knowledge base IDs to associate */
-  kb_ids: z.array(z.string().uuid()).optional(),
+  /** Knowledge base IDs to associate (accepts both standard UUIDs and 32-char hex IDs) */
+  kb_ids: z.array(hexId).optional(),
   /** LLM model identifier */
   llm_id: z.string().optional(),
   /** Prompt configuration object */
@@ -140,7 +141,7 @@ export const assistantAccessSchema = z.object({
       /** Type of entity being granted access */
       entity_type: z.enum(['user', 'team']),
       /** UUID of the user or team */
-      entity_id: z.string().uuid(),
+      entity_id: hexId,
     })
   ),
 })
@@ -166,5 +167,5 @@ export const listAssistantsQuerySchema = z.object({
  * @description Schema for assistant UUID path param.
  */
 export const assistantIdParamSchema = z.object({
-  id: z.string().uuid('Invalid assistant ID'),
+  id: hexIdWith('Invalid assistant ID'),
 })

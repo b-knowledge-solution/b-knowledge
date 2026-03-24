@@ -1848,6 +1848,7 @@
     "title": "LLMプロバイダー",
     "addProvider": "プロバイダーを追加",
     "editProvider": "プロバイダーを編集",
+    "cloneProvider": "プロバイダーを複製",
     "allTypes": "すべてのタイプ",
     "modelTypes": {
       "chat": "LLM",
@@ -1932,7 +1933,10 @@
     "publicAccessDesc": "認証済みのすべてのユーザーがこのプロジェクトにアクセスできます",
     "privateAccessDesc": "選択したチームのみがこのプロジェクトにアクセスできます",
     "selectTeams": "チームを選択",
-    "autoDataset": "データセットを自動作成",
+    "autoDataset": "自動作成データセット",
+    "firstVersionLabel": "最初のバージョンラベル",
+    "firstVersionPlaceholder": "例: v1",
+    "firstVersionHint": "データセットはプロジェクト名_バージョンラベルの名前で作成されます",
     "common": {
       "vector": "vector",
       "fullText": "全文"

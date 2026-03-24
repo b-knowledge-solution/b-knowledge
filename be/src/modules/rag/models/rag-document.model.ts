@@ -164,4 +164,36 @@ export class RagDocumentModel {
     async softDelete(docId: string): Promise<void> {
         await db(this.tableName).where({ id: docId }).delete();
     }
+
+    /**
+     * @description Delete all document rows belonging to a dataset
+     * @param {string} datasetId - Dataset/knowledgebase UUID (32-char hex, no hyphens)
+     * @returns {Promise<number>} Number of rows deleted
+     */
+    async deleteAllByDataset(datasetId: string): Promise<number> {
+        return db(this.tableName)
+            .where('kb_id', datasetId)
+            .del()
+    }
+
+    /**
+     * @description Get document counts grouped by run status for a dataset.
+     * Used for aggregated parsing status overview.
+     * @param {string} datasetId - Dataset/knowledgebase UUID (32-char hex, no hyphens)
+     * @returns {Promise<Record<string, number>>} Count keyed by run status string
+     */
+    async countByRunStatus(datasetId: string): Promise<Record<string, number>> {
+        const rows = await db(this.tableName)
+            .where('kb_id', datasetId)
+            .groupBy('run')
+            .select('run')
+            .count('* as count')
+
+        // Transform array of {run, count} into {status: count} record
+        const result: Record<string, number> = {}
+        for (const row of rows) {
+            result[String(row.run)] = Number(row.count)
+        }
+        return result
+    }
 }

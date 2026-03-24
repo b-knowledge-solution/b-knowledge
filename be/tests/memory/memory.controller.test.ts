@@ -55,9 +55,15 @@ vi.mock('../../src/shared/services/logger.service.js', () => ({
 
 const mockGetUuid = vi.hoisted(() => vi.fn(() => 'aabbccdd11223344aabbccdd11223344'))
 
-vi.mock('@/shared/utils/uuid.js', () => ({
-  getUuid: mockGetUuid,
-}))
+vi.mock('@/shared/utils/uuid.js', () => {
+  const { z } = require('zod')
+  const re = /^[0-9a-f]{32}$/
+  return {
+    getUuid: mockGetUuid,
+    hexId: z.string().regex(re, 'Invalid ID format (expected 32-char hex)'),
+    hexIdWith: (msg: string) => z.string().regex(re, msg),
+  }
+})
 
 import { memoryController } from '../../src/modules/memory/controllers/memory.controller.js'
 

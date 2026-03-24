@@ -128,7 +128,7 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     guidelineFeatureId: 'global-histories',
     fullBleed: true,
   },
-  '/data-studio/llm-providers': {
+  '/admin/llm-providers': {
     titleKey: 'llmProviders.title',
     fullBleed: true,
   },

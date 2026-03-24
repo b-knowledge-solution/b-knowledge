@@ -14,8 +14,8 @@ describe('Chat Zod Schemas', () => {
   // -----------------------------------------------------------------------
 
   describe('uuidParamSchema', () => {
-    it('accepts a valid UUID v4', () => {
-      const result = uuidParamSchema.safeParse({ id: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d' })
+    it('accepts a valid hex ID', () => {
+      const result = uuidParamSchema.safeParse({ id: 'a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d' })
       expect(result.success).toBe(true)
     })
 
@@ -40,9 +40,9 @@ describe('Chat Zod Schemas', () => {
   // -----------------------------------------------------------------------
 
   describe('deleteSessionsSchema', () => {
-    it('accepts array of valid UUIDs', () => {
+    it('accepts array of valid hex IDs', () => {
       const result = deleteSessionsSchema.safeParse({
-        ids: ['a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'],
+        ids: ['a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d'],
       })
       expect(result.success).toBe(true)
     })

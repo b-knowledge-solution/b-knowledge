@@ -1862,6 +1862,7 @@
     "title": "Nhà cung cấp LLM",
     "addProvider": "Thêm nhà cung cấp",
     "editProvider": "Chỉnh sửa nhà cung cấp",
+    "cloneProvider": "Nhân bản nhà cung cấp",
     "allTypes": "Tất cả loại",
     "modelTypes": {
       "chat": "LLM",
@@ -1947,6 +1948,9 @@
     "privateAccessDesc": "Chỉ các nhóm được chọn mới có thể truy cập dự án này",
     "selectTeams": "Chọn nhóm",
     "autoDataset": "Tự động tạo bộ dữ liệu",
+    "firstVersionLabel": "Nhãn phiên bản đầu tiên",
+    "firstVersionPlaceholder": "VD: v1",
+    "firstVersionHint": "Bộ dữ liệu sẽ được tạo với tên: TênDựÁn_NhãnPhiênBản",
     "common": {
       "vector": "vector",
       "fullText": "toàn văn"

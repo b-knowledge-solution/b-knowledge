@@ -286,6 +286,8 @@ class DomainService {
 export const domainService = new DomainService()
 ```
 
+> **Rule: No Direct DB in Services.** Service files must **never** import `db` from `@/shared/db/knex.js` or call `db('table')` directly. All database access must go through `ModelFactory.<model>.<method>()`. If a model lacks the needed query, add a new method to the model — do not bypass via raw `db()` in the service.
+
 ### Model (`models/<domain>.model.ts`)
 
 Extend `BaseModel` from shared:

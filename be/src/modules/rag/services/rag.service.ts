@@ -8,7 +8,6 @@
  */
 
 import { ModelFactory } from '@/shared/models/factory.js';
-import { db } from '@/shared/db/knex.js';
 import { log } from '@/shared/services/logger.service.js';
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js';
 import { Dataset, Document, AccessControl, UserContext } from '@/shared/models/types.js';
@@ -85,11 +84,8 @@ export class RagService {
      */
     async createDataset(data: any, user?: UserContext): Promise<Dataset> {
         try {
-            // Case-insensitive name uniqueness check
-            const existing = await db('datasets')
-                .whereRaw('LOWER(name) = LOWER(?)', [data.name])
-                .where('status', '!=', 'deleted')
-                .first()
+            // Case-insensitive name uniqueness check via model
+            const existing = await ModelFactory.dataset.findByNameCaseInsensitive(data.name)
             if (existing) {
                 throw new Error('A dataset with this name already exists')
             }
@@ -206,31 +202,13 @@ export class RagService {
                 });
             }
 
-            // Clean stale references in chat_assistants.kb_ids
-            const affectedAssistants = await db('chat_assistants')
-                .whereRaw("kb_ids @> ?::jsonb", [JSON.stringify([id])])
-                .select('id', 'kb_ids');
+            // Clean stale references in chat_assistants.kb_ids via model
+            const affectedAssistantCount = await ModelFactory.chatAssistant.removeDatasetReference(id)
 
-            for (const assistant of affectedAssistants) {
-                const updatedKbIds = (assistant.kb_ids as string[]).filter((kbId: string) => kbId !== id);
-                await db('chat_assistants')
-                    .where('id', assistant.id)
-                    .update({ kb_ids: JSON.stringify(updatedKbIds) });
-            }
+            // Clean stale references in search_apps.dataset_ids via model
+            const affectedAppCount = await ModelFactory.searchApp.removeDatasetReference(id)
 
-            // Clean stale references in search_apps.dataset_ids
-            const affectedApps = await db('search_apps')
-                .whereRaw("dataset_ids @> ?::jsonb", [JSON.stringify([id])])
-                .select('id', 'dataset_ids');
-
-            for (const app of affectedApps) {
-                const updatedIds = (app.dataset_ids as string[]).filter((dsId: string) => dsId !== id);
-                await db('search_apps')
-                    .where('id', app.id)
-                    .update({ dataset_ids: JSON.stringify(updatedIds) });
-            }
-
-            log.info(`Cleaned stale references: ${affectedAssistants.length} assistants, ${affectedApps.length} search apps`);
+            log.info(`Cleaned stale references: ${affectedAssistantCount} assistants, ${affectedAppCount} search apps`);
         } catch (error) {
             log.error('Failed to delete dataset', { error: String(error) });
             throw error;
@@ -267,21 +245,11 @@ export class RagService {
         const teamIds = ac.team_ids || [];
         const userIds = ac.user_ids || [];
 
-        // Batch fetch team names for enrichment
-        let teams: Array<{ id: string; name: string }> = [];
-        if (teamIds.length > 0) {
-            teams = await ModelFactory.team.getKnex()
-                .select('id', 'name')
-                .whereIn('id', teamIds);
-        }
+        // Batch fetch team names for enrichment via model
+        const teams = await ModelFactory.team.findNamesByIds(teamIds)
 
-        // Batch fetch user display names for enrichment
-        let users: Array<{ id: string; display_name: string }> = [];
-        if (userIds.length > 0) {
-            users = await ModelFactory.user.getKnex()
-                .select('id', 'display_name')
-                .whereIn('id', userIds);
-        }
+        // Batch fetch user display names for enrichment via model
+        const users = await ModelFactory.user.findDisplayNamesByIds(userIds)
 
         return {
             public: ac.public ?? true,
@@ -412,12 +380,9 @@ export class RagService {
             throw new Error('Parent dataset not found')
         }
 
-        // Determine next version number by finding the max existing version
-        const maxResult = await db('datasets')
-            .where('parent_dataset_id', parentDatasetId)
-            .max('version_number as max')
-            .first()
-        const versionNumber = ((maxResult?.max as number) ?? 0) + 1
+        // Determine next version number via model
+        const maxVersion = await ModelFactory.dataset.findMaxVersionNumber(parentDatasetId)
+        const versionNumber = maxVersion + 1
 
         // Build default change summary if none provided
         const summary = changeSummary || `Version ${versionNumber} uploaded by user`
@@ -479,10 +444,7 @@ export class RagService {
      * @returns {Promise<Dataset[]>} Array of version datasets ordered by version_number
      */
     async getVersionDatasets(parentDatasetId: string): Promise<Dataset[]> {
-        return db('datasets')
-            .where('parent_dataset_id', parentDatasetId)
-            .where('status', '!=', 'deleted')
-            .orderBy('version_number', 'asc')
+        return ModelFactory.dataset.findVersionsByParent(parentDatasetId)
     }
 
     // -------------------------------------------------------------------------
@@ -505,31 +467,8 @@ export class RagService {
         mode: 'merge' | 'overwrite',
         tenantId: string,
     ): Promise<void> {
-        const tagsJson = JSON.stringify(metadataTags)
-
-        if (mode === 'merge') {
-            // Merge new tags into existing metadata_tags, preserving other parser_config keys
-            await db('datasets')
-                .whereIn('id', datasetIds)
-                .andWhere('tenant_id', tenantId)
-                .update({
-                    parser_config: db.raw(
-                        `jsonb_set(COALESCE(parser_config, '{}'), '{metadata_tags}', COALESCE(parser_config->'metadata_tags', '{}') || ?::jsonb)`,
-                        [tagsJson],
-                    ),
-                })
-        } else {
-            // Overwrite mode: replace metadata_tags entirely
-            await db('datasets')
-                .whereIn('id', datasetIds)
-                .andWhere('tenant_id', tenantId)
-                .update({
-                    parser_config: db.raw(
-                        `jsonb_set(COALESCE(parser_config, '{}'), '{metadata_tags}', ?::jsonb)`,
-                        [tagsJson],
-                    ),
-                })
-        }
+        // Delegate JSONB merge/overwrite to model layer
+        await ModelFactory.dataset.bulkUpdateMetadataTags(datasetIds, metadataTags, mode, tenantId)
 
         log.info('Bulk metadata update completed', {
             datasetCount: datasetIds.length,
@@ -550,19 +489,8 @@ export class RagService {
      * @returns {Promise<Record<string, number>>} Count of documents grouped by run status
      */
     async getAggregatedParsingStatus(datasetId: string): Promise<Record<string, number>> {
-        // Query document table grouped by run status for the given dataset
-        const counts = await db('document')
-            .where('kb_id', datasetId)
-            .groupBy('run')
-            .select('run')
-            .count('* as count')
-
-        // Transform array of {run, count} into {status: count} record
-        const result: Record<string, number> = {}
-        for (const row of counts) {
-            result[String(row.run)] = Number(row.count)
-        }
-        return result
+        // Delegate grouped count query to model layer
+        return ModelFactory.ragDocument.countByRunStatus(datasetId)
     }
 
     // -------------------------------------------------------------------------

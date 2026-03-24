@@ -8,7 +8,7 @@
  */
 import { Router } from 'express'
 import { ChatAssistantController } from '../controllers/chat-assistant.controller.js'
-import { requireAuth, requirePermission } from '@/shared/middleware/auth.middleware.js'
+import { requireAuth, requirePermission, checkSession } from '@/shared/middleware/auth.middleware.js'
 import { validate } from '@/shared/middleware/validate.middleware.js'
 import {
   createAssistantSchema,
@@ -41,7 +41,7 @@ router.post(
  */
 router.get(
   '/assistants/:id',
-  requireAuth,
+  checkSession,
   validate({ params: assistantIdParamSchema }),
   controller.getAssistant.bind(controller)
 )
@@ -53,7 +53,7 @@ router.get(
  */
 router.get(
   '/assistants',
-  requireAuth,
+  checkSession,
   validate({ query: listAssistantsQuerySchema }),
   controller.listAssistants.bind(controller)
 )
