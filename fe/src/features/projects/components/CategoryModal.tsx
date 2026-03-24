@@ -123,6 +123,8 @@ interface CategoryModalProps {
   onOk: (data: CategoryFormData) => void
   /** Callback when the user cancels or closes */
   onCancel: () => void
+  /** Category type auto-set from the active tab — hidden from user per D-01 */
+  categoryType?: import('../api/projectApi').DocumentCategoryType
 }
 
 // ============================================================================
@@ -136,7 +138,7 @@ interface CategoryModalProps {
  * @param {CategoryModalProps} props - Component props
  * @returns {JSX.Element} The rendered modal
  */
-const CategoryModal = ({ open, saving, editMode, embeddingModels, initialData, onOk, onCancel }: CategoryModalProps) => {
+const CategoryModal = ({ open, saving, editMode, embeddingModels, initialData, onOk, onCancel, categoryType }: CategoryModalProps) => {
   const { t } = useTranslation()
   const [formData, setFormData] = useState<CategoryFormData>(INITIAL_FORM_DATA)
   const [nameError, setNameError] = useState('')
