@@ -7,7 +7,8 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/queryKeys'
 import { Plus, Search, Pencil, Trash2, Shield, Globe, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -59,6 +60,26 @@ export default function SearchAppManagementPage() {
     page_size: PAGE_SIZE,
     search: searchTerm || undefined,
   })
+
+  // Fetch available datasets (knowledge bases) for the config dialog.
+  const { data: rawDatasets = [] } = useQuery({
+    queryKey: queryKeys.datasets.list(),
+    queryFn: () => api.get<{ id: string; name: string; doc_count?: number }[]>('/api/rag/datasets'),
+  })
+
+  // Fetch available projects for the config dialog.
+  const { data: rawProjects = [] } = useQuery({
+    queryKey: queryKeys.projects.all,
+    queryFn: () => api.get<{ id: string; name: string; dataset_count?: number }[]>('/api/projects'),
+  })
+
+  // Map to KnowledgeBaseItem format for the picker
+  const datasetItems = rawDatasets.map((d) => ({
+    id: d.id, name: d.name, type: 'dataset' as const, docCount: d.doc_count,
+  }))
+  const projectItems = rawProjects.map((p) => ({
+    id: p.id, name: p.name, type: 'project' as const, docCount: p.dataset_count,
+  }))
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
@@ -190,7 +211,7 @@ export default function SearchAppManagementPage() {
         {/* Total count indicator */}
         {!loading && total > 0 && (
           <div className="flex items-center text-sm text-slate-500 dark:text-slate-400 shrink-0">
-            {t('common.totalItems', { count: total })}
+            {t('common.totalItems', { total })}
           </div>
         )}
       </div>
@@ -322,12 +343,15 @@ export default function SearchAppManagementPage() {
         onClose={() => { setIsConfigOpen(false); setEditingApp(null) }}
         onSave={handleSave}
         app={editingApp}
+        datasets={datasetItems}
+        projects={projectItems}
       />
 
       {/* Access control dialog */}
       <SearchAppAccessDialog
         open={isAccessOpen}
         onClose={() => { setIsAccessOpen(false); setAccessApp(null) }}
+        onSave={() => fetchApps()}
         app={accessApp}
       />
     </div>

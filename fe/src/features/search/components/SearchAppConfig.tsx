@@ -26,7 +26,7 @@ import { LlmSettingFields, type LlmSettingValue } from '@/components/llm-setting
 import { RerankSelector } from '@/components/rerank-selector/RerankSelector'
 import { MetadataFilterEditor } from '@/components/metadata-filter/MetadataFilterEditor'
 import { CrossLanguageSelector } from '@/components/cross-language/CrossLanguageSelector'
-import { searchApi } from '../api/searchApi'
+import { KnowledgeBasePicker, type KnowledgeBaseItem } from '@/components/knowledge-base-picker/KnowledgeBasePicker'
 import { SearchRetrievalTest } from './SearchRetrievalTest'
 import type { SearchApp, CreateSearchAppPayload } from '../types/search.types'
 import type { MetadataFilter } from '@/components/metadata-filter/metadata-filter.types'
@@ -45,6 +45,10 @@ interface SearchAppConfigProps {
   onSave: (data: CreateSearchAppPayload) => void
   /** Existing search app data for editing (null for new) */
   app?: SearchApp | null
+  /** Available datasets for selection */
+  datasets?: KnowledgeBaseItem[]
+  /** Available projects for selection */
+  projects?: KnowledgeBaseItem[]
 }
 
 // ============================================================================
@@ -65,11 +69,10 @@ function SearchAppConfig({
   onClose,
   onSave,
   app,
+  datasets = [],
+  projects = [],
 }: SearchAppConfigProps) {
   const { t } = useTranslation()
-
-  // Available datasets for selection
-  const [datasets, setDatasets] = useState<{ id: string; name: string; embedding_model?: string }[]>([])
 
   // ---- Basic form state ----
   const [name, setName] = useState('')
@@ -113,17 +116,7 @@ function SearchAppConfig({
     logic: 'and', conditions: [],
   })
 
-  // Fetch available datasets on open
-  useEffect(() => {
-    if (open) {
-      searchApi.listDatasets().then(setDatasets).catch(console.error)
-    }
-  }, [open])
 
-  // Check if selected datasets use different embedding models
-  const selectedDatasetDetails = datasets.filter((d) => selectedDatasets.includes(d.id))
-  const embeddingModels = [...new Set(selectedDatasetDetails.map((d) => d.embedding_model).filter(Boolean))]
-  const hasEmbeddingMismatch = embeddingModels.length > 1
 
   // Populate form when editing an existing search app
   useEffect(() => {
@@ -203,15 +196,7 @@ function SearchAppConfig({
     }
   }, [app, open])
 
-  /**
-   * @description Toggle a dataset in the selection.
-   * @param datasetId - Dataset ID to toggle
-   */
-  const toggleDataset = (datasetId: string) => {
-    setSelectedDatasets((prev) =>
-      prev.includes(datasetId) ? prev.filter((id) => id !== datasetId) : [...prev, datasetId],
-    )
-  }
+
 
   /**
    * @description Handle form save with all new fields included.
@@ -284,26 +269,15 @@ function SearchAppConfig({
             <Switch checked={isPublic} onCheckedChange={setIsPublic} />
           </div>
 
-          {/* Dataset multi-select */}
+          {/* Knowledge bases multi-select (datasets + projects) */}
           <div className="space-y-1.5">
-            <Label>{t('searchAdmin.datasets')}</Label>
-            <div className="border rounded-lg p-2 max-h-32 overflow-y-auto space-y-1">
-              {datasets.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-1">{t('common.noData')}</p>
-              ) : (
-                datasets.map((ds) => (
-                  <label key={ds.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
-                    <input type="checkbox" checked={selectedDatasets.includes(ds.id)} onChange={() => toggleDataset(ds.id)} className="rounded border-input" />
-                    <span>{ds.name}</span>
-                  </label>
-                ))
-              )}
-            </div>
-            {hasEmbeddingMismatch && (
-              <p className="text-xs text-destructive">
-                {t('searchAdmin.embeddingMismatchWarning')}
-              </p>
-            )}
+            <Label>{t('chat.knowledgeBases')}</Label>
+            <KnowledgeBasePicker
+              value={selectedDatasets}
+              onChange={setSelectedDatasets}
+              datasets={datasets}
+              projects={projects}
+            />
           </div>
 
           {/* Search Parameters */}

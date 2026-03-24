@@ -47,12 +47,12 @@ export class SearchService {
     const app = await ModelFactory.searchApp.create({
       name: data.name,
       description: data.description || null,
-      dataset_ids: data.dataset_ids,
-      search_config: data.search_config || {},
+      dataset_ids: JSON.stringify(data.dataset_ids),
+      search_config: JSON.stringify(data.search_config || {}),
       is_public: data.is_public ?? false,
       created_by: userId,
       updated_by: userId,
-    } as Partial<SearchApp>)
+    } as unknown as Partial<SearchApp>)
 
     log.info('Search app created', { appId: app.id, userId })
     return app
@@ -70,10 +70,12 @@ export class SearchService {
     data: Partial<Pick<SearchApp, 'name' | 'description' | 'dataset_ids' | 'search_config' | 'is_public'>>,
     userId: string
   ): Promise<SearchApp | undefined> {
-    const updated = await ModelFactory.searchApp.update(searchId, {
-      ...data,
-      updated_by: userId,
-    } as Partial<SearchApp>)
+    // Stringify JSONB fields before DB update
+    const updatePayload: any = { ...data, updated_by: userId }
+    if (data.dataset_ids !== undefined) updatePayload.dataset_ids = JSON.stringify(data.dataset_ids)
+    if (data.search_config !== undefined) updatePayload.search_config = JSON.stringify(data.search_config)
+
+    const updated = await ModelFactory.searchApp.update(searchId, updatePayload as Partial<SearchApp>)
 
     if (updated) {
       log.info('Search app updated', { searchId, userId })

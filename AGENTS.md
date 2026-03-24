@@ -133,6 +133,7 @@ These apply to **both** `be/src/modules/` and `fe/src/features/`:
 - Knex ORM for all models; raw SQL only when Knex cannot support the query
 - **No direct DB in services:** Services must never import `db` directly — all DB access goes through `ModelFactory.<model>.<method>()`
 - Migration naming: `YYYYMMDDhhmmss_<name>.ts`
+- **RESTful API routes:** All routes must follow standard REST conventions (`GET` list/detail, `POST` create, `PUT` full update, `PATCH` partial update, `DELETE` remove). Listing/filtering uses query params (`?key=value`), not path nesting. Frontend `*Api.ts` files must mirror backend route patterns exactly — mismatches cause 404s. See `be/CLAUDE.md` for the full reference table.
 
 ### Frontend Conventions (details in `fe/CLAUDE.md`)
 

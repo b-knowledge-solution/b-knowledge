@@ -32,6 +32,8 @@ interface ChatMessageListProps {
   className?: string
   /** Active conversation ID for feedback */
   conversationId?: string | undefined
+  /** Welcome message from assistant config (prologue), shown when no messages yet */
+  welcomeMessage?: string | undefined
 }
 
 // ============================================================================
@@ -56,6 +58,7 @@ function ChatMessageList({
   onRegenerate,
   className = '',
   conversationId,
+  welcomeMessage,
 }: ChatMessageListProps) {
   const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -89,8 +92,24 @@ function ChatMessageList({
       onScroll={handleScroll}
       className={`overflow-y-auto px-4 py-6 space-y-1 ${className}`}
     >
-      {/* Empty state */}
-      {messages.length === 0 && !isStreaming && (
+      {/* Welcome message: always shown as the first message when configured */}
+      {welcomeMessage && (
+        <ChatMessage
+          message={{
+            id: 'welcome',
+            role: 'assistant',
+            content: welcomeMessage,
+            timestamp: new Date().toISOString(),
+          }}
+          conversationId={conversationId}
+          onCitationClick={() => {}}
+          onChunkCitationClick={() => {}}
+          isLast={false}
+        />
+      )}
+
+      {/* Empty state fallback: shown when no welcome message and no messages */}
+      {!welcomeMessage && messages.length === 0 && !isStreaming && (
         <div className="flex items-center justify-center h-full">
           <p className="text-sm text-muted-foreground">{t('chat.startConversation')}</p>
         </div>

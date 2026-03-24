@@ -552,9 +552,11 @@ export const datasetApi = {
     const query = new URLSearchParams()
     if (datasetIds?.length) query.set('dataset_ids', datasetIds.join(','))
     const qs = query.toString()
-    return api.get<{ key: string; values: string[] }[]>(
+    // Backend wraps result as { tags: [...] }, extract the array
+    const res = await api.get<{ tags: { key: string; values: string[] }[] }>(
       `${BASE_URL}/tags/aggregations${qs ? `?${qs}` : ''}`,
     )
+    return res.tags ?? []
   },
 
   // ============================================================================

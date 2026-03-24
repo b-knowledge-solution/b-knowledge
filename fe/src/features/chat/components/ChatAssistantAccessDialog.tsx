@@ -18,6 +18,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Switch } from '@/components/ui/switch'
 import { api } from '@/lib/api'
 import { chatApi } from '../api/chatApi'
 import { globalMessage } from '@/app/App'
@@ -55,6 +56,8 @@ interface ChatAssistantAccessDialogProps {
   onClose: () => void
   /** The chat dialog to manage access for */
   dialog: ChatAssistant | null
+  /** Callback fired after successful save */
+  onSave?: () => void
 }
 
 // ============================================================================
@@ -72,6 +75,7 @@ export default function ChatAssistantAccessDialog({
   open,
   onClose,
   dialog,
+  onSave,
 }: ChatAssistantAccessDialogProps) {
   const { t } = useTranslation()
 
@@ -89,6 +93,9 @@ export default function ChatAssistantAccessDialog({
   // Search filters per tab
   const [userSearch, setUserSearch] = useState('')
   const [teamSearch, setTeamSearch] = useState('')
+
+  // Public toggle state
+  const [isPublic, setIsPublic] = useState(false)
 
   // Loading state
   const [saving, setSaving] = useState(false)
@@ -124,6 +131,7 @@ export default function ChatAssistantAccessDialog({
   // Load data when opened
   useEffect(() => {
     if (open && dialog) {
+      setIsPublic(dialog.is_public ?? false)
       loadData()
     }
     // Reset search filters when dialog closes
@@ -173,7 +181,8 @@ export default function ChatAssistantAccessDialog({
     setSaving(true)
     try {
       // Build the entries array from selected IDs
-      const entries: ChatAssistantAccessEntry[] = [
+      // If public, we clear explicit grants to keep DB clean
+      const entries: ChatAssistantAccessEntry[] = isPublic ? [] : [
         ...[...selectedUserIds].map((id) => ({
           entity_type: 'user' as const,
           entity_id: id,
@@ -184,8 +193,13 @@ export default function ChatAssistantAccessDialog({
         })),
       ]
 
-      await chatApi.setAssistantAccess(dialog.id, entries)
+      await Promise.all([
+        chatApi.setAssistantAccess(dialog.id, entries),
+        isPublic !== dialog.is_public ? chatApi.updateAssistant(dialog.id, { is_public: isPublic }) : Promise.resolve(),
+      ])
+
       globalMessage.success(t('common.saveSuccess'))
+      onSave?.()
       onClose()
     } catch (error: any) {
       globalMessage.error(error?.message || t('common.error'))
@@ -207,137 +221,148 @@ export default function ChatAssistantAccessDialog({
   return (
     <Dialog open={open && !!dialog} onOpenChange={(v: boolean) => { if (!v) onClose() }}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
+        <DialogHeader className="mb-2">
           <DialogTitle>
             {t('chatAdmin.manageAccess')} - {dialog?.name}
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="users" className="w-full">
-          <TabsList className="w-full">
-            <TabsTrigger value="users" className="flex-1">
-              {t('chatAdmin.accessUsers')}
-              {/* Show count of selected users */}
-              {selectedUserIds.size > 0 && (
-                <Badge variant="secondary" className="ml-2 text-xs">
-                  {selectedUserIds.size}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="teams" className="flex-1">
-              {t('chatAdmin.accessTeams')}
-              {/* Show count of selected teams */}
-              {selectedTeamIds.size > 0 && (
-                <Badge variant="secondary" className="ml-2 text-xs">
-                  {selectedTeamIds.size}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
+        {/* Public toggle */}
+        <div className="flex items-center justify-between mb-4 pb-4 border-b">
+          <div>
+            <p className="text-sm font-medium">{t('chatAdmin.isPublic')}</p>
+            <p className="text-xs text-muted-foreground">{t('chatAdmin.publicDesc')}</p>
+          </div>
+          <Switch checked={isPublic} onCheckedChange={setIsPublic} />
+        </div>
 
-          {/* Users tab */}
-          <TabsContent value="users" className="mt-4">
-            {/* User search input */}
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-              <Input
-                placeholder={t('common.searchPlaceholder')}
-                value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
-                className="pl-9 h-9"
-              />
-              {userSearch && (
-                <button
-                  onClick={() => setUserSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
+        {!isPublic && (
+          <Tabs defaultValue="users" className="w-full">
+            <TabsList className="w-full">
+              <TabsTrigger value="users" className="flex-1">
+                {t('chatAdmin.accessUsers')}
+                {/* Show count of selected users */}
+                {selectedUserIds.size > 0 && (
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    {selectedUserIds.size}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="teams" className="flex-1">
+                {t('chatAdmin.accessTeams')}
+                {/* Show count of selected teams */}
+                {selectedTeamIds.size > 0 && (
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    {selectedTeamIds.size}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
 
-            {/* User checkbox list */}
-            <div className="border rounded-lg max-h-60 overflow-y-auto">
-              {filteredUsers.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">
-                  {t('common.noData')}
-                </p>
-              ) : (
-                filteredUsers.map((user) => (
-                  <label
-                    key={user.id}
-                    className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted cursor-pointer border-b last:border-b-0 text-sm"
+            {/* Users tab */}
+            <TabsContent value="users" className="mt-4">
+              {/* User search input */}
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <Input
+                  placeholder={t('common.searchPlaceholder')}
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="pl-9 h-9"
+                />
+                {userSearch && (
+                  <button
+                    onClick={() => setUserSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                   >
-                    <input
-                      type="checkbox"
-                      checked={selectedUserIds.has(user.id)}
-                      onChange={() => toggleUser(user.id)}
-                      className="rounded border-input"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-slate-900 dark:text-white truncate">
-                        {user.display_name}
-                      </div>
-                      {user.email && (
-                        <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                          {user.email}
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* User checkbox list */}
+              <div className="border rounded-lg max-h-60 overflow-y-auto">
+                {filteredUsers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">
+                    {t('common.noData')}
+                  </p>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <label
+                      key={user.id}
+                      className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted cursor-pointer border-b last:border-b-0 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedUserIds.has(user.id)}
+                        onChange={() => toggleUser(user.id)}
+                        className="rounded border-input"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-slate-900 dark:text-white truncate">
+                          {user.display_name}
                         </div>
-                      )}
-                    </div>
-                  </label>
-                ))
-              )}
-            </div>
-          </TabsContent>
+                        {user.email && (
+                          <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                            {user.email}
+                          </div>
+                        )}
+                      </div>
+                    </label>
+                  ))
+                )}
+              </div>
+            </TabsContent>
 
-          {/* Teams tab */}
-          <TabsContent value="teams" className="mt-4">
-            {/* Team search input */}
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-              <Input
-                placeholder={t('common.searchPlaceholder')}
-                value={teamSearch}
-                onChange={(e) => setTeamSearch(e.target.value)}
-                className="pl-9 h-9"
-              />
-              {teamSearch && (
-                <button
-                  onClick={() => setTeamSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-
-            {/* Team checkbox list */}
-            <div className="border rounded-lg max-h-60 overflow-y-auto">
-              {filteredTeams.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">
-                  {t('common.noData')}
-                </p>
-              ) : (
-                filteredTeams.map((team) => (
-                  <label
-                    key={team.id}
-                    className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted cursor-pointer border-b last:border-b-0 text-sm"
+            {/* Teams tab */}
+            <TabsContent value="teams" className="mt-4">
+              {/* Team search input */}
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <Input
+                  placeholder={t('common.searchPlaceholder')}
+                  value={teamSearch}
+                  onChange={(e) => setTeamSearch(e.target.value)}
+                  className="pl-9 h-9"
+                />
+                {teamSearch && (
+                  <button
+                    onClick={() => setTeamSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                   >
-                    <input
-                      type="checkbox"
-                      checked={selectedTeamIds.has(team.id)}
-                      onChange={() => toggleTeam(team.id)}
-                      className="rounded border-input"
-                    />
-                    <span className="font-medium text-slate-900 dark:text-white">
-                      {team.name}
-                    </span>
-                  </label>
-                ))
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Team checkbox list */}
+              <div className="border rounded-lg max-h-60 overflow-y-auto">
+                {filteredTeams.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">
+                    {t('common.noData')}
+                  </p>
+                ) : (
+                  filteredTeams.map((team) => (
+                    <label
+                      key={team.id}
+                      className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted cursor-pointer border-b last:border-b-0 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedTeamIds.has(team.id)}
+                        onChange={() => toggleTeam(team.id)}
+                        className="rounded border-input"
+                      />
+                      <span className="font-medium text-slate-900 dark:text-white">
+                        {team.name}
+                      </span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>

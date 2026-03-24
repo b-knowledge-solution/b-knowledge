@@ -150,10 +150,11 @@ describe('RagSearchService.searchMultipleDatasets', () => {
     expect(mockSearch).toHaveBeenCalledTimes(1)
     const searchBody = mockSearch.mock.calls[0][0].body
     const filterClauses = searchBody.query.bool.filter
-    // Should include tenant_id filter and ABAC filter
+    // Should include available_int exclusion filter and ABAC filter
+    // Tenant isolation is by index name (knowledge_{tenantId}), NOT by tenant_id field
     expect(filterClauses).toEqual(
       expect.arrayContaining([
-        { term: { tenant_id: 'tenant1' } },
+        { bool: { must_not: [{ range: { available_int: { lt: 1 } } }] } },
         { term: { department: 'engineering' } },
       ])
     )

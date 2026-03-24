@@ -57,20 +57,21 @@ function getClient(): Client {
  * Provides full-text, semantic, and hybrid search, as well as manual
  * chunk CRUD and document-level availability toggling.
  *
- * All search methods require a tenantId parameter for mandatory tenant isolation.
- * Every OpenSearch query includes a `{ term: { tenant_id: tenantId } }` filter.
+ * All search methods require a tenantId parameter for tenant isolation via index name
+ * (`knowledge_{tenantId}`). Tenant_id is NOT stored as a document field by the Python
+ * RAG worker, so we must NOT filter by it — isolation is by index only.
  */
 export class RagSearchService {
     /**
-     * @description Build combined access filters including mandatory tenant isolation and optional ABAC filters.
-     * This helper ensures tenant_id filtering is NEVER skipped in any search path.
-     * @param {string} tenantId - Tenant ID for mandatory isolation
+     * @description Build combined access filters including optional ABAC filters.
+     * Note: Tenant isolation is already guaranteed by the index name (`knowledge_{tenantId}`).
+     * We MUST NOT filter by `tenant_id` field here, because the Python RAG worker
+     * does not store `tenant_id` in chunk documents, so it would match 0 documents.
      * @param {Record<string, unknown>[]} abacFilters - Optional ABAC filter clauses
      * @returns {Record<string, unknown>[]} Array of OpenSearch filter clauses
      */
-    private getFilters(tenantId: string, abacFilters: Record<string, unknown>[] = []): Record<string, unknown>[] {
+    private getFilters(abacFilters: Record<string, unknown>[] = []): Record<string, unknown>[] {
         return [
-            { term: { tenant_id: tenantId } },
             ...abacFilters,
         ]
     }
@@ -120,39 +121,52 @@ export class RagSearchService {
         const client = getClient()
         let res
         try {
-            res = await client.search({
-                index: getIndexName(tenantId),
-                body: {
-                    query: {
-                        bool: {
-                            must: [
-                                { term: { kb_id: datasetId } },
-                                { match: { content_with_weight: { query, minimum_should_match: '30%' } } },
-                            ],
-                            filter: [
-                                { term: { available_int: 1 } },
-                                ...this.getFilters(tenantId, abacFilters),
-                                ...extraFilters,
-                            ],
-                            should: [
-                                /**
-                                 * Boost by pagerank (version recency) — newer versions have higher
-                                 * pagerank values set during createVersionDataset. Uses linear scoring
-                                 * so v2 scores ~2x v1. Documents without pagerank_fea are unaffected.
-                                 */
-                                { rank_feature: { field: 'pagerank_fea', linear: {} } },
-                            ],
-                        },
-                    },
-                    size: topK,
-                    _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
-                    // Highlight matching terms in content for retrieval test display
-                    highlight: {
-                        fields: {
-                            content_with_weight: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
-                        },
+            const searchBody = {
+                query: {
+                    bool: {
+                        must: [
+                            { term: { kb_id: datasetId } },
+                            // Search on content_ltks — the indexed text field.
+                            // content_with_weight has "index: false" in the OpenSearch mapping
+                            // (dynamic template *_with_weight), so match queries against it
+                            // silently return 0 results. Python search also uses content_ltks.
+                            { match: { content_ltks: { query, minimum_should_match: '30%' } } },
+                        ],
+                        filter: [
+                            // Exclude chunks explicitly marked as unavailable (available_int < 1).
+                            // Uses must_not+range instead of term match because the Python RAG worker
+                            // does NOT set available_int on regular chunks — only hidden chunks
+                            // (TOC, RAPTOR mothers, graph entities) get available_int=0.
+                            // A term filter would require the field to exist, excluding valid chunks.
+                            { bool: { must_not: [{ range: { available_int: { lt: 1 } } }] } },
+                            ...this.getFilters(abacFilters),
+                            ...extraFilters,
+                        ],
+                        should: [
+                            /**
+                             * Boost by pagerank (version recency) — newer versions have higher
+                             * pagerank values set during createVersionDataset. Uses linear scoring
+                             * so v2 scores ~2x v1. Documents without pagerank_fea are unaffected.
+                             */
+                            { rank_feature: { field: 'pagerank_fea', linear: {} } },
+                        ],
                     },
                 },
+                size: topK,
+                _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
+                // Highlight matching terms in content for retrieval test display
+                highlight: {
+                    fields: {
+                        content_with_weight: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
+                    },
+                },
+            }
+
+            log.debug('Executing OpenSearch full-text search', { index: getIndexName(tenantId), body: JSON.stringify(searchBody) })
+
+            res = await client.search({
+                index: getIndexName(tenantId),
+                body: searchBody,
             })
         } catch (err: any) {
             if (String(err).includes('index_not_found_exception')) return { chunks: [], total: 0 }
@@ -162,6 +176,7 @@ export class RagSearchService {
         const hitsTotal = res.body.hits.total
         const total = typeof hitsTotal === 'number' ? hitsTotal : hitsTotal?.value ?? 0
         const chunks = this.mapHits(res.body.hits.hits, 'full_text')
+        log.debug('OpenSearch full-text search response', { total, mappedChunks: chunks.length, firstHitSource: res.body.hits.hits[0]?._source })
         return { chunks, total }
     }
 
@@ -189,46 +204,51 @@ export class RagSearchService {
         const client = getClient()
         let res
         try {
-            res = await client.search({
-                index: getIndexName(tenantId),
-                body: {
-                    query: {
-                        bool: {
-                            must: [
-                                { term: { kb_id: datasetId } },
-                            ],
-                            filter: [
-                                { term: { available_int: 1 } },
-                                ...this.getFilters(tenantId, abacFilters),
-                                ...extraFilters,
-                            ],
-                            should: [
-                                {
-                                    knn: {
-                                        q_vec: {
-                                            vector: queryVector,
-                                            k: topK,
-                                        },
+            const searchBody = {
+                query: {
+                    bool: {
+                        must: [
+                            { term: { kb_id: datasetId } },
+                        ],
+                        filter: [
+                            // Exclude hidden chunks — see fullTextSearch for rationale
+                            { bool: { must_not: [{ range: { available_int: { lt: 1 } } }] } },
+                            ...this.getFilters(abacFilters),
+                            ...extraFilters,
+                        ],
+                        should: [
+                            {
+                                knn: {
+                                    q_vec: {
+                                        vector: queryVector,
+                                        k: topK,
                                     },
                                 },
-                                /**
-                                 * Boost by pagerank (version recency) — newer versions have higher
-                                 * pagerank values. Linear scoring gives proportional boost.
-                                 * Documents without pagerank_fea are unaffected.
-                                 */
-                                { rank_feature: { field: 'pagerank_fea', linear: {} } },
-                            ],
-                        },
-                    },
-                    size: topK,
-                    _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
-                    // Highlight matching terms in content for retrieval test display
-                    highlight: {
-                        fields: {
-                            content_with_weight: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
-                        },
+                            },
+                            /**
+                             * Boost by pagerank (version recency) — newer versions have higher
+                             * pagerank values. Linear scoring gives proportional boost.
+                             * Documents without pagerank_fea are unaffected.
+                             */
+                            { rank_feature: { field: 'pagerank_fea', linear: {} } },
+                        ],
                     },
                 },
+                size: topK,
+                _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
+                // Highlight matching terms in content for retrieval test display
+                highlight: {
+                    fields: {
+                        content_with_weight: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
+                    },
+                },
+            }
+
+            log.debug('Executing OpenSearch semantic search', { index: getIndexName(tenantId), body: JSON.stringify({ ...searchBody, query: { ...searchBody.query, bool: { ...searchBody.query.bool, should: ['[VECTOR OMITTED]'] } } }) })
+
+            res = await client.search({
+                index: getIndexName(tenantId),
+                body: searchBody,
             })
         } catch (err: any) {
             if (String(err).includes('index_not_found_exception')) return { chunks: [], total: 0 }
@@ -238,6 +258,7 @@ export class RagSearchService {
         const hitsTotal = res.body.hits.total
         const total = typeof hitsTotal === 'number' ? hitsTotal : hitsTotal?.value ?? 0
         const chunks = this.mapHits(res.body.hits.hits, 'semantic')
+        log.debug('OpenSearch semantic search response', { total, mappedChunks: chunks.length, firstHitSource: res.body.hits.hits[0]?._source })
         return { chunks, total }
     }
 
@@ -440,7 +461,8 @@ export class RagSearchService {
         // Add text match for full_text and hybrid methods
         if (method === 'full_text' || method === 'hybrid') {
             mustClauses.push({
-                match: { content_with_weight: { query: req.query, minimum_should_match: '30%' } },
+                // Use content_ltks (indexed) instead of content_with_weight (not indexed)
+                match: { content_ltks: { query: req.query, minimum_should_match: '30%' } },
             })
         }
 
@@ -470,8 +492,9 @@ export class RagSearchService {
                         bool: {
                             must: mustClauses,
                             filter: [
-                                { term: { available_int: 1 } },
-                                ...this.getFilters(tenantId, abacFilters),
+                                // Exclude hidden chunks — see fullTextSearch for rationale
+                                { bool: { must_not: [{ range: { available_int: { lt: 1 } } }] } },
+                                ...this.getFilters(abacFilters),
                                 ...extraFilters,
                             ],
                             should: shouldClauses,

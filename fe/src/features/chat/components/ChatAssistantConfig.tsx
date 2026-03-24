@@ -37,6 +37,15 @@ import type { MetadataFilter } from '@/components/metadata-filter/metadata-filte
 // Constants
 // ============================================================================
 
+/** Default system prompt matching RAGFlow's chat.py default */
+const DEFAULT_SYSTEM_PROMPT = `You are an intelligent assistant. Your primary function is to answer questions based strictly on the provided knowledge base.
+
+**Essential Rules:**
+  - Your answer must be derived **solely** from this dataset: \`{knowledge}\`.
+  - **When information is available**: Summarize the content to give a detailed answer.
+  - **When information is unavailable**: Your response must contain this exact sentence: "The answer you are looking for is not found in the dataset!"
+  - **Always consider** the entire conversation history.`
+
 /** Available assistant language options */
 const LANGUAGE_OPTIONS = [
   { value: '', label: 'Auto' },
@@ -203,7 +212,7 @@ function ChatAssistantConfig({
       setSelectedKbs([])
       setIsPublic(false)
       setLanguage('')
-      setSystemPrompt('')
+      setSystemPrompt(DEFAULT_SYSTEM_PROMPT)
       setPrologue({ en: '', vi: '', ja: '' })
       setEmptyResponse({ en: '', vi: '', ja: '' })
       setVariables([])

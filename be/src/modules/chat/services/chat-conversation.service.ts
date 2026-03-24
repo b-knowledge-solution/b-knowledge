@@ -108,6 +108,15 @@ interface PipelineMetrics {
   totalTokens?: number
 }
 
+const DEFAULT_SYSTEM_PROMPT = `You are an intelligent assistant. Your primary function is to answer questions based strictly on the provided knowledge base.
+
+**Essential Rules:**
+  - Your answer must be derived **solely** from this dataset: \`{knowledge}\`.
+  - **When information is available**: Summarize the content to give a detailed answer.
+  - **When information is unavailable**: Your response must contain this exact sentence: "The answer you are looking for is not found in the dataset!"
+  - **Always consider** the entire conversation history.`
+
+
 // ---------------------------------------------------------------------------
 // i18n Field Resolution
 // ---------------------------------------------------------------------------
@@ -481,7 +490,7 @@ export class ChatConversationService {
     // Create local session
     const session = await ModelFactory.chatSession.create({
       user_id: userId,
-      title: name,
+      title: name || 'New Conversation',
       dialog_id: dialogId,
       created_by: userId,
     } as any)
@@ -769,13 +778,7 @@ export class ChatConversationService {
         : null
 
       const cfg: PromptConfig = (assistant?.prompt_config || {}) as PromptConfig
-      const systemPrompt = cfg.system || `Role: You're a smart assistant.
-Task: Summarize the information from knowledge bases and answer user's question.
-Requirements and restriction:
-  - DO NOT make things up, especially for numbers.
-  - If the information from knowledge is irrelevant with user's question, JUST SAY: Sorry, no relevant information provided.
-  - Answer with markdown format text.
-  - Answer in language of user's question.`
+      const systemPrompt = cfg.system || DEFAULT_SYSTEM_PROMPT
       const kbIds = assistant?.kb_ids || []
 
       // Apply per-request overrides from the client
@@ -793,6 +796,9 @@ Requirements and restriction:
       const detectedLang = detectLanguage(content)
       const langInstruction = buildLanguageInstruction(detectedLang)
 
+      // Flag to skip retrieval pipeline (set when no KBs configured on assistant)
+      const skipRetrieval = kbIds.length === 0
+
       // ── Step 3: Load conversation history ───────────────────────────────
       const history = await ModelFactory.chatMessage.getKnex()
         .where('session_id', conversationId)
@@ -801,10 +807,11 @@ Requirements and restriction:
         .limit(20)
 
       // ── Step 4: Multi-turn refinement ───────────────────────────────────
+      const retrievalTimings: Record<string, number> = {}
       const refineStart = Date.now()
       let searchQuery = content
 
-      if (cfg.refine_multiturn && history.length > 0) {
+      if (!skipRetrieval && cfg.refine_multiturn && history.length > 0) {
         // Send status event to frontend
         res.write(`data: ${JSON.stringify({ status: 'refining_question' })}\n\n`)
         // Create span for multi-turn refinement tracing
@@ -823,10 +830,12 @@ Requirements and restriction:
           try { (refinementSpan as any).end({ output: searchQuery }) } catch (err) { log.error('Langfuse span end failed', { error: String(err) }) }
         }
         log.info('Refined multi-turn question', { original: content, refined: searchQuery })
+        retrievalTimings.refineMultiturn = Date.now() - refineStart
       }
 
       // ── Step 5: Cross-language expansion ────────────────────────────────
-      if (cfg.cross_languages) {
+      if (!skipRetrieval && cfg.cross_languages) {
+        const crossLangStart = Date.now()
         // Create span for cross-language expansion tracing
         let crossLangSpan: import('@/shared/services/langfuse.service.js').LangfuseParent | undefined
         if (trace) {
@@ -837,11 +846,13 @@ Requirements and restriction:
         if (crossLangSpan && 'end' in crossLangSpan) {
           try { (crossLangSpan as any).end({ output: searchQuery }) } catch (err) { log.error('Langfuse span end failed', { error: String(err) }) }
         }
+        retrievalTimings.crossLanguage = Date.now() - crossLangStart
       }
 
       // ── Step 6: Keyword extraction ──────────────────────────────────────
       let keywords: string[] = []
-      if (cfg.keyword) {
+      const keywordStart = Date.now()
+      if (!skipRetrieval && cfg.keyword) {
         // Create span for keyword extraction tracing
         let keywordSpan: import('@/shared/services/langfuse.service.js').LangfuseParent | undefined
         if (trace) {
@@ -856,12 +867,13 @@ Requirements and restriction:
         if (keywordSpan && 'end' in keywordSpan) {
           try { (keywordSpan as any).end({ output: keywords }) } catch (err) { log.error('Langfuse span end failed', { error: String(err) }) }
         }
+        retrievalTimings.keywordExtraction = Date.now() - keywordStart
       }
 
       metrics.refinementMs = Date.now() - refineStart
 
       // ── Step 6.5: SQL retrieval for structured data ─────────────────────
-      if (kbIds.length > 0) {
+      if (!skipRetrieval && kbIds.length > 0) {
         const sqlResult = await ragSqlService.querySql(content, kbIds, providerId)
         if (sqlResult) {
           // SQL query returned structured results — stream them directly
@@ -896,11 +908,15 @@ Requirements and restriction:
 
       // Embed the search query for semantic/hybrid retrieval
       let queryVector: number[] | null = null
-      try {
-        const vectors = await llmClientService.embedTexts([searchQuery])
-        queryVector = vectors[0] ?? null
-      } catch (err) {
-        log.warn('Query embedding failed, falling back to full-text', { error: String(err) })
+      if (!skipRetrieval) {
+        try {
+          const embedStart = Date.now()
+          const vectors = await llmClientService.embedTexts([searchQuery])
+          retrievalTimings.queryEmbedding = Date.now() - embedStart
+          queryVector = vectors[0] ?? null
+        } catch (err) {
+          log.warn('Query embedding failed, falling back to full-text', { error: String(err) })
+        }
       }
 
       // ── Step 7a: Expand to RBAC-accessible datasets if enabled ──────────
@@ -908,8 +924,7 @@ Requirements and restriction:
       // RBAC-accessible datasets using per-user ABAC filtering. Do NOT use a tenant-wide
       // findAll — that would bypass per-user ABAC rules and leak unauthorized data.
       let allKbIds = [...kbIds]
-      let userAbacFilters: Record<string, unknown>[] = []
-      if (cfg.allow_rbac_datasets && userId && tenantId) {
+      if (!skipRetrieval && cfg.allow_rbac_datasets && userId && tenantId) {
         try {
           const userContext = {
             id: userId,
@@ -921,7 +936,7 @@ Requirements and restriction:
           // Fetch all tenant datasets, then filter by what the user's ABAC rules permit
           const allTenantDatasets = await ModelFactory.dataset.getKnex()
             .where('tenant_id', tenantId)
-            .select('id', 'name', 'tenant_id', 'policy_rules')
+            .select('id', 'name', 'tenant_id')
 
           // Only include datasets the user is authorized to read via CASL ability check
           const authorizedKbIds = allTenantDatasets
@@ -936,25 +951,14 @@ Requirements and restriction:
               expanded: allKbIds.length,
             })
           }
-
-          // Gather field-level ABAC policy rules from all datasets in the search set
-          const allPolicies = allKbIds.flatMap((id: string) => {
-            const ds = allTenantDatasets.find((d: any) => d.id === id)
-            const rules = ds?.policy_rules
-            // Guard against null/undefined/non-array policy_rules (most datasets have none)
-            return Array.isArray(rules) ? rules : []
-          })
-          // Build OpenSearch ABAC filters only when policies exist to avoid empty filter artifacts
-          if (allPolicies.length > 0) {
-            userAbacFilters = buildOpenSearchAbacFilters(allPolicies)
-          }
         } catch (err) {
           log.warn('RBAC dataset expansion failed, using original kbIds', { error: String(err) })
         }
       }
 
-      if (allKbIds.length > 0) {
+      if (!skipRetrieval && allKbIds.length > 0) {
         res.write(`data: ${JSON.stringify({ status: 'retrieving' })}\n\n`)
+        const osSearchStart = Date.now()
 
         // Build search request shared by both paths
         const searchReq: import('@/shared/models/types.js').SearchRequest = {
@@ -968,7 +972,7 @@ Requirements and restriction:
         // When RBAC expansion produced multiple datasets, use cross-dataset single-query search
         if (cfg.allow_rbac_datasets && allKbIds.length > kbIds.length) {
           const crossResult = await ragSearchService.searchMultipleDatasets(
-            tenantId, allKbIds, searchReq, queryVector, userAbacFilters
+            tenantId, allKbIds, searchReq, queryVector
           ).catch(err => {
             log.warn('Cross-dataset search failed', { error: String(err) })
             return { chunks: [] as ChunkResult[], total: 0 }
@@ -1001,12 +1005,16 @@ Requirements and restriction:
         // Filter out empty or invalid chunks before further processing.
         // Upstream port: dialog_service empty doc filter to prevent null reference errors.
         allChunks = allChunks.filter(chunk => chunk && chunk.chunk_id)
+
+        retrievalTimings.osSearch = Date.now() - osSearchStart
       }
 
       // ── Step 8: Web search (Tavily) ─────────────────────────────────────
-      if (useInternet && cfg.tavily_api_key) {
+      if (!skipRetrieval && useInternet && cfg.tavily_api_key) {
         res.write(`data: ${JSON.stringify({ status: 'searching_web' })}\n\n`)
+        const webStart = Date.now()
         const webResults = await searchWeb(searchQuery, cfg.tavily_api_key, 3)
+        retrievalTimings.webSearch = Date.now() - webStart
         allChunks.push(...webResults)
       }
 
@@ -1015,11 +1023,13 @@ Requirements and restriction:
       // from the knowledge graph. This context is merged with vector chunks in Step 11
       // to produce a richer answer combining structured and unstructured knowledge.
       let kgContext = ''
-      if (cfg.use_kg && kbIds.length > 0) {
+      if (!skipRetrieval && cfg.use_kg && kbIds.length > 0) {
         log.info('Using graph+vector hybrid retrieval', { kbCount: kbIds.length })
         res.write(`data: ${JSON.stringify({ status: 'searching_knowledge_graph' })}\n\n`)
         try {
+          const kgStart = Date.now()
           kgContext = await ragGraphragService.retrieval(kbIds, searchQuery, providerId)
+          retrievalTimings.knowledgeGraph = Date.now() - kgStart
         } catch (err) {
           log.warn('Knowledge graph retrieval failed', { error: String(err) })
         }
@@ -1030,8 +1040,9 @@ Requirements and restriction:
       // (50K tokens / 15 LLM calls) to prevent cost spirals. The onProgress callback
       // streams structured DeepResearchProgressEvent objects as SSE events so the
       // frontend can render sub-query progress, budget status, and intermediate results.
-      if (useReasoning && kbIds.length > 0) {
+      if (!skipRetrieval && useReasoning && kbIds.length > 0) {
         res.write(`data: ${JSON.stringify({ status: 'deep_research' })}\n\n`)
+        const drStart = Date.now()
         try {
           const deepChunks = await ragDeepResearchService.research(
             tenantId,
@@ -1077,6 +1088,7 @@ Requirements and restriction:
         } catch (err) {
           log.warn('Deep research failed, continuing with standard retrieval', { error: String(err) })
         }
+        retrievalTimings.deepResearch = Date.now() - drStart
       }
 
       // End retrieval span with chunk texts for RAGAS evaluation
@@ -1093,6 +1105,7 @@ Requirements and restriction:
 
       if (allChunks.length > topN) {
         res.write(`data: ${JSON.stringify({ status: 'reranking' })}\n\n`)
+        const rerankStart = Date.now()
 
         // Use dedicated rerank model if configured, otherwise fall back to LLM reranking
         if (cfg.rerank_id) {
@@ -1100,6 +1113,7 @@ Requirements and restriction:
         } else {
           allChunks = await rerankChunks(content, allChunks, topN, providerId)
         }
+        retrievalTimings.reranking = Date.now() - rerankStart
       } else {
         allChunks = allChunks.slice(0, topN)
       }
@@ -1110,6 +1124,8 @@ Requirements and restriction:
       }
 
       metrics.retrievalMs = Date.now() - retrievalStart
+      retrievalTimings.totalRetrieval = metrics.retrievalMs
+      log.info('Retrieval pipeline timings (ms)', { sessionId: conversationId, userMsgId, timings: retrievalTimings, chunkCount: allChunks.length })
       metrics.totalChunks = allChunks.length
 
       // ── Step 10: Handle empty results ───────────────────────────────────

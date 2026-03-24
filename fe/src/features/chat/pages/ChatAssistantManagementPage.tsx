@@ -11,6 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/queryKeys'
 import { Plus, Search, Pencil, Trash2, Shield, Globe, Lock } from 'lucide-react'
+import { useProviders } from '@/features/llm-provider/api/llmProviderQueries'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -65,8 +66,36 @@ export default function ChatAssistantManagementPage() {
   // Uses shared api + queryKeys to avoid cross-module imports from datasets feature.
   const { data: rawDatasets = [] } = useQuery({
     queryKey: queryKeys.datasets.list(),
-    queryFn: () => api.get<{ id: string; name: string; doc_count?: number }[]>('/api/rag/datasets'),
+    queryFn: () => api.get<{ id: string; name: string; doc_count?: number; embedding_model?: string }[]>('/api/rag/datasets'),
   })
+
+  // Fetch LLM providers to resolve llm_id → display name and embedding model names
+  const { data: providers = [] } = useProviders()
+
+  /**
+   * @description Resolve a provider UUID to its display name (factory + model).
+   * @param llmId - Provider UUID from the assistant
+   * @returns Human-readable model name or the raw ID as fallback
+   */
+  const resolveLlmName = (llmId?: string | null): string => {
+    if (!llmId) return '-'
+    const provider = providers.find((p) => p.id === llmId)
+    return provider ? `${provider.model_name}` : llmId
+  }
+
+  /**
+   * @description Resolve embedding model names for an assistant's knowledge bases.
+   * @param kbIds - Dataset IDs linked to the assistant
+   * @returns Unique embedding model names or '-' if none found
+   */
+  const resolveEmbeddingNames = (kbIds: string[]): string => {
+    const names = new Set<string>()
+    for (const kbId of kbIds) {
+      const ds = rawDatasets.find((d) => d.id === kbId)
+      if (ds?.embedding_model) names.add(ds.embedding_model)
+    }
+    return names.size > 0 ? Array.from(names).join(', ') : '-'
+  }
 
   // Fetch available projects for the assistant config dialog.
   const { data: rawProjects = [] } = useQuery({
@@ -212,7 +241,7 @@ export default function ChatAssistantManagementPage() {
         {/* Total count indicator */}
         {!loading && total > 0 && (
           <div className="flex items-center text-sm text-slate-500 dark:text-slate-400 shrink-0">
-            {t('common.totalItems', { count: total })}
+            {t('common.totalItems', { total })}
           </div>
         )}
       </div>
@@ -235,6 +264,7 @@ export default function ChatAssistantManagementPage() {
                 <TableHead>{t('common.description')}</TableHead>
                 <TableHead>{t('chat.knowledgeBases')}</TableHead>
                 <TableHead>{t('chat.llmModel')}</TableHead>
+                <TableHead>{t('chat.embeddingModel')}</TableHead>
                 <TableHead>{t('common.status')}</TableHead>
                 <TableHead>{t('common.actions')}</TableHead>
               </TableRow>
@@ -257,9 +287,14 @@ export default function ChatAssistantManagementPage() {
                     <Badge variant="secondary">{assistant.kb_ids.length}</Badge>
                   </TableCell>
 
-                  {/* LLM model */}
+                  {/* LLM model — resolved from provider ID */}
                   <TableCell className="text-slate-600 dark:text-slate-400">
-                    {assistant.llm_id || '-'}
+                    {resolveLlmName(assistant.llm_id)}
+                  </TableCell>
+
+                  {/* Embedding model — resolved from linked datasets */}
+                  <TableCell className="text-slate-600 dark:text-slate-400">
+                    {resolveEmbeddingNames(assistant.kb_ids)}
                   </TableCell>
 
                   {/* Public / Private badge */}
@@ -351,6 +386,7 @@ export default function ChatAssistantManagementPage() {
       <ChatAssistantAccessDialog
         open={isAccessOpen}
         onClose={() => { setIsAccessOpen(false); setAccessAssistant(null) }}
+        onSave={() => refreshAssistants()}
         dialog={accessAssistant}
       />
     </div>

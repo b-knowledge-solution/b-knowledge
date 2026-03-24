@@ -61,8 +61,8 @@ export interface UseChatStreamReturn {
   pipelineStatus: PipelineStatus | null
   /** Performance metrics from the last response */
   metrics: PipelineMetrics | null
-  /** Send a user message and begin streaming */
-  sendMessage: (content: string, options?: SendMessageOptions) => void
+  /** Send a user message and begin streaming (optional conversationId override for race-condition safety) */
+  sendMessage: (content: string, options?: SendMessageOptions, conversationIdOverride?: string) => void
   /** Abort the current streaming response */
   stopStream: () => void
   /** Current error message if any */
@@ -116,9 +116,12 @@ export function useChatStream(
    * @param content - The user message text
    * @param options - Optional variables, reasoning, and internet search flags
    */
-  const sendMessage = async (content: string, options?: SendMessageOptions) => {
+  const sendMessage = async (content: string, options?: SendMessageOptions, conversationIdOverride?: string) => {
+    // Use override if provided (e.g. freshly-created conversation not yet in React state)
+    const effectiveConversationId = conversationIdOverride || conversationId
+
     // Guard: require active conversation and dialog
-    if (!conversationId || !dialogId) return
+    if (!effectiveConversationId || !dialogId) return
 
     // Reset state
     setError(null)
@@ -149,7 +152,7 @@ export function useChatStream(
       abortRef.current = new AbortController()
 
       // Call the streaming endpoint with optional parameters
-      const response = await chatApi.sendMessage(conversationId, content, dialogId, options, abortRef.current.signal)
+      const response = await chatApi.sendMessage(effectiveConversationId, content, dialogId, options, abortRef.current.signal)
 
       // Check for HTTP errors
       if (!response.ok) {

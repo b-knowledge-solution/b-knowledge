@@ -6,8 +6,8 @@
  */
 
 import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
-import { PanelRightOpen, PanelRightClose, Menu } from 'lucide-react'
+import { useTranslation, getI18n } from 'react-i18next'
+import { ChevronDown, Menu } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
 import ChatSidebar from '../components/ChatSidebar'
@@ -35,6 +35,25 @@ import type { ChatReference, ChatChunk, PromptVariable, SendMessageOptions } fro
 function getRequiredVariables(variables?: PromptVariable[]): PromptVariable[] {
   if (!variables) return []
   return variables.filter((v) => !v.optional && !v.default_value)
+}
+
+/**
+ * @description Resolve the prologue value to a plain string.
+ * Handles both legacy string values and per-locale Record<string, string> maps.
+ * Falls back through: current language → 'en' → first non-empty value.
+ * @param prologue - The prologue field from prompt_config
+ * @returns Resolved welcome message string, or empty string if none configured
+ */
+function resolvePrologue(prologue?: string | Record<string, string>): string {
+  if (!prologue) return ''
+  if (typeof prologue === 'string') return prologue
+
+  // Per-locale Record: resolve by current language, fallback to 'en', then first non-empty
+  const lang = getI18n()?.language?.split('-')[0] || 'en'
+  if (prologue[lang]?.trim()) return prologue[lang]
+  if (prologue['en']?.trim()) return prologue['en']
+  const firstNonEmpty = Object.values(prologue).find((v) => v?.trim())
+  return firstNonEmpty || ''
 }
 
 // ============================================================================
@@ -78,6 +97,9 @@ function DatasetChatPage() {
   const chatFiles = useChatFiles(conversations.activeConversation?.id || null)
   const renameMutation = useRenameConversation()
 
+  // Resolve welcome message from assistant's prologue config
+  const welcomeMessage = resolvePrologue(assistants.activeAssistant?.prompt_config?.prologue)
+
   // Compute required variables from the active assistant
   const assistantVariables = assistants.activeAssistant?.prompt_config?.variables
   const requiredVars = getRequiredVariables(assistantVariables)
@@ -92,15 +114,15 @@ function DatasetChatPage() {
 
   // Load conversation messages when active conversation changes
   useEffect(() => {
-    // Abort any in-flight stream when switching conversations
-    if (stream.isStreaming) {
-      stream.stopStream()
-    }
-
     const conv = conversations.activeConversation
-    if (conv?.messages) {
+    if (conv?.messages && conv.messages.length > 0) {
+      // Loading an existing conversation with messages — abort any in-flight stream and load them
+      if (stream.isStreaming) {
+        stream.stopStream()
+      }
       stream.setMessages(conv.messages)
-    } else {
+    } else if (!stream.isStreaming) {
+      // New empty conversation and no streaming in progress — safe to clear
       stream.clearMessages()
     }
     // Only trigger on conversation change
@@ -132,10 +154,14 @@ function DatasetChatPage() {
     content: string,
     options?: { reasoning?: boolean; useInternet?: boolean; file_ids?: string[] },
   ) => {
+    // Track the effective conversation ID (may come from newly created conv)
+    let effectiveConvId = conversations.activeConversation?.id
+
     // Create conversation if none exists
-    if (!conversations.activeConversation) {
+    if (!effectiveConvId) {
       const conv = await conversations.createConversation(content.slice(0, 50))
       if (!conv) return
+      effectiveConvId = conv.id
     }
 
     // Build send options including variables
@@ -162,7 +188,8 @@ function DatasetChatPage() {
       sendOptions.file_ids = chatFiles.fileIds
     }
 
-    stream.sendMessage(content, sendOptions)
+    // Pass effectiveConvId as override to avoid race condition with React state
+    stream.sendMessage(content, sendOptions, effectiveConvId)
 
     // Clear files after sending
     chatFiles.clearFiles()
@@ -239,7 +266,7 @@ function DatasetChatPage() {
           loading={conversations.loading}
           activeConversationId={conversations.activeConversation?.id}
           onSelect={conversations.setActiveConversationId}
-          onCreate={() => { conversations.createConversation() }}
+          onCreate={() => { conversations.setActiveConversationId(null) }}
           onDelete={conversations.deleteConversation}
           onRename={handleRenameConversation}
           search={conversations.search}
@@ -265,7 +292,7 @@ function DatasetChatPage() {
                     loading={conversations.loading}
                     activeConversationId={conversations.activeConversation?.id}
                     onSelect={(id) => { conversations.setActiveConversationId(id); setMobileSidebarOpen(false) }}
-                    onCreate={() => { conversations.createConversation(); setMobileSidebarOpen(false) }}
+                    onCreate={() => { conversations.setActiveConversationId(null); setMobileSidebarOpen(false) }}
                     onDelete={conversations.deleteConversation}
                     onRename={handleRenameConversation}
                     search={conversations.search}
@@ -276,25 +303,27 @@ function DatasetChatPage() {
               <h2 className="text-sm font-semibold truncate text-slate-800 dark:text-slate-200">
                 {conversations.activeConversation?.name || t('chat.newConversation')}
               </h2>
-              {assistants.activeAssistant && (
-                <span className="text-xs text-slate-500 dark:text-slate-400 truncate hidden sm:inline">
-                  {assistants.activeAssistant.name}
-                </span>
-              )}
             </div>
-            <div className="flex items-center gap-1">
-              {/* Toggle reference panel */}
-              <button
-                className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                onClick={() => setShowReferences(!showReferences)}
-                title={t('chat.toggleReferences')}
+            {/* Assistant selector dropdown */}
+            <div className="relative shrink-0">
+              <select
+                id="chat-assistant-selector"
+                value={assistants.activeAssistant?.id ?? ''}
+                onChange={(e) => {
+                  // Switch active assistant and reset conversation
+                  assistants.setActiveAssistantId(e.target.value)
+                  conversations.setActiveConversationId(null)
+                }}
+                className="appearance-none h-8 pl-3 pr-7 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors cursor-pointer max-w-[200px] truncate"
+                title={t('chat.selectAssistant')}
               >
-                {showReferences ? (
-                  <PanelRightClose className="h-4 w-4" />
-                ) : (
-                  <PanelRightOpen className="h-4 w-4" />
-                )}
-              </button>
+                {assistants.assistants.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
             </div>
           </div>
 
@@ -309,6 +338,7 @@ function DatasetChatPage() {
             onRegenerate={handleRegenerate}
             className="flex-1"
             conversationId={conversations.activeConversation?.id}
+            welcomeMessage={welcomeMessage}
           />
 
           {/* Deep Research progress indicator (shown inline during deep research streaming) */}

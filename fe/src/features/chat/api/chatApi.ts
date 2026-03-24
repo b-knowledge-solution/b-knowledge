@@ -97,7 +97,7 @@ export const chatApi = {
    * @returns Array of conversations
    */
   listConversations: async (assistantId: string): Promise<Conversation[]> => {
-    return api.get<Conversation[]>(`${BASE_URL}/assistants/${assistantId}/conversations`)
+    return api.get<Conversation[]>(`${BASE_URL}/conversations?dialogId=${assistantId}`)
   },
 
   /**
@@ -123,7 +123,10 @@ export const chatApi = {
    * @param id - Conversation identifier
    */
   deleteConversation: async (id: string): Promise<void> => {
-    return api.delete<void>(`${BASE_URL}/conversations/${id}`)
+    return api.delete<void>(`${BASE_URL}/conversations`, {
+      body: JSON.stringify({ ids: [id] }),
+      headers: { 'Content-Type': 'application/json' },
+    })
   },
 
   /**
@@ -133,7 +136,7 @@ export const chatApi = {
    * @returns The updated conversation
    */
   renameConversation: async (conversationId: string, name: string): Promise<Conversation> => {
-    return api.put<Conversation>(`${BASE_URL}/conversations/${conversationId}`, { name })
+    return api.patch<Conversation>(`${BASE_URL}/conversations/${conversationId}`, { name })
   },
 
   /**

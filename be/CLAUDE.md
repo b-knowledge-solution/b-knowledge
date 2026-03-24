@@ -87,6 +87,27 @@ modules/<domain>/
 - Transaction support via optional `trx` parameter
 - **No direct DB in services:** Services must **never** import `db` from `@/shared/db/knex.js` or call `db('table')` directly. All database access from service files must go through `ModelFactory.<model>.<method>()`. If a model lacks the needed query, add a new method to the model class — do not bypass via raw `db()` in the service.
 
+### RESTful API Route Conventions
+
+All backend routes **MUST** follow standard RESTful conventions. Frontend API clients **MUST** match the backend route patterns exactly.
+
+| Operation | HTTP Method | URL Pattern | Body |
+|-----------|------------|-------------|------|
+| List / Search | `GET` | `/api/<domain>/<resource>?filter=value` | — |
+| Get by ID | `GET` | `/api/<domain>/<resource>/:id` | — |
+| Create | `POST` | `/api/<domain>/<resource>` | JSON payload |
+| Full update | `PUT` | `/api/<domain>/<resource>/:id` | JSON payload |
+| Partial update | `PATCH` | `/api/<domain>/<resource>/:id` | JSON fields to update |
+| Delete single | `DELETE` | `/api/<domain>/<resource>/:id` | — |
+| Bulk delete | `DELETE` | `/api/<domain>/<resource>` | `{ ids: [...] }` |
+| Sub-resource action | `POST` | `/api/<domain>/<resource>/:id/<action>` | JSON payload |
+
+**Key rules:**
+- **Filtering / listing** uses query parameters (`?dialogId=xxx`), **never** path nesting like `/parent/:id/children` for flat resources.
+- **PATCH** for partial updates (e.g. rename), **PUT** for full replacement.
+- **Frontend `*Api.ts` files must mirror BE routes exactly** — mismatches cause 404 errors at runtime.
+- Sub-resource actions (e.g. `/completion`, `/feedback`) use `POST` on a sub-path.
+
 ### Route Registration (`app/routes.ts`)
 - Rate limiting: General 1000/15min, Auth 20/15min
 - Content-Type validation on mutations

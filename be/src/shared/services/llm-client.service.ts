@@ -144,10 +144,18 @@ export class LlmClientService {
     const cached = this.clients.get(provider.id)
     if (cached) return cached.client
 
+    let baseURL = provider.api_base || undefined
+    if (baseURL && provider.factory_name === 'Ollama') {
+      // Ensure Ollama URLs have /v1 for OpenAI compatibility
+      if (!baseURL.endsWith('/v1') && !baseURL.endsWith('/v1/')) {
+        baseURL = baseURL.replace(/\/$/, '') + '/v1'
+      }
+    }
+
     // Build OpenAI client with provider-specific config
     const client = new OpenAI({
       apiKey: provider.api_key || 'not-needed',
-      baseURL: provider.api_base || undefined,
+      baseURL,
     })
 
     this.clients.set(provider.id, { client, provider })
