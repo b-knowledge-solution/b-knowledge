@@ -205,7 +205,7 @@ erDiagram
     projects ||--o{ agents : "project_id"
     tenant ||--o{ agents : "tenant_id"
     tenant ||--o{ memories : "tenant_id"
-    tenant_llm ||--o{ memories : "embd_id, llm_id"
+    model_providers ||--o{ memories : "embd_id, llm_id"
 ```
 
 | Relationship | FK Column | Target Table | Notes |
@@ -216,4 +216,39 @@ erDiagram
 | Agent Run → User | `triggered_by` | `users` | Who started the run |
 | Memory → User | `created_by` | `users` | Pool creator (soft ref, no FK) |
 | Memory → Tenant | `tenant_id` | `tenant` | Multi-tenant isolation (soft ref, no FK) |
-| Memory → LLM | `embd_id`, `llm_id` | `tenant_llm` | Model overrides (soft ref, no FK) |
+| Memory → LLM | `embd_id`, `llm_id` | `model_providers` | Model overrides (soft ref, no FK) |
+
+---
+
+## Peewee-Managed Canvas Tables
+
+The following tables are managed by the Python worker's Peewee ORM. Their schema is defined in the initial migration but data access is via Peewee models in `advance-rag/`.
+
+### canvas_template
+
+Agent canvas templates (reusable workflow patterns):
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | text PK | UUID |
+| Various | — | Template definition fields managed by Peewee |
+
+### user_canvas
+
+Per-user workflow canvas state:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | text PK | UUID |
+| Various | — | Canvas state and metadata managed by Peewee |
+
+### user_canvas_version
+
+Canvas version history:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | text PK | UUID |
+| Various | — | Version snapshots managed by Peewee |
+
+> **Note**: These tables are created by the backend Knex migration but exclusively read/written by the Python Peewee ORM. See `advance-rag/db/db_models.py` for full column definitions.
