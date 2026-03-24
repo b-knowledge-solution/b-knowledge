@@ -1,13 +1,13 @@
-# RAGFlow Port to advance-rag -- v0.25.0 (df2cc32f5)
+# RAGFlow Port to advance-rag -- v0.25.0 (d32967eda)
 
 ## Overview
 
 This document describes the incremental port of [RAGFlow](https://github.com/infiniflow/ragflow) upstream commits into the `advance-rag/` service for b-knowledge. The approach remains **copy-all, patch-nothing** for pure directories, with manual merge for b-knowledge-modified files and concept ports for TypeScript backend services.
 
-**Upstream commit:** `df2cc32f5` (nightly-4-gdf2cc32f5)
+**Upstream commit:** `d32967eda864bf44b3fbd1d5abb0d4c3b2615253`
 **Previous port:** `c732a1c8e` (v0.24.0)
 **Port date:** 2026-03-23
-**Changes:** 49 commits, 60 files, +2,697/-1,516 lines
+**Changes:** 51 commits, 67 files, +2,799/-1,531 lines
 
 ---
 
@@ -173,6 +173,16 @@ These files are NEW -- they do not exist in RAGFlow and form the integration lay
 - **TypeScript:** `be/src/modules/rag/services/rag.service.ts`
 - **Details:** Metadata queries scoped to page-level document IDs rather than scanning all documents, improving performance for large datasets
 
+### 16. LazyDocxImage → LazyImage Rename (d32967eda)
+
+- **Source:** `rag/utils/lazy_image.py`, `deepdoc/parser/docx_parser.py`, `deepdoc/parser/excel_parser.py`, `deepdoc/parser/figure_parser.py`, `rag/app/book.py`, `rag/app/table.py`, `rag/nlp/__init__.py` (safe copy)
+- **Details:** Renamed `LazyDocxImage` to `LazyImage` since the lazy image loader is now used for Excel spreadsheets too, not just DOCX. Excel parser (`excel_parser.py`) now uses `LazyImage` instead of `PIL.Image.open()` for embedded images, reducing memory usage. Backward-compat alias `LazyDocxImage = LazyImage` preserved in `lazy_image.py`.
+
+### 17. Resume Parser Type Check Fix (f991cd362)
+
+- **Source:** `rag/app/resume.py` (safe copy)
+- **Details:** Fixed `_is_english()` helper to accept `str | None` type. Added `isinstance(lang, str)` guard and `.strip()` to prevent `AttributeError` when language parameter is `None` during resume parsing.
+
 ---
 
 ## DB Schema Changes
@@ -313,15 +323,16 @@ cd advance-rag && DB_TYPE=postgres python -m uvicorn api.main:app --reload
 npm run build && npm test
 
 # 11. Create patch note for the new version
-cp patches/ragflow-port-v0.25.0-df2cc32.md patches/ragflow-port-v<NEW_VERSION>-<NEW_HASH>.md
+cp patches/ragflow-port-v0.25.0-d32967e.md patches/ragflow-port-v<NEW_VERSION>-<NEW_HASH>.md
 ```
 
 ### Lessons Learned from v0.25.0 Port
 
 1. **Backup opensearch_conn.py before copying rag/utils/** -- it has b-knowledge-specific customizations
 2. **Check for missing Peewee model definitions** -- b-knowledge may not have all models that upstream services reference (e.g., `API4Conversation`, `UserCanvasVersion` were missing)
-3. **Docx get_picture methods removed upstream** -- `DocxParser` parent class now provides this via `LazyDocxImage`, so parser subclasses (naive.py, manual.py, qa.py) no longer need their own implementations
+3. **Docx get_picture methods removed upstream** -- `DocxParser` parent class now provides this via `LazyImage` (renamed from `LazyDocxImage`), so parser subclasses (naive.py, manual.py, qa.py) no longer need their own implementations
 4. **Skip sync_data_source.py** -- b-knowledge does not include RAGFlow's data source connector system
+5. **LazyDocxImage renamed to LazyImage** -- upstream renamed the class since it's now used for Excel too. Backward-compat alias preserved, but update conftest mocks to include both `LazyImage` and `LazyDocxImage`
 5. **Skip handle_save_to_memory_task** -- b-knowledge handles memory through its Node.js backend module
 
 ---
