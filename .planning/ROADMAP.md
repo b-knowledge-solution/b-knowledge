@@ -51,7 +51,14 @@ Plans:
 **Goal:** Enhance the code parser with a full Code-Graph-RAG pipeline: add Memgraph graph DB to infrastructure, port all 12-language parsers from code-graph-rag (StructureProcessor, ImportProcessor, DefinitionProcessor, TypeInferenceEngine, CallProcessor), store code knowledge graph in Memgraph with Cypher support, add Node.js API for graph queries via Bolt protocol with AI NL-to-Cypher translation, and provide an interactive graph visualization UI.
 **Requirements**: Memgraph infrastructure, 12-language parser pipeline, code graph extraction from AST, deep cross-file relationship detection, Node.js Bolt API, AI Cypher generation, code snippet retrieval, reference-guided optimization, graph visualization with PNG/SVG/JSON export
 **Depends on:** Phase 3
-**Plans:** TBD (replanning)
+**Plans:** 5 plans in 5 waves
+
+Plans:
+- [ ] **04-01**: Memgraph Infrastructure Setup — Docker service, env vars, neo4j driver
+- [ ] **04-02**: Code Graph Parser Pipeline — Port all code-graph-rag parsers (30+ files, 12 languages), pipeline interface in code.py
+- [ ] **04-03**: Task Executor Integration + Tests — Wire chunk_with_graph() into pipeline, 10+ unit tests
+- [ ] **04-04**: Node.js Code-Graph API — Express module, Memgraph Bolt queries, AI NL-to-Cypher, code snippets
+- [ ] **04-05**: Frontend Graph Visualization — Interactive graph page, node details, PNG/SVG/JSON export
 
 ---
 
