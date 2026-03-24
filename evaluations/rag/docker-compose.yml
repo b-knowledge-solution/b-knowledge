@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  rag-evaluator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag-evaluator
+    
+    # Environment variables
+    environment:
+      # B-Knowledge API Configuration
+      BKNOWLEDGE_API_URL: ${BKNOWLEDGE_API_URL:-http://host.docker.internal:3001}
+      BKNOWLEDGE_CHAT_TOKEN: ${BKNOWLEDGE_CHAT_TOKEN}
+      BKNOWLEDGE_SEARCH_TOKEN: ${BKNOWLEDGE_SEARCH_TOKEN}
+      
+      # LLM Judge Configuration (for evaluation metrics)
+      LLM_JUDGE_API_KEY: ${LLM_JUDGE_API_KEY}
+      LLM_JUDGE_MODEL: ${LLM_JUDGE_MODEL:-gpt-4}
+      LLM_JUDGE_ENDPOINT: ${LLM_JUDGE_ENDPOINT:-https://api.openai.com/v1}
+      
+      # Langfuse Integration (optional)
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+      LANGFUSE_BASEURL: ${LANGFUSE_BASEURL:-https://cloud.langfuse.com}
+      
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DEBUG: ${DEBUG:-false}
+    
+    # Port mappings
+    ports:
+      - "3000:3000"  # Promptfoo UI (if applicable)
+      - "8000:8000"  # Python provider server (if applicable)
+    
+    # Volume mounts
+    volumes:
+      # Dataset (read-only)
+      - ./dataset:/app/dataset:ro
+      
+      # Results (write)
+      - ./results:/app/results:rw
+      
+      # Logs
+      - ./logs:/app/logs:rw
+      
+      # Scripts and config (can be updated)
+      - ./scripts:/app/scripts:ro
+      - ./providers:/app/providers:ro
+      - ./metrics:/app/metrics:ro
+      - ./promptfooconfig.yaml:/app/promptfooconfig.yaml:ro
+      - ./.env:/app/.env:ro
+    
+    # Resource limits
+    # NOTE: Adjust based on your machine's resources
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Network configuration
+    networks:
+      - rag-network
+
+# Network definition
+networks:
+  rag-network:
+    driver: bridge
+
+# Volume definitions
+volumes:
+  # Optional: for persistent storage if needed

@@ -1,0 +1,68 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Results and artifacts
+results/
+*.html
+*.json
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Scripts
+# (Use deploy.sh and verify.sh for Linux/Mac/Git Bash, or use Makefile on all platforms)
+deploy.ps1
+verify.ps1
+verify-phase1.sh
+
+# Dataset (generated outputs - keep only templates)
+dataset/qa_pairs.csv
+dataset/eval_dataset.yaml
+dataset/*_test.yaml
+dataset/*_test.csv
+
+# Verification & tracking reports (generated during setup)
+PHASE1_VERIFICATION_REPORT.md
+PROJECT_TRACKING.md
+QA_TESTING_GUIDE.md
+verify-phase1.sh
+
+# Python cache
+.pytest_cache/
+.mypy_cache/
+
+# OS specific
+Thumbs.db
+.DS_Store
