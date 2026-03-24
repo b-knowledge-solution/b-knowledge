@@ -17,7 +17,7 @@ import { useAuth } from '@/features/auth';
 /** 
  * @description Valid user roles within the application.
  */
-type Role = 'admin' | 'leader' | 'user';
+type Role = 'super-admin' | 'admin' | 'leader' | 'user';
 
 /** 
  * @description Props for RoleRoute component.

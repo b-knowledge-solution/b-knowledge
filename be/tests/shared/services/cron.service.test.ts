@@ -53,6 +53,20 @@ vi.mock('node-cron', () => ({
   default: mockCron,
 }));
 
+vi.mock('../../../src/shared/models/factory.js', () => ({
+  ModelFactory: {
+    systemConfig: {
+      findById: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
+  },
+}));
+
+vi.mock('../../../src/shared/db/knex.js', () => ({
+  db: vi.fn(),
+}));
+
 describe('CronService', () => {
   let cronService: any;
 

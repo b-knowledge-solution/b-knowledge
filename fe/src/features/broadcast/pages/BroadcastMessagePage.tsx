@@ -5,15 +5,23 @@
 import React, { useState } from 'react';
 import { HeaderActions } from '@/components/HeaderActions';
 import { useTranslation } from 'react-i18next';
-import { broadcastMessageService } from '../api/broadcastMessageService';
-import { BroadcastMessage } from '../types';
+import { useConfirm } from '@/components/ConfirmDialog';
+import { broadcastMessageService } from '../api/broadcastApi';
+import { BroadcastMessage } from '../types/broadcast.types';
 import { Plus, CheckCircle, Trash2, Edit2, XCircle } from 'lucide-react';
-import { Dialog } from '@/components/Dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryKeys';
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline';
-
-import { Table, Tag, Button, Card, Space, Pagination, Tooltip, DatePicker, ColorPicker } from 'antd';
-import dayjs from 'dayjs';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import { Pagination } from '@/components/ui/pagination';
+import { Spinner } from '@/components/ui/spinner';
 
 /**
  * @description Admin dashboard page for creating, editing, and deleting broadcast messages.
@@ -23,6 +31,7 @@ import dayjs from 'dayjs';
  */
 const BroadcastMessagePage: React.FC = () => {
     const { t } = useTranslation();
+    const confirm = useConfirm();
     const queryClient = useQueryClient();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingMessage, setEditingMessage] = useState<Partial<BroadcastMessage> | null>(null);
@@ -30,6 +39,7 @@ const BroadcastMessagePage: React.FC = () => {
     const { isFirstVisit } = useFirstVisit('broadcast');
     const [showGuide, setShowGuide] = useState(false);
 
+    // Show the onboarding guide dialog on the user's first visit to this page
     React.useEffect(() => {
         if (isFirstVisit) {
             setShowGuide(true);
@@ -38,18 +48,19 @@ const BroadcastMessagePage: React.FC = () => {
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
+    const [pageSize] = useState(10);
 
     // Fetch Messages Query
     const { data: messages = [], isLoading } = useQuery({
-        queryKey: ['broadcastMessages'],
+        queryKey: queryKeys.broadcast.list(),
         queryFn: broadcastMessageService.getAllMessages
     });
 
-    // Save Mutation (Create or Update)
+    // Save Mutation (Create or Update) — determines operation by presence of msg.id
     const saveMutation = useMutation({
         mutationKey: ['save', 'broadcastMessage'],
         mutationFn: (msg: Partial<BroadcastMessage>) => {
+            // Update existing message if ID is present, otherwise create new
             if (msg.id) {
                 return broadcastMessageService.updateMessage(msg.id, msg);
             } else {
@@ -58,7 +69,7 @@ const BroadcastMessagePage: React.FC = () => {
         },
         onSuccess: () => {
             setIsDialogOpen(false);
-            queryClient.invalidateQueries({ queryKey: ['broadcastMessages'] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.broadcast.list() });
         },
         meta: { successMessage: t('admin.broadcast.saveSuccess') }
     });
@@ -68,7 +79,7 @@ const BroadcastMessagePage: React.FC = () => {
         mutationKey: ['delete', 'broadcastMessage'],
         mutationFn: broadcastMessageService.deleteMessage,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['broadcastMessages'] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.broadcast.list() });
         },
         meta: { successMessage: t('admin.broadcast.deleteSuccess') }
     });
@@ -77,6 +88,7 @@ const BroadcastMessagePage: React.FC = () => {
      * @description Validation and submission handler for saving a message.
      */
     const handleSave = async () => {
+        // Guard: require message content and both date bounds before submitting
         if (!editingMessage?.message || !editingMessage?.starts_at || !editingMessage?.ends_at) {
             alert(t('common.fillRequiredFields'));
             return;
@@ -89,26 +101,30 @@ const BroadcastMessagePage: React.FC = () => {
      * @param {string} id - ID of message to delete.
      */
     const handleDelete = async (id: string) => {
-        if (!confirm(t('common.confirmDelete'))) return;
+        // Show styled confirmation dialog before deleting
+        const confirmed = await confirm({
+            title: t('common.delete'),
+            message: t('common.confirmDelete'),
+            variant: 'danger',
+            confirmText: t('common.delete'),
+        });
+        if (!confirmed) return;
         deleteMutation.mutate(id);
     };
 
     /**
      * @description Renders the "Add" button into the header portal.
-     * @returns {JSX.Element | null} Portal content.
      */
     const renderHeaderActions = () => {
         return (
             <HeaderActions>
                 <Button
-                    type="primary"
-                    icon={<Plus className="w-4 h-4" />}
                     onClick={() => {
                         setEditingMessage({
                             message: '',
                             starts_at: new Date().toISOString().slice(0, 16),
                             ends_at: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
-                            color: '#4043e7ff',
+                            color: '#4043e7',
                             font_color: '#FFFFFF',
                             is_active: true,
                             is_dismissible: true,
@@ -117,137 +133,143 @@ const BroadcastMessagePage: React.FC = () => {
                     }}
                     className="flex items-center gap-2"
                 >
+                    <Plus className="w-4 h-4" />
                     {t('common.add')}
                 </Button>
             </HeaderActions>
         );
     };
 
-    const columns = [
-        {
-            title: t('common.message'),
-            dataIndex: 'message',
-            key: 'message',
-            flex: 2,
-            render: (text: string, record: BroadcastMessage) => (
-                <div className="flex items-start gap-2 max-w-[500px]">
-                    <div
-                        className="w-4 h-4 rounded-full border border-slate-200 mt-1 shrink-0"
-                        style={{ backgroundColor: record.color }}
-                    />
-                    <span className="text-sm text-slate-900 dark:text-white leading-relaxed break-all">
-                        {text}
-                    </span>
-                </div>
-            ),
-        },
-        {
-            title: t('common.period'),
-            key: 'period',
-            width: 380,
-            render: (_: any, record: BroadcastMessage) => (
-                <div className="text-sm text-slate-500 whitespace-nowrap">
-                    {record.starts_at ? new Date(record.starts_at).toLocaleString() : '-'}
-                    <span className="mx-2">-</span>
-                    {record.ends_at ? new Date(record.ends_at).toLocaleString() : '-'}
-                </div>
-            ),
-        },
-        {
-            title: t('common.status'),
-            dataIndex: 'is_active',
-            key: 'is_active',
-            width: 150,
-            render: (isActive: boolean) => (
-                <div className="whitespace-nowrap">
-                    {isActive ? (
-                        <Tag color="success" icon={<CheckCircle className="w-3 h-3" />} className="inline-flex items-center gap-1 px-2 py-0.5">
-                            {t('common.active')}
-                        </Tag>
-                    ) : (
-                        <Tag color="default" icon={<XCircle className="w-3 h-3" />} className="inline-flex items-center gap-1 px-2 py-0.5">
-                            {t('common.inactive')}
-                        </Tag>
-                    )}
-                </div>
-            ),
-        },
-        {
-            title: t('common.actions'),
-            key: 'actions',
-            width: 120,
-            align: 'right' as const,
-            render: (_: any, record: BroadcastMessage) => (
-                <Space>
-                    <Tooltip title={t('common.edit')}>
-                        <Button
-                            type="text"
-                            icon={<Edit2 className="w-4 h-4 text-blue-600" />}
-                            onClick={() => {
-                                setEditingMessage(record);
-                                setIsDialogOpen(true);
-                            }}
-                        />
-                    </Tooltip>
-                    <Tooltip title={t('common.delete')}>
-                        <Button
-                            type="text"
-                            danger
-                            icon={<Trash2 className="w-4 h-4" />}
-                            onClick={() => handleDelete(record.id)}
-                        />
-                    </Tooltip>
-                </Space>
-            ),
-        },
-    ];
+    // Client-side pagination — messages are fetched in full then sliced per page
+    const totalPages = Math.ceil((messages || []).length / pageSize);
+    const paginatedMessages = (messages || []).slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     return (
         <div className="p-6 h-full flex flex-col">
             {renderHeaderActions()}
-            <Card
-                styles={{ body: { padding: 0, height: '100%', display: 'flex', flexDirection: 'column' } }}
-                className="dark:bg-slate-800 dark:border-slate-700 flex-1 min-h-0 overflow-hidden"
-            >
-                <div className="flex-1 overflow-auto p-4">
-                    <Table
-                        columns={columns}
-                        dataSource={(messages || []).slice((currentPage - 1) * pageSize, currentPage * pageSize)}
-                        rowKey="id"
-                        loading={isLoading}
-                        pagination={false}
-                        scroll={{ x: true }}
-                    />
-                </div>
-                <div className="flex justify-end p-4 border-t border-slate-200 dark:border-slate-700">
-                    <Pagination
-                        current={currentPage}
-                        total={(messages || []).length}
-                        pageSize={pageSize}
-                        showSizeChanger={true}
-                        showTotal={(total: number) => t('common.totalItems', { total })}
-                        pageSizeOptions={['10', '20', '50', '100']}
-                        onChange={(page: number, size: number) => {
-                            setCurrentPage(page);
-                            setPageSize(size);
-                        }}
-                    />
-                </div>
+            <Card className="dark:bg-slate-800 dark:border-slate-700 flex-1 min-h-0 overflow-hidden">
+                <CardContent className="p-0 h-full flex flex-col">
+                    {isLoading ? (
+                        <div className="flex-1 flex items-center justify-center">
+                            <Spinner size={48} />
+                        </div>
+                    ) : (
+                        <>
+                            <div className="flex-1 overflow-auto p-4">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>{t('common.message')}</TableHead>
+                                            <TableHead className="w-[380px]">{t('common.period')}</TableHead>
+                                            <TableHead className="w-[150px]">{t('common.status')}</TableHead>
+                                            <TableHead className="w-[120px] text-right">{t('common.actions')}</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {/* Show empty state row when no messages exist */}
+                                        {paginatedMessages.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="text-center py-8 text-slate-500">
+                                                    {t('common.noData')}
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : paginatedMessages.map((record) => (
+                                            <TableRow key={record.id}>
+                                                <TableCell>
+                                                    <div className="flex items-start gap-2 max-w-[500px]">
+                                                        <div
+                                                            className="w-4 h-4 rounded-full border border-slate-200 mt-1 shrink-0"
+                                                            style={{ backgroundColor: record.color }}
+                                                        />
+                                                        <span className="text-sm text-slate-900 dark:text-white leading-relaxed break-all">
+                                                            {record.message}
+                                                        </span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="text-sm text-slate-500 whitespace-nowrap">
+                                                        {record.starts_at ? new Date(record.starts_at).toLocaleString() : '-'}
+                                                        <span className="mx-2">-</span>
+                                                        {record.ends_at ? new Date(record.ends_at).toLocaleString() : '-'}
+                                                    </div>
+                                                </TableCell>
+                                                {/* Status badge — green for active, grey for inactive */}
+                                                <TableCell>
+                                                    <div className="whitespace-nowrap">
+                                                        {record.is_active ? (
+                                                            <Badge variant="success" className="inline-flex items-center gap-1">
+                                                                <CheckCircle className="w-3 h-3" />
+                                                                {t('common.active')}
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge variant="secondary" className="inline-flex items-center gap-1">
+                                                                <XCircle className="w-3 h-3" />
+                                                                {t('common.inactive')}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-8 w-8"
+                                                                        onClick={() => {
+                                                                            setEditingMessage(record);
+                                                                            setIsDialogOpen(true);
+                                                                        }}
+                                                                    >
+                                                                        <Edit2 className="w-4 h-4 text-blue-600" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>{t('common.edit')}</TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-8 w-8 text-destructive"
+                                                                        onClick={() => handleDelete(record.id)}
+                                                                    >
+                                                                        <Trash2 className="w-4 h-4" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>{t('common.delete')}</TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                            {totalPages > 1 && (
+                                <div className="flex justify-end p-4 border-t border-slate-200 dark:border-slate-700">
+                                    <Pagination
+                                        currentPage={currentPage}
+                                        totalPages={totalPages}
+                                        onPageChange={setCurrentPage}
+                                    />
+                                </div>
+                            )}
+                        </>
+                    )}
+                </CardContent>
             </Card>
 
-            <Dialog
-                open={isDialogOpen}
-                onClose={() => setIsDialogOpen(false)}
-                title={editingMessage?.id ? t('common.edit') : t('common.add')}
-                maxWidth="none"
-                className="w-[60vw]"
-                footer={
-                    <div className="flex justify-end gap-2">
-                        <Button onClick={() => setIsDialogOpen(false)}>{t('common.cancel')}</Button>
-                        <Button type="primary" onClick={handleSave}>{t('common.save')}</Button>
-                    </div>
-                }
-            >
+            <Dialog open={isDialogOpen} onOpenChange={(v: boolean) => { if (!v) setIsDialogOpen(false) }}>
+                <DialogContent className="max-w-[60vw]">
+                    <DialogHeader>
+                        <DialogTitle>{editingMessage?.id ? t('common.edit') : t('common.add')}</DialogTitle>
+                    </DialogHeader>
                 <div className="space-y-4 py-2">
                     <div>
                         <div className="flex justify-between items-center mb-1">
@@ -267,45 +289,49 @@ const BroadcastMessagePage: React.FC = () => {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium mb-1">{t('common.startDate')}</label>
-                            <DatePicker
-                                showTime
-                                className="w-full"
-                                value={editingMessage?.starts_at ? dayjs(editingMessage.starts_at) : null}
-                                onChange={(date) => setEditingMessage({ ...editingMessage, starts_at: date?.toISOString() || '' })}
-                                placeholder={t('common.selectDateTime')}
-                                disabledDate={(current) => editingMessage?.ends_at ? current > dayjs(editingMessage.ends_at) : false}
+                            <input
+                                type="datetime-local"
+                                className="w-full px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-600 dark:text-white text-sm"
+                                value={editingMessage?.starts_at ? editingMessage.starts_at.slice(0, 16) : ''}
+                                onChange={(e) => setEditingMessage({ ...editingMessage, starts_at: e.target.value ? new Date(e.target.value).toISOString() : '' })}
+                                max={editingMessage?.ends_at ? editingMessage.ends_at.slice(0, 16) : undefined}
                             />
                         </div>
                         <div>
                             <label className="block text-sm font-medium mb-1">{t('common.endDate')}</label>
-                            <DatePicker
-                                showTime
-                                className="w-full"
-                                value={editingMessage?.ends_at ? dayjs(editingMessage.ends_at) : null}
-                                onChange={(date) => setEditingMessage({ ...editingMessage, ends_at: date?.toISOString() || '' })}
-                                placeholder={t('common.selectDateTime')}
-                                disabledDate={(current) => editingMessage?.starts_at ? current < dayjs(editingMessage.starts_at) : false}
+                            <input
+                                type="datetime-local"
+                                className="w-full px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-600 dark:text-white text-sm"
+                                value={editingMessage?.ends_at ? editingMessage.ends_at.slice(0, 16) : ''}
+                                onChange={(e) => setEditingMessage({ ...editingMessage, ends_at: e.target.value ? new Date(e.target.value).toISOString() : '' })}
+                                min={editingMessage?.starts_at ? editingMessage.starts_at.slice(0, 16) : undefined}
                             />
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium mb-1">{t('common.backgroundColor')}</label>
-                            <ColorPicker
-                                value={editingMessage?.color || '#4043e7ff'}
-                                onChange={(color: any) => setEditingMessage({ ...editingMessage, color: color.toHexString() })}
-                                showText
-                                format="hex"
-                            />
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="color"
+                                    value={editingMessage?.color || '#4043e7'}
+                                    onChange={(e) => setEditingMessage({ ...editingMessage, color: e.target.value })}
+                                    className="h-9 w-12 rounded border border-gray-300 dark:border-slate-600 cursor-pointer"
+                                />
+                                <span className="text-sm text-slate-500 font-mono">{editingMessage?.color || '#4043e7'}</span>
+                            </div>
                         </div>
                         <div>
                             <label className="block text-sm font-medium mb-1">{t('common.fontColor')}</label>
-                            <ColorPicker
-                                value={editingMessage?.font_color || '#FFFFFF'}
-                                onChange={(color: any) => setEditingMessage({ ...editingMessage, font_color: color.toHexString() })}
-                                showText
-                                format="hex"
-                            />
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="color"
+                                    value={(editingMessage?.font_color || '#FFFFFF').slice(0, 7)}
+                                    onChange={(e) => setEditingMessage({ ...editingMessage, font_color: e.target.value })}
+                                    className="h-9 w-12 rounded border border-gray-300 dark:border-slate-600 cursor-pointer"
+                                />
+                                <span className="text-sm text-slate-500 font-mono">{editingMessage?.font_color || '#FFFFFF'}</span>
+                            </div>
                         </div>
                     </div>
                     <div className="flex items-center gap-4">
@@ -327,6 +353,13 @@ const BroadcastMessagePage: React.FC = () => {
                         </label>
                     </div>
                 </div>
+                    <DialogFooter>
+                        <div className="flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>{t('common.cancel')}</Button>
+                            <Button onClick={handleSave}>{t('common.save')}</Button>
+                        </div>
+                    </DialogFooter>
+                </DialogContent>
             </Dialog>
 
             <GuidelineDialog

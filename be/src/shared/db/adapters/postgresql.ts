@@ -18,7 +18,7 @@ import { DatabaseAdapter, DatabaseClient } from '@/shared/db/types.js';
 import { log } from '@/shared/services/logger.service.js';
 
 /**
- * PostgreSQL database adapter.
+ * @description PostgreSQL database adapter.
  * Implements the DatabaseAdapter interface for PostgreSQL databases.
  * 
  * Uses connection pooling for efficient resource management:
@@ -44,7 +44,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
     private pool: Pool;
 
     /**
-     * Creates a new PostgreSQL adapter with connection pool.
+     * @description Creates a new PostgreSQL adapter with connection pool.
      * 
      * @param config - PostgreSQL connection configuration
      * @param config.host - Database server hostname
@@ -81,7 +81,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
     }
 
     /**
-     * Execute a query and return all matching rows.
+     * @description Execute a query and return all matching rows.
      * Automatically acquires and releases a connection from the pool.
      * 
      * @template T - Expected row type
@@ -95,7 +95,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
     }
 
     /**
-     * Execute a query and return only the first row.
+     * @description Execute a query and return only the first row.
      * Convenience method for single-row queries.
      * 
      * @template T - Expected row type
@@ -109,7 +109,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
     }
 
     /**
-     * Acquire a dedicated client from the pool for transaction support.
+     * @description Acquire a dedicated client from the pool for transaction support.
      * The returned client MUST be released after use.
      * 
      * @returns Database client wrapper with query and release methods
@@ -126,15 +126,16 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
     }
 
     /**
-     * Close all connections in the pool.
+     * @description Close all connections in the pool.
      * Call during graceful shutdown to release database resources.
+     * @returns {Promise<void>}
      */
     async close(): Promise<void> {
         await this.pool.end();
     }
 
     /**
-     * Verify database connectivity with a simple query.
+     * @description Verify database connectivity with a simple query.
      * 
      * @returns True if connection successful, false otherwise
      */

@@ -11,8 +11,8 @@
  */
 
 /**
- * Database adapter interface for supporting multiple database backends.
- * 
+ * @description Database adapter interface for supporting multiple database backends.
+ *
  * Implementations must provide:
  * - Query execution with parameterized queries
  * - Single-row query helper
@@ -74,8 +74,8 @@ export interface DatabaseAdapter {
 }
 
 /**
- * Database client interface for transaction support.
- * 
+ * @description Database client interface for transaction support.
+ *
  * Clients are acquired from the adapter and must be released after use.
  * Used for executing multiple queries within a single transaction.
  * 
@@ -108,8 +108,7 @@ export interface DatabaseClient {
 }
 
 /**
- * Database migration interface.
- * Defines the structure for schema changes.
+ * @description Database migration interface defining the structure for schema changes.
  */
 export interface Migration {
     /** Unique name for the migration (e.g., '001_initial_schema') */

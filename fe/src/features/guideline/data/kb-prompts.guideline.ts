@@ -1,5 +1,11 @@
+/**
+ * @fileoverview Knowledge Base Prompts feature guideline data.
+ * @description Defines the step-by-step user guide for the Prompt Library feature.
+ * @module features/guideline/data/kb-prompts.guideline
+ */
 import { IFeatureGuideline } from './types';
 
+/** @description Guideline configuration for the Knowledge Base Prompts feature */
 export const kbPromptsGuideline: IFeatureGuideline = {
     featureId: 'kb-prompts',
     roleRequired: 'leader',

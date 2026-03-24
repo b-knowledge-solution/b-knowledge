@@ -29,7 +29,9 @@ import { config } from '@/config'
 // Types
 // ============================================================================
 
-/** Notification payload from server */
+/**
+ * @description Notification payload structure received from the server via WebSocket
+ */
 export interface NotificationPayload {
     type: string
     title?: string
@@ -38,14 +40,18 @@ export interface NotificationPayload {
     timestamp: string
 }
 
-/** Socket authentication options */
+/**
+ * @description Authentication options passed when connecting the socket
+ */
 export interface SocketAuthOptions {
     userId?: string
     email?: string
     token?: string
 }
 
-/** Socket connection status */
+/**
+ * @description Possible states of the WebSocket connection lifecycle
+ */
 export type SocketStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 
 // ============================================================================
@@ -67,12 +73,12 @@ const getSocketUrl = (): string => {
 }
 
 /**
- * Initialize and connect the socket with authentication.
- * 
- * @param auth - Authentication options (email, userId, token)
- * @returns Socket instance
+ * @description Initializes and connects the Socket.IO client with authentication and automatic reconnection
+ * @param {SocketAuthOptions} [auth] - Authentication options (email, userId, token)
+ * @returns {Socket} Connected socket instance
  */
 export const connectSocket = (auth?: SocketAuthOptions): Socket => {
+    // Skip if already connected to avoid duplicate connections
     if (socket?.connected) {
         console.debug('[Socket] Already connected')
         return socket
@@ -129,7 +135,7 @@ export const connectSocket = (auth?: SocketAuthOptions): Socket => {
 }
 
 /**
- * Disconnect the socket connection.
+ * @description Disconnects and destroys the socket instance, resetting connection state
  */
 export const disconnectSocket = (): void => {
     if (socket) {
@@ -141,23 +147,20 @@ export const disconnectSocket = (): void => {
 }
 
 /**
- * Get the current socket instance.
- * 
- * @returns Socket instance or null if not connected
+ * @description Returns the current socket instance for direct event subscription
+ * @returns {Socket | null} Socket instance or null if not initialized
  */
 export const getSocket = (): Socket | null => socket
 
 /**
- * Get current connection status.
- * 
- * @returns Current socket connection status
+ * @description Returns the current WebSocket connection status
+ * @returns {SocketStatus} Current connection status
  */
 export const getSocketStatus = (): SocketStatus => connectionStatus
 
 /**
- * Check if socket is currently connected.
- * 
- * @returns True if connected
+ * @description Checks whether the socket is currently in a connected state
+ * @returns {boolean} True if the socket exists and is connected
  */
 export const isSocketConnected = (): boolean => socket?.connected ?? false
 
@@ -166,14 +169,14 @@ export const isSocketConnected = (): boolean => socket?.connected ?? false
 // ============================================================================
 
 /**
- * Subscribe to notification events.
- * 
- * @param callback - Function to call when notification is received
- * @returns Unsubscribe function
+ * @description Subscribes to server notification events on the socket
+ * @param {(notification: NotificationPayload) => void} callback - Handler invoked when a notification arrives
+ * @returns {() => void} Cleanup function to unsubscribe from notifications
  */
 export const subscribeToNotifications = (
     callback: (notification: NotificationPayload) => void
 ): (() => void) => {
+    // Guard: warn and return no-op if socket is not initialized
     if (!socket) {
         console.warn('[Socket] Not connected. Call connectSocket() first.')
         return () => { }
@@ -187,9 +190,8 @@ export const subscribeToNotifications = (
 }
 
 /**
- * Subscribe to a specific room/channel.
- * 
- * @param room - Room name to join
+ * @description Joins a specific socket room for targeted event broadcasting
+ * @param {string} room - Room name to join
  */
 export const subscribeToRoom = (room: string): void => {
     if (!socket) {
@@ -200,9 +202,8 @@ export const subscribeToRoom = (room: string): void => {
 }
 
 /**
- * Unsubscribe from a specific room/channel.
- * 
- * @param room - Room name to leave
+ * @description Leaves a specific socket room to stop receiving targeted events
+ * @param {string} room - Room name to leave
  */
 export const unsubscribeFromRoom = (room: string): void => {
     if (!socket) return
@@ -210,7 +211,7 @@ export const unsubscribeFromRoom = (room: string): void => {
 }
 
 /**
- * Send a ping to check connection health.
+ * @description Sends a ping event to verify the socket connection is alive
  */
 export const sendPing = (): void => {
     if (!socket) return
@@ -222,11 +223,11 @@ export const sendPing = (): void => {
 // ============================================================================
 
 /**
- * Listen to any socket event.
- * 
- * @param event - Event name
- * @param callback - Event handler
- * @returns Unsubscribe function
+ * @description Subscribes to any named socket event with automatic type inference
+ * @template T - Expected event payload type
+ * @param {string} event - Socket event name to listen for
+ * @param {(data: T) => void} callback - Handler invoked with the event payload
+ * @returns {() => void} Cleanup function to remove the listener
  */
 export const onSocketEvent = <T = unknown>(
     event: string,
@@ -245,10 +246,10 @@ export const onSocketEvent = <T = unknown>(
 }
 
 /**
- * Emit an event to the server.
- * 
- * @param event - Event name
- * @param data - Event payload
+ * @description Emits a named event to the server with an optional payload
+ * @template T - Event payload type
+ * @param {string} event - Socket event name to emit
+ * @param {T} [data] - Optional event payload
  */
 export const emitSocketEvent = <T = unknown>(event: string, data?: T): void => {
     if (!socket) {

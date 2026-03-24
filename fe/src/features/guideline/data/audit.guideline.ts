@@ -1,5 +1,11 @@
+/**
+ * @fileoverview Audit feature guideline data.
+ * @description Defines the step-by-step user guide for the Audit Logs feature.
+ * @module features/guideline/data/audit.guideline
+ */
 import { IFeatureGuideline } from './types';
 
+/** @description Guideline configuration for the Audit Logs feature */
 export const auditGuideline: IFeatureGuideline = {
     featureId: 'audit',
     roleRequired: 'admin',

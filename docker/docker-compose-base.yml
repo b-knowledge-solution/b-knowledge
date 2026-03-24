@@ -1,0 +1,183 @@
+# ==========================================================================
+# Infrastructure Base — PostgreSQL, Valkey, OpenSearch, RustFS
+# ==========================================================================
+# All services use OSI-approved open-source licenses:
+#   PostgreSQL (PostgreSQL License) | Valkey (BSD-3) | OpenSearch (Apache-2.0) | RustFS (Apache-2.0)
+#
+# This file is NOT run standalone. It is included by docker-compose.yml
+# via the `include` directive.
+
+services:
+  # ==========================================================================
+  # PostgreSQL 17 (PostgreSQL License — permissive)
+  # ==========================================================================
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${DB_NAME:-knowledge_base}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change_me_in_production}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-knowledge_base}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - kb-network
+
+  # ==========================================================================
+  # Valkey 8 — Redis-compatible key-value store (BSD-3-Clause)
+  # https://valkey.io
+  # ==========================================================================
+  valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command:
+      - valkey-server
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - allkeys-lru
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - kb-network
+
+  # ==========================================================================
+  # OpenSearch 3.x — vector + text search for RAG chunks (Apache-2.0)
+  # https://opensearch.org
+  # ==========================================================================
+  opensearch:
+    image: opensearchproject/opensearch:3.5.0
+    restart: unless-stopped
+    ports:
+      - "9201:9201"
+    environment:
+      - discovery.type=single-node
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${VECTORDB_PASSWORD:-OpenSearch@123}
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+      - plugins.security.disabled=${OPENSEARCH_DISABLE_SECURITY:-true}
+      - node.name=opensearch01
+      - bootstrap.memory_lock=false
+      - plugins.security.ssl.http.enabled=false
+      - plugins.security.ssl.transport.enabled=false
+      - cluster.routing.allocation.disk.watermark.low=5gb
+      - cluster.routing.allocation.disk.watermark.high=3gb
+      - cluster.routing.allocation.disk.watermark.flood_stage=2gb
+      - http.port=9201
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9201/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    networks:
+      - kb-network
+
+  # ==========================================================================
+  # RustFS — S3-compatible object storage (Apache-2.0)
+  # https://rustfs.com
+  # ==========================================================================
+  rustfs:
+    image: rustfs/rustfs:latest
+    restart: unless-stopped
+    security_opt:
+      - "no-new-privileges:true"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      RUSTFS_VOLUMES: /data/rustfs0
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:-rustfsadmin}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:-rustfsadmin}
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
+      RUSTFS_CONSOLE_ENABLE: true
+      RUSTFS_CORS_ALLOWED_ORIGINS: "*"
+      RUSTFS_CONSOLE_CORS_ALLOWED_ORIGINS: "*"
+      RUSTFS_OBS_LOGGER_LEVEL: info
+      RUSTFS_OBJECT_CACHE_ENABLE: true
+      RUSTFS_OBJECT_CACHE_TTL_SECS: 300
+    volumes:
+      - rustfs_data:/data/rustfs0
+      - rustfs_logs:/app/logs
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "sh", "-c",
+          "curl -f http://127.0.0.1:9000/health && curl -f http://127.0.0.1:9001/rustfs/console/health"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      rustfs-permission-helper:
+        condition: service_completed_successfully
+    networks:
+      - kb-network
+
+  # Fixes volume permissions for RustFS (runs once, then exits)
+  rustfs-permission-helper:
+    image: alpine
+    volumes:
+      - rustfs_data:/data
+      - rustfs_logs:/logs
+    command: >
+      sh -c "
+        chown -R 10001:10001 /data /logs &&
+        echo 'Volume permissions fixed' &&
+        exit 0
+      "
+    restart: "no"
+    networks:
+      - kb-network
+
+# ==========================================================================
+# Networks
+# ==========================================================================
+networks:
+  kb-network:
+    driver: bridge
+
+# ==========================================================================
+# Volumes
+# ==========================================================================
+volumes:
+  postgres_data:
+    driver: local
+  valkey_data:
+    driver: local
+  opensearch_data:
+    driver: local
+  rustfs_data:
+    driver: local
+  rustfs_logs:
+    driver: local

@@ -17,3 +17,7 @@ export type {
 
 // API
 export { fetchDashboardStats } from './api/dashboardApi'
+
+// Query Hooks
+export { useDashboardStats } from './api/dashboardQueries'
+export type { UseDashboardStatsReturn } from './api/dashboardQueries'

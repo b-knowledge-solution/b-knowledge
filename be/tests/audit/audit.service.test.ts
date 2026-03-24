@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   AuditAction,
   AuditResourceType,
-} from '../../src/modules/audit/audit.service.js';
+} from '../../src/modules/audit/services/audit.service.js';
 
 const mockAuditLogModel = vi.hoisted(() => ({
   create: vi.fn(),
@@ -36,7 +36,7 @@ describe('Audit Service', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    const module = await import('../../src/modules/audit/audit.service.js');
+    const module = await import('../../src/modules/audit/services/audit.service.js');
     auditService = module.auditService;
   });
 
@@ -106,6 +106,7 @@ describe('Audit Service', () => {
         resource_id: 'file-1',
         details: '{"size":100}',
         ip_address: '127.0.0.1',
+        tenant_id: null,
       });
       expect(result).toBe(123);
       expect(mockLog.debug).toHaveBeenCalled();
@@ -128,6 +129,7 @@ describe('Audit Service', () => {
         resource_id: null,
         details: '{}',
         ip_address: null,
+        tenant_id: null,
       });
       expect(result).toBe(456);
     });

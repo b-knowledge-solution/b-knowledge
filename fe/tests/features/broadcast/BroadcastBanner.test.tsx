@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { renderWithQueryClient } from '../../test-utils'
 
 const vi_mockBroadcastService = vi.hoisted(() => ({
   getActiveMessages: vi.fn()
 }))
-vi.mock('../../../src/features/broadcast/api/broadcastMessageService', () => ({ broadcastMessageService: vi_mockBroadcastService }))
+vi.mock('../../../src/features/broadcast/api/broadcastApi', () => ({ broadcastMessageService: vi_mockBroadcastService }))
 vi.mock('react-i18next', () => ({ 
   useTranslation: () => ({ t: (k: string) => k }),
   initReactI18next: { type: '3rdParty', init: () => {} }
@@ -33,21 +34,21 @@ describe('BroadcastBanner', () => {
 
   it('renders nothing when no messages', async () => {
     vi_mockBroadcastService.getActiveMessages.mockResolvedValue([])
-    const { container } = render(<BroadcastBanner />)
+    const { container } = renderWithQueryClient(<BroadcastBanner />)
     await waitFor(() => expect(container.firstChild).toBeNull())
   })
 
   it('renders messages', async () => {
     const msg = { id: '1', message: 'Test', color: '#FF0000', font_color: '#FFFFFF', is_dismissible: false }
     vi_mockBroadcastService.getActiveMessages.mockResolvedValue([msg])
-    render(<BroadcastBanner />)
+    renderWithQueryClient(<BroadcastBanner />)
     await waitFor(() => expect(screen.getByText('Test')).toBeInTheDocument())
   })
 
   it('dismisses message and saves to localStorage', async () => {
     const msg = { id: '1', message: 'Test', color: '#FF0000', font_color: '#FFFFFF', is_dismissible: true }
     vi_mockBroadcastService.getActiveMessages.mockResolvedValue([msg])
-    render(<BroadcastBanner />)
+    renderWithQueryClient(<BroadcastBanner />)
     await waitFor(() => expect(screen.getByText('Test')).toBeInTheDocument())
     fireEvent.click(screen.getByText('common.hide'))
     await waitFor(() => expect(screen.queryByText('Test')).not.toBeInTheDocument())
@@ -58,14 +59,14 @@ describe('BroadcastBanner', () => {
     const msg = { id: '1', message: 'Test', color: '#FF0000', font_color: '#FFFFFF', is_dismissible: false }
     localStorageMock.setItem('dismissed_broadcasts_v2', JSON.stringify({ '1': Date.now() }))
     vi_mockBroadcastService.getActiveMessages.mockResolvedValue([msg])
-    const { container } = render(<BroadcastBanner />)
+    const { container } = renderWithQueryClient(<BroadcastBanner />)
     await waitFor(() => expect(container.firstChild).toBeNull())
   })
 
   it('applies custom colors', async () => {
     const msg = { id: '1', message: 'Test', color: '#0000FF', font_color: '#00FF00', is_dismissible: false }
     vi_mockBroadcastService.getActiveMessages.mockResolvedValue([msg])
-    const { container } = render(<BroadcastBanner />)
+    const { container } = renderWithQueryClient(<BroadcastBanner />)
     await waitFor(() => {
       const elem = container.querySelector('[style*="color"]')
       expect(elem).toHaveStyle('backgroundColor: #0000FF')
@@ -75,7 +76,7 @@ describe('BroadcastBanner', () => {
   it('hides button for non-dismissible messages', async () => {
     const msg = { id: '1', message: 'Test', color: '#FF0000', font_color: '#FFFFFF', is_dismissible: false }
     vi_mockBroadcastService.getActiveMessages.mockResolvedValue([msg])
-    render(<BroadcastBanner />)
+    renderWithQueryClient(<BroadcastBanner />)
     await waitFor(() => expect(screen.queryByTestId('x-icon')).not.toBeInTheDocument())
   })
 
@@ -84,7 +85,7 @@ describe('BroadcastBanner', () => {
     const msg = { id: '1', message: 'Test', color: '#FF0000', font_color: '#FFFFFF', is_dismissible: false }
     vi_mockBroadcastService.getActiveMessages.mockResolvedValue([msg])
     vi.mocked(mockUseAuth).mockReturnValue({ user: { id: '2' } as any })
-    render(<BroadcastBanner />)
+    renderWithQueryClient(<BroadcastBanner />)
     await waitFor(() => expect(vi_mockBroadcastService.getActiveMessages).toHaveBeenCalled())
   })
 })

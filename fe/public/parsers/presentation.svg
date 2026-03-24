@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" viewBox="0 0 300 200">
+  <rect width="300" height="200" fill="#f8fafc" rx="8" ry="8" stroke="#e2e8f0" stroke-width="2"/>
+  <rect x="25" y="25" width="250" height="150" fill="#ffffff" rx="4" ry="4" stroke="#e2e8f0" stroke-dasharray="4 4"/>
+  <text x="150" y="90" font-family="system-ui, sans-serif" font-size="20" font-weight="bold" fill="#0f172a" text-anchor="middle">
+    Presentation Parser
+  </text>
+  <text x="150" y="120" font-family="system-ui, sans-serif" font-size="14" fill="#64748b" text-anchor="middle">
+    Sample Document Format
+  </text>
+</svg>

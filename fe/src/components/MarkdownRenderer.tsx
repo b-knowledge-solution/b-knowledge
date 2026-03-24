@@ -46,6 +46,7 @@ interface MarkdownRendererProps {
  */
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ children, className, highlightText }) => {
     let content = children || '';
+    // Wrap matching text in <mark> tags when highlightText is provided
     if (highlightText && highlightText.trim()) {
         try {
             const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

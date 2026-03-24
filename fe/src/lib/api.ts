@@ -17,8 +17,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 // ============================================================================
 
 /**
- * Custom error for authentication failures.
- * Thrown when a 401 response is received.
+ * @description Custom error class for authentication failures, thrown when a 401 response is received
  */
 export class AuthenticationError extends Error {
   constructor(message: string = 'Not authenticated') {
@@ -32,23 +31,31 @@ export class AuthenticationError extends Error {
 // ============================================================================
 
 /**
- * Handles 401 Unauthorized responses.
- * Redirects to login page with current path for post-login redirect.
- * 
- * @throws AuthenticationError - Always throws after redirect
+ * @description Handles 401 Unauthorized responses by redirecting to login with a return URL.
+ * Skips redirect if already on a public page (login, logout, landing) to prevent infinite loops.
+ * @throws {AuthenticationError} Always throws after initiating redirect to stop further execution
  */
 function handleUnauthorized(): never {
-  // Capture current path for redirect after login
-  const currentPath = window.location.pathname + window.location.search;
-  const loginUrl = `/login?redirect=${encodeURIComponent(currentPath)}`;
+  const currentPath = window.location.pathname;
 
-  console.log('[API] Unauthorized (401), redirecting to login:', loginUrl);
+  // Skip redirect if already on login or other public pages to prevent redirect loops
+  const publicPaths = ['/login', '/logout', '/403', '/404', '/500']
+  if (currentPath === '/' || publicPaths.some(p => currentPath.startsWith(p))) {
+    console.log('[API] Unauthorized (401) on public path, skipping redirect:', currentPath)
+    throw new AuthenticationError()
+  }
+
+  // Capture current path + query for redirect back after login
+  const fullPath = currentPath + window.location.search
+  const loginUrl = `/login?redirect=${encodeURIComponent(fullPath)}`
+
+  console.log('[API] Unauthorized (401), redirecting to login:', loginUrl)
 
   // Force full page redirect to clear any stale state
-  window.location.href = loginUrl;
+  window.location.href = loginUrl
 
   // Throw to stop further execution
-  throw new AuthenticationError();
+  throw new AuthenticationError()
 }
 
 // ============================================================================
@@ -56,7 +63,7 @@ function handleUnauthorized(): never {
 // ============================================================================
 
 /**
- * Extended fetch options with auth skip flag.
+ * @description Extended fetch options with an optional flag to skip 401 auth handling
  */
 interface FetchOptions extends RequestInit {
   /** Skip 401 handling (used for login/logout endpoints) */
@@ -68,21 +75,13 @@ interface FetchOptions extends RequestInit {
 // ============================================================================
 
 /**
- * Fetch wrapper with automatic authentication handling.
- * 
- * Features:
- * - Prepends API base URL for relative endpoints
- * - Always includes credentials for session cookies
- * - Sets JSON content type by default
- * - Handles 401 by redirecting to login
- * - Parses JSON response automatically
- * 
+ * @description Fetch wrapper that prepends the API base URL, includes session cookies, handles 401 redirects, and parses JSON responses
  * @template T - Expected response type
- * @param endpoint - API endpoint (relative or absolute URL)
- * @param options - Fetch options with optional auth skip
- * @returns Parsed JSON response
- * @throws AuthenticationError on 401 (after redirect)
- * @throws Error on non-OK responses
+ * @param {string} endpoint - API endpoint (relative or absolute URL)
+ * @param {FetchOptions} [options] - Fetch options with optional auth skip
+ * @returns {Promise<T>} Parsed JSON response
+ * @throws {AuthenticationError} On 401 responses (after redirect)
+ * @throws {Error} On non-OK responses with error message from response body
  */
 export async function apiFetch<T = unknown>(
   endpoint: string,
@@ -95,11 +94,17 @@ export async function apiFetch<T = unknown>(
     ? endpoint
     : `${API_BASE_URL}${endpoint}`;
 
+  // Don't set Content-Type for FormData — browser must set multipart/form-data with boundary
+  const isFormData = fetchOptions.body instanceof FormData
+  const defaultHeaders: Record<string, string> = isFormData
+    ? {}
+    : { 'Content-Type': 'application/json' }
+
   const response = await fetch(url, {
     ...fetchOptions,
     credentials: 'include', // Always include cookies for session auth
     headers: {
-      'Content-Type': 'application/json',
+      ...defaultHeaders,
       ...fetchOptions.headers,
     },
   });
@@ -129,19 +134,18 @@ export async function apiFetch<T = unknown>(
 // ============================================================================
 
 /**
- * API helper object with HTTP method shortcuts.
- * All methods include credentials and handle authentication.
+ * @description API helper object with typed HTTP method shortcuts that include credentials and handle authentication
  */
 export const api = {
   /**
-   * Perform a GET request.
+   * @description Performs a GET request to the specified endpoint
    * @template T - Expected response type
    */
   get: <T = unknown>(endpoint: string, options?: FetchOptions) =>
     apiFetch<T>(endpoint, { ...options, method: 'GET' }),
 
   /**
-   * Perform a POST request with JSON body.
+   * @description Performs a POST request with a JSON-serialized body
    * @template T - Expected response type
    */
   post: <T = unknown>(endpoint: string, data?: unknown, options?: FetchOptions) => {
@@ -154,7 +158,7 @@ export const api = {
   },
 
   /**
-   * Perform a PUT request with JSON body.
+   * @description Performs a PUT request with a JSON-serialized body
    * @template T - Expected response type
    */
   put: <T = unknown>(endpoint: string, data?: unknown, options?: FetchOptions) => {
@@ -167,7 +171,20 @@ export const api = {
   },
 
   /**
-   * Perform a DELETE request.
+   * @description Performs a PATCH request with a JSON-serialized body
+   * @template T - Expected response type
+   */
+  patch: <T = unknown>(endpoint: string, data?: unknown, options?: FetchOptions) => {
+    const body = data ? JSON.stringify(data) : null;
+    return apiFetch<T>(endpoint, {
+      ...options,
+      method: 'PATCH',
+      body,
+    });
+  },
+
+  /**
+   * @description Performs a DELETE request to the specified endpoint
    * @template T - Expected response type
    */
   delete: <T = unknown>(endpoint: string, options?: FetchOptions) =>

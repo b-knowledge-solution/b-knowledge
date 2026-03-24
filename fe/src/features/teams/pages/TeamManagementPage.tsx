@@ -5,12 +5,20 @@
  */
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Input, Select, Pagination, Button } from 'antd'
 import { Plus, Search } from 'lucide-react'
-import { HeaderActions } from '@/components/HeaderActions'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
+import { Pagination } from '@/components/ui/pagination'
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
-import { useTeams } from '../hooks/useTeams'
-import { useTeamMembers } from '../hooks/useTeamMembers'
+import { useTeams } from '../api/teamQueries'
+import { useTeamMembers } from '../api/teamQueries'
 import { TeamCard } from '../components/TeamCard'
 import { TeamFormDialog } from '../components/TeamFormDialog'
 import { TeamMembersDialog } from '../components/TeamMembersDialog'
@@ -89,26 +97,34 @@ export default function TeamManagementPage() {
 
     return (
         <div className="h-full flex flex-col p-6 max-w-7xl mx-auto">
-            {/* Search + Project Filter */}
+            {/* Search + Project Filter + Create Button */}
             <div className="flex flex-col sm:flex-row gap-4 mb-6 shrink-0">
-                <Input
-                    size="large"
-                    prefix={<Search className="text-slate-400" size={20} />}
-                    placeholder={t('common.searchPlaceholder')}
-                    value={searchTerm}
-                    onChange={(e: any) => handleSearch(e.target.value)}
-                    className="flex-1 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
-                />
-                <Select
-                    size="large"
-                    value={projectFilter}
-                    onChange={handleProjectFilter}
-                    className="sm:w-64"
-                    options={[
-                        { value: 'ALL', label: t('common.allProjects') || 'All Projects' },
-                        ...uniqueProjects.map(project => ({ value: project, label: project })),
-                    ]}
-                />
+                <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                    <Input
+                        placeholder={t('common.searchPlaceholder')}
+                        value={searchTerm}
+                        onChange={(e) => handleSearch(e.target.value)}
+                        className="pl-10 h-10 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                    />
+                </div>
+                <Select value={projectFilter} onValueChange={handleProjectFilter}>
+                    <SelectTrigger className="sm:w-64 h-10">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="ALL">{t('common.allProjects') || 'All Projects'}</SelectItem>
+                        {uniqueProjects.map((project) => (
+                            <SelectItem key={project} value={project}>
+                                {project}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <Button onClick={openCreate} className="flex items-center gap-2 h-10 shrink-0">
+                    <Plus size={20} />
+                    {t('iam.teams.create')}
+                </Button>
             </div>
 
             {/* Team Cards Grid */}
@@ -133,31 +149,15 @@ export default function TeamManagementPage() {
             )}
 
             {/* Pagination */}
-            {!loading && (
+            {!loading && filteredCount > pageSize && (
                 <div className="flex justify-end p-4 border-t border-slate-200 dark:border-slate-700">
                     <Pagination
-                        current={currentPage}
-                        total={filteredCount}
-                        pageSize={pageSize}
-                        showSizeChanger={true}
-                        showTotal={(total: number) => t('common.totalItems', { total })}
-                        pageSizeOptions={['10', '20', '30', '50', '100']}
-                        onChange={handlePaginationChange}
+                        currentPage={currentPage}
+                        totalPages={Math.ceil(filteredCount / pageSize)}
+                        onPageChange={(page) => handlePaginationChange(page, pageSize)}
                     />
                 </div>
             )}
-
-            {/* Create Button */}
-            <HeaderActions>
-                <Button
-                    type="primary"
-                    icon={<Plus size={20} />}
-                    onClick={openCreate}
-                    className="flex items-center gap-2"
-                >
-                    {t('iam.teams.create')}
-                </Button>
-            </HeaderActions>
 
             {/* Create/Edit Dialog */}
             <TeamFormDialog

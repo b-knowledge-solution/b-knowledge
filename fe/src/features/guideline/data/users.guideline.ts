@@ -1,5 +1,11 @@
+/**
+ * @fileoverview Users feature guideline data.
+ * @description Defines the step-by-step user guide for User Management.
+ * @module features/guideline/data/users.guideline
+ */
 import { IFeatureGuideline } from './types';
 
+/** @description Guideline configuration for the Users feature */
 export const usersGuideline: IFeatureGuideline = {
     featureId: 'users',
     roleRequired: 'admin',

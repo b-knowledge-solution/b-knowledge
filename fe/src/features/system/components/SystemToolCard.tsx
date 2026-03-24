@@ -9,7 +9,7 @@
  */
 
 import { ExternalLink } from 'lucide-react';
-import { SystemTool } from '../api/systemToolsService';
+import { SystemTool } from '../api/systemToolsApi';
 
 // ============================================================================
 // Types

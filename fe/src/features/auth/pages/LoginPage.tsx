@@ -16,9 +16,9 @@ import { useAuth } from '@/features/auth';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettings } from '@/app/contexts/SettingsContext';
-import { Dialog } from '@/components/Dialog';
-import logo from '@/assets/logo.png';
-import logoDark from '@/assets/logo-dark.png';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import logo from '@/assets/logo.svg';
+import logoDark from '@/assets/logo-dark.svg';
 import BroadcastBanner from '@/features/broadcast/components/BroadcastBanner';
 
 /** API base URL from environment */
@@ -52,7 +52,7 @@ function LoginPage() {
   const { isAuthenticated, isLoading } = useAuth();
 
   // Root login state
-  const [enableRootLogin, setEnableRootLogin] = useState(false);
+  const [enableLocalLogin, setEnableLocalLogin] = useState(false);
   const [isRootLoginOpen, setIsRootLoginOpen] = useState(false);
   const [rootUsername, setRootUsername] = useState('');
   const [rootPassword, setRootPassword] = useState('');
@@ -87,7 +87,7 @@ function LoginPage() {
         const response = await fetch(`${API_BASE_URL}/api/auth/config`);
         if (response.ok) {
           const data = await response.json();
-          setEnableRootLogin(data.enableRootLogin);
+          setEnableLocalLogin(data.enableLocalLogin);
         }
       } catch (err) {
         console.error('Failed to fetch auth config:', err);
@@ -136,9 +136,10 @@ function LoginPage() {
       });
 
       if (response.ok) {
-        // Force reload to pick up session and redirect
+        // Force full page reload to pick up the new session cookie and redirect
         window.location.href = redirect;
       } else {
+        // Extract error message from API response or fall back to generic error
         const data = await response.json();
         setRootLoginError(data.error || t('login.error'));
       }
@@ -158,7 +159,7 @@ function LoginPage() {
     }
   };
 
-  // Show loading while checking auth status to prevent flicker
+  // Guard: show loading spinner while checking auth status to prevent login form flicker
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
@@ -185,6 +186,7 @@ function LoginPage() {
           <p className="text-slate-600 dark:text-slate-400">{t('login.subtitle')}</p>
         </div>
 
+        {/* Display OAuth error message passed back via URL query param */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
             {t('login.error')}: {decodeURIComponent(error)}
@@ -205,12 +207,13 @@ function LoginPage() {
             {t('login.signInMicrosoft')}
           </button>
 
-          {enableRootLogin && (
+          {/* Show local account login button only when enabled in backend config */}
+          {enableLocalLogin && (
             <button
               onClick={() => setIsRootLoginOpen(true)}
               className="w-full btn btn-secondary py-3 text-base"
             >
-              {t('login.rootLogin')}
+              {t('login.localAccountLogin', t('login.rootLogin'))}
             </button>
           )}
         </div>
@@ -220,27 +223,11 @@ function LoginPage() {
         </p>
       </div>
 
-      <Dialog
-        open={isRootLoginOpen}
-        onClose={() => setIsRootLoginOpen(false)}
-        title={t('login.rootLoginTitle')}
-        footer={
-          <>
-            <button
-              onClick={() => setIsRootLoginOpen(false)}
-              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-            >
-              {t('common.cancel')}
-            </button>
-            <button
-              onClick={handleRootLogin}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"
-            >
-              {t('common.login')}
-            </button>
-          </>
-        }
-      >
+      <Dialog open={isRootLoginOpen} onOpenChange={(v: boolean) => { if (!v) setIsRootLoginOpen(false) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('login.localAccountLoginTitle', t('login.rootLoginTitle'))}</DialogTitle>
+          </DialogHeader>
         <div className="space-y-4 py-4">
           {rootLoginError && (
             <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
@@ -257,7 +244,7 @@ function LoginPage() {
               onChange={(e) => setRootUsername(e.target.value)}
               onKeyDown={handleKeyDown}
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="admin@localhost"
+              placeholder={t('login.usernamePlaceholder')}
             />
           </div>
           <div>
@@ -270,10 +257,25 @@ function LoginPage() {
               onChange={(e) => setRootPassword(e.target.value)}
               onKeyDown={handleKeyDown}
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="••••••••"
+              placeholder={t('login.passwordPlaceholder')}
             />
           </div>
         </div>
+          <DialogFooter>
+            <button
+              onClick={() => setIsRootLoginOpen(false)}
+              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              onClick={handleRootLogin}
+              className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"
+            >
+              {t('common.login')}
+            </button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </div>
   );

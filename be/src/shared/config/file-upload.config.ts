@@ -12,29 +12,34 @@
 // ============================================================================
 
 /**
- * Maximum filename length to prevent filesystem issues and DoS.
+ * @description Maximum filename length to prevent filesystem issues and DoS.
  * Most filesystems support 255 bytes; we use 200 to be safe with UTF-8.
+ * @type {number}
  */
 export const MAX_FILENAME_LENGTH = 200;
 
 /**
- * Maximum file size in bytes (500MB).
+ * @description Maximum file size in bytes (500MB).
+ * @type {number}
  */
 export const MAX_FILE_SIZE = 500 * 1024 * 1024;
 
 /**
- * Maximum number of files per upload request.
+ * @description Maximum number of files per upload request.
  * Increased to support folder uploads while still providing DoS protection.
+ * @type {number}
  */
 export const MAX_FILES_PER_REQUEST = 1000;
 
 /**
- * Maximum form field size in bytes (10MB).
+ * @description Maximum form field size in bytes (10MB).
+ * @type {number}
  */
 export const MAX_FIELD_SIZE = 10 * 1024 * 1024;
 
 /**
- * Maximum object path length for MinIO.
+ * @description Maximum object path length for MinIO S3-compatible storage.
+ * @type {number}
  */
 export const MAX_PATH_LENGTH = 1024;
 
@@ -43,8 +48,9 @@ export const MAX_PATH_LENGTH = 1024;
 // ============================================================================
 
 /**
- * Dangerous file extensions that should ALWAYS be blocked.
+ * @description Dangerous file extensions that should ALWAYS be blocked.
  * These can execute code or pose security risks on various systems.
+ * @type {Set<string>}
  */
 export const DANGEROUS_EXTENSIONS = new Set([
     // Executable files
@@ -67,8 +73,9 @@ export const DANGEROUS_EXTENSIONS = new Set([
 ]);
 
 /**
- * Allowed file extensions for document uploads.
- * Use this for strict allowlist mode.
+ * @description Allowed file extensions for document uploads.
+ * Used in strict allowlist mode to reject any extension not in this set.
+ * @type {Set<string>}
  */
 export const ALLOWED_DOCUMENT_EXTENSIONS = new Set([
     // Documents
@@ -89,9 +96,10 @@ export const ALLOWED_DOCUMENT_EXTENSIONS = new Set([
 // ============================================================================
 
 /**
- * File signature (magic bytes) database for common file types.
+ * @description File signature (magic bytes) database for common file types.
  * Used to validate that file content matches the claimed extension.
- * Key: extension, Value: array of possible magic byte signatures (hex)
+ * Key: file extension (e.g. '.pdf'), Value: array of possible magic byte signatures.
+ * @type {Record<string, Buffer[]>}
  */
 export const FILE_SIGNATURES: Record<string, Buffer[]> = {
     // Images
@@ -138,7 +146,10 @@ export const FILE_SIGNATURES: Record<string, Buffer[]> = {
 // ============================================================================
 
 /**
- * Content-Type to extension mapping for validation.
+ * @description Content-Type to extension mapping for validation.
+ * Maps MIME types to their corresponding file extensions for cross-referencing
+ * the claimed Content-Type against the actual file extension.
+ * @type {Record<string, string[]>}
  */
 export const CONTENT_TYPE_EXTENSION_MAP: Record<string, string[]> = {
     // Images

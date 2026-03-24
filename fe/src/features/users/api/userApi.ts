@@ -5,7 +5,7 @@
  */
 import { api } from '@/lib/api'
 import type { User } from '@/features/auth'
-import type { IpHistoryMap } from '../types/user.types'
+import type { IpHistoryMap, CreateUserDto, UpdateUserDto, UserIpHistory, UserSession } from '../types/user.types'
 
 const BASE_URL = '/api/users'
 
@@ -34,6 +34,33 @@ export const userApi = {
     },
 
     /**
+     * Create a new local user with optional password.
+     * @param data - User creation payload.
+     * @returns Newly created user (without password_hash).
+     */
+    createUser(data: CreateUserDto): Promise<User> {
+        return api.post<User>(BASE_URL, data)
+    },
+
+    /**
+     * Update a user's profile fields (display name, department, etc.).
+     * @param userId - User ID.
+     * @param data - Fields to update.
+     * @returns Updated user object.
+     */
+    updateUser(userId: string, data: UpdateUserDto): Promise<User> {
+        return api.put<User>(`${BASE_URL}/${userId}`, data)
+    },
+
+    /**
+     * Delete a user from the system.
+     * @param userId - User ID to delete.
+     */
+    deleteUser(userId: string): Promise<void> {
+        return api.delete<void>(`${BASE_URL}/${userId}`)
+    },
+
+    /**
      * Update the role of a specific user.
      * @param userId - User ID.
      * @param role - New role value.
@@ -58,5 +85,23 @@ export const userApi = {
      */
     getIpHistory(): Promise<IpHistoryMap> {
         return api.get<IpHistoryMap>(`${BASE_URL}/ip-history`)
+    },
+
+    /**
+     * Fetch IP access history for a specific user.
+     * @param userId - User ID.
+     * @returns Array of IP history records for the user.
+     */
+    getUserIpHistory(userId: string): Promise<UserIpHistory[]> {
+        return api.get<UserIpHistory[]>(`${BASE_URL}/${userId}/ip-history`)
+    },
+
+    /**
+     * Fetch active sessions for a specific user.
+     * @param userId - User ID.
+     * @returns Array of active session records.
+     */
+    getUserSessions(userId: string): Promise<UserSession[]> {
+        return api.get<UserSession[]>(`${BASE_URL}/${userId}/sessions`)
     },
 }

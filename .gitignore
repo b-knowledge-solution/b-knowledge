@@ -153,5 +153,23 @@ be/src/config/*.json
 be/temp
 tasks
 
-#Reference source code
+# Reference source code
 ragflow
+simple-ui
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+
+# advance-rag: ONNX/model weights (if any get copied)
+advance-rag/**/*.onnx
+advance-rag/**/*.bin
+advance-rag/**/*.pt
+advance-rag/**/*.pth
+
+worktrees
+.claude/settings.local.json
+advance-rag/rag/res/deepdoc/updown_concat_xgb.model

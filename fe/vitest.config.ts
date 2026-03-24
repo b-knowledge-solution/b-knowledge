@@ -37,30 +37,11 @@ export default defineConfig({
 
     include: ['tests/**/*.test.{ts,tsx}'],
     exclude: [
-      'node_modules', 
-      'dist', 
-      '.idea', 
-      '.git', 
+      'node_modules',
+      'dist',
+      '.idea',
+      '.git',
       '.cache',
-      // Exclude hanging test files (module loading issues)
-      'tests/components/ConfirmDialog.test.tsx',
-      'tests/components/Dialog.test.tsx',
-      'tests/components/SettingsDialog.test.tsx',
-      'tests/components/ErrorPage.test.tsx',
-      'tests/features/histories/pages/HistoriesPage.test.tsx',
-      'tests/layouts/MainLayout.test.tsx', // Hanging due to complex dependencies
-      'tests/features/documents/components/FilePreview/PreviewComponents/ImagePreview.test.tsx',
-      'tests/features/documents/components/FilePreview/PreviewComponents/PdfPreview.test.tsx',
-      'tests/features/documents/components/FilePreview/PreviewComponents/TextPreview.test.tsx',
-      'tests/features/users/pages/PermissionManagementPage.test.tsx',
-      'tests/features/users/components/UserMultiSelect.test.tsx', // Headless UI mocking issues
-      'tests/features/history/api/historyService.test.ts',
-      'tests/features/history/pages/ChatHistoryPage.test.tsx',
-      'tests/features/history/pages/SearchHistoryPage.test.tsx',
-      // Temporarily exclude new route tests (hanging during import)
-      'tests/features/auth/components/ProtectedRoute.test.tsx',
-      'tests/features/auth/components/AdminRoute.test.tsx',
-      'tests/features/auth/components/RoleRoute.test.tsx',
     ],
 
     // 5. OPTIMIZED COVERAGE
@@ -81,10 +62,10 @@ export default defineConfig({
         '**/*.stories.tsx', // Don't cover Storybook files
       ],
       thresholds: {
-        lines: 5,
-        functions: 5,
-        branches: 3,
-        statements: 5,
+        lines: 30,
+        functions: 30,
+        branches: 20,
+        statements: 30,
       },
     },
     

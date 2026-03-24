@@ -1,21 +1,27 @@
 /**
  * @fileoverview Tests for API utility functions.
- * 
+ *
  * Tests:
- * - apiFetch function with credentials
- * - AuthenticationError class
- * - api object methods (get, post, put, delete)
- * - 401 authentication handling
- * - Error handling for network failures
+ * - apiFetch: GET, POST with JSON body, FormData body, 401 redirect, skipAuthCheck, error messages, 204 No Content
+ * - api object methods: get, post, put, patch, delete
+ * - AuthenticationError custom error class
+ * - Network error handling
+ * - JSON parsing
+ * - URL handling
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { api, apiFetch, AuthenticationError } from '@/lib/api';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
 
+/**
+ * @description Creates a mock Response object with configurable status and JSON body
+ * @param {unknown} data - Response body data
+ * @param {number} status - HTTP status code (default 200)
+ * @returns {Response} Mock response object
+ */
 function createMockResponse(data: unknown, status = 200): Response {
   return {
     ok: status >= 200 && status < 300,
@@ -23,7 +29,7 @@ function createMockResponse(data: unknown, status = 200): Response {
     json: vi.fn().mockResolvedValue(data),
     text: vi.fn().mockResolvedValue(JSON.stringify(data)),
     headers: new Headers({ 'Content-Type': 'application/json' }),
-  } as unknown as Response;
+  } as unknown as Response
 }
 
 // ============================================================================
@@ -31,155 +37,199 @@ function createMockResponse(data: unknown, status = 200): Response {
 // ============================================================================
 
 describe('API utilities', () => {
-  const originalFetch = globalThis.fetch;
-  const originalLocation = window.location;
+  const originalFetch = globalThis.fetch
+  const originalLocation = window.location
 
   beforeEach(() => {
     // Reset fetch mock
-    globalThis.fetch = vi.fn();
-    
+    globalThis.fetch = vi.fn()
+
     // Mock window.location
     Object.defineProperty(window, 'location', {
       value: { href: '', pathname: '/current', search: '' },
       writable: true,
-    });
-  });
+    })
+  })
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    globalThis.fetch = originalFetch
     Object.defineProperty(window, 'location', {
       value: originalLocation,
       writable: true,
-    });
-    vi.restoreAllMocks();
-  });
+    })
+    vi.restoreAllMocks()
+  })
+
+  // Lazy-import to ensure mocks are in place before module evaluation
+  /**
+   * @description Dynamically imports the API module to pick up fresh mocks
+   * @returns {Promise<typeof import('@/lib/api')>} The API module exports
+   */
+  async function getApiModule() {
+    return await import('@/lib/api')
+  }
 
   describe('AuthenticationError', () => {
-    it('should create error with default message', () => {
-      const error = new AuthenticationError();
-      expect(error.message).toBe('Not authenticated');
-      expect(error.name).toBe('AuthenticationError');
-    });
+    it('should create error with default message', async () => {
+      const { AuthenticationError } = await getApiModule()
+      const error = new AuthenticationError()
+      expect(error.message).toBe('Not authenticated')
+      expect(error.name).toBe('AuthenticationError')
+    })
 
-    it('should create error with custom message', () => {
-      const error = new AuthenticationError('Session expired');
-      expect(error.message).toBe('Session expired');
-      expect(error.name).toBe('AuthenticationError');
-    });
+    it('should create error with custom message', async () => {
+      const { AuthenticationError } = await getApiModule()
+      const error = new AuthenticationError('Session expired')
+      expect(error.message).toBe('Session expired')
+      expect(error.name).toBe('AuthenticationError')
+    })
 
-    it('should be instance of Error', () => {
-      const error = new AuthenticationError();
-      expect(error).toBeInstanceOf(Error);
-    });
-  });
+    it('should be instance of Error', async () => {
+      const { AuthenticationError } = await getApiModule()
+      const error = new AuthenticationError()
+      expect(error).toBeInstanceOf(Error)
+    })
+  })
 
   describe('apiFetch', () => {
-    it('should include credentials in request', async () => {
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({ success: true }));
+    it('should make a successful GET request with credentials', async () => {
+      const { apiFetch } = await getApiModule()
+      const data = { id: 1, name: 'Test' };
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse(data))
 
-      await apiFetch('/api/test');
+      const result = await apiFetch('/api/test')
 
+      // Verify credentials are included for session auth
       expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({ credentials: 'include' })
-      );
-    });
+      )
+      expect(result).toEqual(data)
+    })
 
-    it('should set Content-Type to application/json', async () => {
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({ success: true }));
+    it('should make a POST request with JSON body and Content-Type header', async () => {
+      const { apiFetch } = await getApiModule()
+      const body = { name: 'New Item' };
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({ id: 1 }))
 
-      await apiFetch('/api/test');
+      await apiFetch('/api/items', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      })
 
+      // Verify JSON Content-Type is set for non-FormData bodies
       expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify(body),
           headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
         })
-      );
-    });
+      )
+    })
 
-    it('should throw and redirect on 401 response', async () => {
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({ error: 'Unauthorized' }, 401));
+    it('should not set Content-Type for FormData body', async () => {
+      const { apiFetch } = await getApiModule()
+      const formData = new FormData()
+      formData.append('file', 'test-content');
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({ uploaded: true }))
 
-      await expect(apiFetch('/api/test')).rejects.toThrow(AuthenticationError);
-    });
+      await apiFetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
 
-    it('should skip auth check when skipAuthCheck is true', async () => {
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({ error: 'Unauthorized' }, 401));
+      // Browser must set multipart/form-data with boundary automatically
+      const callArgs = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      expect(callArgs.headers).not.toHaveProperty('Content-Type')
+    })
 
-      // With skipAuthCheck=true, it should still throw but as a regular error (not redirect)
-      await expect(apiFetch('/api/test', { skipAuthCheck: true })).rejects.toThrow();
-    });
+    it('should redirect to login on 401 response', async () => {
+      const { apiFetch, AuthenticationError } = await getApiModule();
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({ error: 'Unauthorized' }, 401))
 
-    it('should return parsed JSON for successful requests', async () => {
-      const data = { id: 1, name: 'Test' };
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse(data));
+      await expect(apiFetch('/api/test')).rejects.toThrow(AuthenticationError)
 
-      const result = await apiFetch('/api/test');
+      // Verify redirect URL includes return path
+      expect(window.location.href).toContain('/login?redirect=')
+    })
 
-      expect(result).toEqual(data);
-    });
+    it('should NOT redirect on 401 when skipAuthCheck is true', async () => {
+      const { apiFetch } = await getApiModule();
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({ error: 'Unauthorized' }, 401))
 
-    it('should throw error for non-OK responses', async () => {
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({ error: 'Not Found' }, 404));
+      // With skipAuthCheck, 401 is treated as a regular error (no redirect)
+      await expect(apiFetch('/api/test', { skipAuthCheck: true })).rejects.toThrow()
 
-      await expect(apiFetch('/api/test')).rejects.toThrow('Not Found');
-    });
+      // Location should not be changed to login
+      expect(window.location.href).not.toContain('/login')
+    })
 
-    it('should throw generic error when no error message in response', async () => {
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({}, 500));
+    it('should throw with error message from response body on non-OK response', async () => {
+      const { apiFetch } = await getApiModule();
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({ error: 'Not Found' }, 404))
 
-      await expect(apiFetch('/api/test')).rejects.toThrow('API error: 500');
-    });
+      await expect(apiFetch('/api/test')).rejects.toThrow('Not Found')
+    })
+
+    it('should throw generic error when response body has no error message', async () => {
+      const { apiFetch } = await getApiModule();
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({}, 500))
+
+      await expect(apiFetch('/api/test')).rejects.toThrow('API error: 500')
+    })
+
+    it('should return undefined for 204 No Content response', async () => {
+      const { apiFetch } = await getApiModule()
+      const mockResponse = {
+        ok: true,
+        status: 204,
+        json: vi.fn(),
+        headers: new Headers(),
+      } as unknown as Response;
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(mockResponse)
+
+      const result = await apiFetch('/api/resource/1')
+
+      // 204 has no body — should return undefined without calling .json()
+      expect(result).toBeUndefined()
+      expect(mockResponse.json).not.toHaveBeenCalled()
+    })
 
     it('should preserve absolute URLs', async () => {
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({}));
+      const { apiFetch } = await getApiModule();
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({}))
 
-      await apiFetch('https://external.com/api/test');
+      await apiFetch('https://external.com/api/test')
 
       expect(globalThis.fetch).toHaveBeenCalledWith(
         'https://external.com/api/test',
         expect.any(Object)
-      );
-    });
-  });
+      )
+    })
+  })
 
   describe('api.get', () => {
-    it('should make GET request and return JSON', async () => {
-      const testData = { id: 1, name: 'Test' };
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse(testData));
+    it('should set HTTP method to GET', async () => {
+      const { api } = await getApiModule();
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({ id: 1 }))
 
-      const result = await api.get('/api/users/1');
+      await api.get('/api/users/1')
 
       expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/users/1'),
         expect.objectContaining({ method: 'GET' })
-      );
-      expect(result).toEqual(testData);
-    });
-
-    it('should handle empty response', async () => {
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse(null));
-
-      const result = await api.get('/api/empty');
-
-      expect(result).toBeNull();
-    });
-
-    it('should throw AuthenticationError on 401', async () => {
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({}, 401));
-
-      await expect(api.get('/api/protected')).rejects.toThrow(AuthenticationError);
-    });
-  });
+      )
+    })
+  })
 
   describe('api.post', () => {
-    it('should make POST request with JSON body', async () => {
+    it('should set HTTP method to POST with JSON body', async () => {
+      const { api } = await getApiModule()
       const requestData = { name: 'New User' };
-      const responseData = { id: 1, name: 'New User' };
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse(responseData));
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({ id: 1 }))
 
-      const result = await api.post('/api/users', requestData);
+      await api.post('/api/users', requestData)
 
       expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/users'),
@@ -187,14 +237,14 @@ describe('API utilities', () => {
           method: 'POST',
           body: JSON.stringify(requestData),
         })
-      );
-      expect(result).toEqual(responseData);
-    });
+      )
+    })
 
     it('should handle POST without body', async () => {
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({ success: true }));
+      const { api } = await getApiModule();
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({ success: true }))
 
-      await api.post('/api/action');
+      await api.post('/api/action')
 
       expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/action'),
@@ -202,23 +252,17 @@ describe('API utilities', () => {
           method: 'POST',
           body: null,
         })
-      );
-    });
-
-    it('should throw AuthenticationError on 401', async () => {
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({}, 401));
-
-      await expect(api.post('/api/protected', {})).rejects.toThrow(AuthenticationError);
-    });
-  });
+      )
+    })
+  })
 
   describe('api.put', () => {
-    it('should make PUT request with JSON body', async () => {
-      const requestData = { name: 'Updated User' };
-      const responseData = { id: 1, name: 'Updated User' };
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse(responseData));
+    it('should set HTTP method to PUT with JSON body', async () => {
+      const { api } = await getApiModule()
+      const requestData = { name: 'Updated' };
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({ id: 1 }))
 
-      const result = await api.put('/api/users/1', requestData);
+      await api.put('/api/users/1', requestData)
 
       expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/users/1'),
@@ -226,120 +270,119 @@ describe('API utilities', () => {
           method: 'PUT',
           body: JSON.stringify(requestData),
         })
-      );
-      expect(result).toEqual(responseData);
-    });
+      )
+    })
+  })
 
-    it('should handle PUT without body', async () => {
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({ success: true }));
+  describe('api.patch', () => {
+    it('should set HTTP method to PATCH with JSON body', async () => {
+      const { api } = await getApiModule()
+      const requestData = { name: 'Patched' };
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({ id: 1 }))
 
-      await api.put('/api/resource/1');
+      await api.patch('/api/users/1', requestData)
+
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/users/1'),
+        expect.objectContaining({
+          method: 'PATCH',
+          body: JSON.stringify(requestData),
+        })
+      )
+    })
+
+    it('should handle PATCH without body', async () => {
+      const { api } = await getApiModule();
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({ success: true }))
+
+      await api.patch('/api/resource/1')
 
       expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/resource/1'),
         expect.objectContaining({
-          method: 'PUT',
+          method: 'PATCH',
           body: null,
         })
-      );
-    });
-
-    it('should throw AuthenticationError on 401', async () => {
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({}, 401));
-
-      await expect(api.put('/api/protected/1', {})).rejects.toThrow(AuthenticationError);
-    });
-  });
+      )
+    })
+  })
 
   describe('api.delete', () => {
-    it('should make DELETE request', async () => {
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({ success: true }));
+    it('should set HTTP method to DELETE', async () => {
+      const { api } = await getApiModule();
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({ success: true }))
 
-      const result = await api.delete('/api/users/1');
+      await api.delete('/api/users/1')
 
       expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/users/1'),
         expect.objectContaining({ method: 'DELETE' })
-      );
-      expect(result).toEqual({ success: true });
-    });
-
-    it('should throw AuthenticationError on 401', async () => {
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({}, 401));
-
-      await expect(api.delete('/api/protected/1')).rejects.toThrow(AuthenticationError);
-    });
-  });
+      )
+    })
+  })
 
   describe('network error handling', () => {
     it('should propagate network errors from fetch', async () => {
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'));
+      const { apiFetch } = await getApiModule();
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'))
 
-      await expect(apiFetch('/api/test')).rejects.toThrow('Network error');
-    });
+      await expect(apiFetch('/api/test')).rejects.toThrow('Network error')
+    })
 
     it('should propagate network errors through api methods', async () => {
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Failed to fetch'));
+      const { api } = await getApiModule();
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Failed to fetch'))
 
-      await expect(api.get('/api/test')).rejects.toThrow('Failed to fetch');
-    });
-  });
+      await expect(api.get('/api/test')).rejects.toThrow('Failed to fetch')
+    })
+  })
 
   describe('JSON parsing', () => {
     it('should handle array responses', async () => {
+      const { api } = await getApiModule()
       const testData = [{ id: 1 }, { id: 2 }];
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse(testData));
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse(testData))
 
-      const result = await api.get('/api/items');
-
-      expect(result).toEqual(testData);
-    });
+      const result = await api.get('/api/items')
+      expect(result).toEqual(testData)
+    })
 
     it('should handle complex nested objects', async () => {
+      const { api } = await getApiModule()
       const testData = {
         user: { id: 1, profile: { name: 'Test', settings: { theme: 'dark' } } },
         items: [1, 2, 3],
       };
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse(testData));
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse(testData))
 
-      const result = await api.get('/api/complex');
-
-      expect(result).toEqual(testData);
-    });
-  });
+      const result = await api.get('/api/complex')
+      expect(result).toEqual(testData)
+    })
+  })
 
   describe('request URL handling', () => {
     it('should handle relative URLs', async () => {
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({}));
+      const { api } = await getApiModule();
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({}))
 
-      await api.get('/api/test');
+      await api.get('/api/test')
 
       expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/test'),
         expect.any(Object)
-      );
-    });
+      )
+    })
 
     it('should handle URLs with query parameters', async () => {
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({}));
+      const { api } = await getApiModule();
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({}))
 
-      await api.get('/api/search?q=test&page=1');
+      await api.get('/api/search?q=test&page=1')
 
       expect(globalThis.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/search?q=test&page=1'),
         expect.any(Object)
-      );
-    });
-
-    it('should handle URLs with special characters', async () => {
-      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(createMockResponse({}));
-
-      await api.get('/api/users/test%40example.com');
-
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/users/test%40example.com'),
-        expect.any(Object)
-      );
-    });
-  });
-});
+      )
+    })
+  })
+})

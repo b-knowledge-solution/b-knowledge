@@ -18,7 +18,7 @@ export type { UserIpHistory, IpHistoryMap } from './types/user.types'
 export { userApi } from './api/userApi'
 
 // Hooks
-export * from './hooks/useSharedUser'
+export * from './api/userQueries'
 
 // Preferences (IndexedDB service)
 export * from './api/userPreferences'

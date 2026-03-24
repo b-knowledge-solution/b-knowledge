@@ -13,14 +13,16 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ConfigProvider, theme as antTheme } from 'antd';
+
 import { LanguageCode, SUPPORTED_LANGUAGES } from '@/i18n';
 
 // ============================================================================
 // Types
 // ============================================================================
 
-/** Theme options: explicit light/dark or system preference */
+/**
+ * @description Theme preference options: explicit light/dark or automatic system detection
+ */
 export type Theme = 'light' | 'dark' | 'system';
 
 /**
@@ -39,12 +41,18 @@ interface SettingsContextType {
   isDarkMode: boolean;
   /** Resolved theme (light or dark, after system preference applied) */
   resolvedTheme: 'light' | 'dark';
-  /** Whether settings dialog is open */
+  /** Whether the settings dialog is open */
   isSettingsOpen: boolean;
-  /** Open settings dialog */
+  /** Open the settings dialog */
   openSettings: () => void;
-  /** Close settings dialog */
+  /** Close the settings dialog */
   closeSettings: () => void;
+  /** Whether the API keys dialog is open */
+  isApiKeysOpen: boolean;
+  /** Open the API keys dialog */
+  openApiKeys: () => void;
+  /** Close the API keys dialog */
+  closeApiKeys: () => void;
 }
 
 // ============================================================================
@@ -110,10 +118,9 @@ interface SettingsProviderProps {
 }
 
 /**
- * Settings provider component.
- * Manages theme, language, and settings dialog state.
- * 
- * @param children - Child components to wrap
+ * @description Manages theme, language, and settings dialog state with localStorage persistence
+ * @param {SettingsProviderProps} props - Provider props containing children to wrap
+ * @returns {JSX.Element} Context provider wrapping children with settings state
  */
 export function SettingsProvider({ children }: SettingsProviderProps) {
   const { i18n } = useTranslation();
@@ -121,6 +128,16 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   const [language, setLanguageState] = useState<LanguageCode>(getStoredLanguage);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isApiKeysOpen, setIsApiKeysOpen] = useState(false);
+
+  /** Open settings dialog */
+  const openSettings = useCallback(() => setIsSettingsOpen(true), []);
+  /** Close settings dialog */
+  const closeSettings = useCallback(() => setIsSettingsOpen(false), []);
+  /** Open API keys dialog */
+  const openApiKeys = useCallback(() => setIsApiKeysOpen(true), []);
+  /** Close API keys dialog */
+  const closeApiKeys = useCallback(() => setIsApiKeysOpen(false), []);
 
   /**
    * Effect: Apply dark mode based on theme setting.
@@ -178,10 +195,6 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
     i18n.changeLanguage(newLang);
   }, [i18n]);
 
-  /** Context methods for managing settings dialog visibility */
-  const openSettings = useCallback(() => setIsSettingsOpen(true), []);
-  const closeSettings = useCallback(() => setIsSettingsOpen(false), []);
-
   return (
     <SettingsContext.Provider
       value={{
@@ -194,16 +207,12 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
         isSettingsOpen,
         openSettings,
         closeSettings,
+        isApiKeysOpen,
+        openApiKeys,
+        closeApiKeys,
       }}
     >
-      {/* Configure Ant Design theme algorithm based on app state */}
-      <ConfigProvider
-        theme={{
-          algorithm: isDarkMode ? antTheme.darkAlgorithm : antTheme.defaultAlgorithm,
-        }}
-      >
-        {children as any}
-      </ConfigProvider>
+      {children}
     </SettingsContext.Provider>
   );
 }
@@ -213,12 +222,10 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
 // ============================================================================
 
 /**
- * Hook to access settings context.
- * Must be used within a SettingsProvider.
- * 
- * @returns Settings context with theme, language, and dialog controls
- * @throws Error if used outside SettingsProvider
- * 
+ * @description Accesses the settings context for theme, language, and dialog controls
+ * @returns {SettingsContextType} Settings context value
+ * @throws {Error} If used outside of a SettingsProvider
+ *
  * @example
  * ```tsx
  * const { theme, setTheme, isDarkMode } = useSettings();

@@ -40,14 +40,22 @@ vi.mock('@/shared/models/factory.js', () => ({
 }))
 
 vi.mock('@/shared/config/index.js', () => ({
-  config: { rootUser: 'root@test.com' },
+  config: { rootUser: 'root@test.com', session: { ttlSeconds: 604800 } },
+}))
+
+vi.mock('@/shared/services/ability.service.js', () => ({
+  abilityService: {
+    invalidateUser: vi.fn(),
+    invalidateAllAbilities: vi.fn(),
+    buildAbility: vi.fn(),
+  },
 }))
 
 vi.mock('@/shared/services/logger.service.js', () => ({
   log: mockLog,
 }))
 
-vi.mock('@/modules/audit/audit.service.js', () => ({
+vi.mock('@/modules/audit/services/audit.service.js', () => ({
   auditService: mockAudit,
   AuditAction: {
     CREATE_USER: 'CREATE_USER',
@@ -58,7 +66,7 @@ vi.mock('@/modules/audit/audit.service.js', () => ({
   AuditResourceType: { USER: 'USER' },
 }))
 
-import { userService } from '../../src/modules/users/user.service.js'
+import { userService } from '../../src/modules/users/services/user.service.js'
 
 describe('UserService', () => {
   beforeEach(() => {

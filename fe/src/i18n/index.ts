@@ -36,7 +36,9 @@ export const SUPPORTED_LANGUAGES = [
   { code: 'ja', name: 'Japanese', nativeName: '日本語', flag: '🇯🇵' },
 ] as const;
 
-/** Type for valid language codes */
+/**
+ * @description Union type of supported ISO 639-1 language codes derived from the SUPPORTED_LANGUAGES array
+ */
 export type LanguageCode = typeof SUPPORTED_LANGUAGES[number]['code'];
 
 /**

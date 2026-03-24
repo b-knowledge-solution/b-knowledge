@@ -68,6 +68,13 @@ function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   // If loading is complete and user is not authenticated, redirect to login
   if (!isAuthenticated) {
+    // Guard: do not redirect if already on a public path to prevent infinite loops
+    const publicPaths = ['/login', '/logout', '/403', '/404', '/500']
+    const isPublicPath = location.pathname === '/' || publicPaths.some(p => location.pathname.startsWith(p))
+    if (isPublicPath) {
+      return <>{children}</>
+    }
+
     // Preserve the current path to redirect back after successful login
     const redirectUrl = location.pathname + location.search;
     return <Navigate to={`/login?redirect=${encodeURIComponent(redirectUrl)}`} replace />;

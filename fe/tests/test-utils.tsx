@@ -10,7 +10,27 @@
 import React, { ReactElement, ReactNode } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi } from 'vitest';
+
+/**
+ * @description Creates a fresh QueryClient configured for testing (no retries, no gc)
+ * @returns {QueryClient} A new QueryClient instance suitable for tests
+ */
+export function createTestQueryClient(): QueryClient {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        gcTime: Infinity,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        refetchInterval: false,
+      },
+      mutations: { retry: false },
+    },
+  });
+}
 
 // ============================================================================
 // Types
@@ -186,17 +206,21 @@ export function renderWithProviders(
   const Router = useBrowserRouter ? BrowserRouter : MemoryRouter;
   const routerProps = useBrowserRouter ? {} : { initialEntries: [initialRoute] };
 
+  const queryClient = createTestQueryClient();
+
   function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <Router {...routerProps}>
-        <MockSettingsContext.Provider value={settingsContext}>
-          <MockAuthContext.Provider value={authContext}>
-            <MockRagflowContext.Provider value={ragflowContext}>
-              {children}
-            </MockRagflowContext.Provider>
-          </MockAuthContext.Provider>
-        </MockSettingsContext.Provider>
-      </Router>
+      <QueryClientProvider client={queryClient}>
+        <Router {...routerProps}>
+          <MockSettingsContext.Provider value={settingsContext}>
+            <MockAuthContext.Provider value={authContext}>
+              <MockRagflowContext.Provider value={ragflowContext}>
+                {children}
+              </MockRagflowContext.Provider>
+            </MockAuthContext.Provider>
+          </MockSettingsContext.Provider>
+        </Router>
+      </QueryClientProvider>
     );
   }
 
@@ -223,6 +247,32 @@ export function renderWithRouter(
   }
 
   return render(ui, { wrapper: Wrapper });
+}
+
+/**
+ * @description Render with only a QueryClientProvider wrapper for components using TanStack Query
+ * @param {ReactElement} ui - The React element to render
+ * @param {RenderOptions} options - Optional render options
+ * @returns {object} Render result plus the queryClient instance
+ */
+export function renderWithQueryClient(
+  ui: ReactElement,
+  options: Omit<RenderOptions, 'wrapper'> = {}
+) {
+  const queryClient = createTestQueryClient();
+
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        {children}
+      </QueryClientProvider>
+    );
+  }
+
+  return {
+    ...render(ui, { wrapper: Wrapper, ...options }),
+    queryClient,
+  };
 }
 
 // ============================================================================

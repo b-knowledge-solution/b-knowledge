@@ -19,13 +19,6 @@ vi.mock('react-i18next', async (importOriginal) => {
   };
 });
 
-vi.mock('antd', () => ({
-  ConfigProvider: ({ children }: any) => <div data-testid="config-provider">{children}</div>,
-  theme: {
-    darkAlgorithm: 'dark',
-    defaultAlgorithm: 'default',
-  },
-}));
 
 const TestComponent = () => {
   const settings = useSettings();
@@ -101,13 +94,14 @@ describe('SettingsContext', () => {
       );
     });
 
-    it('wraps children in ConfigProvider', () => {
+    it('wraps children and provides context', () => {
       render(
         <SettingsProvider>
           <div>Test</div>
         </SettingsProvider>
       );
-      expect(screen.getByTestId('config-provider')).toBeInTheDocument();
+      // SettingsProvider renders children wrapped in context
+      expect(screen.getByText('Test')).toBeInTheDocument();
     });
   });
 

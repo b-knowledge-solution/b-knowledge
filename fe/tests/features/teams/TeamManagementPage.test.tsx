@@ -39,11 +39,8 @@ const mockMemberHook = vi.hoisted(() => ({
   reset: vi.fn(),
 }))
 
-vi.mock('../../../src/features/teams/hooks/useTeams', () => ({
+vi.mock('../../../src/features/teams/api/teamQueries', () => ({
   useTeams: () => mockTeamHook,
-}))
-
-vi.mock('../../../src/features/teams/hooks/useTeamMembers', () => ({
   useTeamMembers: () => mockMemberHook,
 }))
 
@@ -93,6 +90,20 @@ vi.mock('../../../src/features/teams/components/TeamMembersDialog', () => ({
 vi.mock('lucide-react', () => ({
   Plus: () => <div data-testid="plus" />,
   Search: () => <div />,
+  ChevronDown: () => <div />,
+  ChevronUp: () => <div />,
+  Check: () => <div />,
+  X: () => <div />,
+  ChevronLeft: () => <div />,
+  ChevronRight: () => <div />,
+  MoreHorizontal: () => <div />,
+  Loader2: () => <div />,
+  ChevronsUpDown: () => <div />,
+}))
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: () => ({ data: undefined, isLoading: false }),
+  useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }))
 
 import TeamManagementPage from '../../../src/features/teams/pages/TeamManagementPage'

@@ -5,12 +5,15 @@ import { Request, Response } from 'express'
 import { systemToolsService } from '@/modules/system-tools/system-tools.service.js'
 import { log } from '@/shared/services/logger.service.js'
 
+/**
+ * @description Controller for listing, health-checking, and executing system maintenance tools
+ */
 export class SystemToolsController {
   /**
-   * Get list of available system tools.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Get list of available and enabled system tools
+   * @param {Request} req - Express request object
+   * @param {Response} res - Express response with tools array and count
+   * @returns {Promise<void>}
    */
   async getTools(req: Request, res: Response): Promise<void> {
     try {
@@ -25,10 +28,10 @@ export class SystemToolsController {
   }
 
   /**
-   * Get system health status.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Get system health status including DB, Redis, and Langfuse connectivity
+   * @param {Request} req - Express request object
+   * @param {Response} res - Express response with health status
+   * @returns {Promise<void>}
    */
   async getHealth(req: Request, res: Response): Promise<void> {
     try {
@@ -43,10 +46,10 @@ export class SystemToolsController {
   }
 
   /**
-   * Execute a specific system tool.
-   * @param req - Express request object.
-   * @param res - Express response object.
-   * @returns Promise<void>
+   * @description Execute a specific system tool by ID with provided parameters
+   * @param {Request} req - Express request with tool ID param and execution params in body
+   * @param {Response} res - Express response with execution result
+   * @returns {Promise<void>}
    */
   async runTool(req: Request, res: Response): Promise<void> {
     const { id } = req.params;

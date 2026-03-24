@@ -1,14 +1,18 @@
 /**
  * @fileoverview Hook for audit log data fetching and pagination.
  * Encapsulates log listing, filter option loading, debounced search,
- * and pagination handling.
+ * and pagination handling via TanStack Query hooks from auditQueries.
  * @module features/audit/hooks/useAuditLogs
  */
-import { useState, useEffect, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useState, useEffect } from 'react'
 import type { AuditLogEntry, AuditPagination } from '../types/audit.types'
-import { auditApi } from '../api/auditApi'
-import { useAuditFilters } from '../contexts/AuditFilterContext'
+import {
+    useAuditLogsQuery,
+    useAuditActionsQuery,
+    useAuditResourceTypesQuery,
+    useAuditInvalidation,
+} from '../api/auditQueries'
+import { useAuditFilters } from './useAuditFilterContext'
 
 // ============================================================================
 // Return Type
@@ -40,76 +44,50 @@ export interface UseAuditLogsReturn {
 
 /**
  * @description Hook for managing audit log data, pagination, and filter options.
- * Reads filter state from AuditFilterContext and triggers debounced fetches.
+ * Reads filter state from AuditFilterContext and triggers debounced fetches
+ * via TanStack Query for deduplication and caching.
  *
  * @returns {UseAuditLogsReturn} Audit log state and handlers.
  */
 export const useAuditLogs = (): UseAuditLogsReturn => {
-    const { t } = useTranslation()
     const { filters } = useAuditFilters()
 
-    // Data state
-    const [logs, setLogs] = useState<AuditLogEntry[]>([])
-    const [pagination, setPagination] = useState<AuditPagination>({
-        page: 1,
-        limit: 25,
-        total: 0,
-        totalPages: 0,
-    })
-    const [isLoading, setIsLoading] = useState(true)
+    // Pagination state
+    const [page, setPage] = useState(1)
+    const [limit, setLimit] = useState(25)
 
-    // Filter options from backend
-    const [actionTypes, setActionTypes] = useState<string[]>([])
-    const [resourceTypes, setResourceTypes] = useState<string[]>([])
+    // Debounced filter state for query key (prevents rapid refetches)
+    const [debouncedFilters, setDebouncedFilters] = useState(filters)
 
-    /**
-     * Fetch audit logs for a specific page and limit.
-     * @param page - Page number.
-     * @param limit - Items per page (optional, defaults to current).
-     */
-    const fetchLogs = useCallback(async (page: number = 1, limit?: number) => {
-        setIsLoading(true)
-        try {
-            const fetchLimit = limit || pagination.limit
-            const data = await auditApi.fetchLogs(page, fetchLimit, filters)
-            setLogs(data.data)
-            setPagination(data.pagination)
-        } catch (err) {
-            console.error('Failed to fetch audit logs:', err)
-        } finally {
-            setIsLoading(false)
-        }
-    }, [filters, pagination.limit, t])
-
-    /**
-     * Fetch filter dropdown options (action types + resource types).
-     */
-    const fetchFilterOptions = useCallback(async () => {
-        try {
-            const [actions, types] = await Promise.all([
-                auditApi.fetchActions(),
-                auditApi.fetchResourceTypes(),
-            ])
-            setActionTypes(actions)
-            setResourceTypes(types)
-        } catch (err) {
-            console.error('Failed to fetch filter options:', err)
-        }
-    }, [])
-
-    // Initial data fetch on mount
-    useEffect(() => {
-        fetchLogs(1)
-        fetchFilterOptions()
-    }, [])
-
-    // Debounced re-fetch when filters change
+    // Debounce filter changes by 300ms
     useEffect(() => {
         const timer = setTimeout(() => {
-            fetchLogs(1)
+            setDebouncedFilters(filters)
+            setPage(1) // Reset to page 1 when filters change
         }, 300)
         return () => clearTimeout(timer)
     }, [filters])
+
+    // Fetch audit logs via extracted query hook
+    const { data: logsData, isLoading: isLogsLoading } = useAuditLogsQuery(page, limit, debouncedFilters)
+
+    // Fetch action types for filter dropdown
+    const { data: actionTypes = [] } = useAuditActionsQuery()
+
+    // Fetch resource types for filter dropdown
+    const { data: resourceTypes = [] } = useAuditResourceTypesQuery()
+
+    // Cache invalidation helper
+    const { invalidateAuditQueries } = useAuditInvalidation()
+
+    // Derive logs and pagination from query data
+    const logs = logsData?.data ?? []
+    const pagination: AuditPagination = logsData?.pagination ?? {
+        page,
+        limit,
+        total: 0,
+        totalPages: 0,
+    }
 
     /**
      * Handle page or page-size change from pagination control.
@@ -117,20 +95,25 @@ export const useAuditLogs = (): UseAuditLogsReturn => {
      * @param newPageSize - New page size (triggers reset to page 1).
      */
     const handlePageChange = (newPage: number, newPageSize?: number) => {
-        if (newPageSize && newPageSize !== pagination.limit) {
-            fetchLogs(1, newPageSize)
+        // When page size changes, reset to page 1 to avoid out-of-range pages
+        if (newPageSize && newPageSize !== limit) {
+            setLimit(newPageSize)
+            setPage(1)
         } else {
-            fetchLogs(newPage)
+            // Navigate to the requested page within current page size
+            setPage(newPage)
         }
     }
 
     /** Refresh current page data */
-    const refresh = () => fetchLogs(pagination.page)
+    const refresh = () => {
+        invalidateAuditQueries()
+    }
 
     return {
         logs,
         pagination,
-        isLoading,
+        isLoading: isLogsLoading,
         actionTypes,
         resourceTypes,
         handlePageChange,

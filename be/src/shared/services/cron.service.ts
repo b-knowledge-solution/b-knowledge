@@ -1,22 +1,27 @@
 
-// Schedules and runs recurring maintenance tasks like temp cache cleanup.
+// Schedules and runs recurring maintenance tasks like temp cache cleanup and parsing scheduler.
 import cron from 'node-cron';
+import type { ScheduledTask } from 'node-cron';
 import fs from 'fs/promises';
 import { constants } from 'fs';
 import path from 'path';
 import { config } from '@/shared/config/index.js';
 import { log } from '@/shared/services/logger.service.js';
+import { ModelFactory } from '@/shared/models/factory.js';
+import { db } from '@/shared/db/knex.js';
 
 /**
- * CronService
- * Singleton service that schedules and runs recurring maintenance tasks.
- * Currently handles temp cache file cleanup based on configurable TTL and schedule.
+ * @description Singleton service that schedules and runs recurring maintenance tasks.
+ * Handles temp cache file cleanup and document parsing scheduling from system config.
  */
 export class CronService {
+    /** Reference to the active parsing scheduler task for stop/restart */
+    private parsingTask: ScheduledTask | null = null;
+
     /**
-     * Start the temp file cleanup cron job.
-     * @returns void
-     * @description Registers a scheduled task that periodically removes expired files from temp cache.
+     * @description Start the temp file cleanup cron job using node-cron.
+     * Registers a scheduled task that periodically removes expired files from temp cache.
+     * @returns {void}
      */
     public startCleanupJob() {
         // Log startup configuration
@@ -33,9 +38,9 @@ export class CronService {
     }
 
     /**
-     * Execute the temp file cleanup process.
-     * @returns Promise<void>
-     * @description Scans the temp directory and deletes files older than the configured TTL.
+     * @description Execute the temp file cleanup process.
+     * Scans the temp directory and deletes files older than the configured TTL.
+     * @returns {Promise<void>}
      */
     private async runCleanup() {
         log.debug('Running scheduled temp file cleanup');
@@ -89,6 +94,234 @@ export class CronService {
             log.error('Critical error in temp file cleanup job', { error });
         }
     }
+    // -------------------------------------------------------------------------
+    // Parsing Scheduler
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description Start the parsing scheduler with the given cron schedule.
+     * When triggered, queries datasets for documents in 'pending' parse status
+     * and enqueues them for parsing via the Redis task queue.
+     * @param {string} schedule - Valid cron expression for scheduling
+     * @returns {void}
+     */
+    public startParsingScheduler(schedule: string): void {
+        // Stop any existing parsing scheduler before starting a new one
+        if (this.parsingTask) {
+            this.parsingTask.stop()
+            this.parsingTask = null
+        }
+
+        log.info('Starting parsing scheduler', { schedule })
+
+        this.parsingTask = cron.schedule(schedule, async () => {
+            await this.runParsingSchedule()
+        })
+    }
+
+    /**
+     * @description Maximum number of documents to enqueue per dataset in a single scheduling run.
+     * Prevents one large dataset from starving others by capping the batch size per kb_id.
+     */
+    private static readonly PER_DATASET_LIMIT = 10
+
+    /**
+     * @description Execute the scheduled parsing run with dataset-aware FIFO sequencing.
+     * Groups pending documents by dataset (kb_id), processes each dataset batch in FIFO
+     * order (oldest first by create_time), and enqueues up to PER_DATASET_LIMIT documents
+     * per dataset. This prevents a single large dataset from monopolizing the parse queue.
+     * @returns {Promise<void>}
+     */
+    private async runParsingSchedule(): Promise<void> {
+        log.info('Running scheduled parsing job')
+
+        try {
+            // Import ragRedisService lazily to avoid circular dependency at module load time
+            const { ragRedisService } = await import('@/modules/rag/services/rag-redis.service.js')
+            const { ragDocumentService } = await import('@/modules/rag/services/rag-document.service.js')
+
+            // Query pending documents ordered by dataset, then by creation time (FIFO)
+            // progress = 0 and run = '1' indicates documents queued for parsing
+            const pendingDocs = await db('document')
+                .select('id', 'kb_id', 'parser_id', 'parser_config', 'name', 'run', 'create_time')
+                .where('run', '1')
+                .where('progress', 0)
+                .orderBy([
+                    { column: 'kb_id', order: 'asc' },
+                    { column: 'create_time', order: 'asc' },
+                ])
+
+            if (pendingDocs.length === 0) {
+                log.debug('No pending documents found for scheduled parsing')
+                return
+            }
+
+            // Group pending documents by dataset for sequential dataset processing
+            const datasetGroups = new Map<string, typeof pendingDocs>()
+            for (const doc of pendingDocs) {
+                const group = datasetGroups.get(doc.kb_id) || []
+                group.push(doc)
+                datasetGroups.set(doc.kb_id, group)
+            }
+
+            let totalQueued = 0
+
+            // Process one dataset batch at a time with per-dataset limit
+            for (const [kbId, group] of datasetGroups) {
+                // Take at most PER_DATASET_LIMIT documents from this dataset
+                const batch = group.slice(0, CronService.PER_DATASET_LIMIT)
+
+                for (const doc of batch) {
+                    try {
+                        // Mark the document as queued for parsing
+                        await ragDocumentService.beginParse(doc.id)
+                        // Queue the parse_init task to the Redis Stream
+                        await ragRedisService.queueParseInit(doc.id)
+                        totalQueued++
+                        log.debug('Scheduled parsing for document', { docId: doc.id, kbId: doc.kb_id })
+                    } catch (err) {
+                        log.warn('Failed to queue document for scheduled parsing', {
+                            docId: doc.id,
+                            error: String(err),
+                        })
+                    }
+                }
+
+                log.info('Scheduled parsing for dataset batch', {
+                    kbId,
+                    queued: batch.length,
+                    remaining: group.length - batch.length,
+                })
+            }
+
+            log.info('Scheduled parsing job completed', {
+                totalQueued,
+                datasetsProcessed: datasetGroups.size,
+            })
+        } catch (error) {
+            log.error('Critical error in parsing scheduler job', { error: String(error) })
+        }
+    }
+
+    /**
+     * @description Update the parsing scheduler cron expression.
+     * Validates the new schedule, persists it to system_configs, and restarts the scheduler.
+     * @param {string} schedule - New cron expression
+     * @returns {Promise<void>}
+     * @throws {Error} If the cron expression is invalid
+     */
+    public async updateParsingSchedule(schedule: string): Promise<void> {
+        // Validate the cron expression before persisting
+        if (!cron.validate(schedule)) {
+            throw new Error(`Invalid cron expression: ${schedule}`)
+        }
+
+        // Persist to system_configs table
+        const existing = await ModelFactory.systemConfig.findById('parsing_scheduler_cron')
+        if (existing) {
+            await ModelFactory.systemConfig.update('parsing_scheduler_cron', { value: schedule })
+        } else {
+            await ModelFactory.systemConfig.create({ key: 'parsing_scheduler_cron', value: schedule })
+        }
+
+        // Restart the scheduler with the new expression
+        this.startParsingScheduler(schedule)
+        log.info('Parsing schedule updated', { schedule })
+    }
+
+    /**
+     * @description Initialize the parsing scheduler from system config on boot.
+     * Reads the schedule and enabled flag from system_configs table.
+     * Should be called during application startup.
+     * @returns {Promise<void>}
+     */
+    public async initParsingSchedulerFromConfig(): Promise<void> {
+        try {
+            const enabledConfig = await ModelFactory.systemConfig.findById('parsing_scheduler_enabled')
+            const scheduleConfig = await ModelFactory.systemConfig.findById('parsing_scheduler_cron')
+
+            // Only start if explicitly enabled in system config
+            if (enabledConfig?.value === 'true' && scheduleConfig?.value) {
+                // Validate before starting to avoid crashing on invalid stored config
+                if (cron.validate(scheduleConfig.value)) {
+                    this.startParsingScheduler(scheduleConfig.value)
+                } else {
+                    log.warn('Invalid stored parsing scheduler cron expression', {
+                        schedule: scheduleConfig.value,
+                    })
+                }
+            } else {
+                log.debug('Parsing scheduler is not enabled in system config')
+            }
+        } catch (error) {
+            log.warn('Failed to initialize parsing scheduler from config', { error: String(error) })
+        }
+    }
+
+    /**
+     * @description Get the current parsing scheduler configuration.
+     * @returns {Promise<{ schedule: string; enabled: boolean }>} Current schedule and enabled status
+     */
+    public async getParsingSchedulerConfig(): Promise<{ schedule: string; enabled: boolean }> {
+        const enabledConfig = await ModelFactory.systemConfig.findById('parsing_scheduler_enabled')
+        const scheduleConfig = await ModelFactory.systemConfig.findById('parsing_scheduler_cron')
+
+        return {
+            schedule: scheduleConfig?.value || '0 2 * * *',
+            enabled: enabledConfig?.value === 'true',
+        }
+    }
+
+    /**
+     * @description Set parsing scheduler enabled/disabled state and optionally update schedule.
+     * Persists to system_configs and starts/stops the scheduler accordingly.
+     * @param {boolean} enabled - Whether to enable the scheduler
+     * @param {string} [schedule] - Optional new cron schedule expression
+     * @returns {Promise<{ schedule: string; enabled: boolean }>} Updated config
+     * @throws {Error} If the provided schedule is an invalid cron expression
+     */
+    public async setParsingSchedulerConfig(
+        enabled: boolean,
+        schedule?: string,
+    ): Promise<{ schedule: string; enabled: boolean }> {
+        // Validate schedule if provided
+        if (schedule && !cron.validate(schedule)) {
+            throw new Error(`Invalid cron expression: ${schedule}`)
+        }
+
+        // Persist enabled flag
+        const existingEnabled = await ModelFactory.systemConfig.findById('parsing_scheduler_enabled')
+        if (existingEnabled) {
+            await ModelFactory.systemConfig.update('parsing_scheduler_enabled', { value: String(enabled) })
+        } else {
+            await ModelFactory.systemConfig.create({ key: 'parsing_scheduler_enabled', value: String(enabled) })
+        }
+
+        // Persist schedule if provided
+        if (schedule) {
+            const existingSchedule = await ModelFactory.systemConfig.findById('parsing_scheduler_cron')
+            if (existingSchedule) {
+                await ModelFactory.systemConfig.update('parsing_scheduler_cron', { value: schedule })
+            } else {
+                await ModelFactory.systemConfig.create({ key: 'parsing_scheduler_cron', value: schedule })
+            }
+        }
+
+        // Start or stop the scheduler based on enabled flag
+        if (enabled) {
+            const currentSchedule = schedule
+                || (await ModelFactory.systemConfig.findById('parsing_scheduler_cron'))?.value
+                || '0 2 * * *'
+            this.startParsingScheduler(currentSchedule)
+        } else if (this.parsingTask) {
+            this.parsingTask.stop()
+            this.parsingTask = null
+            log.info('Parsing scheduler stopped')
+        }
+
+        return this.getParsingSchedulerConfig()
+    }
 }
 
+/** Singleton instance of the cron service for scheduling maintenance tasks */
 export const cronService = new CronService();

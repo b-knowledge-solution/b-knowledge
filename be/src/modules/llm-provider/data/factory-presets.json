@@ -1,0 +1,62 @@
+[
+  {
+    "name": "OpenAI",
+    "tags": "LLM,TEXT EMBEDDING,TTS,SPEECH2TEXT",
+    "models": [
+      { "model_name": "gpt-4o", "model_type": "chat", "max_tokens": 128000, "vision": true },
+      { "model_name": "gpt-4o-mini", "model_type": "chat", "max_tokens": 128000 },
+      { "model_name": "gpt-4.1", "model_type": "chat", "max_tokens": 1047576 },
+      { "model_name": "gpt-4.1-mini", "model_type": "chat", "max_tokens": 1047576 },
+      { "model_name": "gpt-4.1-nano", "model_type": "chat", "max_tokens": 1047576 },
+      { "model_name": "o3", "model_type": "chat", "max_tokens": 200000 },
+      { "model_name": "o3-mini", "model_type": "chat", "max_tokens": 200000 },
+      { "model_name": "o4-mini", "model_type": "chat", "max_tokens": 200000 },
+      { "model_name": "text-embedding-3-large", "model_type": "embedding", "max_tokens": 8191 },
+      { "model_name": "text-embedding-3-small", "model_type": "embedding", "max_tokens": 8191 },
+      { "model_name": "whisper-1", "model_type": "speech2text", "max_tokens": null },
+      { "model_name": "tts-1", "model_type": "tts", "max_tokens": null }
+    ]
+  },
+  {
+    "name": "Azure-OpenAI",
+    "tags": "LLM,TEXT EMBEDDING,SPEECH2TEXT",
+    "models": [
+      { "model_name": "gpt-4o", "model_type": "chat", "max_tokens": 128000, "vision": true },
+      { "model_name": "gpt-4o-mini", "model_type": "chat", "max_tokens": 128000 },
+      { "model_name": "gpt-4", "model_type": "chat", "max_tokens": 8192 },
+      { "model_name": "text-embedding-3-large", "model_type": "embedding", "max_tokens": 8191 },
+      { "model_name": "text-embedding-3-small", "model_type": "embedding", "max_tokens": 8191 },
+      { "model_name": "whisper-1", "model_type": "speech2text", "max_tokens": null }
+    ]
+  },
+  {
+    "name": "Anthropic",
+    "tags": "LLM",
+    "models": [
+      { "model_name": "claude-opus-4-5-20251101", "model_type": "chat", "max_tokens": 200000, "vision": true },
+      { "model_name": "claude-sonnet-4-5-20250514", "model_type": "chat", "max_tokens": 200000, "vision": true },
+      { "model_name": "claude-3-5-sonnet-20241022", "model_type": "chat", "max_tokens": 200000 },
+      { "model_name": "claude-3-5-haiku-20241022", "model_type": "chat", "max_tokens": 200000 }
+    ]
+  },
+  {
+    "name": "Gemini",
+    "tags": "LLM,TEXT EMBEDDING",
+    "models": [
+      { "model_name": "gemini-2.5-flash", "model_type": "chat", "max_tokens": 1048576, "vision": true },
+      { "model_name": "gemini-2.5-pro", "model_type": "chat", "max_tokens": 1048576 },
+      { "model_name": "gemini-2.0-flash", "model_type": "chat", "max_tokens": 1048576 },
+      { "model_name": "gemini-embedding-001", "model_type": "embedding", "max_tokens": 8192 }
+    ]
+  },
+  {
+    "name": "Ollama",
+    "tags": "LLM,TEXT EMBEDDING",
+    "models": []
+  },
+  {
+    "name": "OpenAI-API-Compatible",
+    "tags": "LLM,TEXT EMBEDDING,RERANK,TTS,SPEECH2TEXT",
+    "models": []
+  }
+]

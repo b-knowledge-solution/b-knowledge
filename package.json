@@ -9,36 +9,49 @@
     "fe"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:be\" \"npm run dev:fe\"",
+    "dev": "concurrently --names BE,FE,WORKER,CONVERTER --prefix-colors blue,green,magenta,yellow --prefix \"{name}\" \"npm run dev:be\" \"npm run dev:fe\" \"npm run dev:worker\" \"npm run dev:converter\"",
     "dev:be": "npm run dev --workspace=be",
     "dev:fe": "npm run dev --workspace=fe",
-    "dev:https": "concurrently \"npm run dev:be\" \"npm run dev:fe\"",
+    "dev:worker": "node scripts/wait-for-backend.js && node scripts/run-worker.js",
+    "dev:converter": "node scripts/wait-for-backend.js && node scripts/run-converter.js",
+    "setup": "node scripts/setup.js",
+    "setup:infra": "node scripts/setup-infra.js",
+    "setup:python": "node scripts/setup-python.js",
+    "setup:worker": "node scripts/setup-worker.js",
+    "setup:converter": "node scripts/setup-converter.js",
+    "docker:base": "docker compose -f docker/docker-compose-base.yml up -d",
+    "docker:down": "docker compose -f docker/docker-compose-base.yml down",
+    "docker:up": "docker compose -f docker/docker-compose.yml up -d --build",
+    "docker:litellm": "docker compose -f docker/docker-compose-litellm.yml up -d",
+    "docker:litellm:down": "docker compose -f docker/docker-compose-litellm.yml down",
+    "dev:https": "concurrently --names BE,FE --prefix-colors blue,green --prefix \"{name}\" \"npm run dev:be\" \"npm run dev:fe\"",
     "generate:cert": "node scripts/generate-cert.js",
     "build": "npm run build --workspaces",
     "build:prod": "npm run build:prod --workspaces",
     "build:be": "npm run build --workspace=be",
     "build:fe": "npm run build --workspace=fe",
     "lint": "npm run lint --workspaces",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "db:migrate": "npm run db:migrate --workspace=be",
+    "db:migrate:make": "npm run db:migrate:make --workspace=be --",
+    "db:migrate:rollback": "npm run db:migrate:rollback --workspace=be",
+    "db:seed": "npm run db:seed --workspace=be",
+    "db:setup": "npm run db:migrate --workspace=be && npm run db:seed --workspace=be",
+    "docs:dev": "cd docs && npx vitepress dev --port 5174",
+    "docs:build": "cd docs && npx vitepress build",
+    "docs:preview": "cd docs && npx vitepress preview --port 5174"
   },
   "devDependencies": {
-    "@testing-library/react": "^16.3.1",
-    "@types/jest": "^30.0.0",
-    "@types/jszip": "^3.4.0",
-    "@types/mocha": "^10.0.10",
-    "@types/nprogress": "^0.2.3",
     "concurrently": "^9.1.0",
     "dotenv": "^16.4.5",
     "rimraf": "^5.0.0",
     "typescript": "^5.9.3",
-    "vite-plugin-top-level-await": "^1.6.0",
-    "vite-plugin-wasm": "^3.5.0"
+    "vitepress": "^1.6.4"
   },
   "engines": {
     "node": ">=18.0.0"
   },
-  "dependencies": {
-    "bee-queue": "^2.0.0",
-    "nprogress": "^0.2.0"
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.60.0"
   }
 }

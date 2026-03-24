@@ -28,9 +28,13 @@ import { log } from '@/shared/services/logger.service.js';
 let adapter: DatabaseAdapter | null = null;
 
 /**
- * Initialize database adapter based on configuration
+ * @description Initialize the PostgreSQL database adapter using centralized config.
+ * Returns the existing adapter if already initialized (singleton).
+ * @returns {Promise<DatabaseAdapter>} Initialized and connection-verified adapter
+ * @throws {Error} If PostgreSQL connection check fails
  */
 async function initializeAdapter(): Promise<DatabaseAdapter> {
+  // Return existing adapter if already initialized
   if (adapter) return adapter;
 
   const pgAdapter = new PostgreSQLAdapter({
@@ -52,7 +56,9 @@ async function initializeAdapter(): Promise<DatabaseAdapter> {
 }
 
 /**
- * Get the database adapter (lazy initialization)
+ * @description Get the database adapter, initializing it on first access (lazy singleton).
+ * @returns {Promise<DatabaseAdapter>} The shared database adapter instance
+ * @throws {Error} If initialization fails on first access
  */
 export async function getAdapter(): Promise<DatabaseAdapter> {
   if (!adapter) {
@@ -62,7 +68,12 @@ export async function getAdapter(): Promise<DatabaseAdapter> {
 }
 
 /**
- * Execute a query with automatic client release
+ * @description Execute a SQL query and return all matching rows.
+ * Automatically acquires and releases a connection from the pool.
+ * @template T - Expected row type
+ * @param {string} text - SQL query with $1, $2, etc. placeholders
+ * @param {unknown[]} params - Parameter values for placeholders
+ * @returns {Promise<T[]>} Array of result rows
  */
 export async function query<T>(text: string, params?: unknown[]): Promise<T[]> {
   const db = await getAdapter();
@@ -115,8 +126,9 @@ export async function getClient() {
 }
 
 /**
- * Close the database connection pool.
+ * @description Close the database connection pool and reset the adapter.
  * Should be called during graceful shutdown to properly release resources.
+ * @returns {Promise<void>}
  */
 export async function closePool(): Promise<void> {
   if (adapter) {
@@ -126,10 +138,9 @@ export async function closePool(): Promise<void> {
 }
 
 /**
- * Check database connectivity.
- * Attempts to execute a simple query to verify the connection is working.
- * 
- * @returns True if connected, false if connection failed
+ * @description Check database connectivity by executing a simple query.
+ * Used by health check endpoints and startup verification.
+ * @returns {Promise<boolean>} True if connected, false if connection failed
  */
 export async function checkConnection(): Promise<boolean> {
   try {
@@ -147,9 +158,9 @@ export async function checkConnection(): Promise<boolean> {
 // ============================================================================
 
 /**
+ * @description Deprecated pool accessor kept for backward compatibility.
  * @deprecated Use getAdapter() instead. Database now uses adapter pattern.
- * Kept for backward compatibility with older code.
- * @returns null (always)
+ * @returns {null} Always returns null
  */
 export function getPool() {
   log.warn('getPool() is deprecated, database now uses adapter pattern');

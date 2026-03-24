@@ -3,12 +3,14 @@
  * Dashboard Service
  * Provides aggregate statistics for admin activity dashboard.
  * Queries across external chat and external search data sources.
+ * Also provides query analytics and feedback aggregation for observability.
  * @module services/dashboard
  */
 import { db } from '@/shared/db/knex.js'
+import { config } from '@/shared/config/index.js'
 
 /**
- * Shape of daily activity data point for trend charts.
+ * @description Shape of daily activity data point for trend charts
  */
 export interface DailyActivity {
   /** Date string (YYYY-MM-DD) */
@@ -20,7 +22,7 @@ export interface DailyActivity {
 }
 
 /**
- * Shape of a top user entry.
+ * @description Shape of a top user entry by session count
  */
 export interface TopUser {
   /** User email address */
@@ -30,7 +32,7 @@ export interface TopUser {
 }
 
 /**
- * Usage breakdown by source type.
+ * @description Usage breakdown by source type for pie chart display
  */
 export interface UsageBreakdown {
   /** External AI Chat session count */
@@ -40,7 +42,43 @@ export interface UsageBreakdown {
 }
 
 /**
- * Complete dashboard statistics payload.
+ * @description Query analytics payload with volume, latency, quality, and trend metrics
+ */
+export interface QueryAnalytics {
+  /** Total number of queries in the date range */
+  totalQueries: number
+  /** Average response time in milliseconds across all queries */
+  avgResponseTime: number
+  /** Percentage of queries that returned zero results */
+  failedRate: number
+  /** Percentage of queries with confidence score below 0.5 */
+  lowConfRate: number
+  /** Top 10 most frequent queries with count and average confidence */
+  topQueries: { query: string; count: number; avgConfidence: number | null }[]
+  /** Daily query counts for trend chart */
+  trend: { date: string; count: number }[]
+}
+
+/**
+ * @description Feedback analytics payload with satisfaction, worst datasets, and negative entries
+ */
+export interface FeedbackAnalytics {
+  /** Percentage of positive (thumbs-up) feedback */
+  satisfactionRate: number
+  /** Total feedback entries in the date range */
+  totalFeedback: number
+  /** Percentage of feedback linked to zero-result queries */
+  zeroResultRate: number
+  /** Bottom 5 datasets by satisfaction ratio */
+  worstDatasets: { datasetId: string; name: string; satisfactionRate: number; feedbackCount: number }[]
+  /** Daily feedback volume and satisfaction trend */
+  trend: { date: string; count: number; satisfactionRate: number }[]
+  /** Recent negative feedback entries with trace links */
+  negativeFeedback: { id: string; query: string; answerPreview: string; traceId: string | null; langfuseUrl: string | null; createdAt: string }[]
+}
+
+/**
+ * @description Complete dashboard statistics payload including summaries, trends, and breakdowns
  */
 export interface DashboardStats {
   /** Summary card numbers */
@@ -57,15 +95,14 @@ export interface DashboardStats {
 }
 
 /**
- * DashboardService aggregates statistics from external chat and search sources.
- * Uses parallel Knex queries for performance.
+ * @description Aggregates statistics from external chat and search sources using parallel Knex queries
  */
 class DashboardService {
   /**
-   * Get comprehensive dashboard statistics.
-   * @param startDate - Optional ISO date string for range start
-   * @param endDate - Optional ISO date string for range end
-   * @returns Promise<DashboardStats> - All dashboard data in a single payload
+   * @description Get comprehensive dashboard statistics by aggregating data from multiple sources in parallel
+   * @param {string} startDate - Optional ISO date string for range start
+   * @param {string} endDate - Optional ISO date string for range end
+   * @returns {Promise<DashboardStats>} All dashboard data in a single payload
    */
   async getStats(startDate?: string, endDate?: string): Promise<DashboardStats> {
     // Run all queries in parallel for performance
@@ -81,17 +118,17 @@ class DashboardService {
       topUsers
     ] = await Promise.all([
       // Session counts
-      this.countRows('external_chat_sessions', 'updated_at', startDate, endDate),
-      this.countRows('external_search_sessions', 'updated_at', startDate, endDate),
+      this.countRows('history_chat_sessions', 'updated_at', startDate, endDate),
+      this.countRows('history_search_sessions', 'updated_at', startDate, endDate),
       // Message counts
-      this.countRows('external_chat_messages', 'created_at', startDate, endDate),
-      this.countRows('external_search_records', 'created_at', startDate, endDate),
+      this.countRows('history_chat_messages', 'created_at', startDate, endDate),
+      this.countRows('history_search_records', 'created_at', startDate, endDate),
       // Unique users
-      this.getDistinctEmails('external_chat_sessions', 'user_email', 'updated_at', startDate, endDate),
-      this.getDistinctEmails('external_search_sessions', 'user_email', 'updated_at', startDate, endDate),
+      this.getDistinctEmails('history_chat_sessions', 'user_email', 'updated_at', startDate, endDate),
+      this.getDistinctEmails('history_search_sessions', 'user_email', 'updated_at', startDate, endDate),
       // Daily trends (separate per source)
-      this.getDailyCount('external_chat_messages', 'created_at', startDate, endDate),
-      this.getDailyCount('external_search_records', 'created_at', startDate, endDate),
+      this.getDailyCount('history_chat_messages', 'created_at', startDate, endDate),
+      this.getDailyCount('history_search_records', 'created_at', startDate, endDate),
       // Top users
       this.getTopUsers(startDate, endDate)
     ])
@@ -127,12 +164,12 @@ class DashboardService {
   }
 
   /**
-   * Count rows in a table with optional date filter.
-   * @param table - Table name
-   * @param dateCol - Date column for filtering
-   * @param startDate - Optional start date
-   * @param endDate - Optional end date
-   * @returns Row count
+   * @description Count rows in a table with optional date range filter
+   * @param {string} table - Table name
+   * @param {string} dateCol - Date column for filtering
+   * @param {string} startDate - Optional start date
+   * @param {string} endDate - Optional end date
+   * @returns {Promise<number>} Row count
    */
   private async countRows(table: string, dateCol: string, startDate?: string, endDate?: string): Promise<number> {
     // Build query with optional date range
@@ -144,13 +181,13 @@ class DashboardService {
   }
 
   /**
-   * Get distinct emails from an external session table.
-   * @param table - Table name
-   * @param emailCol - Column containing email
-   * @param dateCol - Date column for filtering
-   * @param startDate - Optional start date
-   * @param endDate - Optional end date
-   * @returns Array of unique email strings
+   * @description Get distinct emails from an external session table
+   * @param {string} table - Table name
+   * @param {string} emailCol - Column containing email
+   * @param {string} dateCol - Date column for filtering
+   * @param {string} startDate - Optional start date
+   * @param {string} endDate - Optional end date
+   * @returns {Promise<string[]>} Array of unique email strings
    */
   private async getDistinctEmails(
     table: string, emailCol: string, dateCol: string,
@@ -165,12 +202,12 @@ class DashboardService {
   }
 
   /**
-   * Get daily message/record counts from a table.
-   * @param table - Table name
-   * @param dateCol - Timestamp column
-   * @param startDate - Optional start date
-   * @param endDate - Optional end date
-   * @returns Map of date string -> count
+   * @description Get daily message/record counts grouped by day from a table
+   * @param {string} table - Table name
+   * @param {string} dateCol - Timestamp column
+   * @param {string} startDate - Optional start date
+   * @param {string} endDate - Optional end date
+   * @returns {Promise<Map<string, number>>} Map of date string to count
    */
   private async getDailyCount(
     table: string, dateCol: string,
@@ -196,10 +233,10 @@ class DashboardService {
   }
 
   /**
-   * Merge daily trends from two sources into a single array.
-   * @param chat - Chat daily counts
-   * @param search - Search daily counts
-   * @returns Sorted array of DailyActivity
+   * @description Merge daily trends from two sources into a single sorted array
+   * @param {Map<string, number>} chat - Chat daily counts
+   * @param {Map<string, number>} search - Search daily counts
+   * @returns {DailyActivity[]} Sorted array of DailyActivity
    */
   private mergeTrends(
     chat: Map<string, number>,
@@ -224,15 +261,199 @@ class DashboardService {
   }
 
   /**
-   * Get the top 10 most active users by session count across all sources.
-   * @param startDate - Optional start date
-   * @param endDate - Optional end date
-   * @returns Array of top user objects sorted descending by session count
+   * @description Get query analytics metrics scoped to a tenant with optional date range filtering.
+   *   Runs all aggregation queries in parallel for performance.
+   * @param {string} tenantId - Tenant ID for org isolation
+   * @param {string} startDate - Optional ISO date string for range start
+   * @param {string} endDate - Optional ISO date string for range end
+   * @returns {Promise<QueryAnalytics>} Query analytics payload
+   */
+  async getQueryAnalytics(tenantId: string, startDate?: string, endDate?: string): Promise<QueryAnalytics> {
+    // Helper to build tenant-scoped, date-filtered base query on query_log
+    const baseQuery = () => {
+      let q = db('query_log').where('tenant_id', tenantId)
+      if (startDate) q = q.where('created_at', '>=', startDate)
+      if (endDate) q = q.where('created_at', '<=', `${endDate} 23:59:59`)
+      return q
+    }
+
+    // Run all 6 analytics queries in parallel
+    const [totalResult, avgTimeResult, failedResult, lowConfResult, topQueriesRows, trendRows] = await Promise.all([
+      // Total query count
+      baseQuery().count('* as count').first(),
+      // Average response time
+      baseQuery().avg('response_time_ms as avg').first(),
+      // Failed retrieval count
+      baseQuery().where('failed_retrieval', true).count('* as count').first(),
+      // Low confidence count (score below 0.5 threshold)
+      baseQuery().whereNotNull('confidence_score').where('confidence_score', '<', 0.5).count('* as count').first(),
+      // Top 10 most frequent queries with average confidence
+      baseQuery()
+        .select('query')
+        .count('* as count')
+        .avg('confidence_score as avg_confidence')
+        .groupBy('query')
+        .orderBy('count', 'desc')
+        .limit(10),
+      // Daily query volume trend
+      baseQuery()
+        .select(db.raw(`date_trunc('day', created_at)::date as date`))
+        .count('* as count')
+        .groupByRaw(`date_trunc('day', created_at)::date`)
+        .orderBy('date', 'asc'),
+    ])
+
+    const totalQueries = parseInt(totalResult?.count as string || '0', 10)
+    const avgResponseTime = Math.round(parseFloat(avgTimeResult?.avg as string || '0') * 100) / 100
+
+    // Calculate failed and low-confidence rates as percentages (avoid division by zero)
+    const failedCount = parseInt(failedResult?.count as string || '0', 10)
+    const failedRate = totalQueries > 0 ? Math.round((failedCount / totalQueries) * 10000) / 100 : 0
+
+    const lowConfCount = parseInt(lowConfResult?.count as string || '0', 10)
+    const lowConfRate = totalQueries > 0 ? Math.round((lowConfCount / totalQueries) * 10000) / 100 : 0
+
+    // Map top queries result rows
+    const topQueries = (topQueriesRows as any[]).map((r: any) => ({
+      query: r.query as string,
+      count: parseInt(r.count as string || '0', 10),
+      avgConfidence: r.avg_confidence != null ? Math.round(parseFloat(r.avg_confidence) * 1000) / 1000 : null,
+    }))
+
+    // Map daily trend rows to date-string / count pairs
+    const trend = (trendRows as any[]).map((r: any) => ({
+      date: r.date instanceof Date ? r.date.toISOString().split('T')[0] : String(r.date),
+      count: parseInt(r.count as string || '0', 10),
+    }))
+
+    return { totalQueries, avgResponseTime, failedRate, lowConfRate, topQueries, trend }
+  }
+
+  /**
+   * @description Get feedback analytics metrics scoped to a tenant with optional date range filtering.
+   *   Includes satisfaction rate, worst datasets, trend, and recent negative feedback entries.
+   * @param {string} tenantId - Tenant ID for org isolation
+   * @param {string} startDate - Optional ISO date string for range start
+   * @param {string} endDate - Optional ISO date string for range end
+   * @returns {Promise<FeedbackAnalytics>} Feedback analytics payload
+   */
+  async getFeedbackAnalytics(tenantId: string, startDate?: string, endDate?: string): Promise<FeedbackAnalytics> {
+    // Helper to build tenant-scoped, date-filtered base query on answer_feedback
+    const baseQuery = () => {
+      let q = db('answer_feedback').where('answer_feedback.tenant_id', tenantId)
+      if (startDate) q = q.where('answer_feedback.created_at', '>=', startDate)
+      if (endDate) q = q.where('answer_feedback.created_at', '<=', `${endDate} 23:59:59`)
+      return q
+    }
+
+    // Run all analytics queries in parallel
+    const [totalResult, positiveResult, zeroResultCount, worstRows, trendRows, negativeRows] = await Promise.all([
+      // Total feedback count
+      baseQuery().count('* as count').first(),
+      // Positive feedback count for satisfaction rate
+      baseQuery().where('thumbup', true).count('* as count').first(),
+      // Zero-result rate: feedback entries linked to failed queries via query text + tenant
+      db.raw(`
+        SELECT COUNT(DISTINCT af.id)::int as count
+        FROM answer_feedback af
+        INNER JOIN query_log ql ON af.query = ql.query AND af.tenant_id = ql.tenant_id
+        WHERE af.tenant_id = ? AND ql.failed_retrieval = true
+        ${startDate ? `AND af.created_at >= '${startDate}'` : ''}
+        ${endDate ? `AND af.created_at <= '${endDate} 23:59:59'` : ''}
+      `, [tenantId]),
+      // Worst datasets: bottom 5 by satisfaction ratio (search feedback only)
+      db.raw(`
+        SELECT af.source_id as dataset_id,
+               COALESCE(kb.name, af.source_id) as name,
+               COUNT(*) as feedback_count,
+               ROUND(COUNT(*) FILTER (WHERE af.thumbup = true)::numeric / NULLIF(COUNT(*), 0) * 100, 1) as satisfaction_rate
+        FROM answer_feedback af
+        LEFT JOIN knowledgebase kb ON af.source_id = kb.id
+        WHERE af.tenant_id = ? AND af.source = 'search'
+        ${startDate ? `AND af.created_at >= '${startDate}'` : ''}
+        ${endDate ? `AND af.created_at <= '${endDate} 23:59:59'` : ''}
+        GROUP BY af.source_id, kb.name
+        ORDER BY satisfaction_rate ASC
+        LIMIT 5
+      `, [tenantId]),
+      // Daily feedback trend with per-day satisfaction rate
+      db.raw(`
+        SELECT date_trunc('day', created_at)::date as date,
+               COUNT(*) as count,
+               ROUND(COUNT(*) FILTER (WHERE thumbup = true)::numeric / NULLIF(COUNT(*), 0) * 100, 1) as satisfaction_rate
+        FROM answer_feedback
+        WHERE tenant_id = ?
+        ${startDate ? `AND created_at >= '${startDate}'` : ''}
+        ${endDate ? `AND created_at <= '${endDate} 23:59:59'` : ''}
+        GROUP BY date_trunc('day', created_at)::date
+        ORDER BY date ASC
+      `, [tenantId]),
+      // Recent negative feedback entries (last 20)
+      baseQuery()
+        .where('thumbup', false)
+        .select('id', 'query', 'answer', 'trace_id', 'created_at')
+        .orderBy('created_at', 'desc')
+        .limit(20),
+    ])
+
+    const totalFeedback = parseInt(totalResult?.count as string || '0', 10)
+    const positiveCount = parseInt(positiveResult?.count as string || '0', 10)
+    // Satisfaction rate as percentage (avoid division by zero)
+    const satisfactionRate = totalFeedback > 0 ? Math.round((positiveCount / totalFeedback) * 10000) / 100 : 0
+
+    const zeroCount = zeroResultCount?.rows?.[0]?.count ?? 0
+    const zeroResultRate = totalFeedback > 0 ? Math.round((zeroCount / totalFeedback) * 10000) / 100 : 0
+
+    // Map worst datasets from raw query result
+    const worstDatasets = (worstRows?.rows ?? []).map((r: any) => ({
+      datasetId: r.dataset_id as string,
+      name: r.name as string,
+      satisfactionRate: parseFloat(r.satisfaction_rate ?? '0'),
+      feedbackCount: parseInt(r.feedback_count as string || '0', 10),
+    }))
+
+    // Map daily trend from raw query result
+    const trend = (trendRows?.rows ?? []).map((r: any) => ({
+      date: r.date instanceof Date ? r.date.toISOString().split('T')[0] : String(r.date),
+      count: parseInt(r.count as string || '0', 10),
+      satisfactionRate: parseFloat(r.satisfaction_rate ?? '0'),
+    }))
+
+    // Map negative feedback entries with Langfuse deep-link URLs
+    const negativeFeedback = (negativeRows as any[]).map((r: any) => ({
+      id: r.id as string,
+      query: r.query as string,
+      // Truncate answer to 200 chars for preview
+      answerPreview: (r.answer as string).length > 200 ? (r.answer as string).substring(0, 200) + '...' : r.answer as string,
+      traceId: r.trace_id ?? null,
+      langfuseUrl: r.trace_id ? this.getLangfuseTraceUrl(r.trace_id) : null,
+      createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+    }))
+
+    return { satisfactionRate, totalFeedback, zeroResultRate, worstDatasets, trend, negativeFeedback }
+  }
+
+  /**
+   * @description Construct a Langfuse trace deep-link URL from a trace ID.
+   *   Strips trailing slashes from the base URL to prevent double-slash issues.
+   * @param {string} traceId - Langfuse trace identifier
+   * @returns {string} Full Langfuse trace URL
+   */
+  getLangfuseTraceUrl(traceId: string): string {
+    // Strip trailing slash from base URL to avoid double-slash in constructed URL
+    return `${config.langfuse.baseUrl.replace(/\/$/, '')}/trace/${traceId}`
+  }
+
+  /**
+   * @description Get the top 50 most active users by session count across all sources using UNION ALL
+   * @param {string} startDate - Optional start date
+   * @param {string} endDate - Optional end date
+   * @returns {Promise<TopUser[]>} Array of top user objects sorted descending by session count
    */
   private async getTopUsers(startDate?: string, endDate?: string): Promise<TopUser[]> {
     // Build separate queries for each source, then combine with raw SQL
     // External chat sessions
-    const chatQ = db('external_chat_sessions')
+    const chatQ = db('history_chat_sessions')
       .select('user_email as email')
       .count('* as cnt')
       .whereNotNull('user_email')
@@ -244,7 +465,7 @@ class DashboardService {
       .groupBy('user_email')
 
     // External search sessions
-    const searchQ = db('external_search_sessions')
+    const searchQ = db('history_search_sessions')
       .select('user_email as email')
       .count('* as cnt')
       .whereNotNull('user_email')

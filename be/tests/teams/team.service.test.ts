@@ -62,7 +62,7 @@ vi.mock('@/shared/services/logger.service.js', () => ({
   log: mocks.mockLog,
 }))
 
-vi.mock('@/modules/audit/audit.service.js', () => ({
+vi.mock('@/modules/audit/services/audit.service.js', () => ({
   auditService: mocks.mockAudit,
   AuditAction: {
     CREATE_TEAM: 'CREATE_TEAM',
@@ -72,16 +72,22 @@ vi.mock('@/modules/audit/audit.service.js', () => ({
   AuditResourceType: { TEAM: 'TEAM' },
 }))
 
-vi.mock('@/modules/users/user.service.js', () => ({
+vi.mock('@/modules/users/services/user.service.js', () => ({
   userService: { updateUserPermissions: mocks.mockUpdateUserPermissions }
 }))
 
-vi.mock('uuid', () => ({
-  v4: () => 'test-uuid',
-}))
+vi.mock('@/shared/utils/uuid.js', () => {
+  const { z } = require('zod')
+  const re = /^[0-9a-f]{32}$/
+  return {
+    getUuid: () => 'aabbccdd11223344aabbccdd11223344',
+    hexId: z.string().regex(re, 'Invalid ID format (expected 32-char hex)'),
+    hexIdWith: (msg: string) => z.string().regex(re, msg),
+  }
+})
 
 // Lazy import service to ensure mocks apply
-import { TeamService } from '../../src/modules/teams/team.service.js'
+import { TeamService } from '../../src/modules/teams/services/team.service.js'
 
 describe('TeamService', () => {
   let teamService: TeamService
@@ -102,15 +108,15 @@ describe('TeamService', () => {
 
     it('successfully creates a team', async () => {
       mockKnex.first.mockResolvedValueOnce(null)
-      mockTeam.create.mockResolvedValueOnce({ id: 'test-uuid', ...dto })
+      mockTeam.create.mockResolvedValueOnce({ id: 'aabbccdd11223344aabbccdd11223344', ...dto })
 
       const result = await teamService.createTeam(dto, user)
 
-      expect(result.id).toBe('test-uuid')
+      expect(result.id).toBe('aabbccdd11223344aabbccdd11223344')
       expect(mockTeam.create).toHaveBeenCalled()
       expect(mockAudit.log).toHaveBeenCalledWith(expect.objectContaining({
         action: 'CREATE_TEAM',
-        resourceId: 'test-uuid'
+        resourceId: 'aabbccdd11223344aabbccdd11223344'
       }))
     })
 

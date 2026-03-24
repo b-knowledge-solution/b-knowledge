@@ -280,20 +280,20 @@ describe('Config Module', () => {
     });
 
     describe('Feature Flags', () => {
-        it('should have root login disabled by default', async () => {
-            delete process.env.ENABLE_ROOT_LOGIN;
+        it('should have local login disabled by default', async () => {
+            delete process.env.ENABLE_LOCAL_LOGIN;
 
             const { config } = await import('../../../src/shared/config/index.js');
 
-            expect(config.enableRootLogin).toBe(false);
+            expect(config.enableLocalLogin).toBe(false);
         });
 
-        it('should enable root login when flag is set', async () => {
-            process.env.ENABLE_ROOT_LOGIN = 'true';
+        it('should enable local login when flag is set', async () => {
+            process.env.ENABLE_LOCAL_LOGIN = 'true';
 
             const { config } = await import('../../../src/shared/config/index.js');
 
-            expect(config.enableRootLogin).toBe(true);
+            expect(config.enableLocalLogin).toBe(true);
         });
     });
 

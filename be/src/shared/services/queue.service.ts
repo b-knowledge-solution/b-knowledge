@@ -1,7 +1,10 @@
 /**
- * Queue Service
- * Handles background processing using Bee-Queue.
- * Implements smart concurrency based on system resources and database pool.
+ * @fileoverview Queue service for background job processing using Bee-Queue.
+ *
+ * Implements smart concurrency calculation based on system resources (CPU cores)
+ * and database connection pool limits to avoid overloading either resource.
+ *
+ * @module shared/services/queue
  */
 import Queue from 'bee-queue';
 import os from 'os';
@@ -9,11 +12,14 @@ import { config } from '@/shared/config/index.js';
 import { log } from '@/shared/services/logger.service.js';
 import { ModelFactory } from '@/shared/models/factory.js';
 
-
-
+/**
+ * @description Singleton service that manages background job processing using Bee-Queue.
+ * Calculates optimal concurrency based on CPU cores and database pool size
+ * to prevent resource exhaustion.
+ */
 export class QueueService {
+    /** Singleton instance */
     private static instance: QueueService;
-
 
     /** Database connection pool size (should match postgresql adapter) */
     private static readonly DB_POOL_SIZE = 20;
@@ -22,9 +28,8 @@ export class QueueService {
     private readonly optimalConcurrency: number;
 
     /**
-     * Private constructor to initialize the QueueService singleton.
-     * Sets up Redis connection, initializes chat and search history queues,
-     * configures event listeners, and starts job processors.
+     * @description Private constructor to initialize the QueueService singleton.
+     * Sets up Redis connection, calculates optimal concurrency, and logs startup details.
      */
     private constructor() {
         // Calculate optimal concurrency based on system resources
@@ -50,16 +55,13 @@ export class QueueService {
     }
 
     /**
-     * Calculate optimal concurrency based on system resources.
-     * Takes into account:
-     * - CPU cores: More cores allow more parallel processing
-     * - Database pool size: Avoid exhausting DB connections
-     * - Queue count: Split resources across multiple queues
-     * 
+     * @description Calculate optimal concurrency based on system resources.
+     * Considers CPU cores, database pool size, and queue count to prevent
+     * overloading either resource.
+     *
      * Formula: min(envOverride, cpuCores * 2, dbPoolSize / numQueues)
-     * This ensures we don't overload CPU or exhaust DB connections.
-     * 
-     * @returns number - Optimal concurrency per queue (minimum 1)
+     *
+     * @returns {number} Optimal concurrency per queue (minimum 1)
      */
     private calculateOptimalConcurrency(): number {
         // Check for environment variable override first
@@ -104,18 +106,18 @@ export class QueueService {
     }
 
     /**
-     * Setup event listeners for queue monitoring and debugging
-     * @returns void
-     * @description Placeholder for future queue event monitoring
+     * @description Setup event listeners for queue monitoring and debugging.
+     * Placeholder for future queue event monitoring.
+     * @returns {void}
      */
     private setupQueueEventListeners(): void {
         // Implementation for queue event listeners
     }
 
     /**
-     * Get the singleton instance of QueueService.
-     * Creates a new instance if one doesn't exist.
-     * @returns QueueService - The singleton QueueService instance
+     * @description Get the singleton instance of QueueService.
+     * Creates a new instance if one does not exist (lazy initialization).
+     * @returns {QueueService} The singleton QueueService instance
      */
     public static getInstance(): QueueService {
         // Check if singleton instance already exists
@@ -128,13 +130,14 @@ export class QueueService {
     }
 
     /**
-     * Gracefully close queue connections.
-     * @returns Promise<void>
-     * @description Placeholder for cleanup logic (e.g., closing Redis connections).
+     * @description Gracefully close queue connections and release resources.
+     * Placeholder for cleanup logic (e.g., closing Redis connections).
+     * @returns {Promise<void>}
      */
     public async close(): Promise<void> {
         // Implementation for graceful shutdown
     }
 }
 
+/** Singleton instance of the queue service */
 export const queueService = QueueService.getInstance();

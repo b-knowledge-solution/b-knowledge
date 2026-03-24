@@ -9,20 +9,18 @@
 import { ModelFactory } from '@/shared/models/factory.js';
 
 /**
- * Service class for managing user-specific history data.
- * All methods filter by user email to ensure users only see their own data.
+ * @description Service for managing user-specific history data, filtering all queries by user email for data isolation
  */
 export class UserHistoryService {
     /**
-     * Get chat history for a specific user with pagination and search.
-     * 
-     * @param {string} userEmail - The email of the user.
-     * @param {number} page - Page number (1-indexed).
-     * @param {number} limit - Items per page.
-     * @param {string} search - Search query string.
-     * @param {string} startDate - Filter by start date (ISO format).
-     * @param {string} endDate - Filter by end date (ISO format).
-     * @returns {Promise<any[]>} - Paginated chat history sessions.
+     * @description Get chat history for a specific user with pagination and search
+     * @param {string} userEmail - The email of the user
+     * @param {number} page - Page number (1-indexed)
+     * @param {number} limit - Items per page
+     * @param {string} search - Search query string
+     * @param {string} startDate - Filter by start date (ISO format)
+     * @param {string} endDate - Filter by end date (ISO format)
+     * @returns {Promise<any[]>} Paginated chat history sessions
      */
     async getChatHistory(
         userEmail: string,
@@ -35,7 +33,7 @@ export class UserHistoryService {
         // Calculate offset for pagination
         const offset = (page - 1) * limit;
 
-        return await ModelFactory.externalChatSession.findHistoryByUser(
+        return await ModelFactory.historyChatSession.findHistoryByUser(
             userEmail,
             limit,
             offset,
@@ -46,27 +44,24 @@ export class UserHistoryService {
     }
 
     /**
-     * Get details for a specific chat session.
-     * Verifies ownership by user email before returning data.
-     * 
-     * @param {string} sessionId - The session ID to retrieve.
-     * @param {string} userEmail - The email of the requesting user.
-     * @returns {Promise<any[]>} - Array of chat messages in the session.
+     * @description Get details for a specific chat session, verifying ownership by user email
+     * @param {string} sessionId - The session ID to retrieve
+     * @param {string} userEmail - The email of the requesting user
+     * @returns {Promise<any[]>} Array of chat messages in the session
      */
     async getChatSessionDetails(sessionId: string, userEmail: string) {
-        return await ModelFactory.externalChatMessage.findBySessionIdAndUserEmail(sessionId, userEmail);
+        return await ModelFactory.historyChatMessage.findBySessionIdAndUserEmail(sessionId, userEmail);
     }
 
     /**
-     * Get search history for a specific user with pagination and search.
-     * 
-     * @param {string} userEmail - The email of the user.
-     * @param {number} page - Page number (1-indexed).
-     * @param {number} limit - Items per page.
-     * @param {string} search - Search query string.
-     * @param {string} startDate - Filter by start date (ISO format).
-     * @param {string} endDate - Filter by end date (ISO format).
-     * @returns {Promise<any[]>} - Paginated search history sessions.
+     * @description Get search history for a specific user with pagination and search
+     * @param {string} userEmail - The email of the user
+     * @param {number} page - Page number (1-indexed)
+     * @param {number} limit - Items per page
+     * @param {string} search - Search query string
+     * @param {string} startDate - Filter by start date (ISO format)
+     * @param {string} endDate - Filter by end date (ISO format)
+     * @returns {Promise<any[]>} Paginated search history sessions
      */
     async getSearchHistory(
         userEmail: string,
@@ -79,7 +74,7 @@ export class UserHistoryService {
         // Calculate offset for pagination
         const offset = (page - 1) * limit;
 
-        return await ModelFactory.externalSearchSession.findHistoryByUser(
+        return await ModelFactory.historySearchSession.findHistoryByUser(
             userEmail,
             limit,
             offset,
@@ -90,17 +85,15 @@ export class UserHistoryService {
     }
 
     /**
-     * Get details for a specific search session.
-     * Verifies ownership by user email before returning data.
-     * 
-     * @param {string} sessionId - The session ID to retrieve.
-     * @param {string} userEmail - The email of the requesting user.
-     * @returns {Promise<any[]>} - Array of search records in the session.
+     * @description Get details for a specific search session, verifying ownership by user email
+     * @param {string} sessionId - The session ID to retrieve
+     * @param {string} userEmail - The email of the requesting user
+     * @returns {Promise<any[]>} Array of search records in the session
      */
     async getSearchSessionDetails(sessionId: string, userEmail: string) {
-        return await ModelFactory.externalSearchRecord.findBySessionIdAndUserEmail(sessionId, userEmail);
+        return await ModelFactory.historySearchRecord.findBySessionIdAndUserEmail(sessionId, userEmail);
     }
 }
 
-// Export singleton instance
+/** Singleton instance of the user history service */
 export const userHistoryService = new UserHistoryService();

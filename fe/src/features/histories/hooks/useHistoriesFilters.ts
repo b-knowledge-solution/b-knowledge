@@ -4,7 +4,7 @@
  *
  * @module features/histories/hooks/useHistoriesFilters
  */
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import type { FilterState } from '../types/histories.types'
 
 /** Default empty filter state. */
@@ -14,19 +14,19 @@ const EMPTY_FILTERS: FilterState = { email: '', startDate: '', endDate: '', sour
  * Return type for useHistoriesFilters hook.
  */
 export interface UseHistoriesFiltersReturn {
-    searchQuery: string
-    setSearchQuery: (value: string) => void
-    executedSearchQuery: string
-    filters: FilterState
-    tempFilters: FilterState
-    setTempFilters: (filters: FilterState) => void
-    isFilterDialogOpen: boolean
-    setIsFilterDialogOpen: (open: boolean) => void
-    isFiltered: boolean
-    handleSearch: (e: React.FormEvent) => void
-    openFilterDialog: () => void
-    handleApplyFilters: () => void
-    handleResetFilters: () => void
+  searchQuery: string
+  setSearchQuery: (value: string) => void
+  executedSearchQuery: string
+  filters: FilterState
+  tempFilters: FilterState
+  setTempFilters: (filters: FilterState) => void
+  isFilterDialogOpen: boolean
+  setIsFilterDialogOpen: (open: boolean) => void
+  isFiltered: boolean
+  handleSearch: (e: React.FormEvent) => void
+  openFilterDialog: () => void
+  handleApplyFilters: () => void
+  handleResetFilters: () => void
 }
 
 /**
@@ -34,55 +34,55 @@ export interface UseHistoriesFiltersReturn {
  * @returns Filter state and handlers.
  */
 export const useHistoriesFilters = (): UseHistoriesFiltersReturn => {
-    // Search state
-    const [searchQuery, setSearchQuery] = useState('')
-    const [executedSearchQuery, setExecutedSearchQuery] = useState('')
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [executedSearchQuery, setExecutedSearchQuery] = useState('')
 
-    // Filter state
-    const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
-    const [tempFilters, setTempFilters] = useState<FilterState>(EMPTY_FILTERS)
-    const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false)
+  // Filter state
+  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
+  const [tempFilters, setTempFilters] = useState<FilterState>(EMPTY_FILTERS)
+  const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false)
 
-    // Derived: any filter active
-    const isFiltered = !!(filters.email || filters.startDate || filters.endDate || filters.sourceName)
+  // Derived: any filter active
+  const isFiltered = !!(filters.email || filters.startDate || filters.endDate || filters.sourceName)
 
-    /** Submit search — copy searchQuery to executedSearchQuery. */
-    const handleSearch = useCallback((e: React.FormEvent) => {
-        e.preventDefault()
-        setExecutedSearchQuery(searchQuery)
-    }, [searchQuery])
+  /** Submit search — copy searchQuery to executedSearchQuery. */
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    setExecutedSearchQuery(searchQuery)
+  }
 
-    /** Open filter dialog, sync temp filters from current filters. */
-    const openFilterDialog = useCallback(() => {
-        setTempFilters(filters)
-        setIsFilterDialogOpen(true)
-    }, [filters])
+  /** Open filter dialog, sync temp filters from current filters. */
+  const openFilterDialog = () => {
+    setTempFilters(filters)
+    setIsFilterDialogOpen(true)
+  }
 
-    /** Apply temp filters to actual filters and close dialog. */
-    const handleApplyFilters = useCallback(() => {
-        setFilters(tempFilters)
-        setIsFilterDialogOpen(false)
-    }, [tempFilters])
+  /** Apply temp filters to actual filters and close dialog. */
+  const handleApplyFilters = () => {
+    setFilters(tempFilters)
+    setIsFilterDialogOpen(false)
+  }
 
-    /** Reset all filters and close dialog. */
-    const handleResetFilters = useCallback(() => {
-        setTempFilters(EMPTY_FILTERS)
-        setFilters(EMPTY_FILTERS)
-    }, [])
+  /** Reset all filters and close dialog. */
+  const handleResetFilters = () => {
+    setTempFilters(EMPTY_FILTERS)
+    setFilters(EMPTY_FILTERS)
+  }
 
-    return {
-        searchQuery,
-        setSearchQuery,
-        executedSearchQuery,
-        filters,
-        tempFilters,
-        setTempFilters,
-        isFilterDialogOpen,
-        setIsFilterDialogOpen,
-        isFiltered,
-        handleSearch,
-        openFilterDialog,
-        handleApplyFilters,
-        handleResetFilters,
-    }
+  return {
+    searchQuery,
+    setSearchQuery,
+    executedSearchQuery,
+    filters,
+    tempFilters,
+    setTempFilters,
+    isFilterDialogOpen,
+    setIsFilterDialogOpen,
+    isFiltered,
+    handleSearch,
+    openFilterDialog,
+    handleApplyFilters,
+    handleResetFilters,
+  }
 }

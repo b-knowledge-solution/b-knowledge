@@ -27,15 +27,9 @@ interface SafePortalProps {
 // ============================================================================
 
 /**
- * A safe portal wrapper that handles React 19 compatibility.
- * 
- * Prevents "Failed to execute 'removeChild'" errors by:
- * 1. Only rendering when target element exists
- * 2. Tracking mounted state to prevent portal content after unmount
- * 3. Using useEffect cleanup to handle navigation properly
- * 
- * @param {SafePortalProps} props - Component properties
- * @returns {React.ReactPortal | null} Portal or null if target doesn't exist
+ * @description Safe portal wrapper for React 19 that prevents removeChild errors during navigation
+ * @param {SafePortalProps} props - Children to portal and target DOM element ID
+ * @returns {React.ReactPortal | null} Portal rendering or null if target does not exist
  */
 export function SafePortal({ children, targetId }: SafePortalProps) {
     const [targetElement, setTargetElement] = useState<HTMLElement | null>(null);

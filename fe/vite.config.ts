@@ -63,7 +63,13 @@ export default defineConfig(({ mode }) => {
     plugins: [
       wasm(),
       topLevelAwait(),
-      react()
+      react({
+        babel: {
+          plugins: [
+            ['babel-plugin-react-compiler', {}],
+          ],
+        },
+      })
     ],
     resolve: {
       alias: {
@@ -89,7 +95,6 @@ export default defineConfig(({ mode }) => {
             vendor: ['react', 'react-dom', 'react-router-dom'],
             i18n: ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
             ui: ['lucide-react', '@headlessui/react'],
-            antd: ['antd'],
             tiktoken: ['js-tiktoken'],
           },
         },
@@ -111,11 +116,10 @@ export default defineConfig(({ mode }) => {
           secure: false,
         },
       },
+      // HMR works on localhost. When accessed via external proxy (e.g. Cloudflare tunnel),
+      // the proxy must point to Vite (not Express) for HMR to work.
       hmr: {
-        host: devDomain === 'localhost' ? 'localhost' : devDomain,
-        clientPort: devDomain === 'localhost' ? devPort : 443,
-        protocol: devDomain === 'localhost' ? (useHttps ? 'wss' : 'ws') : 'wss',
-        overlay: true
+        overlay: true,
       },
     },
     define: {

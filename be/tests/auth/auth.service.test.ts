@@ -10,10 +10,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 const mockFetch = vi.fn()
 global.fetch = mockFetch as any
 
-// crypto mock - use spyOn for proper mocking
-const mockRandomUUID = vi.fn(() => 'mock-uuid-1234')
-vi.stubGlobal('crypto', {
-  randomUUID: mockRandomUUID,
+// Mock getUuid for standardized 32-char hex UUID generation
+vi.mock('@/shared/utils/uuid.js', () => {
+  const { z } = require('zod')
+  const re = /^[0-9a-f]{32}$/
+  return {
+    getUuid: vi.fn(() => 'aabbccdd11223344aabbccdd11223344'),
+    hexId: z.string().regex(re, 'Invalid ID format (expected 32-char hex)'),
+    hexIdWith: (msg: string) => z.string().regex(re, msg),
+  }
 })
 
 // Hoist all mocks
@@ -55,7 +60,7 @@ vi.mock('../../src/shared/config/index.js', () => ({
       tenantId: 'test-tenant-id',
       redirectUri: 'http://localhost:3001/api/auth/callback',
     },
-    enableRootLogin: true,
+    enableLocalLogin: true,
     rootUser: 'root@example.com',
     rootPassword: 'secret',
   },
@@ -257,14 +262,13 @@ describe('Auth Service', () => {
   })
 
   describe('generateState', () => {
-    it('uses crypto.randomUUID', () => {
+    it('returns a 32-char hex UUID via getUuid()', () => {
       const service = createService()
       const state = service.generateState()
 
-      // Should return a UUID format string (either mocked or real)
-      expect(state).toBeTruthy()
-      expect(typeof state).toBe('string')
-      expect(state.length).toBeGreaterThan(0)
+      // Should return a 32-char hex string (no hyphens)
+      expect(state).toBe('aabbccdd11223344aabbccdd11223344')
+      expect(state.length).toBe(32)
     })
   })
 

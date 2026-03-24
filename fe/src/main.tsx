@@ -13,7 +13,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider, MutationCache } from '@tanstack/react-query';
-import { globalMessage } from '@/app/App';
+import { globalMessage } from '@/app/Providers';
 import i18n from '@/i18n';
 import App from '@/app/App';
 import './index.css';
@@ -23,7 +23,7 @@ import './index.css';
 // ============================================================================
 
 /**
- * React Query client with default options and global notification handlers.
+ * @description React Query client configured with 5-minute stale time, single retry, and global mutation notification handlers
  */
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,7 +72,7 @@ const queryClient = new QueryClient({
 
 /**
  * Mount the React application to the DOM.
- * Uses createRoot for React 18 concurrent features.
+ * Uses createRoot for React 19 concurrent features.
  */
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
