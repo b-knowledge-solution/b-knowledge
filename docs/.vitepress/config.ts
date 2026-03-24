@@ -17,7 +17,7 @@ export default withMermaid(
         { text: 'Home', link: '/' },
         { text: 'SRS', link: '/srs/' },
         { text: 'Basic Design', link: '/basic-design/system-architecture' },
-        { text: 'Detail Design', link: '/detail-design/auth-overview' },
+        { text: 'Detail Design', link: '/detail-design/auth/overview' },
         { text: 'RAG Pipeline', link: '/detail-design/rag-pipeline/overview' },
       ],
 
@@ -107,109 +107,134 @@ export default withMermaid(
           },
         ],
 
-        '/detail-design/': [
+        '/detail-design/auth/': [
           {
             text: 'Authentication & Authorization',
             items: [
-              { text: 'Overview', link: '/detail-design/auth-overview' },
-              { text: 'Azure AD Flow', link: '/detail-design/auth-azure-ad-flow' },
-              { text: 'Local Login', link: '/detail-design/auth-local-login' },
-              { text: 'RBAC & ABAC', link: '/detail-design/auth-rbac-abac' },
-              { text: 'RBAC & ABAC Comprehensive', link: '/detail-design/auth-rbac-abac-comprehensive' },
-            ],
-          },
-          {
-            text: 'User & Team Management',
-            items: [
-              { text: 'User Management Overview', link: '/detail-design/user-management-overview' },
-              { text: 'User Operations', link: '/detail-design/user-management-detail' },
-              { text: 'Team Management', link: '/detail-design/team-management-detail' },
-            ],
-          },
-          {
-            text: 'Dataset & Document',
-            items: [
-              { text: 'Dataset Overview', link: '/detail-design/dataset-overview' },
-              { text: 'Dataset CRUD', link: '/detail-design/dataset-crud-detail' },
-              { text: 'Document Upload', link: '/detail-design/document-upload-detail' },
-              { text: 'Document Parsing', link: '/detail-design/document-parsing-detail' },
-              { text: 'Document Enrichment', link: '/detail-design/document-enrichment-detail' },
-              { text: 'Chunk Management', link: '/detail-design/chunk-management-detail' },
-              { text: 'RAG Pipeline Parsers ➜', link: '/detail-design/rag-pipeline/overview' },
-            ],
-          },
-          {
-            text: 'AI Chat',
-            items: [
-              { text: 'Overview (14-Step Pipeline)', link: '/detail-design/chat-overview' },
-              { text: 'Assistant Configuration', link: '/detail-design/chat-assistant-config' },
-              { text: 'Input Processing (Steps 1-6)', link: '/detail-design/chat-completion-input-processing' },
-              { text: 'Retrieval (Steps 7-8b)', link: '/detail-design/chat-completion-retrieval' },
-              { text: 'Generation & Citations (Steps 9-14)', link: '/detail-design/chat-completion-generation' },
-              { text: 'Embed Widget', link: '/detail-design/chat-embed-widget' },
-            ],
-          },
-          {
-            text: 'AI Search',
-            items: [
-              { text: 'Overview', link: '/detail-design/search-overview' },
-              { text: 'Retrieval Pipeline', link: '/detail-design/search-retrieval-detail' },
-              { text: 'Ask Streaming (SSE)', link: '/detail-design/search-ask-streaming' },
-              { text: 'Features', link: '/detail-design/search-features-detail' },
-              { text: 'Embed Widget', link: '/detail-design/search-embed-widget' },
-            ],
-          },
-          {
-            text: 'Project Management',
-            items: [
-              { text: 'Overview', link: '/detail-design/project-overview' },
-              { text: 'Project CRUD', link: '/detail-design/project-crud-detail' },
-              { text: 'Categories & Versions', link: '/detail-design/project-category-detail' },
-            ],
-          },
-          {
-            text: 'Agent Workflows',
-            items: [
-              { text: 'Agent Overview', link: '/detail-design/agent-overview' },
-              { text: 'Execution Engine', link: '/detail-design/agent-execution-engine' },
-              { text: 'Canvas Editor & Frontend', link: '/detail-design/agent-canvas-editor' },
-              { text: 'Sandbox & MCP Integration', link: '/detail-design/agent-sandbox-mcp' },
-              { text: 'Triggers & Embed Widget', link: '/detail-design/agent-triggers-embed' },
-            ],
-          },
-          {
-            text: 'AI Memory',
-            items: [
-              { text: 'Memory Overview', link: '/detail-design/memory-overview' },
-              { text: 'Extraction Pipeline', link: '/detail-design/memory-extraction-pipeline' },
-              { text: 'Chat Integration', link: '/detail-design/memory-chat-integration' },
-            ],
-          },
-          {
-            text: 'Supporting Features',
-            items: [
-              { text: 'Glossary', link: '/detail-design/glossary-detail' },
-              { text: 'LLM Provider', link: '/detail-design/llm-provider-detail' },
-              { text: 'Admin Dashboard', link: '/detail-design/admin-dashboard-detail' },
-              { text: 'Audit Logging', link: '/detail-design/audit-logging-detail' },
-              { text: 'Broadcast Messages', link: '/detail-design/broadcast-detail' },
-              { text: 'Sync Connectors', link: '/detail-design/sync-connectors-detail' },
-              { text: 'Document Converter', link: '/detail-design/converter-detail' },
-              { text: 'Real-time Communication', link: '/detail-design/realtime-communication' },
-              { text: 'OpenAI-Compatible API', link: '/detail-design/openai-compatible-api' },
-              { text: 'GraphRAG', link: '/detail-design/graphrag-detail' },
-              { text: 'Guideline & Onboarding', link: '/detail-design/guideline-onboarding-detail' },
-              { text: 'Feedback', link: '/detail-design/feedback-detail' },
-              { text: 'History Browsing', link: '/detail-design/history-browsing-detail' },
-              { text: 'PDF Citation Highlighting', link: '/detail-design/pdf-citation-highlight-detail' },
-              { text: 'Office Document Citations', link: '/detail-design/office-document-citation-highlighting' },
-              { text: 'Preview', link: '/detail-design/preview-detail' },
-              { text: 'Query Logging', link: '/detail-design/query-logging-detail' },
-              { text: 'System Tools', link: '/detail-design/system-tools-detail' },
+              { text: 'Overview', link: '/detail-design/auth/overview' },
+              { text: 'Azure AD Flow', link: '/detail-design/auth/azure-ad-flow' },
+              { text: 'Local Login', link: '/detail-design/auth/local-login' },
+              { text: 'RBAC & ABAC', link: '/detail-design/auth/rbac-abac' },
+              { text: 'RBAC & ABAC Comprehensive', link: '/detail-design/auth/rbac-abac-comprehensive' },
             ],
           },
         ],
-      },
+
+        '/detail-design/user-team/': [
+          {
+            text: 'User & Team Management',
+            items: [
+              { text: 'User Management Overview', link: '/detail-design/user-team/user-management-overview' },
+              { text: 'User Operations', link: '/detail-design/user-team/user-management-detail' },
+              { text: 'Team Management', link: '/detail-design/user-team/team-management-detail' },
+            ],
+          },
+        ],
+
+        '/detail-design/dataset-document/': [
+          {
+            text: 'Dataset & Document',
+            items: [
+              { text: 'Dataset Overview', link: '/detail-design/dataset-document/dataset-overview' },
+              { text: 'Dataset CRUD', link: '/detail-design/dataset-document/dataset-crud-detail' },
+              { text: 'Document Upload', link: '/detail-design/dataset-document/document-upload-detail' },
+              { text: 'Document Parsing', link: '/detail-design/dataset-document/document-parsing-detail' },
+              { text: 'Document Enrichment', link: '/detail-design/dataset-document/document-enrichment-detail' },
+              { text: 'Chunk Management', link: '/detail-design/dataset-document/chunk-management-detail' },
+              { text: 'Parser Reference', link: '/detail-design/dataset-document/document-parsers-reference' },
+              { text: 'RAG Pipeline Parsers ➜', link: '/detail-design/rag-pipeline/overview' },
+            ],
+          },
+        ],
+
+        '/detail-design/chat/': [
+          {
+            text: 'AI Chat',
+            items: [
+              { text: 'Overview (14-Step Pipeline)', link: '/detail-design/chat/overview' },
+              { text: 'Assistant Configuration', link: '/detail-design/chat/assistant-config' },
+              { text: 'Input Processing (Steps 1-6)', link: '/detail-design/chat/completion-input-processing' },
+              { text: 'Retrieval (Steps 7-8b)', link: '/detail-design/chat/completion-retrieval' },
+              { text: 'Generation & Citations (Steps 9-14)', link: '/detail-design/chat/completion-generation' },
+              { text: 'Embed Widget', link: '/detail-design/chat/embed-widget' },
+            ],
+          },
+        ],
+
+        '/detail-design/search/': [
+          {
+            text: 'AI Search',
+            items: [
+              { text: 'Overview', link: '/detail-design/search/overview' },
+              { text: 'Retrieval Pipeline', link: '/detail-design/search/retrieval-detail' },
+              { text: 'Ask Streaming (SSE)', link: '/detail-design/search/ask-streaming' },
+              { text: 'Features', link: '/detail-design/search/features-detail' },
+              { text: 'Embed Widget', link: '/detail-design/search/embed-widget' },
+            ],
+          },
+        ],
+
+        '/detail-design/project/': [
+          {
+            text: 'Project Management',
+            items: [
+              { text: 'Overview', link: '/detail-design/project/overview' },
+              { text: 'Project CRUD', link: '/detail-design/project/crud-detail' },
+              { text: 'Categories & Versions', link: '/detail-design/project/category-detail' },
+            ],
+          },
+        ],
+
+        '/detail-design/agent/': [
+          {
+            text: 'Agent Workflows',
+            items: [
+              { text: 'Agent Overview', link: '/detail-design/agent/overview' },
+              { text: 'Execution Engine', link: '/detail-design/agent/execution-engine' },
+              { text: 'Canvas Editor & Frontend', link: '/detail-design/agent/canvas-editor' },
+              { text: 'Sandbox & MCP Integration', link: '/detail-design/agent/sandbox-mcp' },
+              { text: 'Triggers & Embed Widget', link: '/detail-design/agent/triggers-embed' },
+            ],
+          },
+        ],
+
+        '/detail-design/memory/': [
+          {
+            text: 'AI Memory',
+            items: [
+              { text: 'Memory Overview', link: '/detail-design/memory/overview' },
+              { text: 'Extraction Pipeline', link: '/detail-design/memory/extraction-pipeline' },
+              { text: 'Chat Integration', link: '/detail-design/memory/chat-integration' },
+            ],
+          },
+        ],
+
+        '/detail-design/supporting/': [
+          {
+            text: 'Supporting Features',
+            items: [
+              { text: 'Glossary', link: '/detail-design/supporting/glossary-detail' },
+              { text: 'LLM Provider', link: '/detail-design/supporting/llm-provider-detail' },
+              { text: 'Admin Dashboard', link: '/detail-design/supporting/admin-dashboard-detail' },
+              { text: 'Audit Logging', link: '/detail-design/supporting/audit-logging-detail' },
+              { text: 'Broadcast Messages', link: '/detail-design/supporting/broadcast-detail' },
+              { text: 'Sync Connectors', link: '/detail-design/supporting/sync-connectors-detail' },
+              { text: 'Document Converter', link: '/detail-design/supporting/converter-detail' },
+              { text: 'Real-time Communication', link: '/detail-design/supporting/realtime-communication' },
+              { text: 'OpenAI-Compatible API', link: '/detail-design/supporting/openai-compatible-api' },
+              { text: 'External API Reference', link: '/detail-design/supporting/external-api-reference' },
+              { text: 'GraphRAG', link: '/detail-design/supporting/graphrag-detail' },
+              { text: 'Guideline & Onboarding', link: '/detail-design/supporting/guideline-onboarding-detail' },
+              { text: 'Feedback', link: '/detail-design/supporting/feedback-detail' },
+              { text: 'History Browsing', link: '/detail-design/supporting/history-browsing-detail' },
+              { text: 'PDF Citation Highlighting', link: '/detail-design/supporting/pdf-citation-highlight-detail' },
+              { text: 'Office Document Citations', link: '/detail-design/supporting/office-document-citation-highlighting' },
+              { text: 'Preview', link: '/detail-design/supporting/preview-detail' },
+              { text: 'Query Logging', link: '/detail-design/supporting/query-logging-detail' },
+              { text: 'System Tools', link: '/detail-design/supporting/system-tools-detail' },
+            ],
+          },
+        ],
 
         '/detail-design/rag-pipeline/': [
           {
@@ -274,6 +299,7 @@ export default withMermaid(
             ],
           },
         ],
+      },
 
       socialLinks: [
         { icon: 'github', link: 'https://github.com/your-org/b-knowledge' },
