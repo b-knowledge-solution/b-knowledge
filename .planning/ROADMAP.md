@@ -22,13 +22,15 @@ Plans:
 
 ### Phase 2: Investigate mem0 for memory feature
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Evaluate mem0 as a pluggable backend replacement for b-knowledge's native memory system. Produce a go/no-go Architecture Decision Record with empirical deal-breaker verification, extraction quality comparison, performance benchmarks, full API mapping, and integration plan.
+**Requirements**: D-01 through D-26 (deal-breaker verification, API mapping, extraction quality, performance benchmarks, graph store evaluation, ADR document)
 **Depends on:** Phase 1
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 2 to break down)
+- [ ] **02-01**: Environment setup + deal-breaker verification — Install mem0, test OpenSearch/multi-tenant/custom LLM against live infrastructure, check Apache AGE on PG17
+- [ ] **02-02**: Extraction quality + performance benchmarks — Compare extraction pipelines, measure add/search latency, test dedup/versioning/forgetting
+- [ ] **02-03**: Write ADR document — Synthesize findings into Architecture Decision Record with go/no-go recommendation, API mapping, integration plan
 
 ---
 
