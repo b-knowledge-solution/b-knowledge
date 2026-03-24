@@ -6,7 +6,7 @@ and File nodes with CONTAINS relationships.
 """
 from __future__ import annotations
 
-import logging
+from loguru import logger
 from pathlib import Path
 
 from .constants import (
@@ -18,7 +18,7 @@ from .models import GraphNode, GraphRelationship
 from .services import IngestorProtocol
 from . import logs as ls
 
-logger = logging.getLogger(__name__)
+
 
 
 class StructureProcessor:

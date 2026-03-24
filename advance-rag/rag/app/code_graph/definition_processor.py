@@ -7,7 +7,7 @@ snippets, and line ranges.
 """
 from __future__ import annotations
 
-import logging
+from loguru import logger
 from pathlib import Path
 
 from .constants import (
@@ -24,7 +24,7 @@ from .services import IngestorProtocol
 from .language_spec import LANGUAGE_FQN_SPECS
 from . import logs as ls
 
-logger = logging.getLogger(__name__)
+
 
 
 class DefinitionProcessor:

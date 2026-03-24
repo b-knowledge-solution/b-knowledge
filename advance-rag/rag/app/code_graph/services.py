@@ -7,13 +7,13 @@ code graph nodes and relationships to the graph database.
 from __future__ import annotations
 
 import os
-import logging
+from loguru import logger
 from typing import Protocol
 
 from .models import GraphNode, GraphRelationship
 
 
-logger = logging.getLogger(__name__)
+
 
 
 class IngestorProtocol(Protocol):

@@ -530,6 +530,70 @@ def _split_large_function(node_dict: dict, max_tokens: int) -> list[dict]:
     return sub_chunks
 
 
+def _build_semantic_summary(node_dict: dict, filename: str) -> str:
+    """Build a natural-language summary from code metadata for semantic search.
+
+    Creates a human-readable description from structured AST metadata so
+    embedding models can produce high-quality vectors for code chunks.
+    This summary is prepended to content_with_weight to improve semantic
+    retrieval accuracy.
+
+    Args:
+        node_dict: Scope node dict with name, parent_class, parameters, etc.
+        filename: Source file name for language context.
+
+    Returns:
+        Natural-language summary string.
+    """
+    parts: list[str] = []
+
+    # Determine language for context
+    ext = os.path.splitext(filename)[1].lower()
+    lang_name = EXTENSION_MAP.get(ext, "code")
+
+    node_type = node_dict.get("node_type", "function")
+    name = node_dict.get("name", "")
+    parent_class = node_dict.get("parent_class", "")
+    parameters = node_dict.get("parameters", "")
+    return_type = node_dict.get("return_type", "")
+    decorators = node_dict.get("decorators", "")
+    docstring = node_dict.get("docstring", "")
+
+    # Build the main description line
+    if node_type == "class":
+        desc = f"{lang_name} class {name}"
+        if decorators:
+            desc += f" decorated with {decorators}"
+        parts.append(desc)
+    else:
+        if parent_class:
+            desc = f"{lang_name} method {parent_class}.{name}"
+        else:
+            desc = f"{lang_name} function {name}"
+
+        if parameters:
+            # Clean up parameter text for readability
+            clean_params = parameters.strip("()")
+            if clean_params:
+                desc += f" with parameters: {clean_params}"
+
+        if return_type:
+            desc += f", returns {return_type}"
+
+        if decorators:
+            desc += f", decorated with {decorators}"
+
+        parts.append(desc)
+
+    # Add docstring as semantic context (strip quotes)
+    if docstring:
+        clean_doc = docstring.strip().strip('"\"\'\'').strip()
+        if clean_doc:
+            parts.append(clean_doc)
+
+    return "\n".join(parts)
+
+
 def _build_chunk_dict(
     filename: str,
     content: str,
@@ -537,6 +601,11 @@ def _build_chunk_dict(
     imports: str = "",
 ) -> dict:
     """Build a standard chunk dictionary with tokenized content and metadata.
+
+    Enriches content_with_weight with a semantic summary for better embedding
+    quality. The summary is built from structured AST metadata (function name,
+    class, parameters, return type, docstring) and prepended to the raw source
+    code so embedding models can produce semantically meaningful vectors.
 
     Args:
         filename: Original source filename.
@@ -547,13 +616,21 @@ def _build_chunk_dict(
     Returns:
         Chunk dict with content_with_weight, tokenized fields, and metadata.
     """
-    # Tokenize the content for search indexing
+    # Build semantic-enriched content for embedding
+    enriched_content = content
+    if node_dict and node_dict.get("name"):
+        summary = _build_semantic_summary(node_dict, filename)
+        if summary:
+            # Prepend semantic summary separated by a divider for clarity
+            enriched_content = f"{summary}\n---\n{content}"
+
+    # Tokenize the content for keyword search indexing
     content_ltks = rag_tokenizer.tokenize(content)
 
     chunk = {
         "docnm_kwd": filename,
         "title_tks": rag_tokenizer.tokenize(re.sub(r"\.[a-zA-Z]+$", "", filename)),
-        "content_with_weight": content,
+        "content_with_weight": enriched_content,
         "content_ltks": content_ltks,
         "content_sm_ltks": rag_tokenizer.fine_grained_tokenize(content_ltks),
     }
@@ -800,6 +877,6 @@ def chunk_with_graph(filename, binary, kb_id="", callback=None, **kwargs):
             callback=callback,
         )
     except Exception as e:
-        import logging
-        logging.warning(f"Code graph extraction failed for {filename}: {e}")
+        from loguru import logger
+        logger.warning(f"Code graph extraction failed for {filename}: {e}")
         return False

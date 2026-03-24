@@ -6,7 +6,7 @@ Builds an import_mapping dict for cross-file call resolution.
 """
 from __future__ import annotations
 
-import logging
+from loguru import logger
 from functools import lru_cache
 from pathlib import Path
 
@@ -19,7 +19,7 @@ from .models import GraphNode, GraphRelationship
 from .services import IngestorProtocol
 from . import logs as ls
 
-logger = logging.getLogger(__name__)
+
 
 
 class ImportProcessor:

@@ -7,12 +7,12 @@ Implements IngestorProtocol with batched writes.
 from __future__ import annotations
 
 import os
-import logging
+from loguru import logger
 
 from .models import GraphNode, GraphRelationship
 from . import logs as ls
 
-logger = logging.getLogger(__name__)
+
 
 # Batch size for Memgraph writes
 BATCH_SIZE = 1000

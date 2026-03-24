@@ -6,7 +6,7 @@ Uses import_mapping, function_registry, and type inference for cross-file resolu
 """
 from __future__ import annotations
 
-import logging
+from loguru import logger
 from pathlib import Path
 
 from .constants import (
@@ -19,7 +19,7 @@ from .models import GraphRelationship
 from .services import IngestorProtocol
 from . import logs as ls
 
-logger = logging.getLogger(__name__)
+
 
 
 class CallProcessor:

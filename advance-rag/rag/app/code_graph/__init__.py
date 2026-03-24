@@ -6,7 +6,7 @@ This is the entry point called by code.py's `chunk_with_graph()`.
 """
 from __future__ import annotations
 
-import logging
+from loguru import logger
 import os
 from pathlib import Path
 
@@ -16,7 +16,7 @@ from .services import InMemoryIngestor
 from .factory import ProcessorFactory
 from . import logs as ls
 
-logger = logging.getLogger(__name__)
+
 
 __all__ = [
     "extract_code_graph",

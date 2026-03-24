@@ -6,7 +6,7 @@ together with shared state.
 """
 from __future__ import annotations
 
-import logging
+from loguru import logger
 from pathlib import Path
 
 from tree_sitter_language_pack import get_language, get_parser
@@ -19,7 +19,7 @@ from .definition_processor import DefinitionProcessor
 from .call_processor import CallProcessor
 from . import logs as ls
 
-logger = logging.getLogger(__name__)
+
 
 # Map SupportedLanguage to tree-sitter-language-pack language names
 _TS_LANGUAGE_MAP: dict[SupportedLanguage, str] = {

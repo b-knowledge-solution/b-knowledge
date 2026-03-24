@@ -61,10 +61,159 @@ class RelationshipType(StrEnum):
     CONTAINS_MODULE = "CONTAINS_MODULE"
     CONTAINS_PACKAGE = "CONTAINS_PACKAGE"
     DEFINES = "DEFINES"
+    DEFINES_METHOD = "DEFINES_METHOD"
     CALLS = "CALLS"
     IMPORTS = "IMPORTS"
     INHERITS = "INHERITS"
     IMPLEMENTS = "IMPLEMENTS"
+    EXPORTS = "EXPORTS"
+    OVERRIDES = "OVERRIDES"
+    HAS_DEPENDENCY = "HAS_DEPENDENCY"
+
+
+# =============================================================================
+# Encoding
+# =============================================================================
+
+ENCODING_UTF8 = "utf-8"
+SEPARATOR_DOT = "."
+SEPARATOR_DOUBLE_COLON = "::"
+SEPARATOR_COMMA_SPACE = ", "
+CHAR_COMMA = ","
+CHAR_COLON = ":"
+CHAR_ANGLE_OPEN = "<"
+
+
+# =============================================================================
+# Tree-sitter AST Field Name Constants
+# =============================================================================
+
+FIELD_NAME = "name"
+FIELD_BODY = "body"
+FIELD_PARAMETERS = "parameters"
+FIELD_SUPERCLASS = "superclass"
+FIELD_ARGUMENTS = "arguments"
+
+# Tree-sitter field name aliases matching upstream TS_FIELD_* naming
+TS_FIELD_NAME = "name"
+
+
+# =============================================================================
+# Tree-sitter AST Node Type Constants (cross-language)
+# =============================================================================
+
+# Common identifiers
+TS_IDENTIFIER = "identifier"
+TS_TYPE_IDENTIFIER = "type_identifier"
+TS_TEMPLATE_TYPE = "template_type"
+TS_VARIABLE_DECLARATOR = "variable_declarator"
+
+# Program / Module
+TS_PROGRAM = "program"
+TS_MODULE = "module"
+
+# Function node types
+TS_FUNCTION_DECLARATION = "function_declaration"
+TS_FUNCTION_EXPRESSION = "function_expression"
+TS_ARROW_FUNCTION = "arrow_function"
+TS_METHOD_DEFINITION = "method_definition"
+
+# Class / interface / type
+TS_CLASS_DECLARATION = "class_declaration"
+TS_CLASS_BODY = "class_body"
+TS_CLASS_HERITAGE = "class_heritage"
+TS_INTERFACE_DECLARATION = "interface_declaration"
+TS_TYPE_ALIAS_DECLARATION = "type_alias_declaration"
+TS_ENUM_DECLARATION = "enum_declaration"
+TS_ENUM_SPECIFIER = "enum_specifier"
+TS_ENUM_CLASS_SPECIFIER = "enum_class_specifier"
+TS_STRUCT_SPECIFIER = "struct_specifier"
+TS_UNION_SPECIFIER = "union_specifier"
+TS_OBJECT = "object"
+
+# Access
+TS_ACCESS_SPECIFIER = "access_specifier"
+TS_VIRTUAL = "virtual"
+TS_BASE_CLASS_CLAUSE = "base_class_clause"
+TS_DECORATOR = "decorator"
+
+# Rust-specific
+TS_IMPL_ITEM = "impl_item"
+TS_RS_TRAIT_ITEM = "trait_item"
+TS_RS_STRUCT_ITEM = "struct_item"
+TS_RS_ENUM_ITEM = "enum_item"
+TS_RS_TYPE_ITEM = "type_item"
+TS_RS_UNION_ITEM = "union_item"
+TS_RS_ATTRIBUTE_ITEM = "attribute_item"
+TS_RS_INNER_ATTRIBUTE_ITEM = "inner_attribute_item"
+
+# Python-specific
+TS_PY_DECORATED_DEFINITION = "decorated_definition"
+TS_PY_DECORATOR = "decorator"
+
+# C++ specific
+TS_CPP_LAMBDA_EXPRESSION = "lambda_expression"
+
+# Java-specific
+TS_JAVA_MODIFIERS = "modifiers"
+
+# PHP-specific
+TS_PHP_TRAIT_DECLARATION = "trait_declaration"
+TS_PHP_VISIBILITY_MODIFIER = "visibility_modifier"
+TS_PHP_METHOD_DECLARATION = "method_declaration"
+TS_PHP_ANONYMOUS_FUNCTION = "anonymous_function_creation_expression"
+TS_PHP_ARROW_FUNCTION = "arrow_function"
+TS_PHP_ATTRIBUTE_LIST = "attribute_list"
+TS_PHP_ATTRIBUTE_GROUP = "attribute_group"
+TS_PHP_ATTRIBUTE = "attribute"
+
+# Lua-specific
+TS_LUA_FUNCTION_DEFINITION = "function_definition"
+TS_DOT_INDEX_EXPRESSION = "dot_index_expression"
+
+
+# =============================================================================
+# C++ Compound Types and Exports
+# =============================================================================
+
+class CppNodeType:
+    """C++ specific AST node types."""
+    CLASS_SPECIFIER = "class_specifier"
+    TEMPLATE_DECLARATION = "template_declaration"
+    FUNCTION_DEFINITION = "function_definition"
+    QUALIFIED_IDENTIFIER = "qualified_identifier"
+    NAMESPACE_DEFINITION = "namespace_definition"
+
+CPP_CLASS_TYPES = frozenset({
+    "class_specifier", "struct_specifier", "union_specifier",
+    "enum_specifier", CppNodeType.TEMPLATE_DECLARATION,
+})
+
+CPP_COMPOUND_TYPES = frozenset({
+    CppNodeType.CLASS_SPECIFIER, "struct_specifier", "union_specifier",
+    "enum_specifier",
+})
+
+CPP_EXPORT_STRUCT_PREFIX = "struct "
+CPP_EXPORT_UNION_PREFIX = "union "
+CPP_EXPORT_TEMPLATE_PREFIX = "template"
+CPP_EXPORT_PREFIXES = (
+    CPP_EXPORT_STRUCT_PREFIX,
+    CPP_EXPORT_UNION_PREFIX,
+    CPP_EXPORT_TEMPLATE_PREFIX,
+)
+
+
+# =============================================================================
+# Tree-sitter Query Keys (used by ProcessorFactory with LanguageQueries)
+# =============================================================================
+
+QUERY_FUNCTIONS = "functions"
+QUERY_CLASSES = "classes"
+QUERY_CALLS = "calls"
+QUERY_CONFIG = "config"
+CAPTURE_CLASS = "class"
+ONEOF_MODULE = "module"
 
 
 # =============================================================================
