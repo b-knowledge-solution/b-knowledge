@@ -39,6 +39,8 @@ import DocumentsTab from '../components/DocumentsTab'
 import CategorySidebar from '../components/CategorySidebar'
 import ProjectSettingsSheet from '../components/ProjectSettingsSheet'
 import CategoryModal from '../components/CategoryModal'
+import StandardCategoryView from '../components/StandardCategoryView'
+import CodeCategoryView from '../components/CodeCategoryView'
 import {
   createDocumentCategory,
   updateDocumentCategory,
@@ -218,44 +220,6 @@ const ProjectDetailPage = () => {
     return categories.find(c => c.id === activeCategoryId)
   }
 
-  /**
-   * @description Render content area for Standard or Code tabs with null guard on dataset_id
-   * @param {DocumentCategory | undefined} selectedCategory - Currently selected category
-   * @returns {JSX.Element} Content area or placeholder
-   */
-  const renderStandardOrCodeContent = (selectedCategory: DocumentCategory | undefined) => {
-    if (!selectedCategory) {
-      // No category selected — prompt to select one
-      return (
-        <div className="flex-1 flex items-center justify-center text-muted-foreground">
-          {t('projects.selectCategory', 'Select a category to view its content.')}
-        </div>
-      )
-    }
-
-    // Null guard for dataset_id — standard/code categories should have a linked dataset
-    if (selectedCategory.dataset_id) {
-      return (
-        <div className="flex-1 p-4">
-          <div className="text-sm text-muted-foreground">
-            <p className="font-medium text-foreground mb-2">{selectedCategory.name}</p>
-            <p>{t('projects.datasetLinked', 'Dataset linked. Content management will be available in a future update.')}</p>
-            <p className="text-xs mt-1 text-muted-foreground">
-              Dataset ID: {selectedCategory.dataset_id}
-            </p>
-          </div>
-        </div>
-      )
-    }
-
-    // dataset_id is null — show fallback message
-    return (
-      <div className="flex-1 flex items-center justify-center h-full text-muted-foreground">
-        {t('projects.datasetNotAvailable', 'Dataset not available for this category.')}
-      </div>
-    )
-  }
-
   // ── Loading state ────────────────────────────────────────────────────
 
   if (loading) {
@@ -361,7 +325,7 @@ const ProjectDetailPage = () => {
             </div>
           </TabsContent>
 
-          {/* Standard tab: CategorySidebar + content area with null guard */}
+          {/* Standard tab: CategorySidebar + StandardCategoryView */}
           <TabsContent value="standard">
             <div className="flex" style={{ minHeight: 400 }}>
               <CategorySidebar
@@ -373,11 +337,22 @@ const ProjectDetailPage = () => {
                 onDeleteCategory={handleDeleteCategory}
                 categoryType="standard"
               />
-              {renderStandardOrCodeContent(getSelectedCategory(standardCategories))}
+              <div className="flex-1 min-w-0">
+                {getSelectedCategory(standardCategories) ? (
+                  <StandardCategoryView
+                    projectId={projectId!}
+                    category={getSelectedCategory(standardCategories)!}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    {t('projects.selectCategory', 'Select a category to view its contents')}
+                  </div>
+                )}
+              </div>
             </div>
           </TabsContent>
 
-          {/* Code tab: CategorySidebar + content area with null guard */}
+          {/* Code tab: CategorySidebar + CodeCategoryView */}
           <TabsContent value="code">
             <div className="flex" style={{ minHeight: 400 }}>
               <CategorySidebar
@@ -389,7 +364,18 @@ const ProjectDetailPage = () => {
                 onDeleteCategory={handleDeleteCategory}
                 categoryType="code"
               />
-              {renderStandardOrCodeContent(getSelectedCategory(codeCategories))}
+              <div className="flex-1 min-w-0">
+                {getSelectedCategory(codeCategories) ? (
+                  <CodeCategoryView
+                    projectId={projectId!}
+                    category={getSelectedCategory(codeCategories)!}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    {t('projects.selectCategory', 'Select a category to view its contents')}
+                  </div>
+                )}
+              </div>
             </div>
           </TabsContent>
         </Tabs>
