@@ -7,9 +7,9 @@
 <domain>
 ## Phase Boundary
 
-Enhance the code parser to extract code structure relationships (calls, imports, inheritance, containment) from Tree-sitter AST, store the code knowledge graph in **Memgraph** (Cypher-native graph DB), expose a **Node.js backend API** for querying the graph via Bolt protocol, and support **AI-powered NL-to-Cypher translation** for natural language codebase queries.
+Enhance the code parser to extract code structure relationships from Tree-sitter AST, store the code knowledge graph in **Memgraph**, expose a **Node.js backend API** for querying via Bolt protocol, support **AI-powered NL-to-Cypher translation**, port all parsers from the reference project with a pipeline interface, and provide a **graph visualization UI** with export capabilities.
 
-**NOT in scope:** MCP server, CLI tools, shell command execution, file system watching — these are code-graph-rag features not needed in b-knowledge.
+**NOT in scope:** MCP server, CLI tools, shell command execution, real-time file watcher, code editing via graph targeting.
 
 </domain>
 
@@ -17,49 +17,42 @@ Enhance the code parser to extract code structure relationships (calls, imports,
 ## Implementation Decisions
 
 ### Graph Storage
-- **Add Memgraph** to `docker/docker-compose-base.yml` as new infrastructure service
-- Memgraph provides native Cypher support required for AI NL-to-Cypher translation
-- Code knowledge graph stored in Memgraph; regular text chunks still in OpenSearch
+- **Add Memgraph** to `docker/docker-compose-base.yml` (Cypher-native, ~50MB RAM)
+- Code knowledge graph in Memgraph; text chunks in OpenSearch
 - Graph schema: nodes (File, Module, Class, Function, Method, Interface, Enum, Trait, Struct) + relationships (CONTAINS, CALLS, IMPORTS, INHERITS, IMPLEMENTS, DEFINED_IN)
 
-### Graph Extraction Trigger
-- **Automatic** — code knowledge graph built for every code file during parsing (no opt-in toggle)
-- Runs after standard chunk extraction in the task executor pipeline
-
-### Relationship Depth
-- **Deep cross-file analysis** — resolve imports to trace cross-file call relationships
-- When multiple code files are in the same KB, their graphs are **merged** into one interconnected knowledge graph enabling cross-file call tracking
-
-### Query API Architecture
-- **Node.js backend** directly queries Memgraph via Bolt protocol using `neo4j-driver` npm package (no Python proxy)
-- New Express module in `be/src/modules/code-graph/`
-- Endpoints: query code structure, get callers/callees, class hierarchy, code snippets
-
-### AI-Powered Cypher Generation
-- LLM translates natural language → Cypher queries
-- Supports configured LLM providers (OpenAI, Gemini, Ollama — whatever tenant has configured)
-- Uses graph schema as context in the prompt
-
-### Code Snippet Retrieval
-- When a function/method is found in the graph, retrieve the actual source code snippet
-- Source code stored as node properties in Memgraph OR fetched from OpenSearch chunks
-
-### Reference-Guided Optimization
-- System analyzes code against user-uploaded coding standards/architecture docs from the same KB
-- Generates optimization/refactoring suggestions based on reference documents
+### Graph Extraction
+- **Automatic** for every code file during parsing (no opt-in toggle)
+- **Deep cross-file analysis** — resolve imports for cross-file call relationships
+- **Merged** per KB into one interconnected knowledge graph
 
 ### Parser Enhancement
-- Match code-graph-rag's parser architecture for **all 12 languages**: Python, JS, TS, Rust, Java, C, C++, Lua, Go, Scala, C#, PHP
-- Use LanguageSpec/FQNSpec pattern from reference project
-- Support nested function/class hierarchies with qualified names
-- Language-agnostic unified graph schema across all languages
+- Port **all parsers** from code-graph-rag reference: ProcessorFactory, StructureProcessor, ImportProcessor, DefinitionProcessor, TypeInferenceEngine, CallProcessor, CallResolver
+- **12 languages**: Python, JS, TS, Rust, Java, C, C++, Lua, Go, Scala, C#, PHP
+- Use LanguageSpec/FQNSpec pattern from reference for language-agnostic design
+- **Pipeline interface** in `code.py` — `chunk_with_graph()` runs full extraction pipeline
+- Nested function/class hierarchy support with qualified names
+
+### Query API Architecture
+- **Node.js backend** queries Memgraph directly via Bolt (`neo4j-driver` npm)
+- New Express module `be/src/modules/code-graph/`
+- AI-powered NL-to-Cypher using tenant's configured LLM providers
+- Code snippet retrieval for found functions/methods
+- Reference-guided optimization: analyze code against uploaded standards docs
+
+### Graph Visualization UI
+- **Location**: Button in project code category opens a **separate full page** (`/code-graph/:kbId`)
+- **Library**: Claude's discretion (React Flow, D3, Cytoscape.js, etc.)
+- **Export**: Both PNG/SVG image + JSON graph data
+- Interactive: pan, zoom, click nodes for details
 
 ### Claude's Discretion
-- Internal function naming and module organization within parsers
+- Graph visualization library choice
+- Internal parser module organization
 - Caching strategy for Memgraph queries
-- Error handling for partial graph extraction failures
+- Error handling for partial extraction failures
 - Cypher prompt engineering details
-- Test fixture selection
+- Test fixtures
 
 </decisions>
 
@@ -70,26 +63,26 @@ Enhance the code parser to extract code structure relationships (calls, imports,
 
 ### Reference Project (code-graph-rag)
 - https://github.com/vitali87/code-graph-rag — Full reference architecture
-- `codebase_rag/language_spec.py` — LanguageSpec/FQNSpec pattern for 12 languages
-- `codebase_rag/parsers/` — Parser modules: call_processor, call_resolver, definition_processor, import_processor, structure_processor, type_inference, factory
-- `codebase_rag/graph_loader.py` — GraphNode/GraphRelationship models, graph loading
-- `codebase_rag/cypher_queries.py` — Pre-built Cypher queries for common patterns
+- `codebase_rag/language_spec.py` — LanguageSpec/FQNSpec for 12 languages
+- `codebase_rag/parsers/factory.py` — ProcessorFactory wiring 5 processors
+- `codebase_rag/parsers/structure_processor.py` — Directory/package scanning
+- `codebase_rag/parsers/call_processor.py` — Call resolution with type inference
+- `codebase_rag/parsers/import_processor.py` — Import resolution
+- `codebase_rag/parsers/definition_processor.py` — Function/class definitions
+- `codebase_rag/parsers/type_inference.py` — Type inference engine
+- `codebase_rag/parsers/call_resolver.py` — Cross-file call resolution
+- `codebase_rag/graph_loader.py` — GraphNode/GraphRelationship models
+- `codebase_rag/cypher_queries.py` — Pre-built Cypher queries
 
-### Existing Code Parser
-- `advance-rag/rag/app/code.py` — Current Tree-sitter code parser with AST chunking
+### Existing Code
+- `advance-rag/rag/app/code.py` — Current Tree-sitter parser (extend with pipeline interface)
+- `advance-rag/rag/svr/task_executor.py` — Integration point (line 430)
+- `docker/docker-compose-base.yml` — Add Memgraph service
+- `be/src/modules/` — Express module patterns
 
-### GraphRAG Infrastructure (for pattern reference)
-- `advance-rag/rag/graphrag/utils.py` — Graph utilities, NetworkX patterns
-- `advance-rag/rag/graphrag/search.py` — KGSearch retrieval patterns
-
-### Docker
-- `docker/docker-compose-base.yml` — Infrastructure services (add Memgraph here)
-
-### Backend
-- `be/src/modules/` — Express module patterns for new code-graph module
-
-### Tests
-- `advance-rag/tests/test_code_parser.py` — Existing code parser tests
+### Frontend
+- `fe/src/features/` — Feature module pattern for new code-graph feature
+- Phase 3 project/category UI — button placement for code-graph link
 
 </canonical_refs>
 
@@ -97,45 +90,41 @@ Enhance the code parser to extract code structure relationships (calls, imports,
 ## Existing Code Insights
 
 ### Reusable Assets
-- `rag/app/code.py`: EXTENSION_MAP (20+ languages), FUNCTION_NODE_TYPES, CLASS_NODE_TYPES, IMPORT_NODE_TYPES, tree-sitter parsing — extend for graph extraction
-- `rag/graphrag/utils.py`: Graph merge patterns, chunk conversion — pattern reference
-- `rag/svr/task_executor.py`: FACTORY dict (line 98-120) maps parser_id → module, `build_chunks()` calls `chunker.chunk()` (line 430) — integration point
-- `neo4j-driver` npm package works with Memgraph's Bolt protocol — no special Memgraph client needed
+- `rag/app/code.py`: EXTENSION_MAP, tree-sitter parsing, AST traversal — extend for pipeline
+- `rag/graphrag/`: Pattern reference for graph operations
+- `neo4j-driver` npm: Works with Memgraph Bolt protocol
 
 ### Established Patterns
-- Task executor pipeline: parse → chunk → embed → index (extend with graph extraction step)
-- Backend module pattern: routes, controller, service, model (follow for code-graph module)
-- Docker base services: PostgreSQL, Valkey, OpenSearch, RustFS (add Memgraph alongside)
+- Task executor pipeline: parse → chunk → embed → index
+- BE module: routes → controller → service → model
+- FE feature: pages, components, api, queries
+- Docker base: infra services with health checks
 
 ### Integration Points
-- `advance-rag/rag/svr/task_executor.py` line 430: where `chunker.chunk()` is called — add graph extraction after
-- `docker/docker-compose-base.yml`: add Memgraph service
-- `be/src/modules/`: new code-graph Express module
-- `be/.env` / `docker/.env`: Memgraph connection config
+- `task_executor.py` line 430: add graph extraction
+- `docker-compose-base.yml`: add Memgraph
+- Project code category: add "Code Graph" button
 
 </code_context>
 
 <specifics>
 ## Specific Ideas
 
-- Node types from reference: Repository, Directory, File, Module, Class, Function, Method, Interface, Enum, Trait, Struct, ExternalDependency
-- Relationship types from reference: CONTAINS, CALLS, IMPORTS, INHERITS, IMPLEMENTS, DEFINED_IN
-- Language support (12): Python, JS, TS, Rust, Java, C, C++, Lua, Go, Scala, C#, PHP
-- Use FQNSpec pattern: scope_node_types, function_node_types, get_name, file_to_module_parts per language
-- Use LanguageSpec pattern: file_extensions, function_node_types, class_node_types, module_node_types, call_node_types, import_node_types, import_from_node_types, package_indicators, function_query, class_query, call_query
-- Qualified names: `module.ClassName.method_name`
-- Cypher query prompt should include graph schema (node labels + relationship types + property keys)
+- Reference parser pipeline: StructureProcessor → ImportProcessor → DefinitionProcessor → TypeInferenceEngine → CallProcessor
+- ProcessorFactory lazily creates processors with shared state (function_registry, ast_cache, class_inheritance)
+- FQN (Fully Qualified Names): `project.module.ClassName.method_name`
+- Cypher prompt: include graph schema (node labels + rel types + properties) as context
+- Visualization: interactive graph with node click → show source code snippet
 
 </specifics>
 
 <deferred>
 ## Deferred Ideas
 
-- Graph visualization/export UI — future phase
 - Real-time file watcher for automatic graph updates — future phase
-- MCP server integration — not applicable to b-knowledge
-- Code editing via graph targeting — future phase
-- Dependency analysis from package manifests (pyproject.toml, package.json) — future phase
+- Code editing via graph targeting (surgical replacement) — future phase
+- MCP server integration — not applicable
+- Dependency analysis from package manifests — future phase
 
 </deferred>
 
