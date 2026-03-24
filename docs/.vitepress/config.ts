@@ -18,6 +18,7 @@ export default withMermaid(
         { text: 'SRS', link: '/srs/' },
         { text: 'Basic Design', link: '/basic-design/system-architecture' },
         { text: 'Detail Design', link: '/detail-design/auth-overview' },
+        { text: 'RAG Pipeline', link: '/detail-design/rag-pipeline/overview' },
       ],
 
       sidebar: {
@@ -134,6 +135,7 @@ export default withMermaid(
               { text: 'Document Parsing', link: '/detail-design/document-parsing-detail' },
               { text: 'Document Enrichment', link: '/detail-design/document-enrichment-detail' },
               { text: 'Chunk Management', link: '/detail-design/chunk-management-detail' },
+              { text: 'RAG Pipeline Parsers ➜', link: '/detail-design/rag-pipeline/overview' },
             ],
           },
           {
@@ -208,6 +210,70 @@ export default withMermaid(
           },
         ],
       },
+
+        '/detail-design/rag-pipeline/': [
+          {
+            text: 'RAG Ingestion Pipeline',
+            items: [
+              { text: 'Pipeline Overview', link: '/detail-design/rag-pipeline/overview' },
+            ],
+          },
+          {
+            text: 'Document Parsing',
+            collapsed: false,
+            items: [
+              { text: 'Naive Parser (Default)', link: '/detail-design/rag-pipeline/document-parsing/naive-parser' },
+              { text: 'Book Parser', link: '/detail-design/rag-pipeline/document-parsing/book-parser' },
+              { text: 'Paper Parser', link: '/detail-design/rag-pipeline/document-parsing/paper-parser' },
+              { text: 'Manual Parser', link: '/detail-design/rag-pipeline/document-parsing/manual-parser' },
+              { text: 'Laws Parser', link: '/detail-design/rag-pipeline/document-parsing/laws-parser' },
+              { text: 'Presentation Parser', link: '/detail-design/rag-pipeline/document-parsing/presentation-parser' },
+              { text: 'One Parser (Whole Doc)', link: '/detail-design/rag-pipeline/document-parsing/one-parser' },
+            ],
+          },
+          {
+            text: 'Structured Data',
+            collapsed: false,
+            items: [
+              { text: 'Table Parser', link: '/detail-design/rag-pipeline/structured-data/table-parser' },
+              { text: 'QA Parser', link: '/detail-design/rag-pipeline/structured-data/qa-parser' },
+              { text: 'Tag Parser', link: '/detail-design/rag-pipeline/structured-data/tag-parser' },
+            ],
+          },
+          {
+            text: 'Media Processing',
+            collapsed: false,
+            items: [
+              { text: 'Picture Parser', link: '/detail-design/rag-pipeline/media-processing/picture-parser' },
+              { text: 'Audio Parser', link: '/detail-design/rag-pipeline/media-processing/audio-parser' },
+            ],
+          },
+          {
+            text: 'Communication',
+            collapsed: false,
+            items: [
+              { text: 'Email Parser', link: '/detail-design/rag-pipeline/communication/email-parser' },
+            ],
+          },
+          {
+            text: 'Developer Tools',
+            collapsed: false,
+            items: [
+              { text: 'Code Parser', link: '/detail-design/rag-pipeline/developer-tools/code-parser' },
+              { text: 'OpenAPI Parser', link: '/detail-design/rag-pipeline/developer-tools/openapi-parser' },
+              { text: 'ADR Parser', link: '/detail-design/rag-pipeline/developer-tools/adr-parser' },
+              { text: 'SDLC Checklist Parser', link: '/detail-design/rag-pipeline/developer-tools/sdlc-checklist-parser' },
+            ],
+          },
+          {
+            text: 'Specialized',
+            collapsed: false,
+            items: [
+              { text: 'Resume Parser', link: '/detail-design/rag-pipeline/specialized/resume-parser' },
+              { text: 'Clinical Parser', link: '/detail-design/rag-pipeline/specialized/clinical-parser' },
+            ],
+          },
+        ],
 
       socialLinks: [
         { icon: 'github', link: 'https://github.com/your-org/b-knowledge' },
