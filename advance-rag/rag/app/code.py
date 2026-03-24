@@ -698,7 +698,7 @@ def _naive_fallback(filename: str, source: str, callback, max_tokens: int = 512)
 
 
 def chunk(filename, binary=None, from_page=0, to_page=100000,
-          lang="Chinese", callback=None, **kwargs):
+          lang="English", callback=None, **kwargs):
     """Parse a source code file into AST-based chunks.
 
     Uses tree-sitter to parse the source code and extract function/class
