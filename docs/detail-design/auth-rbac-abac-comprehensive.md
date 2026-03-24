@@ -91,7 +91,9 @@ graph TD
 | `view_system_tools` | Y | Y | Y | - |
 | `manage_datasets` | Y | Y | Y | - |
 | `manage_model_providers` | Y | Y | - | - |
-| `storage:*` | Y | Y | - | - |
+| `storage:read` | Y | Y | - | - |
+| `storage:write` | Y | Y | - | - |
+| `storage:delete` | Y | Y | - | - |
 
 ## CASL Ability Rules
 
@@ -102,6 +104,8 @@ type Subjects = 'Dataset' | 'Document' | 'ChatAssistant' | 'SearchApp' |
                 'User' | 'AuditLog' | 'Policy' | 'Org' | 'Project' |
                 'Agent' | 'Memory'
 ```
+
+> **Note:** `Policy` and `Org` are defined as subjects but have no ability rules assigned and are not used by any route middleware. `Project` is used in route middleware (`requireAbility('read', 'Project')`) but has no rules assigned for non-super-admin roles in the ability builder — access for admin/leader/user roles depends on ABAC policies being passed externally.
 
 ### Action Types
 
@@ -128,22 +132,21 @@ flowchart TD
     A[Request hits requireAbility] --> B[Check Redis cache<br/>key: ability:sessionId]
     B -->|Cache hit| H{ability.can?}
     B -->|Cache miss| C[Load user from session]
-    C --> D[Load role → base CASL rules]
-    D --> E[Load explicit user permissions from DB]
-    E --> F[Load team memberships + team permissions]
-    F --> G[Merge all sources → build CASL Ability]
+    C --> D[Build AbilityUserContext<br/>from role + orgId]
+    D --> E[Load ABAC policy rules<br/>optional parameter]
+    E --> G[buildAbilityFor: role rules + ABAC overlays]
     G --> CACHE[Cache in Redis<br/>TTL: 7 days]
     CACHE --> H
     H -->|Yes| ALLOW[Allow request]
     H -->|No| DENY[403 Forbidden]
 ```
 
-### Permission Source Priority (Merge Order)
+> **Implementation note:** The ability builder (`buildAbilityFor` in `ability.service.ts`) does NOT load user-specific or team-specific permissions from the database. It builds CASL rules purely from the user's role and optional ABAC policy rules passed as a parameter. The middleware extracts role and org context from the session.
 
-1. **Role permissions** — Base permissions from role hierarchy
-2. **User permissions** — Explicit grants/denials per user (overrides role)
-3. **Team permissions** — Inherited from team memberships
-4. **ABAC policies** — Conditional rules with field-level conditions (highest priority)
+### Permission Sources
+
+1. **Role permissions** — Base permissions from role hierarchy (always applied)
+2. **ABAC policies** — Conditional rules with field-level conditions (optional overlay, passed as parameter)
 
 ## ABAC Policy Rules
 
@@ -185,15 +188,18 @@ ABAC rules are translated to OpenSearch filters for search-time enforcement:
 
 | Endpoint | Method | Auth | Middleware | Notes |
 |----------|--------|------|-----------|-------|
-| `/api/auth/login` | POST | None | Rate limit 20/15min | Local login |
-| `/api/auth/azure` | GET | None | — | Azure AD redirect |
-| `/api/auth/azure/callback` | GET | None | — | OAuth callback |
+| `/api/auth/config` | GET | None | — | Public auth config (login methods) |
+| `/api/auth/login` | GET | None | Rate limit 20/15min | Azure AD redirect (initiates OAuth flow) |
+| `/api/auth/callback` | GET | None | Rate limit 20/15min | Azure AD OAuth callback |
+| `/api/auth/login/root` | POST | None | — | Root local login |
 | `/api/auth/logout` | POST | requireAuth | — | Destroy session |
-| `/api/auth/me` | GET | requireAuth | — | Current user info |
+| `/api/auth/me` | GET | None | — | Current user info (no auth middleware; returns null if no session) |
 | `/api/auth/abilities` | GET | requireAuth | — | Frontend CASL rules |
 | `/api/auth/orgs` | GET | requireAuth | — | User's organizations |
 | `/api/auth/switch-org` | POST | requireAuth | — | Switch active org |
 | `/api/auth/reauth` | POST | requireAuth | — | Re-authenticate for sensitive ops |
+| `/api/auth/refresh-token` | POST | requireAuth | — | Refresh session token |
+| `/api/auth/token-status` | GET | requireAuth | — | Check token expiry status |
 
 ### 2. Agents Module
 
@@ -206,18 +212,32 @@ ABAC rules are translated to OpenSearch filters for search-time enforcement:
 | `/api/agents/:id` | DELETE | requireAuth | manage Agent | requireTenant | Delete cascade |
 | `/api/agents/:id/duplicate` | POST | requireAuth | manage Agent | requireTenant | Clone |
 | `/api/agents/:id/export` | GET | requireAuth | read Agent | requireTenant | Export JSON |
-| `/api/agents/:id/versions` | GET | requireAuth | read Agent | requireTenant | List versions |
-| `/api/agents/:id/versions` | POST | requireAuth | manage Agent | requireTenant | Save version |
-| `/api/agents/:id/versions/:vid/restore` | POST | requireAuth | manage Agent | requireTenant | Restore |
+| `/api/agents/:id/versions` | GET | requireAuth | — | requireTenant | List versions |
+| `/api/agents/:id/versions` | POST | requireAuth | — | requireTenant | Save version |
+| `/api/agents/:id/versions/:vid/restore` | POST | requireAuth | — | requireTenant | Restore |
+| `/api/agents/:id/versions/:vid` | DELETE | requireAuth | — | requireTenant | Delete version |
 | `/api/agents/:id/run` | POST | requireAuth | read Agent | requireTenant | Start run |
 | `/api/agents/:id/run/:rid/stream` | GET | requireAuth | read Agent | requireTenant | SSE stream |
 | `/api/agents/:id/run/:rid/cancel` | POST | requireAuth | manage Agent | requireTenant | Cancel |
 | `/api/agents/:id/runs` | GET | requireAuth | read Agent | requireTenant | Run history |
-| `/api/agents/:id/debug` | POST | requireAuth | manage Agent | requireTenant | Debug mode |
-| `/api/agents/tools/credentials` | GET | requireAuth | manage Agent | requireTenant | List creds |
-| `/api/agents/tools/credentials` | POST | requireAuth | manage Agent | requireTenant | Create cred |
+| `/api/agents/:id/debug` | POST | requireAuth | — | requireTenant | Start debug |
+| `/api/agents/:id/debug/:rid/step` | POST | requireAuth | — | requireTenant | Debug step |
+| `/api/agents/:id/debug/:rid/continue` | POST | requireAuth | — | requireTenant | Debug continue |
+| `/api/agents/:id/debug/:rid/breakpoint` | POST | requireAuth | — | requireTenant | Add breakpoint |
+| `/api/agents/:id/debug/:rid/breakpoint/:nid` | DELETE | requireAuth | — | requireTenant | Remove breakpoint |
+| `/api/agents/:id/debug/:rid/steps/:nid` | GET | requireAuth | — | requireTenant | Get step details |
+| `/api/agents/tools/credentials` | GET | requireAuth | — | requireTenant | List creds |
+| `/api/agents/tools/credentials` | POST | requireAuth | — | requireTenant | Create cred |
+| `/api/agents/tools/credentials/:id` | PUT | requireAuth | — | requireTenant | Update cred |
+| `/api/agents/tools/credentials/:id` | DELETE | requireAuth | — | requireTenant | Delete cred |
+| `/api/agents/templates` | GET | requireAuth | — | requireTenant | List templates |
+| `/api/agents/:id/embed-token` | POST | requireAuth | — | requireTenant | Create embed token |
+| `/api/agents/:id/embed-tokens` | GET | requireAuth | — | requireTenant | List embed tokens |
+| `/api/agents/embed-tokens/:tid` | DELETE | requireAuth | — | requireTenant | Revoke embed token |
 | `/agents/webhook/:agentId` | POST | **None** | — | — | Public, rate-limited 100/15min |
 | `/api/agents/embed/:token/:id/*` | GET/POST | **Token** | — | — | Embed widget |
+
+> **Note:** Version, debug, tool credential, template, and embed token routes only use `requireAuth + requireTenant` — they do NOT apply `requireAbility` middleware despite the CASL subject definition existing for Agent.
 
 **Who can do what:**
 | Role | List/View | Create/Edit/Delete | Run | Debug | Webhook |
@@ -240,7 +260,7 @@ ABAC rules are translated to OpenSearch filters for search-time enforcement:
 | `/api/memory/:id/messages` | POST | requireAuth | manage Memory | requireTenant | Insert message |
 | `/api/memory/:id/messages/:mid` | DELETE | requireAuth | manage Memory | requireTenant | Delete message |
 | `/api/memory/:id/search` | POST | requireAuth | manage Memory | requireTenant | Hybrid search |
-| `/api/memory/:id/messages/:mid/forget` | PUT | requireAuth | manage Memory | requireTenant | Forget/restore |
+| `/api/memory/:id/messages/:mid/forget` | PUT | requireAuth | manage Memory | requireTenant | Forget (one-way) |
 | `/api/memory/:id/import` | POST | requireAuth | manage Memory | requireTenant | Import history |
 
 **Who can do what:**
@@ -314,8 +334,8 @@ ABAC rules are translated to OpenSearch filters for search-time enforcement:
 | `/api/search/apps/:id/embed-tokens` | POST | manage_users | Create token |
 | `/api/search/apps/:id/embed-tokens` | GET | manage_users | List tokens |
 | `/api/search/embed-tokens/:id` | DELETE | manage_users | Revoke token |
-| `/api/search/embed/:token/info` | GET | **checkSession** | Public (token auth) |
-| `/api/search/embed/:token/ask` | POST | **checkSession** | Public (token auth, SSE) |
+| `/api/search/embed/:token/info` | GET | **None** | Public (token validated by controller) |
+| `/api/search/embed/:token/ask` | POST | **None** | Public (token validated by controller, SSE) |
 
 **Who can do what:**
 | Role | Search/Ask | Manage Apps | Manage Embeds | Set ACL |
@@ -405,7 +425,9 @@ All endpoints require `requirePermission('manage_users')`:
 
 | Endpoint | Method | Auth | Role/Permission |
 |----------|--------|------|----------------|
-| `/api/admin/dashboard` | GET | requireAuth | requireRole('admin') |
+| `/api/admin/dashboard/stats` | GET | requireAuth | requireRole('admin', 'leader') |
+| `/api/admin/dashboard/analytics/queries` | GET | requireAuth + requireTenant | requireRole('admin', 'super-admin') |
+| `/api/admin/dashboard/analytics/feedback` | GET | requireAuth + requireTenant | requireRole('admin', 'super-admin') |
 | `/api/admin/history/chat` | GET | requireAuth | requireRole('admin', 'leader') |
 | `/api/admin/history/chat/:sid` | GET | requireAuth | requireRole('admin', 'leader') |
 | `/api/admin/history/search` | GET | requireAuth | requireRole('admin', 'leader') |
@@ -439,7 +461,14 @@ All endpoints require `requirePermission('manage_model_providers')`:
 |----------|--------|------|------|
 | `/api/glossary/search` | GET | requireAuth | — |
 | `/api/glossary/generate-prompt` | POST | requireAuth | — |
+| `/api/glossary/keywords` | GET | requireAuth | — |
+| `/api/glossary/keywords` | POST | requireAuth | admin, leader |
+| `/api/glossary/keywords/:id` | PUT | requireAuth | admin, leader |
+| `/api/glossary/keywords/:id` | DELETE | requireAuth | admin, leader |
+| `/api/glossary/keywords/bulk-import` | POST | requireAuth | admin, leader |
+| `/api/glossary/bulk-import` | POST | requireAuth | admin, leader |
 | `/api/glossary/tasks` | GET | requireAuth | — |
+| `/api/glossary/tasks/:id` | GET | requireAuth | — |
 | `/api/glossary/tasks` | POST | requireAuth | admin, leader |
 | `/api/glossary/tasks/:id` | PUT | requireAuth | admin, leader |
 | `/api/glossary/tasks/:id` | DELETE | requireAuth | admin, leader |
@@ -448,12 +477,12 @@ All endpoints require `requirePermission('manage_model_providers')`:
 
 | Endpoint | Method | Auth | Permission |
 |----------|--------|------|-----------|
-| `/api/broadcast/active` | GET | **None** | Public |
-| `/api/broadcast/:id/dismiss` | POST | **Optional** | — |
-| `/api/broadcast` | GET | requireAuth | manage_system |
-| `/api/broadcast` | POST | requireAuth | manage_system |
-| `/api/broadcast/:id` | PUT | requireAuth | manage_system |
-| `/api/broadcast/:id` | DELETE | requireAuth | manage_system |
+| `/api/broadcast-messages/active` | GET | **None** | Public |
+| `/api/broadcast-messages/:id/dismiss` | POST | **Optional** | — |
+| `/api/broadcast-messages` | GET | requireAuth | manage_system |
+| `/api/broadcast-messages` | POST | requireAuth | manage_system |
+| `/api/broadcast-messages/:id` | PUT | requireAuth | manage_system |
+| `/api/broadcast-messages/:id` | DELETE | requireAuth | manage_system |
 
 ### 15. Sync Connectors
 
@@ -464,23 +493,99 @@ All endpoints require `requirePermission('manage_model_providers')`:
 | `/api/sync/connectors` | POST | requireAuth | manage_knowledge_base |
 | `/api/sync/connectors/:id` | PUT | requireAuth | manage_knowledge_base |
 | `/api/sync/connectors/:id` | DELETE | requireAuth | manage_knowledge_base |
-| `/api/sync/connectors/:id/trigger` | POST | requireAuth | manage_knowledge_base |
+| `/api/sync/connectors/:id/sync` | POST | requireAuth | manage_knowledge_base |
 
-### 16. External API (OpenAI-Compatible)
+### 16. External API
+
+Two separate API systems exist:
+
+#### External Evaluation API (API Key Auth)
 
 All endpoints require `requireApiKey + requireScope(scope)`:
 
 | Endpoint | Method | Scope | Notes |
 |----------|--------|-------|-------|
-| `/v1/chat/completions` | POST | `chat` | OpenAI-compatible chat |
-| `/v1/search` | POST | `search` | Search API |
-| `/v1/retrieval` | POST | `retrieval` | RAG retrieval |
+| `/api/v1/external/chat` | POST | `chat` | External chat API |
+| `/api/v1/external/search` | POST | `search` | External search API |
+| `/api/v1/external/retrieval` | POST | `retrieval` | External RAG retrieval |
+
+#### OpenAI-Compatible Embed API (Token Auth)
+
+These endpoints authenticate via embed token (validated internally by the controller, no middleware):
+
+| Endpoint | Method | Auth | Notes |
+|----------|--------|------|-------|
+| `/api/v1/chat/completions` | POST | Embed token | OpenAI-compatible chat |
+| `/api/v1/search/completions` | POST | Embed token | OpenAI-compatible search |
+
+### 16b. External API Key Management
+
+| Endpoint | Method | Auth | Notes |
+|----------|--------|------|-------|
+| `/api/external/api-keys` | GET | requireAuth | List API keys |
+| `/api/external/api-keys` | POST | requireAuth | Create API key |
+| `/api/external/api-keys/:id` | PUT | requireAuth | Update API key |
+| `/api/external/api-keys/:id` | DELETE | requireAuth | Delete API key |
+
+### 16c. LLM Provider Public Routes
+
+| Endpoint | Method | Auth | Notes |
+|----------|--------|------|-------|
+| `/api/models` | GET | requireAuth | List available models (no admin permission) |
 
 ### 17. Feedback
 
 | Endpoint | Method | Auth | Notes |
 |----------|--------|------|-------|
 | `/api/feedback` | POST | requireAuth | Submit feedback |
+
+### 18. System Tools
+
+| Endpoint | Method | Auth | Permission |
+|----------|--------|------|-----------|
+| `/api/system-tools` | GET | requireAuth | view_system_tools |
+| `/api/system-tools/health` | GET | requireAuth | view_system_tools |
+| `/api/system-tools/:id/run` | POST | requireAuth | manage_system |
+
+### 19. User History
+
+All endpoints require `requireAuth` only (users access their own history):
+
+| Endpoint | Method | Notes |
+|----------|--------|-------|
+| `/api/user/history` | GET | List own history |
+| `/api/user/history/:id` | GET | Get history detail |
+| `/api/user/history/:id` | DELETE | Delete history entry |
+| `/api/user/history` | DELETE | Bulk delete |
+
+### 20. Chat Embed & Chat File
+
+#### Chat Embed Token Management (Admin)
+
+| Endpoint | Method | Auth | Permission |
+|----------|--------|------|-----------|
+| `/api/chat/assistants/:id/embed-tokens` | POST | requireAuth | manage_users |
+| `/api/chat/assistants/:id/embed-tokens` | GET | requireAuth | manage_users |
+| `/api/chat/embed-tokens/:id` | DELETE | requireAuth | manage_users |
+
+#### Chat Embed Public Endpoints
+
+| Endpoint | Method | Auth | Notes |
+|----------|--------|------|-------|
+| `/api/chat/embed/:token/*` | GET/POST | **Token** | Public embed widget |
+
+#### Chat File Routes
+
+| Endpoint | Method | Auth | Notes |
+|----------|--------|------|-------|
+| `/api/chat/conversations/:id/files` | POST | requireAuth | Upload file |
+| `/api/chat/conversations/:id/files/:fid` | GET | requireAuth | Download file |
+
+### 21. Preview
+
+| Endpoint | Method | Auth | Permission |
+|----------|--------|------|-----------|
+| `/api/preview/*` | GET | requireAuth | view_search |
 
 ---
 
@@ -506,7 +611,7 @@ All endpoints require `requireApiKey + requireScope(scope)`:
 ### `requireAbility(action, subject)`
 - **File**: `be/src/shared/middleware/auth.middleware.ts:346`
 - Loads CASL ability from Redis cache (key: `ability:{sessionId}`)
-- Builds fresh if cache miss (role + user perms + team perms + ABAC policies)
+- Builds fresh if cache miss using `buildAbilityFor(userContext, abacPolicies?)` — role-based rules with optional ABAC overlays
 - Checks `ability.can(action, subject)`
 - Attaches ability to `req.ability`
 - Returns **403 Forbidden** if denied

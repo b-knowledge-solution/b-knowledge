@@ -15,6 +15,8 @@ An open-source platform to centralize and manage AI Search, AI Chat, and Knowled
 | **LLM Provider Config** | Connect multiple LLM providers (OpenAI, Azure OpenAI, Ollama, LiteLLM) with per-assistant model selection. |
 | **Team Management** | Multi-tenant team structures with isolated knowledge base and assistant access. |
 | **Enterprise RBAC** | Three-tier role system (Admin, Leader, User) with feature-level gating. |
+| **Agent Workflows** | Visual drag-and-drop workflow builder with 55 node types — LLM, retrieval, code execution, branching, loops, and tool integration. |
+| **AI Memory** | Persistent memory pools with LLM-powered extraction (Raw, Semantic, Episodic, Procedural types), hybrid vector+text search, and FIFO forgetting policy. |
 | **Glossary** | Domain terminology management to improve RAG accuracy and consistency. |
 | **Audit Logging** | Comprehensive audit trail tracking every user action for compliance. |
 | **Broadcast System** | Real-time system-wide announcements for all active users. |
@@ -291,19 +293,14 @@ Each workspace has `.env.example` — copy to `.env` and fill in credentials:
 
 ## Documentation
 
-Detailed guides in the `docs/` folder:
+Full system documentation is available as a VitePress site in the `docs/` folder. Run `npm run docs:dev` to browse locally.
 
-- [Architecture & RBAC](docs/architecture.md)
-- [Configuration Guide](docs/configuration.md)
-- [Deployment Strategy](docs/deployment.md)
-- [Development Guide](docs/development.md)
-- [API Reference](docs/api-reference.md)
-- [External Trace Integration](docs/external-trace-integration.md)
-- [External History Integration](docs/external-history-integration.md)
-- [External History API](docs/external-history-api.md)
-- [Security Review](docs/security-review.md)
-- [Testing](docs/testing.md)
-- [WebSocket](docs/websocket/WEBSOCKET.md)
+| Section | Path | Description |
+| :--- | :--- | :--- |
+| **SRS** | `docs/srs/` | Software Requirements Specification — functional requirements for all 17 modules |
+| **Basic Design** | `docs/basic-design/` | Architecture diagrams, database ER diagrams, RAG pipeline, API design |
+| **Detail Design** | `docs/detail-design/` | Per-module implementation details, auth flows, chat pipeline, agent & memory systems |
+| **Legacy** | `docs/legacy/` | Archived documentation (excluded from VitePress) |
 
 ## License
 

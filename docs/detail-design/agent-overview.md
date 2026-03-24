@@ -4,7 +4,7 @@
 
 The Agent system is a visual workflow builder and execution engine comprising three layers:
 
-1. **Frontend Canvas** — React Flow-based drag-and-drop editor with 60+ operator types
+1. **Frontend Canvas** — React Flow-based drag-and-drop editor with 55 operator types
 2. **Backend Orchestrator** — Graph traversal engine with topological sort and dual execution paths
 3. **Python Worker** — Redis Streams consumer executing LLM, retrieval, and tool operations
 
@@ -196,9 +196,17 @@ sequenceDiagram
     FE->>BE: GET step details
 
     U->>FE: Click "Step" or "Continue"
-    FE->>BE: POST /debug/:runId/step
-    Note over BE: Execute next node
+    FE->>BE: POST /debug/:runId/step (or /continue)
+    Note over BE: Execute next node(s)
     BE-->>FE: SSE: step_complete (node_4)
+
+    Note over U,BE: Additional debug endpoints
+    U->>FE: Add breakpoint mid-run
+    FE->>BE: POST /debug/:runId/breakpoint {nodeId}
+    U->>FE: Remove breakpoint
+    FE->>BE: DELETE /debug/:runId/breakpoint/:nodeId
+    U->>FE: Inspect step
+    FE->>BE: GET /debug/:runId/steps/:nodeId
 ```
 
 ## Trigger Types
@@ -239,10 +247,10 @@ sequenceDiagram
 
 | File | Purpose |
 |------|---------|
-| `be/src/modules/agents/services/agent-executor.service.ts` | Core graph orchestration engine (~800 lines) |
+| `be/src/modules/agents/services/agent-executor.service.ts` | Core graph orchestration engine (~900 lines) |
 | `be/src/modules/agents/services/agent-redis.service.ts` | Redis Streams + pub/sub communication |
 | `be/src/modules/agents/services/agent.service.ts` | CRUD, versioning, duplication |
 | `advance-rag/rag/agent/agent_consumer.py` | Python worker task consumer |
-| `advance-rag/rag/agent/node_executor.py` | Node dispatch table (~1800 lines) |
+| `advance-rag/rag/agent/node_executor.py` | Node dispatch table (~2000 lines) |
 | `fe/src/features/agents/components/AgentCanvas.tsx` | React Flow canvas editor |
-| `fe/src/features/agents/types/agent.types.ts` | Complete type definitions (~280 types) |
+| `fe/src/features/agents/types/agent.types.ts` | 55 operator types + complete type definitions |

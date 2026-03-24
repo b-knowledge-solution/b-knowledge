@@ -104,31 +104,41 @@ erDiagram
 ```mermaid
 erDiagram
     memories {
-        text id PK "UUID"
-        text name "Pool name"
+        text id PK "UUID, gen_random_uuid()"
+        varchar name "Pool name (255)"
         text description "Optional description"
         text avatar "Avatar URL"
-        int memory_type "Bitmask: RAW=1 SEMANTIC=2 EPISODIC=4 PROCEDURAL=8"
-        enum storage_type "table | graph"
-        int memory_size "Max size in bytes (default 5MB)"
-        text forgetting_policy "FIFO"
-        text embd_id FK "Per-pool embedding model override"
-        text llm_id FK "Per-pool LLM model override"
-        float temperature "LLM temperature for extraction"
+        int memory_type "Bitmask: RAW=1 SEMANTIC=2 EPISODIC=4 PROCEDURAL=8, default 15"
+        varchar storage_type "table | graph (20), CHECK constraint"
+        int memory_size "Max size in bytes, default 5242880"
+        varchar forgetting_policy "FIFO (20)"
+        varchar embd_id "Per-pool embedding model (255), references tenant_llm"
+        varchar llm_id "Per-pool LLM model (255), references tenant_llm"
+        float temperature "LLM temperature, default 0.1"
         text system_prompt "Custom extraction system prompt"
         text user_prompt "Custom extraction user prompt"
-        enum extraction_mode "batch | realtime"
-        enum permission "me | team"
-        enum scope_type "user | agent | team"
+        varchar extraction_mode "batch | realtime (20), CHECK, default batch"
+        varchar permission "me | team (10), CHECK, default me"
+        varchar scope_type "user | agent | team (20), CHECK, default user"
         text scope_id "Owner entity UUID"
-        text tenant_id "Multi-tenant isolation"
-        text created_by FK "Creator user UUID"
-        timestamp created_at
-        timestamp updated_at
+        varchar tenant_id "Multi-tenant isolation (255), NOT NULL"
+        varchar created_by "Creator user UUID (255), no FK constraint"
+        timestamp created_at "with tz, default now()"
+        timestamp updated_at "with tz, default now()"
     }
 ```
 
 > **Note**: Memory messages are stored in OpenSearch (not PostgreSQL). See [Memory Architecture](/basic-design/memory-architecture) for the OpenSearch index mapping.
+>
+> **Note**: `embd_id`, `llm_id`, and `created_by` reference `tenant_llm` and `users` by convention but have **no foreign key constraints** in the migration. This is intentional — soft references allow flexible model/user deletion without cascading.
+
+## Memory Table Indexes
+
+| Table | Index | Columns | Purpose |
+|-------|-------|---------|---------|
+| memories | idx_memories_tenant_id | `(tenant_id)` | Tenant-scoped queries |
+| memories | idx_memories_scope | `(scope_type, scope_id)` | Scope-based lookup |
+| memories | idx_memories_created_by | `(created_by)` | Creator filtering |
 
 ## Agent Table Indexes
 
@@ -204,6 +214,6 @@ erDiagram
 | Agent → Project | `project_id` | `projects` | Optional project scope |
 | Agent → Tenant | `tenant_id` | `tenant` | Multi-tenant isolation |
 | Agent Run → User | `triggered_by` | `users` | Who started the run |
-| Memory → User | `created_by` | `users` | Pool creator |
-| Memory → Tenant | `tenant_id` | `tenant` | Multi-tenant isolation |
-| Memory → LLM | `embd_id`, `llm_id` | `tenant_llm` | Model overrides |
+| Memory → User | `created_by` | `users` | Pool creator (soft ref, no FK) |
+| Memory → Tenant | `tenant_id` | `tenant` | Multi-tenant isolation (soft ref, no FK) |
+| Memory → LLM | `embd_id`, `llm_id` | `tenant_llm` | Model overrides (soft ref, no FK) |

@@ -9,7 +9,7 @@ Provide a visual, no-code/low-code agent builder that allows users to design, ex
 | In Scope | Out of Scope |
 |----------|-------------|
 | Visual canvas editor (React Flow) | Custom operator SDK for third-party developers |
-| 60+ built-in operator types | Agent marketplace / sharing across tenants |
+| 55 built-in operator types | Agent marketplace / sharing across tenants |
 | Agent and Pipeline execution modes | Multi-agent collaboration (agents calling agents) |
 | Version management (version-as-row) | Scheduled/cron-triggered agent runs |
 | Debug mode with breakpoints | |
@@ -40,13 +40,13 @@ Provide a visual, no-code/low-code agent builder that allows users to design, ex
 ### FR-AGT-02: Visual Canvas Editor
 
 - Infinite canvas with pan/zoom powered by React Flow
-- Node palette with 60+ operators organized into 6 categories:
+- Node palette with 55 operators organized into 6 categories:
   - **Input/Output** (blue): begin, answer, message, fillup
   - **LLM/AI** (purple): generate, categorize, rewrite, relevant, agent_with_tools
-  - **Retrieval** (green): retrieval, wikipedia, tavily, pubmed, arxiv, google_scholar
-  - **Logic Flow** (amber): switch, condition, loop, loop_item, iteration, merge, note, concentrator
+  - **Retrieval** (green): retrieval, wikipedia, tavily, pubmed, memory_read
+  - **Logic Flow** (amber): switch, condition, loop, loop_item, iteration, iteration_item, exit_loop, merge, note, concentrator
   - **Code/Tool** (pink): code, github, sql, api, email, invoke, MCP tools
-  - **Data** (cyan): template, keyword_extract, web search engines, finance APIs, data operations
+  - **Data** (cyan): template, keyword_extract, web search engines (baidu, bing, duckduckgo, google), finance APIs (akshare, yahoofinance, jin10, tushare, wencai), data_operations, list_operations, string_transform, docs_generator, excel_processor, arxiv, google_scholar, deepl, qweather, exesql, crawler, variable_assigner, variable_aggregator, memory_write
 - Each node type has a dedicated configuration form
 - Edge drawing with conditional routing support
 - Smart copy/paste for subgraph duplication
@@ -63,7 +63,7 @@ Provide a visual, no-code/low-code agent builder that allows users to design, ex
 
 - Graph traversal using Kahn's algorithm (topological sort)
 - Nodes classified as **inline** (executed in Node.js) or **dispatch** (queued to Python worker via Redis Streams)
-- Inline nodes: begin, answer, message, switch, condition, merge, note, variable operations
+- Inline nodes: begin, answer, message, switch, condition, merge, note, concentrator, template, keyword_extract
 - Dispatch nodes: generate, retrieval, code, api, email, all external tool nodes
 - Real-time progress tracking (completed_nodes / total_nodes)
 - Configurable max execution time
