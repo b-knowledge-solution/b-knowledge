@@ -1769,6 +1769,48 @@ export class RagController {
     }
 
     /**
+     * @description POST /datasets/:id/generate-field-map — Auto-detect field map from OpenSearch data.
+     * Samples one chunk from the dataset, infers field types, and updates parser_config.field_map.
+     * @param {Request} req - Express request with dataset ID param
+     * @param {Response} res - Express response with generated field_map object
+     * @returns {Promise<void>}
+     */
+    async generateFieldMap(req: Request, res: Response): Promise<void> {
+        const datasetId = req.params['id']
+        if (!datasetId) {
+            res.status(400).json({ error: 'Dataset ID is required' })
+            return
+        }
+
+        try {
+            // Verify dataset exists
+            const dataset = await ModelFactory.dataset.findById(datasetId)
+            if (!dataset) {
+                res.status(404).json({ error: 'Dataset not found' })
+                return
+            }
+
+            // Use tenant ID from request context for OpenSearch index isolation
+            const tenantId = getTenantId(req) || ''
+
+            // Auto-detect field map from OpenSearch data
+            const fieldMap = await ragSearchService.autoGenerateFieldMap(tenantId, datasetId)
+            if (!fieldMap) {
+                res.status(404).json({ error: 'No structured data found to generate field map' })
+                return
+            }
+
+            // Persist field_map into dataset's parser_config JSONB
+            await ModelFactory.dataset.updateFieldMap(datasetId, fieldMap)
+
+            res.json({ field_map: fieldMap })
+        } catch (error) {
+            log.error('Failed to generate field map', { error: String(error) })
+            res.status(500).json({ error: 'Failed to generate field map' })
+        }
+    }
+
+    /**
      * @description GET /system/config/parsing_scheduler — Return current parsing scheduler settings.
      * Returns schedule expression and enabled flag from system_configs.
      * @param {Request} _req - Express request (unused, admin-only endpoint)

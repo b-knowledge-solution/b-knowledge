@@ -91,4 +91,26 @@ export class DatasetModel extends BaseModel<Dataset> {
         })
     }
   }
+
+  /**
+   * @description Update the field_map key inside parser_config JSONB for a dataset.
+   * Uses jsonb_set to preserve other parser_config keys.
+   * @param {string} datasetId - Dataset UUID
+   * @param {Record<string, unknown>} fieldMap - Field map object to store
+   * @returns {Promise<void>}
+   */
+  async updateFieldMap(
+    datasetId: string,
+    fieldMap: Record<string, unknown>,
+  ): Promise<void> {
+    const fieldMapJson = JSON.stringify(fieldMap)
+    await this.knex(this.tableName)
+      .where('id', datasetId)
+      .update({
+        parser_config: this.knex.raw(
+          `jsonb_set(COALESCE(parser_config, '{}'), '{field_map}', ?::jsonb)`,
+          [fieldMapJson],
+        ),
+      })
+  }
 }

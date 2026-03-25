@@ -997,5 +997,98 @@ export class RagSearchService {
     }
 }
 
+    /**
+     * @description Auto-detect field map from existing OpenSearch chunk data.
+     * Samples one chunk from the given dataset, reads its _source fields,
+     * skips internal fields, and infers types from sample values.
+     * @param {string} tenantId - Tenant ID for index name resolution
+     * @param {string} datasetId - Dataset (kb_id) to sample from
+     * @returns {Promise<Record<string, { type: string; column_name: string; description: string }> | null>} Inferred field map or null if no data
+     */
+    async autoGenerateFieldMap(
+        tenantId: string,
+        datasetId: string,
+    ): Promise<Record<string, { type: string; column_name: string; description: string }> | null> {
+        const client = getClient()
+
+        // Internal fields that should be excluded from the user-visible field map
+        const INTERNAL_FIELDS = new Set([
+            'chunk_id', 'doc_id', 'kb_id', 'tenant_id',
+            'content_ltks', 'content_sm_ltks', 'content_with_weight',
+            'title_tks', 'title_sm_tks',
+            'important_kwd', 'important_tks',
+            'question_kwd', 'question_tks',
+            'tag_kwd', 'tag_feas',
+            'q_vec', 'q_768_vec', 'q_1024_vec', 'q_1536_vec',
+            'available_int', 'removed_kwd',
+            'page_num_int', 'position_int', 'top_int',
+            'create_time', 'create_timestamp_flt',
+            'img_id', 'docnm_kwd',
+            'pagerank_fea',
+        ])
+
+        try {
+            // Sample one chunk from this dataset to discover fields
+            const res = await client.search({
+                index: getIndexName(tenantId),
+                body: {
+                    query: { term: { kb_id: datasetId } },
+                    size: 1,
+                },
+            })
+
+            const hits = res.body.hits?.hits || []
+            if (hits.length === 0) return null
+
+            const source = hits[0]._source || {}
+            const fieldMap: Record<string, { type: string; column_name: string; description: string }> = {}
+
+            // Iterate over _source fields and infer type from sample value
+            for (const [key, value] of Object.entries(source)) {
+                // Skip internal/system fields
+                if (INTERNAL_FIELDS.has(key)) continue
+
+                const inferredType = this.inferFieldType(value)
+                fieldMap[key] = {
+                    type: inferredType,
+                    column_name: key,
+                    description: '',
+                }
+            }
+
+            return Object.keys(fieldMap).length > 0 ? fieldMap : null
+        } catch (err: unknown) {
+            if (String(err).includes('index_not_found_exception')) return null
+            log.warn('Failed to auto-generate field map', { error: String(err) })
+            return null
+        }
+    }
+
+    /**
+     * @description Infer the field type from a sample value.
+     * Returns 'integer', 'float', 'date', or 'text' based on value characteristics.
+     * @param {unknown} value - Sample value from an OpenSearch document
+     * @returns {string} Inferred type string
+     */
+    private inferFieldType(value: unknown): string {
+        if (value == null) return 'text'
+
+        // Numeric values: distinguish integer vs float
+        if (typeof value === 'number') {
+            return Number.isInteger(value) ? 'integer' : 'float'
+        }
+
+        // String values: check for date patterns
+        if (typeof value === 'string') {
+            // ISO date pattern or common date formats
+            if (/^\d{4}-\d{2}-\d{2}/.test(value) || /^\d{2}\/\d{2}\/\d{4}/.test(value)) {
+                return 'date'
+            }
+        }
+
+        return 'text'
+    }
+}
+
 /** Singleton instance of the OpenSearch search service */
 export const ragSearchService = new RagSearchService()
