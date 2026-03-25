@@ -1755,7 +1755,18 @@
     "parserCode": "Code",
     "parserOpenapi": "API Spec",
     "parserAdr": "ADR",
-    "parserClinical": "Clinical"
+    "parserClinical": "Clinical",
+    "fieldMap": "Structured Data — Field Map",
+    "fieldMapDesc": "Define field mappings for SQL-based retrieval on structured datasets",
+    "autoDetectFieldMap": "Auto-detect from data",
+    "fieldMapName": "Display Name",
+    "fieldMapType": "Type",
+    "fieldMapColumn": "OpenSearch Field",
+    "fieldMapDescription": "Description",
+    "addFieldMapEntry": "Add Field",
+    "removeFieldMapEntry": "Remove",
+    "generateFieldMapSuccess": "Field map generated successfully",
+    "noFieldMapData": "No structured data found to generate field map"
   },
   "versions": {
     "title": "Versions",

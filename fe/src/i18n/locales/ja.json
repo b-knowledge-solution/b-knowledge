@@ -1725,7 +1725,18 @@
     "parserCode": "コード",
     "parserOpenapi": "API仕様",
     "parserAdr": "ADR",
-    "parserClinical": "臨床"
+    "parserClinical": "臨床",
+    "fieldMap": "構造化データ — フィールドマップ",
+    "fieldMapDesc": "構造化データセットでのSQL検索用フィールドマッピングを定義",
+    "autoDetectFieldMap": "データから自動検出",
+    "fieldMapName": "表示名",
+    "fieldMapType": "タイプ",
+    "fieldMapColumn": "OpenSearchフィールド",
+    "fieldMapDescription": "説明",
+    "addFieldMapEntry": "フィールドを追加",
+    "removeFieldMapEntry": "削除",
+    "generateFieldMapSuccess": "フィールドマップの生成に成功しました",
+    "noFieldMapData": "フィールドマップを生成するための構造化データが見つかりません"
   },
   "versions": {
     "title": "バージョン",

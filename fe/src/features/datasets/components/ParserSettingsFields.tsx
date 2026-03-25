@@ -9,19 +9,21 @@
  * @module features/datasets/components/ParserSettingsFields
  */
 
-import React from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Info } from 'lucide-react'
+import { Info, Plus, Trash2, Wand2, Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
+import { Button } from '@/components/ui/button'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { PDF_PARSER_OPTIONS, PARSER_DESCRIPTIONS } from '../types'
 import MetadataSchemaBuilder from './MetadataSchemaBuilder'
 import type { MetadataSchemaField } from './MetadataSchemaBuilder'
+import { datasetApi } from '../api/datasetApi'
 
 // ============================================================================
 // Validation constants (sourced from RAGFlow)
@@ -67,7 +69,26 @@ interface ParserSettingsFieldsProps {
   parserConfig: Record<string, unknown>
   /** Callback to update a single configuration key */
   onConfigChange: (key: string, value: unknown) => void
+  /** Dataset ID — required for auto-detect field map endpoint */
+  datasetId?: string
 }
+
+/**
+ * @description Represents a single field entry in the structured data field map editor.
+ */
+interface FieldMapEntry {
+  /** Display name for the field */
+  name: string
+  /** Data type: text, integer, float, date, keyword */
+  type: string
+  /** Actual OpenSearch field/column name */
+  column_name: string
+  /** Human-readable description of the field */
+  description: string
+}
+
+/** Available type options for field map entries */
+const FIELD_TYPE_OPTIONS = ['text', 'integer', 'float', 'date', 'keyword'] as const
 
 // ============================================================================
 // Sub-component: SliderField
@@ -153,8 +174,28 @@ const ParserSettingsFields: React.FC<ParserSettingsFieldsProps> = ({
   parserId,
   parserConfig,
   onConfigChange,
+  datasetId,
 }) => {
   const { t } = useTranslation()
+
+  // ── Field Map Editor State ──────────────────────────────────────────
+  /**
+   * Parse existing field_map from parserConfig into FieldMapEntry array.
+   * The field_map is stored as Record<name, {type, column_name, description}>.
+   */
+  const parseFieldMapEntries = (): FieldMapEntry[] => {
+    const fm = parserConfig?.field_map
+    if (!fm || typeof fm !== 'object') return []
+    return Object.entries(fm as Record<string, Record<string, unknown>>).map(([name, val]) => ({
+      name,
+      type: String(val?.type ?? 'text'),
+      column_name: String(val?.column_name ?? name),
+      description: String(val?.description ?? ''),
+    }))
+  }
+
+  const [fieldMapEntries, setFieldMapEntries] = useState<FieldMapEntry[]>(parseFieldMapEntries)
+  const [isAutoDetecting, setIsAutoDetecting] = useState(false)
 
   // Convenience getters with type-safe defaults
   const chunkTokenNum = Number(parserConfig.chunk_token_num ?? CHUNK_TOKEN_DEFAULT)
@@ -172,6 +213,85 @@ const ParserSettingsFields: React.FC<ParserSettingsFieldsProps> = ({
 
   // Whether this parser supports chunking settings
   const showChunkSettings = !NO_CHUNK_SETTINGS_PARSERS.has(parserId)
+
+  // Show field map editor for table parser or when field_map already exists
+  const showFieldMap = parserId === 'table' || !!parserConfig?.field_map
+
+  /**
+   * Build a field_map object from the entries array and propagate via onConfigChange.
+   */
+  const syncFieldMap = (entries: FieldMapEntry[]) => {
+    if (entries.length === 0) {
+      onConfigChange('field_map', undefined)
+      return
+    }
+    const map: Record<string, { type: string; column_name: string; description: string }> = {}
+    for (const entry of entries) {
+      // Skip entries without a name
+      if (!entry.name.trim()) continue
+      map[entry.name] = {
+        type: entry.type,
+        column_name: entry.column_name || entry.name,
+        description: entry.description,
+      }
+    }
+    onConfigChange('field_map', map)
+  }
+
+  /**
+   * Add a new empty field entry to the field map editor.
+   */
+  const addFieldEntry = () => {
+    const updated = [...fieldMapEntries, { name: '', type: 'text', column_name: '', description: '' }]
+    setFieldMapEntries(updated)
+  }
+
+  /**
+   * Remove a field entry by index and sync the field map.
+   */
+  const removeFieldEntry = (idx: number) => {
+    const updated = fieldMapEntries.filter((_, i) => i !== idx)
+    setFieldMapEntries(updated)
+    syncFieldMap(updated)
+  }
+
+  /**
+   * Update a single field in an entry by index, then sync the field map.
+   */
+  const updateFieldEntry = (idx: number, field: keyof FieldMapEntry, value: string) => {
+    const updated = fieldMapEntries.map((entry, i) =>
+      i === idx ? { ...entry, [field]: value } : entry,
+    )
+    setFieldMapEntries(updated)
+    syncFieldMap(updated)
+  }
+
+  /**
+   * Auto-detect field map from existing OpenSearch data for this dataset.
+   * Calls the backend endpoint and populates the field map editor.
+   */
+  const handleAutoDetect = async () => {
+    if (!datasetId) return
+    setIsAutoDetecting(true)
+    try {
+      const result = await datasetApi.generateFieldMap(datasetId)
+      if (result.field_map && Object.keys(result.field_map).length > 0) {
+        // Convert server response to FieldMapEntry array
+        const entries: FieldMapEntry[] = Object.entries(result.field_map).map(([name, val]) => ({
+          name,
+          type: String((val as Record<string, unknown>)?.type ?? 'text'),
+          column_name: String((val as Record<string, unknown>)?.column_name ?? name),
+          description: String((val as Record<string, unknown>)?.description ?? ''),
+        }))
+        setFieldMapEntries(entries)
+        onConfigChange('field_map', result.field_map)
+      }
+    } catch {
+      // Error is handled by the API layer; no-op here
+    } finally {
+      setIsAutoDetecting(false)
+    }
+  }
 
   // Parser description for the info block
   const desc = PARSER_DESCRIPTIONS[parserId]
@@ -199,11 +319,129 @@ const ParserSettingsFields: React.FC<ParserSettingsFieldsProps> = ({
         </div>
       )}
 
-      {/* No settings message for special parsers */}
-      {!showChunkSettings && (
+      {/* No settings message for special parsers (except table which has field map) */}
+      {!showChunkSettings && !showFieldMap && (
         <p className="text-sm text-muted-foreground italic">
           {t('datasets.noParserSettings', 'This parser does not require additional settings.')}
         </p>
+      )}
+
+      {/* ================================================================ */}
+      {/* Field Map Editor — visible for table parser or when field_map exists */}
+      {/* ================================================================ */}
+      {showFieldMap && (
+        <>
+          <Separator className="my-2" />
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm font-medium">
+                {t('datasets.fieldMap', 'Structured Data — Field Map')}
+              </Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {t('datasets.fieldMapDesc', 'Define field mappings for SQL-based retrieval on structured datasets')}
+              </p>
+            </div>
+            {/* Auto-detect button — only enabled when datasetId is available */}
+            {datasetId && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAutoDetect}
+                disabled={isAutoDetecting}
+                className="gap-1.5"
+              >
+                {isAutoDetecting ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Wand2 className="w-3.5 h-3.5" />
+                )}
+                {t('datasets.autoDetectFieldMap', 'Auto-detect from data')}
+              </Button>
+            )}
+          </div>
+
+          {/* Field map table editor */}
+          {fieldMapEntries.length > 0 && (
+            <div className="border rounded-md overflow-hidden">
+              {/* Table header */}
+              <div className="grid grid-cols-[1fr_100px_1fr_1fr_40px] gap-2 px-3 py-2 bg-muted/50 text-xs font-medium text-muted-foreground">
+                <span>{t('datasets.fieldMapName', 'Display Name')}</span>
+                <span>{t('datasets.fieldMapType', 'Type')}</span>
+                <span>{t('datasets.fieldMapColumn', 'OpenSearch Field')}</span>
+                <span>{t('datasets.fieldMapDescription', 'Description')}</span>
+                <span />
+              </div>
+
+              {/* Table rows */}
+              {fieldMapEntries.map((entry, idx) => (
+                <div
+                  key={idx}
+                  className="grid grid-cols-[1fr_100px_1fr_1fr_40px] gap-2 px-3 py-1.5 border-t items-center"
+                >
+                  {/* Display name input */}
+                  <Input
+                    value={entry.name}
+                    onChange={(e) => updateFieldEntry(idx, 'name', e.target.value)}
+                    placeholder="field_name"
+                    className="h-7 text-sm"
+                  />
+
+                  {/* Type dropdown */}
+                  <Select
+                    value={entry.type}
+                    onValueChange={(v: string) => updateFieldEntry(idx, 'type', v)}
+                  >
+                    <SelectTrigger className="h-7 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FIELD_TYPE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* OpenSearch column name input */}
+                  <Input
+                    value={entry.column_name}
+                    onChange={(e) => updateFieldEntry(idx, 'column_name', e.target.value)}
+                    placeholder="column_name"
+                    className="h-7 text-sm"
+                  />
+
+                  {/* Description input */}
+                  <Input
+                    value={entry.description}
+                    onChange={(e) => updateFieldEntry(idx, 'description', e.target.value)}
+                    placeholder="Optional description"
+                    className="h-7 text-sm"
+                  />
+
+                  {/* Remove button */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive hover:text-destructive"
+                    onClick={() => removeFieldEntry(idx)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add field button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={addFieldEntry}
+            className="gap-1.5"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            {t('datasets.addFieldMapEntry', 'Add Field')}
+          </Button>
+        </>
       )}
 
       {/* Chunking settings — only shown for parsers that support them */}

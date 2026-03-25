@@ -617,4 +617,18 @@ export const datasetApi = {
   ): Promise<Document> => {
     return api.post<Document>(`${BASE_URL}/datasets/${datasetId}/documents/web-crawl`, data);
   },
+
+  // ============================================================================
+  // Field Map Auto-Detection
+  // ============================================================================
+
+  /**
+   * @description Auto-detect field map from existing OpenSearch data for a dataset.
+   * Samples one chunk to infer field names, types, and column mappings.
+   * @param {string} datasetId - Dataset UUID
+   * @returns {Promise<{ field_map: Record<string, { type: string; column_name: string; description: string }> }>} Generated field map
+   */
+  generateFieldMap: async (datasetId: string): Promise<{ field_map: Record<string, { type: string; column_name: string; description: string }> }> => {
+    return api.post<{ field_map: Record<string, { type: string; column_name: string; description: string }> }>(`${BASE_URL}/datasets/${datasetId}/generate-field-map`);
+  },
 };

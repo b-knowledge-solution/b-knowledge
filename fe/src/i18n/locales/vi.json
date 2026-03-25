@@ -1739,7 +1739,18 @@
     "parserCode": "Ma nguon",
     "parserOpenapi": "API Spec",
     "parserAdr": "ADR",
-    "parserClinical": "Lam sang"
+    "parserClinical": "Lam sang",
+    "fieldMap": "Du lieu co cau truc — Ban do truong",
+    "fieldMapDesc": "Dinh nghia anh xa truong cho truy van SQL tren tap du lieu co cau truc",
+    "autoDetectFieldMap": "Tu dong nhan dien tu du lieu",
+    "fieldMapName": "Ten hien thi",
+    "fieldMapType": "Kieu",
+    "fieldMapColumn": "Truong OpenSearch",
+    "fieldMapDescription": "Mo ta",
+    "addFieldMapEntry": "Them truong",
+    "removeFieldMapEntry": "Xoa",
+    "generateFieldMapSuccess": "Tao ban do truong thanh cong",
+    "noFieldMapData": "Khong tim thay du lieu co cau truc de tao ban do truong"
   },
   "versions": {
     "title": "Phiên bản",
