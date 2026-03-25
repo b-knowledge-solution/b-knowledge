@@ -14,6 +14,7 @@ import { SearchApp, SearchAppAccess, ChunkResult, SearchRequest } from '@/shared
 import { ragSearchService } from '@/modules/rag/services/rag-search.service.js'
 import { ragRerankService } from '@/modules/rag/services/rag-rerank.service.js'
 import { ragCitationService } from '@/modules/rag/services/rag-citation.service.js'
+import { ragSqlService } from '@/modules/rag/index.js'
 import { llmClientService } from '@/shared/services/llm-client.service.js'
 import { askSummaryPrompt, citationPrompt } from '@/shared/prompts/index.js'
 import { relatedQuestionsService } from '@/shared/services/related-questions.service.js'
@@ -412,6 +413,23 @@ export class SearchService {
       options?.metadataFilter,
     )
 
+    // Attempt SQL-based retrieval for structured data before full-text/semantic search
+    const datasetIds: string[] = typeof app.dataset_ids === 'string' ? JSON.parse(app.dataset_ids) : app.dataset_ids
+    const sqlResult = await ragSqlService.querySql(query, datasetIds)
+    if (sqlResult) {
+      return {
+        chunks: sqlResult.chunks.map(c => ({
+          chunk_id: c.chunk_id,
+          content: c.text,
+          doc_name: c.doc_name,
+          score: c.score,
+          method: c.method,
+        })),
+        total: sqlResult.chunks.length,
+        doc_aggs: [],
+      }
+    }
+
     // Use shared retrieveChunks (applies embedding + reranking) with highlight enabled for search results
     const { chunks: allChunks, total: totalHits } = await this.retrieveChunks(
       tenantId,
@@ -712,6 +730,20 @@ export class SearchService {
       })
     } catch (err) {
       log.error('Langfuse search trace creation failed', { error: String(err) })
+    }
+
+    // Attempt SQL-based retrieval for structured data before full-text/semantic search
+    const datasetIds: string[] = typeof app.dataset_ids === 'string' ? JSON.parse(app.dataset_ids) : app.dataset_ids
+    const providerId = searchConfig?.llm_id as string | undefined
+    const sqlResult = await ragSqlService.querySql(query, datasetIds, providerId)
+    if (sqlResult) {
+      res.write(`data: ${JSON.stringify({ status: 'generating' })}\n\n`)
+      const reference = { chunks: sqlResult.chunks, doc_aggs: [], total: sqlResult.chunks.length }
+      res.write(`data: ${JSON.stringify({ reference })}\n\n`)
+      res.write(`data: ${JSON.stringify({ answer: sqlResult.answer })}\n\n`)
+      res.write('data: [DONE]\n\n')
+      res.end()
+      return
     }
 
     // Send retrieving status
