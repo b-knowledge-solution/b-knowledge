@@ -2,12 +2,12 @@
  * Counts total lines of code across project text files.
  *
  * @description Scans all git-visible, non-ignored files in the repository,
- * filters out binary files, and reports total physical lines grouped by the
+ * filters out binary files, and writes a Markdown report grouped by the
  * top-level project directory.
  */
 
 import { spawnSync } from 'child_process'
-import { readFileSync } from 'fs'
+import { readFileSync, writeFileSync } from 'fs'
 import { resolve, sep } from 'path'
 
 const rootDir = resolve(import.meta.dirname, '..')
@@ -52,6 +52,25 @@ function getProjectFiles() {
   }
 
   return result.stdout.split('\0').filter(Boolean)
+}
+
+/**
+ * Returns the current short git hash for naming the report file.
+ *
+ * @returns {string} Short git hash or `unknown` when unavailable
+ */
+function getGitHash() {
+  const result = spawnSync('git', ['rev-parse', '--short', 'HEAD'], {
+    cwd: rootDir,
+    encoding: 'utf-8',
+    stdio: 'pipe',
+  })
+
+  if (result.error && !result.stdout) {
+    return 'unknown'
+  }
+
+  return result.stdout.trim() || 'unknown'
 }
 
 /**
@@ -125,7 +144,48 @@ function formatCount(value) {
   return new Intl.NumberFormat('en-US').format(value)
 }
 
+/**
+ * Builds the Markdown report content.
+ *
+ * @param {Object} params - Report values
+ * @param {string} params.gitHash - Current repository git hash
+ * @param {number} params.countedFiles - Total counted text files
+ * @param {number} params.totalLines - Total physical lines across the project
+ * @param {Array<[string, number]>} params.sortedBuckets - Line counts grouped by top-level directory
+ * @returns {string} Markdown report content
+ */
+function buildMarkdownReport({ gitHash, countedFiles, totalLines, sortedBuckets }) {
+  const generatedAt = new Date().toISOString()
+  const lines = [
+    '# Project LoC Report',
+    '',
+    '## Summary',
+    '',
+    `- Git hash: \`${gitHash}\``,
+    `- Generated at: \`${generatedAt}\``,
+    `- Files counted: \`${formatCount(countedFiles)}\``,
+    `- Total lines: \`${formatCount(totalLines)}\``,
+    '',
+    '## Breakdown By Top-Level Directory',
+    '',
+    '| Directory | Lines |',
+    '| --- | ---: |',
+  ]
+
+  if (sortedBuckets.length === 0) {
+    lines.push('| No text files found | 0 |')
+  } else {
+    for (const [bucket, lineCount] of sortedBuckets) {
+      lines.push(`| \`${bucket}\` | ${formatCount(lineCount)} |`)
+    }
+  }
+
+  lines.push('')
+  return lines.join('\n')
+}
+
 const files = getProjectFiles()
+const gitHash = getGitHash()
 const totalsByBucket = new Map()
 let countedFiles = 0
 let totalLines = 0
@@ -152,17 +212,17 @@ for (const relativePath of files) {
 }
 
 const sortedBuckets = [...totalsByBucket.entries()].sort((left, right) => right[1] - left[1])
+const reportFileName = `loc_${gitHash}.md`
+const reportFilePath = resolve(rootDir, reportFileName)
+const reportContent = buildMarkdownReport({
+  gitHash,
+  countedFiles,
+  totalLines,
+  sortedBuckets,
+})
 
-console.log('Project LoC Report')
+writeFileSync(reportFilePath, reportContent, 'utf-8')
+
+console.log(`LoC report written to ${reportFileName}`)
 console.log(`Files counted: ${formatCount(countedFiles)}`)
 console.log(`Total lines: ${formatCount(totalLines)}`)
-console.log('')
-console.log('By top-level directory:')
-
-for (const [bucket, lineCount] of sortedBuckets) {
-  console.log(`- ${bucket}: ${formatCount(lineCount)}`)
-}
-
-if (sortedBuckets.length === 0) {
-  console.log('- No text files found')
-}
