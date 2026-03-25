@@ -4,6 +4,7 @@
  */
 import { z } from 'zod'
 import { hexIdWith } from '@/shared/utils/uuid.js'
+import { metadataFilterSchema } from './search.schemas.js'
 
 /**
  * @description Validates request body for creating a new embed token for a search app
@@ -48,4 +49,70 @@ export const embedAskSchema = z.object({
   method: z.enum(['full_text', 'semantic', 'hybrid']).optional(),
   /** Minimum similarity threshold */
   similarity_threshold: z.number().min(0).max(1).optional(),
+})
+
+/**
+ * @description Validates request for the public embed search endpoint (non-streaming)
+ */
+export const embedSearchSchema = z.object({
+  body: z.object({
+    /** The search query string */
+    query: z.string().min(1, 'Query is required'),
+    /** Maximum number of results */
+    top_k: z.number().int().min(1).max(100).optional(),
+    /** Search method */
+    method: z.enum(['full_text', 'semantic', 'hybrid']).optional(),
+    /** Minimum similarity threshold */
+    similarity_threshold: z.number().min(0).max(1).optional(),
+    /** Vector similarity weight for hybrid search */
+    vector_similarity_weight: z.number().min(0).max(1).optional(),
+    /** Runtime metadata filter to narrow retrieval results */
+    metadata_filter: metadataFilterSchema,
+    /** Page number (1-indexed) */
+    page: z.number().int().min(1).optional().default(1),
+    /** Number of results per page */
+    page_size: z.number().int().min(1).max(50).optional().default(10),
+  }),
+  params: z.object({
+    /** 64-character embed token */
+    token: z.string().length(64),
+  }),
+})
+
+/**
+ * @description Validates request for the public embed related questions endpoint
+ */
+export const embedRelatedQuestionsSchema = z.object({
+  body: z.object({
+    /** The user query to generate related questions from */
+    query: z.string().min(1, 'Query is required'),
+  }),
+  params: z.object({
+    /** 64-character embed token */
+    token: z.string().length(64),
+  }),
+})
+
+/**
+ * @description Validates request for the public embed mindmap generation endpoint
+ */
+export const embedMindmapSchema = z.object({
+  body: z.object({
+    /** The search query string */
+    query: z.string().min(1, 'Query is required'),
+    /** Maximum number of chunks to use for mindmap generation */
+    top_k: z.number().int().min(1).max(100).optional(),
+    /** Search method */
+    method: z.enum(['full_text', 'semantic', 'hybrid']).optional(),
+    /** Minimum similarity threshold */
+    similarity_threshold: z.number().min(0).max(1).optional(),
+    /** Vector similarity weight for hybrid search */
+    vector_similarity_weight: z.number().min(0).max(1).optional(),
+    /** Runtime metadata filter to narrow retrieval results */
+    metadata_filter: metadataFilterSchema,
+  }),
+  params: z.object({
+    /** 64-character embed token */
+    token: z.string().length(64),
+  }),
 })

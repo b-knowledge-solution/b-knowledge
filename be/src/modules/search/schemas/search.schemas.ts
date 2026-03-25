@@ -47,7 +47,7 @@ const metadataConditionSchema = z.object({
 /**
  * @description Metadata filter schema with logic combinator (and/or) and conditions array
  */
-const metadataFilterSchema = z.object({
+export const metadataFilterSchema = z.object({
   /** Logic combinator for conditions */
   logic: z.enum(['and', 'or']).default('and'),
   /** Array of filter conditions (max 10) */
@@ -134,6 +134,10 @@ export const createSearchAppSchema = z.object({
   name: z.string().min(1, 'Name is required').max(128),
   /** Description of the search app */
   description: z.string().optional(),
+  /** Emoji avatar icon for the search app (max 64 chars) */
+  avatar: z.string().max(64).optional(),
+  /** Custom message shown when search returns no results */
+  empty_response: z.string().optional(),
   /** Array of dataset IDs to search across */
   dataset_ids: z.array(hexId).min(1, 'At least one dataset ID is required'),
   /** Optional search configuration with LLM settings */
@@ -152,6 +156,10 @@ export const updateSearchAppSchema = z.object({
   name: z.string().min(1).max(128).optional(),
   /** Description */
   description: z.string().optional(),
+  /** Emoji avatar icon for the search app (max 64 chars) */
+  avatar: z.string().max(64).optional(),
+  /** Custom message shown when search returns no results */
+  empty_response: z.string().optional(),
   /** Array of dataset IDs */
   dataset_ids: z.array(hexId).optional(),
   /** Search configuration with LLM settings */
