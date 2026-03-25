@@ -71,6 +71,8 @@ interface SearchResultsProps {
   onCitationClick?: ((chunk: ChatChunk) => void) | undefined
   /** Callback to submit feedback for the current answer or a specific result */
   onFeedback?: ((thumbup: boolean, result?: SearchResult) => void) | undefined
+  /** Custom message to show when search returns no results */
+  emptyMessage?: string | undefined
 }
 
 // ============================================================================
@@ -109,6 +111,7 @@ function SearchResults({
   reference,
   onCitationClick,
   onFeedback,
+  emptyMessage,
 }: SearchResultsProps) {
   const { t } = useTranslation()
 
@@ -141,7 +144,7 @@ function SearchResults({
       <div className={cn('flex flex-col items-center justify-center py-16 text-center', className)}>
         <SearchX className="h-12 w-12 text-muted-foreground/40 mb-3" />
         <h3 className="text-base font-medium text-foreground mb-1">
-          {t('search.noResults')}
+          {emptyMessage || t('search.noResults')}
         </h3>
         <p className="text-sm text-muted-foreground max-w-sm">
           {t('search.noResultsDescription')}

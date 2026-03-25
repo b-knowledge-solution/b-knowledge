@@ -178,6 +178,8 @@ function DatasetSearchPage() {
   const hasSearched = !!searchStream.lastQuery
   const currentAppName = currentApp?.name || searchApps.find((app) => app.id === resolvedAppId)?.name
   const currentAppDescription = currentApp?.description || null
+  // Use app-configured empty response or fall back to default i18n key
+  const emptyMessage = currentApp?.empty_response ?? undefined
 
   /**
    * Persist the current query in the URL without disturbing the active app route.
@@ -484,9 +486,14 @@ function DatasetSearchPage() {
           >
             {!hasSearched && (
               <div className="flex flex-col items-center gap-3 mb-8">
-                <div className="h-20 w-20 rounded-3xl bg-primary/10 flex items-center justify-center">
-                  <Search className="h-10 w-10 text-primary" />
-                </div>
+                {/* Show app avatar emoji or default search icon */}
+                {currentApp?.avatar ? (
+                  <span className="text-5xl">{currentApp.avatar}</span>
+                ) : (
+                  <div className="h-20 w-20 rounded-3xl bg-primary/10 flex items-center justify-center">
+                    <Search className="h-10 w-10 text-primary" />
+                  </div>
+                )}
                 <h1 className="text-2xl font-bold text-foreground text-center">
                   {currentAppName || (user?.name
                     ? `${t('search.greeting')}, ${user.name}`
@@ -520,6 +527,8 @@ function DatasetSearchPage() {
               <div className="flex items-center gap-2 mt-3 flex-wrap justify-center">
                 {currentAppName && (
                   <Badge variant="secondary" className="text-xs">
+                    {/* Show avatar alongside app name in compact search header */}
+                    {currentApp?.avatar && <span className="mr-1">{currentApp.avatar}</span>}
                     {currentAppName}
                   </Badge>
                 )}
@@ -599,6 +608,7 @@ function DatasetSearchPage() {
                   reference={buildReference()}
                   onCitationClick={handleCitationClick}
                   onFeedback={handleFeedback}
+                  emptyMessage={emptyMessage}
                 />
               </div>
             </div>
