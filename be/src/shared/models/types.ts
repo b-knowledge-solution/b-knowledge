@@ -206,6 +206,10 @@ export interface SearchApp {
     dataset_ids: string[];
     /** Search configuration (top_k, method, threshold, etc.) */
     search_config: Record<string, unknown>;
+    /** Emoji avatar icon for the search app */
+    avatar?: string | null;
+    /** Custom message shown when search returns no results */
+    empty_response?: string | null;
     /** Whether the search app is publicly accessible to all users */
     is_public: boolean;
     /** User ID who created this record */
