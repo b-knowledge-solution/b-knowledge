@@ -1,95 +1,51 @@
 """
 Metrics Module for RAG Evaluation
 
-Placeholder for metric implementations used during RAG evaluation.
+Public API for all evaluation metrics. Import from here, not from sub-modules.
 
-Metrics available:
-- Accuracy: Exact match or semantic similarity
-- Precision: Proportion of retrieved documents that are relevant
-- Recall: Proportion of relevant documents that are retrieved
-- F1: Harmonic mean of precision and recall
-- BLEU/ROUGE: String-based similarity metrics
+Available functions:
+  compute_accuracy(predicted, expected, mode="semantic") -> float
+  compute_precision(predicted, expected) -> float
+  compute_recall(predicted, expected) -> float
+  compute_f1(predicted, expected) -> float
+  score_all(predicted, expected) -> dict  ← use this for the report pipeline
 
 @example
-    from metrics import AccuracyMetric
-    metric = AccuracyMetric()
-    score = metric.compute(predicted="answer text", expected="expected text")
+    from metrics import score_all
+    scores = score_all(predicted="Bearer token is used.", expected="Use Bearer token in Authorization header.")
+    # → {"accuracy": 0.57, "precision": 0.75, "recall": 0.5, "f1": 0.6}
 """
 
-from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from metrics.accuracy import compute_accuracy
+from metrics.precision import compute_precision
+from metrics.recall import compute_recall
+from metrics.f1 import compute_f1
+from typing import Dict
 
 
-class BaseMetric(ABC):
+def score_all(predicted: str, expected: str) -> Dict[str, float]:
     """
-    Abstract base class for evaluation metrics.
-    
-    All metric implementations must inherit from this class.
+    Compute all four metrics in one call.
+
+    This is the primary entry point used by the evaluation pipeline to
+    score each Q&A pair. The result dict maps directly to report columns.
+
+    @param predicted: The answer returned by the RAG system
+    @param expected:  The ground-truth expected answer
+    @returns: Dict with keys: accuracy, precision, recall, f1 (all float 0-1)
     """
-    
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Get metric name."""
-        pass
-    
-    @abstractmethod
-    def compute(self, **kwargs) -> float:
-        """
-        Compute the metric score.
-        
-        @returns: Metric score (typically 0-1 range)
-        """
-        pass
+    return {
+        "accuracy":  compute_accuracy(predicted, expected, mode="semantic"),
+        "precision": compute_precision(predicted, expected),
+        "recall":    compute_recall(predicted, expected),
+        "f1":        compute_f1(predicted, expected),
+    }
 
 
-# Placeholder implementations (to be completed in Phase 3)
-class AccuracyMetric(BaseMetric):
-    """Accuracy metric - checks exact or semantic match."""
-    
-    @property
-    def name(self) -> str:
-        return "accuracy"
-    
-    def compute(self, predicted: str, expected: str, **kwargs) -> float:
-        """Compute accuracy score."""
-        # Placeholder: will be implemented in Phase 3
-        return 0.0
-
-
-class PrecisionMetric(BaseMetric):
-    """Precision metric - proportion of correct retrievals."""
-    
-    @property
-    def name(self) -> str:
-        return "precision"
-    
-    def compute(self, **kwargs) -> float:
-        """Compute precision score."""
-        return 0.0
-
-
-class RecallMetric(BaseMetric):
-    """Recall metric - proportion of relevant documents retrieved."""
-    
-    @property
-    def name(self) -> str:
-        return "recall"
-    
-    def compute(self, **kwargs) -> float:
-        """Compute recall score."""
-        return 0.0
-
-
-class F1Metric(BaseMetric):
-    """F1 metric - harmonic mean of precision and recall."""
-    
-    @property
-    def name(self) -> str:
-        return "f1"
-    
-    def compute(self, precision: float, recall: float, **kwargs) -> float:
-        """Compute F1 score."""
-        if precision + recall == 0:
-            return 0.0
-        return 2 * (precision * recall) / (precision + recall)
+__all__ = [
+    "compute_accuracy",
+    "compute_precision",
+    "compute_recall",
+    "compute_f1",
+    "score_all",
+]

@@ -16,9 +16,11 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Deployment:"
-	@echo "  make deploy       - Deploy the RAG evaluation system (run this first!)"
-	@echo "  make verify       - Verify all components are working"
-	@echo "  make build        - Just build the Docker image (no dependency checks)"
+	@echo "  make deploy          - Deploy the RAG evaluation system (run this first!)"
+	@echo "  make verify          - Verify Phase 1: Docker infrastructure"
+	@echo "  make verify-phase3   - Verify Phase 3: code + smoke eval (mock, 20 pairs)"
+	@echo "  make verify-phase3-clean - Clean Phase 3 artifacts only (no verify)"
+	@echo "  make build           - Just build the Docker image (no dependency checks)"
 	@echo "  make rebuild      - Rebuild Docker image from scratch"
 	@echo "  make clean        - Clean up Docker containers and volume"
 	@echo ""
@@ -61,6 +63,22 @@ ifeq ($(SHELL_DETECTED),powershell)
 	@powershell -Command "& { .\verify.ps1 }"
 else
 	@bash ./verify.sh
+endif
+
+verify-phase3:
+	@echo "Verifying Phase 3 code implementation..."
+ifeq ($(SHELL_DETECTED),powershell)
+	@powershell -Command "& { .\verify-phase3.ps1 }"
+else
+	@bash ./verify-phase3.sh
+endif
+
+verify-phase3-clean:
+	@echo "Cleaning Phase 3 artifacts..."
+ifeq ($(SHELL_DETECTED),powershell)
+	@powershell -Command "& { .\verify-phase3.ps1 -Clean }"
+else
+	@bash ./verify-phase3.sh clean
 endif
 
 ##############################################################################
