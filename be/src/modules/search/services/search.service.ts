@@ -957,8 +957,13 @@ export class SearchService {
       return []
     }
 
-    // Delegate to shared service
-    return relatedQuestionsService.generateRelatedQuestions(query, config?.llm_id as string | undefined)
+    // Delegate to shared service with error suppression (LLM may be unavailable)
+    try {
+      return await relatedQuestionsService.generateRelatedQuestions(query, config?.llm_id as string | undefined)
+    } catch (err) {
+      log.warn('Related questions generation failed', { error: (err as Error).message })
+      return []
+    }
   }
 
   /**

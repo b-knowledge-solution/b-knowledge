@@ -99,7 +99,7 @@ router.get(
  */
 router.post(
   '/embed/:token/search',
-  validate(embedSearchSchema),
+  validate({ body: embedSearchSchema.shape.body, params: embedSearchSchema.shape.params }),
   controller.executeSearch.bind(controller)
 )
 
@@ -121,7 +121,7 @@ router.post(
  */
 router.post(
   '/embed/:token/related-questions',
-  validate(embedRelatedQuestionsSchema),
+  validate({ body: embedRelatedQuestionsSchema.shape.body, params: embedRelatedQuestionsSchema.shape.params }),
   controller.relatedQuestions.bind(controller)
 )
 
@@ -132,7 +132,7 @@ router.post(
  */
 router.post(
   '/embed/:token/mindmap',
-  validate(embedMindmapSchema),
+  validate({ body: embedMindmapSchema.shape.body, params: embedMindmapSchema.shape.params }),
   controller.mindmap.bind(controller)
 )
 
