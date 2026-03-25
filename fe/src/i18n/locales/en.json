@@ -2371,7 +2371,16 @@
     "helpful": "Helpful",
     "notHelpful": "Not helpful",
     "filterByTags": "Filter by tags",
-    "clearFilters": "Clear filters"
+    "clearFilters": "Clear filters",
+    "poweredBy": "Powered by B-Knowledge",
+    "generatingMindmap": "Generating mind map...",
+    "analyzingConcepts": "Analyzing concepts and relationships...",
+    "buildingRelationships": "Building relationships...",
+    "organizingHierarchy": "Organizing hierarchy...",
+    "showFullContent": "Show full content",
+    "hideFullContent": "Hide full content",
+    "viewInDocument": "View in document",
+    "chunkLabel": "Chunk #{{n}}"
   },
   "searchAdmin": {
     "title": "Search Apps",
@@ -2442,7 +2451,17 @@
     "mindMapDesc": "Mind Map Desc",
     "highlight": "Highlight",
     "highlightDesc": "Highlight Desc",
-    "embeddingMismatchWarning": "Warning: Selected datasets use different embedding models. This may reduce search quality."
+    "embeddingMismatchWarning": "Warning: Selected datasets use different embedding models. This may reduce search quality.",
+    "avatar": "Avatar",
+    "avatarDesc": "Choose an emoji icon for this search app",
+    "emptyResponse": "Custom no-results message",
+    "emptyResponseDesc": "Shown when search returns no results. Leave empty for default.",
+    "embedCode": "Embed Code",
+    "embedOptions": "Options",
+    "showAvatar": "Show avatar & branding",
+    "showPoweredBy": "Show powered by footer",
+    "defaultLocale": "Default locale",
+    "copyCode": "Copy Code"
   },
   "embed": {
     "tokens": "Embed Tokens",
