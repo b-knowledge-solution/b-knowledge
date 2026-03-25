@@ -1,0 +1,159 @@
+<h2>Section 5: Document Preview & Related Questions</h2>
+<p class="subtitle">Document preview with chunk positioning + related question suggestions</p>
+
+<div class="mockup" style="margin-bottom:32px;">
+  <div class="mockup-header">Document Preview Modal — Chunk Highlighted</div>
+  <div class="mockup-body" style="padding:0;min-height:420px;display:flex;flex-direction:column;">
+    <!-- Modal header -->
+    <div style="padding:12px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:10px;">
+      <div style="width:28px;height:28px;background:#ef4444;border-radius:4px;display:flex;align-items:center;justify-content:center;">
+        <span style="color:white;font-size:10px;font-weight:600;">PDF</span>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;color:#1e293b;">architecture-guide.pdf</div>
+        <div style="font-size:11px;color:#94a3b8;">Chunk on Page 12 · Score: 87%</div>
+      </div>
+      <div style="padding:5px 10px;background:white;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;color:#475569;cursor:pointer;">⬇ Download</div>
+      <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;font-size:18px;">✕</div>
+    </div>
+
+    <!-- Document body with highlighted chunk -->
+    <div style="flex:1;overflow-y:auto;padding:20px 32px;font-size:13px;line-height:1.8;color:#475569;">
+      <p style="color:#94a3b8;">... previous content ...</p>
+      <p>The system uses a microservice architecture where each service communicates through well-defined APIs. Data flows from ingestion through processing to storage.</p>
+      <p>Configuration management is handled centrally through environment variables and mounted config files.</p>
+
+      <!-- Highlighted chunk -->
+      <div style="background:#fef9c3;border-left:3px solid #eab308;padding:12px 16px;margin:12px 0;border-radius:0 6px 6px 0;position:relative;">
+        <div style="position:absolute;top:-8px;left:-3px;background:#eab308;color:white;font-size:10px;padding:2px 8px;border-radius:4px;font-weight:600;">Chunk #3</div>
+        Documents are split into chunks using recursive character splitting with configurable chunk size and overlap parameters. Each chunk is then embedded using the configured embedding model and stored in the vector database for similarity search. The chunking strategy can be customized per document type — for example, code files use syntax-aware splitting while PDFs use page-boundary-aware splitting.
+      </div>
+
+      <p>After embedding, chunks are indexed in OpenSearch with both vector and keyword fields to enable hybrid search capabilities.</p>
+      <p style="color:#94a3b8;">... more content ...</p>
+    </div>
+
+    <!-- Footer with page nav -->
+    <div style="padding:8px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;gap:12px;">
+      <span style="font-size:12px;color:#94a3b8;">◀</span>
+      <span style="font-size:12px;color:#475569;">Page 12 of 47</span>
+      <span style="font-size:12px;color:#94a3b8;">▶</span>
+    </div>
+  </div>
+</div>
+
+<h3>Related Questions</h3>
+<p class="subtitle">Shown below search results after AI summary completes</p>
+
+<div class="mockup" style="margin-bottom:32px;">
+  <div class="mockup-header">Related Questions — After Results</div>
+  <div class="mockup-body" style="padding:16px;background:#f8fafc;">
+    <!-- Last result card (truncated) -->
+    <div style="border:1px solid #e2e8f0;border-radius:8px;padding:12px;background:white;margin-bottom:16px;opacity:0.6;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <div style="width:18px;height:18px;background:#22c55e;border-radius:3px;"></div>
+        <span style="font-size:12px;color:#94a3b8;">Result #5</span>
+      </div>
+      <div style="font-size:12px;color:#94a3b8;">...</div>
+    </div>
+
+    <!-- Related questions section -->
+    <div style="margin-top:20px;">
+      <div style="font-size:13px;font-weight:600;color:#1e293b;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+        <span style="color:#94a3b8;">💡</span> Related Searches
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <div style="padding:8px 14px;background:white;border:1px solid #e2e8f0;border-radius:20px;font-size:13px;color:#475569;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.15s;">
+          <span style="color:#94a3b8;font-size:12px;">🔍</span>
+          How does hybrid search combine vector and keyword results?
+        </div>
+        <div style="padding:8px 14px;background:white;border:1px solid #e2e8f0;border-radius:20px;font-size:13px;color:#475569;cursor:pointer;display:flex;align-items:center;gap:6px;">
+          <span style="color:#94a3b8;font-size:12px;">🔍</span>
+          What embedding models are supported?
+        </div>
+        <div style="padding:8px 14px;background:white;border:1px solid #e2e8f0;border-radius:20px;font-size:13px;color:#475569;cursor:pointer;display:flex;align-items:center;gap:6px;">
+          <span style="color:#94a3b8;font-size:12px;">🔍</span>
+          How to configure chunk overlap size?
+        </div>
+        <div style="padding:8px 14px;background:white;border:1px solid #e2e8f0;border-radius:20px;font-size:13px;color:#475569;cursor:pointer;display:flex;align-items:center;gap:6px;">
+          <span style="color:#94a3b8;font-size:12px;">🔍</span>
+          What is the difference between semantic and fulltext search?
+        </div>
+      </div>
+    </div>
+
+    <!-- Pagination below -->
+    <div style="display:flex;justify-content:center;margin-top:20px;gap:4px;">
+      <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #e2e8f0;border-radius:4px;font-size:11px;color:#94a3b8;">◀</div>
+      <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:#3b82f6;border-radius:4px;font-size:11px;color:white;">1</div>
+      <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #e2e8f0;border-radius:4px;font-size:11px;color:#475569;">2</div>
+      <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #e2e8f0;border-radius:4px;font-size:11px;color:#475569;">3</div>
+      <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #e2e8f0;border-radius:4px;font-size:11px;color:#94a3b8;">▶</div>
+    </div>
+  </div>
+</div>
+
+<h3>Mind Map — Progress Simulation</h3>
+<p class="subtitle">Timed progress bar while mind map generates</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Loading State</div>
+    <div class="mockup-body" style="padding:20px;text-align:center;">
+      <div style="font-size:28px;margin-bottom:12px;">🧠</div>
+      <div style="font-size:13px;color:#1e293b;font-weight:600;margin-bottom:12px;">Generating mind map...</div>
+      <!-- Progress bar -->
+      <div style="max-width:300px;margin:0 auto;">
+        <div style="height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;">
+          <div style="width:45%;height:100%;background:linear-gradient(90deg,#3b82f6,#8b5cf6);border-radius:3px;transition:width 0.5s;"></div>
+        </div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:6px;">Analyzing concepts and relationships...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Complete State</div>
+    <div class="mockup-body" style="padding:16px;font-size:12px;">
+      <div style="padding-left:0;">
+        <div style="font-weight:600;color:#1e293b;margin-bottom:8px;font-size:13px;">▾ RAG Pipeline Architecture</div>
+        <div style="padding-left:20px;border-left:2px solid #e2e8f0;">
+          <div style="padding:4px 0;color:#475569;">▾ Document Processing</div>
+          <div style="padding-left:20px;border-left:2px solid #e2e8f0;">
+            <div style="padding:3px 0;color:#94a3b8;">Parsing</div>
+            <div style="padding:3px 0;color:#94a3b8;">Chunking</div>
+            <div style="padding:3px 0;color:#94a3b8;">Embedding</div>
+          </div>
+          <div style="padding:4px 0;color:#475569;margin-top:4px;">▾ Search & Retrieval</div>
+          <div style="padding-left:20px;border-left:2px solid #e2e8f0;">
+            <div style="padding:3px 0;color:#94a3b8;">Hybrid Search</div>
+            <div style="padding:3px 0;color:#94a3b8;">Reranking</div>
+            <div style="padding:3px 0;color:#94a3b8;">Citation</div>
+          </div>
+          <div style="padding:4px 0;color:#475569;margin-top:4px;">▸ Response Generation</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:32px;">Empty Response — Configurable</h3>
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Default (i18n string)</div>
+    <div class="mockup-body" style="padding:40px 20px;text-align:center;">
+      <div style="font-size:36px;margin-bottom:12px;opacity:0.3;">🔍</div>
+      <div style="font-size:14px;color:#94a3b8;">No results found</div>
+      <div style="font-size:12px;color:#cbd5e1;margin-top:4px;">Try a different search query</div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Custom (per-app message)</div>
+    <div class="mockup-body" style="padding:40px 20px;text-align:center;">
+      <div style="font-size:36px;margin-bottom:12px;opacity:0.3;">📚</div>
+      <div style="font-size:14px;color:#94a3b8;">We couldn't find matching information in our documentation.</div>
+      <div style="font-size:12px;color:#cbd5e1;margin-top:4px;">Please contact support@company.com for help.</div>
+    </div>
+  </div>
+</div>
