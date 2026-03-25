@@ -174,7 +174,7 @@ export class RagSearchService {
                     },
                 },
                 size: topK,
-                _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
+                _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd', 'tag_kwd', 'pagerank_fea'],
                 // Include highlight config when requested — OpenSearch wraps matched terms in <em> tags
                 ...(highlight && {
                     highlight: {
@@ -265,7 +265,7 @@ export class RagSearchService {
                     },
                 },
                 size: topK,
-                _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
+                _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd', 'tag_kwd', 'pagerank_fea'],
                 // Include highlight config when requested — OpenSearch wraps matched terms in <em> tags
                 ...(highlight && {
                     highlight: {
@@ -570,7 +570,7 @@ export class RagSearchService {
                         },
                     },
                     size: topK,
-                    _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd', 'kb_id'],
+                    _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd', 'kb_id', 'tag_kwd', 'pagerank_fea'],
                     // Include highlight config when requested — OpenSearch wraps matched terms in <em> tags
                     ...(highlight && {
                         highlight: {
@@ -988,6 +988,10 @@ export class RagSearchService {
                     : {}),
                 // Include source dataset ID for cross-dataset result attribution
                 ...(src.kb_id ? { kb_id: src.kb_id } : {}),
+                // Pass through tag keywords for tag-based ranking
+                ...(src.tag_kwd != null ? { tag_kwd: src.tag_kwd } : {}),
+                // Pass through pagerank feature for score boosting
+                ...(src.pagerank_fea != null ? { pagerank_fea: Number(src.pagerank_fea) } : {}),
             }
         })
     }

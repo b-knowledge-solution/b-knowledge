@@ -20,6 +20,7 @@ import { askSummaryPrompt, citationPrompt } from '@/shared/prompts/index.js'
 import { relatedQuestionsService } from '@/shared/services/related-questions.service.js'
 import { htmlToMarkdown } from '@/shared/utils/html-to-markdown.js'
 import { log } from '@/shared/services/logger.service.js'
+import { tagRankingService } from '@/shared/services/tag-ranking.service.js'
 import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
 import { queryLogService } from '@/modules/rag/index.js'
 import type { LangfuseTraceClient } from 'langfuse'
@@ -636,7 +637,40 @@ export class SearchService {
       chunks = await ragRerankService.rerank(query, chunks, rerankTopK, config.rerank_id as string)
     }
 
+    // Apply tag-based rank boosting when datasets have tag configuration
+    const hasTagConfig = await this.datasetsHaveTagConfig(datasetIds)
+    if (hasTagConfig && chunks.some(c => c.tag_kwd)) {
+      const queryTags = tagRankingService.getQueryTags(chunks, 3)
+      if (Object.keys(queryTags).length > 0) {
+        chunks = tagRankingService.scoreChunksByTags(chunks, queryTags)
+      }
+    }
+
     return { chunks, total: totalHits }
+  }
+
+  /**
+   * @description Check whether any of the given datasets have tag_kb_ids configured in their parser_config.
+   * Used to decide whether to apply tag-based rank boosting.
+   * @param {string[]} datasetIds - Array of dataset UUIDs to check
+   * @returns {Promise<boolean>} True if at least one dataset has tag_kb_ids configured
+   */
+  private async datasetsHaveTagConfig(datasetIds: string[]): Promise<boolean> {
+    if (datasetIds.length === 0) return false
+
+    // Query datasets in a single batch using whereIn
+    const datasets = await ModelFactory.dataset.getKnex()
+      .select('id', 'parser_config')
+      .whereIn('id', datasetIds)
+
+    // Check if any dataset has a non-empty tag_kb_ids in parser_config
+    return datasets.some((ds: { parser_config: unknown }) => {
+      const config = typeof ds.parser_config === 'string'
+        ? JSON.parse(ds.parser_config)
+        : ds.parser_config
+      const tagKbIds = config?.tag_kb_ids
+      return Array.isArray(tagKbIds) && tagKbIds.length > 0
+    })
   }
 
   /**

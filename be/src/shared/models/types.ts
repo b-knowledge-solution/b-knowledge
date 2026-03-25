@@ -1366,6 +1366,10 @@ export interface ChunkResult {
     vector_similarity?: number;
     /** Full-text/keyword search score component */
     term_similarity?: number;
+    /** Tag keywords assigned to this chunk (object, array, or string from OpenSearch) */
+    tag_kwd?: unknown;
+    /** PageRank feature score for version recency boosting */
+    pagerank_fea?: number;
 }
 
 /**
