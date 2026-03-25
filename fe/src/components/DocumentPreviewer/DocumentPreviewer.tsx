@@ -48,6 +48,8 @@ interface DocumentPreviewerProps {
   selectedChunk?: Chunk | null | undefined;
   /** Callback when a chunk is selected */
   onSelectChunk?: ((chunk: Chunk) => void) | undefined;
+  /** Page number to scroll to on initial load (1-based). Used as fallback when chunk has no position data. */
+  initialPage?: number | undefined;
 }
 
 /** File extensions treated as plain text for preview */
@@ -67,7 +69,8 @@ const FilePreviewPanel: React.FC<{
   url: string;
   highlights: ChunkHighlight[];
   onPdfSize?: ((width: number, height: number) => void) | undefined;
-}> = ({ fileName, url, highlights, onPdfSize }) => {
+  initialPage?: number | undefined;
+}> = ({ fileName, url, highlights, onPdfSize, initialPage }) => {
   const { t } = useTranslation();
   const ext = getExtension(fileName);
 
@@ -78,6 +81,7 @@ const FilePreviewPanel: React.FC<{
         url={url}
         highlights={highlights}
         setWidthAndHeight={onPdfSize}
+        initialPage={initialPage}
       />
     );
   }
@@ -155,6 +159,7 @@ const DocumentPreviewer: React.FC<DocumentPreviewerProps> = ({
   showChunks = true,
   selectedChunk,
   onSelectChunk,
+  initialPage,
 }) => {
   const [selectedChunkState, setSelectedChunkState] = useState<Chunk | null>(null);
   const [pdfSize, setPdfSize] = useState({ width: 0, height: 0 });
@@ -185,6 +190,7 @@ const DocumentPreviewer: React.FC<DocumentPreviewerProps> = ({
           url={downloadUrl}
           highlights={highlights}
           onPdfSize={handlePdfSize}
+          initialPage={initialPage}
         />
       </div>
 

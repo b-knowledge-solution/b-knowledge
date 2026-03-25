@@ -38,6 +38,8 @@ export interface PdfPreviewProps {
   url: string
   /** Additional CSS classes */
   className?: string | undefined
+  /** Page number to scroll to on initial load (1-based). Used as fallback when no highlights exist. */
+  initialPage?: number | undefined
 }
 
 /**
@@ -209,6 +211,7 @@ const PdfPreview = ({
   setWidthAndHeight,
   url,
   className,
+  initialPage,
 }: PdfPreviewProps) => {
   const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -293,6 +296,31 @@ const PdfPreview = ({
       drawHighlights(containerRef.current, scrollRef.current, state)
     }
   }, [state])
+
+  // Scroll to initialPage when no highlights exist (fallback for chunks without position data)
+  useEffect(() => {
+    if (renderVersion === 0) return
+    // Skip if highlights will handle scrolling
+    if (state?.length) return
+    if (!initialPage || initialPage < 1) return
+
+    const container = containerRef.current
+    const scrollParent = scrollRef.current
+    if (!container || !scrollParent) return
+
+    const pageDiv = container.querySelector(`[data-page="${initialPage}"]`)
+    if (!pageDiv) return
+
+    requestAnimationFrame(() => {
+      const parentRect = scrollParent.getBoundingClientRect()
+      const targetRect = pageDiv.getBoundingClientRect()
+      const offsetTop = targetRect.top - parentRect.top + scrollParent.scrollTop
+      scrollParent.scrollTo({
+        top: Math.max(0, offsetTop - 40),
+        behavior: 'smooth',
+      })
+    })
+  }, [renderVersion, initialPage, state])
 
   if (error) {
     return (
