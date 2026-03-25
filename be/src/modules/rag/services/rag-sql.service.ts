@@ -62,7 +62,12 @@ export class RagSqlService {
       if (!fieldMap || Object.keys(fieldMap).length === 0) continue
 
       // Use per-request tenant for proper multi-tenant isolation
-      const tableName = `knowledge_${tenantId || SYSTEM_TENANT_ID}`
+      const resolvedTenant = tenantId || SYSTEM_TENANT_ID
+      if (!resolvedTenant || !/^[0-9a-f-]+$/i.test(resolvedTenant)) {
+        log.warn('SQL retrieval skipped — invalid or empty tenantId', { tenantId })
+        return null
+      }
+      const tableName = `knowledge_${resolvedTenant}`
 
       // Enforce per-KB timeout to prevent long-running queries from blocking
       const controller = new AbortController()
@@ -269,8 +274,10 @@ export class RagSqlService {
       return sql
     }
 
-    // Skip if kb_id is already present in the query
-    if (/kb_id/i.test(sql)) return sql
+    // Skip if kb_id is already present in the query (strip string literals first
+    // to avoid false matches like WHERE name LIKE '%kb_id%')
+    const sqlWithoutStrings = sql.replace(/'[^']*'/g, "''")
+    if (/\bkb_id\b/i.test(sqlWithoutStrings)) return sql
 
     const kbCondition = `kb_id = '${kbId}'`
     const upperSql = sql.toUpperCase()

@@ -421,6 +421,7 @@ export class SearchService {
       return {
         chunks: sqlResult.chunks.map(c => ({
           chunk_id: c.chunk_id,
+          doc_id: c.doc_id ?? '',
           content: c.text,
           doc_name: c.doc_name,
           score: c.score,

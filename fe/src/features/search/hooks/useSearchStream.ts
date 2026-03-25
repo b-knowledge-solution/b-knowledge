@@ -151,8 +151,11 @@ export function useSearchStream(apiOverrides?: SearchStreamApiOverrides): UseSea
 
           const dataStr = line.slice(5).trim()
 
-          // Handle completion signal
-          if (dataStr === '[DONE]') continue
+          // Handle completion signal — clear status immediately
+          if (dataStr === '[DONE]') {
+            setPipelineStatus('')
+            continue
+          }
 
           try {
             const data = JSON.parse(dataStr)
