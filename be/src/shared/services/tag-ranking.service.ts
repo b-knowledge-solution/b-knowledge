@@ -155,12 +155,16 @@ class TagRankingService {
 
       // Compute cosine similarity between chunk tags and query tags
       let dotProduct = 0
-      let chunkMagnitude = 0
       for (const key of queryTagKeys) {
         const chunkVal = chunkTags[key] || 0
         const queryVal = queryTags[key]!
         dotProduct += chunkVal * queryVal
-        chunkMagnitude += chunkVal * chunkVal
+      }
+
+      // Chunk magnitude must use ALL chunk tags (not just query-overlapping keys)
+      let chunkMagnitude = 0
+      for (const val of Object.values(chunkTags)) {
+        chunkMagnitude += val * val
       }
       chunkMagnitude = Math.sqrt(chunkMagnitude)
 

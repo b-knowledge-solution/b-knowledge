@@ -9,7 +9,7 @@
  * @module features/datasets/components/ParserSettingsFields
  */
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Info, Plus, Trash2, Wand2, Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -196,6 +196,12 @@ const ParserSettingsFields: React.FC<ParserSettingsFieldsProps> = ({
 
   const [fieldMapEntries, setFieldMapEntries] = useState<FieldMapEntry[]>(parseFieldMapEntries)
   const [isAutoDetecting, setIsAutoDetecting] = useState(false)
+
+  // Re-sync fieldMapEntries when parserConfig.field_map changes from outside
+  const fieldMapRef = JSON.stringify(parserConfig?.field_map ?? null)
+  useEffect(() => {
+    setFieldMapEntries(parseFieldMapEntries())
+  }, [fieldMapRef])
 
   // Convenience getters with type-safe defaults
   const chunkTokenNum = Number(parserConfig.chunk_token_num ?? CHUNK_TOKEN_DEFAULT)

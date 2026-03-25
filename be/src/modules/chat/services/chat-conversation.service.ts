@@ -892,7 +892,7 @@ export class ChatConversationService {
 
       // ── Step 6.5: SQL retrieval for structured data ─────────────────────
       if (!skipRetrieval && kbIds.length > 0) {
-        const sqlResult = await ragSqlService.querySql(content, kbIds, providerId)
+        const sqlResult = await ragSqlService.querySql(content, kbIds, providerId, tenantId)
         if (sqlResult) {
           // SQL query returned structured results — stream them directly
           res.write(`data: ${JSON.stringify({ delta: sqlResult.answer })}\n\n`)

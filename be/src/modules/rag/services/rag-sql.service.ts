@@ -47,20 +47,22 @@ export class RagSqlService {
    * @param {string} question - User question
    * @param {string[]} kbIds - Knowledge base IDs
    * @param {string} [providerId] - LLM provider ID for SQL generation
+   * @param {string} [tenantId] - Tenant ID for index scoping (defaults to system tenant)
    * @returns {Promise<{ answer: string; chunks: ChunkResult[] } | null>} Object with answer and chunks, or null if not applicable
    */
   async querySql(
     question: string,
     kbIds: string[],
-    providerId?: string
+    providerId?: string,
+    tenantId?: string
   ): Promise<{ answer: string; chunks: ChunkResult[] } | null> {
     // Try each KB to find one with a field_map
     for (const kbId of kbIds) {
       const fieldMap = await this.getFieldMap(kbId)
       if (!fieldMap || Object.keys(fieldMap).length === 0) continue
 
-      // This KB has structured data; generate and execute SQL
-      const tableName = `knowledge_${SYSTEM_TENANT_ID}`
+      // Use per-request tenant for proper multi-tenant isolation
+      const tableName = `knowledge_${tenantId || SYSTEM_TENANT_ID}`
 
       // Enforce per-KB timeout to prevent long-running queries from blocking
       const controller = new AbortController()

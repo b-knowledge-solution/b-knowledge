@@ -58,7 +58,7 @@ router.put('/datasets/:id/access', requirePermission('manage_datasets'), validat
 
 
 // Auto-detect field map from OpenSearch data
-router.post('/datasets/:id/generate-field-map', requirePermission('manage_datasets'), controller.generateFieldMap.bind(controller));
+router.post('/datasets/:id/generate-field-map', requirePermission('manage_datasets'), validate({ params: uuidParamSchema }), controller.generateFieldMap.bind(controller));
 
 // Dataset settings endpoints
 router.get('/datasets/:id/settings', requireAuth, controller.getDatasetSettings.bind(controller));

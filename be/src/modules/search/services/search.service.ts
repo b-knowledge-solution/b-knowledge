@@ -416,7 +416,7 @@ export class SearchService {
 
     // Attempt SQL-based retrieval for structured data before full-text/semantic search
     const datasetIds: string[] = typeof app.dataset_ids === 'string' ? JSON.parse(app.dataset_ids) : app.dataset_ids
-    const sqlResult = await ragSqlService.querySql(query, datasetIds)
+    const sqlResult = await ragSqlService.querySql(query, datasetIds, undefined, tenantId)
     if (sqlResult) {
       return {
         chunks: sqlResult.chunks.map(c => ({
@@ -769,7 +769,7 @@ export class SearchService {
     // Attempt SQL-based retrieval for structured data before full-text/semantic search
     const datasetIds: string[] = typeof app.dataset_ids === 'string' ? JSON.parse(app.dataset_ids) : app.dataset_ids
     const providerId = searchConfig?.llm_id as string | undefined
-    const sqlResult = await ragSqlService.querySql(query, datasetIds, providerId)
+    const sqlResult = await ragSqlService.querySql(query, datasetIds, providerId, tenantId)
     if (sqlResult) {
       res.write(`data: ${JSON.stringify({ status: 'generating' })}\n\n`)
       const reference = { chunks: sqlResult.chunks, doc_aggs: [], total: sqlResult.chunks.length }
