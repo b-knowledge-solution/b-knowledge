@@ -1,0 +1,63 @@
+# =============================================================================
+# promptfooconfig.yaml — RAG Evaluation Configuration
+# =============================================================================
+#
+# This file defines the full evaluation run:
+#   - Which dataset to test against
+#   - Which provider (B-Knowledge chat API) to call
+#   - Which assertions/metrics determine pass/fail
+#
+# DATASET:
+#   Defaults to the test fixture (20 pairs) for dev/CI.
+#   Swap PROMPTFOO_DATASET_PATH env var to point at the real dataset
+#   once QA completes Phase 2:
+#     PROMPTFOO_DATASET_PATH=dataset/eval_dataset.yaml
+#
+# PROVIDER:
+#   Uses MockRagProvider by default (no live API needed).
+#   Set BKNOWLEDGE_API_URL + BKNOWLEDGE_CHAT_TOKEN to switch to real API.
+#
+# USAGE:
+#   npx promptfoo@latest eval                    # default (mock)
+#   npx promptfoo@latest eval --view             # open HTML report
+#   PROMPTFOO_DATASET_PATH=dataset/eval_dataset.yaml npx promptfoo@latest eval
+# =============================================================================
+
+description: "B-Knowledge RAG Evaluation"
+
+# ---------------------------------------------------------------------------
+# Dataset
+# ---------------------------------------------------------------------------
+# Read path from env, fall back to test fixture so dev never needs Phase 2 done.
+tests: ${PROMPTFOO_DATASET_PATH:-dataset/eval_dataset_test.yaml}
+
+# ---------------------------------------------------------------------------
+# Provider
+# ---------------------------------------------------------------------------
+providers:
+  - id: "python:providers/rag_provider.py:RagProviderFactory"
+    config:
+      # When BKNOWLEDGE_API_URL is unset, MockRagProvider is used automatically.
+      api_url: ${BKNOWLEDGE_API_URL:-}
+      chat_token: ${BKNOWLEDGE_CHAT_TOKEN:-}
+      # timeout in seconds for real API calls
+      timeout: 30
+      # mock_mode: force mock even if api_url is set (useful for CI)
+      mock_mode: ${RAG_MOCK_MODE:-false}
+
+# ---------------------------------------------------------------------------
+# Default assertion thresholds
+# ---------------------------------------------------------------------------
+defaultTest:
+  assert:
+    # Semantic similarity between actual and expected_answer (0-1 scale)
+    - type: python
+      value: "providers/rag_provider.py"
+      threshold: 0.7
+
+# ---------------------------------------------------------------------------
+# Output
+# ---------------------------------------------------------------------------
+outputPath: results/eval_output.json
+
+sharing: false
