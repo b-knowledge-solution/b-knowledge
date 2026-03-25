@@ -73,6 +73,13 @@ function SearchResultDocDialog({
                 .{fileExt}
               </span>
             )}
+            {/* Show chunk metadata when a selected chunk is available */}
+            {selectedChunk && (
+              <span className="text-xs text-muted-foreground">
+                {selectedChunk.page_num?.[0] != null && `Page ${selectedChunk.page_num[0]}`}
+                {selectedChunk.score != null && ` · ${Math.round(selectedChunk.score * 100)}%`}
+              </span>
+            )}
           </DialogTitle>
         </DialogHeader>
 
