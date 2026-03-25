@@ -21,6 +21,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
+import { EmojiPicker } from '@/components/EmojiPicker'
 import { ModelSelector } from '@/components/model-selector/ModelSelector'
 import { LlmSettingFields, type LlmSettingValue } from '@/components/llm-setting-fields/LlmSettingFields'
 import { RerankSelector } from '@/components/rerank-selector/RerankSelector'
@@ -77,6 +79,8 @@ function SearchAppConfig({
   // ---- Basic form state ----
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [avatar, setAvatar] = useState('')
+  const [emptyResponse, setEmptyResponse] = useState('')
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([])
   const [isPublic, setIsPublic] = useState(false)
   const [similarityThreshold, setSimilarityThreshold] = useState(0.2)
@@ -138,6 +142,8 @@ function SearchAppConfig({
       const cfg = app.search_config
       setName(app.name)
       setDescription(app.description || '')
+      setAvatar(app.avatar ?? '')
+      setEmptyResponse(app.empty_response ?? '')
       setSelectedDatasets(app.dataset_ids)
       setIsPublic(app.is_public ?? false)
       setSimilarityThreshold(cfg?.similarity_threshold ?? 0.2)
@@ -181,6 +187,8 @@ function SearchAppConfig({
       // Reset for new search app
       setName('')
       setDescription('')
+      setAvatar('')
+      setEmptyResponse('')
       setSelectedDatasets([])
       setIsPublic(false)
       setSimilarityThreshold(0.2)
@@ -247,6 +255,8 @@ function SearchAppConfig({
     onSave({
       name: name.trim(),
       description: description.trim() || undefined,
+      avatar: avatar || undefined,
+      empty_response: emptyResponse || undefined,
       dataset_ids: selectedDatasets,
       is_public: isPublic,
       search_config,
@@ -274,6 +284,11 @@ function SearchAppConfig({
           <div className="space-y-1.5">
             <Label>{t('common.description')}</Label>
             <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t('common.description')} />
+          </div>
+          {/* Avatar emoji picker for search app branding */}
+          <div className="space-y-2">
+            <Label>{t('searchAdmin.avatar')}</Label>
+            <EmojiPicker value={avatar} onChange={setAvatar} />
           </div>
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
@@ -429,6 +444,18 @@ function SearchAppConfig({
               <p className="text-xs text-muted-foreground">{t('searchAdmin.highlightDesc')}</p>
             </div>
             <Switch checked={highlightEnabled} onCheckedChange={setHighlightEnabled} />
+          </div>
+
+          {/* Custom empty response message */}
+          <div className="space-y-2">
+            <Label>{t('searchAdmin.emptyResponse')}</Label>
+            <p className="text-xs text-muted-foreground">{t('searchAdmin.emptyResponseDesc')}</p>
+            <Textarea
+              value={emptyResponse}
+              onChange={(e) => setEmptyResponse(e.target.value)}
+              placeholder={t('search.noResults')}
+              rows={2}
+            />
           </div>
 
           {/* Retrieval Test (only for existing apps) */}

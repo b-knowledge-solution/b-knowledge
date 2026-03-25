@@ -268,6 +268,10 @@ export interface RetrievalTestResponse {
 export interface CreateSearchAppPayload {
   name: string
   description?: string | undefined
+  /** Emoji avatar icon for the search app */
+  avatar?: string | undefined
+  /** Custom message shown when search returns no results */
+  empty_response?: string | undefined
   dataset_ids: string[]
   is_public?: boolean | undefined
   search_config?: SearchAppConfig | undefined
