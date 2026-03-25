@@ -19,6 +19,7 @@ import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/queryKeys'
 import { globalMessage } from '@/app/App'
 import type { ChatChunk, ChatReference } from '@/features/chat/types/chat.types'
+import { Spotlight } from '@/components/Spotlight'
 import SearchBar from '../components/SearchBar'
 import SearchResults from '../components/SearchResults'
 import SearchFilters from '../components/SearchFilters'
@@ -485,23 +486,26 @@ function DatasetSearchPage() {
             )}
           >
             {!hasSearched && (
-              <div className="flex flex-col items-center gap-3 mb-8">
-                {/* Show app avatar emoji or default search icon */}
-                {currentApp?.avatar ? (
-                  <span className="text-5xl">{currentApp.avatar}</span>
-                ) : (
-                  <div className="h-20 w-20 rounded-3xl bg-primary/10 flex items-center justify-center">
-                    <Search className="h-10 w-10 text-primary" />
-                  </div>
-                )}
-                <h1 className="text-2xl font-bold text-foreground text-center">
-                  {currentAppName || (user?.name
-                    ? `${t('search.greeting')}, ${user.name}`
-                    : t('search.title'))}
-                </h1>
-                <p className="text-sm text-muted-foreground max-w-md text-center">
-                  {currentAppDescription || t('search.description')}
-                </p>
+              <div className="relative">
+                <Spotlight className="z-0" />
+                <div className="flex flex-col items-center gap-3 mb-8 relative z-10">
+                  {/* Show app avatar emoji or default search icon */}
+                  {currentApp?.avatar ? (
+                    <span className="text-5xl">{currentApp.avatar}</span>
+                  ) : (
+                    <div className="h-20 w-20 rounded-3xl bg-primary/10 flex items-center justify-center">
+                      <Search className="h-10 w-10 text-primary" />
+                    </div>
+                  )}
+                  <h1 className="text-2xl font-bold text-foreground text-center">
+                    {currentAppName || (user?.name
+                      ? `${t('search.greeting')}, ${user.name}`
+                      : t('search.title'))}
+                  </h1>
+                  <p className="text-sm text-muted-foreground max-w-md text-center">
+                    {currentAppDescription || t('search.description')}
+                  </p>
+                </div>
               </div>
             )}
 

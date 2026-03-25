@@ -13,6 +13,7 @@ import { Search, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
+import { Spotlight } from '@/components/Spotlight'
 import SearchBar from '../components/SearchBar'
 import SearchResults from '../components/SearchResults'
 import { searchEmbedApi } from '../api/searchEmbedApi'
@@ -219,22 +220,25 @@ export function SearchSharePage() {
         >
           {/* Avatar and branding (pre-search, unless hidden) */}
           {!hasSearched && !hideAvatar && (
-            <div className="flex flex-col items-center gap-3 mb-8">
-              {appConfig.avatar ? (
-                <span className="text-5xl">{appConfig.avatar}</span>
-              ) : (
-                <div className="h-20 w-20 rounded-3xl bg-primary/10 flex items-center justify-center">
-                  <Search className="h-10 w-10 text-primary" />
-                </div>
-              )}
-              <h1 className="text-2xl font-bold text-foreground text-center">
-                {appConfig.name}
-              </h1>
-              {appConfig.description && (
-                <p className="text-sm text-muted-foreground max-w-md text-center">
-                  {appConfig.description}
-                </p>
-              )}
+            <div className="relative">
+              <Spotlight className="z-0" />
+              <div className="flex flex-col items-center gap-3 mb-8 relative z-10">
+                {appConfig.avatar ? (
+                  <span className="text-5xl">{appConfig.avatar}</span>
+                ) : (
+                  <div className="h-20 w-20 rounded-3xl bg-primary/10 flex items-center justify-center">
+                    <Search className="h-10 w-10 text-primary" />
+                  </div>
+                )}
+                <h1 className="text-2xl font-bold text-foreground text-center">
+                  {appConfig.name}
+                </h1>
+                {appConfig.description && (
+                  <p className="text-sm text-muted-foreground max-w-md text-center">
+                    {appConfig.description}
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
