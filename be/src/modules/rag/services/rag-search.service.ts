@@ -236,7 +236,9 @@ export class RagSearchService {
                         should: [
                             {
                                 knn: {
-                                    q_vec: {
+                                    // Python worker stores vectors in dimension-specific fields:
+                                    // q_1024_vec, q_768_vec, etc. Field name must match.
+                                    [`q_${queryVector.length}_vec`]: {
                                         vector: queryVector,
                                         k: topK,
                                     },
@@ -519,7 +521,7 @@ export class RagSearchService {
         if ((method === 'semantic' || method === 'hybrid') && queryVector?.length) {
             shouldClauses.push({
                 knn: {
-                    q_vec: {
+                    [`q_${queryVector.length}_vec`]: {
                         vector: queryVector,
                         k: topK,
                     },

@@ -2,9 +2,14 @@
  * @fileoverview Citation document drawer for chat — opens a Sheet with
  * DocumentPreviewer when a user clicks a citation in chat messages.
  *
+ * RAGFlow-style behavior: when a citation is clicked, the drawer opens
+ * with the PDF already scrolled to and highlighting the exact chunk location.
+ * The chunk data (with positions) is passed directly from the citation click.
+ *
  * @module features/chat/components/CitationDocDrawer
  */
 
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileText } from 'lucide-react'
 import {
@@ -12,9 +17,12 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
 } from '@/components/ui/sheet'
 import { DocumentPreviewer } from '@/components/DocumentPreviewer'
 import { getExtension } from '@/utils/document-util'
+import type { ChatChunk } from '../types/chat.types'
+import type { Chunk } from '@/features/datasets/types'
 
 /**
  * @description Props for the CitationDocDrawer component.
@@ -24,17 +32,37 @@ interface CitationDocDrawerProps {
   open: boolean
   /** Callback to close the drawer */
   onClose: () => void
-  /** Document ID to preview */
-  documentId: string | undefined
-  /** Document file name */
-  documentName: string | undefined
+  /** The clicked citation chunk — contains doc_id, positions, and content for highlighting */
+  chunk: ChatChunk | null | undefined
   /** Dataset ID for the document */
   datasetId: string | undefined
 }
 
 /**
- * @description Side drawer showing a document preview with chunks when a chat citation is clicked.
- * Uses the shared DocumentPreviewer component for file-type routing and chunk display.
+ * @description Convert a ChatChunk (from chat references) to the Chunk type
+ * expected by DocumentPreviewer for highlight rendering.
+ * @param {ChatChunk} chatChunk - Chat reference chunk with positions
+ * @returns {Chunk} Dataset chunk format compatible with DocumentPreviewer
+ */
+function chatChunkToChunk(chatChunk: ChatChunk): Chunk {
+  const chunk: Chunk = {
+    chunk_id: chatChunk.chunk_id,
+    text: chatChunk.content_with_weight,
+  }
+  chunk.doc_id = chatChunk.doc_id
+  chunk.doc_name = chatChunk.docnm_kwd
+  chunk.page_num = Array.isArray(chatChunk.page_num_int)
+    ? chatChunk.page_num_int
+    : chatChunk.page_num_int ? [chatChunk.page_num_int] : []
+  if (chatChunk.positions) chunk.positions = chatChunk.positions
+  if (chatChunk.score != null) chunk.score = chatChunk.score
+  return chunk
+}
+
+/**
+ * @description Side drawer showing a document preview with the cited chunk
+ * highlighted and scrolled into view. Matches RAGFlow behavior: clicking a
+ * citation opens the PDF with the exact chunk location highlighted immediately.
  *
  * @param {CitationDocDrawerProps} props - Component properties
  * @returns {JSX.Element} The rendered citation drawer
@@ -42,11 +70,13 @@ interface CitationDocDrawerProps {
 function CitationDocDrawer({
   open,
   onClose,
-  documentId,
-  documentName,
+  chunk,
   datasetId,
 }: CitationDocDrawerProps) {
   const { t } = useTranslation()
+
+  const documentName = chunk?.docnm_kwd
+  const documentId = chunk?.doc_id
 
   // Determine file extension for display
   const fileExt = documentName ? getExtension(documentName) : ''
@@ -55,6 +85,12 @@ function CitationDocDrawer({
   const downloadUrl = documentId && datasetId
     ? `/api/rag/datasets/${datasetId}/documents/${documentId}/download`
     : ''
+
+  // Convert ChatChunk to Chunk format for DocumentPreviewer highlighting
+  const selectedChunk = useMemo(
+    () => chunk ? chatChunkToChunk(chunk) : null,
+    [chunk],
+  )
 
   return (
     <Sheet open={open} onOpenChange={(isOpen: boolean) => !isOpen && onClose()}>
@@ -73,9 +109,12 @@ function CitationDocDrawer({
               </span>
             )}
           </SheetTitle>
+          <SheetDescription className="sr-only">
+            {documentName || t('chat.documentPreview')}
+          </SheetDescription>
         </SheetHeader>
 
-        {/* Document preview with chunk list */}
+        {/* Document preview — PDF only with citation chunk highlighted, no chunk list */}
         <div className="flex-1 overflow-hidden">
           {documentId && datasetId ? (
             <DocumentPreviewer
@@ -83,7 +122,8 @@ function CitationDocDrawer({
               docId={documentId}
               fileName={documentName || ''}
               downloadUrl={downloadUrl}
-              showChunks={true}
+              showChunks={false}
+              selectedChunk={selectedChunk}
             />
           ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">

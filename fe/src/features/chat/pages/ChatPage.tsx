@@ -5,10 +5,10 @@
  * @module features/chat/pages/ChatPage
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslation, getI18n } from 'react-i18next'
 import { Menu } from 'lucide-react'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
 import ChatSidebar from '../components/ChatSidebar'
 import ChatMessageList from '../components/ChatMessageList'
@@ -19,10 +19,11 @@ import CitationDocDrawer from '../components/CitationDocDrawer'
 import DeepResearchProgress from '../components/DeepResearchProgress'
 import AssistantSelectorPopover from '../components/AssistantSelectorPopover'
 import { useChatAssistants } from '../api/chatQueries'
-import { useChatConversations, useRenameConversation } from '../api/chatQueries'
+import { useChatConversations, useRenameConversation, useChatConversation } from '../api/chatQueries'
 import { useChatStream } from '../hooks/useChatStream'
 import { useChatFiles } from '../hooks/useChatFiles'
-import type { ChatReference, ChatChunk, PromptVariable, SendMessageOptions } from '../types/chat.types'
+import type { ChatReference, ChatChunk, DocAggregate, PromptVariable, SendMessageOptions } from '../types/chat.types'
+import DocumentViewerDialog from '../components/DocumentViewerDialog'
 
 // ============================================================================
 // Helpers
@@ -78,9 +79,13 @@ function DatasetChatPage() {
   const [showReferences, setShowReferences] = useState(false)
   const [activeReference, setActiveReference] = useState<ChatReference | null>(null)
 
-  // Document preview drawer state
+  // Document preview drawer state (for inline citation clicks with chunk highlight)
   const [showDocPreview, setShowDocPreview] = useState(false)
   const [previewChunk, setPreviewChunk] = useState<ChatChunk | null>(null)
+
+  // Document viewer dialog state (for badge clicks, document-only, no highlight)
+  const [showDocDialog, setShowDocDialog] = useState(false)
+  const [dialogDoc, setDialogDoc] = useState<DocAggregate | null>(null)
 
   // Variable values state (user-provided values for required variables)
   const [variableValues, setVariableValues] = useState<Record<string, string>>({})
@@ -97,6 +102,7 @@ function DatasetChatPage() {
   )
   const chatFiles = useChatFiles(conversations.activeConversation?.id || null)
   const renameMutation = useRenameConversation()
+  const { data: activeConversationDetail, isFetching: isFetchingMessages } = useChatConversation(conversations.activeConversation?.id || null)
 
   // Resolve welcome message from assistant's prologue config
   const welcomeMessage = resolvePrologue(assistants.activeAssistant?.prompt_config?.prologue)
@@ -113,22 +119,35 @@ function DatasetChatPage() {
     }
   }, [isFirstVisit])
 
-  // Load conversation messages when active conversation changes
+  // Load conversation messages when active conversation changes.
+  // IMPORTANT: Do NOT overwrite local messages while streaming or when the
+  // local state already has messages (optimistic UI from sendMessage).
+  // The stream hook manages messages during streaming — only sync from DB
+  // when switching conversations or on initial load.
+  const prevConvIdRef = useRef<string | null>(null)
   useEffect(() => {
-    const conv = conversations.activeConversation
-    if (conv?.messages && conv.messages.length > 0) {
-      // Loading an existing conversation with messages — abort any in-flight stream and load them
-      if (stream.isStreaming) {
-        stream.stopStream()
+    const currentConvId = conversations.activeConversation?.id || null
+
+    // Only load from DB when conversation ID actually changes (user switched conversations)
+    // or on initial mount. Skip if we're streaming (stream hook owns the message list).
+    if (currentConvId !== prevConvIdRef.current) {
+      prevConvIdRef.current = currentConvId
+
+      if (activeConversationDetail?.messages && activeConversationDetail.messages.length > 0) {
+        if (stream.isStreaming) {
+          stream.stopStream()
+        }
+        stream.setMessages(activeConversationDetail.messages)
+      } else if (!isFetchingMessages && !stream.isStreaming) {
+        stream.clearMessages()
       }
-      stream.setMessages(conv.messages)
-    } else if (!stream.isStreaming) {
-      // New empty conversation and no streaming in progress — safe to clear
-      stream.clearMessages()
+    } else if (!stream.isStreaming && activeConversationDetail?.messages && activeConversationDetail.messages.length > stream.messages.length) {
+      // Same conversation but DB has more messages than local state (e.g., after stream completes
+      // and backend persists the message). Sync to pick up backend-generated fields like feedback.
+      stream.setMessages(activeConversationDetail.messages)
     }
-    // Only trigger on conversation change
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversations.activeConversation?.id])
+  }, [activeConversationDetail, isFetchingMessages, conversations.activeConversation?.id])
 
   // Reset variable values when assistant changes
   useEffect(() => {
@@ -205,11 +224,19 @@ function DatasetChatPage() {
   }
 
   /**
-   * @description Handle inline chunk citation click: open document preview drawer.
+   * @description Handle inline chunk citation click: open document preview drawer with highlight.
    */
   const handleChunkCitationClick = (chunk: ChatChunk) => {
     setPreviewChunk(chunk)
     setShowDocPreview(true)
+  }
+
+  /**
+   * @description Handle document badge click: open document viewer dialog without chunk highlight.
+   */
+  const handleDocBadgeClick = (doc: DocAggregate) => {
+    setDialogDoc(doc)
+    setShowDocDialog(true)
   }
 
   /**
@@ -287,6 +314,8 @@ function DatasetChatPage() {
                   </button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-72 p-0">
+                  <SheetTitle className="sr-only">Chat sidebar</SheetTitle>
+                  <SheetDescription className="sr-only">Conversation list</SheetDescription>
                   <ChatSidebar
                     className="w-full h-full flex"
                     conversations={conversations.conversations}
@@ -312,8 +341,10 @@ function DatasetChatPage() {
             messages={stream.messages}
             isStreaming={stream.isStreaming}
             currentAnswer={stream.currentAnswer}
+            pipelineStatus={stream.pipelineStatus}
             onCitationClick={handleCitationClick}
             onChunkCitationClick={handleChunkCitationClick}
+            onDocBadgeClick={handleDocBadgeClick}
             onSuggestedPrompt={handleSendMessage}
             onRegenerate={handleRegenerate}
             className="flex-1"
@@ -403,6 +434,8 @@ function DatasetChatPage() {
         {/* Right panel: document references (mobile drawer) */}
         <Sheet open={showReferences} onOpenChange={setShowReferences}>
           <SheetContent side="right" className="w-80 p-0 lg:hidden">
+            <SheetTitle className="sr-only">References</SheetTitle>
+            <SheetDescription className="sr-only">Document references</SheetDescription>
             <ChatReferencePanel
               className="w-full h-full flex"
               reference={activeReference || stream.references}
@@ -428,9 +461,29 @@ function DatasetChatPage() {
           <CitationDocDrawer
             open={showDocPreview}
             onClose={() => setShowDocPreview(false)}
-            documentId={previewChunk?.doc_id}
-            documentName={previewChunk?.docnm_kwd}
+            chunk={previewChunk}
             datasetId={previewDatasetId}
+          />
+        )
+      })()}
+
+      {/* Document viewer dialog — opened by clicking document name badges */}
+      {(() => {
+        // Resolve dataset_id for the clicked document
+        const dialogDatasetId = (() => {
+          if (!dialogDoc) return assistants.activeAssistant?.kb_ids[0]
+          const ref = stream.references
+          const match = ref?.chunks.find((c) => c.doc_id === dialogDoc.doc_id)
+          return (match as any)?.dataset_id || assistants.activeAssistant?.kb_ids[0]
+        })()
+
+        return (
+          <DocumentViewerDialog
+            open={showDocDialog}
+            onClose={() => setShowDocDialog(false)}
+            docId={dialogDoc?.doc_id}
+            docName={dialogDoc?.doc_name}
+            datasetId={dialogDatasetId}
           />
         )
       })()}

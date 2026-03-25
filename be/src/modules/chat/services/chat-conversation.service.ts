@@ -451,7 +451,11 @@ function buildReference(chunks: ChunkResult[], citedIndices?: Set<number>) {
       docnm_kwd: c.doc_name || '',
       page_num_int: c.page_num?.[0] ?? 0,
       position_int: c.positions?.[0]?.[0] ?? 0,
+      // Full position arrays for PDF chunk highlighting when clicking citations.
+      // Format: [[pageNum, x1, x2, y1, y2], ...] — consumed by buildChunkHighlights()
+      positions: c.positions || [],
       score: c.score ?? 0,
+      img_id: c.img_id || '',
       cited: citedIndices?.has(i) ?? false,
     })),
     doc_aggs: [...docMap.values()],
@@ -535,7 +539,20 @@ export class ChatConversationService {
       .where('session_id', conversationId)
       .orderBy('timestamp', 'asc')
 
-    return { ...session, messages }
+    // Map citations -> reference
+    const mappedMessages = messages.map((msg: any) => {
+      let reference = undefined
+      if (msg.citations) {
+        try {
+          reference = typeof msg.citations === 'string'
+            ? JSON.parse(msg.citations)
+            : msg.citations
+        } catch { /* ignore parse errors */ }
+      }
+      return { ...msg, reference }
+    })
+
+    return { ...session, messages: mappedMessages }
   }
 
   /**
@@ -1105,16 +1122,18 @@ export class ChatConversationService {
       }
 
       if (allChunks.length > topN) {
-        res.write(`data: ${JSON.stringify({ status: 'reranking' })}\n\n`)
-        const rerankStart = Date.now()
-
-        // Use dedicated rerank model if configured, otherwise fall back to LLM reranking
         if (cfg.rerank_id) {
+          // Use dedicated rerank model (Jina/Cohere/BAAI) — fast (~300ms)
+          res.write(`data: ${JSON.stringify({ status: 'reranking' })}\n\n`)
+          const rerankStart = Date.now()
           allChunks = await ragRerankService.rerank(content, allChunks, topN, cfg.rerank_id)
+          retrievalTimings.reranking = Date.now() - rerankStart
         } else {
-          allChunks = await rerankChunks(content, allChunks, topN, providerId)
+          // No rerank model configured — use OpenSearch hybrid scores directly.
+          // Chunks are already sorted by score from multi-field boosted hybrid search,
+          // so truncating to topN gives good results without the 3-5s LLM reranking overhead.
+          allChunks = allChunks.slice(0, topN)
         }
-        retrievalTimings.reranking = Date.now() - rerankStart
       } else {
         allChunks = allChunks.slice(0, topN)
       }

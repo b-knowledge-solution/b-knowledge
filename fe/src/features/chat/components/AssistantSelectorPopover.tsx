@@ -159,17 +159,17 @@ function AssistantSelectorPopover({
                   </p>
 
                   {/* Meta badges */}
-                  <div className="flex items-center gap-2 mt-1.5">
+                  <div className="flex items-center gap-2 mt-1.5 w-full">
                     {assistant.llm_id && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50">
-                        <Bot className="h-2.5 w-2.5" />
-                        {assistant.llm_id}
+                      <span className="inline-flex items-center gap-1 min-w-0 flex-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50">
+                        <Bot className="h-2.5 w-2.5 shrink-0" />
+                        <span className="truncate">{assistant.llm_id}</span>
                       </span>
                     )}
                     {assistant.kb_ids.length > 0 && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50">
-                        <Database className="h-2.5 w-2.5" />
-                        {t('chat.knowledgeBasesCount', { count: assistant.kb_ids.length })}
+                      <span className="inline-flex items-center shrink-0 gap-1 text-[10px] whitespace-nowrap font-medium px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50">
+                        <Database className="h-2.5 w-2.5 shrink-0" />
+                        <span>{t('chat.knowledgeBasesCount', { count: assistant.kb_ids.length })}</span>
                       </span>
                     )}
                   </div>

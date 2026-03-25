@@ -7,13 +7,15 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Copy, Check, ThumbsUp, ThumbsDown, Bot, User, Volume2, Square, FileText, RefreshCw } from 'lucide-react'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import type { ChatMessage as ChatMessageType, ChatReference, ChatChunk } from '../types/chat.types'
+import type { ChatMessage as ChatMessageType, ChatReference, ChatChunk, DocAggregate } from '../types/chat.types'
 import { chatApi } from '../api/chatApi'
 import { useTts } from '../hooks/useTts'
+import { useAuth } from '@/features/auth'
 import CitationInline from '@/components/CitationInline'
+import { ReferenceImageList } from './ReferenceImageList'
 
 // ============================================================================
 // Props
@@ -26,6 +28,8 @@ interface ChatMessageProps {
   onCitationClick?: ((reference: ChatReference) => void) | undefined
   /** Callback when a specific chunk citation is clicked for document preview */
   onChunkCitationClick?: ((chunk: ChatChunk) => void) | undefined
+  /** Callback when a document name badge is clicked to open document viewer */
+  onDocBadgeClick?: ((doc: DocAggregate) => void) | undefined
   /** Whether this is the last message (for animation) */
   isLast?: boolean | undefined
   /** Callback to regenerate this assistant message (only shown on last assistant message) */
@@ -46,8 +50,9 @@ interface ChatMessageProps {
  * @param {ChatMessageProps} props - Component properties
  * @returns {JSX.Element} The rendered chat message
  */
-function ChatMessage({ message, onCitationClick, onChunkCitationClick, isLast, onRegenerate, conversationId }: ChatMessageProps) {
+function ChatMessage({ message, onCitationClick: _onCitationClick, onChunkCitationClick, onDocBadgeClick, isLast, onRegenerate, conversationId }: ChatMessageProps) {
   const { t } = useTranslation()
+  const { user } = useAuth()
   const { speak, stop, isPlaying, isLoading } = useTts()
   const [copied, setCopied] = useState(false)
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(
@@ -109,14 +114,23 @@ function ChatMessage({ message, onCitationClick, onChunkCitationClick, isLast, o
           avatarClass,
         )}
       >
+        {isUser && user?.avatar && (
+          <AvatarImage src={user.avatar} alt={user.displayName || 'User'} className="object-cover" />
+        )}
         <AvatarFallback
           className={cn(
             isUser
-              ? 'bg-primary text-primary-foreground'
+              ? 'bg-primary text-primary-foreground text-xs font-medium'
               : 'bg-muted text-muted-foreground ring-2 ring-muted-foreground/10',
           )}
         >
-          {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+          {isUser ? (
+            user?.displayName
+              ? user.displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+              : <User className="h-4 w-4" />
+          ) : (
+            <Bot className="h-4 w-4" />
+          )}
         </AvatarFallback>
       </Avatar>
 
@@ -137,13 +151,21 @@ function ChatMessage({ message, onCitationClick, onChunkCitationClick, isLast, o
           )}
         </div>
 
+        {/* Image references — responsive grid of cited chunk images */}
+        {isAssistant && message.reference?.chunks && (
+          <ReferenceImageList
+            chunks={message.reference.chunks}
+            messageContent={message.content}
+          />
+        )}
+
         {/* Citation badges — refined with border accent */}
         {isAssistant && message.reference && message.reference.doc_aggs.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-2">
             {message.reference.doc_aggs.map((doc) => (
               <button
                 key={doc.doc_id}
-                onClick={() => onCitationClick?.(message.reference!)}
+                onClick={() => onDocBadgeClick?.(doc)}
                 className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-primary/8 dark:bg-primary/12 text-primary border border-primary/15 hover:bg-primary/15 hover:border-primary/25 transition-all duration-200 shadow-sm"
               >
                 <FileText className="h-3 w-3" />

@@ -16,10 +16,12 @@ import type { ChatAssistant, Conversation } from '../types/chat.types'
 /**
  * @description Query key factory for chat-related TanStack Query cache entries.
  */
-const chatKeys = {
+export const chatKeys = {
   all: ['chat'] as const,
   assistants: () => [...chatKeys.all, 'assistants'] as const,
-  conversations: (assistantId: string) => [...chatKeys.all, 'conversations', assistantId] as const,
+  dialogs: (params: Record<string, unknown>) => [...chatKeys.all, 'dialogs', params] as const,
+  conversations: (dialogId: string) => [...chatKeys.all, 'conversations', dialogId] as const,
+  conversation: (id: string) => [...chatKeys.all, 'conversation', id] as const,
 }
 
 // ============================================================================
@@ -189,6 +191,17 @@ export function useChatConversations(assistantId: string | null) {
     search,
     setSearch,
   }
+}
+
+/**
+ * @description Hook to fetch a single conversation's messages by ID.
+ */
+export function useChatConversation(id: string | null) {
+  return useQuery({
+    queryKey: chatKeys.conversation(id ?? ''),
+    queryFn: () => chatApi.getConversation(id!),
+    enabled: !!id,
+  })
 }
 
 // ============================================================================

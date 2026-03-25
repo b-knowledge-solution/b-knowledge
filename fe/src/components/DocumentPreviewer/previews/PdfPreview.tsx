@@ -9,7 +9,7 @@
  * @module components/DocumentPreviewer/previews/PdfPreview
  */
 
-import { memo, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 // Vite resolves the worker file as a URL via ?url import
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
@@ -89,6 +89,95 @@ async function renderPage(
 }
 
 /**
+ * @description Draw highlight rectangles on overlay canvases and scroll to first match.
+ * @param container - The div containing all PDF page elements
+ * @param scrollParent - The scrollable container for scroll-to-highlight
+ * @param highlights - Array of highlight objects with position data
+ */
+function drawHighlights(
+  container: HTMLDivElement,
+  scrollParent: HTMLDivElement | null,
+  highlights: IHighlight[],
+) {
+  // Clear all existing overlay highlights
+  container.querySelectorAll('.highlight-overlay').forEach((el) => {
+    const ctx = (el as HTMLCanvasElement).getContext('2d')
+    if (ctx) {
+      const c = el as HTMLCanvasElement
+      ctx.clearRect(0, 0, c.width, c.height)
+    }
+  })
+
+  if (!highlights.length) return
+
+  let scrollTarget: HTMLElement | null = null
+  const dpr = window.devicePixelRatio
+
+  for (const highlight of highlights) {
+    if (!highlight.position?.rects) continue
+
+    // boundingRect.width/height is the PDF page size at scale=1 (in points)
+    const refWidth = highlight.position.boundingRect?.width || 1
+    const refHeight = highlight.position.boundingRect?.height || 1
+
+    for (const rect of highlight.position.rects) {
+      const pageNum = (rect as any).pageNumber || highlight.position.pageNumber || 1
+      const pageDiv = container.querySelector(`[data-page="${pageNum}"]`)
+      if (!pageDiv) continue
+
+      const overlay = pageDiv.querySelector('.highlight-overlay') as HTMLCanvasElement
+      if (!overlay) continue
+
+      const ctx = overlay.getContext('2d')
+      if (!ctx) continue
+
+      // Reset transform — draw at device pixel ratio for crisp lines
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+
+      // Scale PDF points to canvas display pixels
+      const canvasW = overlay.width / dpr
+      const canvasH = overlay.height / dpr
+      const scaleX = canvasW / refWidth
+      const scaleY = canvasH / refHeight
+
+      const x = (rect as any).x1 * scaleX
+      const y = (rect as any).y1 * scaleY
+      const w = ((rect as any).x2 - (rect as any).x1) * scaleX
+      const h = ((rect as any).y2 - (rect as any).y1) * scaleY
+
+      // Skip zero-size highlights (invalid coordinates)
+      if (w <= 0 || h <= 0) continue
+
+      // Draw filled highlight rectangle
+      ctx.fillStyle = 'rgba(255, 226, 143, 0.4)'
+      ctx.fillRect(x, y, w, h)
+      // Draw border for visibility
+      ctx.strokeStyle = 'rgba(255, 180, 0, 0.8)'
+      ctx.lineWidth = 1
+      ctx.strokeRect(x, y, w, h)
+
+      // Track first highlight page for scrolling
+      if (!scrollTarget) {
+        scrollTarget = pageDiv as HTMLElement
+      }
+    }
+  }
+
+  // Scroll to the first highlighted page
+  if (scrollTarget && scrollParent) {
+    requestAnimationFrame(() => {
+      const parentRect = scrollParent.getBoundingClientRect()
+      const targetRect = scrollTarget!.getBoundingClientRect()
+      const offsetTop = targetRect.top - parentRect.top + scrollParent.scrollTop
+      scrollParent.scrollTo({
+        top: Math.max(0, offsetTop - 40),
+        behavior: 'smooth',
+      })
+    })
+  }
+}
+
+/**
  * @description Renders a PDF using pdfjs-dist with custom highlight overlay.
  * Each page is rendered as a canvas. Highlight rectangles are drawn on
  * a transparent overlay canvas matching the page dimensions.
@@ -101,10 +190,13 @@ const PdfPreview = ({
 }: PdfPreviewProps) => {
   const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [numPages, setNumPages] = useState(0)
   const [scale, setScale] = useState(1.2)
+  // Counter that increments when all pages are in the DOM
+  const [renderVersion, setRenderVersion] = useState(0)
 
   // Load and render all PDF pages
   useEffect(() => {
@@ -141,6 +233,8 @@ const PdfPreview = ({
         }
 
         setLoading(false)
+        // Bump render version to trigger highlight drawing
+        setRenderVersion((v) => v + 1)
       } catch (err: any) {
         if (!cancelled) {
           setError(err?.message || 'Failed to load PDF')
@@ -153,88 +247,30 @@ const PdfPreview = ({
     return () => { cancelled = true }
   }, [url, scale])
 
-  // Draw highlight rectangles on overlay canvases when highlights change
+  // Draw highlights whenever they change OR pages finish rendering.
+  // Uses a small timeout to ensure React has committed all pending state updates
+  // (parent may update pdfSize after setWidthAndHeight, causing new highlights prop).
   useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-
-    // Clear all overlay canvases
-    container.querySelectorAll('.highlight-overlay').forEach((el) => {
-      const ctx = (el as HTMLCanvasElement).getContext('2d')
-      if (ctx) {
-        ctx.clearRect(0, 0, (el as HTMLCanvasElement).width, (el as HTMLCanvasElement).height)
-      }
-    })
-
+    if (renderVersion === 0) return
     if (!state?.length) return
 
-    // Draw highlights
-    let scrollTarget: HTMLElement | null = null
-    const dpr = window.devicePixelRatio
-
-    for (const highlight of state) {
-      if (!highlight.position?.rects) continue
-
-      // boundingRect.width/height is the PDF page size at scale=1 (in points)
-      const refWidth = highlight.position.boundingRect?.width || 1
-      const refHeight = highlight.position.boundingRect?.height || 1
-
-      for (const rect of highlight.position.rects) {
-        const pageNum = rect.pageNumber || highlight.position.pageNumber || 1
-        const pageDiv = container.querySelector(`[data-page="${pageNum}"]`)
-        if (!pageDiv) continue
-
-        const overlay = pageDiv.querySelector('.highlight-overlay') as HTMLCanvasElement
-        if (!overlay) continue
-
-        const ctx = overlay.getContext('2d')
-        if (!ctx) continue
-
-        // Reset transform — draw at device pixel ratio for crisp lines
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-
-        // Coordinates are in PDF points relative to refWidth/refHeight.
-        // Scale to the canvas display size (overlay.width/dpr = CSS pixels).
-        const canvasW = overlay.width / dpr
-        const canvasH = overlay.height / dpr
-        const scaleX = canvasW / refWidth
-        const scaleY = canvasH / refHeight
-
-        const x = rect.x1 * scaleX
-        const y = rect.y1 * scaleY
-        const w = (rect.x2 - rect.x1) * scaleX
-        const h = (rect.y2 - rect.y1) * scaleY
-
-        // Draw filled highlight rectangle
-        ctx.fillStyle = 'rgba(255, 226, 143, 0.4)'
-        ctx.fillRect(x, y, w, h)
-        // Draw border for visibility
-        ctx.strokeStyle = 'rgba(255, 180, 0, 0.8)'
-        ctx.lineWidth = 1
-        ctx.strokeRect(x, y, w, h)
-
-        // Track first highlight page for scrolling
-        if (!scrollTarget) {
-          scrollTarget = pageDiv as HTMLElement
-        }
+    // Delay to let parent re-render with updated pdfSize → new highlights
+    const timer = setTimeout(() => {
+      if (containerRef.current) {
+        drawHighlights(containerRef.current, scrollRef.current, state)
       }
-    }
+    }, 100)
 
-    // Scroll the scrollable parent (not the document) to the highlighted page
-    if (scrollTarget) {
-      const scrollParent = scrollTarget.closest('.overflow-auto')
-      if (scrollParent) {
-        const parentRect = scrollParent.getBoundingClientRect()
-        const targetRect = scrollTarget.getBoundingClientRect()
-        // Calculate offset relative to the scroll container
-        const offsetTop = targetRect.top - parentRect.top + scrollParent.scrollTop
-        scrollParent.scrollTo({
-          top: Math.max(0, offsetTop - 40),
-          behavior: 'smooth',
-        })
-      }
+    return () => clearTimeout(timer)
+  }, [state, renderVersion])
+
+  // Also re-draw when highlights change after initial render
+  useEffect(() => {
+    if (renderVersion === 0 || !state?.length) return
+    if (containerRef.current) {
+      drawHighlights(containerRef.current, scrollRef.current, state)
     }
-  }, [state, numPages])
+  }, [state])
 
   if (error) {
     return (
@@ -263,7 +299,7 @@ const PdfPreview = ({
       </div>
 
       {/* PDF pages container */}
-      <div className="flex-1 overflow-auto bg-muted/20">
+      <div ref={scrollRef} className="flex-1 overflow-auto bg-muted/20">
         {loading && (
           <div className="flex items-center justify-center h-full">
             <Spinner />
@@ -278,5 +314,5 @@ const PdfPreview = ({
   )
 }
 
-export default memo(PdfPreview)
+export default PdfPreview
 export { PdfPreview }

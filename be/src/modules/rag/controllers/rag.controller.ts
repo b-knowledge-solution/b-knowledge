@@ -25,6 +25,8 @@ import { getRedisClient } from '@/shared/services/redis.service.js';
 import { db } from '@/shared/db/knex.js';
 import { getTenantId } from '@/shared/middleware/tenant.middleware.js';
 import { datasetSyncService } from '../services/dataset-sync.service.js';
+import { minioClient } from '@/shared/services/minio.service.js'
+import { config } from '@/shared/config/index.js';
 
 /**
  * @description Resolve model_providers.id for an embedding model name
@@ -1716,6 +1718,55 @@ export class RagController {
     // -------------------------------------------------------------------------
     // Parsing Scheduler Config
     // -------------------------------------------------------------------------
+
+    /**
+     * @description GET /images/:imageId — Serve a chunk image from S3/RustFS storage.
+     * Images are stored during document parsing by the Python worker.
+     * The imageId format is "{bucket}-{objectName}" (e.g., "imagetemps-abc123").
+     * @param {Request} req - Express request with imageId param
+     * @param {Response} res - Express response streaming the image binary
+     * @returns {Promise<void>}
+     */
+    async getChunkImage(req: Request, res: Response): Promise<void> {
+        const imageId = req.params['imageId']
+        if (!imageId) {
+            res.status(400).json({ error: 'Image ID is required' })
+            return
+        }
+
+        try {
+            // Images are stored by the Python worker in the configured S3 bucket
+            // (typically "knowledge") with key path "{kb_id}/{chunk_hash}".
+            //
+            // The img_id format in OpenSearch is "{kb_id}-{chunk_hash}" where kb_id
+            // is a UUID (may contain dashes). The chunk_hash is a 16-char hex from xxhash
+            // (no dashes). We split on the LAST dash to separate kb_id from chunk_hash.
+            const s3Bucket = config.s3.bucket || 'knowledge'
+
+            const lastDash = imageId.lastIndexOf('-')
+            if (lastDash === -1) {
+                res.status(400).json({ error: 'Invalid image ID format' })
+                return
+            }
+            // Reconstruct the S3 key: replace last dash with "/" to get "{kb_id}/{chunk_hash}"
+            const s3Key = imageId.substring(0, lastDash) + '/' + imageId.substring(lastDash + 1)
+
+            // Stream the image from S3/RustFS
+            const stream = await minioClient.getObject(s3Bucket, s3Key)
+
+            // Set appropriate headers for image response
+            res.setHeader('Content-Type', 'image/jpeg')
+            res.setHeader('Cache-Control', 'public, max-age=86400')
+            stream.pipe(res)
+        } catch (error: any) {
+            if (error?.code === 'NoSuchKey' || error?.code === 'NoSuchBucket') {
+                res.status(404).json({ error: 'Image not found' })
+                return
+            }
+            log.error('Failed to serve chunk image', { imageId, error: String(error) })
+            res.status(500).json({ error: 'Failed to serve image' })
+        }
+    }
 
     /**
      * @description GET /system/config/parsing_scheduler — Return current parsing scheduler settings.

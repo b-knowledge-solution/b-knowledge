@@ -62,6 +62,10 @@ export interface ChatChunk {
   positions?: number[][] | undefined
   /** Relevance score (0-1) */
   score?: number
+  /** Image ID for chunks containing extracted images (format: "bucket-objectName") */
+  img_id?: string | undefined
+  /** Knowledge base ID this chunk belongs to */
+  kb_id?: string | undefined
 }
 
 /**

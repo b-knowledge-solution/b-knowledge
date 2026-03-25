@@ -6,8 +6,9 @@
 
 import { useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Bot, Search, BarChart3, Sparkles, Globe, BookOpen, Loader2 } from 'lucide-react'
 import ChatMessage from './ChatMessage'
-import type { ChatMessage as ChatMessageType, ChatReference, ChatChunk } from '../types/chat.types'
+import type { ChatMessage as ChatMessageType, ChatReference, ChatChunk, DocAggregate } from '../types/chat.types'
 
 // ============================================================================
 // Props
@@ -20,10 +21,14 @@ interface ChatMessageListProps {
   isStreaming: boolean
   /** Partial answer being streamed */
   currentAnswer: string
+  /** Current pipeline status for loading indicator */
+  pipelineStatus?: string | null | undefined
   /** Callback when a citation is clicked */
   onCitationClick: (reference: ChatReference) => void
   /** Callback when a chunk citation is clicked */
   onChunkCitationClick: (chunk: ChatChunk) => void
+  /** Callback when a document name badge is clicked */
+  onDocBadgeClick: (doc: DocAggregate) => void
   /** Callback when a suggested prompt is clicked */
   onSuggestedPrompt: (content: string) => void
   /** Callback for regenerating the last message */
@@ -54,11 +59,13 @@ function ChatMessageList({
   currentAnswer,
   onCitationClick,
   onChunkCitationClick,
+  onDocBadgeClick,
   onSuggestedPrompt: _onSuggestedPrompt,
   onRegenerate,
   className = '',
   conversationId,
   welcomeMessage,
+  pipelineStatus,
 }: ChatMessageListProps) {
   const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -92,8 +99,8 @@ function ChatMessageList({
       onScroll={handleScroll}
       className={`overflow-y-auto px-4 py-6 space-y-1 ${className}`}
     >
-      {/* Welcome message: always shown as the first message when configured */}
-      {welcomeMessage && (
+      {/* Welcome message: shown if no messages, or if local stream hasn't synced the DB prologue yet */}
+      {welcomeMessage && (messages.length === 0 || messages[0]?.role !== 'assistant') && (
         <ChatMessage
           message={{
             id: 'welcome',
@@ -104,6 +111,7 @@ function ChatMessageList({
           conversationId={conversationId}
           onCitationClick={() => {}}
           onChunkCitationClick={() => {}}
+          onDocBadgeClick={() => {}}
           isLast={false}
         />
       )}
@@ -129,6 +137,7 @@ function ChatMessageList({
             conversationId={conversationId}
             onCitationClick={onCitationClick}
             onChunkCitationClick={onChunkCitationClick}
+            onDocBadgeClick={onDocBadgeClick}
             isLast={index === messages.length - 1}
             onRegenerate={isLastAssistant ? onRegenerate : undefined}
           />
@@ -147,26 +156,44 @@ function ChatMessageList({
           conversationId={conversationId}
           onCitationClick={onCitationClick}
           onChunkCitationClick={onChunkCitationClick}
+          onDocBadgeClick={onDocBadgeClick}
           isLast
         />
       )}
 
-      {/* Typing indicator: shown when streaming but no content yet */}
+      {/* Pipeline status indicator: shown when streaming but no content yet */}
       {isStreaming && !currentAnswer && (
-        <div className="flex gap-3 px-4 py-3">
+        <div className="flex gap-3 px-4 py-3 chat-fade-in">
           <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-            <div className="h-4 w-4 text-muted-foreground">
-              <svg viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="4" cy="12" r="2" />
-                <circle cx="12" cy="12" r="2" />
-                <circle cx="20" cy="12" r="2" />
-              </svg>
-            </div>
+            <Bot className="h-4 w-4 text-muted-foreground" />
           </div>
-          <div className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl rounded-bl-md bg-muted/60 dark:bg-muted/40">
-            <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:0ms]" />
-            <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:150ms]" />
-            <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:300ms]" />
+          <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl rounded-bl-md bg-muted/60 dark:bg-muted/40 border border-border/40">
+            {/* Pipeline stage icon + label */}
+            {(() => {
+              const statusConfig: Record<string, { icon: typeof Search; label: string }> = {
+                refining_question: { icon: Sparkles, label: t('chat.status.refiningQuestion', 'Refining question...') },
+                embedding: { icon: Loader2, label: t('chat.status.embedding', 'Embedding query...') },
+                retrieving: { icon: Search, label: t('chat.status.retrieving', 'Searching knowledge base...') },
+                searching_web: { icon: Globe, label: t('chat.status.searchingWeb', 'Searching the web...') },
+                searching_knowledge_graph: { icon: BookOpen, label: t('chat.status.searchingKg', 'Searching knowledge graph...') },
+                reranking: { icon: BarChart3, label: t('chat.status.reranking', 'Reranking results...') },
+                generating: { icon: Sparkles, label: t('chat.status.generating', 'Generating answer...') },
+              }
+              const config = statusConfig[pipelineStatus || ''] || { icon: Loader2, label: t('chat.status.thinking', 'Thinking...') }
+              const StatusIcon = config.icon
+              return (
+                <>
+                  <StatusIcon className="h-3.5 w-3.5 text-primary animate-pulse" />
+                  <span className="text-xs text-muted-foreground">{config.label}</span>
+                </>
+              )
+            })()}
+            {/* Bouncing dots */}
+            <div className="flex items-center gap-1 ml-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-bounce [animation-delay:0ms]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-bounce [animation-delay:150ms]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-bounce [animation-delay:300ms]" />
+            </div>
           </div>
         </div>
       )}
