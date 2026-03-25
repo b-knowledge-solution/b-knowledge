@@ -9,7 +9,10 @@ The chat completion pipeline processes a user message through up to 14 steps, fr
 | Endpoint | Purpose |
 |----------|---------|
 | `POST /api/chat/conversations/:id/completion` | Primary chat endpoint (SSE streaming) |
-| `POST /v1/chat/completions` | OpenAI-compatible API endpoint |
+| `POST /api/chat/embed/:token/completions` | Public embed completion endpoint |
+| `POST /api/v1/chat/completions` | OpenAI-compatible API endpoint |
+| `POST /api/chat/conversations/:id/files` | Conversation file upload |
+| `POST /api/chat/tts` | Optional text-to-speech generation |
 
 ## Full 14-Step Pipeline
 
@@ -91,5 +94,7 @@ flowchart TD
 | File | Purpose |
 |------|---------|
 | `be/src/modules/chat/services/chat-conversation.service.ts` | Main pipeline orchestrator |
-| `be/src/modules/chat/controllers/chat.controller.ts` | HTTP endpoint handlers |
+| `be/src/modules/chat/routes/chat-conversation.routes.ts` | Internal chat routes |
+| `be/src/modules/chat/routes/chat-embed.routes.ts` | Public embed routes |
+| `be/src/modules/chat/routes/chat-openai.routes.ts` | OpenAI-compatible chat routes |
 | `be/src/modules/chat/services/` | Step-specific service files |

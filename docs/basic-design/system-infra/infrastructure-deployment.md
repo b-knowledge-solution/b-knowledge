@@ -147,7 +147,7 @@ All services implement health checks for Docker orchestration:
 | Valkey | `valkey-cli ping` | 10s | 5 |
 | OpenSearch | `curl localhost:9201/_cluster/health` | 30s | 10 |
 | RustFS | `curl localhost:9000/minio/health/live` | 15s | 5 |
-| Backend | `GET /api/health` | 15s | 3 |
+| Backend | `GET /health` | 15s | 3 |
 | Task Executor | `GET /health` | 15s | 3 |
 
 The dev scripts (`npm run dev:worker`, `npm run dev:converter`) poll the backend health endpoint before starting, ensuring infrastructure is ready.

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Projects are organizational containers that group datasets, categories, chats, and searches under a unified structure with role-based access control. All projects are scoped to a tenant.
+Projects are tenant-scoped collaboration containers that group datasets, categories, versions, project-scoped chats, project-scoped searches, sync configs, memberships, and entity permissions under one access boundary.
 
 ## Project Architecture
 
@@ -18,6 +18,7 @@ flowchart TD
 
     CP --> PC[Create Project Chats]
     CP --> PS[Create Project Searches]
+    CP --> SYNC[Create Sync Configs]
     CP --> AT[Activity Tracking]
 
     subgraph "Project Container"
@@ -27,6 +28,7 @@ flowchart TD
         DOC
         PC
         PS
+        SYNC
         AT
     end
 ```
@@ -43,8 +45,9 @@ A project groups related resources under a single management boundary:
 | Categories | One-to-many | Hierarchical categorization tree |
 | Versions | One-to-many (per category) | Version snapshots within categories |
 | Documents | Many-to-many (per version) | Documents linked to specific versions |
-| Chats | One-to-many | Chat dialogs scoped to project context |
-| Searches | One-to-many | Search apps scoped to project datasets |
+| Chats | One-to-many | Project chat resources managed under the project module |
+| Searches | One-to-many | Project search resources managed under the project module |
+| Sync Configs | One-to-many | External sync settings bound to the project |
 | Members | Many-to-many | Users assigned to the project with roles |
 
 ### Tenant Scoping
@@ -123,6 +126,23 @@ All mutations within a project are logged for audit purposes:
 - Permission changes
 
 Activity logs are queryable via `GET /api/projects/:id/activity` with pagination.
+
+## Current Route Surface
+
+The current project module includes routes for:
+
+- Project CRUD and listing
+- Project permissions and entity permissions
+- Dataset link / unlink / bind / unbind flows
+- Category CRUD
+- Category version CRUD
+- Version document listing
+- Project chat CRUD
+- Project search CRUD
+- Sync config CRUD
+- Member list / add / remove
+- Cross-project dataset listing
+- Activity feed
 
 ## Key Files
 

@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-AI Chat provides multi-turn RAG-powered conversations with configurable retrieval pipelines, citation support, and streaming responses. Users interact via web UI or an OpenAI-compatible API.
+AI Chat provides multi-turn RAG-powered conversations with configurable retrieval pipelines, citation support, file upload, embed flows, TTS, and streaming responses. Users can interact through the internal web UI, token-based embed endpoints, or the OpenAI-compatible API.
 
 ## 2. Use Case Diagram
 
@@ -23,7 +23,8 @@ graph LR
         UC7(Text-to-Speech)
         UC8(Manage Conversations)
         UC9(Use OpenAI-Compatible API)
-        UC10(Configure Pipeline Options)
+        UC10(Use Embed Chat)
+        UC11(Configure Pipeline Options)
     end
     U --> UC3
     U --> UC4
@@ -33,7 +34,7 @@ graph LR
     U --> UC8
     A --> UC1
     A --> UC2
-    A --> UC10
+    A --> UC11
     E --> UC3
     E --> UC4
     E --> UC5
@@ -52,10 +53,11 @@ graph LR
 | CHAT-06 | Citation Display | Must | Return source chunk references with each response; link to original documents |
 | CHAT-07 | File Upload | Should | Accept image and PDF uploads within a conversation for inline context |
 | CHAT-08 | Text-to-Speech | Should | Convert assistant text responses to audio via configured TTS model |
-| CHAT-09 | OpenAI-Compatible API | Should | Expose `/v1/chat/completions` endpoint accepting standard OpenAI request format |
-| CHAT-10 | Conversation Rename | Could | Allow users to rename conversations |
-| CHAT-11 | Message Feedback | Should | Users can thumbs-up/down individual messages for quality tracking |
-| CHAT-12 | Deep Research Mode | Could | Multi-step iterative research with extended token budget |
+| CHAT-09 | OpenAI-Compatible API | Should | Expose `/api/v1/chat/completions` endpoint accepting standard OpenAI request format |
+| CHAT-10 | Embed Chat | Should | Expose token-based embed info, session creation, and completion endpoints |
+| CHAT-11 | Conversation Rename | Could | Allow users to rename conversations |
+| CHAT-12 | Message Feedback | Should | Users can thumbs-up/down individual messages for quality tracking |
+| CHAT-13 | Deep Research Mode | Could | Multi-step iterative research with extended token budget |
 
 ## 4. Configurable Pipeline Steps
 
@@ -102,4 +104,5 @@ flowchart TD
 | BR-06 | The OpenAI-compatible API authenticates via API token and maps to an existing assistant |
 | BR-07 | When `empty_response` is set and retrieval returns zero chunks, the system returns the configured fallback instead of calling the LLM |
 | BR-08 | Citations reference specific chunk IDs, document names, and page numbers where available |
-| BR-09 | Conversations and messages are soft-deleted to support admin audit history viewing |
+| BR-09 | Conversations and messages are soft-deleted to support admin and user history viewing |
+| BR-10 | Public embed chat uses token-based session creation and completion routes instead of browser sessions |

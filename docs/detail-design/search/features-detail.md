@@ -1,8 +1,18 @@
 # Search Features - Detail Design
 
+> Supplementary search capabilities built on top of the shared retrieval pipeline.
+
 ## Overview
 
-Beyond core search and ask, the search module provides four supplementary features: mind map generation, related question suggestions, user feedback collection, and retrieval testing. Each feature builds on the shared retrieval pipeline.
+Beyond core `search` and `askSearch`, the latest implementation exposes:
+
+- Mind map generation
+- Related question suggestions
+- Retrieval testing
+- Public embed/share endpoints
+- Search-app branding fields (`avatar`, `empty_response`)
+
+Feedback remains part of the broader product direction, but it is not the main focus of the 2026-03-25 search implementation work.
 
 ## Mind Map
 
@@ -48,7 +58,7 @@ sequenceDiagram
 
 ## Related Questions
 
-Generates follow-up question suggestions based on the query and retrieved context.
+Generates follow-up question suggestions for a query. In the current implementation, the dedicated endpoint uses the query plus the configured LLM provider. In streaming search, related questions are generated after answer streaming completes and emitted in the final SSE payload.
 
 **Endpoint**: `POST /api/search/apps/:id/related-questions`
 
@@ -61,7 +71,8 @@ sequenceDiagram
 
     Client->>Ctrl: POST .../related-questions<br/>{query}
     Ctrl->>Svc: generateRelatedQuestions(appId, query)
-    Svc->>Svc: Build relatedQuestionPrompt with query context
+    Svc->>Svc: Load search app config
+    Svc->>Svc: Resolve llm_id from search_config
     Svc->>LLM: chatCompletion(messages)
     LLM-->>Svc: Related question text
     Svc->>Svc: Parse response into string array
@@ -71,10 +82,7 @@ sequenceDiagram
 
 ### Prompt Design
 
-The `relatedQuestionPrompt` instructs the LLM to:
-- Generate 3-5 follow-up questions related to the original query.
-- Ensure questions are diverse and cover different aspects.
-- Return questions as a newline-separated list.
+The related question flow is shared through `relatedQuestionsService`, which is reused from both normal search and embed search.
 
 ## Feedback
 
@@ -139,14 +147,38 @@ sequenceDiagram
 - **Debugging low-quality answers**: Inspect what context the LLM would receive.
 - **Threshold calibration**: Test different `similarity_threshold` values.
 
+## Public Embed / Share Features
+
+The search module now exposes public token-authenticated features for embedded usage:
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/search/embed/:token/config` | Share-page bootstrap config |
+| POST | `/api/search/embed/:token/search` | Non-streaming paginated results |
+| POST | `/api/search/embed/:token/ask` | Streaming answer generation |
+| POST | `/api/search/embed/:token/related-questions` | Public follow-up suggestions |
+| POST | `/api/search/embed/:token/mindmap` | Public mind map generation |
+
+This is paired with the frontend route `/search/share/:token`.
+
+## Search-App Presentation Features
+
+Search apps now support two user-facing presentation fields:
+
+| Field | Purpose |
+|-------|---------|
+| `avatar` | Emoji/icon branding on the main search page, app management table, and share page |
+| `empty_response` | Custom no-results message displayed in the search UI |
+
 ## Feature Comparison
 
-| Feature | Retrieval | LLM | Streaming | Auth Required |
-|---------|-----------|-----|-----------|---------------|
+| Feature | Retrieval | LLM | Streaming | Public Token Support |
+|---------|-----------|-----|-----------|----------------------|
 | Mind map | Yes | Yes | No | Yes |
-| Related questions | No (query only) | Yes | No | Yes |
-| Feedback | No | No | No | Yes |
-| Retrieval test | Yes | No | No | Yes |
+| Related questions | No | Yes | Final SSE payload only in `ask` | Yes |
+| Retrieval test | Yes | No | No | No |
+| Embed/share search | Yes | Yes | Yes | Yes |
+| Search app avatar / empty response | No | No | No | Exposed via `/config` |
 
 ## Key Files
 
@@ -154,4 +186,7 @@ sequenceDiagram
 |------|---------|
 | `be/src/modules/search/services/search.service.ts` | All feature orchestration |
 | `be/src/modules/search/controllers/search.controller.ts` | Endpoint handlers |
-| `be/src/modules/search/prompts/` | Prompt templates for mindmap, related questions |
+| `be/src/modules/search/controllers/search-embed.controller.ts` | Public token-authenticated handlers |
+| `be/src/modules/search/routes/search-embed.routes.ts` | Embed/share route registration |
+| `be/src/shared/services/related-questions.service.ts` | Shared follow-up question generation |
+| `fe/src/features/search/pages/SearchSharePage.tsx` | Standalone share page |

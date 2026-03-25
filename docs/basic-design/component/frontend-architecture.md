@@ -2,7 +2,7 @@
 
 ## Overview
 
-The B-Knowledge frontend is a React 19 SPA built with TypeScript, Vite 7.3, TanStack Query, Tailwind CSS, and shadcn/ui. It follows a feature-module architecture with 19 modules, strict separation of API concerns, and i18n support for three locales.
+The B-Knowledge frontend is a React 19 SPA built with TypeScript, Vite 7.3, TanStack Query, Tailwind CSS, and shadcn/ui. It follows a feature-module architecture with 24 top-level feature areas, central route metadata in `routeConfig.ts`, and i18n support for three locales.
 
 ## Application Component Tree
 
@@ -28,7 +28,7 @@ graph TD
 
 ## Feature Module Structure
 
-Each of the 19 feature modules follows a consistent internal layout:
+Each feature module follows a consistent internal layout:
 
 ```mermaid
 graph TD
@@ -73,6 +73,8 @@ graph LR
 ```
 
 Pages are lazy-loaded via `React.lazy()` and defined in a central `routeConfig.ts` file. The `MainLayout` component provides the sidebar navigation and renders child routes via `<Outlet />`.
+
+Current route families include chat, search, search share pages, datasets, projects, users, teams, agent studio, memory studio, audit, dashboard, broadcasts, llm providers, and system tools.
 
 ## State Management Strategy
 
@@ -157,26 +159,31 @@ The compiler determines optimal re-render boundaries at build time.
 | `lib/` | Shared utilities (api client, auth helpers) |
 | `utils/` | Pure utility functions (formatting, validation) |
 
-## Feature Module List (19 Modules)
+## Feature Module List (24 Feature Areas)
 
 | Module | Domain |
 |--------|--------|
-| `auth` | Login, registration, session |
-| `users` | User management |
-| `teams` | Team management |
+| `agent-widget` | Public agent embed UI |
+| `agents` | Agent studio, canvas, debug, runs |
+| `ai` | Shared AI-facing pages/hooks |
+| `api-keys` | External API key management |
+| `audit` | Audit log pages |
+| `auth` | Login and session flows |
+| `broadcast` | Broadcast message UI |
 | `chat` | Conversations, assistants |
-| `search` | Search apps, queries |
-| `rag` | Datasets, documents, chunks |
-| `sync` | Connectors |
-| `projects` | Project management |
-| `glossary` | Glossary management |
+| `chat-widget` | Public chat embed UI |
+| `code-graph` | Code graph exploration UI |
+| `dashboard` | Dashboard pages |
+| `datasets` | Dataset, document, chunk, parser settings UI |
+| `glossary` | Glossary UI |
+| `guideline` | Product guideline/help system |
+| `histories` | History browsing |
+| `landing` | Landing pages |
 | `llm-provider` | LLM configuration |
-| `admin` | Admin panel |
-| `audit` | Audit logs |
-| `broadcast` | Notifications |
-| `user-history` | Activity history |
-| `system-tools` | System utilities |
-| `feedback` | User feedback |
-| `dashboard` | Analytics |
-| `settings` | User settings |
-| `tenant` | Tenant management |
+| `memory` | Memory pool management |
+| `projects` | Project management |
+| `search` | Search apps, queries |
+| `search-widget` | Public search embed UI |
+| `system` | System monitor and tools UI |
+| `teams` | Team management |
+| `users` | User management |

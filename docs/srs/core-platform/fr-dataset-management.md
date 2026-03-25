@@ -4,11 +4,11 @@
 |---------|------------|
 | Parent  | [SRS Index](./index.md) |
 | Version | 1.0        |
-| Date    | 2026-03-21 |
+| Date    | 2026-03-25 |
 
 ## 1. Overview
 
-A **Dataset** in B-Knowledge is a Knowledge Base — a collection of documents sharing parser configuration, embedding settings, and access control policies. Datasets are tenant-scoped and support versioning, RBAC/ABAC access control, and multiple ingestion methods.
+A **Dataset** in B-Knowledge is a Knowledge Base — a collection of documents sharing parser configuration, embedding settings, enrichment options, and access control policies. Datasets are tenant-scoped and support version uploads, parser overrides, web crawl ingestion, retrieval testing, graph tasks, and structured-data field maps.
 
 ## 2. Use Case Diagram
 
@@ -54,13 +54,17 @@ flowchart TD
 | DS-007   | Parser configuration       | Select from 18 parser types per document or set a dataset-wide default                            | Must     |
 | DS-008   | Embedding configuration    | Select embedding model and dimension; applies to all new documents in the dataset                 | Must     |
 | DS-009   | Chunk strategy config      | Configure chunking method (fixed, recursive, semantic, layout-aware), size, and overlap            | Must     |
-| DS-010   | Dataset versioning         | Track configuration changes as versions; allow rollback to a previous version                     | Should   |
+| DS-010   | Dataset version uploads    | Upload new document versions and list dataset version groups                                       | Should   |
 | DS-011   | RBAC access control        | Assign dataset access by role (admin full, leader team-scoped, member read-only)                  | Must     |
 | DS-012   | ABAC access policies       | Define attribute-based rules (team membership, IP range) for dataset access                       | Should   |
 | DS-013   | Dataset statistics         | Display document count, chunk count, total size, last updated, indexing status                    | Must     |
 | DS-014   | Re-index dataset           | Admin triggers full re-indexing of all documents (re-parse, re-chunk, re-embed)                   | Must     |
 | DS-015   | Duplicate dataset          | Clone dataset config (without documents) into a new dataset                                      | Could    |
 | DS-016   | Export dataset metadata    | Export dataset configuration and document list as JSON                                            | Could    |
+| DS-017   | Structured data field map  | Generate and edit `field_map` for table-like datasets                                             | Should   |
+| DS-018   | Bulk document operations   | Bulk parse, toggle, and delete documents                                                          | Must     |
+| DS-019   | Enrichment tasks           | Generate keywords, questions, tags, and metadata for documents                                    | Should   |
+| DS-020   | Graph tasks                | Trigger GraphRAG, RAPTOR, and mindmap jobs                                                        | Could    |
 
 ## 4. Document Lifecycle
 
@@ -112,6 +116,8 @@ stateDiagram-v2
 | `embedding_dim`      | integer  | `1536`           | Vector dimension                             |
 | `graphrag_enabled`   | boolean  | `false`          | Enable entity extraction and graph indexing  |
 | `raptor_enabled`     | boolean  | `false`          | Enable hierarchical summarisation            |
+| `field_map`          | object   | none             | Structured-data schema for SQL fallback      |
+| `tag_kb_ids`         | string[] | none             | Tag datasets used for tag-based ranking      |
 | `language`           | string   | `en`             | Primary language for parser hints            |
 | `retrieval_top_k`    | integer  | `20`             | Number of candidates from retrieval          |
 | `rerank_top_n`       | integer  | `5`              | Number of results after reranking            |
@@ -155,4 +161,5 @@ flowchart TD
 | BR-DS-07 | Batch upload limit: 100 files per request; total batch size must not exceed 500 MB |
 | BR-DS-08 | Dataset names must be unique within a tenant (case-insensitive) |
 | BR-DS-09 | Changing embedding model requires full re-indexing; system warns user before proceeding |
-| BR-DS-10 | Version history retains the last 20 configuration snapshots per dataset |
+| BR-DS-10 | Per-document parser changes are supported without recreating the dataset |
+| BR-DS-11 | Structured datasets can auto-generate a field map for SQL fallback flows |

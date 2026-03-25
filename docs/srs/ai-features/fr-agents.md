@@ -9,7 +9,7 @@ Provide a visual, no-code/low-code agent builder that allows users to design, ex
 | In Scope | Out of Scope |
 |----------|-------------|
 | Visual canvas editor (React Flow) | Custom operator SDK for third-party developers |
-| 55 built-in operator types | Agent marketplace / sharing across tenants |
+| Visual workflow canvas with the current built-in operator set | Agent marketplace / sharing across tenants |
 | Agent and Pipeline execution modes | Multi-agent collaboration (agents calling agents) |
 | Version management (version-as-row) | Scheduled/cron-triggered agent runs |
 | Debug mode with breakpoints | |
@@ -34,13 +34,13 @@ Provide a visual, no-code/low-code agent builder that allows users to design, ex
 
 - Users with `manage Agent` ability can create, update, duplicate, and delete agents
 - Each agent has: name, description, avatar, mode (agent/pipeline), status (draft/published), DSL (workflow graph), and policy_rules (ABAC)
-- Agents are scoped to a tenant and optionally associated with a project
+- Agents are scoped to a tenant and can optionally be associated with a project
 - Deletion cascades to all versions, runs, and run steps
 
 ### FR-AGT-02: Visual Canvas Editor
 
 - Infinite canvas with pan/zoom powered by React Flow
-- Node palette with 55 operators organized into 6 categories:
+- Node system split across 6 UI categories with a broad built-in operator set. The frontend type layer currently defines 50+ operator identifiers and the palette surfaces the commonly used ones:
   - **Input/Output** (blue): begin, answer, message, fillup
   - **LLM/AI** (purple): generate, categorize, rewrite, relevant, agent_with_tools
   - **Retrieval** (green): retrieval, wikipedia, tavily, pubmed, memory_read
@@ -62,9 +62,9 @@ Provide a visual, no-code/low-code agent builder that allows users to design, ex
 ### FR-AGT-04: Execution Engine
 
 - Graph traversal using Kahn's algorithm (topological sort)
-- Nodes classified as **inline** (executed in Node.js) or **dispatch** (queued to Python worker via Redis Streams)
-- Inline nodes: begin, answer, message, switch, condition, merge, note, concentrator, template, keyword_extract
-- Dispatch nodes: generate, retrieval, code, api, email, all external tool nodes
+- Nodes classified as **inline** (executed in Node.js) or **dispatch** (sent to the Python worker through Redis)
+- Inline nodes currently include lightweight logic/content nodes such as `begin`, `answer`, `message`, `switch`, `condition`, `merge`, `note`, `concentrator`, `template`, and `keyword_extract`
+- Dispatch nodes currently include LLM, retrieval, loop, and external-tool nodes such as `generate`, `categorize`, `retrieval`, `code`, `api`, `email`, web search tools, finance tools, and similar integrations
 - Real-time progress tracking (completed_nodes / total_nodes)
 - Configurable max execution time
 - Cancellation support via Redis signal
@@ -147,7 +147,7 @@ Provide a visual, no-code/low-code agent builder that allows users to design, ex
 | Webhook trigger | Public (rate-limited) |
 | Embed widget | Token-based (public) |
 
-See [RBAC & ABAC Detail](/detail-design/auth-rbac-abac) for full permission model.
+See [RBAC & ABAC Detail](/detail-design/auth/rbac-abac) for full permission model.
 
 ## 6. Non-Functional Requirements
 

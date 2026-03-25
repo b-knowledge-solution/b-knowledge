@@ -4,7 +4,7 @@
 
 The Agent system is a visual workflow builder and execution engine comprising three layers:
 
-1. **Frontend Canvas** — React Flow-based drag-and-drop editor with 55 operator types
+1. **Frontend Canvas** — React Flow-based drag-and-drop editor with the current built-in operator set defined in the agent feature type layer
 2. **Backend Orchestrator** — Graph traversal engine with topological sort and dual execution paths
 3. **Python Worker** — Redis Streams consumer executing LLM, retrieval, and tool operations
 
@@ -253,4 +253,4 @@ sequenceDiagram
 | `advance-rag/rag/agent/agent_consumer.py` | Python worker task consumer |
 | `advance-rag/rag/agent/node_executor.py` | Node dispatch table (~2000 lines) |
 | `fe/src/features/agents/components/AgentCanvas.tsx` | React Flow canvas editor |
-| `fe/src/features/agents/types/agent.types.ts` | 55 operator types + complete type definitions |
+| `fe/src/features/agents/types/agent.types.ts` | Canonical DSL, operator, run, and template type definitions |

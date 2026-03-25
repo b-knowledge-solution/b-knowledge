@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-This document specifies the functional requirements for B-Knowledge sync connectors. Sync connectors enable administrators to configure external data source adapters (GitHub, Google Drive, Confluence, etc.) that automatically or manually synchronize content into knowledge base datasets for indexing and retrieval.
+This document specifies the functional requirements for B-Knowledge sync connectors. Sync connectors let administrators configure external data source adapters that synchronize content into datasets for normal document processing and retrieval.
 
 ## 2. Actors & Use Cases
 
@@ -28,7 +28,7 @@ graph LR
 | ID | Requirement | Priority | Notes |
 |----|-------------|----------|-------|
 | SYN-FR-01 | Admin SHALL be able to create a connector specifying: adapter type, credentials, source config, target dataset, sync schedule | Must | Adapter type from registry |
-| SYN-FR-02 | Admin SHALL be able to list all connectors for a knowledge base | Must | Paginated, shows last sync status |
+| SYN-FR-02 | Admin SHALL be able to list connectors, optionally filtered by dataset / knowledge base | Must | Paginated, shows last sync status |
 | SYN-FR-03 | Admin SHALL be able to update connector configuration (credentials, schedule, source paths) | Must | Does not trigger immediate sync |
 | SYN-FR-04 | Admin SHALL be able to delete a connector and optionally remove synced documents | Must | Soft delete connector, optional cascade |
 | SYN-FR-05 | Connector credentials SHALL be stored encrypted at rest | Must | AES-256 or equivalent |
@@ -57,7 +57,7 @@ graph LR
 |----|-------------|----------|-------|
 | SYN-FR-30 | System SHALL support a pluggable adapter registry for connector types | Must | New adapters without core changes |
 | SYN-FR-31 | Each adapter SHALL implement a standard interface: `connect()`, `fetchChanges()`, `testConnection()` | Must | Adapter pattern |
-| SYN-FR-32 | System SHALL support the following built-in adapters: GitHub, Google Drive, Confluence | Must | MVP adapter set |
+| SYN-FR-32 | System SHALL support built-in adapters exposed by the current sync module registry | Must | Exact set is implementation-defined |
 | SYN-FR-33 | Each adapter SHALL expose its required configuration schema for UI rendering | Should | JSON Schema for dynamic forms |
 
 ## 4. Sync Flow
@@ -127,7 +127,7 @@ classDiagram
 | SYN-BR-01 | Only users with `manage_knowledge_base` permission may create or manage connectors | Authorization control |
 | SYN-BR-02 | Sync logs are paginated (default 20, max 100 per page) | Performance on large histories |
 | SYN-BR-03 | Connector adapters are registered in a central registry and resolved by type string | Extensibility without code changes to core |
-| SYN-BR-04 | A connector belongs to exactly one knowledge base and one dataset | Clear data ownership |
+| SYN-BR-04 | A connector is associated with one dataset/knowledge-base target context | Clear data ownership |
 | SYN-BR-05 | If a sync job fails, the cursor is NOT advanced; next sync retries from the same point | Data consistency |
 | SYN-BR-06 | Concurrent syncs for the same connector are prevented via Redis lock | Avoid duplicate documents |
 | SYN-BR-07 | Connector credentials are tenant-scoped and never exposed in API responses | Multi-tenant security |
@@ -136,10 +136,10 @@ classDiagram
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| POST | `/api/connectors` | Create connector | manage_knowledge_base |
-| GET | `/api/connectors/:kbId` | List connectors for KB | manage_knowledge_base |
-| PUT | `/api/connectors/:id` | Update connector config | manage_knowledge_base |
-| DELETE | `/api/connectors/:id` | Delete connector | manage_knowledge_base |
-| POST | `/api/connectors/:id/sync` | Trigger manual sync | manage_knowledge_base |
-| GET | `/api/connectors/:id/test` | Test connection | manage_knowledge_base |
-| GET | `/api/connectors/:id/logs` | Get sync logs (paginated) | manage_knowledge_base |
+| POST | `/api/sync/connectors` | Create connector | manage_knowledge_base |
+| GET | `/api/sync/connectors` | List connectors | authenticated |
+| GET | `/api/sync/connectors/:id` | Get connector | authenticated |
+| PUT | `/api/sync/connectors/:id` | Update connector config | manage_knowledge_base |
+| DELETE | `/api/sync/connectors/:id` | Delete connector | manage_knowledge_base |
+| POST | `/api/sync/connectors/:id/sync` | Trigger manual sync | manage_knowledge_base |
+| GET | `/api/sync/connectors/:id/logs` | Get sync logs (paginated) | authenticated |

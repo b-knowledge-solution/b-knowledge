@@ -1,139 +1,197 @@
 # Search Retrieval Pipeline - Detail Design
 
-## Overview
+> Actual retrieval behavior implemented in `search.service.ts`, `rag-search.service.ts`, and `rag-sql.service.ts` as of 2026-03-25.
 
-The retrieval pipeline handles chunk-level search across one or more datasets. It supports three retrieval methods (full-text, semantic, hybrid), applies boost factors, and optionally reranks results via an external provider.
+## 1. Overview
 
-## Retrieval Sequence
+Search now has a two-stage retrieval path:
+
+1. Try SQL retrieval first for structured datasets that expose `parser_config.field_map`
+2. Fall back to chunk retrieval in OpenSearch using `full_text`, `semantic`, or `hybrid`
+
+The chunk path supports:
+
+- Multi-dataset merge
+- Search-app metadata filters plus runtime metadata filters
+- Server-side highlight snippets
+- Optional reranking
+- Tag-based score boosting
+- Pagination after merged retrieval
+
+## 2. Retrieval Sequence
 
 ```mermaid
 sequenceDiagram
     participant Client
-    participant Ctrl as Search Controller
     participant Svc as Search Service
-    participant RAG as RAG Search Service
-    participant EMB as Embedding Service
-    participant OS as OpenSearch
-    participant RR as Rerank Provider
+    participant SQL as RagSqlService
+    participant EMB as Embedding
+    participant RAG as RagSearchService
+    participant RR as Rerank
+    participant TAG as TagRankingService
 
-    Client->>Ctrl: POST /api/search/apps/:id/search<br/>{query, method, top_k, ...}
-    Ctrl->>Svc: search(appId, params)
-    Svc->>Svc: Load search_config (dataset_ids, rerank, filters)
+    Client->>Svc: search / askSearch
+    Svc->>Svc: Load app config + dataset_ids + merged metadata filter
+    Svc->>SQL: querySql(query, datasetIds, llmId?, tenantId)
 
-    alt method = semantic or hybrid
-        Svc->>EMB: embedQuery(query)
-        EMB-->>Svc: q_vec (float[])
+    alt SQL result exists
+        SQL-->>Svc: markdown table + sql chunk
+        Svc-->>Client: short-circuit response
+    else OpenSearch chunk retrieval
+        alt method != full_text
+            Svc->>EMB: embedQuery(query)
+            EMB-->>Svc: query vector
+        end
+
+        loop each dataset
+            Svc->>RAG: search(tenantId, datasetId, request, queryVector, highlight)
+            RAG-->>Svc: chunks + total
+        end
+
+        Svc->>Svc: merge all dataset results, sort by score, cap at topK
+
+        opt rerank_id configured
+            Svc->>RR: rerank(query, chunks, rerankTopK, rerank_id)
+            RR-->>Svc: reranked chunks
+        end
+
+        opt dataset parser_config has tag_kb_ids
+            Svc->>TAG: getQueryTags(chunks)
+            TAG-->>Svc: top query tag weights
+            Svc->>TAG: scoreChunksByTags(chunks, queryTags)
+        end
+
+        Svc-->>Client: chunks, total, doc_aggs
     end
-
-    loop For each dataset_id
-        Svc->>RAG: ragSearchService.search(datasetId, query, q_vec, method, topK)
-        RAG->>OS: Execute search query
-        OS-->>RAG: Raw hits with scores
-        RAG-->>Svc: Scored chunks
-    end
-
-    Svc->>Svc: Merge results from all datasets, sort by score
-
-    opt rerank_id is configured
-        Svc->>RR: rerank(query, chunks, rerank_top_k)
-        RR-->>Svc: Re-scored chunks
-        Svc->>Svc: hybridScore = 0.5 * original + 0.5 * rerank
-        Svc->>Svc: Re-sort by hybridScore
-    end
-
-    Svc-->>Ctrl: Paginated chunks
-    Ctrl-->>Client: { chunks, total, page, page_size }
 ```
 
-## Retrieval Methods
+## 3. SQL Fallback
 
-### Full-Text Search (weight = 0)
+`RagSqlService.querySql()` runs before normal retrieval in both `executeSearch()` and `askSearch()`.
 
-- Uses BM25 scoring on the `content_with_weight` field in OpenSearch.
-- Applies `minimum_should_match: "30%"` to balance recall and precision.
-- Boost factors applied to specialized fields (see below).
+### Activation conditions
 
-### Semantic Search (weight = 1)
+- At least one dataset in the search app has `parser_config.field_map`
+- Tenant ID resolves to a valid OpenSearch index name
+- Generated SQL passes validation
 
-- Query is embedded via the dataset's configured embedding model.
-- KNN search on the `q_vec` vector field in OpenSearch.
-- Returns top-k results by cosine similarity.
+### Current behavior
 
-### Hybrid Search (0 < weight < 1)
+- Builds an OpenSearch SQL prompt from `field_map`
+- Generates SQL via LLM
+- Injects `kb_id` filtering per dataset
+- Rejects dangerous SQL keywords
+- Retries once with error context if execution fails
+- Applies a 15-second timeout per dataset attempt
+- Returns a markdown-table answer plus a synthetic `sql_*` chunk when successful
 
-- Executes full-text and semantic searches in parallel.
-- Normalizes scores from each method to [0, 1] range.
-- Final score = `weight * semantic_score + (1 - weight) * fulltext_score`.
+If SQL retrieval fails or returns no rows, the pipeline continues with normal chunk retrieval.
 
-```mermaid
-flowchart LR
-    Q[Query] --> FT[Full-Text BM25]
-    Q --> SE[Semantic KNN]
-    FT --> NF[Normalize 0-1]
-    SE --> NS[Normalize 0-1]
-    NF --> FUSE[Weighted Fusion<br/>score = w*sem + 1-w*ft]
-    NS --> FUSE
-    FUSE --> SORT[Sort by fused score]
+## 4. Chunk Retrieval Methods
+
+### Full-text
+
+- Uses a boosted `multi_match` query
+- Applies `minimum_should_match: '30%'`
+- Searches readable content and tokenized fields
+
+Current boosted fields:
+
+| Field | Boost |
+|-------|-------|
+| `content_ltks` | 2 |
+| `content_sm_ltks` | default |
+| `content_with_weight` | 2 |
+| `title_tks` | 10 |
+| `title_sm_tks` | 5 |
+| `important_kwd` | 30 |
+| `important_tks` | 20 |
+| `question_tks` | 20 |
+
+### Semantic
+
+- Embeds the query once per request
+- Searches the dimension-specific vector field, for example `q_1024_vec`
+- Uses the OpenSearch `knn` query
+
+### Hybrid
+
+- Runs both full-text and semantic retrieval
+- Combines scores using the configured `vector_similarity_weight`
+- Falls back to more relaxed thresholds when the first pass is empty
+
+## 5. Filters and Isolation
+
+### Tenant isolation
+
+OpenSearch isolation is index-based, not document-field-based:
+
+```text
+knowledge_{tenantId}
 ```
 
-## Boost Factors
+### Dataset isolation
 
-Field-level boost factors amplify scores for matches in high-value fields during full-text search.
+Every search includes `kb_id = datasetId`.
 
-| Field | Boost Factor | Rationale |
-|-------|-------------|-----------|
-| `title_tks` | 10x | Title matches are strong relevance signals |
-| `important_kwd` | 30x | Manually tagged keywords indicate high relevance |
-| `question_tks` | 20x | FAQ-style question matches are highly targeted |
-| `content_ltks` | 2x | Body content has baseline relevance |
+### Hidden chunk filtering
 
-## Reranking
+Chunks with `available_int < 1` are excluded via `must_not range` logic so documents without the field are not accidentally dropped.
 
-When `rerank_id` is set in the search app configuration, retrieved chunks undergo a second-pass reranking.
+### Metadata filters
 
-```mermaid
-sequenceDiagram
-    participant Svc as Search Service
-    participant RR as Rerank Provider
+Search merges:
 
-    Svc->>RR: POST /rerank<br/>{query, documents: chunk_texts, top_n: rerank_top_k}
-    RR-->>Svc: [{index, relevance_score}, ...]
-    Svc->>Svc: For each chunk:<br/>hybridScore = 0.5 * originalScore + 0.5 * rerankScore
-    Svc->>Svc: Re-sort by hybridScore, take top rerank_top_k
+- App-level `search_config.metadata_filter`
+- Request-time `metadata_filter`
+
+They are combined as a single logical `and` filter before calling the retrieval layer.
+
+## 6. Highlights, Reranking, and Tag Boosting
+
+### Server-side highlights
+
+When highlight mode is enabled, the search layer requests OpenSearch highlights and maps the first readable fragment into `chunk.highlight`.
+
+Preferred highlight source order:
+
+1. `content_with_weight`
+2. `content_ltks`
+3. `title_tks`
+
+### Reranking
+
+If `search_config.rerank_id` exists, the merged result set is reranked after retrieval and before tag boosting.
+
+### Tag boosting
+
+If any dataset has `parser_config.tag_kb_ids`, the pipeline derives query tags from the current retrieved chunks and boosts scores with cosine similarity plus `pagerank_fea`.
+
+Current implementation detail:
+
+- `getQueryTags()` computes top tags from the current chunk set
+- `scoreChunksByTags()` adds `(tagSimilarity * 10) + pagerank_fea` to the existing chunk score
+
+## 7. Pagination and Response Mapping
+
+The service retrieves enough results to satisfy the requested page:
+
+```text
+topK = max(requestedTopK, page * pageSize)
 ```
 
-### Supported Reranker Providers
+Pagination happens after merged retrieval so later pages preserve the same filter and ranking pipeline.
 
-| Provider | API Style | Notes |
-|----------|-----------|-------|
-| Jina | `POST /v1/rerank` | `jina-reranker-v2-base-multilingual` |
-| Cohere | `POST /v1/rerank` | `rerank-english-v3.0`, `rerank-multilingual-v3.0` |
-| Generic | Configurable endpoint | Any provider following the rerank API contract |
+For frontend compatibility, returned chunks are mapped with:
 
-### Hybrid Score Formula
+- `content = text`
+- `content_with_weight = text`
 
-```
-hybridScore = 0.5 * normalize(originalScore) + 0.5 * normalize(rerankScore)
-```
-
-Both scores are normalized to [0, 1] before combining. The 0.5/0.5 weighting gives equal importance to initial retrieval relevance and reranker assessment.
-
-## Multi-Dataset Search
-
-When a search app is bound to multiple datasets:
-
-1. Each dataset is searched independently with the same query and parameters.
-2. Results from all datasets are collected into a single list.
-3. Scores are normalized across the combined result set.
-4. Results are sorted by normalized score (descending).
-5. The combined list is capped at `top_k`.
-6. If reranking is enabled, it operates on the merged list.
-
-## Key Files
+## 8. Key Files
 
 | File | Purpose |
 |------|---------|
-| `be/src/modules/rag/services/rag-search.service.ts` | Core retrieval logic (BM25, KNN, hybrid) |
-| `be/src/modules/search/services/search.service.ts` | Search orchestration, multi-dataset merge |
-| `be/src/modules/rag/services/rerank.service.ts` | Reranker provider integration |
-| `be/src/modules/rag/services/embedding.service.ts` | Query embedding |
+| `be/src/modules/search/services/search.service.ts` | Orchestration, SQL short-circuit, merge, rerank, tag boosting, pagination |
+| `be/src/modules/rag/services/rag-search.service.ts` | OpenSearch full-text, semantic, hybrid, highlight mapping |
+| `be/src/modules/rag/services/rag-sql.service.ts` | Structured-data SQL fallback |
+| `be/src/shared/services/tag-ranking.service.ts` | Query tag derivation and score boosting |

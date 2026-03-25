@@ -14,7 +14,7 @@ sequenceDiagram
     participant Pipeline as Chat/Search Pipeline
     participant LLM as LLM Provider
 
-    Client->>API: POST /v1/chat/completions (Bearer token)
+    Client->>API: POST /api/v1/chat/completions (Bearer token)
     API->>Auth: Validate Bearer token
     Auth->>Auth: Lookup chat_embed_tokens
     Auth-->>API: Token → Assistant → Tenant → Datasets
@@ -35,9 +35,9 @@ sequenceDiagram
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/v1/chat/completions` | Bearer (chat_embed_tokens) | Chat with RAG pipeline |
-| POST | `/v1/search/completions` | Bearer (search_embed_tokens) | Search with AI summary |
-| GET | `/v1/models` | None (public) | List available models |
+| POST | `/api/v1/chat/completions` | Bearer (chat_embed_tokens) | Chat with RAG pipeline |
+| POST | `/api/v1/search/completions` | Bearer (search_embed_tokens) | Search with AI summary |
+| GET | `/api/v1/models` | None (public) | List available models |
 
 ## Request Format
 
@@ -156,7 +156,7 @@ flowchart LR
 
 ## Models Endpoint
 
-`GET /v1/models` returns available models without authentication:
+`GET /api/v1/models` returns available models without authentication:
 
 ```json
 {
@@ -198,5 +198,5 @@ Errors follow OpenAI format:
 |------|---------|
 | `be/src/modules/chat/controllers/chat-openai.controller.ts` | OpenAI-compatible chat endpoint |
 | `be/src/modules/search/controllers/search-openai.controller.ts` | OpenAI-compatible search endpoint |
-| `be/src/modules/chat/services/chat-openai.service.ts` | Request/response format translation |
-| `be/src/shared/middleware/embed-token-auth.ts` | Bearer token validation |
+| `be/src/modules/chat/routes/chat-openai.routes.ts` | Chat route registration |
+| `be/src/modules/search/routes/search-openai.routes.ts` | Search route registration |

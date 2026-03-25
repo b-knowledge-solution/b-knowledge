@@ -135,12 +135,12 @@ graph LR
 sequenceDiagram
     participant TE as Task Executor
     participant Redis as Redis Pub/Sub
-    participant BE as Backend (Socket.IO)
+    participant BE as Backend bridge
     participant FE as Frontend
 
     TE->>Redis: Publish progress update
     Redis->>BE: Pub/Sub notification
-    BE->>FE: Socket.IO event
+    BE->>FE: Progress event
     FE->>FE: Update progress bar UI
 
     Note over TE,FE: Progress includes: step name, percentage, chunk count, error count

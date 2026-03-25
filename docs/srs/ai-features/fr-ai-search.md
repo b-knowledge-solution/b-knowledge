@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-AI Search provides hybrid retrieval (vector + BM25) across knowledge base datasets, with optional AI-generated summaries streamed via SSE, mind map visualization, and related question suggestions.
+AI Search provides app-scoped retrieval across one or more datasets, with optional streamed AI summaries, mind maps, related questions, retrieval testing, server-side highlights, SQL fallback for structured data, and token-based public share/embed flows.
 
 ## 2. Use Case Diagram
 
@@ -19,7 +19,7 @@ graph LR
         UC4(View AI Summary)
         UC5(View Mind Map)
         UC6(View Related Questions)
-        UC7(Provide Feedback)
+        UC7(Share / Embed Search)
         UC8(Run Retrieval Test)
         UC9(Configure Search Options)
     end
@@ -46,10 +46,13 @@ graph LR
 | SRCH-06 | AI Summary Streaming | Should | Generate and stream an AI summary of top results via SSE |
 | SRCH-07 | Mind Map Generation | Should | Produce a hierarchical mind map structure from search results |
 | SRCH-08 | Related Questions | Should | Suggest follow-up questions based on query and retrieved content |
-| SRCH-09 | Search Feedback | Should | Allow users to rate search result relevance (thumbs up/down) |
+| SRCH-09 | Public Share / Embed | Should | Expose token-based public search via share page and embed endpoints |
 | SRCH-10 | Retrieval Test | Must | Admin tool to test retrieval quality: run query, inspect chunks, scores, and ranking |
 | SRCH-11 | Metadata Filtering | Could | Filter results by document metadata (tags, source, date) before ranking |
-| SRCH-12 | Search History | Could | Persist user search queries for analytics and re-execution |
+| SRCH-12 | Search History / Logging | Could | Persist user search queries for analytics and re-execution |
+| SRCH-13 | SQL Fallback | Should | Answer structured-data queries through OpenSearch SQL when `field_map` exists |
+| SRCH-14 | Tag-Based Boosting | Could | Re-score chunk results using tag similarity for tag-enabled datasets |
+| SRCH-15 | Search App Branding | Should | Support `avatar` and `empty_response` presentation settings |
 
 ## 4. Configurable Options
 
@@ -58,6 +61,8 @@ graph LR
 | LLM Model | `llm_id` | string | Yes | Model used for AI summary generation |
 | Reranker | `rerank_id` | string [OPTIONAL] | No | Reranker model for result re-scoring |
 | Related Questions | `enable_related_questions` | boolean [OPTIONAL] | No | Toggle related question suggestions |
+| Mind Map | `enable_mindmap` | boolean [OPTIONAL] | No | Toggle mind map generation |
+| Highlight | `highlight` | boolean [OPTIONAL] | No | Request server-side highlight snippets |
 | Metadata Filter | `metadata_filter` | object [OPTIONAL] | No | Pre-filter documents by metadata before retrieval |
 | Similarity Threshold | `similarity_threshold` | float [OPTIONAL] | No | Minimum similarity score to include a chunk (default 0.2) |
 | Vector Weight | `vector_similarity_weight` | float [OPTIONAL] | No | Weight of vector score in hybrid ranking (0.0-1.0, default 0.3) |
@@ -66,7 +71,11 @@ graph LR
 
 ```mermaid
 flowchart TD
-    A[User submits query] --> B[Embed query via embedding model]
+    A[User submits query] --> SQL{Structured dataset?}
+    SQL -->|Yes| SQLTRY[Try SQL fallback]
+    SQL -->|No or miss| B[Embed query via embedding model]
+    SQLTRY -->|hit| DONE[Return SQL answer]
+    SQLTRY -->|miss| B
     B --> C[Search across linked datasets]
     C --> D1[Vector similarity search]
     C --> D2[BM25 keyword search]
@@ -74,8 +83,11 @@ flowchart TD
     D2 --> E
     E --> F{rerank_id set?}
     F -- Yes --> G[Rerank merged results via reranker model]
-    F -- No --> H{AI summary enabled?}
-    G --> H
+    F -- No --> TAG{Tag boost?}
+    G --> TAG
+    TAG -->|Yes| T[Tag-based rescoring]
+    TAG -->|No| H{AI summary enabled?}
+    T --> H
     H -- Yes --> I[Generate AI summary via LLM]
     H -- No --> J[Return ranked chunks with citations]
     I --> J
@@ -92,7 +104,7 @@ flowchart TD
 | BR-04 | AI summaries are streamed via SSE; the client renders tokens incrementally |
 | BR-05 | Search apps are tenant-scoped; users only see apps within their tenant |
 | BR-06 | The retrieval test tool is restricted to admin and leader roles |
-| BR-07 | Mind map generation requires a successful search with at least 3 result chunks |
-| BR-08 | Feedback entries are linked to the search session and used for analytics |
-| BR-09 | When `similarity_threshold` is set, chunks scoring below the threshold are excluded before reranking |
-| BR-10 | Hybrid scoring formula: `final = vector_similarity_weight * vector_score + (1 - vector_similarity_weight) * bm25_score` |
+| BR-07 | Public share/embed access is token-based and exposes only allowlisted app config fields |
+| BR-08 | When `similarity_threshold` is set, chunks scoring below the threshold are excluded before reranking |
+| BR-09 | Hybrid scoring formula: `final = vector_similarity_weight * vector_score + (1 - vector_similarity_weight) * bm25_score` |
+| BR-10 | Search apps may define `avatar` and `empty_response` for presentation in internal and shared UI |

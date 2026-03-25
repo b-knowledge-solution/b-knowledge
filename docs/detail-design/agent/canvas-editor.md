@@ -364,6 +364,6 @@ The `MemoryForm.tsx` component handles both `memory_read` and `memory_write` ope
 | `fe/src/features/agents/components/AgentCanvas.tsx` | Main React Flow editor |
 | `fe/src/features/agents/store/canvasStore.ts` | Zustand state (nodes, edges, undo/redo) |
 | `fe/src/features/agents/hooks/useAgentStream.ts` | SSE subscription + event parsing |
-| `fe/src/features/agents/types/agent.types.ts` | 55 operator types + entity interfaces |
+| `fe/src/features/agents/types/agent.types.ts` | Canonical operator and entity interfaces |
 | `fe/src/features/agents/api/agentQueries.ts` | TanStack Query hooks |
 | `be/src/modules/agents/schemas/agent.schemas.ts` | Zod validation schemas |

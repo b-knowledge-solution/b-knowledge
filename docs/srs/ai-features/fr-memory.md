@@ -33,7 +33,7 @@ Provide persistent, searchable memory pools that store extracted knowledge from 
 ### FR-MEM-01: Memory Pool CRUD
 
 - Users with `manage Memory` ability can create, update, and delete memory pools
-- Each pool has: name, description, memory_type (bitmask), storage_type, memory_size, extraction settings, and access control
+- Each pool has: name, description, memory_type (bitmask), storage_type, memory_size, model overrides, prompts, extraction settings, and access control
 - Pools are tenant-scoped with multi-scope ownership (user, agent, or team)
 - Deletion cascades to all OpenSearch messages
 
@@ -61,7 +61,7 @@ Memory types are combined using a bitmask integer (default: 15 = all types):
      d. Generate embedding vector for each extracted item
      e. Store in OpenSearch with metadata
 - Custom system/user prompts per pool override defaults
-- Configurable LLM model and temperature per pool
+- Configurable LLM model, embedding model, and temperature per pool
 
 ### FR-MEM-04: Memory Storage (OpenSearch)
 

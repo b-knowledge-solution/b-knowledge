@@ -112,8 +112,8 @@ erDiagram
         varchar storage_type "table | graph (20), CHECK constraint"
         int memory_size "Max size in bytes, default 5242880"
         varchar forgetting_policy "FIFO (20)"
-        varchar embd_id "Per-pool embedding model (255), references tenant_llm"
-        varchar llm_id "Per-pool LLM model (255), references tenant_llm"
+        varchar embd_id "Per-pool embedding model (255), soft reference to model_providers"
+        varchar llm_id "Per-pool LLM model (255), soft reference to model_providers"
         float temperature "LLM temperature, default 0.1"
         text system_prompt "Custom extraction system prompt"
         text user_prompt "Custom extraction user prompt"
@@ -128,9 +128,9 @@ erDiagram
     }
 ```
 
-> **Note**: Memory messages are stored in OpenSearch (not PostgreSQL). See [Memory Architecture](/basic-design/memory-architecture) for the OpenSearch index mapping.
+> **Note**: Memory messages are stored in OpenSearch (not PostgreSQL). See [Memory Architecture](/basic-design/agent-memory/memory-architecture) for the OpenSearch index mapping.
 >
-> **Note**: `embd_id`, `llm_id`, and `created_by` reference `tenant_llm` and `users` by convention but have **no foreign key constraints** in the migration. This is intentional — soft references allow flexible model/user deletion without cascading.
+> **Note**: `embd_id`, `llm_id`, and `created_by` are soft references to `model_providers` and `users`; the migration does not enforce foreign keys for them.
 
 ## Memory Table Indexes
 
@@ -193,7 +193,7 @@ Memory messages are stored in per-tenant OpenSearch indices:
 - **Text field**: `content` (standard analyzer)
 - **Key filters**: `memory_id`, `tenant_id`, `status`
 
-See [Memory Architecture](/basic-design/memory-architecture) for the full index mapping.
+See [Memory Architecture](/basic-design/agent-memory/memory-architecture) for the full index mapping.
 
 ## Relationships to Existing Tables
 

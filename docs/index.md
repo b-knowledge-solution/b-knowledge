@@ -10,10 +10,10 @@ hero:
       link: /srs/
     - theme: alt
       text: Basic Design
-      link: /basic-design/system-architecture
+      link: /basic-design/system-infra/system-architecture
     - theme: alt
       text: Detail Design
-      link: /detail-design/auth-overview
+      link: /detail-design/auth/overview
 
 features:
   - icon: 📋
@@ -23,21 +23,21 @@ features:
   - icon: 🏗️
     title: Basic Design
     details: System architecture, database ER diagrams, API design, RAG pipeline (9 detailed steps), and infrastructure deployment.
-    link: /basic-design/system-architecture
+    link: /basic-design/system-infra/system-architecture
   - icon: 🔧
     title: Detail Design
     details: Step-by-step implementation guides with sequence diagrams, state machines, and [OPTIONAL] config tags for every pipeline step.
-    link: /detail-design/auth-overview
+    link: /detail-design/auth/overview
   - icon: 🤖
     title: Hybrid RAG Pipeline
     details: 14-step chat completion and multi-method search with vector + BM25 hybrid retrieval, GraphRAG, RAPTOR, and deep research.
-    link: /basic-design/rag-pipeline-overview
+    link: /basic-design/rag-pipeline/rag-pipeline-overview
   - icon: 🔒
     title: Security & Access Control
     details: Azure AD SSO, CASL RBAC, ABAC policies, multi-tenant isolation, audit logging, and session management.
-    link: /basic-design/security-architecture
+    link: /basic-design/system-infra/security-architecture
   - icon: 🐳
     title: Infrastructure & Deployment
     details: Docker Compose orchestration with PostgreSQL, Valkey, OpenSearch, RustFS, Nginx reverse proxy, and CI/CD.
-    link: /basic-design/infrastructure-deployment
+    link: /basic-design/system-infra/infrastructure-deployment
 ---

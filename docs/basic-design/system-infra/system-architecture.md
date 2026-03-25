@@ -1,5 +1,7 @@
 # System Architecture
 
+> Source-aligned container view of the current monorepo as of 2026-03-25.
+
 ## C4 Container Diagram
 
 ```mermaid
@@ -13,9 +15,9 @@ C4Container
     }
 
     Container_Boundary(app, "Application Layer") {
-        Container(fe, "Frontend SPA", "React 19 / Vite 7.3 / TypeScript", "19 feature modules, shadcn/ui components")
-        Container(be, "Backend API", "Node.js 22 / Express 4.21 / TypeScript", "18 modules: auth, chat, search, RAG, etc.")
-        Container(worker, "Task Executor", "Python 3.11 / FastAPI / Peewee", "RAG pipeline: parse, chunk, embed, index")
+        Container(fe, "Frontend SPA", "React 19 / Vite 7.3 / TypeScript", "24 feature areas including chat, search, datasets, projects, agents, and memory")
+        Container(be, "Backend API", "Node.js 22 / Express 4.21 / TypeScript", "22 modules mounted under /api including auth, rag, search, chat, projects, agents, memory, and external APIs")
+        Container(worker, "Advance-RAG Worker", "Python 3.11 / FastAPI / Peewee", "Parsing, chunking, embedding, indexing, and agent node execution")
         Container(converter, "Converter", "Python 3 / LibreOffice", "Office-to-PDF conversion via Redis queue")
     }
 
@@ -45,11 +47,10 @@ C4Container
 
 | Pattern | Usage | Direction |
 |---------|-------|-----------|
-| REST (HTTP/JSON) | Frontend to Backend API, Backend to OpenSearch | Synchronous request/response |
-| Socket.IO | Real-time chat streaming, task progress | Bidirectional (BE to FE) |
+| REST (HTTP/JSON) | Frontend to Backend API, Backend to OpenSearch and external services | Synchronous request/response |
 | SSE | LLM token streaming to browser | Server to Client |
 | Redis Pub/Sub | Backend to Task Executor coordination | Async event broadcast |
-| Redis Queue | Document conversion jobs, RAG task dispatch | Async job processing |
+| Redis Queue / Streams | Document conversion jobs, RAG tasks, agent dispatch | Async job processing |
 | S3 Protocol | File upload/download to RustFS | Direct from BE, Worker, Converter |
 
 ## Tech Stack Rationale
@@ -104,8 +105,8 @@ graph TB
 
 ## Key Architectural Decisions
 
-1. **Monorepo with npm workspaces** -- shared tooling, atomic commits across BE/FE, consistent versioning.
-2. **NX-style module boundaries** -- no cross-module imports; barrel exports enforce encapsulation.
-3. **Knex owns all migrations** -- even for Peewee-managed tables. Single migration timeline prevents drift.
-4. **Session-based auth over JWT** -- server-side revocation via Valkey; no token refresh complexity.
-5. **Separate worker processes** -- CPU-heavy RAG/conversion isolated from API latency-sensitive paths.
+1. **Monorepo with npm workspaces** -- shared tooling and coordinated BE/FE/Python changes.
+2. **NX-style module boundaries** -- feature domains are isolated by module and barrel export.
+3. **Session auth plus scoped public tokens** -- browser sessions for internal UX, token-based access for public chat/search/agent embeds, and API keys for external APIs.
+4. **Node.js orchestration with Python workers** -- the API owns CRUD and orchestration, while Python handles ingestion-heavy and compute-heavy execution.
+5. **OpenSearch-centered retrieval** -- the same search engine supports hybrid retrieval, SQL fallback, graph tasks, and memory search.

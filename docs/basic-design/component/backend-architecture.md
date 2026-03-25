@@ -2,7 +2,7 @@
 
 ## Overview
 
-The B-Knowledge backend is a Node.js 22+ / Express 4.21 / TypeScript application using Knex ORM with PostgreSQL. It follows NX-style modular architecture with 18 domain modules, strict module boundaries, and singleton/factory patterns.
+The B-Knowledge backend is a Node.js 22+ / Express 4.21 / TypeScript application using Knex with PostgreSQL. It currently mounts 22 feature modules under `/api`, with strict module boundaries, singleton services, and shared infrastructure such as `ModelFactory`, auth middleware, and rate limiting.
 
 ## Request Flow
 
@@ -172,25 +172,29 @@ graph LR
 | Migrations | `YYYYMMDDhhmmss_<name>.ts` via Knex, even for Peewee tables |
 | Shared code | `shared/models/`, `shared/services/`, `shared/utils/` |
 
-## Module List (18 Modules)
+## Module List (22 Modules)
 
 | Module | Domain |
 |--------|--------|
 | `auth` | Authentication and sessions |
-| `users` | User management |
-| `teams` | Team and membership |
-| `chat` | Conversations and assistants |
-| `search` | Search apps and queries |
-| `rag` | Datasets, documents, chunks |
-| `sync` | Connectors and sync logs |
-| `projects` | Project management |
-| `glossary` | Glossary tasks and keywords |
-| `llm-provider` | LLM model configuration |
-| `admin` | Admin dashboard |
+| `admin` | Admin routes and management |
+| `agents` | Agent workflows, runs, templates, embeds |
 | `audit` | Audit logging |
-| `broadcast` | Notifications |
-| `user-history` | User activity history |
-| `system-tools` | System utilities |
-| `feedback` | User feedback |
-| `dashboard` | Analytics dashboard |
-| `tenant` | Multi-tenancy |
+| `broadcast` | Broadcast messages |
+| `chat` | Assistants, conversations, files, embeds, OpenAI API |
+| `code-graph` | Code graph endpoints |
+| `dashboard` | Dashboard analytics |
+| `external` | API keys and external APIs |
+| `feedback` | Generic feedback endpoints |
+| `glossary` | Glossary features |
+| `llm-provider` | Model/provider management |
+| `memory` | Memory pools and memory message search |
+| `preview` | Document/file preview serving |
+| `projects` | Projects, categories, versions, memberships |
+| `rag` | Datasets, documents, chunks, enrichment, graph tasks |
+| `search` | Search apps, search embed/share, OpenAI search API |
+| `sync` | Sync connectors and jobs |
+| `system-tools` | Diagnostics and system actions |
+| `teams` | Team management |
+| `user-history` | Chat and search history |
+| `users` | User management |

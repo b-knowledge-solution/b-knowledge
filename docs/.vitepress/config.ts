@@ -19,6 +19,7 @@ export default withMermaid(
         { text: 'Basic Design', link: '/basic-design/system-infra/system-architecture' },
         { text: 'Detail Design', link: '/detail-design/auth/overview' },
         { text: 'RAG Pipeline', link: '/detail-design/rag-pipeline/overview' },
+        { text: 'Superpowers', link: '/superpowers/specs/2026-03-25-source-code-sync' },
       ],
 
       sidebar: {
@@ -315,18 +316,25 @@ export default withMermaid(
               { text: 'Broadcast Messages', link: '/detail-design/supporting/broadcast-detail' },
               { text: 'Sync Connectors', link: '/detail-design/supporting/sync-connectors-detail' },
               { text: 'Document Converter', link: '/detail-design/supporting/converter-detail' },
+              { text: 'Chat Widget Client', link: '/detail-design/supporting/chat-widget-detail' },
+              { text: 'Search Widget Client', link: '/detail-design/supporting/search-widget-detail' },
+              { text: 'Agent Widget Client', link: '/detail-design/supporting/agent-widget-detail' },
               { text: 'Real-time Communication', link: '/detail-design/supporting/realtime-communication' },
               { text: 'OpenAI-Compatible API', link: '/detail-design/supporting/openai-compatible-api' },
               { text: 'External API Reference', link: '/detail-design/supporting/external-api-reference' },
               { text: 'GraphRAG', link: '/detail-design/supporting/graphrag-detail' },
+              { text: 'Code Graph', link: '/detail-design/supporting/code-graph-detail' },
               { text: 'Guideline & Onboarding', link: '/detail-design/supporting/guideline-onboarding-detail' },
               { text: 'Feedback', link: '/detail-design/supporting/feedback-detail' },
               { text: 'History Browsing', link: '/detail-design/supporting/history-browsing-detail' },
+              { text: 'API Keys', link: '/detail-design/supporting/api-keys-detail' },
               { text: 'PDF Citation Highlighting', link: '/detail-design/supporting/pdf-citation-highlight-detail' },
               { text: 'Office Document Citations', link: '/detail-design/supporting/office-document-citation-highlighting' },
               { text: 'Preview', link: '/detail-design/supporting/preview-detail' },
               { text: 'Query Logging', link: '/detail-design/supporting/query-logging-detail' },
               { text: 'System Tools', link: '/detail-design/supporting/system-tools-detail' },
+              { text: 'Tokenizer Playground', link: '/detail-design/supporting/tokenizer-detail' },
+              { text: 'Landing Page', link: '/detail-design/supporting/landing-page-detail' },
             ],
           },
         ],
@@ -391,6 +399,44 @@ export default withMermaid(
             items: [
               { text: 'Resume Parser', link: '/detail-design/rag-pipeline/specialized/resume-parser' },
               { text: 'Clinical Parser', link: '/detail-design/rag-pipeline/specialized/clinical-parser' },
+            ],
+          },
+        ],
+
+        '/superpowers/specs/': [
+          {
+            text: 'Superpowers Specs',
+            items: [
+              { text: '2026-03-25 Source Code Sync', link: '/superpowers/specs/2026-03-25-source-code-sync' },
+              { text: '2026-03-25 Doc Coverage Audit', link: '/superpowers/specs/2026-03-25-doc-coverage-audit' },
+              { text: 'Search Feature Gaps Design', link: '/superpowers/specs/2026-03-25-search-feature-gaps-design' },
+              { text: 'SQL Fallback, Tags, Spotlight Design', link: '/superpowers/specs/2026-03-25-sql-fallback-tags-spotlight-design' },
+            ],
+          },
+        ],
+
+        '/superpowers/plans/': [
+          {
+            text: 'Superpowers Plans',
+            items: [
+              { text: '2026-03-25 Search Feature Gaps', link: '/superpowers/plans/2026-03-25-search-feature-gaps' },
+              { text: '2026-03-25 SQL Tags Spotlight', link: '/superpowers/plans/2026-03-25-sql-tags-spotlight' },
+              { text: '2026-03-24 Retrieval Quality Parity', link: '/superpowers/plans/2026-03-24-retrieval-quality-parity' },
+            ],
+          },
+        ],
+
+        '/superpowers/': [
+          {
+            text: 'Superpowers',
+            items: [
+              { text: '2026-03-25 Source Code Sync', link: '/superpowers/specs/2026-03-25-source-code-sync' },
+              { text: '2026-03-25 Doc Coverage Audit', link: '/superpowers/specs/2026-03-25-doc-coverage-audit' },
+              { text: 'Search Feature Gaps Design', link: '/superpowers/specs/2026-03-25-search-feature-gaps-design' },
+              { text: 'SQL Fallback, Tags, Spotlight Design', link: '/superpowers/specs/2026-03-25-sql-fallback-tags-spotlight-design' },
+              { text: '2026-03-25 Search Feature Gaps Plan', link: '/superpowers/plans/2026-03-25-search-feature-gaps' },
+              { text: '2026-03-25 SQL Tags Spotlight Plan', link: '/superpowers/plans/2026-03-25-sql-tags-spotlight' },
+              { text: '2026-03-24 Retrieval Quality Parity Plan', link: '/superpowers/plans/2026-03-24-retrieval-quality-parity' },
             ],
           },
         ],

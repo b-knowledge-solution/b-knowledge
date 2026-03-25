@@ -2,23 +2,25 @@
 
 | Field          | Value                              |
 |----------------|------------------------------------|
-| Version        | 1.0                                |
-| Date           | 2026-03-21                         |
+| Version        | 1.1                                |
+| Date           | 2026-03-25                         |
 | Status         | Draft                              |
 | Classification | Internal                           |
 
 ## 1. Purpose
 
-This document defines the functional and non-functional requirements for **B-Knowledge**, an open-source AI Knowledge Management platform that centralises AI Search, Chat, and Knowledge Base capabilities. It serves as the authoritative reference for developers, QA engineers, and stakeholders.
+This document defines the functional and non-functional requirements for **B-Knowledge**, an open-source AI knowledge platform covering document ingestion, AI chat, AI search, agent workflows, memory, projects, administration, and external APIs. It serves as the source-oriented reference for developers, QA engineers, and stakeholders.
 
 ## 2. Project Scope
 
 B-Knowledge enables organisations to:
 
-- Ingest documents in 30+ formats and build searchable knowledge bases.
-- Chat with documents via Retrieval-Augmented Generation (RAG).
-- Expose knowledge through embeddable widgets and REST APIs.
-- Manage users, teams, roles, and multi-tenant organisations.
+- Ingest documents into tenant-scoped datasets with parsing, chunking, enrichment, and indexing.
+- Run AI Chat with citations, file upload, embed flows, and OpenAI-compatible APIs.
+- Run AI Search with retrieval, streamed summaries, related questions, mind maps, SQL fallback, and public share/embed pages.
+- Design and execute agent workflows with canvas editing, webhook triggers, embed triggers, and tool credentials.
+- Persist searchable memory pools and import history into memory.
+- Manage projects, users, teams, audit, dashboard, glossary, sync, broadcast, and external API access.
 
 ### 2.1 System Context
 
@@ -26,11 +28,11 @@ B-Knowledge enables organisations to:
 C4Context
     title B-Knowledge System Context
 
-    Person(admin, "Admin", "Manages orgs, users, datasets, assistants")
-    Person(user, "Regular User", "Searches, chats, uploads documents")
-    Person(widget, "External Widget User", "Interacts via embedded chat widget")
+    Person(admin, "Admin / Leader", "Manages users, datasets, assistants, search apps, agents, and projects")
+    Person(user, "Regular User", "Searches, chats, runs agents, uploads and browses content")
+    Person(embed, "Embed User", "Uses token-based chat/search/agent experiences")
 
-    System(bk, "B-Knowledge Platform", "AI Knowledge Management: search, chat, RAG pipelines")
+    System(bk, "B-Knowledge Platform", "Knowledge ingestion, retrieval, chat, search, memory, agents, and project collaboration")
 
     System_Ext(azureAd, "Azure AD", "SSO / OAuth 2.0 identity provider")
     System_Ext(llm, "LLM Providers", "OpenAI, Azure OpenAI, Ollama, etc.")
@@ -39,7 +41,7 @@ C4Context
 
     Rel(admin, bk, "Manages via Web UI")
     Rel(user, bk, "Searches & chats")
-    Rel(widget, bk, "Chats via embedded JS widget")
+    Rel(embed, bk, "Uses token-based embedded experiences")
     Rel(bk, azureAd, "Authenticates users")
     Rel(bk, llm, "Generates completions & embeddings")
     Rel(bk, tavily, "Web search augmentation")
@@ -53,7 +55,7 @@ C4Context
 | Platform Admin     | Manages tenants, users, infra config    | Security, uptime, cost control          |
 | Org Admin          | Manages datasets, assistants, teams     | Data quality, access control            |
 | End User           | Searches knowledge, chats with AI       | Accuracy, speed, ease of use            |
-| Widget Consumer    | Uses embedded chat on external sites    | Latency, relevance                      |
+| Embed Consumer     | Uses public chat/search/agent embeds    | Latency, relevance, safe public access  |
 | Developer          | Extends platform via API                | API stability, documentation            |
 | DevOps / SRE       | Deploys and monitors the platform       | Observability, scalability              |
 
@@ -80,25 +82,30 @@ C4Context
 
 ## 5. Sub-Documents
 
-| Document                                                    | Scope                              |
-|-------------------------------------------------------------|------------------------------------|
-| [RAG Strategy & Architecture](./fr-rag-strategy.md)         | RAG approaches, pipeline design    |
-| [Authentication](./fr-authentication.md)                    | SSO, sessions, multi-org           |
-| [User & Team Management](./fr-user-team-management.md)      | RBAC, ABAC, teams                  |
-| [Dataset Management](./fr-dataset-management.md)            | Knowledge bases, access control    |
-| [Document Processing](./fr-document-processing.md)          | Parsers, chunking, indexing        |
+| Document | Scope |
+|----------|-------|
+| [RAG Strategy & Architecture](/srs/core-platform/fr-rag-strategy) | Retrieval stack, ingestion, indexing |
+| [Authentication](/srs/core-platform/fr-authentication) | Azure AD, local login, sessions, org switching |
+| [User & Team Management](/srs/core-platform/fr-user-team-management) | Users, teams, roles, permissions |
+| [Dataset Management](/srs/core-platform/fr-dataset-management) | Dataset CRUD, access, versions, settings |
+| [Document Processing](/srs/core-platform/fr-document-processing) | Upload, parse, enrich, convert, index |
+| [AI Chat](/srs/ai-features/fr-ai-chat) | Assistants, conversations, streaming, embed, OpenAI API |
+| [AI Search](/srs/ai-features/fr-ai-search) | Search apps, ask/search, related questions, share/embed |
+| [Agents](/srs/ai-features/fr-agents) | Workflow builder, execution engine, triggers |
+| [Memory](/srs/ai-features/fr-memory) | Memory pools, extraction, search, import |
+| [Project Management](/srs/management/fr-project-management) | Projects, categories, versions, datasets, chats, searches |
 
 ## 6. Technology Stack Summary
 
-| Layer       | Technology                                         |
-|-------------|----------------------------------------------------|
-| Backend     | Node.js 22 / Express 4.21 / TypeScript / Knex      |
-| Frontend    | React 19 / Vite 7.3 / TanStack Query / Tailwind    |
-| RAG Worker  | Python 3.11 / FastAPI / Peewee ORM                 |
-| Converter   | Python 3 / LibreOffice / Redis queue               |
-| Database    | PostgreSQL 17                                       |
-| Cache       | Valkey 8 (Redis-compatible)                        |
-| Search      | OpenSearch 3.5                                      |
-| Storage     | RustFS (S3-compatible)                             |
-| Auth        | Azure AD OAuth 2.0 / Local root login             |
-| Proxy       | Nginx                                              |
+| Layer | Technology |
+|-------|------------|
+| Backend | Node.js 22 / Express 4.21 / TypeScript / Knex |
+| Frontend | React 19 / Vite 7.3 / TanStack Query / Tailwind / shadcn/ui |
+| RAG Worker | Python 3.11 / FastAPI / Peewee ORM |
+| Converter | Python 3 / LibreOffice / Redis queue |
+| Database | PostgreSQL 17 |
+| Cache | Valkey 8 (Redis-compatible) |
+| Search | OpenSearch 3.5 |
+| Storage | RustFS (S3-compatible) |
+| Auth | Azure AD OAuth 2.0 / Local login |
+| Proxy | Nginx |

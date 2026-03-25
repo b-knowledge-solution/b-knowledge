@@ -1,5 +1,7 @@
 # Database Design: Project Tables
 
+> Compatibility note: several columns keep `ragflow_*` names because they were introduced as external-sync identifiers in the initial schema. In the current source they remain compatibility/external-reference fields inside the B-Knowledge project module.
+
 ## ER Diagram
 
 ```mermaid
@@ -174,7 +176,7 @@ graph TD
     V2 --> F3["file: rest-api-v1.1.pdf"]
 ```
 
-The `document_categories` table organizes documents within a project. Categories are scoped to a project and ordered via `sort_order`. Each category can have multiple versions via `document_category_versions`, enabling content snapshots tied to RAGFlow datasets. The `category_type` column (added by migration 20260324) distinguishes between different kinds of categories (default `'documents'`), and the `dataset_id` foreign key (also added by migration 20260324) allows linking a category directly to a dataset.
+The `document_categories` table organizes project knowledge into category rows. Categories are scoped to a project and ordered via `sort_order`. Each category can have multiple versions via `document_category_versions`, while `category_type` and `dataset_id` also allow direct-dataset categories that do not require version snapshots.
 
 ### Category Version File Lifecycle
 
@@ -182,7 +184,7 @@ The `document_categories` table organizes documents within a project. Categories
 stateDiagram-v2
     [*] --> pending: File added
     pending --> uploaded: Upload complete
-    uploaded --> parsing: RAGFlow parsing
+    uploaded --> parsing: Worker parsing
     parsing --> completed: Parse success
     parsing --> failed: Parse error
     failed --> pending: Retry
@@ -193,7 +195,7 @@ stateDiagram-v2
 
 ### projects
 
-Top-level organizational container that groups datasets, chat assistants, search apps, and document categories. Projects enable cross-functional teams to manage related knowledge resources as a unit. Each project can have a default embedding model, chunk method, and parser config applied to its categories. The `is_private` flag controls visibility, and `tenant_id` scopes the project to a tenant (default `'default'`).
+Top-level organizational container that groups datasets, chat assistants, search apps, sync configuration, and document categories. Projects enable teams to manage related knowledge resources as a unit. Each project can carry default embedding, chunking, and parser settings for downstream project assets.
 
 ### project_permissions
 
@@ -205,22 +207,22 @@ Many-to-many link between projects and datasets. Each association has a `role` o
 
 ### project_sync_configs
 
-Per-project synchronization configuration. Each project has at most one sync config (unique on `project_id`). Stores a `schedule`, `auto_sync_enabled` toggle, and a `settings` JSONB column for sync-specific parameters.
+Per-project synchronization configuration. Each project has at most one sync config (unique on `project_id`). Stores a `schedule`, `auto_sync_enabled` toggle, `last_synced_at`, and a `settings` JSONB blob for connector-specific sync options.
 
 ### document_categories / document_category_versions / document_category_version_files
 
 Three-tier structure for organizing documents within a project:
-1. **Category** — flat list per project (no parent hierarchy), with `dataset_config` JSONB for category-level dataset settings. The `category_type` column (migration 20260324) classifies the category, and the optional `dataset_id` FK (migration 20260324) links to a dataset directly.
-2. **Version** — content snapshot tied to a RAGFlow dataset (`ragflow_dataset_id`, `ragflow_dataset_name`). Unique constraint on `(category_id, version_label)`.
-3. **Version File** — individual files within a version, tracked through RAGFlow with `ragflow_doc_id` and a status lifecycle (`pending` → `uploaded` → `parsing` → `completed` / `failed`). Unique constraint on `(version_id, file_name)`.
+1. **Category** — flat list per project (no parent hierarchy), with `dataset_config` JSONB for category-level dataset settings. `category_type` classifies the category, and optional `dataset_id` links it to a direct dataset.
+2. **Version** — content snapshot with optional compatibility-named external dataset identifiers (`ragflow_dataset_id`, `ragflow_dataset_name`). Unique constraint on `(category_id, version_label)`.
+3. **Version File** — individual files within a version, tracked by per-file status plus optional compatibility-named external document identifier `ragflow_doc_id`. Unique constraint on `(version_id, file_name)`.
 
 ### project_chats
 
-Chat assistant configurations within a project. Each chat has its own `ragflow_chat_id`, `dataset_ids` and `ragflow_dataset_ids` (JSONB arrays), plus `llm_config` and `prompt_config` (JSONB) for model and prompt settings. Cascades on project deletion.
+Chat assistant configurations within a project. Each row stores local dataset links (`dataset_ids`), optional compatibility-named synced dataset IDs (`ragflow_dataset_ids`), prompt/LLM configuration, and status metadata. Cascades on project deletion.
 
 ### project_searches
 
-Search app configurations within a project. Each search has its own `ragflow_search_id`, `dataset_ids` and `ragflow_dataset_ids` (JSONB arrays), plus `search_config` (JSONB) for search parameters. Cascades on project deletion.
+Search app configurations within a project. Each row stores local dataset links (`dataset_ids`), optional compatibility-named synced dataset IDs (`ragflow_dataset_ids`), search configuration, and status metadata. Cascades on project deletion.
 
 ### project_entity_permissions
 

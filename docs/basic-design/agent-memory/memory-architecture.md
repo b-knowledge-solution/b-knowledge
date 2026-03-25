@@ -117,8 +117,8 @@ erDiagram
         enum storage_type "table | graph"
         int memory_size "Max pool size in bytes (default 5MB)"
         text forgetting_policy
-        varchar embd_id "Per-pool embedding model override (references tenant_llm)"
-        varchar llm_id "Per-pool LLM model override (references tenant_llm)"
+        varchar embd_id "Per-pool embedding model override (soft reference to model_providers)"
+        varchar llm_id "Per-pool LLM model override (soft reference to model_providers)"
         float temperature "LLM temperature for extraction"
         text system_prompt "Custom extraction system prompt"
         text user_prompt "Custom extraction user prompt"

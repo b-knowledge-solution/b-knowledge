@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Sync module enables B-Knowledge to pull documents from external sources (GitHub, Google Drive, Confluence, etc.) into datasets. Connectors follow an adapter pattern, allowing new source types to be added without modifying core logic.
+The Sync module enables B-Knowledge to pull documents from external sources into datasets. Connectors follow an adapter pattern and are exposed through the `/api/sync/connectors*` route family.
 
 ## Architecture
 
@@ -12,7 +12,7 @@ flowchart TD
     B -->|Configure| C[Type + Config JSONB]
     C -->|Link to| D[Dataset]
 
-    E{Trigger} -->|Manual| F[POST /sync]
+    E{Trigger} -->|Manual| F[POST /api/sync/connectors/:id/sync]
     E -->|Scheduled| F
     F --> G[ConnectorAdapter.fetch]
     G --> H[Fetch External Data]
@@ -25,11 +25,9 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    I[ConnectorAdapter Interface] --> G[GitHubAdapter]
-    I --> GD[GoogleDriveAdapter]
-    I --> C[ConfluenceAdapter]
-    I --> S[SharePointAdapter]
-    I --> W[WebCrawlerAdapter]
+    I[ConnectorAdapter Interface] --> N[NotionAdapter]
+    I --> S3[S3Adapter]
+    I --> WC[WebCrawlAdapter]
 ```
 
 ### ConnectorAdapter Interface
@@ -40,17 +38,15 @@ Each adapter implements:
 |--------|-------------|
 | `testConnection(config)` | Validate credentials and connectivity |
 | `fetch(config, lastSyncAt)` | Retrieve documents since last sync |
-| `getMetadata(config)` | List available resources (repos, folders) |
+| `getMetadata(config)` | List available resources when supported |
 
 ### Type-Specific Configuration
 
 | Connector Type | Config Fields |
 |----------------|--------------|
-| GitHub | `repo_url`, `branch`, `api_token`, `file_patterns`, `exclude_patterns` |
-| Google Drive | `folder_id`, `oauth_token`, `file_types`, `recursive` |
-| Confluence | `base_url`, `space_key`, `api_token`, `page_filter` |
-| SharePoint | `site_url`, `library_name`, `client_id`, `client_secret` |
-| Web Crawler | `start_url`, `max_depth`, `url_patterns`, `exclude_patterns` |
+| Notion | `api_token`, `database_id` or source identifiers |
+| S3 | `endpoint`, `bucket`, `access_key`, `secret_key`, object filters |
+| Web Crawl | `start_url`, `max_depth`, `url_patterns`, `exclude_patterns` |
 
 ## API Endpoints
 
@@ -125,8 +121,7 @@ Connectors track `last_sync_at` on the connector record. When `fetch()` is calle
 | File | Purpose |
 |------|---------|
 | `be/src/modules/sync/` | Module root |
-| `be/src/modules/sync/sync.controller.ts` | Route handlers |
-| `be/src/modules/sync/sync.service.ts` | Orchestration logic |
+| `be/src/modules/sync/controllers/sync.controller.ts` | Route handlers |
+| `be/src/modules/sync/services/sync.service.ts` | Orchestration logic |
 | `be/src/modules/sync/adapters/` | Adapter implementations |
-| `be/src/modules/sync/sync.model.ts` | Knex model |
-| `fe/src/features/sync/` | Frontend feature |
+| `be/src/modules/sync/models/` | Knex models |

@@ -2,7 +2,7 @@
 
 ## Overview
 
-A Dataset (backed by the `knowledgebase` table) is a container for documents that are parsed, chunked, embedded, and indexed for AI search and chat. Datasets are the primary unit of knowledge organization in B-Knowledge.
+A Dataset (backed by the `knowledgebase` table) is the primary knowledge-base container in B-Knowledge. The current source supports dataset CRUD, access control, version uploads, per-document parser overrides, field-map generation for structured data, retrieval tests, enrichment tasks, metadata editing, graph tasks, logs, and bulk document operations.
 
 ## Dataset Lifecycle
 
@@ -32,7 +32,7 @@ stateDiagram-v2
 |---------|---------------|-------------|
 | Dataset | `knowledgebase` table | Container for related documents |
 | Document | `document` table | Individual uploaded file |
-| Chunk | OpenSearch index | Parsed text segment with embedding |
+| Chunk | OpenSearch `knowledge_{tenant}` index | Parsed text segment with embedding |
 | Task | `task` table | Background processing job |
 
 ## Configuration Options
@@ -45,6 +45,8 @@ stateDiagram-v2
 | **Chunk Overlap** | Overlap between chunks | 64 |
 | **Language** | Primary language for parsing | en |
 | **Separator** | Custom chunk separators | Newline-based |
+| **Field Map** | Structured-data column map for SQL fallback | none |
+| **Tag KB IDs** | Tag datasets used for rank boosting | none |
 
 ## Document Processing Pipeline
 
@@ -147,11 +149,29 @@ flowchart TD
     G --> H[Return top-K chunks with metadata]
 ```
 
+## Current Route Surface
+
+The dataset module currently exposes:
+
+- Dataset CRUD and access control
+- Version uploads and listing
+- Dataset settings and parser config updates
+- Manual chunk CRUD and bulk chunk switch
+- Retrieval test
+- Document CRUD, parse, status stream, download, parser change
+- Bulk document parse/toggle/delete
+- Web crawl ingestion
+- Document enrichment for keywords, questions, tags, metadata
+- GraphRAG / RAPTOR / mindmap task triggers and status
+- Metadata read/write, logs, overview, graph data, image serving
+- Auto-detect field map for structured datasets
+- Bulk metadata updates and tag aggregations
+
 ## Key Files
 
 | File | Purpose |
 |------|---------|
 | `be/src/modules/rag/` | RAG module (datasets, documents, search) |
-| `be/src/modules/rag/services/rag-core.service.ts` | Core dataset CRUD logic |
+| `be/src/modules/rag/routes/rag.routes.ts` | Dataset/document/chunk route surface |
 | `advance-rag/` | Python RAG worker (parsing, chunking, embedding) |
 | `converter/` | Office-to-PDF conversion service |

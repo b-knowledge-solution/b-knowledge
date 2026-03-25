@@ -206,7 +206,7 @@ interface AgentDSL {
 
 interface AgentNodeDef {
   id: string
-  type: OperatorType  // 55 supported types
+  type: OperatorType  // current built-in operator set
   position: { x: number; y: number }
   config: Record<string, unknown>
   label: string
@@ -327,7 +327,7 @@ fe/src/features/agents/
 ├── store/
 │   └── canvasStore.ts            — Zustand for canvas UI state
 ├── types/
-│   └── agent.types.ts            — 55 operator types + interfaces
+│   └── agent.types.ts            — Canonical operator and entity interfaces
 └── index.ts
 ```
 

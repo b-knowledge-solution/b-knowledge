@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-Projects provide organizational containers for datasets, categories, documents, and collaborative workflows. They support role-based access with admin, leader, and member tiers, and integrate with AI Chat and Search features.
+Projects provide organizational containers for datasets, categories, versions, project-scoped chats, project-scoped searches, sync configs, memberships, and entity permissions. They support role-based access with admin, leader, and member tiers.
 
 ## 2. Use Case Diagram
 
@@ -61,8 +61,10 @@ graph LR
 | PROJ-08 | Sync Configuration | Could | Configure sync settings for external data sources linked to the project |
 | PROJ-09 | Entity Permissions | Should | Set fine-grained permissions on categories and documents within a project |
 | PROJ-10 | Activity Log | Should | Record and display project activity (member changes, document updates, searches) |
-| PROJ-11 | Project Listing | Must | List projects with filtering, pagination, and role-based visibility |
-| PROJ-12 | Project Dashboard | Could | Show project-level stats: document count, member count, recent activity |
+| PROJ-11 | Sync Configs | Could | Manage project-level sync configs for external sources |
+| PROJ-12 | Entity Permissions | Should | Manage fine-grained entity-level permissions inside a project |
+| PROJ-13 | Project Listing | Must | List projects with filtering, pagination, and role-based visibility |
+| PROJ-14 | Cross-Project Datasets | Could | View datasets that can be reused across projects |
 
 ## 4. Project Structure
 

@@ -132,8 +132,9 @@ Presets pre-fill the create form; the admin still provides API keys and customiz
 | File | Purpose |
 |------|---------|
 | `be/src/modules/llm-provider/` | Module root |
-| `be/src/modules/llm-provider/llm-provider.controller.ts` | Route handlers |
-| `be/src/modules/llm-provider/llm-provider.service.ts` | Business logic, resolution chain |
-| `be/src/modules/llm-provider/llm-provider.model.ts` | Knex model (tenant_llm table) |
-| `be/src/modules/llm-provider/llm-provider.validation.ts` | Zod schemas |
+| `be/src/modules/llm-provider/controllers/llm-provider.controller.ts` | Route handlers |
+| `be/src/modules/llm-provider/services/llm-provider.service.ts` | Business logic, resolution chain |
+| `be/src/modules/llm-provider/routes/llm-provider.routes.ts` | Admin route surface |
+| `be/src/modules/llm-provider/routes/llm-provider-public.routes.ts` | Authenticated public model listing |
+| `be/src/modules/llm-provider/schemas/llm-provider.schemas.ts` | Zod schemas |
 | `fe/src/features/llm-provider/` | Frontend feature |

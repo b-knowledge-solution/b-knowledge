@@ -118,7 +118,7 @@ parser_config: {
   "generate_qa": true,         // Enable Q&A pair generation
   "tag_content": false,        // Enable content tagging
   "extract_metadata": false,   // Enable metadata extraction
-  "llm_id": "tenant_llm_id"   // LLM model to use for enhancements
+  "llm_id": "model_provider_id" // LLM model to use for enhancements
 }
 ```
 

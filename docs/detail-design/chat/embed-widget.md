@@ -2,16 +2,16 @@
 
 ## Overview
 
-The chat embed widget allows external websites to embed a B-Knowledge chat dialog as an iframe-based widget. Authentication uses embed tokens instead of user sessions, enabling anonymous public access. An OpenAI-compatible endpoint is also exposed for programmatic integrations.
+The current chat embed implementation exposes token-authenticated public endpoints for dialog info, anonymous session creation, and streamed completions. It is public-access oriented, but the source code documents public API routes rather than a standalone IIFE bundle.
 
 ## Token Lifecycle
 
 ```mermaid
 stateDiagram-v2
     [*] --> Created: POST /api/chat/dialogs/:id/embed-tokens
-    Created --> Active: Token issued (JWT or opaque)
+    Created --> Active: Token issued
     Active --> Active: Widget requests (no expiry by default)
-    Active --> Revoked: DELETE /api/chat/dialogs/:id/embed-tokens/:tokenId
+    Active --> Revoked: DELETE /api/chat/embed-tokens/:tokenId
     Revoked --> [*]
 ```
 
@@ -59,58 +59,21 @@ All embed endpoints bypass session authentication. The embed token is the sole c
 | POST | `/api/chat/embed/:token/completions` | Send message and receive SSE streaming response |
 | DELETE | `/api/chat/dialogs/:id/embed-tokens/:tokenId` | Revoke a token (admin, session required) |
 
-## OpenAI-Compatible Endpoint
+## Public Client Integration
 
-```mermaid
-sequenceDiagram
-    participant Client as External Client
-    participant BE as Backend API
-    participant LLM as LLM Provider
+The implemented public surface is:
 
-    Client->>BE: POST /v1/chat/completions<br/>Authorization: Bearer <embed_token>
-    BE->>BE: Resolve token to dialog + dataset context
-    BE->>LLM: Forward messages with RAG context
-    LLM-->>BE: Stream completion chunks
-    BE-->>Client: SSE chunks (OpenAI format)
-```
+- `GET /api/chat/embed/:token/info`
+- `POST /api/chat/embed/:token/sessions`
+- `POST /api/chat/embed/:token/completions`
 
-- **Auth**: `Authorization: Bearer <embed_token>` header.
-- **Request body**: Follows OpenAI chat completions schema (`model`, `messages`, `stream`).
-- **Response**: OpenAI-compatible SSE chunks with `choices[].delta.content`.
+The frontend or host page is responsible for calling these routes with the token in the URL. The current source does not expose a documented standalone IIFE bundle in this docs set.
 
-## Widget Integration
+### Security Notes
 
-### IIFE Bundle
-
-The widget ships as a self-contained IIFE JavaScript bundle. Host pages include it via a `<script>` tag:
-
-```html
-<script src="https://your-domain/embed/chat-widget.iife.js"></script>
-<script>
-  BKnowledgeChat.init({
-    token: 'embed_token_value',
-    containerId: 'chat-container'
-  });
-</script>
-```
-
-### iframe Embedding
-
-Alternatively, embed directly as an iframe:
-
-```html
-<iframe
-  src="https://your-domain/embed/chat?token=embed_token_value"
-  width="400" height="600"
-  style="border:none;">
-</iframe>
-```
-
-### CORS and Security
-
-- **frame-ancestors**: CSP `frame-ancestors` is relaxed for embed endpoints to allow cross-origin iframe embedding.
-- **CORS**: Embed routes return permissive CORS headers (`Access-Control-Allow-Origin: *`).
-- **Rate limiting**: Token-scoped rate limits prevent abuse of public endpoints.
+- Public access is token-based, not session-based.
+- Admin token creation and revocation still require authenticated permissions.
+- Streaming responses are delivered over SSE.
 
 ## Key Files
 

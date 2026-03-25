@@ -6,7 +6,7 @@
 
 ## Context
 
-b-knowledge's current memory system uses a custom LLM-powered extraction pipeline that converts conversations into four structured memory types via a bitmask system: RAW (1), SEMANTIC (2), EPISODIC (4), and PROCEDURAL (8). Each memory pool can enable any combination of these types. Extracted memories are stored as documents in per-tenant OpenSearch indices (`memory_{tenantId}`) with embedding vectors for hybrid (vector + text) search. The system supports per-pool LLM and embedding model configuration via the `tenant_llm` system, custom extraction prompts (`system_prompt` and `user_prompt` with `{{conversation}}` template placeholders), FIFO forgetting policy enforced at the service layer, and multi-scope ownership (user, agent, team). The frontend provides a full settings panel (MemorySettingsPanel) covering all configurable fields, and the agent canvas includes memory_read/memory_write operator nodes (MemoryForm).
+b-knowledge's current memory system uses a custom LLM-powered extraction pipeline that converts conversations into four structured memory types via a bitmask system: RAW (1), SEMANTIC (2), EPISODIC (4), and PROCEDURAL (8). Each memory pool can enable any combination of these types. Extracted memories are stored as documents in per-tenant OpenSearch indices (`memory_{tenantId}`) with embedding vectors for hybrid (vector + text) search. The system supports per-pool LLM and embedding model configuration through `model_providers`-backed IDs stored on the memory pool, custom extraction prompts (`system_prompt` and `user_prompt` with `{{conversation}}` template placeholders), FIFO forgetting policy enforced at the service layer, and multi-scope ownership (user, agent, team). The frontend provides a full settings panel (MemorySettingsPanel) covering all configurable fields, and the agent canvas includes memory_read/memory_write operator nodes (MemoryForm).
 
 However, the current system has significant limitations explicitly listed as out-of-scope in FR-MEMORY: no deduplication (every extraction creates a new message regardless of whether the information already exists), no conflict resolution (contradictory facts coexist without reconciliation), no graph memory (the `storage_type: 'graph'` option exists in the schema but has no implementation), and no memory versioning (only a binary `status` field -- active or forgotten -- with no history tracking). These gaps lead to unbounded memory growth with redundant entries and stale information that degrades retrieval quality over time.
 
@@ -30,7 +30,7 @@ All deal-breakers defined in D-21 were evaluated with empirical tests created in
 |---|-------------|--------|--------------------|
 | 1 | OpenSearch as vector store | **PASS** | mem0 has `opensearch` provider in `mem0/vector_stores/opensearch.py`. Uses NMSLIB engine with HNSW algorithm, cosine similarity. Config accepts `host`, `port`, `collection_name`, `embedding_model_dims`. Infrastructure-dependent test (test 1) ready; static analysis confirms provider exists in installed package. |
 | 2 | Multi-tenant data isolation | **PASS** | mem0 filters by `user_id`, `agent_id`, `run_id` on all operations. OpenSearch `collection_name` can be set per-tenant (e.g., `mem0_memory_{tenantId}`). The custom sidecar enforces `tenant_id` on every call. Infrastructure-dependent test (test 2) ready. |
-| 3 | Custom LLM/embedding providers | **PASS** | mem0 supports 16+ LLM providers (OpenAI, Anthropic, Ollama, LiteLLM, etc.) and 11+ embedding providers. `openai_base_url` and `ollama_base_url` allow custom endpoints. LiteLLM acts as universal proxy for b-knowledge's tenant_llm routing. Infrastructure-dependent tests (tests 3, 4) ready. |
+| 3 | Custom LLM/embedding providers | **PASS** | mem0 supports 16+ LLM providers (OpenAI, Anthropic, Ollama, LiteLLM, etc.) and 11+ embedding providers. `openai_base_url` and `ollama_base_url` allow custom endpoints. LiteLLM can act as a universal proxy for b-knowledge's `model_providers` routing. Infrastructure-dependent tests (tests 3, 4) ready. |
 | 4 | Licensing (Apache 2.0) | **PASS** | Verified empirically: `License-Expression: Apache-2.0` confirmed via installed package metadata (test 5). Fully permissive for closed-source enterprise use. No copyleft restrictions. |
 
 Additional verification tests:
@@ -571,7 +571,7 @@ If decision is GO (which it is), here is the phase-by-phase plan for actual inte
 3. Run performance benchmarks against live infrastructure (Plan 02 test suite)
 4. Create optional migration tool for existing pools (Option 2 from Data Migration section)
 5. Performance regression tests comparing native vs mem0 latency
-6. Documentation updates to `docs/basic-design/memory-architecture.md` (D-26 deferred to this phase)
+6. Documentation updates to `docs/basic-design/agent-memory/memory-architecture.md` (D-26 deferred to this phase)
 
 **Dependencies:** Phase C (all features working)
 **Deliverables:** Validated mem0 integration ready for production

@@ -22,7 +22,7 @@ sequenceDiagram
         TE->>OS: Bulk index (vectors + text + metadata)
         OS-->>TE: Index acknowledgement
         TE->>R: Publish progress (task:progress:{taskId})
-        R-->>FE: Socket.IO progress event
+        R-->>FE: Backend bridge progress event
     end
     TE->>DB: Update document status → available
     TE->>R: Publish completion event
@@ -34,14 +34,14 @@ sequenceDiagram
 The embedding model is resolved using a priority chain:
 
 1. **Dataset config** -- `parser_config.embedding_model` if explicitly set
-2. **Tenant LLM** -- default embedding model configured in `tenant_llm` table
+2. **Tenant default provider** -- default embedding model configured in provider records
 3. **System default** -- fallback model from system configuration
 
 | Setting | Source | Example |
 |---------|--------|---------|
-| Model name | tenant_llm record | `text-embedding-3-small` |
-| API endpoint | tenant_llm record | `https://api.openai.com/v1` |
-| API key | tenant_llm record (encrypted) | `sk-...` |
+| Model name | provider record | `text-embedding-3-small` |
+| API endpoint | provider record | `https://api.openai.com/v1` |
+| API key | provider record (encrypted) | `sk-...` |
 | Dimensions | model metadata | 1536 |
 
 ## Batch Processing
@@ -128,8 +128,8 @@ Real-time progress flows from the worker to the frontend:
 ```mermaid
 flowchart LR
     A[Task Executor\nupdates progress] --> B[Redis pub/sub\ntask:progress:taskId]
-    B --> C[Backend\nSocket.IO server]
-    C --> D[Frontend\nSocket.IO client]
+    B --> C[Backend\nprogress bridge]
+    C --> D[Frontend\nstatus/progress consumer]
     D --> E[Progress bar\nand status text]
 ```
 

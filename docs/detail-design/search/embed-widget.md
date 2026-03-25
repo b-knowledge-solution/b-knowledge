@@ -1,126 +1,122 @@
 # Search Embed Widget - Detail Design
 
-## Overview
+> Token-based public search access for iframe embedding and standalone share pages.
 
-The search embed widget allows external sites to embed B-Knowledge search functionality via an iframe or IIFE bundle. Like the chat embed widget, it uses token-based authentication instead of user sessions, enabling anonymous public access. An OpenAI-compatible endpoint is also provided.
+## 1. Overview
 
-## Token Management
+The current implementation is iframe-first. Admin users create embed tokens for a search app, then external pages load the standalone share page at `/search/share/:token`. The share page calls token-authenticated backend endpoints and does not require a user session.
+
+There is no separate IIFE widget implementation in the latest source code. The public surface is the share page plus the token-authenticated API.
+
+## 2. Token Lifecycle
 
 ```mermaid
 stateDiagram-v2
     [*] --> Created: POST /api/search/apps/:id/embed-tokens
     Created --> Active: Token issued
-    Active --> Active: Public requests
-    Active --> Revoked: DELETE .../embed-tokens/:tokenId
+    Active --> Active: GET/POST /api/search/embed/:token/*
+    Active --> Revoked: DELETE /api/search/embed-tokens/:tokenId
     Revoked --> [*]
 ```
 
-### Token CRUD
+### Admin token management
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/search/apps/:id/embed-tokens` | Create new embed token |
-| GET | `/api/search/apps/:id/embed-tokens` | List all tokens for this app |
-| DELETE | `/api/search/apps/:id/embed-tokens/:tokenId` | Revoke a token |
+| POST | `/api/search/apps/:id/embed-tokens` | Create a token for one search app |
+| GET | `/api/search/apps/:id/embed-tokens` | List tokens for that app |
+| DELETE | `/api/search/embed-tokens/:tokenId` | Revoke a token |
 
-Token creation and management requires an authenticated admin session. The generated tokens themselves are used for public access.
+These routes require `requireAuth` and `requirePermission('manage_users')`.
 
-## End-to-End Sequence
+## 3. Public Embed Endpoints
 
-```mermaid
-sequenceDiagram
-    participant Admin
-    participant BE as Backend API
-    participant Widget as Embed Widget (iframe)
-    participant LLM as LLM Provider
-
-    Admin->>BE: POST /api/search/apps/:id/embed-tokens
-    BE-->>Admin: { token, embed_url }
-
-    Note over Widget: Host page loads iframe with token
-
-    Widget->>BE: GET /api/search/embed/:token/info
-    BE-->>Widget: { app_name, search_config, welcome_message }
-
-    Widget->>BE: POST /api/search/embed/:token/ask<br/>{query, method, top_k}
-    Note right of BE: SSE streaming response
-
-    BE->>BE: Retrieve chunks from bound datasets
-    BE->>LLM: Stream LLM completion
-    LLM-->>BE: Delta tokens
-    BE-->>Widget: SSE: {status: "retrieving"}
-    BE-->>Widget: SSE: {status: "generating"}
-    BE-->>Widget: SSE: {reference: {chunks, doc_aggs}}
-    BE-->>Widget: SSE: {delta: "token"} ...
-    BE-->>Widget: SSE: {answer, reference, metrics}
-    BE-->>Widget: SSE: [DONE]
-```
-
-## Public API Endpoints
-
-All embed endpoints bypass session authentication. The embed token is the sole credential.
+All public embed endpoints validate the token first, then resolve the associated search app. For search execution, tenant context is derived from `search_apps.created_by`.
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| GET | `/api/search/embed/:token/info` | Retrieve search app metadata and config |
-| POST | `/api/search/embed/:token/search` | Chunk search (non-streaming) |
-| POST | `/api/search/embed/:token/ask` | AI-summarized search (SSE streaming) |
+| GET | `/api/search/embed/:token/info` | Legacy public app metadata endpoint |
+| GET | `/api/search/embed/:token/config` | Public-safe app config including `avatar`, `empty_response`, and an allowlisted subset of `search_config` |
+| POST | `/api/search/embed/:token/search` | Non-streaming chunk search with pagination |
+| POST | `/api/search/embed/:token/ask` | SSE streaming answer generation |
+| POST | `/api/search/embed/:token/related-questions` | Follow-up question suggestions |
+| POST | `/api/search/embed/:token/mindmap` | Mind map generation |
 
-## OpenAI-Compatible Endpoint
+### Exposed config fields
+
+`GET /config` intentionally strips sensitive provider credentials and returns only safe fields:
+
+- Search app `name`
+- Search app `description`
+- Search app `avatar`
+- Search app `empty_response`
+- Allowlisted `search_config` keys such as `top_k`, `search_method`, `highlight`, `enable_related_questions`, `enable_mindmap`, `metadata_filter`
+
+## 4. Share Page Flow
 
 ```mermaid
 sequenceDiagram
-    participant Client as External Client
-    participant BE as Backend API
+    participant Host as Host Page / iframe
+    participant Share as SearchSharePage
+    participant BE as Search Embed API
+    participant Search as SearchService
+    participant RAG as RagSearchService
     participant LLM as LLM Provider
 
-    Client->>BE: POST /v1/search/completions<br/>Authorization: Bearer <embed_token>
-    BE->>BE: Resolve token → search app + dataset context
-    BE->>BE: Retrieve relevant chunks
-    BE->>LLM: Forward query with chunk context
-    LLM-->>BE: Stream completion chunks
-    BE-->>Client: SSE chunks (OpenAI-compatible format)
+    Host->>Share: Load /search/share/:token
+    Share->>BE: GET /api/search/embed/:token/config
+    BE-->>Share: name, description, avatar, empty_response, search_config
+
+    Share->>BE: POST /api/search/embed/:token/ask
+    BE->>Search: askSearch(...)
+    Search->>RAG: retrieveChunks(...)
+    Search->>LLM: stream summary
+    BE-->>Share: SSE status + delta + answer + references + related_questions
+
+    opt later pages
+        Share->>BE: POST /api/search/embed/:token/search
+        BE->>Search: executeSearch(...)
+        Search->>RAG: retrieveChunks(...)
+        BE-->>Share: { chunks, total, doc_aggs }
+    end
 ```
 
-- **Auth**: `Authorization: Bearer <embed_token>` header.
-- **Request body**: `{ model, messages, stream }` following OpenAI schema.
-- **Response**: OpenAI-compatible SSE chunks with `choices[].delta.content`.
+## 5. Standalone Share Page
 
-## Widget Integration
+The frontend route is `/search/share/:token`.
 
-### IIFE Bundle
+Implemented display options from URL query params:
 
-```html
-<script src="https://your-domain/embed/search-widget.iife.js"></script>
-<script>
-  BKnowledgeSearch.init({
-    token: 'embed_token_value',
-    containerId: 'search-container',
-    placeholder: 'Search our knowledge base...'
-  });
-</script>
-```
+| Param | Effect |
+|-------|--------|
+| `locale=en|vi|ja` | Override i18n locale |
+| `hide_avatar=true` | Hide app avatar and branding |
+| `hide_powered_by=true` | Hide footer branding |
 
-### iframe Embedding
+The page renders:
 
-```html
-<iframe
-  src="https://your-domain/embed/search?token=embed_token_value"
-  width="600" height="500"
-  style="border:none;">
-</iframe>
-```
+- Minimal branded header using app `avatar`, `name`, and `description`
+- Shared `SearchBar`
+- Streaming page-1 search using `useSearchStream`
+- Non-streaming page 2+ pagination via `/embed/:token/search`
+- Shared `SearchResults`
+- Related questions and mind map when enabled
+- Configurable empty-state message via `empty_response`
+- Spotlight background on the landing state
 
-### CORS and Security
+## 6. Security Notes
 
-- **frame-ancestors**: CSP relaxed for embed routes to permit cross-origin iframe loading.
-- **CORS**: Permissive `Access-Control-Allow-Origin: *` on embed endpoints.
-- **Rate limiting**: Token-scoped rate limits to prevent abuse.
+- Public access is token-based, not session-based.
+- Validation is enforced on both route params and request bodies.
+- `/config` uses an explicit allowlist for exposed config keys.
+- The share page is served from the same application origin as the API, so no extra cross-origin API flow is required for the default deployment model.
 
-## Key Files
+## 7. Key Files
 
 | File | Purpose |
 |------|---------|
-| `be/src/modules/search/controllers/search-embed.controller.ts` | Embed endpoint handlers |
-| `be/src/modules/search/services/search-embed.service.ts` | Token management, public search logic |
-| `be/src/modules/search/routes/search-embed.routes.ts` | Embed route definitions |
+| `be/src/modules/search/routes/search-embed.routes.ts` | Public and admin embed route registration |
+| `be/src/modules/search/controllers/search-embed.controller.ts` | Token validation, config filtering, public search handlers |
+| `be/src/modules/search/services/search.service.ts` | Shared search execution used by embed endpoints |
+| `fe/src/features/search/pages/SearchSharePage.tsx` | Standalone iframe/share page |
+| `fe/src/features/search/components/SearchAppEmbedDialog.tsx` | Admin UI for token listing and iframe code generation |

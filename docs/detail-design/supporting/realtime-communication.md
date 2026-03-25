@@ -2,7 +2,12 @@
 
 ## Overview
 
-B-Knowledge uses three complementary patterns for real-time communication: **Socket.IO** for bidirectional events, **Redis pub/sub** as a backend message bridge, and **SSE (Server-Sent Events)** for streaming LLM responses.
+B-Knowledge uses two active client-facing realtime patterns:
+
+- **Socket.IO** for notifications and converter status updates
+- **SSE (Server-Sent Events)** for chat, search, agent, and document-processing streams
+
+Redis acts as the internal transport between workers and these delivery channels.
 
 ## Architecture
 
@@ -38,35 +43,35 @@ flowchart TD
 
 ## Pattern 1: Socket.IO (Bidirectional Events)
 
-Used for push notifications, task progress, and document status changes.
+Used for browser notifications and converter status updates.
 
 ### Events
 
 | Event | Direction | Payload | Purpose |
 |-------|-----------|---------|---------|
-| `task:progress` | Server to Client | `{ taskId, progress, status }` | RAG task progress updates |
-| `document:status` | Server to Client | `{ documentId, status }` | Document processing state changes |
 | `notification` | Server to Client | `{ type, title, message }` | General push notifications |
-| `join:room` | Client to Server | `{ room }` | Subscribe to entity-specific updates |
-| `leave:room` | Client to Server | `{ room }` | Unsubscribe from updates |
+| `converter:file:status` | Server to Client | `{ jobId, fileId, fileName, status }` | Per-file converter updates |
+| `converter:job:status` | Server to Client | `{ jobId, versionId, status, ... }` | Version/job level converter updates |
+| `subscribe` | Client to Server | `room` | Join a named room |
+| `unsubscribe` | Client to Server | `room` | Leave a named room |
 
 ### Connection Management
 
-- Auto-reconnect with exponential backoff
-- Room-based subscriptions (e.g., `task:{taskId}`, `dataset:{datasetId}`)
-- Redis adapter for horizontal scaling across multiple backend instances
+- Auto-reconnect from the frontend Socket.IO client
+- Room-based subscriptions through `subscribe` / `unsubscribe`
+- Browser and external-client auth through Socket.IO handshake auth
 
-## Pattern 2: Redis Pub/Sub (Worker Bridge)
+## Pattern 2: Redis Bridge
 
-Python workers cannot emit Socket.IO events directly. Instead, they publish to Redis channels, and the backend bridges messages to Socket.IO clients.
+Workers do not talk to browsers directly. They publish progress and run output to Redis, and backend services forward those messages to Socket.IO listeners or SSE streams.
 
 ### Channels
 
 | Channel Pattern | Publisher | Description |
 |----------------|-----------|-------------|
-| `task:progress:{taskId}` | RAG Worker | Parsing/embedding progress |
-| `converter:progress:{jobId}` | Converter | File conversion progress |
-| `document:status:{documentId}` | RAG Worker | Document state transitions |
+| `agent:run:{runId}` | Agent executor / worker | Step and final run output |
+| Converter channels | Converter worker | File and job status |
+| Dataset/document channels | Advance-RAG worker | Parse and indexing progress |
 
 ### Bridge Sequence
 
@@ -86,17 +91,21 @@ sequenceDiagram
     FE->>FE: Update progress bar UI
 ```
 
-## Pattern 3: SSE (Server-Sent Events)
+## Pattern 3: SSE
 
-Used for streaming responses where the client only needs to receive data (no bidirectional communication needed).
+Used when the server only needs to push ordered status or token streams.
 
 ### SSE Endpoints
 
 | Endpoint | Purpose |
 |----------|---------|
-| `POST /api/chat/:sessionId/completions` | Stream chat LLM response |
-| `POST /api/search/ask` | Stream search AI summary |
-| `GET /api/documents/:id/status/stream` | Stream document processing status |
+| `POST /api/chat/:sessionId/completions` | Stream authenticated chat completions |
+| `POST /api/chat/embed/:token/completions` | Stream public embed chat |
+| `POST /api/search/ask` | Stream authenticated search answer |
+| `POST /api/search/embed/:token/ask` | Stream public embed search answer |
+| `GET /api/agents/:id/run/:runId/stream` | Stream authenticated agent execution |
+| `POST /api/agents/embed/:token/:agentId/run` | Stream public agent execution |
+| `GET /api/rag/datasets/:id/documents/:docId/status` | Stream document processing status |
 
 ### Chat Streaming Sequence
 
@@ -129,48 +138,28 @@ data: {"id":"msg_1","content":" world"}
 data: [DONE]
 ```
 
-## Connection Lifecycle
-
-```mermaid
-sequenceDiagram
-    participant FE as Frontend
-    participant SIO as Socket.IO Server
-    participant Redis as Redis
-
-    FE->>SIO: connect (with auth token)
-    SIO->>SIO: Validate token
-    SIO-->>FE: connected
-
-    FE->>SIO: join:room { room: "task:abc123" }
-    SIO->>Redis: SUBSCRIBE task:progress:abc123
-    SIO-->>FE: joined
-
-    Note over FE,Redis: Receive updates while subscribed...
-
-    FE->>SIO: leave:room { room: "task:abc123" }
-    SIO->>Redis: UNSUBSCRIBE task:progress:abc123
-
-    FE->>SIO: disconnect
-    SIO->>SIO: Clean up subscriptions
-```
-
 ## Scaling Considerations
 
 | Concern | Solution |
 |---------|----------|
-| Multiple backend instances | Socket.IO Redis adapter shares events across instances |
-| Client reconnection | Socket.IO auto-reconnect with room re-join on connect |
-| Message ordering | SSE uses sequential streaming; Socket.IO events include timestamps |
-| Memory | Room subscriptions are cleaned up on disconnect |
+| Multiple backend instances | Redis-backed worker communication and stateless SSE endpoints |
+| Client reconnection | Socket.IO reconnect logic and client-side SSE restart |
+| Message ordering | SSE preserves write order per request; socket events include status and timestamps |
+| Cleanup | Socket disconnect and SSE `close` handlers unsubscribe listeners |
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `be/src/shared/socket/` | Socket.IO server setup and configuration |
-| `be/src/shared/socket/redis-bridge.ts` | Redis pub/sub to Socket.IO bridge |
-| `be/src/shared/sse/` | SSE response helpers |
+| `be/src/shared/services/socket.service.ts` | Backend Socket.IO lifecycle and room/event handling |
+| `be/src/shared/services/redis.service.ts` | Shared Redis connection management |
+| `be/src/modules/chat/controllers/chat-conversation.controller.ts` | Authenticated chat SSE |
+| `be/src/modules/chat/controllers/chat-embed.controller.ts` | Public embed chat SSE |
+| `be/src/modules/search/controllers/search.controller.ts` | Authenticated search SSE |
+| `be/src/modules/search/controllers/search-embed.controller.ts` | Public embed search SSE |
+| `be/src/modules/agents/services/agent-executor.service.ts` | Agent run SSE orchestration |
+| `be/src/modules/rag/controllers/rag.controller.ts` | Dataset/document status SSE |
 | `fe/src/lib/socket.ts` | Socket.IO client setup |
-| `fe/src/hooks/useSocket.ts` | React hook for Socket.IO events |
-| `advance-rag/src/redis_publisher.py` | Worker Redis publish helpers |
-| `converter/src/redis_client.py` | Converter Redis publish helpers |
+| `fe/src/features/system/hooks/useConverterSocket.ts` | Converter status subscription hook |
+| `fe/src/features/chat/hooks/useChatStream.ts` | Chat streaming client logic |
+| `fe/src/features/search/hooks/useSearchStream.ts` | Search streaming client logic |
