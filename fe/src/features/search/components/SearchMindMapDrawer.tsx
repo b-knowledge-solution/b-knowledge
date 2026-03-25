@@ -60,6 +60,17 @@ function SearchMindMapDrawer({ open, onOpenChange, searchAppId, query }: SearchM
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   /**
+   * @description Return a rotating phase label based on progress percentage.
+   * @param {number} prog - Current progress value (0-100)
+   * @returns {string} Localized phase label
+   */
+  const getPhaseLabel = (prog: number): string => {
+    if (prog < 30) return t('search.analyzingConcepts')
+    if (prog < 60) return t('search.buildingRelationships')
+    return t('search.organizingHierarchy')
+  }
+
+  /**
    * @description Start the progress bar animation that goes from 0 to 90
    * over approximately 30 seconds.
    */
@@ -140,12 +151,21 @@ function SearchMindMapDrawer({ open, onOpenChange, searchAppId, query }: SearchM
 
         {/* Content area */}
         <div className="flex-1 overflow-y-auto mt-4">
-          {/* Loading state with progress bar */}
+          {/* Loading state with progress bar and rotating phase labels */}
           {loading && (
             <div className="flex flex-col items-center gap-4 pt-12 px-4">
-              <Progress value={progress} className="w-full max-w-sm" />
-              <p className="text-sm text-muted-foreground">
+              <span className="text-4xl" role="img" aria-label="brain">🧠</span>
+              <p className="text-sm font-medium text-foreground">
                 {t('search.generatingMindMap')}
+              </p>
+              {/* Gradient progress bar from blue to purple */}
+              <Progress
+                value={progress}
+                className="w-full max-w-sm [&>div]:bg-gradient-to-r [&>div]:from-blue-500 [&>div]:to-purple-500"
+              />
+              {/* Rotating phase label based on current progress */}
+              <p className="text-xs text-muted-foreground">
+                {getPhaseLabel(progress)}
               </p>
             </div>
           )}
