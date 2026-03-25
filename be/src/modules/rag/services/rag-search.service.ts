@@ -995,7 +995,6 @@ export class RagSearchService {
             }
         })
     }
-}
 
     /**
      * @description Auto-detect field map from existing OpenSearch chunk data.
@@ -1040,7 +1039,7 @@ export class RagSearchService {
             const hits = res.body.hits?.hits || []
             if (hits.length === 0) return null
 
-            const source = hits[0]._source || {}
+            const source = hits[0]?._source || {}
             const fieldMap: Record<string, { type: string; column_name: string; description: string }> = {}
 
             // Iterate over _source fields and infer type from sample value
