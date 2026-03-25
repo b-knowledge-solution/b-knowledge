@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigateWithLoader, usePageReady } from '@/components/NavigationLoader'
 import { Plus, Lock, Globe } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -33,11 +33,14 @@ import CreateProjectModal from '../components/CreateProjectModal'
  */
 const ProjectListPage = () => {
   const { t } = useTranslation()
-  const navigate = useNavigate()
+  const navigate = useNavigateWithLoader()
 
   // Data state
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Signal navigation overlay to dismiss when data is loaded
+  usePageReady(!loading)
 
   // Create modal state
   const [createModalOpen, setCreateModalOpen] = useState(false)
@@ -139,7 +142,7 @@ const ProjectListPage = () => {
               <Card
                 key={project.id}
                 className="cursor-pointer hover:border-primary/50 transition-colors"
-                onClick={() => navigate(`/data-studio/projects/${project.id}`)}
+                onClick={() => navigate(`/data-studio/projects/${project.id}`, { waitForReady: true })}
               >
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-2">

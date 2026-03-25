@@ -347,6 +347,7 @@ export const createCategoryVersion = (
   categoryId: string,
   data: {
     version_label: string;
+    language?: string;
     pagerank?: number;
     pipeline_id?: string;
     parse_type?: number;

@@ -15,7 +15,8 @@
 
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
+import { useNavigateWithLoader } from '@/components/NavigationLoader'
 import { Plus, Search, Workflow } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -78,7 +79,7 @@ function SkeletonGrid() {
  */
 export default function AgentListPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
+  const navigate = useNavigateWithLoader()
   const [searchParams, setSearchParams] = useSearchParams()
 
   // Read filter state from URL

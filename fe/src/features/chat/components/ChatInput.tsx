@@ -31,6 +31,8 @@ interface ChatInputProps {
   showFileUpload?: boolean
   /** Currently attached file IDs to send with the message */
   fileIds?: string[]
+  /** Optional slot rendered at the left of the toggle buttons row */
+  leftSlot?: React.ReactNode
   /** Optional CSS class name */
   className?: string
 }
@@ -57,6 +59,7 @@ function ChatInput({
   onFilesSelected,
   showFileUpload,
   fileIds,
+  leftSlot,
   className = '',
 }: ChatInputProps) {
   const { t } = useTranslation()
@@ -124,8 +127,8 @@ function ChatInput({
     }
   }
 
-  // Whether any toggle buttons should be shown
-  const hasToggles = showReasoningToggle || showInternetToggle
+  // Whether any toggle buttons or left slot should be shown
+  const hasToggles = showReasoningToggle || showInternetToggle || !!leftSlot
 
   return (
     <div className={`px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 ${className}`}>
@@ -145,6 +148,8 @@ function ChatInput({
         {/* Toggle buttons row - shown above the textarea when toggles are available */}
         {hasToggles && (
           <div className="flex items-center gap-1.5 px-1">
+            {/* Left slot (e.g. assistant selector) */}
+            {leftSlot}
             {/* File upload button */}
             {showFileUpload && (
               <button

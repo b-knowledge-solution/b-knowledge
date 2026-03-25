@@ -6,7 +6,8 @@
  */
 
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
+import { useNavigateWithLoader, usePageReady } from '@/components/NavigationLoader'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Upload } from 'lucide-react'
 
@@ -50,10 +51,13 @@ function DetailSkeleton() {
 export default function MemoryDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
+  const navigate = useNavigateWithLoader()
 
   // Fetch memory pool data
   const { data: memory, isLoading, isError } = useMemory(id ?? '')
+
+  // Signal navigation overlay to dismiss when data is loaded
+  usePageReady(!isLoading)
   const updateMemory = useUpdateMemory()
 
   // Import dialog open state

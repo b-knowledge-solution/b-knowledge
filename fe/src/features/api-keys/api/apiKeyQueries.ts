@@ -14,10 +14,11 @@ import type { CreateApiKeyDto, UpdateApiKeyDto } from '../types/apiKey.types'
  * @description Hook to fetch all API keys for the current user
  * @returns {UseQueryResult} TanStack Query result with API key array
  */
-export function useApiKeys() {
+export function useApiKeys(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.apiKeys.list(),
     queryFn: () => apiKeyApi.list(),
+    ...(options?.enabled !== undefined ? { enabled: options.enabled } : {}),
   })
 }
 

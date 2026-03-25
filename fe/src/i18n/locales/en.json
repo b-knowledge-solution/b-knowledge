@@ -1323,6 +1323,8 @@
     "deepResearchSubquery": "Researching: {{query}}",
     "deepResearchBudgetWarning": "Approaching budget limit ({{tokensUsed}}/{{tokensMax}} tokens)",
     "deepResearchBudgetExhausted": "Research limited by budget. {{completed}} of {{total}} sub-queries completed.",
+    "noDescription": "No description",
+    "knowledgeBasesCount": "{{count}} KBs",
     "deepResearch": {
       "title": "Deep Research",
       "researching": "Researching: {{query}}",
@@ -2031,7 +2033,7 @@
       "edit": "Edit",
       "add": "Add",
       "namePlaceholder": "Name Placeholder",
-      "title": "Title",
+      "title": "Categories",
       "noCategoriesHint": "No Categories Hint",
       "deleteConfirm": "Delete Confirm"
     },
@@ -2136,13 +2138,19 @@
       "deactivateSuccess": "Deactivate Success",
       "duplicateError": "Duplicate Error",
       "syncSuccess": "Sync Success",
-      "title": "Title",
-      "noVersionsHint": "No Versions Hint",
-      "editLabel": "Edit Label",
-      "deactivateConfirm": "Deactivate Confirm",
+      "title": "Versions",
+      "noVersionsHint": "Create a version to start adding documents.",
+      "editLabel": "Edit Version",
+      "deactivateConfirm": "Are you sure you want to deactivate this version?",
       "deactivate": "Deactivate",
-      "deleteConfirm": "Delete Confirm",
-      "updateSuccess": "Update Success"
+      "deleteConfirm": "Are you sure you want to delete this version?",
+      "updateSuccess": "Version updated successfully",
+      "status": {
+        "active": "Active",
+        "synced": "Synced",
+        "archived": "Archived",
+        "draft": "Draft"
+      }
     },
     "sync": {
       "connection": "Connection",
@@ -2901,6 +2909,17 @@
     "parserConfig": "Parser Config",
     "uploadFiles": "Upload Files",
     "versionCount": "{{count}} version(s)",
-    "categoryCount": "{{count}} category(ies)"
+    "categoryCount": "{{count}} category(ies)",
+    "createCodeCategory": "Create Code Category",
+    "editCodeCategory": "Edit Code Category",
+    "codeCategoryPlaceholder": "e.g. Backend API, Frontend App",
+    "codeCategoryNameRequired": "Category name is required",
+    "codeGraphTitle": "Code Graph",
+    "codeGraphNodes": "nodes",
+    "codeGraphEmpty": "No code graph data available. Upload and parse code files to generate the graph.",
+    "codeGraphDescription": "Code files will be parsed using Tree-sitter AST to extract functions, classes, methods, and their call relationships. The graph is stored in Memgraph and can be explored visually.",
+    "viewFullGraph": "View Full Graph",
+    "selectCategoryForVersions": "Select a category to see versions",
+    "selectVersionForDocs": "Select a version to see documents"
   }
 }

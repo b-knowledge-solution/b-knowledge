@@ -9,6 +9,7 @@ import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/se
 import { teamService } from '@/modules/teams/services/team.service.js'
 import { Project, ProjectPermission, ProjectDataset, UserContext } from '@/shared/models/types.js'
 import { projectCategoryService } from './project-category.service.js'
+import { config } from '@/shared/config/index.js'
 
 /**
  * @description Core project service handling CRUD operations, auto-dataset creation on project setup,
@@ -77,17 +78,19 @@ export class ProjectsService {
    */
   async createProject(data: any, user: UserContext, tenantId?: string): Promise<Project> {
     try {
-      // Check for duplicate project name
-      const existingProject = await ModelFactory.project.getKnex()
+      // Check for duplicate project name within the same tenant
+      const query = ModelFactory.project.getKnex()
         .where('name', data.name)
         .whereNot('status', 'deleted')
-        .first()
+      // Scope duplicate check to tenant if provided
+      if (tenantId) query.andWhere('tenant_id', tenantId)
+      const existingProject = await query.first()
 
       if (existingProject) {
         throw new Error('Project with this name already exists')
       }
 
-      // Create the project record (no dataset created here — datasets are tied to versions)
+      // Create the project record with tenant_id for multi-tenant isolation
       const project = await ModelFactory.project.create({
         name: data.name,
         description: data.description || null,
@@ -97,6 +100,7 @@ export class ProjectsService {
         default_parser_config: JSON.stringify(data.default_parser_config || {}),
         status: 'active',
         is_private: data.is_private ?? false,
+        tenant_id: tenantId || config.opensearch.systemTenantId,
         created_by: user.id,
         updated_by: user.id,
       })

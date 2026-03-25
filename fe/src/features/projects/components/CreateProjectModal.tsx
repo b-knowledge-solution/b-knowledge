@@ -1,12 +1,10 @@
 /**
- * @fileoverview Single-step create project modal (D-01 refactor).
+ * @fileoverview Single-step create project modal.
  *
- * Projects are now type-agnostic containers. The category picker
- * (office/datasync/source_code) has been removed since categories
- * are now per-category with their own category_type field.
+ * Projects are type-agnostic containers. Categories and versions
+ * are managed on the project detail page, not during creation.
  *
- * Form fields: name (required), description, visibility toggle,
- * first version label, parser defaults.
+ * Form fields: name (required), description, visibility toggle.
  *
  * Uses native useState instead of form libraries.
  *
@@ -40,24 +38,22 @@ interface CreateProjectModalProps {
   open: boolean
   /** Whether the form is saving */
   saving: boolean
-  /** Submit handler with project creation payload (no category field) */
+  /** Submit handler with project creation payload */
   onSubmit: (data: Parameters<typeof createProject>[0]) => void
   /** Cancel handler */
   onCancel: () => void
 }
 
-/** Form data shape */
+/** Form data shape — name, description, and visibility only */
 interface ProjectFormData {
   name: string
   description: string
-  firstVersionLabel: string
   isPrivate: boolean
 }
 
 const INITIAL_FORM: ProjectFormData = {
   name: '',
   description: '',
-  firstVersionLabel: 'v1',
   isPrivate: false,
 }
 
@@ -67,7 +63,8 @@ const INITIAL_FORM: ProjectFormData = {
 
 /**
  * @description Single-step modal for creating a new project.
- * Projects are type-agnostic containers; no category selection step.
+ * Projects are type-agnostic containers — categories and versions
+ * are created on the project detail page after project creation.
  *
  * @param {CreateProjectModalProps} props - Component props
  * @returns {JSX.Element} React element
@@ -81,11 +78,6 @@ const CreateProjectModal = ({
   const { t } = useTranslation()
   const [formData, setFormData] = useState<ProjectFormData>(INITIAL_FORM)
   const [nameError, setNameError] = useState('')
-
-  /** Auto-generated dataset name preview */
-  const datasetPreview = formData.name && formData.firstVersionLabel
-    ? `${formData.name}_${formData.firstVersionLabel}`
-    : ''
 
   /**
    * @description Update a form field value.
@@ -107,11 +99,10 @@ const CreateProjectModal = ({
     }
     setNameError('')
 
-    // Build payload without category field
+    // Build payload — no first_version_label since versions are managed on detail page
     onSubmit({
       name: formData.name,
       ...(formData.description ? { description: formData.description } : {}),
-      ...(formData.firstVersionLabel ? { first_version_label: formData.firstVersionLabel } : {}),
       is_private: formData.isPrivate,
     })
   }
@@ -127,7 +118,7 @@ const CreateProjectModal = ({
 
   return (
     <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) handleCancel() }}>
-      <DialogContent className="max-w-[560px]">
+      <DialogContent className="max-w-[480px]">
         <DialogHeader>
           <DialogTitle>{t('projectManagement.createProject')}</DialogTitle>
         </DialogHeader>
@@ -163,21 +154,6 @@ const CreateProjectModal = ({
             />
           </div>
 
-          {/* First version label */}
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              {t('projectManagement.firstVersionLabel')}
-            </label>
-            <Input
-              placeholder={t('projectManagement.firstVersionPlaceholder', 'e.g. v1')}
-              value={formData.firstVersionLabel}
-              onChange={(e) => updateField('firstVersionLabel', e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              {t('projectManagement.firstVersionHint')}
-            </p>
-          </div>
-
           <Separator className="my-2" />
 
           {/* Visibility toggle */}
@@ -195,14 +171,6 @@ const CreateProjectModal = ({
               checked={formData.isPrivate}
               onCheckedChange={(checked: boolean) => updateField('isPrivate', checked)}
             />
-          </div>
-
-          {/* Auto-dataset name preview */}
-          <div className="text-sm text-muted-foreground">
-            <span className="font-medium">{t('projectManagement.autoDataset')}:</span>{' '}
-            <code className="bg-muted px-2 py-0.5 rounded text-xs">
-              {datasetPreview || '\u2014'}
-            </code>
           </div>
         </div>
 

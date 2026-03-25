@@ -44,7 +44,7 @@ export class ChatConversationController {
 
       // Create conversation in local DB
       const session = await chatConversationService.createConversation(dialog_id, name, userId)
-      res.status(201).json(session)
+      res.status(201).json({ ...session, name: session.title })
     } catch (error) {
       log.error('Error creating conversation', { error: (error as Error).message })
       res.status(500).json({ error: (error as Error).message })
@@ -71,7 +71,7 @@ export class ChatConversationController {
         res.status(404).json({ error: 'Conversation not found' })
         return
       }
-      res.json(result)
+      res.json({ ...result, name: result.title })
     } catch (error) {
       log.error('Error getting conversation', { error: (error as Error).message })
       res.status(500).json({ error: 'Internal server error' })
@@ -99,7 +99,7 @@ export class ChatConversationController {
 
       // List conversations from local DB filtered by user
       const result = await chatConversationService.listConversations(dialogId, userId)
-      res.json(result)
+      res.json(result.map((session: any) => ({ ...session, name: session.title })))
     } catch (error) {
       log.error('Error listing conversations', { error: (error as Error).message })
       res.status(500).json({ error: 'Internal server error' })
@@ -157,7 +157,7 @@ export class ChatConversationController {
         res.status(404).json({ error: 'Conversation not found' })
         return
       }
-      res.json(updated)
+      res.json({ ...updated, name: updated.title })
     } catch (error) {
       log.error('Error renaming conversation', { error: (error as Error).message })
       res.status(500).json({ error: 'Internal server error' })

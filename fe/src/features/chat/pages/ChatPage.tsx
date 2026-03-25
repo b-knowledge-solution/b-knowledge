@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'react'
 import { useTranslation, getI18n } from 'react-i18next'
-import { ChevronDown, Menu } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
 import ChatSidebar from '../components/ChatSidebar'
@@ -17,6 +17,7 @@ import ChatFileUpload from '../components/ChatFileUpload'
 import ChatReferencePanel from '../components/ChatReferencePanel'
 import CitationDocDrawer from '../components/CitationDocDrawer'
 import DeepResearchProgress from '../components/DeepResearchProgress'
+import AssistantSelectorPopover from '../components/AssistantSelectorPopover'
 import { useChatAssistants } from '../api/chatQueries'
 import { useChatConversations, useRenameConversation } from '../api/chatQueries'
 import { useChatStream } from '../hooks/useChatStream'
@@ -304,27 +305,6 @@ function DatasetChatPage() {
                 {conversations.activeConversation?.name || t('chat.newConversation')}
               </h2>
             </div>
-            {/* Assistant selector dropdown */}
-            <div className="relative shrink-0">
-              <select
-                id="chat-assistant-selector"
-                value={assistants.activeAssistant?.id ?? ''}
-                onChange={(e) => {
-                  // Switch active assistant and reset conversation
-                  assistants.setActiveAssistantId(e.target.value)
-                  conversations.setActiveConversationId(null)
-                }}
-                className="appearance-none h-8 pl-3 pr-7 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors cursor-pointer max-w-[200px] truncate"
-                title={t('chat.selectAssistant')}
-              >
-                {assistants.assistants.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-            </div>
           </div>
 
           {/* Message list */}
@@ -386,7 +366,7 @@ function DatasetChatPage() {
             onRemove={chatFiles.removeFile}
           />
 
-          {/* Chat input with reasoning and internet search toggles */}
+          {/* Chat input with assistant selector and toggles */}
           <ChatInput
             onSend={handleSendMessage}
             onStop={stream.stopStream}
@@ -397,6 +377,16 @@ function DatasetChatPage() {
             showFileUpload={true}
             onFilesSelected={(files) => chatFiles.uploadFiles(files)}
             fileIds={chatFiles.fileIds}
+            leftSlot={
+              <AssistantSelectorPopover
+                assistants={assistants.assistants}
+                activeAssistantId={assistants.activeAssistant?.id ?? null}
+                onSelect={(id) => {
+                  assistants.setActiveAssistantId(id)
+                  conversations.setActiveConversationId(null)
+                }}
+              />
+            }
           />
         </div>
 

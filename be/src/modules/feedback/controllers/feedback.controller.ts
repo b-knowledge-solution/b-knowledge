@@ -4,6 +4,7 @@
  * @module controllers/feedback
  */
 import { Request, Response } from 'express'
+import { config } from '@/shared/config/index.js'
 import { log } from '@/shared/services/logger.service.js'
 import { feedbackService } from '../services/feedback.service.js'
 
@@ -29,7 +30,7 @@ export class FeedbackController {
       }
 
       // Extract tenant_id from user context (defaults to system tenant)
-      const tenantId = (req.user as any)?.tenant_id || 'default'
+      const tenantId = (req.user as any)?.tenant_id || config.opensearch.systemTenantId
 
       const { source, source_id, message_id, thumbup, comment, query, answer, chunks_used, trace_id } = req.body
 

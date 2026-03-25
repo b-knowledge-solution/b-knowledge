@@ -1311,6 +1311,8 @@
     "deepResearchSubquery": "調査中: {{query}}",
     "deepResearchBudgetWarning": "予算上限に接近中（{{tokensUsed}}/{{tokensMax}}トークン）",
     "deepResearchBudgetExhausted": "予算により研究が制限されました。{{completed}} / {{total}} のサブクエリが完了しました。",
+    "noDescription": "説明なし",
+    "knowledgeBasesCount": "{{count}} KB",
     "deepResearch": {
       "title": "ディープリサーチ",
       "researching": "調査中: {{query}}",
@@ -2001,7 +2003,7 @@
       "edit": "Edit",
       "add": "Add",
       "namePlaceholder": "Name Placeholder",
-      "title": "Title",
+      "title": "カテゴリ",
       "noCategoriesHint": "No Categories Hint",
       "deleteConfirm": "Delete Confirm"
     },
@@ -2101,13 +2103,19 @@
       "deactivateSuccess": "Deactivate Success",
       "duplicateError": "Duplicate Error",
       "syncSuccess": "Sync Success",
-      "title": "Title",
-      "noVersionsHint": "No Versions Hint",
-      "editLabel": "Edit Label",
-      "deactivateConfirm": "Deactivate Confirm",
-      "deactivate": "Deactivate",
-      "deleteConfirm": "Delete Confirm",
-      "updateSuccess": "Update Success"
+      "title": "バージョン",
+      "noVersionsHint": "ドキュメントを追加するバージョンを作成してください。",
+      "editLabel": "バージョンを編集",
+      "deactivateConfirm": "このバージョンを無効にしてもよろしいですか？",
+      "deactivate": "無効化",
+      "deleteConfirm": "このバージョンを削除してもよろしいですか？",
+      "updateSuccess": "バージョンが正常に更新されました",
+      "status": {
+        "active": "アクティブ",
+        "synced": "同期済み",
+        "archived": "アーカイブ済み",
+        "draft": "下書き"
+      }
     },
     "sync": {
       "connection": "接続",
@@ -2633,6 +2641,17 @@
     "parserConfig": "パーサー設定",
     "uploadFiles": "ファイルアップロード",
     "versionCount": "{{count}} バージョン",
-    "categoryCount": "{{count}} カテゴリ"
+    "categoryCount": "{{count}} カテゴリ",
+    "createCodeCategory": "コードカテゴリを作成",
+    "editCodeCategory": "コードカテゴリを編集",
+    "codeCategoryPlaceholder": "例: Backend API, Frontend App",
+    "codeCategoryNameRequired": "カテゴリ名は必須です",
+    "codeGraphTitle": "コードグラフ",
+    "codeGraphNodes": "ノード",
+    "codeGraphEmpty": "コードグラフデータがありません。コードファイルをアップロードして解析するとグラフが生成されます。",
+    "codeGraphDescription": "コードファイルはTree-sitter ASTで解析され、関数、クラス、メソッド、呼び出し関係が抽出されます。グラフはMemgraphに保存され、視覚的に探索できます。",
+    "viewFullGraph": "フルグラフを表示",
+    "selectCategoryForVersions": "カテゴリを選択してバージョンを表示",
+    "selectVersionForDocs": "バージョンを選択してドキュメントを表示"
   }
 }

@@ -84,7 +84,8 @@ export class ProjectsController {
       const user = getUserContext(req)
       // Guard: require authentication for project creation
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
-      const project = await projectsService.createProject(req.body, user)
+      const tenantId = getTenantId(req) || ''
+      const project = await projectsService.createProject(req.body, user, tenantId)
       res.status(201).json(project)
     } catch (error: any) {
       log.error('Failed to create project', { error: String(error) })

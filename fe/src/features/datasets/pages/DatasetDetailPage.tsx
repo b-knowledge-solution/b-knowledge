@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useNavigateWithLoader, usePageReady } from '@/components/NavigationLoader';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Upload, RefreshCw, Shield, Settings, Database, BarChart3, Network, Tags, Globe, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -38,13 +39,16 @@ import type { Dataset, Document } from '../types';
 const DatasetDetailPage: React.FC = () => {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const navigate = useNavigateWithLoader();
   const { user } = useAuth();
   // Grant admin privileges to admin and leader roles for write operations
   const isAdmin = user?.role === 'admin' || user?.role === 'leader';
 
   const [dataset, setDataset] = useState<Dataset | null>(null);
   const [loadingDataset, setLoadingDataset] = useState(true);
+
+  // Signal navigation overlay to dismiss when dataset data is loaded
+  usePageReady(!loadingDataset);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
   // State for access control dialog

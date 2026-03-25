@@ -13,7 +13,8 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
+import { useNavigateWithLoader, usePageReady } from '@/components/NavigationLoader'
 import {
   ArrowLeft,
   FolderOpen,
@@ -35,18 +36,10 @@ import {
   type DocumentCategory,
   type DocumentCategoryType,
 } from '../api/projectApi'
-import DocumentsTab from '../components/DocumentsTab'
-import CategorySidebar from '../components/CategorySidebar'
+import DocumentsTabRedesigned from '../components/DocumentsTabRedesigned'
+import StandardTabRedesigned from '../components/StandardTabRedesigned'
+import CodeTabRedesigned from '../components/CodeTabRedesigned'
 import ProjectSettingsSheet from '../components/ProjectSettingsSheet'
-import CategoryModal from '../components/CategoryModal'
-import StandardCategoryView from '../components/StandardCategoryView'
-import CodeCategoryView from '../components/CodeCategoryView'
-import {
-  createDocumentCategory,
-  updateDocumentCategory,
-  deleteDocumentCategory,
-} from '../api/projectApi'
-import { useConfirm } from '@/components/ConfirmDialog'
 
 // ============================================================================
 // Component
@@ -60,28 +53,24 @@ import { useConfirm } from '@/components/ConfirmDialog'
 const ProjectDetailPage = () => {
   const { t } = useTranslation()
   const { projectId } = useParams<{ projectId: string }>()
-  const navigate = useNavigate()
-  const confirm = useConfirm()
+  const navigate = useNavigateWithLoader()
 
-  // URL state for tab and category selection
+  // URL state for tab selection
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = (searchParams.get('tab') || 'documents') as DocumentCategoryType
-  const activeCategoryId = searchParams.get('category') || null
 
   // Project data
   const [project, setProject] = useState<Project | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Signal navigation overlay to dismiss when data is loaded
+  usePageReady(!loading)
 
   // All categories fetched once, filtered client-side per tab
   const [allCategories, setAllCategories] = useState<DocumentCategory[]>([])
 
   // Settings sheet state
   const [settingsOpen, setSettingsOpen] = useState(false)
-
-  // Category modal state (shared across all tabs)
-  const [categoryModalOpen, setCategoryModalOpen] = useState(false)
-  const [editingCategory, setEditingCategory] = useState<DocumentCategory | null>(null)
-  const [categorySaving, setCategorySaving] = useState(false)
 
   // Derive filtered categories per tab type
   const documentCategories = allCategories.filter(c => c.category_type === 'documents')
@@ -115,109 +104,11 @@ const ProjectDetailPage = () => {
   }, [projectId])
 
   /**
-   * @description Handle tab change — update URL and clear category selection
+   * @description Handle tab change — update URL
    * @param {string} tab - New tab value
    */
   const handleTabChange = (tab: string) => {
-    // Clear category when switching tabs to avoid stale selection
     setSearchParams({ tab })
-  }
-
-  /**
-   * @description Handle category selection — update URL with both tab and category
-   * @param {string} categoryId - Selected category ID
-   */
-  const handleSelectCategory = (categoryId: string) => {
-    setSearchParams({ tab: activeTab, category: categoryId })
-  }
-
-  /**
-   * @description Open the create category modal for the current tab type
-   */
-  const handleCreateCategoryClick = () => {
-    setEditingCategory(null)
-    setCategoryModalOpen(true)
-  }
-
-  /**
-   * @description Open the edit category modal
-   * @param {DocumentCategory} cat - Category to edit
-   */
-  const handleEditCategory = (cat: DocumentCategory) => {
-    setEditingCategory(cat)
-    setCategoryModalOpen(true)
-  }
-
-  /**
-   * @description Delete a category after confirmation
-   * @param {string} categoryId - Category ID to delete
-   */
-  const handleDeleteCategory = async (categoryId: string) => {
-    if (!projectId) return
-
-    // Prompt confirmation before deletion
-    const confirmed = await confirm({
-      title: t('common.delete'),
-      message: t('projects.deleteCategoryConfirm', 'This will delete the category and its dataset. This action cannot be undone.'),
-      variant: 'danger',
-      confirmText: t('common.delete'),
-    })
-    if (!confirmed) return
-
-    try {
-      await deleteDocumentCategory(projectId, categoryId)
-      const catData = await getDocumentCategories(projectId)
-      setAllCategories(catData)
-
-      // Clear URL category param if the deleted category was active
-      if (activeCategoryId === categoryId) {
-        setSearchParams({ tab: activeTab })
-      }
-    } catch (err) {
-      globalMessage.error(String(err))
-    }
-  }
-
-  /**
-   * @description Submit category modal form (create or update)
-   * @param {object} data - Form data from CategoryModal
-   */
-  const handleCategoryModalOk = async (data: { name: string; dataset_config: Record<string, any> }) => {
-    if (!projectId) return
-
-    setCategorySaving(true)
-    try {
-      if (editingCategory) {
-        // Update existing category
-        await updateDocumentCategory(projectId, editingCategory.id, data)
-      } else {
-        // Create new category with the active tab's category_type
-        await createDocumentCategory(projectId, {
-          ...data,
-          category_type: activeTab,
-        })
-      }
-      setCategoryModalOpen(false)
-      setEditingCategory(null)
-
-      // Refresh categories
-      const catData = await getDocumentCategories(projectId)
-      setAllCategories(catData)
-    } catch (err) {
-      globalMessage.error(String(err))
-    } finally {
-      setCategorySaving(false)
-    }
-  }
-
-  /**
-   * @description Get the selected category for a given category list
-   * @param {DocumentCategory[]} categories - Filtered category list
-   * @returns {DocumentCategory | undefined} Selected category or undefined
-   */
-  const getSelectedCategory = (categories: DocumentCategory[]) => {
-    if (!activeCategoryId) return undefined
-    return categories.find(c => c.id === activeCategoryId)
   }
 
   // ── Loading state ────────────────────────────────────────────────────
@@ -242,9 +133,9 @@ const ProjectDetailPage = () => {
 
   return (
     <div className="w-full h-full flex flex-col overflow-hidden">
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 flex flex-col overflow-hidden px-6 pt-6">
         {/* Back + title + status + settings gear */}
-        <div className="mb-6">
+        <div className="mb-6 shrink-0">
           <Button
             variant="ghost"
             onClick={() => navigate('/data-studio/projects')}
@@ -278,7 +169,7 @@ const ProjectDetailPage = () => {
         </div>
 
         {/* 3 fixed category tabs per UI-SPEC */}
-        <Tabs value={activeTab} onValueChange={handleTabChange}>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col min-h-0">
           <TabsList>
             <TabsTrigger value="documents">
               <FolderOpen className="h-4 w-4 mr-1.5" />
@@ -303,80 +194,31 @@ const ProjectDetailPage = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Documents tab: CategorySidebar + existing DocumentsTab (versioned) */}
-          <TabsContent value="documents">
-            <div className="flex" style={{ minHeight: 400 }}>
-              <CategorySidebar
-                categories={documentCategories}
-                activeCategoryId={activeCategoryId}
-                onSelectCategory={handleSelectCategory}
-                onCreateCategory={handleCreateCategoryClick}
-                onEditCategory={handleEditCategory}
-                onDeleteCategory={handleDeleteCategory}
-                categoryType="documents"
-              />
-              <div className="flex-1 min-w-0">
-                <DocumentsTab
-                  projectId={projectId!}
-                  initialCategories={documentCategories}
-                  embeddingModels={[]}
-                />
-              </div>
-            </div>
+          {/* Documents tab: 3-column progressive-reveal layout */}
+          <TabsContent value="documents" className="flex-1 flex flex-col min-h-0 mt-0 data-[state=inactive]:hidden">
+            <DocumentsTabRedesigned
+              projectId={projectId!}
+              initialCategories={documentCategories}
+              embeddingModels={[]}
+            />
           </TabsContent>
 
-          {/* Standard tab: CategorySidebar + StandardCategoryView */}
-          <TabsContent value="standard">
-            <div className="flex" style={{ minHeight: 400 }}>
-              <CategorySidebar
-                categories={standardCategories}
-                activeCategoryId={activeCategoryId}
-                onSelectCategory={handleSelectCategory}
-                onCreateCategory={handleCreateCategoryClick}
-                onEditCategory={handleEditCategory}
-                onDeleteCategory={handleDeleteCategory}
-                categoryType="standard"
-              />
-              <div className="flex-1 min-w-0">
-                {getSelectedCategory(standardCategories) ? (
-                  <StandardCategoryView
-                    projectId={projectId!}
-                    category={getSelectedCategory(standardCategories)!}
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    {t('projects.selectCategory', 'Select a category to view its contents')}
-                  </div>
-                )}
-              </div>
-            </div>
+          {/* Standard tab: 2-column layout matching Documents pattern */}
+          <TabsContent value="standard" className="flex-1 flex flex-col min-h-0 mt-0 data-[state=inactive]:hidden">
+            <StandardTabRedesigned
+              projectId={projectId!}
+              initialCategories={standardCategories}
+              embeddingModels={[]}
+            />
           </TabsContent>
 
-          {/* Code tab: CategorySidebar + CodeCategoryView */}
-          <TabsContent value="code">
-            <div className="flex" style={{ minHeight: 400 }}>
-              <CategorySidebar
-                categories={codeCategories}
-                activeCategoryId={activeCategoryId}
-                onSelectCategory={handleSelectCategory}
-                onCreateCategory={handleCreateCategoryClick}
-                onEditCategory={handleEditCategory}
-                onDeleteCategory={handleDeleteCategory}
-                categoryType="code"
-              />
-              <div className="flex-1 min-w-0">
-                {getSelectedCategory(codeCategories) ? (
-                  <CodeCategoryView
-                    projectId={projectId!}
-                    category={getSelectedCategory(codeCategories)!}
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    {t('projects.selectCategory', 'Select a category to view its contents')}
-                  </div>
-                )}
-              </div>
-            </div>
+          {/* Code tab: 2-column layout with code graph panel */}
+          <TabsContent value="code" className="flex-1 flex flex-col min-h-0 mt-0 data-[state=inactive]:hidden">
+            <CodeTabRedesigned
+              projectId={projectId!}
+              initialCategories={codeCategories}
+              embeddingModels={[]}
+            />
           </TabsContent>
         </Tabs>
       </div>
@@ -390,16 +232,6 @@ const ProjectDetailPage = () => {
         onProjectDeleted={() => navigate('/data-studio/projects')}
       />
 
-      {/* Category create/edit modal — auto-sets category_type from active tab */}
-      <CategoryModal
-        open={categoryModalOpen}
-        saving={categorySaving}
-        editMode={!!editingCategory}
-        initialData={editingCategory ? { name: editingCategory.name, dataset_config: editingCategory.dataset_config as Record<string, any> } : null}
-        onOk={handleCategoryModalOk}
-        onCancel={() => { setCategoryModalOpen(false); setEditingCategory(null) }}
-        categoryType={activeTab}
-      />
     </div>
   )
 }

@@ -30,7 +30,7 @@ export default function ApiKeysDialog() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [createdKey, setCreatedKey] = useState<string | null>(null)
 
-  const { data: keys = [], isLoading } = useApiKeys()
+  const { data: keys = [], isLoading } = useApiKeys({ enabled: isApiKeysOpen })
   const createMutation = useCreateApiKey()
   const updateMutation = useUpdateApiKey()
   const deleteMutation = useDeleteApiKey()

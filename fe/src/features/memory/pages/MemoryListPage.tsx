@@ -16,7 +16,7 @@
  */
 
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigateWithLoader } from '@/components/NavigationLoader'
 import { useTranslation } from 'react-i18next'
 import { Plus, Brain } from 'lucide-react'
 
@@ -129,7 +129,7 @@ const MEMORY_TYPE_OPTIONS = [
  */
 export default function MemoryListPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
+  const navigate = useNavigateWithLoader()
 
   // Data fetching
   const { data: memories, isLoading } = useMemories()

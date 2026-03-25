@@ -1109,6 +1109,11 @@ export async function up(knex: Knex): Promise<void> {
     table.text('project_id').notNullable()
     table.text('name').notNullable()
     table.text('description')
+    // Type discriminator: documents (versioned), standard (single dataset), code (code parser)
+    // Default 'documents' ensures existing rows are backward-compatible
+    table.text('category_type').notNullable().defaultTo('documents')
+    // Direct dataset reference for standard/code categories (not versioned)
+    table.text('dataset_id').nullable()
     // Display ordering within the project
     table.integer('sort_order').defaultTo(0)
     // Optional dataset configuration overrides (JSON)
@@ -1119,7 +1124,9 @@ export async function up(knex: Knex): Promise<void> {
     table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
 
     table.foreign('project_id').references('projects.id').onDelete('CASCADE')
+    table.foreign('dataset_id').references('datasets.id').onDelete('SET NULL')
     table.index('project_id')
+    table.index('category_type')
     table.index('sort_order')
   })
 
@@ -1262,6 +1269,8 @@ export async function up(knex: Knex): Promise<void> {
     table.text('dataset_id').notNullable()
     // Role within the project: 'primary' | 'secondary'
     table.text('role').notNullable().defaultTo('primary')
+    // Track whether the dataset link was auto-created during category/version creation
+    table.boolean('auto_created').notNullable().defaultTo(false)
     table.text('created_by')
     table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now())
 

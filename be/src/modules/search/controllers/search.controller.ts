@@ -7,6 +7,7 @@
  */
 
 import { Request, Response } from 'express'
+import { config } from '@/shared/config/index.js'
 import { log } from '@/shared/services/logger.service.js'
 import { searchService } from '../services/search.service.js'
 import { feedbackService } from '@/modules/feedback/services/feedback.service.js'
@@ -360,7 +361,7 @@ export class SearchController {
       const { thumbup, comment, query, answer, chunks_used, trace_id } = req.body
 
       // Extract tenant_id from user context (defaults to system tenant)
-      const tenantId = (req.user as any)?.tenant_id || 'default'
+      const tenantId = (req.user as any)?.tenant_id || config.opensearch.systemTenantId
 
       // Create feedback with source='search' and the search app ID
       const feedback = await feedbackService.createFeedback({

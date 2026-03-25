@@ -1325,6 +1325,8 @@
     "deepResearchSubquery": "Đang nghiên cứu: {{query}}",
     "deepResearchBudgetWarning": "Gần đạt giới hạn ngân sách ({{tokensUsed}}/{{tokensMax}} token)",
     "deepResearchBudgetExhausted": "Nghiên cứu bị giới hạn bởi ngân sách. {{completed}} / {{total}} truy vấn con hoàn thành.",
+    "noDescription": "Không có mô tả",
+    "knowledgeBasesCount": "{{count}} CSDL",
     "deepResearch": {
       "title": "Nghiên cứu sâu",
       "researching": "Đang nghiên cứu: {{query}}",
@@ -2015,7 +2017,7 @@
       "edit": "Edit",
       "add": "Add",
       "namePlaceholder": "Name Placeholder",
-      "title": "Title",
+      "title": "Danh mục",
       "noCategoriesHint": "No Categories Hint",
       "deleteConfirm": "Delete Confirm"
     },
@@ -2120,13 +2122,19 @@
       "deactivateSuccess": "Deactivate Success",
       "duplicateError": "Duplicate Error",
       "syncSuccess": "Sync Success",
-      "title": "Title",
-      "noVersionsHint": "No Versions Hint",
-      "editLabel": "Edit Label",
-      "deactivateConfirm": "Deactivate Confirm",
-      "deactivate": "Deactivate",
-      "deleteConfirm": "Delete Confirm",
-      "updateSuccess": "Update Success"
+      "title": "Phiên bản",
+      "noVersionsHint": "Tạo phiên bản để bắt đầu thêm tài liệu.",
+      "editLabel": "Chỉnh sửa phiên bản",
+      "deactivateConfirm": "Bạn có chắc chắn muốn vô hiệu hóa phiên bản này?",
+      "deactivate": "Vô hiệu hóa",
+      "deleteConfirm": "Bạn có chắc chắn muốn xóa phiên bản này?",
+      "updateSuccess": "Cập nhật phiên bản thành công",
+      "status": {
+        "active": "Đang hoạt động",
+        "synced": "Đã đồng bộ",
+        "archived": "Đã lưu trữ",
+        "draft": "Bản nháp"
+      }
     },
     "sync": {
       "connection": "Kết nối",
@@ -2647,6 +2655,17 @@
     "parserConfig": "Cấu hình phân tích",
     "uploadFiles": "Tải lên tệp",
     "versionCount": "{{count}} phiên bản",
-    "categoryCount": "{{count}} danh mục"
+    "categoryCount": "{{count}} danh mục",
+    "createCodeCategory": "Tạo danh mục mã nguồn",
+    "editCodeCategory": "Chỉnh sửa danh mục mã nguồn",
+    "codeCategoryPlaceholder": "VD: Backend API, Frontend App",
+    "codeCategoryNameRequired": "Tên danh mục là bắt buộc",
+    "codeGraphTitle": "Đồ thị mã nguồn",
+    "codeGraphNodes": "nút",
+    "codeGraphEmpty": "Chưa có dữ liệu đồ thị. Tải lên và phân tích tệp mã nguồn để tạo đồ thị.",
+    "codeGraphDescription": "Tệp mã nguồn sẽ được phân tích bằng Tree-sitter AST để trích xuất hàm, lớp, phương thức và mối quan hệ gọi hàm. Đồ thị được lưu trong Memgraph và có thể khám phá trực quan.",
+    "viewFullGraph": "Xem đồ thị đầy đủ",
+    "selectCategoryForVersions": "Chọn danh mục để xem phiên bản",
+    "selectVersionForDocs": "Chọn phiên bản để xem tài liệu"
   }
 }

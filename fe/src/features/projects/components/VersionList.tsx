@@ -101,6 +101,7 @@ const VersionList = ({
     try {
       await createCategoryVersion(projectId, categoryId, {
         version_label: formData.version_label,
+        language: formData.language,
         pagerank: formData.pagerank,
         pipeline_id: formData.pipeline_id,
         parse_type: formData.parse_type,

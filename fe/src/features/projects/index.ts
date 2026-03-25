@@ -70,5 +70,8 @@ export { default as CategorySidebar } from "./components/CategorySidebar";
 export { default as ProjectSettingsSheet } from "./components/ProjectSettingsSheet";
 export { default as StandardCategoryView } from "./components/StandardCategoryView";
 export { default as CodeCategoryView } from "./components/CodeCategoryView";
+export { default as StandardTabRedesigned } from "./components/StandardTabRedesigned";
+export { default as CodeTabRedesigned } from "./components/CodeTabRedesigned";
+export { default as CodeCategoryModal } from "./components/CodeCategoryModal";
 export { default as VersionList } from "./components/VersionList";
 export { default as VersionCard } from "./components/VersionCard";

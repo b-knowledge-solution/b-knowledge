@@ -3,6 +3,7 @@
  * @module services/project-category
  */
 import { ModelFactory } from '@/shared/models/factory.js'
+import { config } from '@/shared/config/index.js'
 import { log } from '@/shared/services/logger.service.js'
 import { DocumentCategory, DocumentCategoryVersion, DocumentCategoryVersionFile, UserContext } from '@/shared/models/types.js'
 
@@ -68,6 +69,7 @@ export class ProjectCategoryService {
 
         // Code categories force parser_id='code'; standard uses project default or 'naive'
         const parserId = categoryType === 'code' ? 'code' : (project.default_chunk_method || 'naive')
+        const tenantId = project.tenant_id || config.opensearch.systemTenantId
 
         // Create a dataset named <projectname>_<categoryname>
         const dataset = await ModelFactory.dataset.create({
@@ -76,9 +78,10 @@ export class ProjectCategoryService {
           language: 'English',
           embedding_model: project.default_embedding_model || null,
           parser_id: parserId,
-          parser_config: JSON.stringify({}),
+          parser_config: JSON.stringify(data.dataset_config?.parser_config || {}),
           access_control: JSON.stringify({ public: !project.is_private }),
           status: 'active',
+          tenant_id: tenantId,
           created_by: user.id,
           updated_by: user.id,
         })
@@ -199,15 +202,24 @@ export class ProjectCategoryService {
     // Auto-create a dataset for this version
     let datasetId: string | null = null
     try {
+      // Use version-level overrides if provided, otherwise fall back to project defaults
+      const language = data.language || 'English'
+      const parserId = data.chunk_method || project.default_chunk_method || 'naive'
+      const parserConfig = data.parser_config ? JSON.stringify(data.parser_config) : JSON.stringify({})
+      const tenantId = project.tenant_id || config.opensearch.systemTenantId
+
       const dataset = await ModelFactory.dataset.create({
         name: datasetName,
         description: `Auto-created dataset for project "${project.name}", version "${data.version_label}"`,
-        language: 'English',
+        language,
         embedding_model: project.default_embedding_model || null,
-        parser_id: project.default_chunk_method || 'naive',
-        parser_config: JSON.stringify({}),
+        parser_id: parserId,
+        parser_config: parserConfig,
+        pagerank: data.pagerank ?? 0,
+        pipeline_id: data.pipeline_id || null,
         access_control: JSON.stringify({ public: !project.is_private }),
         status: 'active',
+        tenant_id: tenantId,
         created_by: user.id,
         updated_by: user.id,
       })
@@ -221,7 +233,7 @@ export class ProjectCategoryService {
       })
     } catch (dsError) {
       // Non-blocking: version is still created even if dataset creation fails
-      log.warn('Failed to auto-create dataset for version', {
+      log.error('Failed to auto-create dataset for version', {
         error: String(dsError), categoryId, versionLabel: data.version_label,
       })
     }

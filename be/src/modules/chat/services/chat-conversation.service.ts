@@ -19,6 +19,7 @@
  * @module services/chat-conversation
  */
 
+import { config } from '@/shared/config/index.js'
 import { ModelFactory } from '@/shared/models/factory.js'
 import { llmClientService, LlmMessage } from '@/shared/services/llm-client.service.js'
 import { ragSearchService } from '@/modules/rag/services/rag-search.service.js'
@@ -696,7 +697,7 @@ export class ChatConversationService {
         answer: message.content || '',
         chunks_used: null,
         trace_id: null,
-        tenant_id: 'default',
+        tenant_id: config.opensearch.systemTenantId,
       })
     } catch (err) {
       // Non-critical: log but don't fail the primary feedback write
