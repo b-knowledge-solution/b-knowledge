@@ -89,6 +89,9 @@ const AgentCanvasPage = lazy(() => import('@/features/agents/pages/AgentCanvasPa
 const MemoryListPage = lazy(() => import('@/features/memory/pages/MemoryListPage'));
 const MemoryDetailPage = lazy(() => import('@/features/memory/pages/MemoryDetailPage'));
 const CodeGraphPage = lazy(() => import('@/features/code-graph/pages/CodeGraphPage'));
+const SearchSharePage = lazy(() =>
+  import('@/features/search/pages/SearchSharePage').then(m => ({ default: m.SearchSharePage }))
+);
 
 // ============================================================================
 // Loading Component
@@ -213,6 +216,9 @@ function App() {
           <Route path="/public/chat" element={<FeatureErrorBoundary><AiChatPage /></FeatureErrorBoundary>} />
           <Route path="/public/search" element={<FeatureErrorBoundary><AiSearchPage /></FeatureErrorBoundary>} />
           <Route path="/public/search/apps/:appId" element={<FeatureErrorBoundary><AiSearchPage /></FeatureErrorBoundary>} />
+
+          {/* Embed share page — standalone, no layout or auth wrapper */}
+          <Route path="/search/share/:token" element={<FeatureErrorBoundary><SearchSharePage /></FeatureErrorBoundary>} />
 
           {/* Error routes */}
           <Route path="/403" element={<ErrorPage code={403} />} />

@@ -7,6 +7,7 @@
 // Pages
 export { default as SearchPage } from './pages/SearchPage'
 export { default as SearchAppManagementPage } from './pages/SearchAppManagementPage'
+export { SearchSharePage } from './pages/SearchSharePage'
 
 // Components
 export { default as SearchBar } from './components/SearchBar'
@@ -18,6 +19,9 @@ export { default as SearchAppAccessDialog } from './components/SearchAppAccessDi
 export { default as SearchAppConfig } from './components/SearchAppConfig'
 export { SearchCrossLanguage } from './components/SearchCrossLanguage'
 export { SearchRetrievalTest } from './components/SearchRetrievalTest'
+
+// API (embed)
+export { searchEmbedApi } from './api/searchEmbedApi'
 
 // Query hooks (TanStack Query)
 export { useSearch, useSearchApps, useAccessibleSearchApps } from './api/searchQueries'

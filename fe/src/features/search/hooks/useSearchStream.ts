@@ -21,6 +21,16 @@ import type { SearchResult, SearchFilters } from '../types/search.types'
 // ============================================================================
 
 /**
+ * @description Optional API overrides for the search stream hook.
+ * When provided, the hook uses these functions instead of the default searchApi calls.
+ * Used by the embed share page to inject token-authenticated API calls.
+ */
+export interface SearchStreamApiOverrides {
+  /** Override for the SSE streaming search endpoint */
+  askSearch: (appId: string, query: string, filters: SearchFilters | Record<string, unknown>, signal?: AbortSignal) => Promise<Response>
+}
+
+/**
  * @description Return type for the useSearchStream hook.
  */
 export interface UseSearchStreamReturn {
@@ -57,9 +67,11 @@ export interface UseSearchStreamReturn {
 /**
  * @description Hook to manage SSE streaming for search AI summary generation.
  * SSE streaming is imperative and does not use TanStack Query.
- * @returns Streaming state and control functions
+ * Accepts optional API overrides to support embed/share pages with token-based auth.
+ * @param {SearchStreamApiOverrides} [apiOverrides] - Optional API function overrides for embed mode
+ * @returns {UseSearchStreamReturn} Streaming state and control functions
  */
-export function useSearchStream(): UseSearchStreamReturn {
+export function useSearchStream(apiOverrides?: SearchStreamApiOverrides): UseSearchStreamReturn {
   const [answer, setAnswer] = useState('')
   const [chunks, setChunks] = useState<SearchResult[]>([])
   const [relatedQuestions, setRelatedQuestions] = useState<string[]>([])
@@ -101,8 +113,10 @@ export function useSearchStream(): UseSearchStreamReturn {
       // Create a new abort controller for this request
       abortRef.current = new AbortController()
 
-      // Call the streaming endpoint
-      const response = await searchApi.askSearch(searchAppId, query, filters, abortRef.current.signal)
+      // Call the streaming endpoint — use override if provided (embed mode), otherwise default API
+      const response = apiOverrides
+        ? await apiOverrides.askSearch(searchAppId, query, filters ?? {}, abortRef.current.signal)
+        : await searchApi.askSearch(searchAppId, query, filters, abortRef.current.signal)
 
       // Check for HTTP errors
       if (!response.ok) {

@@ -149,6 +149,10 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     titleKey: 'datasets.chunkDetail',
     fullBleed: true,
   },
+  '/search/share/:token': {
+    titleKey: 'pages.aiSearch.title',
+    fullBleed: true,
+  },
 };
 
 // ============================================================================
@@ -177,6 +181,9 @@ export function getRouteMetadata(pathname: string): RouteMetadata {
   // Match memory detail route with dynamic ID
   if (pathname.startsWith('/agent-studio/memory/')) {
     return ROUTE_CONFIG['/agent-studio/memory/:id']!;
+  }
+  if (pathname.startsWith('/search/share/')) {
+    return ROUTE_CONFIG['/search/share/:token']!;
   }
   if (pathname.startsWith('/search/apps/')) {
     return ROUTE_CONFIG['/search/apps/:appId']!;
