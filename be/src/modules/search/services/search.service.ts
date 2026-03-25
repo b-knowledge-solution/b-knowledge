@@ -76,16 +76,20 @@ export class SearchService {
       dataset_ids: string[]
       search_config?: Record<string, unknown>
       is_public?: boolean
+      avatar?: string | null
+      empty_response?: string | null
     },
     userId: string
   ): Promise<SearchApp> {
-    // Insert search app record
+    // Insert search app record, including optional avatar and empty_response
     const app = await ModelFactory.searchApp.create({
       name: data.name,
       description: data.description || null,
       dataset_ids: JSON.stringify(data.dataset_ids),
       search_config: JSON.stringify(data.search_config || {}),
       is_public: data.is_public ?? false,
+      avatar: data.avatar ?? null,
+      empty_response: data.empty_response ?? null,
       created_by: userId,
       updated_by: userId,
     } as unknown as Partial<SearchApp>)
@@ -97,13 +101,13 @@ export class SearchService {
   /**
    * @description Update an existing search app with partial data
    * @param {string} searchId - UUID of the search app to update
-   * @param {Partial<Pick<SearchApp, 'name' | 'description' | 'dataset_ids' | 'search_config' | 'is_public'>>} data - Partial search app data
+   * @param {Partial<Pick<SearchApp, 'name' | 'description' | 'dataset_ids' | 'search_config' | 'is_public' | 'avatar' | 'empty_response'>>} data - Partial search app data
    * @param {string} userId - ID of the user performing the update
    * @returns {Promise<SearchApp | undefined>} The updated SearchApp if found, undefined otherwise
    */
   async updateSearchApp(
     searchId: string,
-    data: Partial<Pick<SearchApp, 'name' | 'description' | 'dataset_ids' | 'search_config' | 'is_public'>>,
+    data: Partial<Pick<SearchApp, 'name' | 'description' | 'dataset_ids' | 'search_config' | 'is_public' | 'avatar' | 'empty_response'>>,
     userId: string
   ): Promise<SearchApp | undefined> {
     // Stringify JSONB fields before DB update
