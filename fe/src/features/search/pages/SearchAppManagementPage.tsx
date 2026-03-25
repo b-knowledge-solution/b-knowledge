@@ -254,9 +254,12 @@ export default function SearchAppManagementPage() {
             <TableBody>
               {apps.map((app) => (
                 <TableRow key={app.id}>
-                  {/* Name */}
+                  {/* Name with optional avatar */}
                   <TableCell className="font-medium text-slate-900 dark:text-white">
-                    {app.name}
+                    <div className="flex items-center gap-2">
+                      {app.avatar && <span className="text-lg">{app.avatar}</span>}
+                      <span className="font-medium">{app.name}</span>
+                    </div>
                   </TableCell>
 
                   {/* Description */}
