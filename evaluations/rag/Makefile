@@ -29,7 +29,13 @@ help:
 	@echo ""
 	@echo "Evaluation:"
 	@echo "  make eval         - Run full evaluation (requires implementation)"
+	@echo "  make eval-fixture - Test with Phase 2 fixture data"
 	@echo "  make report       - Generate HTML report"
+	@echo ""
+	@echo "Fixture Management:"
+	@echo "  make fixture-verify   - Verify Phase 2 fixture setup"
+	@echo "  make fixture-convert  - Convert fixture CSV to YAML"
+	@echo "  make fixture-clean    - Remove generated fixture files"
 	@echo ""
 	@echo "Documentation:"
 	@echo "  make docs         - Show DEPLOYMENT.md"
@@ -112,10 +118,54 @@ eval-internal:
 	promptfoo eval -c promptfooconfig.yaml
 	@echo "✓ Evaluation complete! Results in ./results/"
 
+eval-fixture:
+	@echo "Testing evaluation with fixture data..."
+	@echo "Step 1: Converting CSV fixture to YAML..."
+	python scripts/csv_to_yaml.py dataset/fixture/reference/qa_pairs_fixture.csv dataset/eval_dataset_fixture.yaml
+	@echo "✓ Conversion complete!"
+	@echo ""
+	@echo "Step 2: Verifying YAML structure..."
+	@python -c "import yaml; yaml.safe_load(open('dataset/eval_dataset_fixture.yaml'))"
+	@echo "✓ YAML is valid!"
+	@echo ""
+	@echo "Step 3: Checking fixture documents..."
+	@echo "✓ Found sample docs:"
+	@ls -lh dataset/fixture/sample_docs/
+	@echo ""
+	@echo "✓ Fixture setup complete! Ready for Phase 2."
+	@echo "Next step: QA replaces fixtures with real content"
+
 report:
 	@echo "Generating evaluation report..."
 	promptfoo eval -c promptfooconfig.yaml --output results/report.html
 	@echo "✓ Report generated: ./results/report.html"
+
+##############################################################################
+# FIXTURE MANAGEMENT
+##############################################################################
+
+fixture-verify:
+	@echo "Verifying Phase 2 fixture setup..."
+	@echo ""
+	@echo "Documentation: $(shell ls -1 dataset/fixture/sample_docs/ | wc -l) sample docs"
+	@ls -1 dataset/fixture/sample_docs/ | sed 's/^/  ✓ /'
+	@echo ""
+	@echo "Q&A Dataset:"
+	@echo "  ✓ CSV file: dataset/fixture/reference/qa_pairs_fixture.csv"
+	@wc -l dataset/fixture/reference/qa_pairs_fixture.csv | awk '{print "  ✓ Rows: " $$1 - 1 " test cases (+ header)"}'
+	@echo ""
+	@echo "✓ Fixture ready for Phase 2!"
+
+fixture-convert:
+	@echo "Converting fixture CSV to YAML..."
+	python scripts/csv_to_yaml.py dataset/fixture/reference/qa_pairs_fixture.csv dataset/eval_dataset_fixture.yaml
+	@echo "✓ Converted: dataset/eval_dataset_fixture.yaml"
+	wc -l dataset/eval_dataset_fixture.yaml | awk '{print "  Lines: " $$1}'
+
+fixture-clean:
+	@echo "Removing generated fixture YAML (keeps CSV)..."
+	rm -f dataset/eval_dataset_fixture.yaml
+	@echo "✓ Cleaned!"
 
 ##############################################################################
 # DOCUMENTATION
