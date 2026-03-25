@@ -15,6 +15,9 @@ import {
   embedTokenIdParamSchema,
   embedTokenParamSchema,
   embedAskSchema,
+  embedSearchSchema,
+  embedRelatedQuestionsSchema,
+  embedMindmapSchema,
 } from '../schemas/search-embed.schemas.js'
 
 const router = Router()
@@ -79,6 +82,28 @@ router.get(
 )
 
 /**
+ * @route GET /api/search/embed/:token/config
+ * @description Get public search app config (name, description, avatar, empty_response, filtered search_config).
+ * @access Public (token-based)
+ */
+router.get(
+  '/embed/:token/config',
+  validate({ params: embedTokenParamSchema }),
+  controller.getConfig.bind(controller)
+)
+
+/**
+ * @route POST /api/search/embed/:token/search
+ * @description Execute a non-streaming search query using a token.
+ * @access Public (token-based)
+ */
+router.post(
+  '/embed/:token/search',
+  validate(embedSearchSchema),
+  controller.executeSearch.bind(controller)
+)
+
+/**
  * @route POST /api/search/embed/:token/ask
  * @description Stream an AI-generated search answer via SSE using a token.
  * @access Public (token-based)
@@ -87,6 +112,28 @@ router.post(
   '/embed/:token/ask',
   validate({ body: embedAskSchema, params: embedTokenParamSchema }),
   controller.askSearch.bind(controller)
+)
+
+/**
+ * @route POST /api/search/embed/:token/related-questions
+ * @description Generate related questions from a user query using a token.
+ * @access Public (token-based)
+ */
+router.post(
+  '/embed/:token/related-questions',
+  validate(embedRelatedQuestionsSchema),
+  controller.relatedQuestions.bind(controller)
+)
+
+/**
+ * @route POST /api/search/embed/:token/mindmap
+ * @description Generate a mind map JSON tree from search results using a token.
+ * @access Public (token-based)
+ */
+router.post(
+  '/embed/:token/mindmap',
+  validate(embedMindmapSchema),
+  controller.mindmap.bind(controller)
 )
 
 export default router

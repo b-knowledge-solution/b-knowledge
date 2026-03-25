@@ -12,6 +12,18 @@ import { searchService } from '../services/search.service.js'
 import { ModelFactory } from '@/shared/models/factory.js'
 
 /**
+ * @description Allowlist of search_config keys safe to expose via the public embed config endpoint.
+ *   Sensitive fields like api_key or internal provider details are excluded.
+ */
+const ALLOWED_CONFIG_KEYS = [
+  'search_method', 'top_k', 'similarity_threshold', 'vector_similarity_weight',
+  'rerank_id', 'rerank_top_k', 'llm_id', 'llm_setting',
+  'enable_summary', 'enable_related_questions', 'enable_mindmap',
+  'highlight', 'keyword', 'use_kg', 'web_search', 'cross_languages',
+  'metadata_filter',
+] as const
+
+/**
  * @description Controller handling search embed/widget endpoints including
  *   admin token management and public token-authenticated search execution
  */
@@ -147,6 +159,123 @@ export class SearchEmbedController {
   }
 
   /**
+   * @description Get public search app config for an embed token.
+   *   Returns name, description, avatar, empty_response, and an allowlisted subset of search_config.
+   * @param {Request} req - Express request with :token param
+   * @param {Response} res - Express response with filtered config
+   * @returns {Promise<void>}
+   */
+  async getConfig(req: Request, res: Response): Promise<void> {
+    try {
+      const tokenString = req.params.token!
+
+      // Validate the token
+      const tokenRow = await searchEmbedTokenService.validateToken(tokenString)
+      if (!tokenRow) {
+        res.status(401).json({ error: 'Invalid or expired token' })
+        return
+      }
+
+      // Load the search app
+      const app = await ModelFactory.searchApp.findById(tokenRow.app_id as string)
+      if (!app) {
+        res.status(404).json({ error: 'Search app not found' })
+        return
+      }
+
+      // Strip sensitive fields from search_config using allowlist
+      const rawConfig = (app.search_config as Record<string, unknown>) || {}
+      const filteredConfig: Record<string, unknown> = {}
+      for (const key of ALLOWED_CONFIG_KEYS) {
+        if (key in rawConfig) {
+          filteredConfig[key] = rawConfig[key]
+        }
+      }
+
+      // Return public-safe config
+      res.json({
+        name: app.name,
+        description: app.description,
+        avatar: app.avatar ?? null,
+        empty_response: app.empty_response ?? null,
+        search_config: filteredConfig,
+      })
+    } catch (error) {
+      log.error('Error getting search embed config', { error: (error as Error).message })
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+
+  /**
+   * @description Execute a non-streaming search query via embed token.
+   *   Validates the token, resolves the tenant, and delegates to searchService.executeSearch.
+   * @param {Request} req - Express request with :token param and search query in body
+   * @param {Response} res - Express response with paginated search results
+   * @returns {Promise<void>}
+   */
+  async executeSearch(req: Request, res: Response): Promise<void> {
+    try {
+      const tokenString = req.params.token!
+
+      // Validate the token
+      const tokenRow = await searchEmbedTokenService.validateToken(tokenString)
+      if (!tokenRow) {
+        res.status(401).json({ error: 'Invalid or expired token' })
+        return
+      }
+
+      // Load app to resolve tenant ID
+      const app = await ModelFactory.searchApp.findById(tokenRow.app_id as string)
+      if (!app) {
+        res.status(404).json({ error: 'Search app not found' })
+        return
+      }
+
+      // Use app creator as tenant context for embed searches
+      const tenantId = app.created_by ?? ''
+
+      const {
+        query,
+        top_k,
+        method,
+        similarity_threshold,
+        vector_similarity_weight,
+        metadata_filter,
+        page,
+        page_size,
+      } = req.body
+
+      // Delegate to search service with embed-resolved tenant ID
+      const result = await searchService.executeSearch(
+        tenantId,
+        tokenRow.app_id as string,
+        query,
+        {
+          topK: top_k,
+          method,
+          similarityThreshold: similarity_threshold,
+          vectorSimilarityWeight: vector_similarity_weight,
+          metadataFilter: metadata_filter,
+          page,
+          pageSize: page_size,
+        }
+      )
+
+      res.json(result)
+    } catch (error) {
+      const errMsg = (error as Error).message
+
+      if (errMsg === 'Search app not found') {
+        res.status(404).json({ error: errMsg })
+        return
+      }
+
+      log.error('Error in embed executeSearch', { error: errMsg })
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+
+  /**
    * @description Stream an AI-generated search answer via SSE for an embed token.
    *   Public endpoint using token-based authorization instead of session auth.
    * @param {Request} req - Express request with :token param and search query in body
@@ -186,6 +315,86 @@ export class SearchEmbedController {
       }
 
       log.error('Error in embed askSearch', { error: errMsg })
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+
+  /**
+   * @description Generate related questions for a search query via embed token.
+   *   Validates the token and delegates to searchService.relatedQuestions.
+   * @param {Request} req - Express request with :token param and { query } in body
+   * @param {Response} res - Express response with array of related questions
+   * @returns {Promise<void>}
+   */
+  async relatedQuestions(req: Request, res: Response): Promise<void> {
+    try {
+      const tokenString = req.params.token!
+
+      // Validate the token
+      const tokenRow = await searchEmbedTokenService.validateToken(tokenString)
+      if (!tokenRow) {
+        res.status(401).json({ error: 'Invalid or expired token' })
+        return
+      }
+
+      const { query } = req.body
+
+      // Delegate to search service for related question generation
+      const questions = await searchService.relatedQuestions(tokenRow.app_id as string, query)
+      res.json({ questions })
+    } catch (error) {
+      const errMsg = (error as Error).message
+
+      if (errMsg === 'Search app not found') {
+        res.status(404).json({ error: errMsg })
+        return
+      }
+
+      log.error('Error generating embed related questions', { error: errMsg })
+      res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+
+  /**
+   * @description Generate a mind map JSON tree from search results via embed token.
+   *   Validates the token, resolves tenant, and delegates to searchService.mindmap.
+   * @param {Request} req - Express request with :token param and mindmap query in body
+   * @param {Response} res - Express response with hierarchical JSON mindmap
+   * @returns {Promise<void>}
+   */
+  async mindmap(req: Request, res: Response): Promise<void> {
+    try {
+      const tokenString = req.params.token!
+
+      // Validate the token
+      const tokenRow = await searchEmbedTokenService.validateToken(tokenString)
+      if (!tokenRow) {
+        res.status(401).json({ error: 'Invalid or expired token' })
+        return
+      }
+
+      // Load app to resolve tenant ID
+      const app = await ModelFactory.searchApp.findById(tokenRow.app_id as string)
+      if (!app) {
+        res.status(404).json({ error: 'Search app not found' })
+        return
+      }
+
+      // Use app creator as tenant context for embed mindmap
+      const tenantId = app.created_by ?? ''
+
+      // Delegate to search service for mindmap generation
+      const tree = await searchService.mindmap(tenantId, tokenRow.app_id as string, req.body)
+      res.json({ mindmap: tree })
+    } catch (error) {
+      const errMsg = (error as Error).message
+
+      if (errMsg === 'Search app not found') {
+        res.status(404).json({ error: errMsg })
+        return
+      }
+
+      log.error('Error generating embed mindmap', { error: errMsg })
       res.status(500).json({ error: 'Internal server error' })
     }
   }
