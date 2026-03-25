@@ -25,6 +25,8 @@ export interface SearchResult {
   page_num: number | number[]
   /** Position(s) within the page */
   position: number | number[]
+  /** Highlighted content with matching terms marked */
+  highlight?: string | null
   /** Relevance score (0-1) */
   score: number
   /** Dataset identifier the chunk belongs to */
@@ -122,6 +124,10 @@ export interface SearchApp {
   name: string
   /** Optional description */
   description?: string | undefined
+  /** Emoji avatar icon for the search app */
+  avatar?: string | null
+  /** Custom message shown when search returns no results */
+  empty_response?: string | null
   /** Dataset IDs linked to this search app */
   dataset_ids: string[]
   /** Whether the search app is publicly accessible to all users */
@@ -134,6 +140,22 @@ export interface SearchApp {
   created_at: string
   /** ISO timestamp of last update */
   updated_at: string
+}
+
+/**
+ * @description Public embed app configuration returned by the embed config endpoint.
+ */
+export interface EmbedAppConfig {
+  /** Display name of the search app */
+  name: string
+  /** Optional description */
+  description?: string | null
+  /** Emoji avatar icon for the search app */
+  avatar?: string | null
+  /** Custom message shown when search returns no results */
+  empty_response?: string | null
+  /** Search configuration settings */
+  search_config: SearchAppConfig
 }
 
 /**
