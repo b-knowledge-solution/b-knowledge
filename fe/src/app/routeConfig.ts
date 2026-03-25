@@ -68,6 +68,11 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     guidelineFeatureId: 'ai-search',
     fullBleed: true,
   },
+  '/search/apps/:appId': {
+    titleKey: 'pages.aiSearch.title',
+    guidelineFeatureId: 'ai-search',
+    fullBleed: true,
+  },
   '/glossary': {
     titleKey: 'glossary.title',
   },
@@ -172,6 +177,9 @@ export function getRouteMetadata(pathname: string): RouteMetadata {
   // Match memory detail route with dynamic ID
   if (pathname.startsWith('/agent-studio/memory/')) {
     return ROUTE_CONFIG['/agent-studio/memory/:id']!;
+  }
+  if (pathname.startsWith('/search/apps/')) {
+    return ROUTE_CONFIG['/search/apps/:appId']!;
   }
   if (pathname.startsWith('/data-studio/datasets/')) {
     return ROUTE_CONFIG['/data-studio/datasets']!;

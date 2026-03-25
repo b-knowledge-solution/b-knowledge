@@ -86,6 +86,7 @@ export class RagSearchService {
         // Map each metadata condition to an OpenSearch query clause
         return filter.conditions.map(c => {
             switch (c.comparison_operator) {
+                case 'eq':
                 case 'is': return { term: { [c.name]: c.value } }
                 case 'is_not': return { bool: { must_not: [{ term: { [c.name]: c.value } }] } }
                 case 'contains': return { match: { [c.name]: c.value } }

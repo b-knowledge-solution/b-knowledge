@@ -3,7 +3,9 @@
  *
  * Renders markdown with:
  * - GFM (tables, checklists, strikethrough)
- * - Syntax highlighting for code blocks
+ * - Syntax highlighting for code blocks with copy button, language label, line numbers
+ * - Mermaid diagram rendering for `mermaid` code blocks
+ * - Collapsible long code blocks (>20 lines)
  * - Math/LaTeX via remark-math + rehype-katex
  * - DOMPurify sanitization for all HTML content
  * - Inline citation rendering via custom rehype plugin (RAGFlow pattern)
@@ -15,7 +17,7 @@
  *
  * @module components/MarkdownRenderer
  */
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
@@ -25,7 +27,7 @@ import rehypeKatex from 'rehype-katex'
 import DOMPurify from 'dompurify'
 import reactStringReplace from 'react-string-replace'
 import { visitParents } from 'unist-util-visit-parents'
-import { FileText, FileImage, FileSpreadsheet, FileCode, File, Presentation } from 'lucide-react'
+import { FileText, FileImage, FileSpreadsheet, FileCode, File, Presentation, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react'
 import { getExtension } from '@/utils/document-util'
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card'
 import type { ChatReference, ChatChunk } from '@/features/chat/types/chat.types'
@@ -104,9 +106,9 @@ function replaceThinkBlocks(text: string): string {
  */
 function preprocessLaTeX(text: string): string {
     // Convert \[ ... \] to $$ ... $$
-    let result = text.replace(/\\\[([\s\S]*?)\\\]/g, '$$$$1$$')
+    let result = text.replace(/\\\[([\\s\\S]*?)\\\]/g, '$$$$1$$')
     // Convert \( ... \) to $ ... $
-    result = result.replace(/\\\(([\s\S]*?)\\\)/g, '$$$1$')
+    result = result.replace(/\\\(([\\s\\S]*?)\\\)/g, '$$$1$')
     return result
 }
 
@@ -137,6 +139,257 @@ function rehypeWrapReference() {
             node.children = [{ type: 'text', value: node.value }]
         })
     }
+}
+
+// ============================================================================
+// Code block sub-components
+// ============================================================================
+
+/** Max lines before code block is collapsed with "Show more" */
+const COLLAPSE_THRESHOLD = 20
+/** Min lines before line numbers are shown */
+const LINE_NUMBER_THRESHOLD = 5
+
+/** Map of common language aliases to display names */
+const LANGUAGE_DISPLAY_MAP: Record<string, string> = {
+    js: 'JavaScript', jsx: 'JSX', ts: 'TypeScript', tsx: 'TSX',
+    py: 'Python', rb: 'Ruby', rs: 'Rust', go: 'Go', cs: 'C#',
+    cpp: 'C++', c: 'C', java: 'Java', kt: 'Kotlin', swift: 'Swift',
+    sh: 'Shell', bash: 'Bash', zsh: 'Zsh', ps1: 'PowerShell',
+    sql: 'SQL', graphql: 'GraphQL', html: 'HTML', css: 'CSS',
+    scss: 'SCSS', less: 'LESS', json: 'JSON', yaml: 'YAML',
+    yml: 'YAML', xml: 'XML', md: 'Markdown', dockerfile: 'Dockerfile',
+    makefile: 'Makefile', toml: 'TOML', ini: 'INI', diff: 'Diff',
+    plaintext: 'Text', text: 'Text', txt: 'Text',
+}
+
+/**
+ * @description Extract raw language from highlight.js className.
+ * The className follows the pattern "hljs language-xxx" or "language-xxx".
+ * @param {string | undefined} className - ClassName from code element
+ * @returns {string} Extracted language or empty string
+ */
+function extractLanguage(className?: string): string {
+    if (!className) return ''
+    const match = className.match(/language-(\S+)/)
+    return match ? match[1]! : ''
+}
+
+/**
+ * @description Get a display-friendly language name.
+ * @param {string} lang - Raw language identifier
+ * @returns {string} Display name (e.g., "TypeScript" instead of "ts")
+ */
+function getLanguageDisplayName(lang: string): string {
+    const lower = lang.toLowerCase()
+    return LANGUAGE_DISPLAY_MAP[lower] || lang.charAt(0).toUpperCase() + lang.slice(1)
+}
+
+/**
+ * @description Extract plain text from React children tree for copy and line counting.
+ * @param {React.ReactNode} children - React node tree
+ * @returns {string} Plain text content
+ */
+function extractTextFromChildren(children: React.ReactNode): string {
+    if (typeof children === 'string') return children
+    if (typeof children === 'number') return String(children)
+    if (!children) return ''
+    if (Array.isArray(children)) return children.map(extractTextFromChildren).join('')
+    if (typeof children === 'object' && children !== null && 'props' in children) {
+        return extractTextFromChildren((children as React.ReactElement<{ children?: React.ReactNode }>).props.children)
+    }
+    return ''
+}
+
+/**
+ * @description Mermaid diagram renderer. Lazily loads mermaid on first render.
+ * Renders the diagram as inline SVG with dark mode support.
+ *
+ * @param {{ code: string }} props - The raw mermaid code to render
+ * @returns {JSX.Element} Rendered SVG diagram or raw code fallback
+ */
+function MermaidBlock({ code }: { code: string }) {
+    const containerRef = useRef<HTMLDivElement>(null)
+    const [svg, setSvg] = useState<string>('')
+    const [error, setError] = useState<string>('')
+
+    // Detect dark mode from document class
+    const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+
+    useEffect(() => {
+        let cancelled = false
+
+        const renderDiagram = async () => {
+            try {
+                // Lazy-load mermaid to avoid bundling it for users who don't need it
+                const mermaid = (await import('mermaid')).default
+                mermaid.initialize({
+                    startOnLoad: false,
+                    theme: isDark ? 'dark' : 'default',
+                    securityLevel: 'loose',
+                    fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+                })
+
+                // Generate a unique ID for this diagram
+                const id = `mermaid-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+                const { svg: renderedSvg } = await mermaid.render(id, code.trim())
+
+                if (!cancelled) {
+                    setSvg(renderedSvg)
+                    setError('')
+                }
+            } catch (err) {
+                if (!cancelled) {
+                    setError(err instanceof Error ? err.message : 'Failed to render diagram')
+                }
+            }
+        }
+
+        renderDiagram()
+        return () => { cancelled = true }
+    }, [code, isDark])
+
+    // Show loading placeholder while rendering
+    if (!svg && !error) {
+        return (
+            <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
+                <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+                Rendering diagram...
+            </div>
+        )
+    }
+
+    // Error fallback: show raw mermaid code
+    if (error) {
+        return (
+            <div className="space-y-2">
+                <div className="text-xs text-amber-600 dark:text-amber-400 px-3 py-1.5 bg-amber-50 dark:bg-amber-950/30 rounded border border-amber-200 dark:border-amber-800">
+                    Diagram render error: {error}
+                </div>
+                <pre className="!bg-slate-900 !border-slate-800 rounded-lg p-4 overflow-x-auto">
+                    <code className="text-xs text-slate-300">{code}</code>
+                </pre>
+            </div>
+        )
+    }
+
+    // Success: render SVG inline
+    return (
+        <div
+            ref={containerRef}
+            className="my-4 flex justify-center overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-4"
+            dangerouslySetInnerHTML={{ __html: svg }}
+        />
+    )
+}
+
+/**
+ * @description Enhanced code block with header (language label + copy button),
+ * optional line numbers, and collapsible sections for long code.
+ *
+ * @param {{ language: string; children: React.ReactNode }} props
+ * @returns {JSX.Element} Styled code block
+ */
+function CodeBlock({ language, children }: { language: string; children: React.ReactNode }) {
+    const [copied, setCopied] = useState(false)
+    const [collapsed, setCollapsed] = useState(true)
+
+    // Extract raw text for copy and line counting
+    const rawText = extractTextFromChildren(children)
+    const lineCount = rawText.split('\n').length
+    const isLong = lineCount > COLLAPSE_THRESHOLD
+    const showLineNumbers = lineCount >= LINE_NUMBER_THRESHOLD
+    const displayLang = language ? getLanguageDisplayName(language) : ''
+
+    /**
+     * @description Copy code block content to clipboard with temporary ✓ feedback.
+     */
+    const handleCopy = async () => {
+        await navigator.clipboard.writeText(rawText)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+    }
+
+    return (
+        <div className="group/code relative my-3 rounded-lg overflow-hidden border border-slate-700/50">
+            {/* Header bar: language label + copy button */}
+            <div className="flex items-center justify-between px-3 py-1.5 bg-slate-800 border-b border-slate-700/50 text-xs">
+                <span className="text-slate-400 font-medium select-none">
+                    {displayLang || 'Code'}
+                </span>
+                <button
+                    onClick={handleCopy}
+                    className="flex items-center gap-1 text-slate-400 hover:text-slate-200 transition-colors px-1.5 py-0.5 rounded hover:bg-slate-700/50"
+                    title="Copy code"
+                >
+                    {copied ? (
+                        <>
+                            <Check className="h-3 w-3 text-green-400" />
+                            <span className="text-green-400">Copied!</span>
+                        </>
+                    ) : (
+                        <>
+                            <Copy className="h-3 w-3" />
+                            <span>Copy</span>
+                        </>
+                    )}
+                </button>
+            </div>
+
+            {/* Code content with optional line numbers */}
+            <div className={`relative ${isLong && collapsed ? 'max-h-[300px] overflow-hidden' : ''}`}>
+                <pre className="!my-0 !rounded-none !border-0 !bg-slate-900 overflow-x-auto">
+                    {showLineNumbers ? (
+                        <code className="block">
+                            <table className="w-full border-collapse">
+                                <tbody>
+                                    {rawText.split('\n').map((line, i) => (
+                                        <tr key={i} className="leading-relaxed">
+                                            {/* Line number gutter — non-selectable */}
+                                            <td className="text-right pr-3 pl-3 text-slate-600 select-none w-[1%] whitespace-nowrap align-top text-xs tabular-nums">
+                                                {i + 1}
+                                            </td>
+                                            {/* Line content */}
+                                            <td className="pr-4">
+                                                <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(line) || '&nbsp;' }} />
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </code>
+                    ) : (
+                        <code>{children}</code>
+                    )}
+                </pre>
+
+                {/* Gradient fade for collapsed long code */}
+                {isLong && collapsed && (
+                    <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-slate-900 to-transparent pointer-events-none" />
+                )}
+            </div>
+
+            {/* Show more / Show less toggle for long code blocks */}
+            {isLong && (
+                <button
+                    onClick={() => setCollapsed((v) => !v)}
+                    className="w-full flex items-center justify-center gap-1 py-1.5 text-xs text-slate-400 hover:text-slate-200 bg-slate-800/80 border-t border-slate-700/50 transition-colors"
+                >
+                    {collapsed ? (
+                        <>
+                            <ChevronDown className="h-3 w-3" />
+                            Show more ({lineCount} lines)
+                        </>
+                    ) : (
+                        <>
+                            <ChevronUp className="h-3 w-3" />
+                            Show less
+                        </>
+                    )}
+                </button>
+            )}
+        </div>
+    )
 }
 
 // ============================================================================
@@ -311,7 +564,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         <div
             className={`prose prose-sm dark:prose-invert max-w-none
                 prose-headings:font-semibold prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
-                prose-p:leading-relaxed prose-pre:bg-slate-900 prose-pre:border prose-pre:border-slate-800
+                prose-p:leading-relaxed prose-pre:bg-transparent prose-pre:border-0 prose-pre:p-0
                 prose-code:text-violet-600 dark:prose-code:text-violet-400 prose-code:bg-slate-100 dark:prose-code:bg-slate-800/50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded-md prose-code:before:content-none prose-code:after:content-none
                 ${className || ''}`}
         >
@@ -320,6 +573,43 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                 rehypePlugins={[rehypeWrapReference, rehypeKatex, rehypeHighlight, rehypeRaw]}
                 components={
                     {
+                        // Enhanced pre block — delegates to CodeBlock or MermaidBlock
+                        pre: ({ children: preChildren }: any) => {
+                            // Extract the code element and its props
+                            const codeChild = React.Children.toArray(preChildren).find(
+                                (child: any) => child?.type === 'code' || child?.props?.node?.tagName === 'code'
+                            ) as React.ReactElement | undefined
+
+                            if (codeChild?.props) {
+                                const codeProps = codeChild.props as { className?: string; children?: React.ReactNode }
+                                const lang = extractLanguage(codeProps.className)
+
+                                // Mermaid code blocks → render as diagrams
+                                if (lang === 'mermaid') {
+                                    const code = extractTextFromChildren(codeProps.children)
+                                    return <MermaidBlock code={code} />
+                                }
+
+                                // Regular code blocks → enhanced CodeBlock with header
+                                return (
+                                    <CodeBlock language={lang}>
+                                        {codeProps.children}
+                                    </CodeBlock>
+                                )
+                            }
+
+                            // Fallback for non-code pre blocks
+                            return <pre className="!bg-slate-900 !border !border-slate-800 rounded-lg overflow-x-auto">{preChildren}</pre>
+                        },
+                        // Inline code — keep default prose styling (no CodeBlock wrapper)
+                        code: ({ node, className: codeClassName, children: codeChildren, ...rest }: any) => {
+                            // Only inline code reaches here (fenced code is caught by pre override)
+                            return (
+                                <code className={codeClassName} {...rest}>
+                                    {codeChildren}
+                                </code>
+                            )
+                        },
                         // Render citation markers within text nodes via custom-typography
                         'custom-typography': ({ children: textChildren }: { children: string }) =>
                             renderCitations(textChildren),

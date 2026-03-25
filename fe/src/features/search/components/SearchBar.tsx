@@ -3,7 +3,7 @@
  * @module features/ai/components/SearchBar
  */
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Search, X, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -42,6 +42,11 @@ function SearchBar({ onSearch, isSearching, defaultValue = '', className, onStop
   const { t } = useTranslation()
   const inputRef = useRef<HTMLInputElement>(null)
   const [value, setValue] = useState(defaultValue)
+
+  // Keep the controlled input in sync when the active route/query changes externally.
+  useEffect(() => {
+    setValue(defaultValue)
+  }, [defaultValue])
 
   /**
    * Handle form submission.

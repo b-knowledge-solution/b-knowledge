@@ -404,7 +404,17 @@ export class SearchController {
         return
       }
 
-      const { query, top_k, method, similarity_threshold, vector_similarity_weight, page, page_size } = req.body
+      const {
+        query,
+        top_k,
+        method,
+        similarity_threshold,
+        vector_similarity_weight,
+        metadata_filter,
+        doc_ids,
+        page,
+        page_size,
+      } = req.body
 
       // Execute search across configured datasets with pagination
       // Extract tenant ID from request context for OpenSearch isolation
@@ -419,6 +429,8 @@ export class SearchController {
           method,
           similarityThreshold: similarity_threshold,
           vectorSimilarityWeight: vector_similarity_weight,
+          metadataFilter: metadata_filter,
+          docIds: doc_ids,
           page,
           pageSize: page_size,
           ...(req.session?.user?.id ? { userId: req.session.user.id } : {}),

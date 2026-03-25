@@ -4,7 +4,7 @@
  */
 
 import { useTranslation } from 'react-i18next'
-import { Sparkles, SearchX, Square } from 'lucide-react'
+import { Sparkles, SearchX, Square, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -69,6 +69,8 @@ interface SearchResultsProps {
   reference?: ChatReference | undefined
   /** Callback when a citation badge is clicked to open document preview */
   onCitationClick?: ((chunk: ChatChunk) => void) | undefined
+  /** Callback to submit feedback for the current answer or a specific result */
+  onFeedback?: ((thumbup: boolean, result?: SearchResult) => void) | undefined
 }
 
 // ============================================================================
@@ -106,13 +108,9 @@ function SearchResults({
   onDocFilterChange,
   reference,
   onCitationClick,
+  onFeedback,
 }: SearchResultsProps) {
   const { t } = useTranslation()
-
-  // Filter results by selected document IDs when filter is active
-  const filteredResults = selectedDocIds && selectedDocIds.length > 0
-    ? results.filter((r) => selectedDocIds.includes(r.doc_id))
-    : results
 
   // Determine the effective answer to show (streaming or final)
   const displayAnswer = streamingAnswer || summary
@@ -187,18 +185,43 @@ function SearchResults({
               </span>
             </div>
 
-            {/* Stop button when streaming */}
-            {isStreamingAnswer && onStopStream && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 h-7 text-xs"
-                onClick={onStopStream}
-              >
-                <Square className="h-3 w-3" />
-                {t('search.stopSearch')}
-              </Button>
-            )}
+            <div className="flex items-center gap-1">
+              {displayAnswer && onFeedback && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => onFeedback(true)}
+                    title={t('search.helpful')}
+                  >
+                    <ThumbsUp className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => onFeedback(false)}
+                    title={t('search.notHelpful')}
+                  >
+                    <ThumbsDown className="h-3.5 w-3.5" />
+                  </Button>
+                </>
+              )}
+
+              {/* Stop button when streaming */}
+              {isStreamingAnswer && onStopStream && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 h-7 text-xs"
+                  onClick={onStopStream}
+                >
+                  <Square className="h-3 w-3" />
+                  {t('search.stopSearch')}
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Render answer with citation support */}
@@ -233,7 +256,7 @@ function SearchResults({
       )}
 
       {/* Results count */}
-      {filteredResults.length > 0 && (
+      {results.length > 0 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             {onPageChange
@@ -244,14 +267,15 @@ function SearchResults({
       )}
 
       {/* Result cards */}
-      {filteredResults.length > 0 && (
+      {results.length > 0 && (
         <div className="space-y-3">
-          {filteredResults.map((result) => (
+          {results.map((result) => (
             <SearchResultCard
               key={result.chunk_id}
               result={result}
               query={query}
               onClick={onResultClick}
+              onFeedback={onFeedback ? ((thumbup) => onFeedback(thumbup, result)) : undefined}
             />
           ))}
         </div>

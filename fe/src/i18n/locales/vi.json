@@ -1327,6 +1327,14 @@
     "deepResearchBudgetExhausted": "Nghiên cứu bị giới hạn bởi ngân sách. {{completed}} / {{total}} truy vấn con hoàn thành.",
     "noDescription": "Không có mô tả",
     "knowledgeBasesCount": "{{count}} CSDL",
+    "editMessage": "Chỉnh sửa tin nhắn",
+    "saveEdit": "Lưu & Gửi",
+    "cancelEdit": "Hủy",
+    "copyCode": "Sao chép mã",
+    "codeCopied": "Đã sao chép!",
+    "showMore": "Xem thêm ({{count}} dòng)",
+    "showLess": "Thu gọn",
+    "mermaidError": "Lỗi hiển thị sơ đồ",
     "deepResearch": {
       "title": "Nghiên cứu sâu",
       "researching": "Đang nghiên cứu: {{query}}",
@@ -2367,6 +2375,8 @@
     "manageAccess": "Manage Access",
     "accessUsers": "Access Users",
     "accessTeams": "Access Teams",
+    "openApp": "Mở ứng dụng tìm kiếm",
+    "embedApp": "Nhúng ứng dụng tìm kiếm",
     "editApp": "Edit Search App",
     "createApp": "Create Search App",
     "isPublic": "Public Access",
@@ -2403,6 +2413,11 @@
     "embeddingMismatchWarning": "Cảnh báo: Các tập dữ liệu đã chọn sử dụng các mô hình embedding khác nhau. Điều này có thể làm giảm chất lượng tìm kiếm.",
     "crossLanguages": "Cross-Language Search",
     "crossLanguagesDesc": "Enable searching across multiple languages",
+    "validation": {
+      "datasetsRequired": "Chọn ít nhất một tập dữ liệu hoặc dự án",
+      "llmRequired": "Chọn mô hình LLM khi bật tóm tắt AI",
+      "tavilyRequired": "Nhập khóa Tavily khi bật tìm kiếm web"
+    },
     "retrievalTest": {
       "page": "Page",
       "title": "Retrieval Test",

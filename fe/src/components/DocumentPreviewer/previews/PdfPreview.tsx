@@ -11,8 +11,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
+import { TextLayer } from 'pdfjs-dist'
 // Vite resolves the worker file as a URL via ?url import
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+// Text layer CSS for text selection support (extracted from pdfjs-dist/web/pdf_viewer.css
+// to avoid importing generic .dialog/.messageBar rules that conflict with app styles)
+import './pdf-text-layer.css'
 import { Spinner } from '@/components/ui/spinner'
 import { AlertCircle, ZoomIn, ZoomOut } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -37,7 +41,7 @@ export interface PdfPreviewProps {
 }
 
 /**
- * @description Render a single PDF page into a canvas element
+ * @description Render a single PDF page into a canvas element with text layer for selection
  * @param page - pdfjs page proxy
  * @param scale - zoom scale
  * @param pageNum - 1-based page number
@@ -67,7 +71,13 @@ async function renderPage(
   const ctx = canvas.getContext('2d')!
   ctx.scale(dpr, dpr)
 
-  // Create overlay canvas for highlights (transparent, on top of PDF)
+  // Create text layer container for text selection and search (sits between canvas and overlay)
+  // The pdfjs CSS (.textLayer) handles position:absolute and inset:0
+  const textLayerDiv = document.createElement('div')
+  textLayerDiv.className = 'textLayer'
+  textLayerDiv.style.zIndex = '1'
+
+  // Create overlay canvas for highlights (transparent, on top of text layer)
   const overlay = document.createElement('canvas')
   overlay.className = 'highlight-overlay'
   overlay.width = vp.width * dpr
@@ -77,13 +87,25 @@ async function renderPage(
   overlay.style.position = 'absolute'
   overlay.style.top = '0'
   overlay.style.left = '0'
+  overlay.style.zIndex = '2'
   overlay.style.pointerEvents = 'none'
 
+  // Stack: canvas (bottom) → text layer (middle, selectable) → overlay (top, pointer-events: none)
   pageDiv.appendChild(canvas)
+  pageDiv.appendChild(textLayerDiv)
   pageDiv.appendChild(overlay)
 
   // Render PDF page content to canvas (pdfjs v5+ requires canvas instead of canvasContext)
   await page.render({ canvas, viewport: vp } as any).promise
+
+  // Render text layer for text selection and browser search (Ctrl+F)
+  const textContent = await page.getTextContent()
+  const textLayer = new TextLayer({
+    textContentSource: textContent,
+    container: textLayerDiv,
+    viewport: vp,
+  })
+  await textLayer.render()
 
   return { pageDiv, overlay }
 }

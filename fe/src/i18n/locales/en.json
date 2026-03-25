@@ -1325,6 +1325,14 @@
     "deepResearchBudgetExhausted": "Research limited by budget. {{completed}} of {{total}} sub-queries completed.",
     "noDescription": "No description",
     "knowledgeBasesCount": "{{count}} KBs",
+    "editMessage": "Edit message",
+    "saveEdit": "Save & Send",
+    "cancelEdit": "Cancel",
+    "copyCode": "Copy code",
+    "codeCopied": "Copied!",
+    "showMore": "Show more ({{count}} lines)",
+    "showLess": "Show less",
+    "mermaidError": "Diagram render error",
     "deepResearch": {
       "title": "Deep Research",
       "researching": "Researching: {{query}}",
@@ -2375,6 +2383,8 @@
     "searchMethod": "Search Method",
     "isPublic": "Public Access",
     "isPrivate": "Private Access",
+    "openApp": "Open Search App",
+    "embedApp": "Embed Search App",
     "editApp": "Edit Search App",
     "manageAccess": "Manage Access",
     "createApp": "Create Search App",
@@ -2404,6 +2414,11 @@
     "relatedQuestionsDesc": "Suggest related questions after search",
     "crossLanguages": "Cross-Language Search",
     "crossLanguagesDesc": "Enable searching across multiple languages",
+    "validation": {
+      "datasetsRequired": "Select at least one dataset or project",
+      "llmRequired": "Select an LLM model when AI summary is enabled",
+      "tavilyRequired": "Enter a Tavily API key when web search is enabled"
+    },
     "retrievalTest": {
       "title": "Retrieval Test",
       "page": "Page",

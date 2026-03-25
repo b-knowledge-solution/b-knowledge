@@ -637,6 +637,8 @@ export interface Dataset {
     token_count?: number;
     /** PageRank score for ranking datasets */
     pagerank?: number;
+    /** Optional ingestion pipeline identifier */
+    pipeline_id?: string | null;
     /** User ID who created this record */
     created_by?: string | null;
     /** User ID who last updated this record */

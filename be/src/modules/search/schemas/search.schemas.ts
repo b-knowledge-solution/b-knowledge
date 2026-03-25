@@ -39,7 +39,7 @@ const metadataConditionSchema = z.object({
   /** Field name to filter on */
   name: z.string().min(1),
   /** Comparison operator */
-  comparison_operator: z.enum(['is', 'is_not', 'contains', 'gt', 'lt', 'range']),
+  comparison_operator: z.enum(['is', 'eq', 'is_not', 'contains', 'gt', 'lt', 'range']),
   /** Filter value (string, number, or array for range) */
   value: z.union([z.string(), z.number(), z.array(z.union([z.string(), z.number()]))]),
 })
@@ -59,6 +59,14 @@ const metadataFilterSchema = z.object({
  */
 const searchConfigSchema = z.record(z.unknown()).and(
   z.object({
+    /** Default search method for app searches */
+    search_method: z.enum(['full_text', 'semantic', 'hybrid']).optional(),
+    /** Default top_k for app searches */
+    top_k: z.number().int().min(1).max(100).optional(),
+    /** Default similarity threshold */
+    similarity_threshold: z.number().min(0).max(1).optional(),
+    /** Default vector similarity weight for hybrid retrieval */
+    vector_similarity_weight: z.number().min(0).max(1).optional(),
     /** LLM provider ID for summary generation */
     llm_id: z.string().max(128).optional(),
     /** LLM parameter overrides */
@@ -73,16 +81,50 @@ const searchConfigSchema = z.record(z.unknown()).and(
     rerank_top_k: z.number().int().min(0).max(2048).optional(),
     /** Enable keyword extraction from query before retrieval */
     keyword: z.boolean().optional(),
+    /** Highlight matching terms in results */
+    highlight: z.boolean().optional(),
     /** Enable knowledge graph retrieval */
     use_kg: z.boolean().optional(),
     /** Enable web search via Tavily */
     web_search: z.boolean().optional(),
     /** Tavily API key for web search */
     tavily_api_key: z.string().optional(),
+    /** Enable related question generation */
+    enable_related_questions: z.boolean().optional(),
+    /** Enable mind map generation */
+    enable_mindmap: z.boolean().optional(),
     /** Metadata filter for OpenSearch bool query conditions */
     metadata_filter: metadataFilterSchema,
   }).partial()
 ).optional()
+
+/**
+ * @description Shared validation rules for search app configuration combinations.
+ * @param {z.RefinementCtx} ctx - Zod refinement context
+ * @param {Record<string, unknown> | undefined} searchConfig - Search config payload
+ */
+function validateSearchConfig(
+  ctx: z.RefinementCtx,
+  searchConfig?: Record<string, unknown>,
+): void {
+  if (!searchConfig) return
+
+  if (searchConfig.enable_summary === true && !searchConfig.llm_id) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['search_config', 'llm_id'],
+      message: 'LLM model is required when AI summary is enabled',
+    })
+  }
+
+  if (searchConfig.web_search === true && !searchConfig.tavily_api_key) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['search_config', 'tavily_api_key'],
+      message: 'Tavily API key is required when web search is enabled',
+    })
+  }
+}
 
 /**
  * @description Validates request body for creating a new search app
@@ -98,6 +140,8 @@ export const createSearchAppSchema = z.object({
   search_config: searchConfigSchema,
   /** Whether the search app is publicly accessible */
   is_public: z.boolean().optional(),
+}).superRefine((data, ctx) => {
+  validateSearchConfig(ctx, data.search_config as Record<string, unknown> | undefined)
 })
 
 /**
@@ -114,6 +158,8 @@ export const updateSearchAppSchema = z.object({
   search_config: searchConfigSchema,
   /** Whether the search app is publicly accessible */
   is_public: z.boolean().optional(),
+}).superRefine((data, ctx) => {
+  validateSearchConfig(ctx, data.search_config as Record<string, unknown> | undefined)
 })
 
 /**
@@ -130,6 +176,10 @@ export const executeSearchSchema = z.object({
   similarity_threshold: z.number().min(0).max(1).optional().default(0),
   /** Vector similarity weight for hybrid search (0 = full text, 1 = full semantic) */
   vector_similarity_weight: z.number().min(0).max(1).optional(),
+  /** Optional document IDs to scope the search to */
+  doc_ids: z.array(z.string()).optional(),
+  /** Runtime metadata filter to narrow retrieval results */
+  metadata_filter: metadataFilterSchema,
   /** Page number (1-indexed) */
   page: z.number().int().min(1).optional().default(1),
   /** Number of results per page */
@@ -150,6 +200,8 @@ export const askSearchSchema = z.object({
   similarity_threshold: z.number().min(0).max(1).optional(),
   /** Vector similarity weight for hybrid search */
   vector_similarity_weight: z.number().min(0).max(1).optional(),
+  /** Optional document IDs to scope the search to */
+  doc_ids: z.array(z.string()).optional(),
   /** Runtime metadata filter to narrow retrieval results */
   metadata_filter: metadataFilterSchema,
 })
@@ -174,6 +226,12 @@ export const mindmapSchema = z.object({
   method: z.enum(['full_text', 'semantic', 'hybrid']).optional(),
   /** Minimum similarity threshold */
   similarity_threshold: z.number().min(0).max(1).optional(),
+  /** Vector similarity weight for hybrid search */
+  vector_similarity_weight: z.number().min(0).max(1).optional(),
+  /** Optional document IDs to scope the search to */
+  doc_ids: z.array(z.string()).optional(),
+  /** Runtime metadata filter to narrow retrieval results */
+  metadata_filter: metadataFilterSchema,
 })
 
 /**
@@ -207,6 +265,8 @@ export const retrievalTestSchema = z.object({
   search_method: z.enum(['full_text', 'semantic', 'hybrid']).optional().default('hybrid'),
   /** Optional document ID filter */
   doc_ids: z.array(z.string()).optional(),
+  /** Runtime metadata filter to narrow retrieval results */
+  metadata_filter: metadataFilterSchema,
   /** Page number (1-indexed) */
   page: z.number().int().min(1).optional().default(1),
   /** Number of results per page */

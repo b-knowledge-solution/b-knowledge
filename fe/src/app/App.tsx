@@ -161,7 +161,10 @@ function App() {
               )}
               {/* Search routes */}
               {config.features.enableAiSearch && (
-                <Route path="search" element={<FeatureErrorBoundary><AiSearchPage /></FeatureErrorBoundary>} />
+                <>
+                  <Route path="search" element={<FeatureErrorBoundary><AiSearchPage /></FeatureErrorBoundary>} />
+                  <Route path="search/apps/:appId" element={<FeatureErrorBoundary><AiSearchPage /></FeatureErrorBoundary>} />
+                </>
               )}
               {/* ── All role-gated routes use NavRoleGuard ────────────────── */}
               {/* Roles are resolved automatically from sidebarNav.ts config */}
@@ -209,6 +212,7 @@ function App() {
           {/* Public access routes (no auth required — for is_public apps) */}
           <Route path="/public/chat" element={<FeatureErrorBoundary><AiChatPage /></FeatureErrorBoundary>} />
           <Route path="/public/search" element={<FeatureErrorBoundary><AiSearchPage /></FeatureErrorBoundary>} />
+          <Route path="/public/search/apps/:appId" element={<FeatureErrorBoundary><AiSearchPage /></FeatureErrorBoundary>} />
 
           {/* Error routes */}
           <Route path="/403" element={<ErrorPage code={403} />} />

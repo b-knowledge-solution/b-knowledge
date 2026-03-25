@@ -108,7 +108,7 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
    */
   const navigateWithLoader = useCallback((to: To, options?: NavigateOptions & { waitForReady?: boolean }) => {
     const { waitForReady, ...navOptions } = options || {}
-    startNavigation({ waitForReady })
+    startNavigation(waitForReady !== undefined ? { waitForReady } : undefined)
     // Small delay to ensure overlay renders before navigation
     setTimeout(() => {
       navigate(to, navOptions)

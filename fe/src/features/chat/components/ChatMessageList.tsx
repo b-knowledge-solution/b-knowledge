@@ -33,6 +33,8 @@ interface ChatMessageListProps {
   onSuggestedPrompt: (content: string) => void
   /** Callback for regenerating the last message */
   onRegenerate: () => void
+  /** Callback for editing a user message and re-generating from that point */
+  onEditMessage?: ((messageIndex: number, newContent: string) => void) | undefined
   /** CSS class name */
   className?: string
   /** Active conversation ID for feedback */
@@ -62,6 +64,7 @@ function ChatMessageList({
   onDocBadgeClick,
   onSuggestedPrompt: _onSuggestedPrompt,
   onRegenerate,
+  onEditMessage,
   className = '',
   conversationId,
   welcomeMessage,
@@ -140,6 +143,11 @@ function ChatMessageList({
             onDocBadgeClick={onDocBadgeClick}
             isLast={index === messages.length - 1}
             onRegenerate={isLastAssistant ? onRegenerate : undefined}
+            onEditMessage={
+              msg.role === 'user' && !isStreaming && onEditMessage
+                ? (newContent: string) => onEditMessage(index, newContent)
+                : undefined
+            }
           />
         )
       })}
@@ -158,6 +166,7 @@ function ChatMessageList({
           onChunkCitationClick={onChunkCitationClick}
           onDocBadgeClick={onDocBadgeClick}
           isLast
+          isStreaming
         />
       )}
 

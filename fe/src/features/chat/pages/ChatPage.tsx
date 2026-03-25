@@ -347,6 +347,7 @@ function DatasetChatPage() {
             onDocBadgeClick={handleDocBadgeClick}
             onSuggestedPrompt={handleSendMessage}
             onRegenerate={handleRegenerate}
+            onEditMessage={stream.editMessage}
             className="flex-1"
             conversationId={conversations.activeConversation?.id}
             welcomeMessage={welcomeMessage}

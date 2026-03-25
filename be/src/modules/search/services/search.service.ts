@@ -28,6 +28,41 @@ import type { LangfuseTraceClient } from 'langfuse'
  */
 export class SearchService {
   /**
+   * Normalize a search method from runtime options or stored app configuration.
+   * @param method - Candidate search method value
+   * @returns A valid retrieval-layer search method
+   */
+  private normalizeMethod(method?: unknown): 'full_text' | 'semantic' | 'hybrid' {
+    if (method === 'fulltext') return 'full_text'
+    if (method === 'full_text' || method === 'semantic' || method === 'hybrid') {
+      return method
+    }
+    return 'full_text'
+  }
+
+  /**
+   * Merge app-level and runtime metadata filters into a single AND filter.
+   * @param appFilter - App-configured metadata filter
+   * @param runtimeFilter - Request-time metadata filter
+   * @returns Combined metadata filter or undefined
+   */
+  private mergeMetadataFilters(
+    appFilter?: SearchRequest['metadata_filter'],
+    runtimeFilter?: SearchRequest['metadata_filter'],
+  ): SearchRequest['metadata_filter'] | undefined {
+    const appConditions = appFilter?.conditions ?? []
+    const runtimeConditions = runtimeFilter?.conditions ?? []
+    const conditions = [...appConditions, ...runtimeConditions]
+
+    if (conditions.length === 0) return undefined
+
+    return {
+      logic: 'and',
+      conditions,
+    }
+  }
+
+  /**
    * @description Create a new search app configuration in the database
    * @param {object} data - Search app creation data including name, dataset_ids, and optional config
    * @param {string} userId - ID of the user creating the app
@@ -340,6 +375,8 @@ export class SearchService {
       method?: 'full_text' | 'semantic' | 'hybrid'
       similarityThreshold?: number
       vectorSimilarityWeight?: number
+      docIds?: string[]
+      metadataFilter?: SearchRequest['metadata_filter']
       page?: number
       pageSize?: number
       /** User ID for analytics logging (optional for backward compatibility) */
@@ -354,22 +391,38 @@ export class SearchService {
       throw new Error('Search app not found')
     }
 
-    const topK = options?.topK ?? 10
-    const method = options?.method ?? 'full_text'
-    const similarityThreshold = options?.similarityThreshold ?? 0
+    const searchConfig = (app.search_config as Record<string, unknown>) || {}
+    const page = options?.page ?? 1
+    const pageSize = options?.pageSize ?? 10
+    const requestedTopK = options?.topK ?? Number(searchConfig.top_k ?? 10)
+    const topK = Math.max(requestedTopK, page * pageSize)
+    const method = this.normalizeMethod(options?.method ?? searchConfig.search_method)
+    const similarityThreshold = options?.similarityThreshold ?? Number(searchConfig.similarity_threshold ?? 0)
     const vectorSimilarityWeight = options?.vectorSimilarityWeight
+      ?? (typeof searchConfig.vector_similarity_weight === 'number'
+        ? searchConfig.vector_similarity_weight as number
+        : undefined)
+    const metadataFilter = this.mergeMetadataFilters(
+      searchConfig.metadata_filter as SearchRequest['metadata_filter'] | undefined,
+      options?.metadataFilter,
+    )
 
     // Use shared retrieveChunks (applies embedding + reranking)
     const { chunks: allChunks, total: totalHits } = await this.retrieveChunks(
-      tenantId, app, query, topK, method, similarityThreshold, vectorSimilarityWeight,
+      tenantId,
+      app,
+      query,
+      topK,
+      method,
+      similarityThreshold,
+      vectorSimilarityWeight,
+      metadataFilter,
+      options?.docIds,
     )
 
-    // Apply pagination if provided
-    let limited = allChunks
-    if (options?.page && options?.pageSize) {
-      const start = (options.page - 1) * options.pageSize
-      limited = allChunks.slice(start, start + options.pageSize)
-    }
+    // Apply pagination after retrieval so later pages preserve the full filter set.
+    const start = (page - 1) * pageSize
+    const limited = allChunks.slice(start, start + pageSize)
 
     // Map content fields for FE compatibility
     const mappedChunks = limited.map((c: any) => ({
@@ -401,7 +454,7 @@ export class SearchService {
       })
     }
 
-    return { chunks: mappedChunks, total: totalHits, doc_aggs: this.buildDocAggs(limited) }
+    return { chunks: mappedChunks, total: totalHits, doc_aggs: this.buildDocAggs(allChunks) }
   }
 
   /**
@@ -411,20 +464,55 @@ export class SearchService {
    * @returns {Promise<{ chunks: any[], doc_aggs: any[] }>} Raw chunks with scores and document aggregations
    * @throws {Error} If search app not found
    */
-  async retrievalTest(tenantId: string, searchId: string, data: any): Promise<{ chunks: any[], doc_aggs: any[] }> {
+  async retrievalTest(
+    tenantId: string,
+    searchId: string,
+    data: any,
+  ): Promise<{ chunks: any[]; total: number; page: number; page_size: number; doc_aggs: any[] }> {
     const app = await ModelFactory.searchApp.findById(searchId)
     if (!app) throw new Error('Search app not found')
 
-    const { chunks } = await this.retrieveChunks(tenantId, app, data.query, data.top_k, data.method, data.similarity_threshold)
+    const searchConfig = (app.search_config as Record<string, unknown>) || {}
+    const page = data.page ?? 1
+    const pageSize = data.page_size ?? 10
+    const requestedTopK = data.top_k ?? Number(searchConfig.top_k ?? 30)
+    const topK = Math.max(requestedTopK, page * pageSize)
+    const method = this.normalizeMethod(data.method ?? data.search_method ?? searchConfig.search_method ?? 'hybrid')
+    const similarityThreshold = data.similarity_threshold ?? Number(searchConfig.similarity_threshold ?? 0)
+    const vectorSimilarityWeight = data.vector_similarity_weight
+      ?? (typeof searchConfig.vector_similarity_weight === 'number'
+        ? searchConfig.vector_similarity_weight as number
+        : undefined)
+    const metadataFilter = this.mergeMetadataFilters(
+      searchConfig.metadata_filter as SearchRequest['metadata_filter'] | undefined,
+      data.metadata_filter,
+    )
+
+    const { chunks, total } = await this.retrieveChunks(
+      tenantId,
+      app,
+      data.query,
+      topK,
+      method,
+      similarityThreshold,
+      vectorSimilarityWeight,
+      metadataFilter as any,
+      data.doc_ids,
+    )
+    const limitedChunks = chunks.slice((page - 1) * pageSize, page * pageSize)
+
     return {
-      chunks: chunks.map((c, i) => ({
+      chunks: limitedChunks.map((c, i) => ({
         ...c,
         chunk_id: c.chunk_id,
         id: i,
         content: c.text,
         content_with_weight: c.text,
       })),
-      doc_aggs: this.buildDocAggs(chunks)
+      total,
+      page,
+      page_size: pageSize,
+      doc_aggs: this.buildDocAggs(chunks),
     }
   }
 
@@ -466,6 +554,7 @@ export class SearchService {
     similarityThreshold: number = 0,
     vectorSimilarityWeight?: number,
     metadataFilter?: { logic: string; conditions: Array<{ name: string; comparison_operator: string; value: unknown }> },
+    docIds?: string[],
   ): Promise<{ chunks: ChunkResult[]; total: number }> {
     // Parse dataset_ids (may be stored as JSONB)
     const datasetIds: string[] = Array.isArray(app.dataset_ids)
@@ -490,6 +579,7 @@ export class SearchService {
       }
       if (vectorSimilarityWeight != null) searchReq.vector_similarity_weight = vectorSimilarityWeight
       if (metadataFilter) searchReq.metadata_filter = metadataFilter as NonNullable<SearchRequest['metadata_filter']>
+      if (docIds?.length) searchReq.doc_ids = docIds
 
       const result = await ragSearchService.search(
         tenantId,
@@ -573,6 +663,7 @@ export class SearchService {
       similarity_threshold?: number
       vector_similarity_weight?: number
       metadata_filter?: SearchRequest['metadata_filter']
+      doc_ids?: string[]
     },
     res: Response
   ): Promise<void> {
@@ -585,7 +676,18 @@ export class SearchService {
     }
 
     const searchConfig = app.search_config as Record<string, unknown>
-    const { query, top_k = 10, method = 'full_text', similarity_threshold = 0, vector_similarity_weight, metadata_filter } = params
+    const query = params.query
+    const topK = params.top_k ?? Number(searchConfig.top_k ?? 10)
+    const method = this.normalizeMethod(params.method ?? searchConfig.search_method)
+    const similarityThreshold = params.similarity_threshold ?? Number(searchConfig.similarity_threshold ?? 0)
+    const vectorSimilarityWeight = params.vector_similarity_weight
+      ?? (typeof searchConfig.vector_similarity_weight === 'number'
+        ? searchConfig.vector_similarity_weight as number
+        : undefined)
+    const metadataFilter = this.mergeMetadataFilters(
+      searchConfig.metadata_filter as SearchRequest['metadata_filter'] | undefined,
+      params.metadata_filter,
+    )
 
     // Create Langfuse trace for the search pipeline (fire-and-forget)
     let trace: LangfuseTraceClient | undefined
@@ -610,7 +712,17 @@ export class SearchService {
     }
 
     // Retrieve and optionally rerank chunks
-    const { chunks } = await this.retrieveChunks(tenantId, app, query, top_k, method, similarity_threshold, vector_similarity_weight, metadata_filter as any)
+    const { chunks, total } = await this.retrieveChunks(
+      tenantId,
+      app,
+      query,
+      topK,
+      method,
+      similarityThreshold,
+      vectorSimilarityWeight,
+      metadataFilter as any,
+      params.doc_ids,
+    )
 
     // End retrieval span with chunk texts
     if (retrievalSpan) {
@@ -630,11 +742,40 @@ export class SearchService {
         content_with_weight: c.text,
       })),
       doc_aggs: this.buildDocAggs(chunks),
+      total,
     }
 
     // Send generating status and reference
-    res.write(`data: ${JSON.stringify({ status: 'generating' })}\n\n`)
+    if (searchConfig?.enable_summary !== false) {
+      res.write(`data: ${JSON.stringify({ status: 'generating' })}\n\n`)
+    }
     res.write(`data: ${JSON.stringify({ reference })}\n\n`)
+
+    // When summary is disabled, return retrieval output without invoking the LLM.
+    if (searchConfig?.enable_summary === false) {
+      let relatedQuestions: string[] = []
+      if (searchConfig?.enable_related_questions) {
+        try {
+          relatedQuestions = await this.generateRelatedQuestions(query, searchConfig?.llm_id as string | undefined)
+        } catch (err) {
+          log.warn('Failed to generate related questions', { error: (err as Error).message })
+        }
+      }
+
+      res.write(`data: ${JSON.stringify({
+        answer: '',
+        reference,
+        related_questions: relatedQuestions,
+        total,
+        metrics: {
+          retrieval_ms: Date.now() - startTime,
+          chunks_retrieved: chunks.length,
+        },
+      })}\n\n`)
+      res.write('data: [DONE]\n\n')
+      res.end()
+      return
+    }
 
     // Build system prompt with knowledge context and citation instructions
     const systemPrompt = `${askSummaryPrompt.build(knowledge)}\n\n${citationPrompt.system}`
@@ -756,6 +897,10 @@ export class SearchService {
 
     const config = app.search_config as Record<string, unknown>
 
+    if (config?.enable_related_questions === false) {
+      return []
+    }
+
     // Generate related questions via LLM
     return this.generateRelatedQuestions(query, config?.llm_id as string | undefined)
   }
@@ -776,6 +921,9 @@ export class SearchService {
       top_k?: number
       method?: 'full_text' | 'semantic' | 'hybrid'
       similarity_threshold?: number
+      vector_similarity_weight?: number
+      metadata_filter?: SearchRequest['metadata_filter']
+      doc_ids?: string[]
     }
   ): Promise<{ name: string; children: unknown[] }> {
     // Load search app config
@@ -785,10 +933,31 @@ export class SearchService {
     }
 
     const config = app.search_config as Record<string, unknown>
-    const { query, top_k = 10, method = 'full_text', similarity_threshold = 0 } = params
+    const query = params.query
+    const topK = params.top_k ?? Number(config.top_k ?? 10)
+    const method = this.normalizeMethod(params.method ?? config.search_method)
+    const similarityThreshold = params.similarity_threshold ?? Number(config.similarity_threshold ?? 0)
+    const vectorSimilarityWeight = params.vector_similarity_weight
+      ?? (typeof config.vector_similarity_weight === 'number'
+        ? config.vector_similarity_weight as number
+        : undefined)
+    const metadataFilter = this.mergeMetadataFilters(
+      config.metadata_filter as SearchRequest['metadata_filter'] | undefined,
+      params.metadata_filter,
+    )
 
     // Retrieve chunks for context
-    const { chunks } = await this.retrieveChunks(tenantId, app, query, top_k, method, similarity_threshold)
+    const { chunks } = await this.retrieveChunks(
+      tenantId,
+      app,
+      query,
+      topK,
+      method,
+      similarityThreshold,
+      vectorSimilarityWeight,
+      metadataFilter as any,
+      params.doc_ids,
+    )
 
     // Build knowledge context
     const knowledge = this.buildKnowledgeContext(chunks)

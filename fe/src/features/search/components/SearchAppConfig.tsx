@@ -116,6 +116,20 @@ function SearchAppConfig({
     logic: 'and', conditions: [],
   })
 
+  /**
+   * Validate the current form state before save.
+   * Returns the first blocking error message or null when the form is valid.
+   */
+  const getValidationError = () => {
+    if (!name.trim()) return t('common.fieldRequired', { field: t('common.name') })
+    if (selectedDatasets.length === 0) return t('searchAdmin.validation.datasetsRequired')
+    if (enableSummary && !llmId) return t('searchAdmin.validation.llmRequired')
+    if (webSearchEnabled && !tavilyApiKey.trim()) return t('searchAdmin.validation.tavilyRequired')
+    return null
+  }
+
+  const validationError = getValidationError()
+
 
 
   // Populate form when editing an existing search app
@@ -203,7 +217,7 @@ function SearchAppConfig({
    */
   const handleSave = () => {
     // Guard: require non-empty name
-    if (!name.trim()) return
+    if (validationError) return
 
     const search_config: CreateSearchAppPayload['search_config'] = {
       similarity_threshold: similarityThreshold,
@@ -427,8 +441,13 @@ function SearchAppConfig({
         </div>
 
         <DialogFooter>
+          {validationError && (
+            <p className="mr-auto text-sm text-destructive">
+              {validationError}
+            </p>
+          )}
           <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
-          <Button onClick={handleSave} disabled={!name.trim()}>{t('common.save')}</Button>
+          <Button onClick={handleSave} disabled={!!validationError}>{t('common.save')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

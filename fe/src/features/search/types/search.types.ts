@@ -70,10 +70,12 @@ export interface SearchFilters {
     logic: 'and' | 'or'
     conditions: Array<{
       name: string
-      comparison_operator: string
+      comparison_operator: 'is' | 'eq' | 'is_not' | 'contains' | 'gt' | 'lt' | 'range'
       value: string
     }>
   } | undefined
+  /** Restrict retrieval to specific document IDs */
+  doc_ids?: string[]
 }
 
 // ============================================================================

@@ -127,6 +127,7 @@ export const queryKeys = {
   // --------------------------------------------------------------------------
   search: {
     all: ['search'] as const,
+    detail: (appId: string) => [...queryKeys.search.all, 'detail', appId] as const,
     results: (datasetId: string, query: string, filters?: Record<string, unknown>) =>
       [...queryKeys.search.all, 'results', datasetId, query, filters] as const,
     allResults: (query: string, filters?: Record<string, unknown>) =>

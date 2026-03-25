@@ -8,7 +8,7 @@
 
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import type { ProjectCategory } from '../api/projectApi'
+import type { DocumentCategoryType } from '../api/projectApi'
 
 // ============================================================================
 // Types
@@ -16,9 +16,9 @@ import type { ProjectCategory } from '../api/projectApi'
 
 interface CategoryFilterTabsProps {
   /** Currently selected category filter (null = All) */
-  selected: ProjectCategory | null
+  selected: DocumentCategoryType | null
   /** Callback when a category is selected */
-  onChange: (category: ProjectCategory | null) => void
+  onChange: (category: DocumentCategoryType | null) => void
 }
 
 // ============================================================================
@@ -60,7 +60,7 @@ const CategoryFilterTabs = ({ selected, onChange }: CategoryFilterTabsProps) => 
           variant="ghost"
           size="sm"
           disabled={option.disabled}
-          onClick={() => onChange(option.value === 'all' ? null : (option.value as ProjectCategory))}
+          onClick={() => onChange(option.value === 'all' ? null : (option.value as DocumentCategoryType))}
           className={
             currentValue === option.value
               ? 'bg-background shadow-sm text-foreground hover:bg-background'

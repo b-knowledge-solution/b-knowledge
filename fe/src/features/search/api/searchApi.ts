@@ -77,6 +77,8 @@ export const searchApi = {
       search_method?: string
       similarity_threshold?: number
       vector_similarity_weight?: number
+      metadata_filter?: SearchFilters['metadata_filter']
+      doc_ids?: string[]
       page?: number
       page_size?: number
     },
@@ -165,6 +167,15 @@ export const searchApi = {
     if (params?.sort_order) searchParams.set('sort_order', params.sort_order)
     const qs = searchParams.toString()
     return api.get<{ data: SearchApp[]; total: number }>(`/api/search/apps${qs ? `?${qs}` : ''}`)
+  },
+
+  /**
+   * Get a single search app by ID.
+   * @param id - Search application ID
+   * @returns Search app detail
+   */
+  getSearchApp: async (id: string): Promise<SearchApp> => {
+    return api.get<SearchApp>(`/api/search/apps/${id}`)
   },
 
   /**

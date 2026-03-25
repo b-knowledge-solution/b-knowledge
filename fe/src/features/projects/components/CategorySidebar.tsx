@@ -7,11 +7,11 @@
  * @module features/projects/components/CategorySidebar
  */
 
+import type { MouseEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Pencil, Trash2, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { EmptyState } from '@/components/ui/empty-state'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,7 +57,7 @@ const CategorySidebar = ({
   onCreateCategory,
   onEditCategory,
   onDeleteCategory,
-  categoryType,
+  categoryType: _categoryType,
 }: CategorySidebarProps) => {
   const { t } = useTranslation()
 
@@ -116,14 +116,14 @@ const CategorySidebar = ({
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                        onClick={(e: MouseEvent<HTMLButtonElement>) => e.stopPropagation()}
                       >
                         <MoreHorizontal size={14} />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
-                        onClick={(e) => {
+                        onClick={(e: MouseEvent<HTMLDivElement>) => {
                           e.stopPropagation()
                           onEditCategory(cat)
                         }}
@@ -133,7 +133,7 @@ const CategorySidebar = ({
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive"
-                        onClick={(e) => {
+                        onClick={(e: MouseEvent<HTMLDivElement>) => {
                           e.stopPropagation()
                           onDeleteCategory(cat.id)
                         }}

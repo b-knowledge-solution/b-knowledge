@@ -5,12 +5,12 @@
  */
 
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/queryKeys'
-import { Plus, Search, Pencil, Trash2, Shield, Globe, Lock } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, Shield, Globe, Lock, ExternalLink, KeyRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -30,6 +30,7 @@ import { searchApi } from '../api/searchApi'
 import { useSearchApps } from '../api/searchQueries'
 import SearchAppConfig from '../components/SearchAppConfig'
 import SearchAppAccessDialog from '../components/SearchAppAccessDialog'
+import SearchAppEmbedDialog from '../components/SearchAppEmbedDialog'
 import type { SearchApp, CreateSearchAppPayload } from '../types/search.types'
 
 /** Default number of items per page */
@@ -48,6 +49,7 @@ export default function SearchAppManagementPage() {
   const { t } = useTranslation()
   const confirm = useConfirm()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
 
   // Read pagination and search state from URL
@@ -126,6 +128,8 @@ export default function SearchAppManagementPage() {
   // Access dialog state
   const [isAccessOpen, setIsAccessOpen] = useState(false)
   const [accessApp, setAccessApp] = useState<SearchApp | null>(null)
+  const [isEmbedOpen, setIsEmbedOpen] = useState(false)
+  const [embedApp, setEmbedApp] = useState<SearchApp | null>(null)
 
   /**
    * Open the config dialog in create mode.
@@ -193,6 +197,15 @@ export default function SearchAppManagementPage() {
   const openAccess = (app: SearchApp) => {
     setAccessApp(app)
     setIsAccessOpen(true)
+  }
+
+  /**
+   * Open the embed manager dialog for a search app.
+   * @param app - The search app to manage embed tokens for
+   */
+  const openEmbed = (app: SearchApp) => {
+    setEmbedApp(app)
+    setIsEmbedOpen(true)
   }
 
   return (
@@ -279,6 +292,15 @@ export default function SearchAppManagementPage() {
                   {/* Action buttons */}
                   <TableCell>
                     <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigate(`/search/apps/${app.id}`)}
+                        title={t('searchAdmin.openApp')}
+                      >
+                        <ExternalLink size={16} />
+                      </Button>
+
                       {/* Edit button */}
                       <Button
                         variant="ghost"
@@ -290,6 +312,15 @@ export default function SearchAppManagementPage() {
                       </Button>
 
                       {/* Manage access button */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEmbed(app)}
+                        title={t('searchAdmin.embedApp')}
+                      >
+                        <KeyRound size={16} />
+                      </Button>
+
                       <Button
                         variant="ghost"
                         size="sm"
@@ -353,6 +384,12 @@ export default function SearchAppManagementPage() {
         onClose={() => { setIsAccessOpen(false); setAccessApp(null) }}
         onSave={() => fetchApps()}
         app={accessApp}
+      />
+
+      <SearchAppEmbedDialog
+        open={isEmbedOpen}
+        onClose={() => { setIsEmbedOpen(false); setEmbedApp(null) }}
+        app={embedApp}
       />
     </div>
   )

@@ -184,3 +184,16 @@ export function useAccessibleSearchApps() {
     loading: query.isLoading,
   }
 }
+
+/**
+ * @description Hook to fetch a single search app by ID.
+ * @param id - Search app identifier
+ * @returns Query result with the search app detail
+ */
+export function useSearchAppDetail(id: string | null | undefined) {
+  return useQuery({
+    queryKey: queryKeys.search.detail(id || ''),
+    queryFn: () => searchApi.getSearchApp(id!),
+    enabled: !!id,
+  })
+}

@@ -8,6 +8,7 @@
  * @module features/projects/components/VersionCard
  */
 
+import type { MouseEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MoreHorizontal, Archive, Trash2, CheckCircle, XCircle, Loader2, AlertCircle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -169,7 +170,7 @@ const VersionCard = ({ version, isActive, onClick, onDelete, onArchive }: Versio
             {/* Archive option — only for non-archived versions */}
             {version.status !== 'archived' && (
               <DropdownMenuItem
-                onClick={(e) => {
+                onClick={(e: MouseEvent<HTMLDivElement>) => {
                   e.stopPropagation()
                   onArchive(version.id)
                 }}
@@ -181,7 +182,7 @@ const VersionCard = ({ version, isActive, onClick, onDelete, onArchive }: Versio
             {/* Delete option */}
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
-              onClick={(e) => {
+              onClick={(e: MouseEvent<HTMLDivElement>) => {
                 e.stopPropagation()
                 onDelete(version.id)
               }}

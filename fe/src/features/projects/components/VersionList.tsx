@@ -12,7 +12,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, FolderOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Spinner } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { globalMessage } from '@/app/App'
@@ -99,15 +98,32 @@ const VersionList = ({
   const handleCreateVersion = async (formData: VersionFormData) => {
     setSaving(true)
     try {
-      await createCategoryVersion(projectId, categoryId, {
+      const payload: {
+        version_label: string
+        language?: string
+        pagerank?: number
+        pipeline_id?: string
+        parse_type?: number
+        chunk_method?: string
+        parser_config?: Record<string, any>
+      } = {
         version_label: formData.version_label,
         language: formData.language,
         pagerank: formData.pagerank,
-        pipeline_id: formData.pipeline_id,
-        parse_type: formData.parse_type,
-        chunk_method: formData.chunk_method,
         parser_config: formData.parser_config,
-      })
+      }
+
+      if (formData.pipeline_id !== undefined) {
+        payload.pipeline_id = formData.pipeline_id
+      }
+      if (formData.parse_type !== undefined) {
+        payload.parse_type = formData.parse_type
+      }
+      if (formData.chunk_method !== undefined) {
+        payload.chunk_method = formData.chunk_method
+      }
+
+      await createCategoryVersion(projectId, categoryId, payload)
       setVersionModalOpen(false)
       onVersionCreated()
     } catch (err) {

@@ -1,18 +1,23 @@
 /**
- * @fileoverview Dataset Search page - search interface with streaming AI summary,
- * filters, document preview, and related questions.
- * @module features/ai/pages/DatasetSearchPage
+ * @fileoverview Search application page with app-aware routing, streaming answers,
+ * retrieval filters, document preview, and admin controls.
+ * @module features/search/pages/SearchPage
  */
 
-import { useState, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Search, Database, Brain } from 'lucide-react'
+import { Search, Database, Brain, Settings2, KeyRound } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/features/auth'
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
+import { api } from '@/lib/api'
+import { queryKeys } from '@/lib/queryKeys'
+import { globalMessage } from '@/app/App'
 import type { ChatChunk, ChatReference } from '@/features/chat/types/chat.types'
 import SearchBar from '../components/SearchBar'
 import SearchResults from '../components/SearchResults'
@@ -20,258 +25,438 @@ import SearchFilters from '../components/SearchFilters'
 import SearchResultDocDialog from '../components/SearchResultDocDialog'
 import SearchMindMapDrawer from '../components/SearchMindMapDrawer'
 import TagFilterChips from '../components/TagFilterChips'
+import SearchAppConfig from '../components/SearchAppConfig'
+import SearchAppEmbedDialog from '../components/SearchAppEmbedDialog'
 import { searchApi } from '../api/searchApi'
-import { useAccessibleSearchApps } from '../api/searchQueries'
+import { useAccessibleSearchApps, useSearchAppDetail, useSendSearchFeedback } from '../api/searchQueries'
 import { useSearchStream } from '../hooks/useSearchStream'
-import type { SearchFilters as SearchFiltersType, SearchResult } from '../types/search.types'
-
-// ============================================================================
-// Component
-// ============================================================================
+import type {
+  SearchApp,
+  SearchAppConfig as SearchAppConfigType,
+  SearchFilters as SearchFiltersType,
+  SearchResult,
+  CreateSearchAppPayload,
+} from '../types/search.types'
 
 /**
- * @description Dataset search page with large centered search bar,
- * filter sidebar, streaming AI summary, and document preview drawer.
- *
- * @returns {JSX.Element} The rendered dataset search page
+ * @description Build runtime search filters from a search app configuration.
+ * @param {SearchAppConfigType | undefined} config - Search app configuration
+ * @returns {SearchFiltersType} Default runtime filter state
+ */
+function buildDefaultFilters(config?: SearchAppConfigType): SearchFiltersType {
+  const filters: SearchFiltersType = {}
+
+  if (config?.search_method) {
+    filters.search_method = config.search_method
+  }
+  if (config?.similarity_threshold !== undefined) {
+    filters.similarity_threshold = config.similarity_threshold
+  }
+  if (config?.top_k !== undefined) {
+    filters.top_k = config.top_k
+  }
+  if (config?.vector_similarity_weight !== undefined) {
+    filters.vector_similarity_weight = config.vector_similarity_weight
+  }
+
+  return filters
+}
+
+/**
+ * @description Build metadata filter conditions from active tag filters.
+ * Each active tag becomes an exact-match condition on the `tag_kwd` field.
+ * @param {Record<string, string>} tags - Active tag key/value pairs
+ * @returns {SearchFiltersType['metadata_filter']} Metadata filter payload
+ */
+function buildTagMetadataFilter(tags: Record<string, string>): SearchFiltersType['metadata_filter'] {
+  const entries = Object.entries(tags)
+  if (entries.length === 0) return undefined
+
+  return {
+    logic: 'and',
+    conditions: entries.map(([key, value]) => ({
+      name: 'tag_kwd',
+      comparison_operator: 'is',
+      value: `${key}:${value}`,
+    })),
+  }
+}
+
+/**
+ * @description Merge base runtime filters with tag and document filters for API requests.
+ * @param {SearchFiltersType} filters - Runtime filter state
+ * @param {Record<string, string>} tagFilters - Active tag filters
+ * @param {string[]} selectedDocIds - Selected document IDs
+ * @param {number} page - Requested page
+ * @param {number} pageSize - Requested page size
+ * @returns {SearchFiltersType} API-ready request payload
+ */
+function buildRequestFilters(
+  filters: SearchFiltersType,
+  tagFilters: Record<string, string>,
+  selectedDocIds: string[],
+  page: number,
+  pageSize: number,
+): SearchFiltersType {
+  const requestFilters: SearchFiltersType = {
+    ...filters,
+    page,
+    page_size: pageSize,
+  }
+
+  const tagMetadataFilter = buildTagMetadataFilter(tagFilters)
+  if (tagMetadataFilter) {
+    requestFilters.metadata_filter = tagMetadataFilter
+  }
+  if (selectedDocIds.length > 0) {
+    requestFilters.doc_ids = selectedDocIds
+  }
+
+  return requestFilters
+}
+
+/**
+ * @description Search page with route-based app identity, app-aware controls,
+ * streaming answer handling, and server-backed retrieval filtering.
+ * @returns {JSX.Element} Rendered search page
  */
 function DatasetSearchPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { appId } = useParams<{ appId: string }>()
+  const [urlParams, setUrlParams] = useSearchParams()
   const { user } = useAuth()
   const { isFirstVisit } = useFirstVisit('ai-search')
   const [showGuide, setShowGuide] = useState(false)
-
-  // Search stream state
   const searchStream = useSearchStream()
+  const sendFeedback = useSendSearchFeedback()
+  const canManageApps = user?.role === 'admin' || user?.role === 'super-admin'
+
+  const requestedQuery = urlParams.get('q') || ''
+  const { apps: searchApps, activeAppId, setActiveAppId } = useAccessibleSearchApps()
+  const resolvedAppId = appId || activeAppId
+  const { data: currentApp } = useSearchAppDetail(resolvedAppId)
+
   const [filters, setFilters] = useState<SearchFiltersType>({})
   const [showFilters, setShowFilters] = useState(false)
-
-  // Search app selection (replaces hardcoded 'default')
-  const { apps: searchApps, activeAppId: searchAppId, setActiveAppId } = useAccessibleSearchApps()
-
-  // Paginated search state for non-first pages (avoids re-triggering SSE stream)
   const [paginatedResults, setPaginatedResults] = useState<SearchResult[]>([])
   const [paginatedTotal, setPaginatedTotal] = useState(0)
   const [isPaginating, setIsPaginating] = useState(false)
-
-  // Pagination state
   const [page, setPage] = useState(1)
   const [pageSize] = useState(20)
-
-  // Document filter state
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([])
-
-  // Tag filter state for metadata filtering
   const [tagFilters, setTagFilters] = useState<Record<string, string>>({})
-
-  // Mind map drawer state
   const [mindMapOpen, setMindMapOpen] = useState(false)
-
-  // Document preview drawer state
+  const [isConfigOpen, setIsConfigOpen] = useState(false)
+  const [isEmbedOpen, setIsEmbedOpen] = useState(false)
   const [previewDoc, setPreviewDoc] = useState<{
     open: boolean
     result: SearchResult | null
   }>({ open: false, result: null })
+  const hydratedSearchKeyRef = useRef<string | null>(null)
 
-  // Whether user has performed a search (show results layout vs landing)
+  const { data: rawDatasets = [] } = useQuery({
+    queryKey: queryKeys.datasets.list(),
+    queryFn: () => api.get<{ id: string; name: string; doc_count?: number }[]>('/api/rag/datasets'),
+    enabled: canManageApps,
+  })
+  const { data: rawProjects = [] } = useQuery({
+    queryKey: queryKeys.projects.all,
+    queryFn: () => api.get<{ id: string; name: string; dataset_count?: number }[]>('/api/projects'),
+    enabled: canManageApps,
+  })
+
+  const datasetItems = rawDatasets.map((d) => ({
+    id: d.id, name: d.name, type: 'dataset' as const, docCount: d.doc_count,
+  }))
+  const projectItems = rawProjects.map((p) => ({
+    id: p.id, name: p.name, type: 'project' as const, docCount: p.dataset_count,
+  }))
+
   const hasSearched = !!searchStream.lastQuery
+  const currentAppName = currentApp?.name || searchApps.find((app) => app.id === resolvedAppId)?.name
+  const currentAppDescription = currentApp?.description || null
 
   /**
-   * Build ChatReference from search stream chunks for CitationInline.
-   * Maps SearchResult[] to ChatChunk[] and doc_aggs format.
+   * Persist the current query in the URL without disturbing the active app route.
+   * @param {string} query - Search query to persist
+   */
+  const updateQueryParam = (query: string) => {
+    const next = new URLSearchParams(urlParams)
+    if (query) {
+      next.set('q', query)
+    } else {
+      next.delete('q')
+    }
+    setUrlParams(next, { replace: true })
+  }
+
+  /**
+   * Build citation reference data for the current streamed chunks.
+   * @returns {ChatReference | undefined} Reference payload for citation rendering
    */
   const buildReference = (): ChatReference | undefined => {
     if (!searchStream.chunks.length) return undefined
-    const chatChunks: ChatChunk[] = searchStream.chunks.map((c) => ({
-      chunk_id: c.chunk_id,
-      content_with_weight: c.content_with_weight || c.content,
-      doc_id: c.doc_id,
-      docnm_kwd: c.doc_name,
-      page_num_int: Array.isArray(c.page_num) ? (c.page_num[0] ?? 0) : c.page_num,
-      position_int: Array.isArray(c.position) ? (c.position[0] ?? 0) : c.position,
-      positions: c.positions,
-      score: c.score,
-    }))
+
     return {
-      chunks: chatChunks,
-      doc_aggs: searchStream.docAggs.map((d) => ({
-        doc_id: d.doc_id,
-        doc_name: d.doc_name,
-        count: d.count,
+      chunks: searchStream.chunks.map((chunk) => ({
+        chunk_id: chunk.chunk_id,
+        content_with_weight: chunk.content_with_weight || chunk.content,
+        doc_id: chunk.doc_id,
+        docnm_kwd: chunk.doc_name,
+        page_num_int: Array.isArray(chunk.page_num) ? (chunk.page_num[0] ?? 0) : chunk.page_num,
+        position_int: Array.isArray(chunk.position) ? (chunk.position[0] ?? 0) : chunk.position,
+        positions: chunk.positions,
+        score: chunk.score,
+      })),
+      doc_aggs: searchStream.docAggs.map((doc) => ({
+        doc_id: doc.doc_id,
+        doc_name: doc.doc_name,
+        count: doc.count,
       })),
     }
   }
 
   /**
-   * Handle citation click from CitationInline - open document preview.
-   * @param chunk - The clicked ChatChunk from the citation
+   * Execute a fresh search request and reset secondary result state.
+   * @param {string} query - Query text
+   * @param {SearchFiltersType} [runtimeFilters] - Runtime filters to apply
+   * @param {Record<string, string>} [runtimeTagFilters] - Tag filters to apply
+   * @param {string[]} [runtimeDocIds] - Document IDs to constrain retrieval to
    */
-  const handleCitationClick = (chunk: ChatChunk) => {
-    // Map ChatChunk back to a SearchResult for the preview drawer
-    // Find matching chunk from stream results for dataset_id
-    const matchingChunk = searchStream.chunks.find((c) => c.doc_id === chunk.doc_id)
-    const searchResult: SearchResult = {
-      chunk_id: chunk.chunk_id,
-      content: chunk.content_with_weight,
-      content_with_weight: chunk.content_with_weight,
-      doc_id: chunk.doc_id,
-      doc_name: chunk.docnm_kwd,
-      page_num: chunk.page_num_int ?? 0,
-      position: chunk.position_int ?? 0,
-      score: chunk.score || 0,
-      dataset_id: matchingChunk?.dataset_id || '',
-      ...(chunk.positions ? { positions: chunk.positions } : {}),
-    }
-    setPreviewDoc({ open: true, result: searchResult })
+  const executeFreshSearch = (
+    query: string,
+    runtimeFilters: SearchFiltersType = filters,
+    runtimeTagFilters: Record<string, string> = tagFilters,
+    runtimeDocIds: string[] = selectedDocIds,
+  ) => {
+    if (!resolvedAppId) return
+
+    setPage(1)
+    setPaginatedResults([])
+    setPaginatedTotal(0)
+    updateQueryParam(query)
+    searchStream.askSearch(
+      resolvedAppId,
+      query,
+      buildRequestFilters(runtimeFilters, runtimeTagFilters, runtimeDocIds, 1, pageSize),
+    )
   }
 
-  // Show first-visit guide
+  /**
+   * Save search app configuration updates from the in-page admin dialog.
+   * @param {CreateSearchAppPayload} data - Updated app payload
+   */
+  const handleSaveConfig = async (data: CreateSearchAppPayload) => {
+    if (!currentApp) return
+
+    try {
+      await searchApi.updateSearchApp(currentApp.id, data)
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.search.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.search.detail(currentApp.id) }),
+      ])
+      globalMessage.success(t('common.updateSuccess'))
+    } catch (error: any) {
+      globalMessage.error(error?.message || t('common.error'))
+    }
+  }
+
+  /**
+   * Submit feedback for the current answer or a specific result card.
+   * @param {boolean} thumbup - Whether the feedback is positive
+   * @param {SearchResult} [result] - Optional specific result context
+   */
+  const handleFeedback = async (thumbup: boolean, result?: SearchResult) => {
+    if (!resolvedAppId || !searchStream.lastQuery) return
+
+    try {
+      await sendFeedback.mutateAsync({
+        searchAppId: resolvedAppId,
+        thumbup,
+        query: searchStream.lastQuery,
+        answer: searchStream.answer || '',
+        chunksUsed: (result ? [result] : (page === 1 ? searchStream.chunks : paginatedResults)).map((chunk) => ({
+          chunk_id: chunk.chunk_id,
+          doc_id: chunk.doc_id,
+          score: chunk.score,
+        })),
+      })
+      globalMessage.success(t('search.feedbackThankYou'))
+    } catch (error: any) {
+      globalMessage.error(error?.message || t('common.error'))
+    }
+  }
+
+  /**
+   * Handle citation clicks from the AI summary, opening document preview for the source chunk.
+   * @param {ChatChunk} chunk - Citation chunk selected by the user
+   */
+  const handleCitationClick = (chunk: ChatChunk) => {
+    const matchingChunk = searchStream.chunks.find((candidate) => candidate.doc_id === chunk.doc_id)
+    setPreviewDoc({
+      open: true,
+      result: {
+        chunk_id: chunk.chunk_id,
+        content: chunk.content_with_weight,
+        content_with_weight: chunk.content_with_weight,
+        doc_id: chunk.doc_id,
+        doc_name: chunk.docnm_kwd,
+        page_num: chunk.page_num_int ?? 0,
+        position: chunk.position_int ?? 0,
+        score: chunk.score || 0,
+        dataset_id: matchingChunk?.dataset_id || '',
+        ...(chunk.positions ? { positions: chunk.positions } : {}),
+      },
+    })
+  }
+
+  // Show the first-visit guideline once per user.
   useEffect(() => {
     if (isFirstVisit) {
       setShowGuide(true)
     }
   }, [isFirstVisit])
 
-  /**
-   * Build metadata_filter conditions from active tag filters.
-   * Each active tag becomes an 'eq' condition on 'tag_kwd' field.
-   * This format is consumed by buildMetadataFilters() in rag-search.service.ts.
-   */
-  const buildTagMetadataFilter = (tags: Record<string, string>) => {
-    const entries = Object.entries(tags)
-    if (entries.length === 0) return undefined
-    return {
-      logic: 'and' as const,
-      conditions: entries.map(([key, value]) => ({
-        name: 'tag_kwd',
-        comparison_operator: 'eq',
-        value: `${key}:${value}`,
-      })),
+  // Sync route-driven app selection into the shared app list state.
+  useEffect(() => {
+    if (appId) {
+      setActiveAppId(appId)
     }
-  }
+  }, [appId, setActiveAppId])
 
-  /**
-   * Handle search submission.
-   * @param query - Search query text
-   */
-  const handleSearch = (query: string) => {
-    if (!searchAppId) return
-    // Reset pagination, document filter, and stale paginated results
-    setPage(1)
+  // Reset runtime filters and search state when the active app changes.
+  useEffect(() => {
+    if (!currentApp) return
+
+    setFilters(buildDefaultFilters(currentApp.search_config))
+    setTagFilters({})
     setSelectedDocIds([])
+    setPage(1)
     setPaginatedResults([])
     setPaginatedTotal(0)
-    searchStream.askSearch(searchAppId, query, {
-      ...filters,
-      metadata_filter: buildTagMetadataFilter(tagFilters),
-      page: 1,
-      page_size: pageSize,
+    hydratedSearchKeyRef.current = null
+  }, [currentApp?.id])
+
+  // Hydrate a query from the URL once the active app is known.
+  useEffect(() => {
+    if (!currentApp || !requestedQuery) return
+
+    const hydrationKey = `${currentApp.id}:${requestedQuery}`
+    if (hydratedSearchKeyRef.current === hydrationKey) return
+
+    hydratedSearchKeyRef.current = hydrationKey
+    const defaultFilters = buildDefaultFilters(currentApp.search_config)
+    setFilters(defaultFilters)
+    executeFreshSearch(requestedQuery, defaultFilters, {}, [])
+  }, [currentApp?.id, requestedQuery])
+
+  /**
+   * Handle the landing-page search app selector by navigating to the app route.
+   * @param {string} nextAppId - Selected search app ID
+   */
+  const handleSelectApp = (nextAppId: string) => {
+    setActiveAppId(nextAppId)
+    navigate({
+      pathname: `/search/apps/${nextAppId}`,
+      search: requestedQuery ? `?q=${encodeURIComponent(requestedQuery)}` : '',
     })
   }
 
   /**
-   * Handle filter changes - re-run search with new filters.
-   * @param newFilters - Updated filters
+   * Handle search submission from the search bar.
+   * @param {string} query - Query text
+   */
+  const handleSearch = (query: string) => {
+    executeFreshSearch(query)
+  }
+
+  /**
+   * Re-run the current query when runtime retrieval filters change.
+   * @param {SearchFiltersType} newFilters - Updated filter state
    */
   const handleFiltersChange = (newFilters: SearchFiltersType) => {
     setFilters(newFilters)
-    // Re-run search with updated filters if a query exists
-    if (searchStream.lastQuery && searchAppId) {
-      setPage(1)
-      searchStream.askSearch(searchAppId, searchStream.lastQuery, {
-        ...newFilters,
-        metadata_filter: buildTagMetadataFilter(tagFilters),
-        page: 1,
-        page_size: pageSize,
-      })
+    if (searchStream.lastQuery) {
+      executeFreshSearch(searchStream.lastQuery, newFilters)
     }
   }
 
   /**
-   * Handle tag filter changes from TagFilterChips.
-   * Re-runs search with updated metadata_filter conditions.
-   * @param newTags - Updated tag filter key-value pairs
+   * Re-run the current query when tag filters change.
+   * @param {Record<string, string>} newTags - Updated tag filters
    */
   const handleTagFilterChange = (newTags: Record<string, string>) => {
     setTagFilters(newTags)
-    // Re-run search with updated tag filters if a query exists
-    if (searchStream.lastQuery && searchAppId) {
-      setPage(1)
-      searchStream.askSearch(searchAppId, searchStream.lastQuery, {
-        ...filters,
-        metadata_filter: buildTagMetadataFilter(newTags),
-        page: 1,
-        page_size: pageSize,
-      })
+    if (searchStream.lastQuery) {
+      executeFreshSearch(searchStream.lastQuery, filters, newTags)
     }
   }
 
   /**
-   * Handle result card click - open document preview drawer.
-   * @param result - The clicked search result
+   * Re-run retrieval when the document scope changes.
+   * @param {string[]} newDocIds - Selected document IDs
+   */
+  const handleDocFilterChange = (newDocIds: string[]) => {
+    setSelectedDocIds(newDocIds)
+    if (searchStream.lastQuery) {
+      executeFreshSearch(searchStream.lastQuery, filters, tagFilters, newDocIds)
+    }
+  }
+
+  /**
+   * Open a search result in the document preview dialog.
+   * @param {SearchResult} result - Search result selected by the user
    */
   const handleResultClick = (result: SearchResult) => {
     setPreviewDoc({ open: true, result })
   }
 
   /**
-   * Handle related question click - re-run search with question.
-   * @param question - The related question text
+   * Handle a related-question click by treating it as a fresh search.
+   * @param {string} question - Suggested follow-up question
    */
   const handleRelatedQuestionClick = (question: string) => {
-    if (!searchAppId) return
-    setPage(1)
-    searchStream.askSearch(searchAppId, question, {
-      ...filters,
-      metadata_filter: buildTagMetadataFilter(tagFilters),
-      page: 1,
-      page_size: pageSize,
-    })
+    executeFreshSearch(question)
   }
 
   /**
-   * Handle page change for pagination.
-   * @param newPage - New page number
+   * Handle pagination using the non-streaming search endpoint for pages > 1.
+   * @param {number} newPage - Requested page number
    */
   const handlePageChange = async (newPage: number) => {
-    if (!searchStream.lastQuery || !searchAppId) return
+    if (!searchStream.lastQuery || !resolvedAppId) return
 
     if (newPage === 1) {
-      setPage(1)
-      searchStream.askSearch(searchAppId, searchStream.lastQuery, {
-        ...filters,
-        metadata_filter: buildTagMetadataFilter(tagFilters),
-        page: 1,
-        page_size: pageSize,
-      })
-    } else {
-      setIsPaginating(true)
-      try {
-        const result = await searchApi.searchByApp(searchAppId, searchStream.lastQuery, {
-          ...filters,
-          page: newPage,
-          page_size: pageSize,
-        })
-        setPage(newPage)
-        setPaginatedResults(result.chunks)
-        setPaginatedTotal(result.total)
-      } catch {
-        // Keep current page and results on error
-      } finally {
-        setIsPaginating(false)
-      }
+      executeFreshSearch(searchStream.lastQuery)
+      return
+    }
+
+    setIsPaginating(true)
+    try {
+      const result = await searchApi.searchByApp(
+        resolvedAppId,
+        searchStream.lastQuery,
+        buildRequestFilters(filters, tagFilters, selectedDocIds, newPage, pageSize),
+      )
+      setPage(newPage)
+      setPaginatedResults(result.chunks)
+      setPaginatedTotal(result.total)
+    } catch (error: any) {
+      globalMessage.error(error?.message || t('common.error'))
+    } finally {
+      setIsPaginating(false)
     }
   }
 
-  // Use paginated results for non-first pages, SSE stream results for page 1
   const displayResults = page === 1 ? searchStream.chunks : paginatedResults
   const streamTotal = searchStream.total || searchStream.chunks.length
-  const displayTotal = page === 1 ? streamTotal : paginatedTotal
+  const displayTotal = page === 1 ? streamTotal : paginatedTotal || streamTotal
 
   return (
     <>
       <div className="flex h-full w-full overflow-hidden">
-        {/* Filter sidebar (conditionally visible) */}
         {hasSearched && showFilters && (
           <SearchFilters
             filters={filters}
@@ -282,9 +467,7 @@ function DatasetSearchPage() {
           />
         )}
 
-        {/* Main content area */}
         <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-          {/* Landing / search bar section */}
           <div
             className={cn(
               'flex flex-col items-center transition-all duration-500',
@@ -293,34 +476,31 @@ function DatasetSearchPage() {
                 : 'flex-1 justify-center pb-20',
             )}
           >
-            {/* Logo / branding (only on landing) */}
             {!hasSearched && (
               <div className="flex flex-col items-center gap-3 mb-8">
                 <div className="h-20 w-20 rounded-3xl bg-primary/10 flex items-center justify-center">
                   <Search className="h-10 w-10 text-primary" />
                 </div>
-                <h1 className="text-2xl font-bold text-foreground">
-                  {user?.name
+                <h1 className="text-2xl font-bold text-foreground text-center">
+                  {currentAppName || (user?.name
                     ? `${t('search.greeting')}, ${user.name}`
-                    : t('search.title')}
+                    : t('search.title'))}
                 </h1>
                 <p className="text-sm text-muted-foreground max-w-md text-center">
-                  {t('search.description')}
+                  {currentAppDescription || t('search.description')}
                 </p>
               </div>
             )}
 
-            {/* Search bar */}
             <SearchBar
               onSearch={handleSearch}
               isSearching={searchStream.isStreaming}
               isStreaming={searchStream.isStreaming}
               onStop={searchStream.stopStream}
-              defaultValue={searchStream.lastQuery}
+              defaultValue={searchStream.lastQuery || requestedQuery}
               className={hasSearched ? 'max-w-xl' : 'max-w-2xl'}
             />
 
-            {/* Tag filter chips (only after search) */}
             {hasSearched && (
               <div className="mt-3 w-full max-w-xl px-4">
                 <TagFilterChips
@@ -330,36 +510,60 @@ function DatasetSearchPage() {
               </div>
             )}
 
-            {/* Filter toggle, app badge, and mind map button (only after search) */}
             {hasSearched && (
-              <div className="flex items-center gap-2 mt-3">
-                {searchApps.length > 1 && (
+              <div className="flex items-center gap-2 mt-3 flex-wrap justify-center">
+                {currentAppName && (
                   <Badge variant="secondary" className="text-xs">
-                    {searchApps.find((a) => a.id === searchAppId)?.name}
+                    {currentAppName}
                   </Badge>
                 )}
+
                 <SearchFilters
                   filters={filters}
                   onFiltersChange={handleFiltersChange}
                   visible={false}
                   onToggle={() => setShowFilters(!showFilters)}
                 />
-                {/* Mind map button */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setMindMapOpen(true)}
-                  disabled={!searchAppId}
-                  title={t('search.mindMap')}
-                >
-                  <Brain className="h-4 w-4 mr-1.5" />
-                  {t('search.mindMap')}
-                </Button>
+
+                {currentApp?.search_config?.enable_mindmap && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setMindMapOpen(true)}
+                    disabled={!resolvedAppId}
+                    title={t('search.mindMap')}
+                  >
+                    <Brain className="h-4 w-4 mr-1.5" />
+                    {t('search.mindMap')}
+                  </Button>
+                )}
+
+                {canManageApps && currentApp && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsConfigOpen(true)}
+                      title={t('searchAdmin.editApp')}
+                    >
+                      <Settings2 className="h-4 w-4 mr-1.5" />
+                      {t('searchAdmin.editApp')}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEmbedOpen(true)}
+                      title={t('searchAdmin.embedApp')}
+                    >
+                      <KeyRound className="h-4 w-4 mr-1.5" />
+                      {t('searchAdmin.embedApp')}
+                    </Button>
+                  </>
+                )}
               </div>
             )}
           </div>
 
-          {/* Search results */}
           {hasSearched && (
             <div className="flex-1 px-4 py-6">
               <div className="max-w-3xl mx-auto">
@@ -372,12 +576,14 @@ function DatasetSearchPage() {
                   onResultClick={handleResultClick}
                   error={searchStream.error}
                   streamingAnswer={searchStream.answer}
-                  relatedQuestions={searchStream.relatedQuestions}
+                  relatedQuestions={currentApp?.search_config?.enable_related_questions === false
+                    ? []
+                    : searchStream.relatedQuestions}
                   onRelatedQuestionClick={handleRelatedQuestionClick}
                   isStreamingAnswer={searchStream.isStreaming}
                   docAggs={searchStream.docAggs}
                   selectedDocIds={selectedDocIds}
-                  onDocFilterChange={setSelectedDocIds}
+                  onDocFilterChange={handleDocFilterChange}
                   pipelineStatus={searchStream.pipelineStatus}
                   onStopStream={searchStream.stopStream}
                   page={page}
@@ -385,20 +591,20 @@ function DatasetSearchPage() {
                   onPageChange={handlePageChange}
                   reference={buildReference()}
                   onCitationClick={handleCitationClick}
+                  onFeedback={handleFeedback}
                 />
               </div>
             </div>
           )}
 
-          {/* Search app selector */}
           {!hasSearched && searchApps.length > 1 && (
             <div className="flex justify-center mt-4">
-              <Select value={searchAppId ?? ''} onValueChange={setActiveAppId}>
-                <SelectTrigger className="w-64">
+              <Select value={resolvedAppId ?? ''} onValueChange={handleSelectApp}>
+                <SelectTrigger className="w-72">
                   <SelectValue placeholder={t('search.selectApp')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {searchApps.map((app) => (
+                  {searchApps.map((app: SearchApp) => (
                     <SelectItem key={app.id} value={app.id}>
                       {app.name}
                     </SelectItem>
@@ -408,7 +614,6 @@ function DatasetSearchPage() {
             </div>
           )}
 
-          {/* Dataset badges on landing */}
           {!hasSearched && (
             <div className="flex items-center justify-center gap-2 mt-4 px-4 flex-wrap">
               <Database className="h-4 w-4 text-muted-foreground" />
@@ -420,7 +625,6 @@ function DatasetSearchPage() {
         </div>
       </div>
 
-      {/* Document preview dialog */}
       <SearchResultDocDialog
         open={previewDoc.open}
         onClose={() => setPreviewDoc({ open: false, result: null })}
@@ -429,17 +633,30 @@ function DatasetSearchPage() {
         datasetId={previewDoc.result?.dataset_id}
       />
 
-      {/* Mind map drawer */}
-      {searchAppId && (
+      {resolvedAppId && currentApp?.search_config?.enable_mindmap && (
         <SearchMindMapDrawer
           open={mindMapOpen}
           onOpenChange={setMindMapOpen}
-          searchAppId={searchAppId}
-          query={searchStream.lastQuery || ''}
+          searchAppId={resolvedAppId}
+          query={searchStream.lastQuery || requestedQuery}
         />
       )}
 
-      {/* First visit guide */}
+      <SearchAppConfig
+        open={isConfigOpen}
+        onClose={() => setIsConfigOpen(false)}
+        onSave={handleSaveConfig}
+        app={currentApp ?? null}
+        datasets={datasetItems}
+        projects={projectItems}
+      />
+
+      <SearchAppEmbedDialog
+        open={isEmbedOpen}
+        onClose={() => setIsEmbedOpen(false)}
+        app={currentApp ?? null}
+      />
+
       <GuidelineDialog
         open={showGuide}
         onClose={() => setShowGuide(false)}

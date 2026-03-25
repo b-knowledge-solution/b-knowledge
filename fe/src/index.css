@@ -286,6 +286,12 @@
     0%, 100% { box-shadow: 0 0 0 0 hsl(0 100% 50% / 0.3); }
     50% { box-shadow: 0 0 0 6px hsl(0 100% 50% / 0); }
   }
+
+  /* Streaming cursor blink for assistant message typing indicator */
+  @keyframes cursor-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
 }
 
 /* Document Manager Table - Force fill container height */

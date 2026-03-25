@@ -176,7 +176,7 @@ const CodeGraphPanel = ({ datasetId }: { datasetId: string }) => {
  * @param {CodeTabRedesignedProps} props - Component props
  * @returns {JSX.Element} The rendered 2-column code tab with graph panel
  */
-const CodeTabRedesigned = ({ projectId, initialCategories, embeddingModels }: CodeTabRedesignedProps) => {
+const CodeTabRedesigned = ({ projectId, initialCategories, embeddingModels: _embeddingModels }: CodeTabRedesignedProps) => {
   const { t } = useTranslation()
   const confirm = useConfirm()
 

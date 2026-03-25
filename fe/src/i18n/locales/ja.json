@@ -1313,6 +1313,14 @@
     "deepResearchBudgetExhausted": "予算により研究が制限されました。{{completed}} / {{total}} のサブクエリが完了しました。",
     "noDescription": "説明なし",
     "knowledgeBasesCount": "{{count}} KB",
+    "editMessage": "メッセージを編集",
+    "saveEdit": "保存して送信",
+    "cancelEdit": "キャンセル",
+    "copyCode": "コードをコピー",
+    "codeCopied": "コピーしました！",
+    "showMore": "もっと見る（{{count}}行）",
+    "showLess": "折りたたむ",
+    "mermaidError": "ダイアグラム表示エラー",
     "deepResearch": {
       "title": "ディープリサーチ",
       "researching": "調査中: {{query}}",
@@ -2353,6 +2361,8 @@
     "manageAccess": "Manage Access",
     "accessUsers": "Access Users",
     "accessTeams": "Access Teams",
+    "openApp": "検索アプリを開く",
+    "embedApp": "検索アプリを埋め込む",
     "editApp": "Edit Search App",
     "createApp": "Create Search App",
     "isPublic": "Public Access",
@@ -2389,6 +2399,11 @@
     "embeddingMismatchWarning": "警告: 選択したデータセットは異なる埋め込みモデルを使用しています。検索品質が低下する可能性があります。",
     "crossLanguages": "Cross-Language Search",
     "crossLanguagesDesc": "Enable searching across multiple languages",
+    "validation": {
+      "datasetsRequired": "少なくとも1つのデータセットまたはプロジェクトを選択してください",
+      "llmRequired": "AI要約を有効にする場合はLLMモデルを選択してください",
+      "tavilyRequired": "Web検索を有効にする場合はTavily APIキーを入力してください"
+    },
     "retrievalTest": {
       "page": "Page",
       "title": "Retrieval Test",

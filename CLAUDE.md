@@ -284,48 +284,76 @@ This renaming is critical to maintain consistency with the Node.js backend which
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **b-knowledge** (13916 symbols, 37778 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **b-knowledge** (14760 symbols, 39744 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
-## Always Do
+## Tool Loading (Required)
 
-- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
-- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
+**Before your first GitNexus operation in any conversation**, load the tools:
+```
+ToolSearch("select:mcp__gitnexus__query,mcp__gitnexus__context,mcp__gitnexus__impact,mcp__gitnexus__detect_changes,mcp__gitnexus__rename,mcp__gitnexus__cypher")
+```
+
+GitNexus tools are deferred MCP tools — they require explicit loading via `ToolSearch` before they can be invoked. Do this once at the start of any session where you will search, explore, or modify code.
+
+## Always Do — Search & Exploration (OVERRIDES default Grep/Glob preference)
+
+**These rules override the default system behavior of using Grep/Glob for code search.** GitNexus provides process-grouped, graph-aware results that are superior to text search for understanding code.
+
+- **MUST use `mcp__gitnexus__query` instead of Grep/Glob** when exploring unfamiliar code, searching by concept, or trying to understand how a feature works. It returns process-grouped results ranked by relevance — far more useful than raw text matches.
+- **MUST use `mcp__gitnexus__context` instead of reading multiple files** when you need to understand a symbol's callers, callees, and execution flow participation. One call replaces 5-10 Grep/Read calls.
+- **Still use Grep/Glob** only for exact string matches (e.g., finding a specific error message, config key, or import path) where graph-awareness adds no value.
+
+### When to use which tool:
+
+| Task | Use GitNexus | Use Grep/Glob |
+|------|-------------|---------------|
+| "How does feature X work?" | `mcp__gitnexus__query` | No |
+| "What calls function Y?" | `mcp__gitnexus__context` | No |
+| "Where is string 'ABC' used?" | No | `Grep` |
+| "Find files matching *.test.ts" | No | `Glob` |
+| "What's the blast radius of changing Z?" | `mcp__gitnexus__impact` | No |
+| "Trace the document upload flow" | `mcp__gitnexus__query` | No |
+| "What changed in my branch?" | `mcp__gitnexus__detect_changes` | No |
+
+## Always Do — Before Editing
+
+- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `mcp__gitnexus__impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
+- **MUST run `mcp__gitnexus__detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
 - **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
-- When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
-- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
 
 ## When Debugging
 
-1. `gitnexus_query({query: "<error or symptom>"})` — find execution flows related to the issue
-2. `gitnexus_context({name: "<suspect function>"})` — see all callers, callees, and process participation
+1. `mcp__gitnexus__query({query: "<error or symptom>"})` — find execution flows related to the issue
+2. `mcp__gitnexus__context({name: "<suspect function>"})` — see all callers, callees, and process participation
 3. `READ gitnexus://repo/b-knowledge/process/{processName}` — trace the full execution flow step by step
-4. For regressions: `gitnexus_detect_changes({scope: "compare", base_ref: "main"})` — see what your branch changed
+4. For regressions: `mcp__gitnexus__detect_changes({scope: "compare", base_ref: "main"})` — see what your branch changed
 
 ## When Refactoring
 
-- **Renaming**: MUST use `gitnexus_rename({symbol_name: "old", new_name: "new", dry_run: true})` first. Review the preview — graph edits are safe, text_search edits need manual review. Then run with `dry_run: false`.
-- **Extracting/Splitting**: MUST run `gitnexus_context({name: "target"})` to see all incoming/outgoing refs, then `gitnexus_impact({target: "target", direction: "upstream"})` to find all external callers before moving code.
-- After any refactor: run `gitnexus_detect_changes({scope: "all"})` to verify only expected files changed.
+- **Renaming**: MUST use `mcp__gitnexus__rename({symbol_name: "old", new_name: "new", dry_run: true})` first. Review the preview — graph edits are safe, text_search edits need manual review. Then run with `dry_run: false`.
+- **Extracting/Splitting**: MUST run `mcp__gitnexus__context({name: "target"})` to see all incoming/outgoing refs, then `mcp__gitnexus__impact({target: "target", direction: "upstream"})` to find all external callers before moving code.
+- After any refactor: run `mcp__gitnexus__detect_changes({scope: "all"})` to verify only expected files changed.
 
 ## Never Do
 
-- NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
+- NEVER edit a function, class, or method without first running `mcp__gitnexus__impact` on it.
 - NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
-- NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
-- NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
+- NEVER rename symbols with find-and-replace — use `mcp__gitnexus__rename` which understands the call graph.
+- NEVER commit changes without running `mcp__gitnexus__detect_changes()` to check affected scope.
+- NEVER use Grep/Glob to explore how a feature works when GitNexus is available — use `mcp__gitnexus__query` instead.
 
 ## Tools Quick Reference
 
 | Tool | When to use | Command |
 |------|-------------|---------|
-| `query` | Find code by concept | `gitnexus_query({query: "auth validation"})` |
-| `context` | 360-degree view of one symbol | `gitnexus_context({name: "validateUser"})` |
-| `impact` | Blast radius before editing | `gitnexus_impact({target: "X", direction: "upstream"})` |
-| `detect_changes` | Pre-commit scope check | `gitnexus_detect_changes({scope: "staged"})` |
-| `rename` | Safe multi-file rename | `gitnexus_rename({symbol_name: "old", new_name: "new", dry_run: true})` |
-| `cypher` | Custom graph queries | `gitnexus_cypher({query: "MATCH ..."})` |
+| `query` | Find code by concept | `mcp__gitnexus__query({query: "auth validation"})` |
+| `context` | 360-degree view of one symbol | `mcp__gitnexus__context({name: "validateUser"})` |
+| `impact` | Blast radius before editing | `mcp__gitnexus__impact({target: "X", direction: "upstream"})` |
+| `detect_changes` | Pre-commit scope check | `mcp__gitnexus__detect_changes({scope: "staged"})` |
+| `rename` | Safe multi-file rename | `mcp__gitnexus__rename({symbol_name: "old", new_name: "new", dry_run: true})` |
+| `cypher` | Custom graph queries | `mcp__gitnexus__cypher({query: "MATCH ..."})` |
 
 ## Impact Risk Levels
 
@@ -347,14 +375,16 @@ This project is indexed by GitNexus as **b-knowledge** (13916 symbols, 37778 rel
 ## Self-Check Before Finishing
 
 Before completing any code modification task, verify:
-1. `gitnexus_impact` was run for all modified symbols
+1. `mcp__gitnexus__impact` was run for all modified symbols
 2. No HIGH/CRITICAL risk warnings were ignored
-3. `gitnexus_detect_changes()` confirms changes match expected scope
+3. `mcp__gitnexus__detect_changes()` confirms changes match expected scope
 4. All d=1 (WILL BREAK) dependents were updated
 
 ## Keeping the Index Fresh
 
-After committing code changes, the GitNexus index becomes stale. Re-run analyze to update it:
+After committing code changes, the GitNexus index becomes stale. A PostToolUse hook in `settings.json` handles this automatically after `git commit` and `git merge`.
+
+To manually re-index:
 
 ```bash
 npx gitnexus analyze
@@ -367,8 +397,6 @@ npx gitnexus analyze --embeddings
 ```
 
 To check whether embeddings exist, inspect `.gitnexus/meta.json` — the `stats.embeddings` field shows the count (0 means no embeddings). **Running analyze without `--embeddings` will delete any previously generated embeddings.**
-
-> Claude Code users: A PostToolUse hook handles this automatically after `git commit` and `git merge`.
 
 ## CLI
 

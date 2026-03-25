@@ -73,6 +73,8 @@ export interface UseChatStreamReturn {
   clearMessages: () => void
   /** Regenerate the last assistant message by re-sending the last user message */
   regenerateLastMessage: () => void
+  /** Edit a user message at a given index, truncate subsequent messages, and re-generate */
+  editMessage: (messageIndex: number, newContent: string) => void
   /** Structured Deep Research sub-events (subquery progress, budget warnings) */
   deepResearchEvents: DeepResearchEvent[]
 }
@@ -391,6 +393,35 @@ export function useChatStream(
     sendMessage(lastUserContent)
   }
 
+  /**
+   * @description Edit a user message at a specific index, truncate all subsequent messages,
+   * and re-send the edited content to trigger a new response generation.
+   *
+   * @param {number} messageIndex - Index of the user message to edit
+   * @param {string} newContent - The new message content after editing
+   */
+  const editMessage = (messageIndex: number, newContent: string) => {
+    if (isStreaming) return
+
+    // Delete any messages after the edited index from the backend (best-effort)
+    const messagesToRemove = messages.slice(messageIndex)
+    if (conversationId) {
+      messagesToRemove.forEach((msg) => {
+        if (msg.id && !msg.id.startsWith('assistant-') && !msg.id.startsWith('error-') && !msg.id.startsWith('user-')) {
+          chatApi.deleteMessage(conversationId, msg.id).catch(() => {
+            // Best-effort deletion
+          })
+        }
+      })
+    }
+
+    // Truncate the messages array to remove everything from the edit point onward
+    setMessages((prev) => prev.slice(0, messageIndex))
+
+    // Re-send with the edited content
+    sendMessage(newContent)
+  }
+
   return {
     messages,
     isStreaming,
@@ -404,6 +435,7 @@ export function useChatStream(
     setMessages,
     clearMessages,
     regenerateLastMessage,
+    editMessage,
     deepResearchEvents,
   }
 }
