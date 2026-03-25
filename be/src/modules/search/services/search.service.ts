@@ -15,7 +15,8 @@ import { ragSearchService } from '@/modules/rag/services/rag-search.service.js'
 import { ragRerankService } from '@/modules/rag/services/rag-rerank.service.js'
 import { ragCitationService } from '@/modules/rag/services/rag-citation.service.js'
 import { llmClientService } from '@/shared/services/llm-client.service.js'
-import { askSummaryPrompt, citationPrompt, relatedQuestionPrompt } from '@/shared/prompts/index.js'
+import { askSummaryPrompt, citationPrompt } from '@/shared/prompts/index.js'
+import { relatedQuestionsService } from '@/shared/services/related-questions.service.js'
 import { htmlToMarkdown } from '@/shared/utils/html-to-markdown.js'
 import { log } from '@/shared/services/logger.service.js'
 import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
@@ -763,7 +764,7 @@ export class SearchService {
       let relatedQuestions: string[] = []
       if (searchConfig?.enable_related_questions) {
         try {
-          relatedQuestions = await this.generateRelatedQuestions(query, searchConfig?.llm_id as string | undefined)
+          relatedQuestions = await relatedQuestionsService.generateRelatedQuestions(query, searchConfig?.llm_id as string | undefined)
         } catch (err) {
           log.warn('Failed to generate related questions', { error: (err as Error).message })
         }
@@ -829,7 +830,7 @@ export class SearchService {
     let relatedQuestions: string[] = []
     if (searchConfig?.enable_related_questions) {
       try {
-        relatedQuestions = await this.generateRelatedQuestions(query, searchConfig?.llm_id as string | undefined)
+        relatedQuestions = await relatedQuestionsService.generateRelatedQuestions(query, searchConfig?.llm_id as string | undefined)
       } catch (err) {
         log.warn('Failed to generate related questions', { error: (err as Error).message })
       }
@@ -865,35 +866,11 @@ export class SearchService {
   }
 
   /**
-   * Generate related questions from a user query using LLM.
-   * @param query - The original user query
-   * @param providerId - Optional LLM provider ID
-   * @returns Array of related question strings
-   * @description Sends the query to the LLM with the related question prompt
-   *   and parses the response lines into an array
-   */
-  private async generateRelatedQuestions(query: string, providerId?: string): Promise<string[]> {
-    const response = await llmClientService.chatCompletion(
-      [
-        { role: 'system', content: relatedQuestionPrompt.system },
-        { role: 'user', content: query },
-      ],
-      { providerId }
-    )
-
-    // Parse response lines into array, filtering empty lines
-    return response
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
-  }
-
-  /**
    * Generate related questions for a search app query.
    * @param searchId - UUID of the search app
    * @param query - The user query to generate related questions from
    * @returns Array of related question strings
-   * @description Loads search app config for LLM provider, then generates related questions
+   * @description Loads search app config for LLM provider, then delegates to the shared service
    */
   async relatedQuestions(searchId: string, query: string): Promise<string[]> {
     // Load search app to get LLM provider config
@@ -904,12 +881,13 @@ export class SearchService {
 
     const config = app.search_config as Record<string, unknown>
 
+    // Skip generation if the feature is explicitly disabled
     if (config?.enable_related_questions === false) {
       return []
     }
 
-    // Generate related questions via LLM
-    return this.generateRelatedQuestions(query, config?.llm_id as string | undefined)
+    // Delegate to shared service
+    return relatedQuestionsService.generateRelatedQuestions(query, config?.llm_id as string | undefined)
   }
 
   /**
