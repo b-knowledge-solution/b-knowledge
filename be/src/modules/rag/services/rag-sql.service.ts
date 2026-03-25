@@ -21,22 +21,33 @@ const SYSTEM_TENANT_ID = config.opensearch.systemTenantId
 const ES_HOST = config.opensearch.host
 const ES_PASSWORD = config.opensearch.password
 
+/** Per-KB timeout for SQL generation + execution (ms) */
+const SQL_TIMEOUT_MS = 15_000
+
+/** Regex to detect dangerous DDL/DML keywords */
+const DANGEROUS_SQL_RE = /\b(DROP|DELETE|UPDATE|INSERT|ALTER|CREATE|TRUNCATE)\b/i
+
+/** Valid KB ID format: 32 hex characters */
+const KB_ID_RE = /^[0-9a-f]{32}$/i
+
 /**
- * Service for SQL-based retrieval over structured data stored in OpenSearch.
+ * @description Service for SQL-based retrieval over structured data stored in OpenSearch.
  * Uses LLM to generate SQL from natural language and executes via OpenSearch SQL plugin.
  */
 export class RagSqlService {
   /**
-   * Attempt SQL-based retrieval for structured data questions.
+   * @description Attempt SQL-based retrieval for structured data questions.
    * 1. Check if KB has field_map (structured field mapping)
    * 2. Use LLM to generate SQL from natural language
-   * 3. Execute SQL against OpenSearch
+   * 3. Validate and execute SQL against OpenSearch
    * 4. Format results as markdown table
    *
-   * @param question - User question
-   * @param kbIds - Knowledge base IDs
-   * @param providerId - LLM provider ID for SQL generation
-   * @returns Object with answer and chunks, or null if not applicable
+   * Includes retry logic, KB filter injection, SQL validation, and per-KB timeout.
+   *
+   * @param {string} question - User question
+   * @param {string[]} kbIds - Knowledge base IDs
+   * @param {string} [providerId] - LLM provider ID for SQL generation
+   * @returns {Promise<{ answer: string; chunks: ChunkResult[] } | null>} Object with answer and chunks, or null if not applicable
    */
   async querySql(
     question: string,
@@ -51,20 +62,52 @@ export class RagSqlService {
       // This KB has structured data; generate and execute SQL
       const tableName = `knowledge_${SYSTEM_TENANT_ID}`
 
+      // Enforce per-KB timeout to prevent long-running queries from blocking
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), SQL_TIMEOUT_MS)
+
       try {
         // Generate SQL from natural language
-        const sql = await this.generateSql(question, fieldMap, tableName, providerId)
+        let sql = await this.generateSql(question, fieldMap, tableName, providerId)
         if (!sql) continue
 
-        // Execute SQL against OpenSearch
-        const rows = await this.executeSql(sql)
+        // Inject kb_id filter to scope results to this knowledge base
+        sql = this.addKbFilter(sql, kbId)
+
+        // Validate SQL before execution to prevent destructive operations
+        if (!this.validateSql(sql)) {
+          log.warn('SQL validation failed, skipping KB', { kbId, sql })
+          continue
+        }
+
+        let rows: any[]
+        try {
+          // Execute SQL against OpenSearch
+          rows = await this.executeSql(sql, controller.signal)
+        } catch (firstErr) {
+          // Retry once with error context appended to the prompt
+          log.info('SQL execution failed, retrying with error context', { kbId, error: String(firstErr) })
+          let retrySql = await this.generateSqlWithRetry(question, fieldMap, tableName, String(firstErr), providerId)
+          if (!retrySql) continue
+
+          // Inject kb_id filter on retry SQL as well
+          retrySql = this.addKbFilter(retrySql, kbId)
+
+          // Validate retry SQL
+          if (!this.validateSql(retrySql)) {
+            log.warn('Retry SQL validation failed, skipping KB', { kbId, sql: retrySql })
+            continue
+          }
+
+          rows = await this.executeSql(retrySql, controller.signal)
+        }
 
         if (rows.length === 0) {
           log.info('SQL query returned no results', { kbId, sql })
           continue
         }
 
-        // Format results as markdown table
+        // Format results as markdown table with citation markers
         const answer = this.formatAsMarkdownTable(rows, fieldMap)
 
         // Build chunk results for reference
@@ -78,8 +121,15 @@ export class RagSqlService {
 
         return { answer, chunks }
       } catch (err) {
-        log.warn('SQL retrieval failed for KB', { kbId, error: String(err) })
+        // AbortError indicates the per-KB timeout was hit
+        if ((err as Error).name === 'AbortError') {
+          log.warn('SQL retrieval timed out for KB', { kbId, timeoutMs: SQL_TIMEOUT_MS })
+        } else {
+          log.warn('SQL retrieval failed for KB', { kbId, error: String(err) })
+        }
         continue
+      } finally {
+        clearTimeout(timeout)
       }
     }
 
@@ -87,11 +137,11 @@ export class RagSqlService {
   }
 
   /**
-   * Get field mapping for a knowledge base.
+   * @description Get field mapping for a knowledge base.
    * Reads from knowledgebase parser_config.field_map.
    *
-   * @param kbId - Knowledge base ID
-   * @returns Field map (field name -> type) or null
+   * @param {string} kbId - Knowledge base ID
+   * @returns {Promise<Record<string, string> | null>} Field map (field name -> type) or null
    */
   async getFieldMap(kbId: string): Promise<Record<string, string> | null> {
     const kb = await ModelFactory.knowledgebase.findById(kbId)
@@ -106,14 +156,14 @@ export class RagSqlService {
   }
 
   /**
-   * Generate SQL from natural language using LLM.
+   * @description Generate SQL from natural language using LLM.
    * Uses engine-specific prompts for OpenSearch SQL syntax.
    *
-   * @param question - User question
-   * @param fieldMap - Available fields with types
-   * @param tableName - OpenSearch index name
-   * @param providerId - LLM provider ID
-   * @returns Generated SQL string
+   * @param {string} question - User question
+   * @param {Record<string, string>} fieldMap - Available fields with types
+   * @param {string} tableName - OpenSearch index name
+   * @param {string} [providerId] - LLM provider ID
+   * @returns {Promise<string>} Generated SQL string
    */
   async generateSql(
     question: string,
@@ -151,13 +201,134 @@ export class RagSqlService {
   }
 
   /**
-   * Execute SQL against OpenSearch's SQL plugin.
+   * @description Retry SQL generation with error context appended to the system prompt.
+   * Called when the first SQL attempt fails execution, giving the LLM a chance
+   * to fix its query based on the error message.
+   *
+   * @param {string} question - User question
+   * @param {Record<string, string>} fieldMap - Available fields with types
+   * @param {string} tableName - OpenSearch index name
+   * @param {string} previousError - Error message from the failed SQL execution
+   * @param {string} [providerId] - LLM provider ID
+   * @returns {Promise<string>} Corrected SQL string
+   */
+  private async generateSqlWithRetry(
+    question: string,
+    fieldMap: Record<string, string>,
+    tableName: string,
+    previousError: string,
+    providerId?: string
+  ): Promise<string> {
+    // Build field description for the prompt
+    const fieldDesc = Object.entries(fieldMap)
+      .map(([name, type]) => `  ${name} (${type})`)
+      .join('\n')
+
+    // Detect if this is a count question
+    const isCount = this.isRowCountQuestion(question)
+
+    // Append error context so the LLM can correct its previous attempt
+    const systemContent = sqlGenerationPrompt.build(tableName, fieldDesc, isCount)
+      + `\n\nThe previous SQL query failed with error: ${previousError}\nFix the SQL query.`
+
+    const prompt: LlmMessage[] = [
+      {
+        role: 'system',
+        content: systemContent,
+      },
+      {
+        role: 'user',
+        content: question,
+      },
+    ]
+
+    const rawSql = await llmClientService.chatCompletion(prompt, {
+      providerId,
+      temperature: 0,
+      max_tokens: 256,
+    })
+
+    // Normalize the SQL output
+    return this.normalizeSql(rawSql)
+  }
+
+  /**
+   * @description Inject a kb_id filter into the SQL WHERE clause to scope results
+   * to a specific knowledge base.
+   *
+   * @param {string} sql - Original SQL query
+   * @param {string} kbId - Knowledge base ID to filter by
+   * @returns {string} SQL with kb_id filter injected
+   */
+  private addKbFilter(sql: string, kbId: string): string {
+    // Validate kbId format to prevent SQL injection
+    if (!KB_ID_RE.test(kbId)) {
+      log.warn('Invalid kbId format, skipping kb_id filter injection', { kbId })
+      return sql
+    }
+
+    // Skip if kb_id is already present in the query
+    if (/kb_id/i.test(sql)) return sql
+
+    const kbCondition = `kb_id = '${kbId}'`
+    const upperSql = sql.toUpperCase()
+
+    // Check if WHERE clause already exists
+    const whereIndex = upperSql.indexOf('WHERE')
+    if (whereIndex !== -1) {
+      // Insert kb_id condition right after WHERE, before existing conditions
+      const afterWhere = whereIndex + 'WHERE'.length
+      return sql.slice(0, afterWhere) + ` ${kbCondition} AND` + sql.slice(afterWhere)
+    }
+
+    // No WHERE clause — insert before ORDER BY, GROUP BY, LIMIT, or at end
+    const insertionKeywords = ['ORDER BY', 'GROUP BY', 'LIMIT']
+    for (const keyword of insertionKeywords) {
+      const keywordIndex = upperSql.indexOf(keyword)
+      if (keywordIndex !== -1) {
+        return sql.slice(0, keywordIndex) + `WHERE ${kbCondition} ` + sql.slice(keywordIndex)
+      }
+    }
+
+    // No ORDER BY/GROUP BY/LIMIT either — append WHERE at end
+    return `${sql} WHERE ${kbCondition}`
+  }
+
+  /**
+   * @description Validate SQL query for security: must be SELECT-only,
+   * reject DDL/DML keywords to prevent destructive operations.
+   *
+   * @param {string} sql - SQL query string to validate
+   * @returns {boolean} True if the query is safe to execute
+   */
+  private validateSql(sql: string): boolean {
+    const trimmed = sql.trim()
+
+    // Must start with SELECT (case insensitive)
+    if (!/^SELECT\b/i.test(trimmed)) {
+      log.warn('SQL validation: query does not start with SELECT', { sql: trimmed.slice(0, 50) })
+      return false
+    }
+
+    // Reject queries containing dangerous DDL/DML keywords
+    if (DANGEROUS_SQL_RE.test(trimmed)) {
+      log.warn('SQL validation: dangerous keyword detected', { sql: trimmed.slice(0, 100) })
+      return false
+    }
+
+    return true
+  }
+
+  /**
+   * @description Execute SQL against OpenSearch's SQL plugin.
    * POST /_plugins/_sql with { "query": sql }
    *
-   * @param sql - SQL query string
-   * @returns Array of result rows
+   * @param {string} sql - SQL query string
+   * @param {AbortSignal} [signal] - Optional abort signal for timeout control
+   * @returns {Promise<any[]>} Array of result rows
+   * @throws {Error} If OpenSearch returns a non-OK response
    */
-  async executeSql(sql: string): Promise<any[]> {
+  async executeSql(sql: string, signal?: AbortSignal): Promise<any[]> {
     // Build auth headers if password is set
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (ES_PASSWORD) {
@@ -169,6 +340,7 @@ export class RagSqlService {
       method: 'POST',
       headers,
       body: JSON.stringify({ query: sql }),
+      ...(signal ? { signal } : {}),
     })
 
     if (!response.ok) {
@@ -196,11 +368,12 @@ export class RagSqlService {
   }
 
   /**
-   * Format SQL results as markdown table.
+   * @description Format SQL results as markdown table with citation markers.
+   * Each data row gets an [ID:n] marker in its first cell for citation referencing.
    *
-   * @param rows - Result rows
-   * @param fieldMap - Field names for headers
-   * @returns Markdown table string
+   * @param {any[]} rows - Result rows
+   * @param {Record<string, string>} fieldMap - Field names for headers
+   * @returns {string} Markdown table string with citation markers
    */
   formatAsMarkdownTable(rows: any[], fieldMap: Record<string, string>): string {
     if (rows.length === 0) return 'No results found.'
@@ -212,9 +385,13 @@ export class RagSqlService {
     const header = `| ${columns.join(' | ')} |`
     const separator = `| ${columns.map(() => '---').join(' | ')} |`
 
-    // Build data rows
-    const dataRows = rows.map(row => {
-      const cells = columns.map(col => String(row[col] ?? ''))
+    // Build data rows with citation markers in the first cell
+    const dataRows = rows.map((row, rowIndex) => {
+      const cells = columns.map((col, colIndex) => {
+        const value = String(row[col] ?? '')
+        // Append citation marker to the first cell of each row
+        return colIndex === 0 ? `${value} [ID:${rowIndex}]` : value
+      })
       return `| ${cells.join(' | ')} |`
     })
 
@@ -222,10 +399,10 @@ export class RagSqlService {
   }
 
   /**
-   * Detect row count questions (e.g. "how many rows", "total number of records").
+   * @description Detect row count questions (e.g. "how many rows", "total number of records").
    *
-   * @param question - User question
-   * @returns True if this is a count query
+   * @param {string} question - User question
+   * @returns {boolean} True if this is a count query
    */
   isRowCountQuestion(question: string): boolean {
     const lower = question.toLowerCase()
@@ -234,10 +411,10 @@ export class RagSqlService {
   }
 
   /**
-   * Normalize SQL output from LLM: strip code fences, trailing semicolons, think blocks.
+   * @description Normalize SQL output from LLM: strip code fences, trailing semicolons, think blocks.
    *
-   * @param raw - Raw SQL string from LLM
-   * @returns Cleaned SQL string
+   * @param {string} raw - Raw SQL string from LLM
+   * @returns {string} Cleaned SQL string
    */
   private normalizeSql(raw: string): string {
     let sql = raw.trim()
