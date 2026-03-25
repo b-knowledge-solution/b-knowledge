@@ -1,0 +1,31 @@
+test,question,expected_answer,source_doc,category,difficulty
+"Q1: Installation Methods","What are the ways to install B-Knowledge?","Docker (Recommended), npm package, or from source code","01-quickstart.md",process,easy
+"Q2: Default Credentials","What are the default username and password after installation?","Username: admin, Password: changemePassword123","01-quickstart.md",factual,easy
+"Q3: Access Application","What URL do I use to access B-Knowledge after installation?","http://localhost:3000","01-quickstart.md",factual,easy
+"Q4: Create KB Steps","What are the steps to create your first knowledge base?","Click New Project, name it, select document type, upload documents, click Index","01-quickstart.md",process,medium
+"Q5: GPU Acceleration","How do you run B-Knowledge with GPU acceleration?","Use docker run --gpus all -p 8080:3000 bknowledge:latest","01-quickstart.md",technical,hard
+"Q6: Change Port","How do you run B-Knowledge on a different port if 3000 is busy?","Use b-knowledge start --port 8081 or docker run -p 8081:3000 bknowledge:latest","01-quickstart.md",process,easy
+"Q7: Base URL","What is the base URL for B-Knowledge API v1?","https://api.bknowledge.io/v1","02-api-reference.md",factual,easy
+"Q8: API Authentication","How do you authenticate API requests to B-Knowledge?","Include Authorization header with Bearer token: Authorization: Bearer YOUR_API_KEY","02-api-reference.md",technical,medium
+"Q9: Chat Endpoint","What is the endpoint to send a question to the knowledge base?","POST /chat/query with project_id and temperature parameters","02-api-reference.md",technical,medium
+"Q10: Response Format","What does the chat endpoint response include?","answer,sources (documents),confidence score, and response time in milliseconds","02-api-reference.md",factual,medium
+"Q11: List Projects","What endpoint returns all projects for a user?","GET /projects returns list with project id, name, created_at, and document_count","02-api-reference.md",technical,easy
+"Q12: Upload Documents","How do you upload documents to a project via API?","POST /projects/{project_id}/documents with multipart/form-data containing file and metadata","02-api-reference.md",technical,medium
+"Q13: Rate Limits","What are the rate limits for different B-Knowledge plans?","Free: 100 req/hr, Pro: 1000 req/hr, Enterprise: Unlimited","02-api-reference.md",factual,easy
+"Q14: Rate Limit Headers","What headers does B-Knowledge return for rate limit info?","X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset","02-api-reference.md",technical,medium
+"Q15: Error 401","What does HTTP 401 error mean in B-Knowledge API?","Unauthorized - invalid or missing API key","02-api-reference.md",factual,easy
+"Q16: Connection Refused Fix","What should you do if you get 'Connection Refused' error?","Check if service is running, restart with docker restart, check logs, or try different port","03-troubleshooting.md",process,medium
+"Q17: Poor Answer Quality","What are the solutions for poor answer quality from B-Knowledge?","Upload more documents (20+), improve document quality, lower temperature, enable filters","03-troubleshooting.md",process,medium
+"Q18: Slow Response Times","How do you fix slow response times in B-Knowledge?","Allocate more resources (CPU/RAM), optimize document indexing, enable caching","03-troubleshooting.md",process,hard
+"Q19: Out of Memory","What should you do if B-Knowledge gets out of memory errors?","Increase Docker memory limit, reduce chunk size, use database backend","03-troubleshooting.md",technical,hard
+"Q20: Debug Mode","How do you enable debug logging in B-Knowledge?","Use DEBUG=* b-knowledge start or specific namespaces like DEBUG=bk:api","03-troubleshooting.md",technical,medium
+"Q21: SSL Certificate Error","How do you fix SSL certificate verification errors?","Update CA certificates or set INSECURE_SSL=true for testing only","03-troubleshooting.md",technical,hard
+"Q22: Env Variable Port","What environment variable controls the port B-Knowledge runs on?","PORT=3000 in .env file","04-configuration.md",factual,easy
+"Q23: Database Config","What database configuration variables are required?","DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD","04-configuration.md",factual,medium
+"Q24: LLM Providers","What LLM providers does B-Knowledge support?","OpenAI, Anthropic, Cohere, Ollama","04-configuration.md",factual,easy
+"Q25: Embeddings Model","What is the default embeddings model in B-Knowledge config?","text-embedding-3-large with 3072 dimensions","04-configuration.md",factual,medium
+"Q26: Search Methods","What search methods are available in B-Knowledge?","vector search, keyword search (BM25), and hybrid combining both","04-configuration.md",factual,easy
+"Q27: Cache Config","How do you enable caching in B-Knowledge?","Set CACHE_ENABLED=true and configure CACHE_TTL in .env file","04-configuration.md",technical,medium
+"Q28: Chunking Strategy","What are the document chunking strategies available?","semantic (default), fixed size, sliding window","04-configuration.md",technical,hard
+"Q29: Architecture Layers","What are the main layers in B-Knowledge architecture?","UI Layer, API Gateway, Services (Chat/Admin), Search Engine, Data Storage (Vector DB, SQL DB, S3, Redis)","05-architecture.md",technical,medium
+"Q30: Query Latency Target","What is the target latency for B-Knowledge queries?","Less than 500ms at 95th percentile","05-architecture.md",factual,easy
