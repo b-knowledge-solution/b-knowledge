@@ -176,9 +176,11 @@ export class RagSearchService {
                 size: topK,
                 _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd', 'tag_kwd', 'pagerank_fea'],
                 // Include highlight config when requested — OpenSearch wraps matched terms in <em> tags
+                // Prefer content_with_weight (original readable text) over content_ltks (pre-tokenized stems)
                 ...(highlight && {
                     highlight: {
                         fields: {
+                            content_with_weight: { number_of_fragments: 1, fragment_size: 200 },
                             content_ltks: { number_of_fragments: 1, fragment_size: 200 },
                             title_tks: { number_of_fragments: 1, fragment_size: 100 },
                         },
@@ -266,10 +268,11 @@ export class RagSearchService {
                 },
                 size: topK,
                 _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd', 'tag_kwd', 'pagerank_fea'],
-                // Include highlight config when requested — OpenSearch wraps matched terms in <em> tags
+                // Include highlight config when requested — prefer content_with_weight (readable) over content_ltks (stemmed)
                 ...(highlight && {
                     highlight: {
                         fields: {
+                            content_with_weight: { number_of_fragments: 1, fragment_size: 200 },
                             content_ltks: { number_of_fragments: 1, fragment_size: 200 },
                             title_tks: { number_of_fragments: 1, fragment_size: 100 },
                         },
@@ -571,10 +574,11 @@ export class RagSearchService {
                     },
                     size: topK,
                     _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd', 'kb_id', 'tag_kwd', 'pagerank_fea'],
-                    // Include highlight config when requested — OpenSearch wraps matched terms in <em> tags
+                    // Include highlight config when requested — prefer content_with_weight (readable) over content_ltks (stemmed)
                     ...(highlight && {
                         highlight: {
                             fields: {
+                                content_with_weight: { number_of_fragments: 1, fragment_size: 200 },
                                 content_ltks: { number_of_fragments: 1, fragment_size: 200 },
                                 title_tks: { number_of_fragments: 1, fragment_size: 100 },
                             },
@@ -982,9 +986,9 @@ export class RagSearchService {
                 token_count: Math.ceil((src.content_with_weight || '').length / 4),
                 ...(method ? { method } : {}),
                 ...(src.img_id ? { img_id: src.img_id } : {}),
-                // Extract the first highlighted fragment from content or title fields
-                ...((highlightFields.content_ltks?.[0] || highlightFields.title_tks?.[0])
-                    ? { highlight: highlightFields.content_ltks?.[0] ?? highlightFields.title_tks?.[0] }
+                // Extract the first highlighted fragment — prefer content_with_weight (readable) over content_ltks (stemmed)
+                ...((highlightFields.content_with_weight?.[0] || highlightFields.content_ltks?.[0] || highlightFields.title_tks?.[0])
+                    ? { highlight: highlightFields.content_with_weight?.[0] ?? highlightFields.content_ltks?.[0] ?? highlightFields.title_tks?.[0] }
                     : {}),
                 // Include source dataset ID for cross-dataset result attribution
                 ...(src.kb_id ? { kb_id: src.kb_id } : {}),

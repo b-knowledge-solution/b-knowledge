@@ -107,12 +107,15 @@ class TagRankingService {
     // No tags found — return empty
     if (totalCount === 0) return {}
 
-    // Score each tag with TF-IDF: penalize overly common tags, reward distinctive ones
+    // Score each tag with TF-IDF: reward tags that appear in relevant chunks but not everywhere
+    const numChunks = chunks.length
     const scored: Array<[string, number]> = []
     for (const [tag, count] of Object.entries(tagCounts)) {
-      const tf = (count + 1) / (totalCount + 1000)
-      const idf = 1 / Math.max(0.0001, count / totalCount)
-      const score = 0.1 * tf * idf
+      // TF: proportion of tag occurrences in the result set
+      const tf = count / totalCount
+      // IDF: log(total chunks / chunks containing this tag + 1) — penalizes ubiquitous tags
+      const idf = Math.log(numChunks / count + 1)
+      const score = tf * idf
       scored.push([tag, score])
     }
 
