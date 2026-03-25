@@ -12,7 +12,7 @@ import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import type { SearchResult } from '../types/search.types'
 import ImageLightbox from './ImageLightbox'
-import { SearchHighlight } from './SearchHighlight'
+import { ChunkContentDisplay } from '@/components/ChunkContentDisplay'
 
 // ============================================================================
 // Props
@@ -171,13 +171,14 @@ function SearchResultCard({ result, query, onClick, className, onFeedback }: Sea
           </div>
         )}
 
-        {/* Snippet with search term highlighting */}
-        <p className="text-sm text-muted-foreground mt-2 line-clamp-3 leading-relaxed">
-          <SearchHighlight
-            text={result.content || result.content_with_weight}
-            query={query || ''}
+        {/* Snippet with server-side highlight and expandable full content */}
+        <div className="mt-2">
+          <ChunkContentDisplay
+            highlight={result.highlight ?? null}
+            fullContent={result.content_with_weight ?? result.content ?? ''}
+            query={query ?? ''}
           />
-        </p>
+        </div>
 
         {/* Feedback buttons -- shown when onFeedback callback is provided */}
         {onFeedback && (
