@@ -86,7 +86,9 @@
     "comingSoon": "Coming Soon",
     "yes": "Yes",
     "no": "No",
-    "ok": "OK"
+    "ok": "OK",
+    "customEmojiPlaceholder": "Enter emoji...",
+    "clearSelection": "Clear selection"
   },
   "dialog": {
     "confirm": "Confirm",

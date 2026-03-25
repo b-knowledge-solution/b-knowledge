@@ -87,7 +87,9 @@
     "comingSoon": "Coming Soon",
     "yes": "Yes",
     "no": "Không",
-    "ok": "OK"
+    "ok": "OK",
+    "customEmojiPlaceholder": "Nhập emoji...",
+    "clearSelection": "Xóa lựa chọn"
   },
   "dialog": {
     "confirm": "Xác nhận",

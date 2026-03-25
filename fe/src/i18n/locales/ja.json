@@ -87,7 +87,9 @@
     "comingSoon": "Coming Soon",
     "yes": "Yes",
     "no": "いいえ",
-    "ok": "OK"
+    "ok": "OK",
+    "customEmojiPlaceholder": "絵文字を入力...",
+    "clearSelection": "選択をクリア"
   },
   "dialog": {
     "confirm": "確認",
