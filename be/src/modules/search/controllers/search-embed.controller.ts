@@ -300,9 +300,18 @@ export class SearchEmbedController {
       res.setHeader('X-Accel-Buffering', 'no')
       res.flushHeaders()
 
+      // Resolve tenant from app creator for proper multi-tenant isolation
+      const app = await ModelFactory.searchApp.findById(tokenRow.app_id as string)
+      if (!app) {
+        res.write(`data: ${JSON.stringify({ error: 'Search app not found' })}\n\n`)
+        res.write('data: [DONE]\n\n')
+        res.end()
+        return
+      }
+      const tenantId = app.created_by ?? ''
+
       // Delegate to the search service (same pipeline as authenticated search)
-      // TODO(ACCS): Resolve tenant from embed token for full multi-tenant isolation
-      await searchService.askSearch('', tokenRow.app_id as string, req.body, res)
+      await searchService.askSearch(tenantId, tokenRow.app_id as string, req.body, res)
     } catch (error) {
       const errMsg = (error as Error).message
 
