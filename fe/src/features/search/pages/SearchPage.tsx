@@ -142,6 +142,7 @@ function DatasetSearchPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [paginatedResults, setPaginatedResults] = useState<SearchResult[]>([])
   const [paginatedTotal, setPaginatedTotal] = useState(0)
+  const [paginatedDocAggs, setPaginatedDocAggs] = useState<Array<{ doc_id: string; doc_name: string; count: number }>>([])
   const [isPaginating, setIsPaginating] = useState(false)
   const [page, setPage] = useState(1)
   const [pageSize] = useState(20)
@@ -236,6 +237,7 @@ function DatasetSearchPage() {
     setPage(1)
     setPaginatedResults([])
     setPaginatedTotal(0)
+    setPaginatedDocAggs([])
     updateQueryParam(query)
     searchStream.askSearch(
       resolvedAppId,
@@ -336,6 +338,7 @@ function DatasetSearchPage() {
     setPage(1)
     setPaginatedResults([])
     setPaginatedTotal(0)
+    setPaginatedDocAggs([])
     hydratedSearchKeyRef.current = null
   }, [currentApp?.id])
 
@@ -443,6 +446,7 @@ function DatasetSearchPage() {
       setPage(newPage)
       setPaginatedResults(result.chunks)
       setPaginatedTotal(result.total)
+      setPaginatedDocAggs(result.doc_aggs || [])
     } catch (error: any) {
       globalMessage.error(error?.message || t('common.error'))
     } finally {
@@ -453,6 +457,7 @@ function DatasetSearchPage() {
   const displayResults = page === 1 ? searchStream.chunks : paginatedResults
   const streamTotal = searchStream.total || searchStream.chunks.length
   const displayTotal = page === 1 ? streamTotal : paginatedTotal || streamTotal
+  const displayDocAggs = page === 1 ? searchStream.docAggs : paginatedDocAggs
 
   return (
     <>
@@ -461,6 +466,7 @@ function DatasetSearchPage() {
           <SearchFilters
             filters={filters}
             onFiltersChange={handleFiltersChange}
+            showScopeFilters={false}
             visible={showFilters}
             onToggle={() => setShowFilters(!showFilters)}
             className="hidden md:block"
@@ -521,6 +527,7 @@ function DatasetSearchPage() {
                 <SearchFilters
                   filters={filters}
                   onFiltersChange={handleFiltersChange}
+                  showScopeFilters={false}
                   visible={false}
                   onToggle={() => setShowFilters(!showFilters)}
                 />
@@ -581,7 +588,7 @@ function DatasetSearchPage() {
                     : searchStream.relatedQuestions}
                   onRelatedQuestionClick={handleRelatedQuestionClick}
                   isStreamingAnswer={searchStream.isStreaming}
-                  docAggs={searchStream.docAggs}
+                  docAggs={displayDocAggs}
                   selectedDocIds={selectedDocIds}
                   onDocFilterChange={handleDocFilterChange}
                   pipelineStatus={searchStream.pipelineStatus}

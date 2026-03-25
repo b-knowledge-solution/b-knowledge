@@ -106,39 +106,58 @@ class DashboardService {
    */
   async getStats(startDate?: string, endDate?: string): Promise<DashboardStats> {
     // Run all queries in parallel for performance
+    // Queries cover BOTH external history tables AND internal chat tables
     const [
-      chatSessionCount,
-      searchSessionCount,
-      chatMessageCount,
-      searchRecordCount,
-      chatUserEmails,
-      searchUserEmails,
-      chatTrend,
-      searchTrend,
+      extChatSessionCount,
+      extSearchSessionCount,
+      extChatMessageCount,
+      extSearchRecordCount,
+      extChatUserEmails,
+      extSearchUserEmails,
+      extChatTrend,
+      extSearchTrend,
+      intChatSessionCount,
+      intChatMessageCount,
+      intChatUserEmails,
+      intChatTrend,
       topUsers
     ] = await Promise.all([
-      // Session counts
+      // External session counts
       this.countRows('history_chat_sessions', 'updated_at', startDate, endDate),
       this.countRows('history_search_sessions', 'updated_at', startDate, endDate),
-      // Message counts
+      // External message counts
       this.countRows('history_chat_messages', 'created_at', startDate, endDate),
       this.countRows('history_search_records', 'created_at', startDate, endDate),
-      // Unique users
+      // External unique users
       this.getDistinctEmails('history_chat_sessions', 'user_email', 'updated_at', startDate, endDate),
       this.getDistinctEmails('history_search_sessions', 'user_email', 'updated_at', startDate, endDate),
-      // Daily trends (separate per source)
+      // External daily trends
       this.getDailyCount('history_chat_messages', 'created_at', startDate, endDate),
       this.getDailyCount('history_search_records', 'created_at', startDate, endDate),
-      // Top users
+      // Internal chat_sessions count
+      this.countRows('chat_sessions', 'created_at', startDate, endDate),
+      // Internal chat_messages count (uses 'timestamp' column)
+      this.countRows('chat_messages', 'timestamp', startDate, endDate),
+      // Internal unique user emails (resolved via users table join)
+      this.getInternalChatUserEmails(startDate, endDate),
+      // Internal daily chat trend (uses 'timestamp' column)
+      this.getDailyCount('chat_messages', 'timestamp', startDate, endDate),
+      // Top users (now includes internal data)
       this.getTopUsers(startDate, endDate)
     ])
 
-    // Calculate derived metrics
+    // Merge external + internal counts
+    const chatSessionCount = extChatSessionCount + intChatSessionCount
+    const searchSessionCount = extSearchSessionCount
     const totalSessions = chatSessionCount + searchSessionCount
-    const totalMessages = chatMessageCount + searchRecordCount
+    const totalMessages = (extChatMessageCount + intChatMessageCount) + extSearchRecordCount
 
     // Merge unique users from all sources
-    const allEmails = new Set<string>([...chatUserEmails, ...searchUserEmails])
+    const allEmails = new Set<string>([
+      ...extChatUserEmails,
+      ...extSearchUserEmails,
+      ...intChatUserEmails,
+    ])
     const uniqueUsers = allEmails.size
 
     // Average messages per session (avoid division by zero)
@@ -146,8 +165,9 @@ class DashboardService {
       ? Math.round((totalMessages / totalSessions) * 10) / 10
       : 0
 
-    // Merge daily trends from both sources into a single array
-    const activityTrend = this.mergeTrends(chatTrend, searchTrend)
+    // Merge all chat trends (external + internal) then merge with search
+    const mergedChatTrend = this.mergeTrendMaps(extChatTrend, intChatTrend)
+    const activityTrend = this.mergeTrends(mergedChatTrend, extSearchTrend)
 
     return {
       totalSessions,
@@ -258,6 +278,44 @@ class DashboardService {
     // Sort by date ascending
     result.sort((a, b) => a.date.localeCompare(b.date))
     return result
+  }
+
+  /**
+   * @description Merge two daily-count maps by summing values for each date.
+   * @param {Map<string, number>} a - First count map
+   * @param {Map<string, number>} b - Second count map
+   * @returns {Map<string, number>} Merged map with summed counts
+   */
+  private mergeTrendMaps(
+    a: Map<string, number>,
+    b: Map<string, number>
+  ): Map<string, number> {
+    const merged = new Map<string, number>(a)
+    b.forEach((count, date) => {
+      merged.set(date, (merged.get(date) || 0) + count)
+    })
+    return merged
+  }
+
+  /**
+   * @description Get distinct user emails from internal chat_sessions via users table join.
+   * Internal sessions store user_id, not email, so we join with users to get emails.
+   * @param {string} startDate - Optional start date
+   * @param {string} endDate - Optional end date
+   * @returns {Promise<string[]>} Array of unique email strings
+   */
+  private async getInternalChatUserEmails(
+    startDate?: string, endDate?: string
+  ): Promise<string[]> {
+    let query = db('chat_sessions')
+      .distinct('users.email')
+      .join('users', 'chat_sessions.user_id', 'users.id')
+      .whereNotNull('users.email')
+      .where('users.email', '!=', '')
+    if (startDate) query = query.where('chat_sessions.created_at', '>=', startDate)
+    if (endDate) query = query.where('chat_sessions.created_at', '<=', `${endDate} 23:59:59`)
+    const rows = await query
+    return rows.map((r: any) => r.email as string)
   }
 
   /**
@@ -476,13 +534,28 @@ class DashboardService {
       })
       .groupBy('user_email')
 
-    // Use UNION ALL to combine both sources, then aggregate by email
+    // Internal chat sessions (join users for email resolution)
+    const internalChatQ = db('chat_sessions')
+      .select('users.email as email')
+      .count('* as cnt')
+      .join('users', 'chat_sessions.user_id', 'users.id')
+      .whereNotNull('users.email')
+      .where('users.email', '!=', '')
+      .modify(qb => {
+        if (startDate) qb.where('chat_sessions.created_at', '>=', startDate)
+        if (endDate) qb.where('chat_sessions.created_at', '<=', `${endDate} 23:59:59`)
+      })
+      .groupBy('users.email')
+
+    // Use UNION ALL to combine all sources, then aggregate by email
     const result = await db.raw(`
       SELECT email, SUM(cnt)::int as "sessionCount"
       FROM (
         (${chatQ.toQuery()})
         UNION ALL
         (${searchQ.toQuery()})
+        UNION ALL
+        (${internalChatQ.toQuery()})
       ) combined
       GROUP BY email
       ORDER BY "sessionCount" DESC

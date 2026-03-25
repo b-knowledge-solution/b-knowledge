@@ -33,8 +33,8 @@ export class AdminHistoryService {
         // Calculate offset for pagination
         const offset = (page - 1) * limit;
 
-        // Base query on sessions
-        let query = ModelFactory.historyChatSession.getKnex()
+        // ── External history_chat_sessions ────────────────────────────────
+        let extQuery = ModelFactory.historyChatSession.getKnex()
             .select(
                 'history_chat_sessions.session_id',
                 'history_chat_sessions.updated_at as created_at',
@@ -53,7 +53,6 @@ export class AdminHistoryService {
                 ) as message_count`)
             )
             .from('history_chat_sessions')
-
             .orderBy('history_chat_sessions.updated_at', 'desc')
             .limit(limit)
             .offset(offset);
@@ -64,7 +63,7 @@ export class AdminHistoryService {
             const cleanSearch = search.replace(/[^\w\s]/g, '').trim();
             const terms = cleanSearch.split(/\s+/).filter(t => t.length > 0);
 
-            query = query.where(builder => {
+            extQuery = extQuery.where(builder => {
                 // Match sessions by user email (case-insensitive partial match)
                 builder.where('history_chat_sessions.user_email', 'ilike', `%${search}%`)
                     // Or match sessions containing relevant messages via full-text search
@@ -93,36 +92,125 @@ export class AdminHistoryService {
 
         // Filter by user email (partial, case-insensitive)
         if (email) {
-            query = query.where('history_chat_sessions.user_email', 'ilike', `%${email}%`);
+            extQuery = extQuery.where('history_chat_sessions.user_email', 'ilike', `%${email}%`);
         }
 
         // Filter sessions updated on or after the start date
         if (startDate) {
-            query = query.where('history_chat_sessions.updated_at', '>=', startDate);
+            extQuery = extQuery.where('history_chat_sessions.updated_at', '>=', startDate);
         }
 
         // Filter sessions updated on or before the end date (extended to end of day)
         if (endDate) {
-            query = query.where('history_chat_sessions.updated_at', '<=', `${endDate} 23:59:59`);
+            extQuery = extQuery.where('history_chat_sessions.updated_at', '<=', `${endDate} 23:59:59`);
         }
 
+        const externalResults = await extQuery;
 
+        // ── Internal chat_sessions ────────────────────────────────────────
+        let intQuery = db('chat_sessions')
+            .leftJoin('users', 'chat_sessions.user_id', 'users.id')
+            .select(
+                'chat_sessions.id as session_id',
+                'chat_sessions.created_at',
+                'users.email as user_email',
+                // Subquery for first user message content
+                db.raw(`(
+                    SELECT content FROM chat_messages
+                    WHERE session_id = chat_sessions.id AND role = 'user'
+                    ORDER BY timestamp ASC LIMIT 1
+                ) as user_prompt`),
+                // Subquery for message count
+                db.raw(`(
+                    SELECT COUNT(*) FROM chat_messages
+                    WHERE session_id = chat_sessions.id
+                )::int as message_count`),
+                'chat_sessions.title'
+            )
+            .orderBy('chat_sessions.created_at', 'desc')
+            .limit(limit)
+            .offset(offset);
 
-        return await query;
+        // Apply search filter
+        if (search) {
+            intQuery = intQuery.where(builder => {
+                builder.where('chat_sessions.title', 'ilike', `%${search}%`)
+                    .orWhere('users.email', 'ilike', `%${search}%`)
+                    .orWhereExists(function () {
+                        this.select('id').from('chat_messages')
+                            .whereRaw('chat_messages.session_id = chat_sessions.id')
+                            .where('content', 'ilike', `%${search}%`);
+                    });
+            });
+        }
+
+        // Filter by user email
+        if (email) {
+            intQuery = intQuery.where('users.email', 'ilike', `%${email}%`);
+        }
+
+        // Date range filters
+        if (startDate) {
+            intQuery = intQuery.where('chat_sessions.created_at', '>=', startDate);
+        }
+        if (endDate) {
+            intQuery = intQuery.where('chat_sessions.created_at', '<=', `${endDate} 23:59:59`);
+        }
+
+        const internalResults = (await intQuery).map((r: any) => ({ ...r, source: 'internal' }));
+
+        // ── Merge & sort by date descending ───────────────────────────────
+        const merged = [...externalResults, ...internalResults];
+        merged.sort((a: any, b: any) => {
+            const dateA = new Date(a.created_at).getTime();
+            const dateB = new Date(b.created_at).getTime();
+            return dateB - dateA;
+        });
+
+        return merged.slice(0, limit);
     }
 
     /**
-     * @description Retrieve all messages for a specific chat session ordered chronologically
+     * @description Retrieve all messages for a specific chat session ordered chronologically.
+     * Checks both external history_chat_messages and internal chat_messages tables.
      * @param {string} sessionId - The unique session identifier
      * @returns {Promise<any[]>} Array of chat message records for the session
      */
     async getChatSessionDetails(sessionId: string) {
-        // Query to get all history entries for the session
-        return await ModelFactory.historyChatMessage.getKnex()
+        // Try external history first
+        const external = await ModelFactory.historyChatMessage.getKnex()
             .from('history_chat_messages')
             .select('*')
             .where('session_id', sessionId)
             .orderBy('created_at', 'asc');
+
+        if (external.length > 0) return external;
+
+        // Fall back to internal chat_messages
+        const messages = await db('chat_messages')
+            .where('session_id', sessionId)
+            .orderBy('timestamp', 'asc');
+
+        // Pair user+assistant messages into the external format
+        const paired: any[] = [];
+        for (let i = 0; i < messages.length; i++) {
+            const msg = messages[i];
+            if (msg.role === 'user') {
+                const assistantMsg = messages[i + 1]?.role === 'assistant' ? messages[i + 1] : null;
+                paired.push({
+                    id: msg.id,
+                    session_id: sessionId,
+                    user_prompt: msg.content,
+                    llm_response: assistantMsg?.content || '',
+                    citations: assistantMsg?.citations || '[]',
+                    created_at: msg.timestamp,
+                    source: 'internal',
+                });
+                if (assistantMsg) i++;
+            }
+        }
+
+        return paired;
     }
 
     /**

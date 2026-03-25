@@ -23,6 +23,8 @@ interface SearchFiltersProps {
   filters: SearchFiltersType
   /** Callback when filters change */
   onFiltersChange: (filters: SearchFiltersType) => void
+  /** Whether dataset and file-type scope filters should be shown */
+  showScopeFilters?: boolean
   /** Whether the panel is visible */
   visible?: boolean
   /** Callback to toggle panel visibility */
@@ -53,6 +55,7 @@ const SEARCH_METHODS = ['hybrid', 'semantic', 'fulltext'] as const
 function SearchFilters({
   filters,
   onFiltersChange,
+  showScopeFilters = true,
   visible = true,
   onToggle,
   className,
@@ -98,8 +101,8 @@ function SearchFilters({
 
   // Count active filters
   const activeCount =
-    (filters.dataset_ids?.length || 0) +
-    (filters.file_types?.length || 0) +
+    (showScopeFilters ? (filters.dataset_ids?.length || 0) : 0) +
+    (showScopeFilters ? (filters.file_types?.length || 0) : 0) +
     (filters.search_method ? 1 : 0) +
     (filters.similarity_threshold !== undefined ? 1 : 0) +
     (filters.vector_similarity_weight !== undefined ? 1 : 0) +
@@ -144,43 +147,47 @@ function SearchFilters({
         </div>
       </div>
 
-      {/* Dataset selection */}
-      <div className="space-y-2">
-        <Label className="text-xs font-medium">{t('search.datasets')}</Label>
-        <div className="space-y-1 max-h-40 overflow-y-auto">
-          {datasets.map((ds) => (
-            <label
-              key={ds.id}
-              className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-xs"
-            >
-              <input
-                type="checkbox"
-                checked={filters.dataset_ids?.includes(ds.id) || false}
-                onChange={() => toggleDataset(ds.id)}
-                className="rounded border-input"
-              />
-              <span className="truncate">{ds.name}</span>
-            </label>
-          ))}
-        </div>
-      </div>
+      {showScopeFilters && (
+        <>
+          {/* Dataset selection */}
+          <div className="space-y-2">
+            <Label className="text-xs font-medium">{t('search.datasets')}</Label>
+            <div className="space-y-1 max-h-40 overflow-y-auto">
+              {datasets.map((ds) => (
+                <label
+                  key={ds.id}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-xs"
+                >
+                  <input
+                    type="checkbox"
+                    checked={filters.dataset_ids?.includes(ds.id) || false}
+                    onChange={() => toggleDataset(ds.id)}
+                    className="rounded border-input"
+                  />
+                  <span className="truncate">{ds.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
 
-      {/* File type checkboxes */}
-      <div className="space-y-2">
-        <Label className="text-xs font-medium">{t('search.fileTypes')}</Label>
-        <div className="flex flex-wrap gap-1.5">
-          {FILE_TYPES.map((ft) => (
-            <Badge
-              key={ft}
-              variant={filters.file_types?.includes(ft) ? 'default' : 'outline'}
-              className="cursor-pointer text-xs"
-              onClick={() => toggleFileType(ft)}
-            >
-              .{ft}
-            </Badge>
-          ))}
-        </div>
-      </div>
+          {/* File type checkboxes */}
+          <div className="space-y-2">
+            <Label className="text-xs font-medium">{t('search.fileTypes')}</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {FILE_TYPES.map((ft) => (
+                <Badge
+                  key={ft}
+                  variant={filters.file_types?.includes(ft) ? 'default' : 'outline'}
+                  className="cursor-pointer text-xs"
+                  onClick={() => toggleFileType(ft)}
+                >
+                  .{ft}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Search method */}
       <div className="space-y-2">
