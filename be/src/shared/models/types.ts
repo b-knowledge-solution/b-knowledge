@@ -1356,7 +1356,7 @@ export interface ChunkResult {
     important_kwd?: string[];
     /** Associated questions for this chunk */
     question_kwd?: string[];
-    /** Highlighted text with <mark> tags from OpenSearch */
+    /** Highlighted text snippet with <em> tags from OpenSearch */
     highlight?: string;
     /** Source dataset (knowledgebase) ID for cross-dataset result attribution */
     kb_id?: string;

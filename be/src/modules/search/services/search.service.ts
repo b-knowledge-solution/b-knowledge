@@ -407,7 +407,7 @@ export class SearchService {
       options?.metadataFilter,
     )
 
-    // Use shared retrieveChunks (applies embedding + reranking)
+    // Use shared retrieveChunks (applies embedding + reranking) with highlight enabled for search results
     const { chunks: allChunks, total: totalHits } = await this.retrieveChunks(
       tenantId,
       app,
@@ -418,6 +418,7 @@ export class SearchService {
       vectorSimilarityWeight,
       metadataFilter,
       options?.docIds,
+      true,
     )
 
     // Apply pagination after retrieval so later pages preserve the full filter set.
@@ -488,6 +489,7 @@ export class SearchService {
       data.metadata_filter,
     )
 
+    // Enable highlight for retrieval test results so matched terms are visible
     const { chunks, total } = await this.retrieveChunks(
       tenantId,
       app,
@@ -498,6 +500,7 @@ export class SearchService {
       vectorSimilarityWeight,
       metadataFilter as any,
       data.doc_ids,
+      true,
     )
     const limitedChunks = chunks.slice((page - 1) * pageSize, page * pageSize)
 
@@ -544,6 +547,7 @@ export class SearchService {
    * @param metadataFilter - Optional metadata filter conditions
    * @returns Object with chunk results array and total hit count
    * @description Shared retrieval logic used by askSearch, executeSearch, and mindmap
+   * @param {boolean} highlight - Whether to request OpenSearch highlight snippets with <em> tags
    */
   private async retrieveChunks(
     tenantId: string,
@@ -555,6 +559,7 @@ export class SearchService {
     vectorSimilarityWeight?: number,
     metadataFilter?: { logic: string; conditions: Array<{ name: string; comparison_operator: string; value: unknown }> },
     docIds?: string[],
+    highlight: boolean = false,
   ): Promise<{ chunks: ChunkResult[]; total: number }> {
     // Parse dataset_ids (may be stored as JSONB)
     const datasetIds: string[] = Array.isArray(app.dataset_ids)
@@ -586,6 +591,8 @@ export class SearchService {
         datasetId,
         searchReq,
         queryVector,
+        [],
+        highlight,
       )
       // Warn if a dataset returned no results (may have been deleted)
       if (result.chunks.length === 0) {

@@ -109,6 +109,8 @@ export class RagSearchService {
      * @param {number} topK - Maximum number of results to return
      * @param {Record<string, unknown>[]} extraFilters - Optional additional OpenSearch filter clauses
      * @param {Record<string, unknown>[]} abacFilters - Optional ABAC filter clauses
+     * @param {string} minMatch - Minimum should match percentage for multi_match query
+     * @param {boolean} highlight - Whether to include highlighted snippets with <em> tags in results
      * @returns Object with matching chunk results and total hit count from OpenSearch
      */
     async fullTextSearch(
@@ -119,6 +121,7 @@ export class RagSearchService {
         extraFilters: Record<string, unknown>[] = [],
         abacFilters: Record<string, unknown>[] = [],
         minMatch: string = '30%',
+        highlight: boolean = false,
     ): Promise<{ chunks: ChunkResult[]; total: number }> {
         const client = getClient()
         let res
@@ -172,12 +175,17 @@ export class RagSearchService {
                 },
                 size: topK,
                 _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
-                highlight: {
-                    fields: {
-                        content_ltks: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
-                        content_with_weight: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
+                // Include highlight config when requested — OpenSearch wraps matched terms in <em> tags
+                ...(highlight && {
+                    highlight: {
+                        fields: {
+                            content_ltks: { number_of_fragments: 1, fragment_size: 200 },
+                            title_tks: { number_of_fragments: 1, fragment_size: 100 },
+                        },
+                        pre_tags: ['<em>'],
+                        post_tags: ['</em>'],
                     },
-                },
+                }),
             }
 
             log.debug('Executing OpenSearch full-text search', { index: getIndexName(tenantId), body: JSON.stringify(searchBody) })
@@ -208,6 +216,7 @@ export class RagSearchService {
      * @param {number} threshold - Minimum similarity score threshold
      * @param {Record<string, unknown>[]} extraFilters - Optional additional OpenSearch filter clauses
      * @param {Record<string, unknown>[]} abacFilters - Optional ABAC filter clauses
+     * @param {boolean} highlight - Whether to include highlighted snippets with <em> tags in results
      * @returns Object with matching chunk results above the threshold and total hit count
      */
     async semanticSearch(
@@ -218,6 +227,7 @@ export class RagSearchService {
         threshold: number,
         extraFilters: Record<string, unknown>[] = [],
         abacFilters: Record<string, unknown>[] = [],
+        highlight: boolean = false,
     ): Promise<{ chunks: ChunkResult[]; total: number }> {
         const client = getClient()
         let res
@@ -256,12 +266,17 @@ export class RagSearchService {
                 },
                 size: topK,
                 _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd'],
-                highlight: {
-                    fields: {
-                        content_ltks: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
-                        content_with_weight: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
+                // Include highlight config when requested — OpenSearch wraps matched terms in <em> tags
+                ...(highlight && {
+                    highlight: {
+                        fields: {
+                            content_ltks: { number_of_fragments: 1, fragment_size: 200 },
+                            title_tks: { number_of_fragments: 1, fragment_size: 100 },
+                        },
+                        pre_tags: ['<em>'],
+                        post_tags: ['</em>'],
                     },
-                },
+                }),
             }
 
             log.debug('Executing OpenSearch semantic search', { index: getIndexName(tenantId), body: JSON.stringify({ ...searchBody, query: { ...searchBody.query, bool: { ...searchBody.query.bool, should: ['[VECTOR OMITTED]'] } } }) })
@@ -293,6 +308,8 @@ export class RagSearchService {
      * @param {number} vectorWeight - Weight for semantic scores (0-1). 0 = pure text, 1 = pure semantic. Default 0.5
      * @param {Record<string, unknown>[]} extraFilters - Optional additional OpenSearch filter clauses
      * @param {Record<string, unknown>[]} abacFilters - Optional ABAC filter clauses
+     * @param {string} minMatch - Minimum should match percentage for multi_match query
+     * @param {boolean} highlight - Whether to include highlighted snippets with <em> tags in results
      * @returns Object with merged chunk results sorted by weighted score and total hit count
      */
     async hybridSearch(
@@ -306,14 +323,15 @@ export class RagSearchService {
         extraFilters: Record<string, unknown>[] = [],
         abacFilters: Record<string, unknown>[] = [],
         minMatch: string = '30%',
+        highlight: boolean = false,
     ): Promise<{ chunks: ChunkResult[]; total: number }> {
-        const textResult = await this.fullTextSearch(tenantId, datasetId, query, topK, extraFilters, abacFilters, minMatch)
+        const textResult = await this.fullTextSearch(tenantId, datasetId, query, topK, extraFilters, abacFilters, minMatch, highlight)
 
         if (!queryVector || queryVector.length === 0) {
             return textResult
         }
 
-        const semanticResult = await this.semanticSearch(tenantId, datasetId, queryVector, topK, threshold, extraFilters, abacFilters)
+        const semanticResult = await this.semanticSearch(tenantId, datasetId, queryVector, topK, threshold, extraFilters, abacFilters, highlight)
 
         // Apply weighted scoring: vectorWeight controls the balance
         const textWeight = 1 - vectorWeight
@@ -361,6 +379,7 @@ export class RagSearchService {
      * @param {SearchRequest} req - The search request parameters
      * @param {number[] | null} [queryVector] - Optional pre-computed query embedding
      * @param {Record<string, unknown>[]} [abacFilters] - Optional ABAC filter clauses
+     * @param {boolean} [highlight] - Whether to include highlighted snippets with <em> tags in results
      * @returns Object with chunks array and total count
      */
     async search(
@@ -369,6 +388,7 @@ export class RagSearchService {
         req: SearchRequest,
         queryVector?: number[] | null,
         abacFilters: Record<string, unknown>[] = [],
+        highlight: boolean = false,
     ): Promise<{ chunks: ChunkResult[]; total: number }> {
         const method = req.method || 'full_text'
         const topK = req.top_k || 10
@@ -394,19 +414,19 @@ export class RagSearchService {
         // Route to the appropriate search method
         switch (method) {
             case 'full_text':
-                result = await this.fullTextSearch(tenantId, datasetId, req.query, topK, extraFilters, abacFilters)
+                result = await this.fullTextSearch(tenantId, datasetId, req.query, topK, extraFilters, abacFilters, '30%', highlight)
                 break
             case 'semantic':
                 // Fall back to full-text if no query vector is available
                 if (!queryVector?.length) {
-                    result = await this.fullTextSearch(tenantId, datasetId, req.query, topK, extraFilters, abacFilters)
+                    result = await this.fullTextSearch(tenantId, datasetId, req.query, topK, extraFilters, abacFilters, '30%', highlight)
                 } else {
-                    result = await this.semanticSearch(tenantId, datasetId, queryVector, topK, threshold, extraFilters, abacFilters)
+                    result = await this.semanticSearch(tenantId, datasetId, queryVector, topK, threshold, extraFilters, abacFilters, highlight)
                 }
                 break
             case 'hybrid':
             default:
-                result = await this.hybridSearch(tenantId, datasetId, req.query, queryVector ?? null, topK, threshold, vectorWeight, extraFilters, abacFilters)
+                result = await this.hybridSearch(tenantId, datasetId, req.query, queryVector ?? null, topK, threshold, vectorWeight, extraFilters, abacFilters, '30%', highlight)
                 break
         }
 
@@ -417,11 +437,11 @@ export class RagSearchService {
             const relaxedExtra = this.buildMetadataFilters(req.metadata_filter)
             switch (method) {
                 case 'full_text':
-                    result = await this.fullTextSearch(tenantId, datasetId, req.query, topK, relaxedExtra, abacFilters, '10%')
+                    result = await this.fullTextSearch(tenantId, datasetId, req.query, topK, relaxedExtra, abacFilters, '10%', highlight)
                     break
                 case 'hybrid':
                 default:
-                    result = await this.hybridSearch(tenantId, datasetId, req.query, queryVector ?? null, topK, Math.min(threshold, 0.17), vectorWeight, relaxedExtra, abacFilters, '10%')
+                    result = await this.hybridSearch(tenantId, datasetId, req.query, queryVector ?? null, topK, Math.min(threshold, 0.17), vectorWeight, relaxedExtra, abacFilters, '10%', highlight)
                     break
             }
         }
@@ -452,6 +472,7 @@ export class RagSearchService {
      * @param {SearchRequest} req - Search request parameters (query, method, top_k, etc.)
      * @param {number[] | null} [queryVector] - Optional pre-computed query embedding for hybrid/semantic search
      * @param {Record<string, unknown>[]} [abacFilters] - Optional ABAC filter clauses
+     * @param {boolean} [highlight] - Whether to include highlighted snippets with <em> tags in results
      * @returns Object with merged chunk results sorted by score and total hit count
      */
     async searchMultipleDatasets(
@@ -460,6 +481,7 @@ export class RagSearchService {
         req: SearchRequest,
         queryVector?: number[] | null,
         abacFilters: Record<string, unknown>[] = [],
+        highlight: boolean = false,
     ): Promise<{ chunks: ChunkResult[]; total: number }> {
         // Return empty results when no datasets provided
         if (datasetIds.length === 0) {
@@ -549,12 +571,17 @@ export class RagSearchService {
                     },
                     size: topK,
                     _source: ['content_with_weight', 'doc_id', 'docnm_kwd', 'page_num_int', 'position_int', 'img_id', 'available_int', 'important_kwd', 'question_kwd', 'kb_id'],
-                    highlight: {
-                        fields: {
-                            content_ltks: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
-                            content_with_weight: { pre_tags: ['<mark>'], post_tags: ['</mark>'], fragment_size: 300, number_of_fragments: 1 },
+                    // Include highlight config when requested — OpenSearch wraps matched terms in <em> tags
+                    ...(highlight && {
+                        highlight: {
+                            fields: {
+                                content_ltks: { number_of_fragments: 1, fragment_size: 200 },
+                                title_tks: { number_of_fragments: 1, fragment_size: 100 },
+                            },
+                            pre_tags: ['<em>'],
+                            post_tags: ['</em>'],
                         },
-                    },
+                    }),
                 },
             })
         } catch (err: any) {
@@ -955,8 +982,9 @@ export class RagSearchService {
                 token_count: Math.ceil((src.content_with_weight || '').length / 4),
                 ...(method ? { method } : {}),
                 ...(src.img_id ? { img_id: src.img_id } : {}),
-                ...((highlightFields.content_ltks?.[0] || highlightFields.content_with_weight?.[0])
-                    ? { highlight: highlightFields.content_ltks?.[0] || highlightFields.content_with_weight?.[0] }
+                // Extract the first highlighted fragment from content or title fields
+                ...((highlightFields.content_ltks?.[0] || highlightFields.title_tks?.[0])
+                    ? { highlight: highlightFields.content_ltks?.[0] ?? highlightFields.title_tks?.[0] }
                     : {}),
                 // Include source dataset ID for cross-dataset result attribution
                 ...(src.kb_id ? { kb_id: src.kb_id } : {}),
