@@ -84,6 +84,25 @@ services:
     networks:
       - rag-network
 
+  # ---------------------------------------------------------------------------
+  # Easy Dataset — Web UI for managing Q&A dataset
+  # Access: http://localhost:1717
+  # Usage: Create / edit Q&A pairs, then export JSON (Alpaca format), then run
+  #        scripts/json_to_yaml.py to convert to dataset/eval_dataset.yaml
+  # ---------------------------------------------------------------------------
+  easy-dataset:
+    image: ghcr.io/conardli/easy-dataset:latest
+    container_name: easy-dataset
+    ports:
+      - "1717:1717"
+    volumes:
+      # Persist project database and Prisma schema
+      - ./easy-dataset-db/local-db:/app/local-db
+      - ./easy-dataset-db/prisma:/app/prisma
+    restart: unless-stopped
+    networks:
+      - rag-network
+
 # Network definition
 networks:
   rag-network:

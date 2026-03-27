@@ -84,12 +84,12 @@ make verify
    • promptfooconfig.yaml - Test configuration
 ```
 
-### Phase 4: Testing & Reports
+### Phase 4: Testing & Reports ✓
 ```
-└─ Run evaluation (8-12 hours)
-   • make eval - Run all tests
-   • make report - Generate HTML reports
-   • Analyze results & iterate
+└─ Run full evaluation (use run-phase4 scripts)
+   • Windows:   .\run-phase4.ps1
+   • Linux/Mac: ./run-phase4.sh
+   • Results:   results/eval_summary.md  → send to Tech Lead
 ```
 
 ## Common Commands
@@ -101,7 +101,7 @@ make verify
 | Shell | `docker compose run --rm -it rag-eval bash` | — | `make shell` |
 | Build | `docker compose build rag-eval` | — | `make build` |
 | Logs | `docker compose logs -f rag-eval` | — | `make logs` |
-| Run Eval | `docker compose run --rm rag-eval make eval` | — | `make eval` |
+| Run Eval | `./run-phase4.sh` | `.\run-phase4.ps1` | — |
 
 ## Verification (Quick & Simple)
 
@@ -174,7 +174,7 @@ See **DEPLOYMENT.md** Troubleshooting section for more cases.
 2. ✓ **Verification** - Run `make verify` (2 minutes)
 3. → **Dataset Setup** - Prepare evaluation data (14-20 hours)
 4. → **Code Implementation** - Build providers & metrics (20-22 hours)
-5. → **Run Evaluation** - Execute tests (8-12 hours)
+5. → **Run Evaluation** - `.\run-phase4.ps1` / `./run-phase4.sh` (8-12 hours)
 
 ## Project Structure
 
