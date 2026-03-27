@@ -258,6 +258,31 @@ if ($edStatus -eq 200) {
 Write-Host ""
 
 # ===========================================================================
+# [5/5]  Install Eval UI dependencies
+# ===========================================================================
+
+Write-Host "[5/5]  Installing Eval UI dependencies..." -ForegroundColor Cyan
+Write-Host ""
+
+if (-not (Test-Path "eval-ui\node_modules")) {
+    Push-Location eval-ui
+    npm install --silent
+    if ($LASTEXITCODE -eq 0) {
+        Pop-Location
+        Write-ResultLine "  eval-ui npm install" "PASS"
+    } else {
+        Pop-Location
+        Add-Result "[5/5]  Eval UI dependencies" "FAIL" `
+            "npm install failed inside eval-ui/." `
+            "Make sure Node.js 18+ is installed: node --version`nThen re-run this script."
+    }
+} else {
+    Write-ResultLine "  eval-ui node_modules already present" "PASS"
+}
+
+Write-Host ""
+
+# ===========================================================================
 # Summary
 # ===========================================================================
 
@@ -286,17 +311,19 @@ if ($BlockerCount -gt 0) {
 
 Write-Host "  Setup complete." -ForegroundColor Green
 Write-Host ""
-Write-Host "  What to do next:" -ForegroundColor Cyan
+Write-Host "  Two web UIs are now ready:" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  QA team:" -ForegroundColor White
-Write-Host "    1. Open Easy Dataset: http://localhost:1717"
-Write-Host "    2. Create a project, upload KB documents, generate Q&A pairs"
-Write-Host "    3. Export as Alpaca JSON, then convert:"
-Write-Host "         python scripts\json_to_yaml.py dataset\export_alpaca.json dataset\eval_dataset.yaml"
+Write-Host "    http://localhost:1717   Easy Dataset  — QA: create & manage Q&A pairs"
+Write-Host "    http://localhost:4000   Eval UI       — QA: run evaluation & view report"
 Write-Host ""
-Write-Host "  Operator (run evaluation after dataset is ready):" -ForegroundColor White
-Write-Host "    .\run-eval.ps1"
+Write-Host "  Start the Eval UI (run in a separate terminal, keep it open):" -ForegroundColor White
+Write-Host "    cd eval-ui"
+Write-Host "    node server.js"
 Write-Host ""
-Write-Host "  Tech Lead (view results after evaluation):" -ForegroundColor White
-Write-Host "    Open: results\eval_summary.md"
+Write-Host "  QA workflow (no terminal needed after UI is running):" -ForegroundColor White
+Write-Host "    1. localhost:1717  — build dataset, export Alpaca JSON"
+Write-Host "    2. Run once: python scripts\json_to_yaml.py dataset\export_alpaca.json dataset\eval_dataset.yaml"
+Write-Host "    3. localhost:4000  — click Run Evaluation, watch live log, read report"
+Write-Host ""
+Write-Host "  Tech Lead: open http://localhost:4000 to view the latest report." -ForegroundColor Gray
 Write-Host ""

@@ -246,6 +246,28 @@ fi
 echo ""
 
 # ===========================================================================
+# [5/5]  Install Eval UI dependencies
+# ===========================================================================
+
+echo -e "${CYAN}[5/5]  Installing Eval UI dependencies...${NC}"
+echo ""
+
+if [ ! -d "eval-ui/node_modules" ]; then
+    (cd eval-ui && npm install --silent)
+    if [ $? -eq 0 ]; then
+        result_line "  eval-ui npm install" "PASS"
+    else
+        add_blocker "[5/5]  Eval UI dependencies" \
+            "npm install failed inside eval-ui/." \
+            "Make sure Node.js 18+ is installed: node --version\nThen re-run this script."
+    fi
+else
+    result_line "  eval-ui node_modules already present" "PASS"
+fi
+
+echo ""
+
+# ===========================================================================
 # Summary
 # ===========================================================================
 
@@ -277,17 +299,19 @@ fi
 
 echo -e "${GREEN}  Setup complete.${NC}"
 echo ""
-echo -e "${CYAN}  What to do next:${NC}"
+echo -e "${CYAN}  Two web UIs are now ready:${NC}"
 echo ""
-echo -e "  ${BOLD}QA team:${NC}"
-echo "    1. Open Easy Dataset: http://localhost:1717"
-echo "    2. Create a project, upload KB documents, generate Q&A pairs"
-echo "    3. Export as Alpaca JSON, then convert:"
-echo "         python scripts/json_to_yaml.py dataset/export_alpaca.json dataset/eval_dataset.yaml"
+echo "    http://localhost:1717   Easy Dataset  — QA: create & manage Q&A pairs"
+echo "    http://localhost:4000   Eval UI       — QA: run evaluation & view report"
 echo ""
-echo -e "  ${BOLD}Operator (run evaluation after dataset is ready):${NC}"
-echo "    ./run-eval.sh"
+echo -e "  ${BOLD}Start the Eval UI (run in a separate terminal, keep it open):${NC}"
+echo "    cd eval-ui"
+echo "    node server.js"
 echo ""
-echo -e "  ${BOLD}Tech Lead (view results after evaluation):${NC}"
-echo "    Open: results/eval_summary.md"
+echo -e "  ${BOLD}QA workflow (no terminal needed after UI is running):${NC}"
+echo "    1. localhost:1717  — build dataset, export Alpaca JSON"
+echo "    2. Run once: python scripts/json_to_yaml.py dataset/export_alpaca.json dataset/eval_dataset.yaml"
+echo "    3. localhost:4000  — click Run Evaluation, watch live log, read report"
+echo ""
+echo -e "  ${GRAY}Tech Lead: open http://localhost:4000 to view the latest report.${NC}"
 echo ""
