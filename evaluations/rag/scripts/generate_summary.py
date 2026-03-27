@@ -167,7 +167,7 @@ def print_summary(results: List[Dict[str, Any]], passed: int, failed: int) -> No
 
     print()
     print(SEPARATOR)
-    print("  RAG Evaluation Report — Phase 4")
+    print("  RAG Evaluation Report")
     print(SEPARATOR)
     print(f"  Total questions : {total}")
     print(f"  Passed          : {passed}  ({pass_rate:.1f}%)")
@@ -218,7 +218,7 @@ def write_markdown(results: List[Dict[str, Any]], passed: int, failed: int) -> N
     lines: List[str] = []
 
     # Header
-    lines.append("# RAG Evaluation Summary — Phase 4\n")
+    lines.append("# RAG Evaluation Summary\n")
 
     # Overall section
     lines.append("\n## Overall\n")

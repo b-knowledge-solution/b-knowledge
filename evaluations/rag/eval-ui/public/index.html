@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RAG Eval</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --border:    #30363d;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --accent:    #58a6ff;
+      --success:   #3fb950;
+      --error:     #f85149;
+      --warn:      #e3b341;
+      --terminal:  #010409;
+      --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      gap: 12px;
+    }
+
+    .h-title    { font-weight: 600; font-size: 15px; }
+    .h-subtitle { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    #badge {
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: var(--bg);
+      white-space: nowrap;
+      transition: color .2s, border-color .2s, background .2s;
+    }
+    #badge.running { color: var(--warn);    border-color: var(--warn);    background: rgba(227,179,65,.1); }
+    #badge.success { color: var(--success); border-color: var(--success); background: rgba(63,185,80,.1);  }
+    #badge.error   { color: var(--error);   border-color: var(--error);   background: rgba(248,81,73,.1);  }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { display: inline-block; animation: spin 1s linear infinite; }
+
+    /* ── Main layout ─────────────────────────────────────────────────────── */
+    main {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      flex: 1;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* ── Left panel ──────────────────────────────────────────────────────── */
+    #left {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .panel-block {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .block-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    /* Readiness rows */
+    .check-row { display: flex; align-items: flex-start; gap: 8px; padding: 3px 0; }
+    .check-icon { font-size: 13px; width: 16px; text-align: center; margin-top: 1px; flex-shrink: 0; }
+    .check-icon.pass { color: var(--success); }
+    .check-icon.fail { color: var(--error);   }
+    .check-icon.idle { color: var(--muted);   }
+    .check-text { flex: 1; }
+    .check-label { font-size: 13px; }
+    .check-hint  { font-size: 11px; color: var(--error); margin-top: 2px; display: none; }
+
+    /* Run button */
+    #runBtn {
+      width: 100%;
+      padding: 10px 16px;
+      background: var(--accent);
+      color: #0d1117;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    #runBtn:hover:not(:disabled) { opacity: .85; }
+    #runBtn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+
+    #cancelBtn {
+      display: none;
+      margin-top: 8px;
+      width: 100%;
+      padding: 6px;
+      background: transparent;
+      color: var(--error);
+      border: 1px solid var(--error);
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    #cancelBtn:hover { background: rgba(248,81,73,.1); }
+
+    /* Log */
+    .log-header {
+      padding: 7px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    #log {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 14px;
+      background: var(--terminal);
+      font-family: var(--mono);
+      font-size: 11.5px;
+      line-height: 1.65;
+      color: #adbac7;
+      white-space: pre-wrap;
+      word-break: break-all;
+      min-height: 0;
+    }
+    #log .stderr    { color: var(--warn); }
+    #log .empty-log { color: var(--muted); font-style: italic; }
+
+    /* ── Right panel ─────────────────────────────────────────────────────── */
+    #right {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    #reportMeta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 20px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    #reportTimeText { font-size: 12px; color: var(--muted); }
+
+    #downloads { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .dl-btn {
+      padding: 3px 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      font-size: 12px;
+      text-decoration: none;
+      transition: border-color .15s;
+    }
+    .dl-btn:hover { border-color: var(--accent); }
+
+    #reportBody {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+      min-height: 0;
+    }
+
+    .empty-state {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--muted);
+      text-align: center;
+    }
+    .empty-icon { font-size: 40px; opacity: .35; }
+    .empty-sub  { font-size: 12px; margin-top: 4px; }
+
+    /* ── Markdown styles ─────────────────────────────────────────────────── */
+    #reportBody h1 {
+      font-size: 18px; margin-bottom: 16px; color: var(--text);
+      border-bottom: 1px solid var(--border); padding-bottom: 8px;
+    }
+    #reportBody h2 { font-size: 15px; margin: 20px 0 8px; color: var(--text); }
+    #reportBody h3 {
+      font-size: 12px; margin: 16px 0 6px; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .06em;
+    }
+    #reportBody p  { margin-bottom: 10px; line-height: 1.7; }
+    #reportBody table { border-collapse: collapse; width: 100%; margin-bottom: 16px; }
+    #reportBody th {
+      background: var(--surface); color: var(--accent); font-size: 11px;
+      text-transform: uppercase; letter-spacing: .05em;
+      padding: 8px 12px; border: 1px solid var(--border); text-align: left;
+    }
+    #reportBody td { padding: 7px 12px; border: 1px solid var(--border); font-size: 13px; }
+    #reportBody tr:nth-child(even) td { background: rgba(255,255,255,.02); }
+    #reportBody code {
+      background: var(--surface); padding: 2px 6px; border-radius: 4px;
+      font-family: var(--mono); font-size: 12px; color: #f98a9b;
+    }
+    #reportBody pre {
+      background: var(--terminal); padding: 12px 14px; border-radius: 6px;
+      overflow-x: auto; margin-bottom: 12px;
+    }
+    #reportBody pre code { background: none; padding: 0; color: #adbac7; }
+    #reportBody ul, #reportBody ol { margin-left: 20px; margin-bottom: 10px; }
+    #reportBody li { margin-bottom: 4px; line-height: 1.7; }
+    #reportBody strong { color: var(--text); }
+    #reportBody blockquote {
+      border-left: 3px solid var(--border); padding-left: 12px;
+      color: var(--muted); margin-bottom: 10px;
+    }
+
+    /* ── Scrollbars ──────────────────────────────────────────────────────── */
+    ::-webkit-scrollbar        { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track  { background: var(--bg); }
+    ::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="h-title">RAG Evaluation</div>
+    <div class="h-subtitle">B-Knowledge · Evaluation Dashboard</div>
+  </div>
+  <div id="badge">● Idle</div>
+</header>
+
+<main>
+
+  <!-- LEFT: Controls + Live Log -->
+  <section id="left">
+
+    <!-- Readiness checks -->
+    <div class="panel-block">
+      <div class="block-label">Readiness</div>
+
+      <div class="check-row">
+        <span class="check-icon idle" id="iconEnv">○</span>
+        <div class="check-text">
+          <div class="check-label">Configuration (.env)</div>
+          <div class="check-hint" id="hintEnv">Open .env and fill in BKNOWLEDGE_CHAT_TOKEN &amp; LLM_JUDGE_API_KEY</div>
+        </div>
+      </div>
+
+      <div class="check-row">
+        <span class="check-icon idle" id="iconData">○</span>
+        <div class="check-text">
+          <div class="check-label">Dataset ready</div>
+          <div class="check-hint" id="hintData">Export from Easy Dataset → run json_to_yaml.py</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="panel-block">
+      <button id="runBtn">▶&nbsp; Run Evaluation</button>
+      <button id="cancelBtn">✕&nbsp; Cancel</button>
+    </div>
+
+    <!-- Live log terminal -->
+    <div class="log-header">Live Output</div>
+    <pre id="log"><span class="empty-log">Waiting to start…</span></pre>
+
+  </section>
+
+  <!-- RIGHT: Report viewer -->
+  <section id="right">
+
+    <div id="reportMeta">
+      <div id="reportTimeText">Report</div>
+      <div id="downloads"></div>
+    </div>
+
+    <div id="reportBody">
+      <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <div>No report yet</div>
+        <div class="empty-sub">Run an evaluation to see results here</div>
+      </div>
+    </div>
+
+  </section>
+
+</main>
+
+<!-- marked.js — renders Markdown → HTML client-side (no build step) -->
+<script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+
+<script>
+'use strict'
+
+// ---------------------------------------------------------------------------
+// DOM refs
+// ---------------------------------------------------------------------------
+const badge          = document.getElementById('badge')
+const iconEnv        = document.getElementById('iconEnv')
+const iconData       = document.getElementById('iconData')
+const hintEnv        = document.getElementById('hintEnv')
+const hintData       = document.getElementById('hintData')
+const runBtn         = document.getElementById('runBtn')
+const cancelBtn      = document.getElementById('cancelBtn')
+const logEl          = document.getElementById('log')
+const reportTimeText = document.getElementById('reportTimeText')
+const downloadsEl    = document.getElementById('downloads')
+const reportBody     = document.getElementById('reportBody')
+
+// Active SSE connection
+let es = null
+
+// ---------------------------------------------------------------------------
+// UI helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Update a readiness check row (icon + optional hint).
+ * @param {HTMLElement} icon
+ * @param {HTMLElement} hint
+ * @param {boolean|null} pass  null = unknown/loading
+ */
+function setCheck (icon, hint, pass) {
+  if (pass === null) {
+    icon.className = 'check-icon idle'; icon.textContent = '○'
+    hint.style.display = 'none'
+  } else if (pass) {
+    icon.className = 'check-icon pass'; icon.textContent = '✓'
+    hint.style.display = 'none'
+  } else {
+    icon.className = 'check-icon fail'; icon.textContent = '✗'
+    hint.style.display = ''
+  }
+}
+
+/**
+ * Update the top-right status badge.
+ * @param {string|null} status  null | 'running' | 'success' | 'error'
+ */
+function setBadge (status) {
+  badge.className = status || ''
+  const labels = {
+    running : '<span class="spin">⟳</span> Running…',
+    success : '✓ Complete',
+    error   : '✗ Failed'
+  }
+  badge.innerHTML = labels[status] || '● Idle'
+}
+
+/**
+ * Toggle run/cancel button states.
+ * @param {boolean} running
+ */
+function setRunningUI (running) {
+  runBtn.disabled       = running
+  runBtn.textContent    = running ? '⟳  Running…' : '▶  Run Evaluation'
+  cancelBtn.style.display = running ? 'block' : 'none'
+}
+
+/**
+ * Append a line to the log terminal.
+ * @param {string}  text
+ * @param {boolean} isStderr  stderr lines are shown in yellow
+ */
+function appendLog (text, isStderr) {
+  // Remove the empty-state placeholder on first real output
+  const ph = logEl.querySelector('.empty-log')
+  if (ph) ph.remove()
+  const span = document.createElement('span')
+  if (isStderr) span.className = 'stderr'
+  span.textContent = text
+  logEl.appendChild(span)
+  // Auto-scroll to bottom
+  logEl.scrollTop = logEl.scrollHeight
+}
+
+function clearLog () { logEl.innerHTML = '' }
+
+function showEmptyReport () {
+  reportBody.innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <div>No report yet</div>
+      <div class="empty-sub">Run an evaluation to see results here</div>
+    </div>`
+}
+
+// ---------------------------------------------------------------------------
+// API calls
+// ---------------------------------------------------------------------------
+
+/** Fetch /api/status and update the readiness + state UI. */
+async function loadStatus () {
+  try {
+    const data = await fetch('/api/status').then(r => r.json())
+    setCheck(iconEnv,  hintEnv,  data.envConfigured)
+    setCheck(iconData, hintData, data.hasDataset)
+    setRunningUI(data.isRunning)
+    setBadge(data.status)
+    if (data.summaryModified) {
+      const d = new Date(data.summaryModified)
+      reportTimeText.textContent =
+        `Report · ${d.toLocaleDateString()} ${d.toLocaleTimeString()}`
+    }
+    return data
+  } catch (e) {
+    console.error('Status fetch error:', e)
+  }
+}
+
+/**
+ * Fetch and render eval_summary.md, then load download links.
+ * Called after a successful run or on page load when a report exists.
+ */
+async function loadReport () {
+  try {
+    const res = await fetch('/api/results/summary')
+    if (!res.ok) { showEmptyReport(); return }
+    const md = await res.text()
+    reportBody.innerHTML = marked.parse(md)
+  } catch (_) {
+    showEmptyReport()
+  }
+  try {
+    const { files } = await fetch('/api/results/files').then(r => r.json())
+    downloadsEl.innerHTML = files
+      .map(f => `<a class="dl-btn" href="/api/results/download/${encodeURIComponent(f.name)}" download>${f.name}</a>`)
+      .join('')
+  } catch (_) {
+    downloadsEl.innerHTML = ''
+  }
+}
+
+/** Send POST /api/eval/start to kick off a run. */
+async function startEval () {
+  try {
+    const res = await fetch('/api/eval/start', { method: 'POST' })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      alert(body.error || 'Could not start evaluation')
+    }
+  } catch (e) {
+    alert('Connection error: ' + e.message)
+  }
+}
+
+/** Send POST /api/eval/cancel to stop the running process. */
+async function cancelEval () {
+  try { await fetch('/api/eval/cancel', { method: 'POST' }) } catch (_) {}
+}
+
+// ---------------------------------------------------------------------------
+// SSE — real-time log streaming and run lifecycle events
+// ---------------------------------------------------------------------------
+
+function connectSSE () {
+  if (es) es.close()
+  es = new EventSource('/api/eval/stream')
+
+  // Current run state sent immediately on connect
+  es.addEventListener('status', e => {
+    const d = JSON.parse(e.data)
+    setRunningUI(d.isRunning)
+    setBadge(d.status)
+  })
+
+  // Buffered log lines from a run already in progress (mid-run page load)
+  es.addEventListener('replay', e => {
+    const { lines } = JSON.parse(e.data)
+    clearLog()
+    lines.forEach(({ text, stream }) => appendLog(text, stream === 'stderr'))
+  })
+
+  // Individual log line during a run
+  es.addEventListener('log', e => {
+    const { text, stream } = JSON.parse(e.data)
+    appendLog(text, stream === 'stderr')
+  })
+
+  // Run started (triggered by POST /api/eval/start on another tab or client)
+  es.addEventListener('start', () => {
+    clearLog()
+    setRunningUI(true)
+    setBadge('running')
+  })
+
+  // Run finished
+  es.addEventListener('done', e => {
+    const d = JSON.parse(e.data)
+    setRunningUI(false)
+    setBadge(d.status)
+    loadStatus()
+    if (d.status === 'success') loadReport()
+  })
+
+  // Auto-reconnect on network blip
+  es.onerror = () => setTimeout(connectSSE, 3000)
+}
+
+// ---------------------------------------------------------------------------
+// Event listeners
+// ---------------------------------------------------------------------------
+
+runBtn.addEventListener('click', startEval)
+
+cancelBtn.addEventListener('click', () => {
+  if (confirm('Cancel the running evaluation?')) cancelEval()
+})
+
+// ---------------------------------------------------------------------------
+// Init
+// ---------------------------------------------------------------------------
+
+async function init () {
+  const status = await loadStatus()
+  if (status?.hasSummary) loadReport()
+  connectSSE()
+}
+
+init()
+</script>
+</body>
+</html>

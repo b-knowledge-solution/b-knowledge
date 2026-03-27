@@ -29,6 +29,11 @@ results/
 .coverage
 htmlcov/
 
+# Exceptions — eval-ui source files must be tracked despite the *.json / *.html rules above
+!eval-ui/package.json
+!eval-ui/public/
+!eval-ui/public/*.html
+
 # IDE
 .vscode/
 .idea/
@@ -66,3 +71,5 @@ verify-phase1.sh
 # OS specific
 Thumbs.db
 .DS_Store
+
+eval-ui/node_modules/
