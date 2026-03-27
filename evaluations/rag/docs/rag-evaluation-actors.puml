@@ -70,7 +70,7 @@ rectangle "**BUOC 1 — Nap Dataset**" as step1 #EAF7FB {
 
 rectangle "**BUOC 2 — Chay Evaluation**" as step2 #FFFDE7 {
 
-    card "**Mo Terminal / PowerShell**\n--\ncd evaluations/rag\n\nWindows:\n.\\run-phase4.ps1\n\nLinux / Mac:\n./run-phase4.sh" as run_cmd
+    card "**Mo Terminal / PowerShell**\n--\ncd evaluations/rag\n\nWindows:\n.\\run-eval.ps1\n\nLinux / Mac:\n./run-eval.sh" as run_cmd
 
     card "**STEP 1 tu dong: Kiem tra truoc**\n--\n[1/6] File .env hop le?\n[2/6] B-Knowledge dang chay?\n[3/6] Token duoc chap nhan?\n[4/6] AI judge key hop le?\n[5/6] Dataset co san?\n[6/6] Docker image san sang?" as preflight
 
@@ -223,7 +223,7 @@ package "Dataset Maintenance" as S1 #EAFAF1 {
 ' Stage 2 -- Run evaluation
 ' ===========================================================================
 
-package "Run Evaluation\n(run-phase4.ps1 / run-phase4.sh)" as S2 #FEF9E7 {
+package "Run Evaluation\n(run-eval.ps1 / run-eval.sh)" as S2 #FEF9E7 {
     usecase "Pre-flight checks\n(config, connectivity,\ntokens, dataset, Docker)" as s2_check
     usecase "Run full evaluation\n80-100 Q&A x ~1-3 hours"                        as s2_run
     usecase "Generate report\n(eval_summary.md)"                                  as s2_report

@@ -1,203 +1,157 @@
 # RAG Evaluation System
 
-A comprehensive automated evaluation system for RAG (Retrieval-Augmented Generation) applications built with Docker, Python, and Promptfoo.
+Automated evaluation system for the B-Knowledge RAG pipeline.  
+Measures accuracy, F1, precision, and recall using an LLM-as-judge approach.
 
-## Quick Start (5 minutes)
+---
 
-### 1. Deploy the System
-```bash
-cd evaluations/rag
+## Quick Start
 
-# On Windows (PowerShell)
-.\deploy.ps1
-
-# On Linux/Mac/Git Bash
-./deploy.sh
-
-# Or with Makefile
-make deploy
-```
-
-### 2. Verify Everything Works
-```bash
-# After deployment, verify all components
-.\verify.ps1        # Windows
-./verify.sh         # Linux/Mac
-
-# Or with Makefile
-make verify
-```
-
-### 3. Check System Status Anytime
-```bash
-# See what's working and what needs implementation
-make verify
-
-# Get detailed information
-./verify.sh --detailed
-```
-
-## Documentation
-
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Complete deployment & troubleshooting guide
-- **[../tasks/rag-evaluation-tasks.md](../tasks/rag-evaluation-tasks.md)** - Detailed task breakdown (all 4 phases)
-- **[../../docs/rag-evaluation.pu](../../docs/rag-evaluation.pu)** - Architecture diagram
-
-## What's Included
-
-### Automated Deployment Scripts
-- **`deploy.sh`** (Bash) - Deploy with 5 phases of verification
-- **`deploy.ps1`** (PowerShell) - Deploy on Windows
-- **`verify.sh`** (Bash) - Check 8 phases of system status
-- **`verify.ps1`** (PowerShell) - Health check on Windows
-
-### Docker Setup
-- **`Dockerfile`** - Multi-stage build (Node + Python)
-- **`docker-compose.yml`** - Service configuration & volumes
-
-### Utilities
-- **`Makefile`** - Convenient shortcuts for all tasks
-- **`.env.example`** - Environment configuration template
-
-## Workflow
-
-### Phase 1: Setup (Complete with deploy.sh/ps1) ✓
-```
-└─ Docker environment ready
-   ✓ Docker image built
-   ✓ Containers available
-   ✓ Volumes configured
-```
-
-### Phase 2: Dataset Preparation (Next)
-```
-└─ Prepare evaluation dataset (14-20 hours)
-   • Use Easy Dataset UI to generate Q&A pairs
-   • Export to: dataset/eval_dataset.yaml
-```
-
-### Phase 3: Implementation
-```
-└─ Implement evaluation code (20-22 hours)
-   • providers/rag_provider.py - B-Knowledge integration
-   • metrics/*.py - Evaluation metrics (4 metrics)
-   • promptfooconfig.yaml - Test configuration
-```
-
-### Phase 4: Testing & Reports ✓
-```
-└─ Run full evaluation (use run-phase4 scripts)
-   • Windows:   .\run-phase4.ps1
-   • Linux/Mac: ./run-phase4.sh
-   • Results:   results/eval_summary.md  → send to Tech Lead
-```
-
-## Common Commands
-
-| Task | Bash | PowerShell | Makefile |
-|------|------|-----------|----------|
-| Deploy | `./deploy.sh` | `.\deploy.ps1` | `make deploy` |
-| Verify | `./verify.sh` | `.\verify.ps1` | `make verify` |
-| Shell | `docker compose run --rm -it rag-eval bash` | — | `make shell` |
-| Build | `docker compose build rag-eval` | — | `make build` |
-| Logs | `docker compose logs -f rag-eval` | — | `make logs` |
-| Run Eval | `./run-phase4.sh` | `.\run-phase4.ps1` | — |
-
-## Verification (Quick & Simple)
-
-The `verify` script shows:
-
-```
-step 1/5: Docker installed => done
-step 2/5: Docker daemon running => done
-step 3/5: Docker Compose available => done
-...
-evaluation setting up completed. (5/5)
-```
-
-Exit codes:
-- `=> done` - Check passed ✓
-- `=> failed` - Check failed ✗
-
-## System Architecture
-
-```
-evaluations/rag/
-├── Docker Environment (Node 22 + Python 3.11)
-│   ├── Promptfoo (orchestrator)
-│   └── Python Metrics (evaluation)
-├── B-Knowledge REST API (via HTTP)
-│   ├── Chat endpoint (SSE native)
-│   └── Search endpoint
-└── Outputs (results/)
-    ├── Evaluation scores
-    ├── HTML report
-    └── Raw metrics
-```
-
-## Environment Setup
-
-Create `.env` from `.env.example` with:
+### First time on this machine
 
 ```bash
-# B-Knowledge Backend
+# Windows (PowerShell)
+.\setup.ps1
+
+# Linux / Mac / Git Bash
+./setup.sh
+```
+
+This installs all prerequisites, fills in your `.env`, builds the Docker image,  
+and starts Easy Dataset — all in one run.
+
+### Every evaluation run (after setup)
+
+```bash
+# Windows (PowerShell)
+.\run-eval.ps1
+
+# Linux / Mac / Git Bash
+./run-eval.sh
+```
+
+Results are written to `results/eval_summary.md`.
+
+### Optional — web UI (recommended)
+
+Instead of running scripts and opening files manually, start the Eval UI:
+
+```bash
+cd eval-ui
+npm install        # first time only
+node server.js
+```
+
+Open **http://localhost:4000** — one button to run, live log, report rendered in the browser.
+
+---
+
+## Who Does What
+
+### QA Team — create and maintain Q&A pairs
+
+1. Open Easy Dataset at **http://localhost:1717** (starts automatically during setup)
+2. Create a project, upload KB documents, generate Q&A pairs
+3. Review and approve pairs
+4. Export as **Alpaca JSON**
+5. Convert to evaluation format:
+   ```bash
+   python scripts/json_to_yaml.py dataset/export_alpaca.json dataset/eval_dataset.yaml
+   ```
+6. Tell the Operator the dataset is ready
+
+### Operator — run the evaluation
+
+1. Run `.\setup.ps1` once (or `./setup.sh` on Linux/Mac) — fills in `.env`, builds image, starts services
+2. After QA delivers `eval_dataset.yaml`, run:
+   ```
+   .\run-eval.ps1
+   ```
+3. Send `results/eval_summary.md` to Tech Lead
+
+### Tech Lead / Product Owner — read the results
+
+- Open `results/eval_summary.md` for the summary table
+- For drill-down detail, generate an HTML report:
+  ```bash
+  docker compose run --rm rag-evaluator npx promptfoo view --output results/eval_report.html
+  ```
+
+---
+
+## Configuration (.env)
+
+Copy `.env.example` to `.env` and fill in:
+
+```bash
+# B-Knowledge instance
 BKNOWLEDGE_API_URL=http://host.docker.internal:3001
-BKNOWLEDGE_CHAT_TOKEN=<from-settings>
-BKNOWLEDGE_SEARCH_TOKEN=<from-settings>
+BKNOWLEDGE_CHAT_TOKEN=<Settings > Embed Tokens > Chat App>
+BKNOWLEDGE_SEARCH_TOKEN=<Settings > Embed Tokens > Search>
 
-# LLM Judge (for metrics evaluation)
+# LLM judge (used to grade answers)
+LLM_JUDGE_PROVIDER=openai            # openai | anthropic
+LLM_JUDGE_MODEL=gpt-4o-mini
 LLM_JUDGE_API_KEY=sk-...
 
-# Langfuse (optional observability)
+# Langfuse (optional — for observability)
 LANGFUSE_HOST=https://cloud.langfuse.com
 LANGFUSE_PUBLIC_KEY=pk-...
 LANGFUSE_SECRET_KEY=sk-...
 ```
 
-See **DEPLOYMENT.md** for instructions on obtaining each value.
+---
+
+## Project Layout
+
+```
+evaluations/rag/
+├── setup.ps1 / setup.sh       ← Run once per machine
+├── run-eval.ps1 / .sh       ← Run for every evaluation
+├── Dockerfile                 ← Docker image (Node 22 + Python 3.11)
+├── docker-compose.yml         ← Services: rag-evaluator, easy-dataset
+├── .env.example               ← Configuration template
+│
+├── dataset/
+│   ├── eval_dataset.yaml      ← Q&A pairs (generated by QA team)
+│   └── eval_dataset_test.yaml ← 20 smoke-test pairs (always available)
+│
+├── providers/
+│   └── rag_provider.py        ← Calls B-Knowledge /api/chat/stream (SSE)
+│
+├── metrics/
+│   ├── accuracy.py
+│   ├── f1.py
+│   ├── precision.py
+│   └── recall.py
+│
+├── scripts/
+│   ├── json_to_yaml.py        ← Convert Easy Dataset export to eval_dataset.yaml
+│   └── generate_summary.py    ← Build eval_summary.md from eval_output.json
+│
+├── results/                   ← Generated reports (gitignored)
+│   ├── eval_output.json
+│   └── eval_summary.md
+│
+└── docs/
+    └── rag-evaluation-actors.puml  ← Operational diagram (actors & touchpoints)
+```
+
+---
 
 ## Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| Docker not running | Start Docker Desktop or `systemctl start docker` |
-| .env not found | `cp .env.example .env` and populate values |
-| Volume mount failed | Check Docker Desktop file sharing settings |
-| API connectivity error | Verify B-Knowledge is running on port 3001 |
-| Verification fails | Run `./verify.sh --detailed` for detailed diagnostics |
+| Symptom | Fix |
+|---------|-----|
+| Setup script shows a blocker | Follow the Problem / Fix printed by the script |
+| Docker daemon not running | Start Docker Desktop; wait for "Engine running" |
+| `.env` has empty values | Re-run setup and fill in tokens when prompted |
+| Easy Dataset not loading at :1717 | `docker compose up -d easy-dataset` or re-run setup |
+| B-Knowledge connection refused | Check `BKNOWLEDGE_API_URL` in `.env`; confirm B-Knowledge is running |
+| Docker build fails with "no space left" | `docker system prune` to free space |
+| `eval_dataset.yaml` not found | QA team must complete export + `json_to_yaml.py` step first |
 
-See **DEPLOYMENT.md** Troubleshooting section for more cases.
-
-## Next Steps
-
-1. ✓ **Deployment** - Run `make deploy` (5-10 minutes)
-2. ✓ **Verification** - Run `make verify` (2 minutes)
-3. → **Dataset Setup** - Prepare evaluation data (14-20 hours)
-4. → **Code Implementation** - Build providers & metrics (20-22 hours)
-5. → **Run Evaluation** - `.\run-phase4.ps1` / `./run-phase4.sh` (8-12 hours)
-
-## Project Structure
-
-```
-evaluations/
-├── rag/                          ← You are here
-│   ├── deploy.sh
-│   ├── deploy.ps1
-│   ├── verify.sh
-│   ├── verify.ps1
-│   ├── Makefile
-│   ├── DEPLOYMENT.md
-│   ├── Dockerfile
-│   ├── docker-compose.yml
-│   ├── .env.example
-│   ├── dataset/                  ← Your Q&A evaluation data
-│   ├── providers/                ← RAG provider implementations
-│   ├── metrics/                  ← Evaluation metrics
-│   ├── results/                  ← Generated evaluation reports
-│   └── README.md                 ← This file
-└── tasks/
-    └── rag-evaluation-tasks.md   ← Detailed task breakdown
-```
+For detailed deployment notes, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ---
 

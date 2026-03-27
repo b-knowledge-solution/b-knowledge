@@ -52,7 +52,7 @@ make verify
 - Outputs image size and details
 - Prepares Node.js (promptfoo) + Python (metrics) environment
 
-### Phase 4: Container Validation ✓
+### Step 4: Container Validation ✓
 - Tests container startup
 - Verifies Python environment
 - Checks Promptfoo installation
@@ -259,8 +259,8 @@ make shell
 ### 3. Run Evaluation
 ```bash
 # Run pre-flight checks + full evaluation (no technical knowledge needed)
-.\run-phase4.ps1    # Windows
-./run-phase4.sh     # Linux / Mac
+.\run-eval.ps1    # Windows
+./run-eval.sh     # Linux / Mac
 
 # Results written to:
 #   results/eval_summary.md   — summary report, send to Tech Lead
@@ -275,10 +275,10 @@ docker compose run --rm rag-evaluator promptfoo view
 
 ## Next Steps After Deployment
 
-1. ✓ **Deploy completed** - Docker environment ready
-2. → **Phase 2**: Prepare evaluation dataset (14-20h)
-3. → **Phase 3**: Implement evaluation code (20-22h)
-4. → **Phase 4**: Run full evaluation (8-12h)
+1. ✓ **Setup** - Run `setup.ps1` / `setup.sh` once
+2. → **Dataset** - QA team creates Q&A pairs with Easy Dataset
+3. → **Evaluation** - Operator runs `run-eval.ps1` / `run-eval.sh`
+4. → **Review** - Tech Lead reads `results/eval_summary.md`
 
 ---
 
