@@ -28,6 +28,7 @@ export default withMermaid(
             text: 'Core Platform',
             items: [
               { text: 'RAG Strategy & Architecture', link: '/srs/core-platform/fr-rag-strategy' },
+              { text: 'Retrieval Pipeline', link: '/srs/core-platform/fr-retrieval-pipeline' },
               { text: 'Authentication', link: '/srs/core-platform/fr-authentication' },
               { text: 'User & Team Management', link: '/srs/core-platform/fr-user-team-management' },
               { text: 'Dataset Management', link: '/srs/core-platform/fr-dataset-management' },
@@ -86,6 +87,7 @@ export default withMermaid(
             collapsed: false,
             items: [
               { text: 'RAG Strategy & Architecture', link: '/srs/core-platform/fr-rag-strategy' },
+              { text: 'Retrieval Pipeline', link: '/srs/core-platform/fr-retrieval-pipeline' },
               { text: 'Authentication', link: '/srs/core-platform/fr-authentication' },
               { text: 'User & Team Management', link: '/srs/core-platform/fr-user-team-management' },
               { text: 'Dataset Management', link: '/srs/core-platform/fr-dataset-management' },
@@ -172,6 +174,7 @@ export default withMermaid(
               { text: 'Step 4: LLM Enhancement', link: '/basic-design/rag-pipeline/rag-step-llm-enhancement' },
               { text: 'Step 5: Chunking', link: '/basic-design/rag-pipeline/rag-step-chunking' },
               { text: 'Step 6: Embedding & Indexing', link: '/basic-design/rag-pipeline/rag-step-embedding-indexing' },
+              { text: 'Step 7: Retrieval', link: '/basic-design/rag-pipeline/rag-step-retrieval' },
               { text: 'Advanced: GraphRAG', link: '/basic-design/rag-pipeline/rag-advanced-graphrag' },
               { text: 'Advanced: Search Execution', link: '/basic-design/rag-pipeline/rag-advanced-search' },
               { text: 'Dataset Gaps Architecture', link: '/basic-design/rag-pipeline/dataset-gaps-architecture' },
@@ -263,6 +266,7 @@ export default withMermaid(
             items: [
               { text: 'Overview', link: '/detail-design/search/overview' },
               { text: 'Retrieval Pipeline', link: '/detail-design/search/retrieval-detail' },
+              { text: 'Retrieval Pipeline (Deep Dive)', link: '/detail-design/search/retrieval-pipeline-detail' },
               { text: 'Ask Streaming (SSE)', link: '/detail-design/search/ask-streaming' },
               { text: 'Features', link: '/detail-design/search/features-detail' },
               { text: 'Embed Widget', link: '/detail-design/search/embed-widget' },
@@ -335,6 +339,7 @@ export default withMermaid(
               { text: 'System Tools', link: '/detail-design/supporting/system-tools-detail' },
               { text: 'Tokenizer Playground', link: '/detail-design/supporting/tokenizer-detail' },
               { text: 'Landing Page', link: '/detail-design/supporting/landing-page-detail' },
+              { text: 'Horizontal Scaling', link: '/detail-design/supporting/horizontal-scaling' },
             ],
           },
         ],

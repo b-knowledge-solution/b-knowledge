@@ -1,6 +1,9 @@
 # Knowledge Base - Docker Compose Configuration
 # Infrastructure (PostgreSQL, Valkey, OpenSearch, RustFS) is included from docker-compose-base.yml
 # This file only contains the application services that we build and develop.
+#
+# Resource limits tuned for a 4-core / 8 GB RAM server.
+# Override via docker-compose.override.yml for larger machines.
 
 include:
   - path: docker-compose-base.yml
@@ -15,8 +18,10 @@ services:
       context: ../be
       dockerfile: Dockerfile
     image: ${BACKEND_IMAGE:-knowledge-base-backend}:${BACKEND_VERSION:-latest}
-    container_name: kb-backend
     restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 512m
+    mem_reservation: 256m
     depends_on:
       postgres:
         condition: service_healthy
@@ -66,8 +71,10 @@ services:
       context: ../advance-rag
       dockerfile: Dockerfile
     image: ${RAG_IMAGE:-b-knowledge-rag}:${RAG_VERSION:-latest}
-    container_name: kb-task-executor
     restart: unless-stopped
+    cpus: 0.75
+    mem_limit: 2g
+    mem_reservation: 1g
     command: ["python", "-m", "executor_wrapper"]
     depends_on:
       backend:
@@ -100,6 +107,16 @@ services:
       S3_PREFIX_PATH: ${S3_PREFIX_PATH:-}
       RAG_PROJECT_BASE: /app
       PYTHONPATH: /app
+      # Worker scaling: tune per-instance concurrency via .env
+      MAX_CONCURRENT_TASKS: ${MAX_CONCURRENT_TASKS:-5}
+      MAX_CONCURRENT_CHUNK_BUILDERS: ${MAX_CONCURRENT_CHUNK_BUILDERS:-1}
+      MAX_CONCURRENT_MINIO: ${MAX_CONCURRENT_MINIO:-10}
+      MAX_CONCURRENT_CHATS: ${MAX_CONCURRENT_CHATS:-10}
+      TASK_MAX_RETRIES: ${TASK_MAX_RETRIES:-3}
+      OPENSEARCH_POOL_MAXSIZE: ${OPENSEARCH_POOL_MAXSIZE:-10}
+      EMBEDDING_BATCH_SIZE: ${EMBEDDING_BATCH_SIZE:-16}
+      DOC_BULK_SIZE: ${DOC_BULK_SIZE:-4}
+      WORKER_HEARTBEAT_TIMEOUT: ${WORKER_HEARTBEAT_TIMEOUT:-120}
       LOG_PREFIX: task-executor
       LOG_ROTATION: ${LOG_ROTATION:-50 MB}
       LOG_RETENTION: ${LOG_RETENTION:-30 days}
@@ -111,15 +128,17 @@ services:
       - kb-network
 
   # ==========================================================================
-  # Document Converter Worker (Office → PDF conversion via LibreOffice)
+  # Document Converter Worker (Office -> PDF conversion via LibreOffice)
   # ==========================================================================
   converter:
     build:
       context: ../converter
       dockerfile: Dockerfile
     image: ${CONVERTER_IMAGE:-b-knowledge-converter}:${CONVERTER_VERSION:-latest}
-    container_name: kb-converter
     restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 768m
+    mem_reservation: 256m
     depends_on:
       backend:
         condition: service_healthy

@@ -6,6 +6,9 @@
 #
 # This file is NOT run standalone. It is included by docker-compose.yml
 # via the `include` directive.
+#
+# Resource limits tuned for a 4-core / 8 GB RAM server.
+# Override via docker-compose.override.yml for larger machines.
 
 services:
   # ==========================================================================
@@ -14,6 +17,9 @@ services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 512m
+    mem_reservation: 256m
     ports:
       - "5432:5432"
     environment:
@@ -39,6 +45,9 @@ services:
   valkey:
     image: valkey/valkey:8-alpine
     restart: unless-stopped
+    cpus: 0.25
+    mem_limit: 384m
+    mem_reservation: 128m
     ports:
       - "6379:6379"
     command:
@@ -67,12 +76,16 @@ services:
   opensearch:
     image: opensearchproject/opensearch:3.5.0
     restart: unless-stopped
+    cpus: 1.50
+    mem_limit: 2g
+    mem_reservation: 1536m
     ports:
       - "9201:9201"
     environment:
       - discovery.type=single-node
       - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${VECTORDB_PASSWORD:-OpenSearch@123}
-      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+      # JVM heap: set to ~50% of container memory limit (2 GB container -> 1 GB heap)
+      - OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g
       - plugins.security.disabled=${OPENSEARCH_DISABLE_SECURITY:-true}
       - node.name=opensearch01
       - bootstrap.memory_lock=false
@@ -107,6 +120,9 @@ services:
   rustfs:
     image: rustfs/rustfs:latest
     restart: unless-stopped
+    cpus: 0.25
+    mem_limit: 256m
+    mem_reservation: 128m
     security_opt:
       - "no-new-privileges:true"
     ports:
@@ -168,6 +184,9 @@ services:
     image: memgraph/memgraph:latest
     container_name: knowledge-memgraph
     restart: unless-stopped
+    cpus: 0.25
+    mem_limit: 256m
+    mem_reservation: 128m
     ports:
       - "${MEMGRAPH_BOLT_PORT:-7687}:7687"
       - "${MEMGRAPH_WEB_PORT:-7444}:7444"

@@ -129,8 +129,11 @@ TASK_TYPE_TO_PIPELINE_TASK_TYPE = {
 
 UNACKED_ITERATOR = None
 
+# Consumer name must be unique per instance for Redis Streams XREADGROUP.
+# Uses hostname + PID to ensure uniqueness when scaling with docker-compose --scale.
+# Falls back to CLI argument for backward compatibility (e.g., python -m executor_wrapper 3).
 CONSUMER_NO = "0" if len(sys.argv) < 2 else sys.argv[1]
-CONSUMER_NAME = "task_executor_" + CONSUMER_NO
+CONSUMER_NAME = f"task_executor_{socket.gethostname()}_{os.getpid()}" if CONSUMER_NO == "0" else "task_executor_" + CONSUMER_NO
 BOOT_AT = datetime.now().astimezone().isoformat(timespec="milliseconds")
 PENDING_TASKS = 0
 LAG_TASKS = 0
@@ -1803,13 +1806,16 @@ async def main():
     the task consumption loop with configurable concurrency limits.
     Stagger startup based on worker number to prevent connection storms.
     """
-    # Stagger executor startup to prevent connection storm to Infinity
-    # Extract worker number from CONSUMER_NAME (e.g., "task_executor_abc123_5" -> 5)
+    # Stagger executor startup to prevent connection storm to Infinity.
+    # Uses CLI arg (CONSUMER_NO) for explicit numbering, or random jitter for PID-based naming.
     try:
-        worker_num = int(CONSUMER_NAME.rsplit("_", 1)[-1])
-        # Add random delay: base delay + worker_num * 2.0s + random jitter
-        # This spreads out connection attempts over several seconds
-        startup_delay = worker_num * 2.0 + random.uniform(0, 0.5)
+        if CONSUMER_NO != "0":
+            # Explicit worker number from CLI arg (e.g., python -m executor_wrapper 3)
+            worker_num = int(CONSUMER_NO)
+            startup_delay = worker_num * 2.0 + random.uniform(0, 0.5)
+        else:
+            # PID-based naming (docker-compose --scale): use random jitter only
+            startup_delay = random.uniform(0.5, 5.0)
         if startup_delay > 0:
             logging.info(f"Staggering startup by {startup_delay:.2f}s to prevent connection storm")
             await asyncio.sleep(startup_delay)
