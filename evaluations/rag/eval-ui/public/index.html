@@ -139,6 +139,73 @@
     }
     #cancelBtn:hover { background: rgba(248,81,73,.1); }
 
+    /* ── Dataset upload ──────────────────────────────────────────────────── */
+    .dataset-info {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dataset-info .count {
+      font-weight: 600;
+      color: var(--success);
+    }
+    .dataset-info .none { color: var(--warn); }
+
+    .drop-zone {
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 14px 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      font-size: 12px;
+      color: var(--muted);
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(88,166,255,.05);
+      color: var(--accent);
+    }
+    .drop-zone input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .drop-zone .drop-icon { font-size: 18px; display: block; margin-bottom: 4px; }
+    .drop-zone .drop-filename {
+      color: var(--accent);
+      font-weight: 500;
+      word-break: break-all;
+    }
+
+    #uploadBtn {
+      display: none;
+      margin-top: 8px;
+      width: 100%;
+      padding: 7px;
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    #uploadBtn:hover:not(:disabled) { background: rgba(88,166,255,.1); }
+    #uploadBtn:disabled { opacity: .4; cursor: not-allowed; }
+
+    #uploadStatus {
+      margin-top: 8px;
+      font-size: 11px;
+      min-height: 16px;
+      text-align: center;
+    }
+    #uploadStatus.ok  { color: var(--success); }
+    #uploadStatus.err { color: var(--error); }
+
     /* Log */
     .log-header {
       padding: 7px 16px;
@@ -295,9 +362,24 @@
         <span class="check-icon idle" id="iconData">○</span>
         <div class="check-text">
           <div class="check-label">Dataset ready</div>
-          <div class="check-hint" id="hintData">Export from Easy Dataset → run json_to_yaml.py</div>
+          <div class="check-hint" id="hintData">Upload Alpaca JSON below to create the dataset</div>
         </div>
       </div>
+    </div>
+
+    <!-- Dataset upload -->
+    <div class="panel-block">
+      <div class="block-label">Dataset</div>
+      <div class="dataset-info" id="datasetInfo">
+        <span class="none">No dataset loaded</span>
+      </div>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept=".json">
+        <span class="drop-icon">📂</span>
+        <span class="drop-hint">Drop Alpaca JSON here or <u>click to browse</u></span>
+      </div>
+      <button id="uploadBtn">⬆&nbsp; Convert &amp; Load Dataset</button>
+      <div id="uploadStatus"></div>
     </div>
 
     <!-- Action buttons -->
@@ -352,6 +434,11 @@ const logEl          = document.getElementById('log')
 const reportTimeText = document.getElementById('reportTimeText')
 const downloadsEl    = document.getElementById('downloads')
 const reportBody     = document.getElementById('reportBody')
+const dropZone       = document.getElementById('dropZone')
+const fileInput      = document.getElementById('fileInput')
+const uploadBtn      = document.getElementById('uploadBtn')
+const uploadStatus   = document.getElementById('uploadStatus')
+const datasetInfo    = document.getElementById('datasetInfo')
 
 // Active SSE connection
 let es = null
@@ -443,6 +530,12 @@ async function loadStatus () {
     setCheck(iconData, hintData, data.hasDataset)
     setRunningUI(data.isRunning)
     setBadge(data.status)
+    // Dataset question count
+    if (data.hasDataset && data.datasetCount > 0) {
+      datasetInfo.innerHTML = `<span class="count">${data.datasetCount}</span> questions loaded`
+    } else {
+      datasetInfo.innerHTML = '<span class="none">No dataset loaded</span>'
+    }
     if (data.summaryModified) {
       const d = new Date(data.summaryModified)
       reportTimeText.textContent =
@@ -539,8 +632,44 @@ function connectSSE () {
     if (d.status === 'success') loadReport()
   })
 
+  // Dataset updated via upload endpoint
+  es.addEventListener('datasetUpdated', e => {
+    const { count } = JSON.parse(e.data)
+    datasetInfo.innerHTML = `<span class="count">${count}</span> questions loaded`
+    setCheck(iconData, hintData, true)
+  })
+
   // Auto-reconnect on network blip
   es.onerror = () => setTimeout(connectSSE, 3000)
+}
+
+// ---------------------------------------------------------------------------
+// Dataset upload
+// ---------------------------------------------------------------------------
+
+/**
+ * Upload a JSON file to /api/dataset/upload and display the result.
+ * @param {File} file - The JSON file selected by the user.
+ */
+async function uploadDataset (file) {
+  uploadBtn.disabled = true
+  uploadStatus.className = ''
+  uploadStatus.textContent = 'Converting…'
+  const fd = new FormData()
+  fd.append('file', file)
+  try {
+    const res = await fetch('/api/dataset/upload', { method: 'POST', body: fd })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Upload failed')
+    uploadStatus.className = 'ok'
+    uploadStatus.textContent = `✓ ${data.count} questions loaded (${data.format})`
+    loadStatus()
+  } catch (err) {
+    uploadStatus.className = 'err'
+    uploadStatus.textContent = '✗ ' + err.message
+  } finally {
+    uploadBtn.disabled = false
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -551,6 +680,40 @@ runBtn.addEventListener('click', startEval)
 
 cancelBtn.addEventListener('click', () => {
   if (confirm('Cancel the running evaluation?')) cancelEval()
+})
+
+// File picker — show filename and reveal upload button
+fileInput.addEventListener('change', () => {
+  const file = fileInput.files[0]
+  if (file) {
+    dropZone.querySelector('.drop-hint').innerHTML =
+      `<span class="drop-filename">${file.name}</span>`
+    uploadBtn.style.display = 'block'
+    uploadStatus.textContent = ''
+  }
+})
+
+// Drag-and-drop on the drop zone
+dropZone.addEventListener('dragover', e => {
+  e.preventDefault()
+  dropZone.classList.add('drag-over')
+})
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'))
+dropZone.addEventListener('drop', e => {
+  e.preventDefault()
+  dropZone.classList.remove('drag-over')
+  const file = e.dataTransfer.files[0]
+  if (file) {
+    // Assign files to input so the change handler can read it
+    const dt = new DataTransfer()
+    dt.items.add(file)
+    fileInput.files = dt.files
+    fileInput.dispatchEvent(new Event('change'))
+  }
+})
+
+uploadBtn.addEventListener('click', () => {
+  if (fileInput.files[0]) uploadDataset(fileInput.files[0])
 })
 
 // ---------------------------------------------------------------------------
