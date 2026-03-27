@@ -25,6 +25,7 @@
  */
 
 const express = require('express')
+const multer  = require('multer')
 const { spawn } = require('child_process')
 const fs        = require('fs')
 const path      = require('path')
@@ -33,10 +34,105 @@ const app  = express()
 const PORT = Number(process.env.EVAL_UI_PORT) || 4000
 
 // evaluations/rag/ — one level up from this file's directory (eval-ui/)
-const RAG_ROOT    = path.resolve(__dirname, '..')
-const RESULTS_DIR = path.join(RAG_ROOT, 'results')
-const ENV_FILE    = path.join(RAG_ROOT, '.env')
+const RAG_ROOT     = path.resolve(__dirname, '..')
+const RESULTS_DIR  = path.join(RAG_ROOT, 'results')
+const ENV_FILE     = path.join(RAG_ROOT, '.env')
 const DATASET_FILE = path.join(RAG_ROOT, 'dataset', 'eval_dataset.yaml')
+const DATASET_DIR  = path.join(RAG_ROOT, 'dataset')
+
+// ---------------------------------------------------------------------------
+// Multer — keep uploaded file in memory (datasets are typically < 10 MB)
+// ---------------------------------------------------------------------------
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits:  { fileSize: 50 * 1024 * 1024 },  // 50 MB hard cap
+  fileFilter: (_req, file, cb) => {
+    if (file.originalname.endsWith('.json') || file.mimetype === 'application/json') {
+      cb(null, true)
+    } else {
+      cb(new Error('Only JSON files are accepted'))
+    }
+  }
+})
+
+// ---------------------------------------------------------------------------
+// Dataset conversion helpers
+// Converts Alpaca or ShareGPT JSON export from Easy Dataset → eval_dataset.yaml
+// Runs entirely in-process — no Python or Docker required.
+// ---------------------------------------------------------------------------
+
+/**
+ * @description Escape a string for use as a YAML double-quoted scalar.
+ * Handles backslash, double-quote, and control characters.
+ * @param {string} s
+ * @returns {string}  The escaped string, ready to wrap in double quotes.
+ */
+function escapeYamlStr (s) {
+  return s
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g,  '\\"')
+    .replace(/\r/g, '\\r')
+    .replace(/\n/g, '\\n')
+    .replace(/\t/g, '\\t')
+}
+
+/**
+ * @description Convert an array of {question, expected_answer} pairs to
+ * the YAML format expected by promptfooconfig.yaml.
+ * @param {Array<{question:string, expected_answer:string}>} pairs
+ * @returns {string}  YAML content
+ */
+function pairsToYaml (pairs) {
+  return pairs.map(p =>
+    `- vars:\n    question: "${escapeYamlStr(p.question)}"\n    expected_answer: "${escapeYamlStr(p.expected_answer)}"`
+  ).join('\n') + '\n'
+}
+
+/**
+ * @description Detect format and extract Q&A pairs from Easy Dataset JSON export.
+ * Supports Alpaca format (array of {instruction, output}) and ShareGPT format
+ * (array of {conversations: [{from:'human',value},{from:'gpt',value}]}).
+ * @param {Array} data  Parsed JSON array from the export file
+ * @returns {{ pairs: Array<{question:string, expected_answer:string}>, format: string }}
+ * @throws {Error} When the format is not recognised or required fields are missing
+ */
+function extractPairs (data) {
+  if (!Array.isArray(data) || data.length === 0) {
+    throw new Error('JSON must be a non-empty array')
+  }
+
+  // Detect by first element
+  const first = data[0]
+
+  // ── Alpaca: { instruction, output, [input] } ─────────────────────────────
+  if (typeof first.instruction === 'string') {
+    const pairs = data
+      .filter(r => r.instruction && r.output)
+      .map(r => ({ question: r.instruction.trim(), expected_answer: r.output.trim() }))
+    if (pairs.length === 0) throw new Error('No valid Alpaca records found (need instruction + output)')
+    return { pairs, format: 'alpaca' }
+  }
+
+  // ── ShareGPT: { conversations: [{from, value}] } ────────────────────────
+  if (Array.isArray(first.conversations)) {
+    const pairs = []
+    for (const rec of data) {
+      const convs = rec.conversations || []
+      const humanMsg = convs.find(c => c.from === 'human')
+      const gptMsg   = convs.find(c => c.from === 'gpt' || c.from === 'assistant')
+      if (humanMsg && gptMsg) {
+        pairs.push({ question: humanMsg.value.trim(), expected_answer: gptMsg.value.trim() })
+      }
+    }
+    if (pairs.length === 0) throw new Error('No valid ShareGPT records found (need human + gpt turns)')
+    return { pairs, format: 'sharegpt' }
+  }
+
+  throw new Error(
+    'Unrecognised format. Expected Alpaca ({instruction, output}) or ShareGPT ({conversations}).'
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Run state — single evaluation at a time
@@ -143,13 +239,71 @@ app.get('/api/status', (_req, res) => {
     ? fs.statSync(path.join(RESULTS_DIR, 'eval_summary.md')).mtime.toISOString()
     : null
 
+  // Count questions in dataset if it exists
+  let datasetCount = 0
+  if (fs.existsSync(DATASET_FILE)) {
+    const raw = fs.readFileSync(DATASET_FILE, 'utf8')
+    datasetCount = (raw.match(/^- vars:/gm) || []).length
+  }
+
   res.json({
     ...runState,
     hasSummary,
     summaryModified,
     hasDataset    : fs.existsSync(DATASET_FILE),
+    datasetCount,
     envConfigured : envConfigured()
   })
+})
+
+// ---------------------------------------------------------------------------
+// POST /api/dataset/upload
+// ---------------------------------------------------------------------------
+
+/**
+ * @description Accepts an Alpaca or ShareGPT JSON file upload, converts it
+ * to eval_dataset.yaml in-process (no Python required), and saves it.
+ * Returns { ok, format, count } on success.
+ */
+app.post('/api/dataset/upload', upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file received' })
+  }
+
+  let parsed
+  try {
+    parsed = JSON.parse(req.file.buffer.toString('utf8'))
+  } catch (_) {
+    return res.status(400).json({ error: 'File is not valid JSON' })
+  }
+
+  let result
+  try {
+    result = extractPairs(parsed)
+  } catch (err) {
+    return res.status(422).json({ error: err.message })
+  }
+
+  const yaml = pairsToYaml(result.pairs)
+
+  try {
+    fs.mkdirSync(DATASET_DIR, { recursive: true })
+    fs.writeFileSync(DATASET_FILE, yaml, 'utf8')
+  } catch (err) {
+    return res.status(500).json({ error: 'Could not write dataset file: ' + err.message })
+  }
+
+  // Broadcast so all connected clients update their readiness indicators
+  broadcast('datasetUpdated', { count: result.pairs.length, format: result.format })
+  res.json({ ok: true, format: result.format, count: result.pairs.length })
+})
+
+// Multer error handler (e.g. file too large, wrong type)
+app.use((err, _req, res, next) => {
+  if (err instanceof multer.MulterError || err.message === 'Only JSON files are accepted') {
+    return res.status(400).json({ error: err.message })
+  }
+  next(err)
 })
 
 // ---------------------------------------------------------------------------
