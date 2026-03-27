@@ -231,11 +231,16 @@ Common fixes:
 
 ### 1. Prepare Dataset
 ```bash
-# In Easy Dataset UI:
-# 1. Upload reference documents
-# 2. Generate Q&A pairs
-# 3. Manually verify and curate Q&A
-# 4. Export to: evaluations/rag/dataset/eval_dataset.yaml
+# Step 1 — Create Q&A pairs in Easy Dataset UI
+# Start Easy Dataset: docker compose up easy-dataset -d
+# Open browser: http://localhost:1717
+# 1. Upload reference documents from your Knowledge Base
+# 2. Generate Q&A pairs automatically
+# 3. Review and curate Q&A pairs (most important step)
+# 4. Export → Alpaca format → save as: dataset/export_alpaca.json
+
+# Step 2 — Convert JSON export to evaluation YAML
+python scripts/json_to_yaml.py dataset/export_alpaca.json dataset/eval_dataset.yaml
 ```
 
 ### 2. Develop Evaluation Code
@@ -253,14 +258,17 @@ make shell
 
 ### 3. Run Evaluation
 ```bash
-# Full evaluation pipeline
-make eval
+# Run pre-flight checks + full evaluation (no technical knowledge needed)
+.\run-phase4.ps1    # Windows
+./run-phase4.sh     # Linux / Mac
 
-# Generate reports
-make report
+# Results written to:
+#   results/eval_summary.md   — summary report, send to Tech Lead
+#   results/eval_output.json  — raw data, for Developer / Tech Lead
 
-# View results
-open results/report.html
+# View interactive HTML report (Tech Lead / Developer):
+docker compose run --rm rag-evaluator promptfoo view
+# then open: http://localhost:15500
 ```
 
 ---

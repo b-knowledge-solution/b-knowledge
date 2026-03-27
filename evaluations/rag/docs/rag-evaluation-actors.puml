@@ -1,0 +1,326 @@
+@startuml rag-evaluation-operation
+
+title RAG Evaluation System — Huong dan Van hanh\n"Toi vao dau? Lam gi? Xem gi?"
+
+skinparam defaultTextAlignment center
+skinparam roundcorner 12
+skinparam ArrowColor #555555
+skinparam ArrowThickness 1.8
+skinparam linetype ortho
+
+skinparam rectangle {
+    BackgroundColor #FAFAFA
+    BorderColor #AAAAAA
+    FontSize 11
+}
+
+skinparam card {
+    BackgroundColor #FFFFFF
+    BorderColor #888888
+    FontSize 11
+}
+
+skinparam database {
+    BackgroundColor #EAF4FB
+    BorderColor #5DADE2
+}
+
+skinparam actor {
+    BackgroundColor #FFFFFF
+    BorderColor #555555
+    FontStyle bold
+}
+
+skinparam note {
+    BackgroundColor #FFFDE7
+    BorderColor #F9A825
+    FontSize 10
+}
+
+' ============================================================
+' ACTORS
+' ============================================================
+
+actor "QA\n(Nguoi tao & kiem tra Q&A)"    as expert   #D5F5E3
+actor "Operator"                         as operator #FEF9E7
+actor "Tech Lead /\nProduct Owner"       as reviewer #FADBD8
+
+' ============================================================
+' STEP 1 — Nap Dataset
+' ============================================================
+
+rectangle "**BUOC 1 — Nap Dataset**" as step1 #EAF7FB {
+
+    card "**Easy Dataset UI**\n--\nWeb app tao Q&A tu tai lieu\nMo trinh duyet:\nhttp://localhost:1717" as easy_ds
+
+    card "**Export JSON (Alpaca)**\n--\nTrong Easy Dataset UI:\nSettings > Export > Alpaca format\nLuu vao: dataset/export_alpaca.json" as validate
+
+    card "**Chuyen sang YAML**\n--\nTerminal / PowerShell\n> python scripts/json_to_yaml.py\n  dataset/export_alpaca.json\n  dataset/eval_dataset.yaml" as convert
+
+    database "**dataset/eval_dataset.yaml**\n--\nFile YAML trong thu muc:\nevaluations/rag/dataset/\n\n80-100 cap Q&A\n(tu JSON Easy Dataset)" as ds_file
+
+    easy_ds  --> validate : export JSON
+    validate --> convert  : chay script
+    convert  --> ds_file  : ghi file
+}
+
+' ============================================================
+' STEP 2 — Chay Evaluation
+' ============================================================
+
+rectangle "**BUOC 2 — Chay Evaluation**" as step2 #FFFDE7 {
+
+    card "**Mo Terminal / PowerShell**\n--\ncd evaluations/rag\n\nWindows:\n.\\run-phase4.ps1\n\nLinux / Mac:\n./run-phase4.sh" as run_cmd
+
+    card "**STEP 1 tu dong: Kiem tra truoc**\n--\n[1/6] File .env hop le?\n[2/6] B-Knowledge dang chay?\n[3/6] Token duoc chap nhan?\n[4/6] AI judge key hop le?\n[5/6] Dataset co san?\n[6/6] Docker image san sang?" as preflight
+
+    card "**STEP 2 tu dong: Chay danh gia**\n--\n~1-3 gio (80-100 cau hoi)\nTien trinh hien thi tren terminal\nKhong can lam gi them" as run_eval
+
+    run_cmd  --> preflight : tu dong
+    preflight --> run_eval : neu tat ca OK
+}
+
+' ============================================================
+' STEP 3 — Xem Ket Qua
+' ============================================================
+
+rectangle "**BUOC 3 — Xem Ket Qua**" as step3 #FDF2F8 {
+
+    card "**eval_summary.md**\n--\nMo bang: VS Code / GitHub / Notepad\nDuong dan:\nevaluations/rag/results/\neval_summary.md\n--\nNoi dung:\n- Pass rate tong the\n- Diem trung binh theo metric\n- Breakdown theo category" as md_report
+
+    card "**Promptfoo HTML Report**\n--\nChay lenh:\n> docker compose run --rm\n  rag-evaluator promptfoo view\n\nMo trinh duyet:\nhttp://localhost:15500\n--\nNoi dung:\n- Bang tinh tung cau hoi\n- Score mau do/xanh\n- So sanh giua 2 lan chay" as html_report
+
+    card "**eval_output.json**\n--\nDuong dan:\nevaluations/rag/results/\neval_output.json\n--\nDanh cho Developer\nDu lieu goc de debug\nhoac xu ly them" as json_raw
+}
+
+' ============================================================
+' OUTPUT FORMATS
+' ============================================================
+
+rectangle "**DINH DANG TAI LIEU KET QUA**" as formats #F4ECF7 {
+
+    card "Markdown (.md)\n--\nMo bang bat ky text editor\nCopylpaste vao Slack / Teams\nHien thi dep tren GitHub" as fmt_md #EAF4FB
+
+    card "HTML (promptfoo view)\n--\nTrinh duyet web\nCo the filter, sort\nXem tung cau hoi chi tiet" as fmt_html #EAFAF1
+
+    card "JSON (.json)\n--\nDanh cho developer\nImport vao Excel / BI tool\nLu tru lich su chay" as fmt_json #FEF9E7
+}
+
+' ============================================================
+' ACTOR FLOWS
+' ============================================================
+
+expert   --> easy_ds  : tao Q&A\ntren web UI
+expert   --> validate : export JSON\ntu Easy Dataset
+expert   --> convert  : chay script\nchuyen doi
+
+operator --> run_cmd  : mo terminal\nchay 1 lenh
+
+reviewer --> md_report   : doc bao cao\n(chinh)
+reviewer --> html_report : xem chi tiet\nnen can
+
+' ============================================================
+' FLOW ARROWS
+' ============================================================
+
+ds_file    --> run_cmd   : dataset san sang
+
+run_eval   --> md_report
+run_eval   --> html_report
+run_eval   --> json_raw
+
+md_report   --> fmt_md
+html_report --> fmt_html
+json_raw    --> fmt_json
+
+' ============================================================
+' NOTES
+' ============================================================
+
+note right of preflight
+  Neu bat ky check nao FAILED,
+  script dung lai va in ro:
+  "What to do: ..."
+  Khong can hieu ky thuat.
+end note
+
+note bottom of html_report
+  URL chi kha dung khi
+  chay lenh "promptfoo view".
+  Dong terminal = mat URL.
+end note
+
+note right of ds_file
+  Lan dau: export JSON tu Easy Dataset
+  > python scripts/json_to_yaml.py
+  Lan sau: chi cap nhat Q&A thay doi
+  roi export va chay lai script
+end note
+
+@enduml
+
+' ===========================================================================
+' Skin / theme
+' ===========================================================================
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam ArrowColor #444444
+skinparam ArrowThickness 1.5
+skinparam linetype ortho
+
+skinparam actor {
+    BackgroundColor #FFFFFF
+    BorderColor #555555
+    FontStyle bold
+    FontSize 12
+}
+
+skinparam usecase {
+    BackgroundColor #FAFAFA
+    BorderColor #999999
+    FontSize 11
+}
+
+skinparam package {
+    FontSize 13
+    FontStyle bold
+    BorderThickness 2
+}
+
+' ===========================================================================
+' Actors
+' ===========================================================================
+
+actor "Knowledge Base\nManager\n(Content Owner)" as kbowner  #D6EAF8
+actor "QA\n(Nguoi tao & kiem tra Q&A)"              as expert   #D5F5E3
+actor "Operator\n(Non-technical)"                 as operator #FEF9E7
+actor "Tech Lead"                                 as techlead #FADBD8
+actor "Product Owner"                             as po        #F0E6F6
+actor "Developer\n(on-call fix)"                  as dev       #EBF5FB
+
+' ===========================================================================
+' Trigger -- what starts a new evaluation cycle
+' ===========================================================================
+
+package "Trigger -- Khi nao chay Evaluation?" as TRIGGER #FDFEFE {
+    usecase "Knowledge Base\nupdated\n(new docs added\nor content changed)" as t1
+    usecase "RAG system\nupgraded\n(new model / config)" as t2
+    usecase "Scheduled run\n(weekly / sprint end)" as t3
+    usecase "Incident reported\n(users complain about\nbad answers)" as t4
+}
+
+' ===========================================================================
+' Stage 1 -- Dataset maintenance
+' ===========================================================================
+
+package "Dataset Maintenance" as S1 #EAFAF1 {
+    usecase "Review: does existing\ndataset still reflect\ncurrent KB content?" as s1_review
+    usecase "Add / remove / update\nQ&A pairs to match\nnew documents"          as s1_update
+    usecase "Validate & export\neval_dataset.yaml"                               as s1_export
+}
+
+' ===========================================================================
+' Stage 2 -- Run evaluation
+' ===========================================================================
+
+package "Run Evaluation\n(run-phase4.ps1 / run-phase4.sh)" as S2 #FEF9E7 {
+    usecase "Pre-flight checks\n(config, connectivity,\ntokens, dataset, Docker)" as s2_check
+    usecase "Run full evaluation\n80-100 Q&A x ~1-3 hours"                        as s2_run
+    usecase "Generate report\n(eval_summary.md)"                                  as s2_report
+}
+
+' ===========================================================================
+' Stage 3 -- Review results
+' ===========================================================================
+
+package "Review Results" as S3 #FDF2F8 {
+    usecase "Read summary report\n(pass rate, scores\nper category)"     as s3_read
+    usecase "Explore per-question\nbreakdown\n(promptfoo view)"          as s3_explore
+    usecase "Compare with\nprevious run\n(trend up / down?)"             as s3_compare
+}
+
+' ===========================================================================
+' Stage 4 -- Decision & Action
+' ===========================================================================
+
+package "Decision & Action" as S4 #FDEDEC {
+    usecase "Quality OK?\nGo / No-Go\nfor release / deploy"   as s4_decision
+    usecase "Identify weak areas\n(which category fails?\nwhich questions?)" as s4_identify
+    usecase "Fix: tune KB content\nor chunking strategy"      as s4_fix_kb
+    usecase "Fix: adjust RAG config\n(model, prompt, params)" as s4_fix_rag
+    usecase "Re-run evaluation\nafter fix"                    as s4_rerun
+}
+
+' ===========================================================================
+' Trigger relationships
+' ===========================================================================
+
+kbowner  --> t1 : triggers
+techlead --> t2 : triggers
+techlead --> t3 : schedules
+po       --> t4 : reports incident
+
+t1 --> s1_review
+t2 --> s2_check
+t3 --> s2_check
+t4 --> s1_review
+
+' ===========================================================================
+' Dataset Maintenance relationships
+' ===========================================================================
+
+expert  --> s1_review : assesses\n(primary owner)
+expert  --> s1_update : edits Q&A\n(~5 min/pair)
+expert  --> s1_export : validates & exports
+kbowner --> s1_review : provides context\non what changed
+
+s1_export --> s2_check
+
+' ===========================================================================
+' Run Evaluation relationships
+' ===========================================================================
+
+operator --> s2_check  : runs script\n(1 command)
+operator --> s2_run    : monitors\nprogress
+operator --> s2_report : confirms\nreport generated
+
+' ===========================================================================
+' Review Results relationships
+' ===========================================================================
+
+operator  --> s3_read    : forwards report\nto reviewers
+techlead  --> s3_read    : reads scores
+techlead  --> s3_explore : drills into details
+techlead  --> s3_compare : checks trend
+po        --> s3_read    : reads summary\n& pass rate
+
+' ===========================================================================
+' Decision & Action relationships
+' ===========================================================================
+
+techlead --> s4_decision : makes\ntechnical call
+po       --> s4_decision : business\nsign-off
+
+techlead --> s4_identify : root cause analysis
+kbowner  --> s4_fix_kb   : updates KB content\nor document chunks
+dev      --> s4_fix_rag  : tunes RAG config\n(on-call, as needed)
+
+s4_fix_kb  --> s4_rerun
+s4_fix_rag --> s4_rerun
+s4_rerun   --> s2_check
+
+' ===========================================================================
+' Legend
+' ===========================================================================
+
+legend bottom right
+  |= Actor |= Vai tro trong van hanh |
+  | KB Manager | Quyet dinh khi nao dataset can update |
+  | QA | Cap nhat & curate Q&A dataset |
+  | Operator | Chay script danh gia (khong can ky thuat) |
+  | Tech Lead | Doc ket qua, quyet dinh go/no-go |
+  | Product Owner | Business sign-off theo pass rate |
+  | Developer | On-call -- chi vao khi can fix RAG config |
+endlegend
+
+@enduml
