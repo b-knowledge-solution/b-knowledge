@@ -265,6 +265,8 @@ export class SyncService {
             message: data.message || null,
             docs_synced: data.docs_synced ?? 0,
             docs_failed: data.docs_failed ?? 0,
+            docs_skipped: data.docs_skipped ?? 0,
+            docs_deleted: data.docs_deleted ?? 0,
           }
 
           // Handle terminal states

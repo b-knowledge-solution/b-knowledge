@@ -15,6 +15,8 @@ import traceback
 from datetime import datetime, timezone
 from typing import Any
 
+import xxhash
+
 # Load .env file before any other imports read environment variables
 from dotenv import load_dotenv
 load_dotenv()
@@ -62,7 +64,8 @@ def _get_redis_binary() -> redis.Redis:
 
 def _publish_progress(r: redis.Redis, connector_id: str, sync_log_id: str,
                        progress: float, message: str, status: str = "running",
-                       docs_synced: int = 0, docs_failed: int = 0):
+                       docs_synced: int = 0, docs_failed: int = 0,
+                       docs_skipped: int = 0, docs_deleted: int = 0):
     """Publish a connector sync progress event to Redis pub/sub.
 
     The Node.js backend subscribes to these channels to stream progress
@@ -77,6 +80,8 @@ def _publish_progress(r: redis.Redis, connector_id: str, sync_log_id: str,
         status: Sync status (running, completed, failed).
         docs_synced: Number of documents successfully synced so far.
         docs_failed: Number of documents that failed to sync.
+        docs_skipped: Number of unchanged documents skipped (delta sync).
+        docs_deleted: Number of orphaned documents removed (delta sync).
     """
     try:
         r.publish(
@@ -89,6 +94,8 @@ def _publish_progress(r: redis.Redis, connector_id: str, sync_log_id: str,
                 "status": status,
                 "docs_synced": docs_synced,
                 "docs_failed": docs_failed,
+                "docs_skipped": docs_skipped,
+                "docs_deleted": docs_deleted,
             }),
         )
     except Exception as e:
@@ -273,6 +280,131 @@ def _extract_credentials(source_type: str, config: dict[str, Any]) -> dict[str, 
     return dict(config)
 
 
+def _get_existing_docs_manifest(kb_id: str, source_type: str, connector_id: str) -> dict[str, dict]:
+    """Build a manifest of existing documents from this connector in the knowledge base.
+
+    Queries all active documents matching the connector's source_type label and returns
+    a lookup dict keyed by source_doc_id for efficient delta comparison.
+
+    Args:
+        kb_id: Knowledge base ID to query.
+        source_type: Source type identifier (e.g., 'confluence', 'github').
+        connector_id: Connector UUID.
+
+    Returns:
+        Dict mapping source_doc_id to {doc_id, content_hash, source_updated_at, name}.
+        Documents without source_doc_id are indexed by name as a fallback.
+    """
+    from db.services.document_service import DocumentService
+    from db.db_models import DB
+
+    src_label = f"{source_type}/{connector_id}"
+    manifest: dict[str, dict] = {}
+
+    with DB.connection_context():
+        docs = DocumentService.query(kb_id=kb_id, source_type=src_label, status="1")
+        for doc in docs:
+            entry = {
+                "doc_id": doc.id,
+                "content_hash": doc.content_hash or "",
+                "source_updated_at": doc.source_updated_at,
+                "name": doc.name,
+            }
+            # Primary key: source_doc_id (set by delta sync)
+            if doc.source_doc_id:
+                manifest[doc.source_doc_id] = entry
+            else:
+                # Fallback for pre-migration documents: index by name
+                manifest[f"__name__:{doc.name}"] = entry
+
+    return manifest
+
+
+def _is_doc_unchanged(source_doc: Any, existing_entry: dict) -> bool:
+    """Check if a source document has changed since the last sync.
+
+    Uses timestamp comparison first (fast, no blob download needed),
+    then falls back to content hash comparison.
+
+    Args:
+        source_doc: Document object from the connector with doc_updated_at and blob.
+        existing_entry: Dict with source_updated_at and content_hash from the manifest.
+
+    Returns:
+        True if the document has NOT changed and can be skipped.
+    """
+    # Timestamp-based check (preferred — avoids computing hash)
+    if source_doc.doc_updated_at and existing_entry.get("source_updated_at"):
+        stored_ts = existing_entry["source_updated_at"]
+        # Normalize to datetime for comparison
+        if isinstance(stored_ts, datetime):
+            source_ts = source_doc.doc_updated_at
+            # Make both offset-aware or offset-naive for comparison
+            if source_ts.tzinfo is not None and stored_ts.tzinfo is None:
+                stored_ts = stored_ts.replace(tzinfo=timezone.utc)
+            elif source_ts.tzinfo is None and stored_ts.tzinfo is not None:
+                source_ts = source_ts.replace(tzinfo=timezone.utc)
+            return source_ts <= stored_ts
+
+    # Hash-based fallback: compute hash of new content and compare
+    if source_doc.blob and existing_entry.get("content_hash"):
+        blob = source_doc.blob if isinstance(source_doc.blob, bytes) else (
+            source_doc.blob.encode("utf-8") if isinstance(source_doc.blob, str) else b""
+        )
+        if blob:
+            new_hash = xxhash.xxh128(blob).hexdigest()
+            return new_hash == existing_entry["content_hash"]
+
+    # Cannot determine change status — assume changed to be safe
+    return False
+
+
+def _delete_orphaned_docs(kb_id: str, tenant_id: str, source_type: str,
+                           connector_id: str, seen_source_ids: set[str]) -> int:
+    """Delete documents present in the KB but absent from the external source.
+
+    Called after a full sync cycle to remove orphaned documents whose source
+    files have been deleted. Only deletes documents that have a source_doc_id
+    (i.e., were previously synced with delta tracking).
+
+    Args:
+        kb_id: Knowledge base ID.
+        tenant_id: Tenant ID for the operation.
+        source_type: Source type identifier (e.g., 'confluence', 'github').
+        connector_id: Connector UUID.
+        seen_source_ids: Set of source document IDs encountered during this sync.
+
+    Returns:
+        Number of orphaned documents deleted.
+    """
+    from db.services.document_service import DocumentService
+    from db.services.file_service import FileService
+    from db.db_models import DB
+
+    src_label = f"{source_type}/{connector_id}"
+    orphan_ids: list[str] = []
+
+    with DB.connection_context():
+        existing_docs = DocumentService.query(kb_id=kb_id, source_type=src_label, status="1")
+        for doc in existing_docs:
+            # Only consider documents with source_doc_id (delta-sync-aware)
+            if doc.source_doc_id and doc.source_doc_id not in seen_source_ids:
+                orphan_ids.append(doc.id)
+
+    if not orphan_ids:
+        return 0
+
+    logger.info(f"Deleting {len(orphan_ids)} orphaned documents from kb_id={kb_id}")
+
+    # Use existing FileService.delete_docs which handles full cleanup:
+    # tasks, chunks, images, thumbnails, knowledge graph, File2Document, File records
+    errors = FileService.delete_docs(orphan_ids, tenant_id)
+    if errors:
+        logger.warning(f"Errors deleting orphaned docs: {errors}")
+
+    return len(orphan_ids)
+
+
 class _FileObj:
     """Lightweight file wrapper matching the interface expected by FileService.upload_document.
 
@@ -293,8 +425,16 @@ class _FileObj:
 
 
 def _ingest_documents(docs: list, kb_id: str, tenant_id: str, source_type: str,
-                       connector_id: str, auto_parse: bool = True) -> tuple[int, int]:
-    """Upload connector-fetched documents into a knowledge base.
+                       connector_id: str, auto_parse: bool = True,
+                       existing_manifest: dict[str, dict] | None = None,
+                       seen_source_ids: set[str] | None = None) -> tuple[int, int, int]:
+    """Upload connector-fetched documents into a knowledge base with delta sync awareness.
+
+    For each document from the connector:
+    1. Track source ID in seen_source_ids (for orphan deletion phase)
+    2. If document exists in manifest and is unchanged, skip it
+    3. If document exists but is modified, re-ingest using the existing doc_id
+    4. If document is new, create a new record
 
     Uses the existing FileService and DocumentService to store files in S3
     and create document records, then optionally triggers parsing.
@@ -306,28 +446,51 @@ def _ingest_documents(docs: list, kb_id: str, tenant_id: str, source_type: str,
         source_type: Source type identifier for document provenance.
         connector_id: Connector ID for linking documents.
         auto_parse: Whether to automatically trigger parsing after upload.
+        existing_manifest: Dict mapping source_doc_id to existing doc info for delta comparison.
+        seen_source_ids: Mutable set to track all source doc IDs encountered (for orphan detection).
 
     Returns:
-        Tuple of (docs_synced, docs_failed) counts.
+        Tuple of (docs_synced, docs_failed, docs_skipped) counts.
     """
     from db.services.document_service import DocumentService
     from db.services.file_service import FileService
     from db.services.knowledgebase_service import KnowledgebaseService
-    from pydantic import BaseModel as PydanticBaseModel
 
     docs_synced = 0
     docs_failed = 0
+    docs_skipped = 0
 
     # Get the knowledge base record for FileService.upload_document
     exists, kb = KnowledgebaseService.get_by_id(kb_id)
     if not exists or not kb:
         logger.error(f"Knowledge base {kb_id} not found — cannot ingest documents")
-        return 0, len(docs)
+        return 0, len(docs), 0
 
     src_label = f"{source_type}/{connector_id}"
+    manifest = existing_manifest or {}
 
     for doc in docs:
         try:
+            source_id = doc.id
+
+            # Track source document ID for orphan deletion phase
+            if seen_source_ids is not None:
+                seen_source_ids.add(source_id)
+
+            # Delta sync: look up existing document by source_doc_id, then by name fallback
+            existing = manifest.get(source_id)
+            if existing is None:
+                # Fallback: try matching by name for pre-migration documents
+                filename = doc.semantic_identifier or doc.id
+                ext = doc.extension or ".txt"
+                name_key = f"__name__:{filename}{ext}" if not filename.endswith(ext) else f"__name__:{filename}"
+                existing = manifest.get(name_key)
+
+            # Skip unchanged documents (delta sync optimization)
+            if existing and _is_doc_unchanged(doc, existing):
+                docs_skipped += 1
+                continue
+
             # Extract document content
             doc_blob = doc.blob if isinstance(doc.blob, bytes) else (
                 doc.blob.encode("utf-8") if isinstance(doc.blob, str) else b""
@@ -342,14 +505,25 @@ def _ingest_documents(docs: list, kb_id: str, tenant_id: str, source_type: str,
             if not filename.endswith(ext):
                 filename = filename + ext
 
-            file_obj = _FileObj(id=doc.id, filename=filename, blob=doc_blob)
+            # Use existing doc_id for modified documents so upload_document overwrites
+            doc_db_id = existing["doc_id"] if existing else doc.id
+            file_obj = _FileObj(id=doc_db_id, filename=filename, blob=doc_blob)
 
-            # Upload via FileService
+            # Upload via FileService (handles both new and existing documents)
             err, doc_blob_pairs = FileService.upload_document(kb, [file_obj], tenant_id, src_label)
             if err:
                 logger.warning(f"Upload errors for doc {doc.id}: {err}")
 
             for doc_record, _ in doc_blob_pairs:
+                # Update delta sync tracking fields on the document record
+                try:
+                    delta_fields: dict[str, Any] = {"source_doc_id": source_id}
+                    if doc.doc_updated_at:
+                        delta_fields["source_updated_at"] = doc.doc_updated_at
+                    DocumentService.update_by_id(doc_record["id"], delta_fields)
+                except Exception as delta_err:
+                    logger.warning(f"Failed to update delta sync fields for doc {doc_record['id']}: {delta_err}")
+
                 # Apply metadata if present
                 if hasattr(doc, 'metadata') and doc.metadata:
                     try:
@@ -372,19 +546,18 @@ def _ingest_documents(docs: list, kb_id: str, tenant_id: str, source_type: str,
             docs_failed += 1
             logger.warning(f"Failed to ingest document {getattr(doc, 'id', 'unknown')}: {e}")
 
-    return docs_synced, docs_failed
+    return docs_synced, docs_failed, docs_skipped
 
 
 def handle_sync_task(task: dict, r: redis.Redis):
-    """Process a single connector sync task end-to-end.
+    """Process a single connector sync task with delta sync support.
 
-    Steps:
-      1. Instantiate the appropriate connector class
-      2. Load credentials and validate settings
-      3. Fetch documents from the external source
-      4. Upload documents to S3 and create DB records
-      5. Optionally trigger the parsing pipeline
-      6. Publish progress updates via Redis pub/sub
+    Delta sync phases:
+      1. Build manifest of existing documents from this connector
+      2. Instantiate connector and fetch documents from external source
+      3. For each document: skip if unchanged, re-ingest if modified, add if new
+      4. Delete orphaned documents (full sync only — not incremental/poll)
+      5. Publish progress updates via Redis pub/sub
 
     Args:
         task: Parsed task dictionary with keys: sync_log_id, connector_id,
@@ -423,26 +596,36 @@ def handle_sync_task(task: dict, r: redis.Redis):
         if hasattr(connector, 'validate_connector_settings'):
             connector.validate_connector_settings()
 
+        # Phase 1: Build manifest of existing docs for delta comparison
+        existing_manifest = _get_existing_docs_manifest(kb_id, source_type, connector_id)
+        seen_source_ids: set[str] = set()
+        is_full_sync = not since_str
+
+        if existing_manifest:
+            logger.info(f"Delta sync: {len(existing_manifest)} existing documents in manifest")
+
         _publish_progress(r, connector_id, sync_log_id, 10,
                          "Connected to source, fetching documents...", docs_synced=0)
 
-        # Step 4: Fetch documents from the external source
+        # Phase 2: Fetch and ingest documents with delta awareness
         total_synced = 0
         total_failed = 0
+        total_skipped = 0
+        total_deleted = 0
 
         # Determine the fetch method based on connector type
         from common.data_source.interfaces import LoadConnector, PollConnector, CheckpointedConnector
 
         if isinstance(connector, PollConnector) and since_str:
-            # Use poll_source for incremental sync
+            # Incremental sync via poll_source — only fetches recently modified docs
             since_ts = datetime.fromisoformat(since_str).timestamp()
             now_ts = datetime.now(timezone.utc).timestamp()
             doc_batches = connector.poll_source(since_ts, now_ts)
         elif isinstance(connector, LoadConnector) and hasattr(connector, 'load_from_state'):
-            # Use load_from_state for full sync
+            # Full sync via load_from_state — fetches all docs
             doc_batches = connector.load_from_state()
         elif isinstance(connector, CheckpointedConnector):
-            # Use checkpointed loading
+            # Checkpointed loading — stateful incremental sync
             checkpoint = connector.build_dummy_checkpoint()
             now_ts = datetime.now(timezone.utc).timestamp()
             since_ts = datetime.fromisoformat(since_str).timestamp() if since_str else 0.0
@@ -450,7 +633,7 @@ def handle_sync_task(task: dict, r: redis.Redis):
             wrapper = CheckpointOutputWrapper()
 
             # Collect documents from checkpointed connector
-            all_docs = []
+            all_docs: list = []
             for doc_or_failure, failure, new_checkpoint in wrapper(
                 connector.load_from_checkpoint(since_ts, now_ts, checkpoint)
             ):
@@ -460,31 +643,46 @@ def handle_sync_task(task: dict, r: redis.Redis):
                     total_failed += 1
                     logger.warning(f"Connector failure: {failure}")
 
-                # Ingest in batches of 50
+                # Ingest in batches of 50 with delta sync awareness
                 if len(all_docs) >= 50:
-                    synced, failed = _ingest_documents(
-                        all_docs, kb_id, tenant_id, source_type, connector_id, auto_parse
+                    synced, failed, skipped = _ingest_documents(
+                        all_docs, kb_id, tenant_id, source_type, connector_id,
+                        auto_parse, existing_manifest, seen_source_ids
                     )
                     total_synced += synced
                     total_failed += failed
+                    total_skipped += skipped
                     all_docs = []
                     _publish_progress(r, connector_id, sync_log_id, 50,
-                                     f"Synced {total_synced} documents...",
-                                     docs_synced=total_synced, docs_failed=total_failed)
+                                     f"Synced {total_synced}, skipped {total_skipped} unchanged...",
+                                     docs_synced=total_synced, docs_failed=total_failed,
+                                     docs_skipped=total_skipped)
 
             # Ingest remaining documents
             if all_docs:
-                synced, failed = _ingest_documents(
-                    all_docs, kb_id, tenant_id, source_type, connector_id, auto_parse
+                synced, failed, skipped = _ingest_documents(
+                    all_docs, kb_id, tenant_id, source_type, connector_id,
+                    auto_parse, existing_manifest, seen_source_ids
                 )
                 total_synced += synced
                 total_failed += failed
+                total_skipped += skipped
 
-            # Publish completion
-            _publish_progress(r, connector_id, sync_log_id, 100,
-                             f"Sync completed: {total_synced} synced, {total_failed} failed",
-                             status="completed", docs_synced=total_synced, docs_failed=total_failed)
-            logger.info(f"Sync completed: connector_id={connector_id}, synced={total_synced}, failed={total_failed}")
+            # Phase 3: Delete orphaned documents (full sync only)
+            if is_full_sync and seen_source_ids:
+                total_deleted = _delete_orphaned_docs(
+                    kb_id, tenant_id, source_type, connector_id, seen_source_ids
+                )
+
+            # Publish completion with delta sync stats
+            msg = (f"Sync completed: {total_synced} synced, {total_skipped} unchanged, "
+                   f"{total_deleted} deleted, {total_failed} failed")
+            _publish_progress(r, connector_id, sync_log_id, 100, msg,
+                             status="completed", docs_synced=total_synced,
+                             docs_failed=total_failed, docs_skipped=total_skipped,
+                             docs_deleted=total_deleted)
+            logger.info(f"Sync completed: connector_id={connector_id}, synced={total_synced}, "
+                        f"skipped={total_skipped}, deleted={total_deleted}, failed={total_failed}")
             return
 
         else:
@@ -493,30 +691,49 @@ def handle_sync_task(task: dict, r: redis.Redis):
             _publish_progress(r, connector_id, sync_log_id, -1, error_msg, status="failed")
             return
 
-        # Step 5: Process document batches from Load/Poll connectors
+        # Phase 2 (continued): Process document batches from Load/Poll connectors
         batch_num = 0
         for doc_batch in doc_batches:
             batch_num += 1
             if not doc_batch:
                 continue
 
-            synced, failed = _ingest_documents(
-                doc_batch, kb_id, tenant_id, source_type, connector_id, auto_parse
+            synced, failed, skipped = _ingest_documents(
+                doc_batch, kb_id, tenant_id, source_type, connector_id,
+                auto_parse, existing_manifest, seen_source_ids
             )
             total_synced += synced
             total_failed += failed
+            total_skipped += skipped
 
             # Report progress periodically
             progress = min(90, 10 + batch_num * 10)
             _publish_progress(r, connector_id, sync_log_id, progress,
-                             f"Synced {total_synced} documents ({batch_num} batches)...",
-                             docs_synced=total_synced, docs_failed=total_failed)
+                             f"Synced {total_synced}, skipped {total_skipped} unchanged ({batch_num} batches)...",
+                             docs_synced=total_synced, docs_failed=total_failed,
+                             docs_skipped=total_skipped)
 
-        # Step 6: Publish completion
-        _publish_progress(r, connector_id, sync_log_id, 100,
-                         f"Sync completed: {total_synced} synced, {total_failed} failed",
-                         status="completed", docs_synced=total_synced, docs_failed=total_failed)
-        logger.info(f"Sync completed: connector_id={connector_id}, synced={total_synced}, failed={total_failed}")
+        # Phase 3: Delete orphaned documents (full sync only)
+        # Incremental/poll syncs only see recently modified docs, so we cannot
+        # determine deletions — only full syncs have the complete source manifest
+        if is_full_sync and seen_source_ids:
+            _publish_progress(r, connector_id, sync_log_id, 95,
+                             "Checking for deleted documents...",
+                             docs_synced=total_synced, docs_failed=total_failed,
+                             docs_skipped=total_skipped)
+            total_deleted = _delete_orphaned_docs(
+                kb_id, tenant_id, source_type, connector_id, seen_source_ids
+            )
+
+        # Phase 4: Publish completion with delta sync stats
+        msg = (f"Sync completed: {total_synced} synced, {total_skipped} unchanged, "
+               f"{total_deleted} deleted, {total_failed} failed")
+        _publish_progress(r, connector_id, sync_log_id, 100, msg,
+                         status="completed", docs_synced=total_synced,
+                         docs_failed=total_failed, docs_skipped=total_skipped,
+                         docs_deleted=total_deleted)
+        logger.info(f"Sync completed: connector_id={connector_id}, synced={total_synced}, "
+                    f"skipped={total_skipped}, deleted={total_deleted}, failed={total_failed}")
 
     except Exception as e:
         error_msg = f"Sync error: {str(e)}"

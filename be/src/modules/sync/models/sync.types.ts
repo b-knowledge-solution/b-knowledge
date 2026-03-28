@@ -55,6 +55,10 @@ export interface SyncLog {
   docs_synced: number
   /** Number of documents that failed to sync */
   docs_failed: number
+  /** Number of unchanged documents skipped during delta sync */
+  docs_skipped: number
+  /** Number of orphaned documents deleted during delta sync */
+  docs_deleted: number
   /** Progress percentage (0-100) */
   progress: number
   /** Human-readable progress or error message */
