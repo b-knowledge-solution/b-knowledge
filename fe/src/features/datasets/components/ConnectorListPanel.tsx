@@ -65,15 +65,23 @@ const ConnectorListPanel = ({ kbId, isAdmin }: ConnectorListPanelProps) => {
 
   /** Handle creating a new connector */
   const handleCreate = async (data: CreateConnectorDto | UpdateConnectorDto) => {
-    await createMutation.mutateAsync(data as CreateConnectorDto)
-    setAddDialogOpen(false)
+    try {
+      await createMutation.mutateAsync(data as CreateConnectorDto)
+      setAddDialogOpen(false)
+    } catch {
+      // Keep dialog open for retry; error toast handled by mutation onError
+    }
   }
 
   /** Handle updating an existing connector */
   const handleUpdate = async (data: CreateConnectorDto | UpdateConnectorDto) => {
     if (!editConnector) return
-    await updateMutation.mutateAsync({ id: editConnector.id, data: data as UpdateConnectorDto })
-    setEditConnector(null)
+    try {
+      await updateMutation.mutateAsync({ id: editConnector.id, data: data as UpdateConnectorDto })
+      setEditConnector(null)
+    } catch {
+      // Keep dialog open for retry; error toast handled by mutation onError
+    }
   }
 
   /** Handle deleting a connector with confirmation */

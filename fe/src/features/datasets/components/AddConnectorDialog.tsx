@@ -109,7 +109,16 @@ const AddConnectorDialog = ({
         // Edit mode: populate from existing connector
         setName(connector.name)
         setSourceType(connector.source_type)
-        setConfig(typeof connector.config === 'string' ? JSON.parse(connector.config) : connector.config || {})
+        // Safely parse config — may be stored as JSON string in DB
+        let parsedConfig: Record<string, unknown> = {}
+        try {
+          parsedConfig = typeof connector.config === 'string'
+            ? JSON.parse(connector.config)
+            : connector.config || {}
+        } catch {
+          parsedConfig = {}
+        }
+        setConfig(parsedConfig)
         setDescription(connector.description || '')
         setSchedule(connector.schedule || '')
       } else {
@@ -121,7 +130,7 @@ const AddConnectorDialog = ({
         setSchedule('')
       }
     }
-  }, [open, connector])
+  }, [open, connector?.id])
 
   /** Handle form submission */
   const handleSubmit = async () => {

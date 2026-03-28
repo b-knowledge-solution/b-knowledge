@@ -109,7 +109,7 @@ export function useTriggerSync(kbId: string) {
  */
 export function useSyncLogs(connectorId: string, params?: { page?: number; limit?: number; status?: string }) {
   return useQuery({
-    queryKey: queryKeys.datasets.syncLogs(connectorId),
+    queryKey: queryKeys.datasets.syncLogs(connectorId, params as Record<string, unknown>),
     queryFn: () => connectorApi.listSyncLogs(connectorId, params),
     enabled: !!connectorId,
   })
