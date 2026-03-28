@@ -907,6 +907,9 @@ class Document(DataBaseModel):
 
     content_hash = CharField(max_length=32, null=True, help_text="xxhash128 of document content for change detection", default="", index=True)
 
+    source_doc_id = CharField(max_length=512, null=True, help_text="external source document ID for delta sync matching", index=True)
+    source_updated_at = DateTimeField(null=True, help_text="last modified timestamp from external source for change detection")
+
     run = CharField(max_length=1, null=True, help_text="start to run processing or cancel.(1: run it; 2: cancel)", default="0", index=True)
     status = CharField(max_length=1, null=True, help_text="is it validate(0: wasted, 1: validate)", default="1", index=True)
 
