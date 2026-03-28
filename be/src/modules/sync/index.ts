@@ -7,6 +7,5 @@
  */
 export { default as syncRoutes } from './routes/sync.routes.js'
 export { syncService } from './services/sync.service.js'
-export { syncWorkerService } from './services/sync-worker.service.js'
-export { registerAllAdapters } from './adapters/index.js'
+export { syncSchedulerService } from './services/sync-scheduler.service.js'
 export type { Connector, SyncLog } from './models/sync.types.js'

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useNavigateWithLoader, usePageReady } from '@/components/NavigationLoader';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Upload, RefreshCw, Shield, Settings, Database, BarChart3, Network, Tags, Globe, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Upload, RefreshCw, Shield, Settings, Database, BarChart3, Network, Tags, Globe, ChevronDown, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,7 @@ import KnowledgeGraphTab from '../components/KnowledgeGraphTab';
 import MetadataManageDialog from '../components/MetadataManageDialog';
 import ChangeParserDialog from '../components/ChangeParserDialog';
 import WebCrawlDialog from '../components/WebCrawlDialog';
+import ConnectorListPanel from '../components/ConnectorListPanel';
 import { DocumentPreviewer } from '@/components/DocumentPreviewer';
 import type { Dataset, Document } from '../types';
 
@@ -56,7 +57,7 @@ const DatasetDetailPage: React.FC = () => {
   // State for settings drawer
   const [settingsOpen, setSettingsOpen] = useState(false);
   // State for active tab
-  const [activeTab, setActiveTab] = useState<'documents' | 'overview' | 'graph'>('documents');
+  const [activeTab, setActiveTab] = useState<'documents' | 'overview' | 'graph' | 'sources'>('documents');
   // State for metadata dialog
   const [metadataOpen, setMetadataOpen] = useState(false);
   // State for change parser dialog
@@ -265,6 +266,7 @@ const DatasetDetailPage: React.FC = () => {
         {[
           { key: 'documents' as const, label: t('datasets.documents'), icon: Database },
           { key: 'overview' as const, label: t('datasets.overview'), icon: BarChart3 },
+          { key: 'sources' as const, label: t('datasets.externalSources'), icon: Link2 },
           { key: 'graph' as const, label: t('datasets.knowledgeGraph'), icon: Network },
         ].map(tab => (
           <button
@@ -307,6 +309,10 @@ const DatasetDetailPage: React.FC = () => {
 
       {activeTab === 'overview' && id && (
         <DatasetOverviewTab datasetId={id} dataset={dataset ?? undefined} />
+      )}
+
+      {activeTab === 'sources' && id && (
+        <ConnectorListPanel kbId={id} isAdmin={isAdmin} />
       )}
 
       {activeTab === 'graph' && id && (

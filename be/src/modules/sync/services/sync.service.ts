@@ -1,15 +1,21 @@
 
 /**
  * @fileoverview Sync service for managing connectors and sync operations.
- * @description Handles CRUD for connectors and orchestrates sync tasks that
- *   fetch files from external sources, store them in MinIO, then trigger
- *   advance-rag parsing via Redis task queue.
+ * @description Handles CRUD for connectors and orchestrates sync tasks by
+ *   pushing sync messages to Redis queue for the Python connector_sync_worker.
+ *   Python worker instantiates the appropriate connector, fetches documents,
+ *   and ingests them into the knowledge base.
  * @module modules/sync/services
  */
 import { ModelFactory } from '@/shared/models/factory.js'
 import { log } from '@/shared/services/logger.service.js'
+import { getRedisClient } from '@/shared/services/redis.service.js'
+import { config } from '@/shared/config/index.js'
 import { Connector, SyncLog } from '../models/sync.types.js'
-import { syncWorkerService } from './sync-worker.service.js'
+import { syncSchedulerService } from './sync-scheduler.service.js'
+
+/** Redis queue name that the Python connector_sync_worker listens on */
+const CONNECTOR_SYNC_QUEUE = 'rag_connector_sync'
 
 /**
  * @description Captures the acting user for audit trails on connector operations
@@ -42,6 +48,11 @@ export class SyncService {
         created_by: user?.id || null,
         updated_by: user?.id || null,
       } as Partial<Connector>)
+
+      // Register scheduled sync if schedule is configured
+      if (connector.schedule) {
+        syncSchedulerService.updateTask(connector.id, connector.schedule)
+      }
 
       log.info('Connector created', { id: connector.id, source_type: connector.source_type })
       return connector
@@ -93,6 +104,10 @@ export class SyncService {
 
       const connector = await ModelFactory.connector.update(id, updateData as Partial<Connector>)
       if (connector) {
+        // Update scheduled sync if schedule changed
+        if (data.schedule !== undefined) {
+          syncSchedulerService.updateTask(id, data.schedule ?? null)
+        }
         log.info('Connector updated', { id })
       }
       return connector
@@ -110,6 +125,8 @@ export class SyncService {
    */
   async deleteConnector(id: string): Promise<void> {
     try {
+      // Unregister scheduled sync before deletion
+      syncSchedulerService.unregisterTask(id)
       await ModelFactory.connector.delete(id)
       log.info('Connector deleted', { id })
     } catch (error) {
@@ -135,23 +152,48 @@ export class SyncService {
     }
 
     try {
-      // Create sync log entry with pending status
+      // Create sync log entry with running status
       const syncLog = await ModelFactory.syncLog.create({
         connector_id: connectorId,
         kb_id: connector.kb_id,
-        status: 'pending',
+        status: 'running',
         docs_synced: 0,
         docs_failed: 0,
         progress: 0,
-        message: 'Sync queued',
+        message: 'Sync queued — waiting for Python worker',
+        started_at: new Date(),
       })
 
-      // Execute sync in background (fire-and-forget)
-      syncWorkerService.execute(connectorId, syncLog.id).catch((err) => {
-        log.error('Background sync worker failed', { connectorId, syncLogId: syncLog.id, error: String(err) })
+      // Parse config (may be stored as JSON string in DB)
+      const connectorConfig = typeof connector.config === 'string'
+        ? JSON.parse(connector.config)
+        : connector.config
+
+      // Build task payload for the Python connector_sync_worker
+      const taskPayload = JSON.stringify({
+        sync_log_id: syncLog.id,
+        connector_id: connectorId,
+        kb_id: connector.kb_id,
+        source_type: connector.source_type,
+        config: connectorConfig,
+        tenant_id: config.opensearch.systemTenantId || '00000000000000000000000000000001',
+        since: pollRangeStart || connector.last_synced_at?.toISOString() || null,
+        auto_parse: true,
       })
 
-      log.info('Sync triggered', { connectorId, syncLogId: syncLog.id })
+      // LPUSH to Redis queue; Python connector_sync_worker BRPOPs from this queue
+      const redisClient = getRedisClient()
+      if (!redisClient) {
+        throw new Error('Redis not available — cannot queue sync task')
+      }
+      await redisClient.lPush(CONNECTOR_SYNC_QUEUE, taskPayload)
+
+      // Subscribe to progress updates in background (fire-and-forget)
+      this.subscribeToSyncProgress(connectorId, syncLog.id).catch((err) => {
+        log.warn('Failed to subscribe to sync progress', { connectorId, error: String(err) })
+      })
+
+      log.info('Sync task queued to Redis', { connectorId, syncLogId: syncLog.id, sourceType: connector.source_type })
       return syncLog
     } catch (error) {
       log.error('Failed to trigger sync', { connectorId, error: String(error) })
@@ -182,6 +224,82 @@ export class SyncService {
       limit,
       offset: (page - 1) * limit,
     })
+  }
+
+  /**
+   * @description Subscribe to Redis pub/sub for sync progress updates from the Python worker.
+   *   Updates sync_logs table and connector last_synced_at based on progress events.
+   * @param {string} connectorId - Connector UUID to monitor
+   * @param {string} syncLogId - Sync log UUID to update
+   * @param {(data: Record<string, unknown>) => void} [onProgress] - Optional callback for each progress event
+   * @returns {Promise<() => void>} Cleanup function to unsubscribe
+   */
+  async subscribeToSyncProgress(
+    connectorId: string,
+    syncLogId: string,
+    onProgress?: (data: Record<string, unknown>) => void,
+  ): Promise<() => void> {
+    const redisClient = getRedisClient()
+    if (!redisClient) {
+      log.warn('Redis not available for sync progress subscription')
+      return () => {}
+    }
+
+    // Create a duplicate client for pub/sub (Redis requires separate connection)
+    const subscriber = redisClient.duplicate()
+    await subscriber.connect()
+
+    const channel = `connector:${connectorId}:progress`
+
+    await subscriber.subscribe(channel, async (message) => {
+      try {
+        const data = JSON.parse(message)
+
+        // Update sync_logs entry with progress from Python worker
+        const updatePayload: Partial<SyncLog> = {
+          progress: data.progress ?? 0,
+          message: data.message || null,
+          docs_synced: data.docs_synced ?? 0,
+          docs_failed: data.docs_failed ?? 0,
+        }
+
+        // Handle terminal states
+        if (data.status === 'completed') {
+          updatePayload.status = 'completed'
+          updatePayload.finished_at = new Date()
+          // Update connector last_synced_at on success
+          await ModelFactory.connector.update(connectorId, {
+            last_synced_at: new Date(),
+          } as Partial<Connector>)
+        } else if (data.status === 'failed' || data.progress < 0) {
+          updatePayload.status = 'failed'
+          updatePayload.finished_at = new Date()
+        }
+
+        await ModelFactory.syncLog.update(syncLogId, updatePayload)
+
+        // Forward progress to optional callback (e.g., SSE stream)
+        if (onProgress) onProgress(data)
+
+        // Unsubscribe on terminal state
+        if (data.status === 'completed' || data.status === 'failed') {
+          await subscriber.unsubscribe(channel)
+          await subscriber.quit()
+        }
+      } catch (err) {
+        log.warn('Failed to process sync progress event', { error: String(err) })
+      }
+    })
+
+    // Return cleanup function
+    return async () => {
+      try {
+        await subscriber.unsubscribe(channel)
+        await subscriber.quit()
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
   }
 }
 

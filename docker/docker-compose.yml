@@ -128,6 +128,58 @@ services:
       - kb-network
 
   # ==========================================================================
+  # Connector Sync Worker (syncs external sources via Python connectors)
+  # ==========================================================================
+  connector-sync-worker:
+    build:
+      context: ../advance-rag
+      dockerfile: Dockerfile
+    image: ${RAG_IMAGE:-b-knowledge-rag}:${RAG_VERSION:-latest}
+    restart: unless-stopped
+    cpus: 0.5
+    mem_limit: 1g
+    mem_reservation: 512m
+    command: ["python", "connector_sync_worker.py"]
+    depends_on:
+      backend:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      rustfs:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:-knowledge_base}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-change_me_in_production}
+      REDIS_HOST: valkey
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      DOC_ENGINE: opensearch
+      VECTORDB_HOST: http://opensearch:9201
+      VECTORDB_PASSWORD: ${VECTORDB_PASSWORD:-OpenSearch@123}
+      S3_HOST: rustfs:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-rustfsadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-rustfsadmin}
+      S3_BUCKET: ${S3_BUCKET:-knowledge}
+      S3_PREFIX_PATH: ${S3_PREFIX_PATH:-}
+      RAG_PROJECT_BASE: /app
+      PYTHONPATH: /app
+      LOG_PREFIX: connector-sync-worker
+      LOG_ROTATION: ${LOG_ROTATION:-50 MB}
+      LOG_RETENTION: ${LOG_RETENTION:-30 days}
+      LOG_COMPRESSION: ${LOG_COMPRESSION:-zip}
+      LOG_DIR: ${LOG_DIR:-/app/logs}
+    volumes:
+      - app_logs:/app/logs
+    networks:
+      - kb-network
+
+  # ==========================================================================
   # Document Converter Worker (Office -> PDF conversion via LibreOffice)
   # ==========================================================================
   converter:

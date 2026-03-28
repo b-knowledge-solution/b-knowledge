@@ -14,6 +14,7 @@
     "dev:fe": "npm run dev --workspace=fe",
     "dev:worker": "node scripts/wait-for-backend.js && node scripts/run-worker.js",
     "dev:converter": "node scripts/wait-for-backend.js && node scripts/run-converter.js",
+    "dev:sync-worker": "node scripts/wait-for-backend.js && node scripts/run-sync-worker.js",
     "setup": "node scripts/setup.js",
     "setup:infra": "node scripts/setup-infra.js",
     "setup:python": "node scripts/setup-python.js",

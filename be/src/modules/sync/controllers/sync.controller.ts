@@ -178,4 +178,45 @@ export class SyncController {
       res.status(500).json({ error: 'Failed to list sync logs' })
     }
   }
+
+  /**
+   * @description SSE endpoint streaming sync progress events from the Python connector worker.
+   *   Subscribes to Redis pub/sub channel for the connector and streams events to the client.
+   * @param {Request} req - Express request (params: { id })
+   * @param {Response} res - Express response configured as SSE stream
+   * @returns {Promise<void>}
+   */
+  async streamProgress(req: Request, res: Response): Promise<void> {
+    const { id } = req.params
+    if (!id) {
+      res.status(400).json({ error: 'Connector ID is required' })
+      return
+    }
+
+    // Configure SSE headers
+    res.setHeader('Content-Type', 'text/event-stream')
+    res.setHeader('Cache-Control', 'no-cache')
+    res.setHeader('Connection', 'keep-alive')
+    res.flushHeaders()
+
+    try {
+      // Subscribe to progress updates and stream to client
+      const cleanup = await syncService.subscribeToSyncProgress(id, '', (data) => {
+        res.write(`data: ${JSON.stringify(data)}\n\n`)
+
+        // Close the stream on terminal status
+        if (data.status === 'completed' || data.status === 'failed') {
+          res.end()
+        }
+      })
+
+      // Clean up on client disconnect
+      req.on('close', () => {
+        cleanup()
+      })
+    } catch (error) {
+      log.error('Failed to stream sync progress', { connectorId: id, error: String(error) })
+      res.end()
+    }
+  }
 }
