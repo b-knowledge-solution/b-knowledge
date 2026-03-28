@@ -210,9 +210,9 @@ export class SyncController {
         }
       })
 
-      // Clean up on client disconnect
-      req.on('close', () => {
-        cleanup()
+      // Clean up Redis subscriber on client disconnect
+      req.on('close', async () => {
+        await cleanup()
       })
     } catch (error) {
       log.error('Failed to stream sync progress', { connectorId: id, error: String(error) })

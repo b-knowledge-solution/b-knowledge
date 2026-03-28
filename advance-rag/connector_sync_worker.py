@@ -262,6 +262,25 @@ def _extract_credentials(source_type: str, config: dict[str, Any]) -> dict[str, 
     return dict(config)
 
 
+class _FileObj:
+    """Lightweight file wrapper matching the interface expected by FileService.upload_document.
+
+    Attributes:
+        id: Unique document identifier.
+        filename: File name with extension.
+        blob: Raw file content bytes.
+    """
+
+    def __init__(self, id: str, filename: str, blob: bytes):
+        self.id = id
+        self.filename = filename
+        self.blob = blob
+
+    def read(self) -> bytes:
+        """Return the raw file content."""
+        return self.blob
+
+
 def _ingest_documents(docs: list, kb_id: str, tenant_id: str, source_type: str,
                        connector_id: str, auto_parse: bool = True) -> tuple[int, int]:
     """Upload connector-fetched documents into a knowledge base.
@@ -282,35 +301,19 @@ def _ingest_documents(docs: list, kb_id: str, tenant_id: str, source_type: str,
     """
     from db.services.document_service import DocumentService
     from db.services.file_service import FileService
-    from db.db_models import Knowledgebase
-    from anthropic import BaseModel as PydanticBaseModel
+    from db.services.knowledgebase_service import KnowledgebaseService
+    from pydantic import BaseModel as PydanticBaseModel
 
     docs_synced = 0
     docs_failed = 0
 
     # Get the knowledge base record for FileService.upload_document
-    exists, kb = Knowledgebase.get_by_id(kb_id) if hasattr(Knowledgebase, 'get_by_id') else (False, None)
+    exists, kb = KnowledgebaseService.get_by_id(kb_id)
     if not exists or not kb:
-        # Try alternative lookup
-        try:
-            kb = Knowledgebase.get_or_none(Knowledgebase.id == kb_id)
-        except Exception:
-            kb = None
 
     if not kb:
         logger.error(f"Knowledge base {kb_id} not found — cannot ingest documents")
         return 0, len(docs)
-
-    # Build lightweight file objects from connector documents
-    class FileObj(PydanticBaseModel):
-        id: str
-        filename: str
-        blob: bytes
-
-        model_config = {"arbitrary_types_allowed": True}
-
-        def read(self) -> bytes:
-            return self.blob
 
     src_label = f"{source_type}/{connector_id}"
 
@@ -330,7 +333,7 @@ def _ingest_documents(docs: list, kb_id: str, tenant_id: str, source_type: str,
             if not filename.endswith(ext):
                 filename = filename + ext
 
-            file_obj = FileObj(id=doc.id, filename=filename, blob=doc_blob)
+            file_obj = _FileObj(id=doc.id, filename=filename, blob=doc_blob)
 
             # Upload via FileService
             err, doc_blob_pairs = FileService.upload_document(kb, [file_obj], tenant_id, src_label)
@@ -340,8 +343,11 @@ def _ingest_documents(docs: list, kb_id: str, tenant_id: str, source_type: str,
             for doc_record, _ in doc_blob_pairs:
                 # Apply metadata if present
                 if hasattr(doc, 'metadata') and doc.metadata:
-                    from db.services.document_service import DocMetadataService
-                    DocMetadataService.update_document_metadata(doc_record["id"], doc.metadata)
+                    try:
+                        from db.services.doc_metadata_service import DocMetadataService
+                        DocMetadataService.update_document_metadata(doc_record["id"], doc.metadata)
+                    except Exception as meta_err:
+                        logger.warning(f"Failed to update metadata for doc {doc_record['id']}: {meta_err}")
 
                 # Trigger parsing if auto_parse is enabled
                 if auto_parse:
@@ -577,10 +583,19 @@ def main():
         except redis.ConnectionError as e:
             logger.error(f"Redis connection error: {e}. Reconnecting in 5s...")
             time.sleep(5)
-            try:
-                r = _get_redis()
-            except Exception:
-                pass
+            # Retry reconnection with bounded attempts
+            for attempt in range(1, 6):
+                try:
+                    r = _get_redis()
+                    logger.info("Redis connection restored")
+                    break
+                except Exception as retry_err:
+                    logger.warning(f"Redis reconnection attempt {attempt}/5 failed: {retry_err}")
+                    if attempt < 5:
+                        time.sleep(5)
+                    else:
+                        logger.error("Failed to reconnect to Redis after 5 attempts — exiting")
+                        sys.exit(1)
 
         except KeyboardInterrupt:
             logger.info("Connector sync worker shutting down (KeyboardInterrupt)")

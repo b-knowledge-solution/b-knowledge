@@ -63,6 +63,9 @@ vi.mock('@/shared/services/redis.service.js', () => ({
 vi.mock('@/shared/config/index.js', () => ({
   config: {
     systemTenantId: 'test-tenant-id',
+    opensearch: {
+      systemTenantId: 'test-tenant-id',
+    },
   },
 }))
 

@@ -229,10 +229,11 @@ export class SyncService {
   /**
    * @description Subscribe to Redis pub/sub for sync progress updates from the Python worker.
    *   Updates sync_logs table and connector last_synced_at based on progress events.
+   *   Caller MUST invoke the returned cleanup function to unsubscribe (e.g. on HTTP request close).
    * @param {string} connectorId - Connector UUID to monitor
-   * @param {string} syncLogId - Sync log UUID to update
+   * @param {string} syncLogId - Sync log UUID to update (empty string skips DB updates)
    * @param {(data: Record<string, unknown>) => void} [onProgress] - Optional callback for each progress event
-   * @returns {Promise<() => void>} Cleanup function to unsubscribe
+   * @returns {Promise<() => void>} Cleanup function to unsubscribe and close the subscriber connection
    */
   async subscribeToSyncProgress(
     connectorId: string,
@@ -250,39 +251,44 @@ export class SyncService {
     await subscriber.connect()
 
     const channel = `connector:${connectorId}:progress`
+    // Track subscriber state to prevent double-unsubscribe race condition
+    let isUnsubscribed = false
 
     await subscriber.subscribe(channel, async (message) => {
       try {
         const data = JSON.parse(message)
 
-        // Update sync_logs entry with progress from Python worker
-        const updatePayload: Partial<SyncLog> = {
-          progress: data.progress ?? 0,
-          message: data.message || null,
-          docs_synced: data.docs_synced ?? 0,
-          docs_failed: data.docs_failed ?? 0,
-        }
+        // Update sync_logs entry with progress from Python worker (skip if no syncLogId)
+        if (syncLogId) {
+          const updatePayload: Partial<SyncLog> = {
+            progress: data.progress ?? 0,
+            message: data.message || null,
+            docs_synced: data.docs_synced ?? 0,
+            docs_failed: data.docs_failed ?? 0,
+          }
 
-        // Handle terminal states
-        if (data.status === 'completed') {
-          updatePayload.status = 'completed'
-          updatePayload.finished_at = new Date()
-          // Update connector last_synced_at on success
-          await ModelFactory.connector.update(connectorId, {
-            last_synced_at: new Date(),
-          } as Partial<Connector>)
-        } else if (data.status === 'failed' || data.progress < 0) {
-          updatePayload.status = 'failed'
-          updatePayload.finished_at = new Date()
-        }
+          // Handle terminal states
+          if (data.status === 'completed') {
+            updatePayload.status = 'completed'
+            updatePayload.finished_at = new Date()
+            // Update connector last_synced_at on success
+            await ModelFactory.connector.update(connectorId, {
+              last_synced_at: new Date(),
+            } as Partial<Connector>)
+          } else if (data.status === 'failed' || data.progress < 0) {
+            updatePayload.status = 'failed'
+            updatePayload.finished_at = new Date()
+          }
 
-        await ModelFactory.syncLog.update(syncLogId, updatePayload)
+          await ModelFactory.syncLog.update(syncLogId, updatePayload)
+        }
 
         // Forward progress to optional callback (e.g., SSE stream)
         if (onProgress) onProgress(data)
 
-        // Unsubscribe on terminal state
-        if (data.status === 'completed' || data.status === 'failed') {
+        // Unsubscribe on terminal state (guard against double-unsubscribe)
+        if ((data.status === 'completed' || data.status === 'failed') && !isUnsubscribed) {
+          isUnsubscribed = true
           await subscriber.unsubscribe(channel)
           await subscriber.quit()
         }
@@ -291,13 +297,15 @@ export class SyncService {
       }
     })
 
-    // Return cleanup function
+    // Return cleanup function (guarded against double-unsubscribe)
     return async () => {
+      if (isUnsubscribed) return
+      isUnsubscribed = true
       try {
         await subscriber.unsubscribe(channel)
         await subscriber.quit()
       } catch {
-        // Ignore cleanup errors
+        // Ignore cleanup errors — subscriber may already be closed
       }
     }
   }
