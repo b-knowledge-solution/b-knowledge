@@ -170,13 +170,15 @@ def _extract_constructor_kwargs(source_type: str, config: dict[str, Any]) -> dic
     elif source_type == "github":
         return {
             "repo_owner": config.get("repo_owner", ""),
-            "repositories": config.get("repo_name", None),
+            # Frontend sends "repositories" (comma-separated), fall back to legacy "repo_name"
+            "repositories": config.get("repositories", config.get("repo_name", None)),
             "include_prs": config.get("include_prs", True),
             "include_issues": config.get("include_issues", False),
         }
     elif source_type == "jira":
         return {
-            "jira_base_url": config.get("jira_url", ""),
+            # Frontend sends "jira_base_url", fall back to legacy "jira_url"
+            "jira_base_url": config.get("jira_base_url", config.get("jira_url", "")),
             "project_key": config.get("project_key", None),
             "jql_query": config.get("jql_query", None),
             "include_comments": config.get("include_comments", True),
@@ -184,8 +186,10 @@ def _extract_constructor_kwargs(source_type: str, config: dict[str, Any]) -> dic
         }
     elif source_type == "confluence":
         return {
-            "wiki_base": config.get("confluence_url", ""),
-            "space": config.get("space_key", ""),
+            # Frontend sends "wiki_base", fall back to legacy "confluence_url"
+            "wiki_base": config.get("wiki_base", config.get("confluence_url", "")),
+            # Frontend sends "space", fall back to legacy "space_key"
+            "space": config.get("space", config.get("space_key", "")),
             "is_cloud": config.get("is_cloud", True),
         }
     elif source_type == "blob_storage":
@@ -226,12 +230,16 @@ def _extract_credentials(source_type: str, config: dict[str, Any]) -> dict[str, 
         }
     elif source_type == "jira":
         return {
-            "jira_user_email": config.get("jira_username", config.get("email", "")),
-            "jira_api_token": config.get("jira_token", config.get("api_token", "")),
+            # Frontend sends "jira_user_email", fall back to legacy "jira_username"/"email"
+            "jira_user_email": config.get("jira_user_email", config.get("jira_username", config.get("email", ""))),
+            # Frontend sends "jira_api_token", fall back to legacy "jira_token"/"api_token"
+            "jira_api_token": config.get("jira_api_token", config.get("jira_token", config.get("api_token", ""))),
         }
     elif source_type == "confluence":
         return {
+            # Frontend sends "confluence_token", fall back to legacy "api_token"
             "confluence_access_token": config.get("confluence_token", config.get("api_token", "")),
+            # Frontend sends "confluence_user_email", fall back to legacy "email"
             "confluence_username": config.get("confluence_user_email", config.get("email", "")),
         }
     elif source_type == "blob_storage":
@@ -242,11 +250,13 @@ def _extract_credentials(source_type: str, config: dict[str, Any]) -> dict[str, 
         }
     elif source_type == "notion":
         return {
-            "notion_integration_token": config.get("api_key", config.get("notion_integration_token", "")),
+            # Frontend sends "notion_integration_token", fall back to legacy "api_key"
+            "notion_integration_token": config.get("notion_integration_token", config.get("api_key", "")),
         }
     elif source_type == "slack":
         return {
-            "slack_bot_token": config.get("slack_bot_token", ""),
+            # Frontend sends "slack_token", fall back to legacy "slack_bot_token"
+            "slack_bot_token": config.get("slack_token", config.get("slack_bot_token", "")),
         }
     elif source_type == "sharepoint":
         return {
@@ -256,7 +266,8 @@ def _extract_credentials(source_type: str, config: dict[str, Any]) -> dict[str, 
         }
     elif source_type == "google_drive":
         return {
-            "google_drive_tokens": config.get("tokens", ""),
+            # Frontend sends "service_account_json", fall back to legacy "tokens"
+            "google_drive_tokens": config.get("service_account_json", config.get("tokens", "")),
         }
     # Default: pass entire config as credentials
     return dict(config)
@@ -310,8 +321,6 @@ def _ingest_documents(docs: list, kb_id: str, tenant_id: str, source_type: str,
     # Get the knowledge base record for FileService.upload_document
     exists, kb = KnowledgebaseService.get_by_id(kb_id)
     if not exists or not kb:
-
-    if not kb:
         logger.error(f"Knowledge base {kb_id} not found — cannot ingest documents")
         return 0, len(docs)
 
