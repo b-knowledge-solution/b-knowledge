@@ -75,4 +75,12 @@ router.get(
   controller.listSyncLogs.bind(controller),
 )
 
+/** Stream sync progress events via SSE */
+router.get(
+  '/connectors/:id/progress',
+  requireAuth,
+  validate({ params: uuidParamSchema }),
+  controller.streamProgress.bind(controller),
+)
+
 export default router

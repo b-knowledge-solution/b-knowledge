@@ -54,6 +54,8 @@ export const queryKeys = {
     metadata: (datasetId: string) => [...queryKeys.datasets.all, datasetId, 'metadata'] as const,
     tagAggregations: (datasetIds?: string[]) =>
       [...queryKeys.datasets.all, 'tags', 'aggregations', datasetIds] as const,
+    connectors: (kbId: string) => [...queryKeys.datasets.all, kbId, 'connectors'] as const,
+    syncLogs: (connectorId: string) => [...queryKeys.datasets.all, 'connectors', connectorId, 'logs'] as const,
   },
 
   // --------------------------------------------------------------------------

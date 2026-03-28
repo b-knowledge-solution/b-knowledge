@@ -17,7 +17,8 @@ const mockConnectorUpdate = vi.fn()
 const mockConnectorDelete = vi.fn()
 const mockSyncLogCreate = vi.fn()
 const mockSyncLogFindAll = vi.fn()
-const mockSyncWorkerExecute = vi.fn()
+const mockRedisLPush = vi.fn()
+const mockSyncLogUpdate = vi.fn()
 
 vi.mock('@/shared/models/factory.js', () => ({
   ModelFactory: {
@@ -31,6 +32,7 @@ vi.mock('@/shared/models/factory.js', () => ({
     syncLog: {
       create: (...args: any[]) => mockSyncLogCreate(...args),
       findAll: (...args: any[]) => mockSyncLogFindAll(...args),
+      update: (...args: any[]) => mockSyncLogUpdate(...args),
     },
   },
 }))
@@ -44,10 +46,31 @@ vi.mock('@/shared/services/logger.service.js', () => ({
   },
 }))
 
-// Mock the sync worker service dependency
-vi.mock('../../src/modules/sync/services/sync-worker.service.js', () => ({
-  syncWorkerService: {
-    execute: (...args: any[]) => mockSyncWorkerExecute(...args),
+// Mock Redis service for queue operations
+vi.mock('@/shared/services/redis.service.js', () => ({
+  getRedisClient: () => ({
+    lPush: (...args: any[]) => mockRedisLPush(...args),
+    duplicate: () => ({
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribe: vi.fn().mockResolvedValue(undefined),
+      unsubscribe: vi.fn().mockResolvedValue(undefined),
+      quit: vi.fn().mockResolvedValue(undefined),
+    }),
+  }),
+}))
+
+// Mock config for tenant ID
+vi.mock('@/shared/config/index.js', () => ({
+  config: {
+    systemTenantId: 'test-tenant-id',
+  },
+}))
+
+// Mock sync scheduler service
+vi.mock('../../src/modules/sync/services/sync-scheduler.service.js', () => ({
+  syncSchedulerService: {
+    updateTask: vi.fn(),
+    unregisterTask: vi.fn(),
   },
 }))
 
@@ -274,47 +297,41 @@ describe('SyncService', () => {
       await expect(service.triggerSync('missing-id')).rejects.toThrow('Connector not found')
     })
 
-    /** @description Should create sync log and fire background worker */
-    it('should create sync log entry and launch background worker', async () => {
-      const mockConnector = { id: 'conn-1', kb_id: 'kb-1' }
-      const mockSyncLog = { id: 'sl-1', connector_id: 'conn-1', status: 'pending' }
+    /** @description Should create sync log and push task to Redis queue */
+    it('should create sync log entry and push task to Redis queue', async () => {
+      const mockConnector = { id: 'conn-1', kb_id: 'kb-1', source_type: 'notion', config: '{}' }
+      const mockSyncLog = { id: 'sl-1', connector_id: 'conn-1', status: 'running' }
 
       mockConnectorFindById.mockResolvedValue(mockConnector)
       mockSyncLogCreate.mockResolvedValue(mockSyncLog)
-      // Worker execute returns a promise (fire-and-forget)
-      mockSyncWorkerExecute.mockResolvedValue(undefined)
+      mockRedisLPush.mockResolvedValue(1)
 
       const result = await service.triggerSync('conn-1')
 
-      // Verify sync log created with pending status and zero counters
+      // Verify sync log created with running status and zero counters
       expect(mockSyncLogCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           connector_id: 'conn-1',
           kb_id: 'kb-1',
-          status: 'pending',
+          status: 'running',
           docs_synced: 0,
           docs_failed: 0,
           progress: 0,
         }),
       )
-      // Verify background worker was called with correct IDs
-      expect(mockSyncWorkerExecute).toHaveBeenCalledWith('conn-1', 'sl-1')
-      expect(result).toEqual(mockSyncLog)
-    })
-
-    /** @description Should not reject even if background worker fails (fire-and-forget) */
-    it('should return sync log even if background worker fails', async () => {
-      const mockConnector = { id: 'conn-1', kb_id: 'kb-1' }
-      const mockSyncLog = { id: 'sl-1', status: 'pending' }
-
-      mockConnectorFindById.mockResolvedValue(mockConnector)
-      mockSyncLogCreate.mockResolvedValue(mockSyncLog)
-      // Worker fails asynchronously — should not affect triggerSync return
-      mockSyncWorkerExecute.mockRejectedValue(new Error('Worker crash'))
-
-      const result = await service.triggerSync('conn-1')
-
-      // Trigger returns immediately; worker failure is caught in .catch()
+      // Verify task was pushed to Redis queue
+      expect(mockRedisLPush).toHaveBeenCalledWith(
+        'rag_connector_sync',
+        expect.any(String),
+      )
+      // Verify the Redis payload contains expected fields
+      const payload = JSON.parse(mockRedisLPush.mock.calls[0][1])
+      expect(payload).toMatchObject({
+        sync_log_id: 'sl-1',
+        connector_id: 'conn-1',
+        kb_id: 'kb-1',
+        source_type: 'notion',
+      })
       expect(result).toEqual(mockSyncLog)
     })
 

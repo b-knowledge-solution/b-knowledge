@@ -528,3 +528,87 @@ export interface MetadataResponse {
   fields: MetadataField[];
 }
 
+// ============================================================================
+// Connector (External Source) Types
+// ============================================================================
+
+/** @description Supported external data source types for connectors */
+export type ConnectorSourceType =
+  | 'blob_storage'
+  | 'notion'
+  | 'confluence'
+  | 'google_drive'
+  | 'dropbox'
+  | 'github'
+  | 'gitlab'
+  | 'bitbucket'
+  | 'slack'
+  | 'discord'
+  | 'gmail'
+  | 'imap'
+  | 'jira'
+  | 'asana'
+  | 'airtable'
+  | 'sharepoint'
+  | 'teams'
+  | 'moodle'
+  | 'zendesk'
+  | 'seafile'
+  | 'rdbms'
+  | 'webdav'
+  | 'box'
+  | 'dingtalk'
+
+/** @description External source connector entity linked to a knowledge base */
+export interface Connector {
+  id: string
+  name: string
+  source_type: ConnectorSourceType
+  kb_id: string
+  config: Record<string, unknown>
+  description?: string | null
+  schedule?: string | null
+  status: string
+  last_synced_at?: string | null
+  created_by?: string | null
+  updated_by?: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** @description Payload for creating a new connector */
+export interface CreateConnectorDto {
+  name: string
+  source_type: ConnectorSourceType
+  kb_id: string
+  config: Record<string, unknown>
+  description?: string | undefined
+  schedule?: string | undefined
+}
+
+/** @description Payload for updating an existing connector */
+export interface UpdateConnectorDto {
+  name?: string | undefined
+  source_type?: ConnectorSourceType | undefined
+  kb_id?: string | undefined
+  config?: Record<string, unknown> | undefined
+  description?: string | undefined
+  schedule?: string | null | undefined
+}
+
+/** @description Sync log entry recording the result of a sync operation */
+export interface SyncLog {
+  id: string
+  connector_id: string
+  kb_id: string
+  status: 'running' | 'completed' | 'failed'
+  docs_synced: number
+  docs_failed: number
+  progress: number
+  message?: string | null
+  started_at?: string | null
+  finished_at?: string | null
+  created_at: string
+  updated_at: string
+}
+

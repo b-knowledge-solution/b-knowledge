@@ -36,7 +36,7 @@ import { shutdownLangfuse } from '@/shared/services/langfuse.service.js';
 import { socketService } from '@/shared/services/socket.service.js';
 
 import { setupApiRoutes } from '@/app/routes.js';
-import { registerAllAdapters } from '@/modules/sync/index.js';
+import { syncSchedulerService } from '@/modules/sync/index.js';
 
 /**
  * @description Express application instance shared across the module.
@@ -100,8 +100,9 @@ app.use(session(sessionConfig));
 // Setup all API routes and middleware
 setupApiRoutes(app);
 
-// Register sync connector adapters
-registerAllAdapters();
+// Initialize sync scheduler for connectors with cron schedules (runs after DB is ready)
+// Deferred to after migrations complete in startServer()
+
 
 /**
  * @description Bootstraps the HTTP/HTTPS server and initializes background services
@@ -149,6 +150,8 @@ const startServer = async (): Promise<http.Server | https.Server> => {
     // Initialize parsing scheduler from system config (if enabled)
     await cronService.initParsingSchedulerFromConfig();
 
+    // Initialize sync scheduler for connectors with cron schedules
+    await syncSchedulerService.init();
 
     await systemToolsService.initialize();
 
