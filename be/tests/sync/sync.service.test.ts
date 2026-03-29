@@ -46,17 +46,22 @@ vi.mock('@/shared/services/logger.service.js', () => ({
   },
 }))
 
-// Mock Redis service for queue operations
+// Mock Redis subscriber (shared reference so tests can override .subscribe)
+const mockRedisSubscriber = {
+  connect: vi.fn().mockResolvedValue(undefined),
+  subscribe: vi.fn().mockResolvedValue(undefined),
+  unsubscribe: vi.fn().mockResolvedValue(undefined),
+  quit: vi.fn().mockResolvedValue(undefined),
+}
+
+// Mock Redis service for queue operations (wrapped in fn so tests can swap return)
+const mockGetRedisClient = vi.fn(() => ({
+  lPush: (...args: any[]) => mockRedisLPush(...args),
+  duplicate: () => mockRedisSubscriber,
+}))
+
 vi.mock('@/shared/services/redis.service.js', () => ({
-  getRedisClient: () => ({
-    lPush: (...args: any[]) => mockRedisLPush(...args),
-    duplicate: () => ({
-      connect: vi.fn().mockResolvedValue(undefined),
-      subscribe: vi.fn().mockResolvedValue(undefined),
-      unsubscribe: vi.fn().mockResolvedValue(undefined),
-      quit: vi.fn().mockResolvedValue(undefined),
-    }),
-  }),
+  getRedisClient: (...args: any[]) => mockGetRedisClient(...args),
 }))
 
 // Mock config for tenant ID
@@ -401,6 +406,134 @@ describe('SyncService', () => {
 
       const filter = mockSyncLogFindAll.mock.calls[0][0]
       expect(filter).not.toHaveProperty('status')
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // subscribeToSyncProgress — delta sync field forwarding
+  // -------------------------------------------------------------------------
+
+  describe('subscribeToSyncProgress', () => {
+    /** @description Should forward docs_skipped and docs_deleted from progress events */
+    it('should forward delta sync fields to sync log update', async () => {
+      // Capture the subscribe callback to simulate Redis messages
+      let subscribeCb: ((message: string) => void) | undefined
+      mockRedisSubscriber.subscribe.mockImplementation((_channel: string, cb: (msg: string) => void) => {
+        subscribeCb = cb
+        return Promise.resolve()
+      })
+
+      await service.subscribeToSyncProgress('conn-1', 'sl-1')
+
+      // Simulate a progress event with delta sync fields
+      const progressEvent = JSON.stringify({
+        progress: 80,
+        message: 'Syncing 8/10 files',
+        docs_synced: 8,
+        docs_failed: 1,
+        docs_skipped: 5,
+        docs_deleted: 3,
+      })
+
+      // Fire the subscriber callback
+      expect(subscribeCb).toBeDefined()
+      await subscribeCb!(progressEvent)
+
+      // Verify sync log was updated with delta sync fields
+      expect(mockSyncLogUpdate).toHaveBeenCalledWith(
+        'sl-1',
+        expect.objectContaining({
+          progress: 80,
+          docs_synced: 8,
+          docs_failed: 1,
+          docs_skipped: 5,
+          docs_deleted: 3,
+        }),
+      )
+    })
+
+    /** @description Should default docs_skipped and docs_deleted to 0 when absent */
+    it('should default delta fields to 0 when not in progress event', async () => {
+      let subscribeCb: ((message: string) => void) | undefined
+      mockRedisSubscriber.subscribe.mockImplementation((_channel: string, cb: (msg: string) => void) => {
+        subscribeCb = cb
+        return Promise.resolve()
+      })
+
+      await service.subscribeToSyncProgress('conn-1', 'sl-1')
+
+      // Simulate event WITHOUT delta fields (backward compat)
+      await subscribeCb!(JSON.stringify({ progress: 50, message: 'Old worker' }))
+
+      expect(mockSyncLogUpdate).toHaveBeenCalledWith(
+        'sl-1',
+        expect.objectContaining({
+          docs_skipped: 0,
+          docs_deleted: 0,
+        }),
+      )
+    })
+
+    /** @description Should update connector last_synced_at on completed status */
+    it('should update connector last_synced_at on completed status', async () => {
+      let subscribeCb: ((message: string) => void) | undefined
+      mockRedisSubscriber.subscribe.mockImplementation((_channel: string, cb: (msg: string) => void) => {
+        subscribeCb = cb
+        return Promise.resolve()
+      })
+
+      mockConnectorUpdate.mockResolvedValue({ id: 'conn-1' })
+
+      await service.subscribeToSyncProgress('conn-1', 'sl-1')
+
+      // Simulate completed event with delta stats
+      await subscribeCb!(JSON.stringify({
+        status: 'completed',
+        progress: 100,
+        message: 'Done',
+        docs_synced: 10,
+        docs_failed: 0,
+        docs_skipped: 5,
+        docs_deleted: 2,
+      }))
+
+      // Verify connector last_synced_at updated
+      expect(mockConnectorUpdate).toHaveBeenCalledWith(
+        'conn-1',
+        expect.objectContaining({ last_synced_at: expect.any(Date) }),
+      )
+
+      // Verify sync log has completed status and delta fields
+      expect(mockSyncLogUpdate).toHaveBeenCalledWith(
+        'sl-1',
+        expect.objectContaining({
+          status: 'completed',
+          docs_skipped: 5,
+          docs_deleted: 2,
+          finished_at: expect.any(Date),
+        }),
+      )
+    })
+
+    /** @description Should return a cleanup function that unsubscribes */
+    it('should return cleanup function', async () => {
+      const cleanup = await service.subscribeToSyncProgress('conn-1', 'sl-1')
+
+      // Execute cleanup
+      await cleanup()
+
+      expect(mockRedisSubscriber.unsubscribe).toHaveBeenCalledWith('connector:conn-1:progress')
+      expect(mockRedisSubscriber.quit).toHaveBeenCalled()
+    })
+
+    /** @description Should return no-op when Redis not available */
+    it('should return no-op cleanup when Redis not available', async () => {
+      mockGetRedisClient.mockReturnValueOnce(null)
+
+      const cleanup = await service.subscribeToSyncProgress('conn-1', 'sl-1')
+
+      // Should not throw
+      await cleanup()
     })
   })
 })
