@@ -514,33 +514,51 @@ def _ingest_documents(docs: list, kb_id: str, tenant_id: str, source_type: str,
             if err:
                 logger.warning(f"Upload errors for doc {doc.id}: {err}")
 
-            for doc_record, _ in doc_blob_pairs:
-                # Update delta sync tracking fields on the document record
+            if doc_blob_pairs:
+                # Content changed — process returned doc records
+                for doc_record, _ in doc_blob_pairs:
+                    # Update delta sync tracking fields on the document record
+                    try:
+                        delta_fields: dict[str, Any] = {"source_doc_id": source_id}
+                        if doc.doc_updated_at:
+                            delta_fields["source_updated_at"] = doc.doc_updated_at
+                        DocumentService.update_by_id(doc_record["id"], delta_fields)
+                    except Exception as delta_err:
+                        logger.warning(f"Failed to update delta sync fields for doc {doc_record['id']}: {delta_err}")
+
+                    # Apply metadata if present
+                    if hasattr(doc, 'metadata') and doc.metadata:
+                        try:
+                            from db.services.doc_metadata_service import DocMetadataService
+                            DocMetadataService.update_document_metadata(doc_record["id"], doc.metadata)
+                        except Exception as meta_err:
+                            logger.warning(f"Failed to update metadata for doc {doc_record['id']}: {meta_err}")
+
+                    # Trigger parsing if auto_parse is enabled
+                    if auto_parse:
+                        try:
+                            kb_table_num_map: dict = {}
+                            DocumentService.run(tenant_id, doc_record, kb_table_num_map)
+                        except Exception as parse_err:
+                            logger.warning(f"Failed to queue parse for doc {doc_record['id']}: {parse_err}")
+
+                    docs_synced += 1
+            elif existing:
+                # Modified doc but content hash unchanged (metadata-only change) —
+                # upload_document re-uploaded to S3 and updated the DB record but
+                # didn't return it since hash matched. Still update delta sync
+                # fields to prevent perpetual re-upload on next cycle.
                 try:
                     delta_fields: dict[str, Any] = {"source_doc_id": source_id}
                     if doc.doc_updated_at:
                         delta_fields["source_updated_at"] = doc.doc_updated_at
-                    DocumentService.update_by_id(doc_record["id"], delta_fields)
+                    DocumentService.update_by_id(doc_db_id, delta_fields)
                 except Exception as delta_err:
-                    logger.warning(f"Failed to update delta sync fields for doc {doc_record['id']}: {delta_err}")
-
-                # Apply metadata if present
-                if hasattr(doc, 'metadata') and doc.metadata:
-                    try:
-                        from db.services.doc_metadata_service import DocMetadataService
-                        DocMetadataService.update_document_metadata(doc_record["id"], doc.metadata)
-                    except Exception as meta_err:
-                        logger.warning(f"Failed to update metadata for doc {doc_record['id']}: {meta_err}")
-
-                # Trigger parsing if auto_parse is enabled
-                if auto_parse:
-                    try:
-                        kb_table_num_map: dict = {}
-                        DocumentService.run(tenant_id, doc_record, kb_table_num_map)
-                    except Exception as parse_err:
-                        logger.warning(f"Failed to queue parse for doc {doc_record['id']}: {parse_err}")
-
+                    logger.warning(f"Failed to update delta sync fields for doc {doc_db_id}: {delta_err}")
                 docs_synced += 1
+            else:
+                # New doc upload failed entirely (no doc_blob_pairs returned)
+                docs_failed += 1
 
         except Exception as e:
             docs_failed += 1
