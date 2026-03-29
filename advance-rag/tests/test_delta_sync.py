@@ -633,6 +633,60 @@ class TestIngestDocuments:
 
         assert skipped == 1
 
+    def test_metadata_only_change_updates_delta_fields(self):
+        """Should update delta sync fields even when content hash matches (metadata-only change).
+
+        When a document has a newer timestamp but identical content, upload_document
+        returns empty doc_blob_pairs (hash matches). Delta fields must still be updated
+        to prevent perpetual re-upload on subsequent syncs.
+        """
+        stored_ts = datetime(2026, 3, 28, 10, 0, 0, tzinfo=timezone.utc)
+        new_ts = datetime(2026, 3, 28, 14, 0, 0, tzinfo=timezone.utc)
+        manifest = {
+            "src-1": {
+                "doc_id": "db-existing",
+                "content_hash": "",
+                "source_updated_at": stored_ts,
+                "name": "doc.txt",
+            }
+        }
+        # upload_document returns empty doc_blob_pairs (hash matched)
+        mock_FileService.upload_document.return_value = ([], [])
+
+        docs = [FakeSourceDoc("src-1", blob=b"same content", doc_updated_at=new_ts)]
+        seen = set()
+
+        synced, failed, skipped = csw._ingest_documents(
+            docs, "kb-1", "tenant-1", "confluence", "conn-1",
+            auto_parse=False, existing_manifest=manifest, seen_source_ids=seen,
+        )
+
+        assert synced == 1
+        assert failed == 0
+        assert skipped == 0
+        # Delta sync fields should still be updated via the fallback path
+        mock_DocumentService.update_by_id.assert_called_once_with(
+            "db-existing",
+            {"source_doc_id": "src-1", "source_updated_at": new_ts},
+        )
+
+    def test_new_doc_upload_failure_counts_as_failed(self):
+        """Should count new doc as failed when upload_document returns no doc_blob_pairs."""
+        # upload_document returns errors but no doc pairs — upload failed
+        mock_FileService.upload_document.return_value = (["upload error"], [])
+
+        docs = [FakeSourceDoc("src-new", blob=b"content")]
+        seen = set()
+
+        synced, failed, skipped = csw._ingest_documents(
+            docs, "kb-1", "tenant-1", "confluence", "conn-1",
+            auto_parse=False, existing_manifest={}, seen_source_ids=seen,
+        )
+
+        assert synced == 0
+        assert failed == 1
+        assert skipped == 0
+
     def test_mixed_batch_new_modified_skipped(self):
         """Should handle a batch with new, modified, and unchanged docs."""
         ts = datetime(2026, 3, 28, 12, 0, 0, tzinfo=timezone.utc)
