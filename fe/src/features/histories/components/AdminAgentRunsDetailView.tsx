@@ -152,7 +152,7 @@ export const AdminAgentRunsDetailView = ({
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2 text-slate-400 mb-2">
                                     <Activity size={14} />
-                                    <span className="text-xs font-bold uppercase tracking-wider">Execution Steps</span>
+                                    <span className="text-xs font-bold uppercase tracking-wider">{t('histories.agentRuns.executionSteps', 'Execution Steps')}</span>
                                 </div>
                                 <div className="space-y-2">
                                     {details.steps.map((step, idx) => (
@@ -175,7 +175,7 @@ export const AdminAgentRunsDetailView = ({
                         <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-800">
                             <div className="flex items-center gap-2 text-slate-400 mb-2">
                                 <ThumbsUp size={14} />
-                                <span className="text-xs font-bold uppercase tracking-wider">Feedback</span>
+                                <span className="text-xs font-bold uppercase tracking-wider">{t('feedback.label', 'Feedback')}</span>
                             </div>
 
                             {details?.feedback && details.feedback.length > 0 ? (
@@ -204,7 +204,7 @@ export const AdminAgentRunsDetailView = ({
                                                     </Collapsible>
                                                 ) : (
                                                     <span className="text-xs text-muted-foreground">
-                                                        {fb.thumbup ? 'Positive' : 'Negative'} feedback
+                                                        {fb.thumbup ? t('feedback.positive', 'Positive') : t('feedback.negative', 'Negative')} {t('feedback.label', 'feedback')}
                                                     </span>
                                                 )}
                                                 <span className="text-[10px] text-slate-400 block mt-1">

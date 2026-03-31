@@ -60,12 +60,12 @@ export function FeedbackCommentPopover({
 
   /**
    * @description Handle thumb-up click. One-click action with no popover.
-   * Toggles off if already active.
+   * Feedback is final — re-clicking a submitted vote is a no-op.
    */
   const handleThumbUp = () => {
     if (disabled) return
 
-    // Re-clicking active thumb toggles it off (no API call)
+    // Feedback is final once submitted — second click is a no-op
     if (feedback === 'up') return
 
     onFeedback(true)
@@ -73,15 +73,13 @@ export function FeedbackCommentPopover({
 
   /**
    * @description Handle thumb-down click. Opens popover for optional comment.
-   * Toggles off if already active.
+   * Feedback is final — re-clicking a submitted vote is a no-op.
    */
   const handleThumbDown = () => {
     if (disabled) return
 
-    // Re-clicking active thumb toggles it off (no API call)
-    if (feedback === 'down') {
-      return
-    }
+    // Feedback is final once submitted — second click is a no-op
+    if (feedback === 'down') return
 
     // Open popover for comment
     setPopoverOpen(true)
@@ -127,7 +125,6 @@ export function FeedbackCommentPopover({
         className={cn('h-6 w-6', feedback === 'up' && 'text-green-500')}
         onClick={handleThumbUp}
         disabled={disabled}
-        aria-pressed={feedback === 'up'}
         aria-label={t('chat.thumbsUp', 'Helpful')}
       >
         <ThumbsUp className="h-3 w-3" />
@@ -142,7 +139,6 @@ export function FeedbackCommentPopover({
             className={cn('h-6 w-6', feedback === 'down' && 'text-red-500')}
             onClick={handleThumbDown}
             disabled={disabled}
-            aria-pressed={feedback === 'down'}
             aria-label={t('chat.thumbsDown', 'Not helpful')}
           >
             <ThumbsDown className="h-3 w-3" />

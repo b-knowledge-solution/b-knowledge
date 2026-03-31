@@ -5,6 +5,7 @@
  */
 import { Request, Response } from 'express'
 import { log } from '@/shared/services/logger.service.js'
+import { getTenantId } from '@/shared/middleware/tenant.middleware.js'
 import { feedbackService } from '../services/feedback.service.js'
 
 /**
@@ -28,8 +29,12 @@ export class FeedbackController {
         return
       }
 
-      // Extract tenant_id from user context (defaults to system tenant)
-      const tenantId = (req.user as any)?.tenant_id || 'default'
+      // Extract tenant_id from authenticated request context
+      const tenantId = getTenantId(req)
+      if (!tenantId) {
+        res.status(403).json({ error: 'No organization selected' })
+        return
+      }
 
       const { source, source_id, message_id, thumbup, comment, query, answer, chunks_used, trace_id } = req.body
 
@@ -71,8 +76,12 @@ export class FeedbackController {
         return
       }
 
-      // Extract tenant_id from user context
-      const tenantId = (req.user as any)?.tenant_id || 'default'
+      // Extract tenant_id from authenticated request context
+      const tenantId = getTenantId(req)
+      if (!tenantId) {
+        res.status(403).json({ error: 'No organization selected' })
+        return
+      }
 
       // Query params are already parsed/transformed by validate middleware
       const { source, thumbup, startDate, endDate, page, limit } = req.query as any
@@ -115,8 +124,12 @@ export class FeedbackController {
         return
       }
 
-      // Extract tenant_id from user context
-      const tenantId = (req.user as any)?.tenant_id || 'default'
+      // Extract tenant_id from authenticated request context
+      const tenantId = getTenantId(req)
+      if (!tenantId) {
+        res.status(403).json({ error: 'No organization selected' })
+        return
+      }
 
       const { startDate, endDate } = req.query as { startDate?: string; endDate?: string }
 
@@ -145,8 +158,12 @@ export class FeedbackController {
         return
       }
 
-      // Extract tenant_id from user context
-      const tenantId = (req.user as any)?.tenant_id || 'default'
+      // Extract tenant_id from authenticated request context
+      const tenantId = getTenantId(req)
+      if (!tenantId) {
+        res.status(403).json({ error: 'No organization selected' })
+        return
+      }
 
       const { source, thumbup, startDate, endDate } = req.query as any
 

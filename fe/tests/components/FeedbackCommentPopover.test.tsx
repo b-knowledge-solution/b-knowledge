@@ -146,7 +146,6 @@ describe('FeedbackCommentPopover', () => {
 
     const thumbUpBtn = screen.getByLabelText('Helpful')
     expect(thumbUpBtn.className).toContain('text-green-500')
-    expect(thumbUpBtn).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('shows red color when feedback is down', () => {
@@ -155,6 +154,71 @@ describe('FeedbackCommentPopover', () => {
 
     const thumbDownBtn = screen.getByLabelText('Not helpful')
     expect(thumbDownBtn.className).toContain('text-red-500')
-    expect(thumbDownBtn).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('thumb-up is a no-op when feedback is already up (final vote)', async () => {
+    const onFeedback = vi.fn()
+    render(<FeedbackCommentPopover feedback="up" onFeedback={onFeedback} />)
+
+    const thumbUpBtn = screen.getByLabelText('Helpful')
+    await userEvent.click(thumbUpBtn)
+
+    // Feedback is final — re-click should not call onFeedback
+    expect(onFeedback).not.toHaveBeenCalled()
+  })
+
+  it('thumb-down is a no-op when feedback is already down (final vote)', async () => {
+    const onFeedback = vi.fn()
+    render(<FeedbackCommentPopover feedback="down" onFeedback={onFeedback} />)
+
+    const thumbDownBtn = screen.getByLabelText('Not helpful')
+    await userEvent.click(thumbDownBtn)
+
+    // Feedback is final — re-click should not call onFeedback or open popover
+    expect(onFeedback).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
+  })
+
+  it('does not have aria-pressed attribute (not a toggle control)', () => {
+    const onFeedback = vi.fn()
+    render(<FeedbackCommentPopover feedback="up" onFeedback={onFeedback} />)
+
+    const thumbUpBtn = screen.getByLabelText('Helpful')
+    const thumbDownBtn = screen.getByLabelText('Not helpful')
+
+    // Buttons are not toggle controls — aria-pressed should not be present
+    expect(thumbUpBtn).not.toHaveAttribute('aria-pressed')
+    expect(thumbDownBtn).not.toHaveAttribute('aria-pressed')
+  })
+
+  it('clicking disabled thumb-up does not call onFeedback', async () => {
+    const onFeedback = vi.fn()
+    render(<FeedbackCommentPopover feedback={null} onFeedback={onFeedback} disabled />)
+
+    const thumbUpBtn = screen.getByLabelText('Helpful')
+    await userEvent.click(thumbUpBtn)
+
+    expect(onFeedback).not.toHaveBeenCalled()
+  })
+
+  it('send feedback button calls onFeedback(false, comment) with text', async () => {
+    const onFeedback = vi.fn()
+    render(<FeedbackCommentPopover feedback={null} onFeedback={onFeedback} />)
+
+    // Open popover
+    const thumbDownBtn = screen.getByLabelText('Not helpful')
+    await userEvent.click(thumbDownBtn)
+
+    // Type comment
+    await waitFor(async () => {
+      const textarea = screen.getByPlaceholderText('Tell us what could be better...')
+      await userEvent.type(textarea, 'The answer was incorrect')
+    })
+
+    // Click send
+    const sendBtn = screen.getByText('Send feedback')
+    await userEvent.click(sendBtn)
+
+    expect(onFeedback).toHaveBeenCalledWith(false, 'The answer was incorrect')
   })
 })

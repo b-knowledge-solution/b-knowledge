@@ -19,9 +19,9 @@ interface FeedbackSummaryCardsProps {
     /** Feedback analytics data (null while loading) */
     data: FeedbackAnalytics | null
     /** Optional source breakdown counts from /api/feedback/stats */
-    sourceBreakdown?: { chat: number; search: number; agent: number }
+    sourceBreakdown?: { chat: number; search: number; agent: number } | undefined
     /** Whether source breakdown data is loading */
-    sourceBreakdownLoading?: boolean
+    sourceBreakdownLoading?: boolean | undefined
 }
 
 // ============================================================================
