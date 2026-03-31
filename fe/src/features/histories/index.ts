@@ -13,3 +13,15 @@ export type { UseHistoriesDataReturn } from './api/historiesQueries'
 
 // UI hooks
 export { useHistoriesFilters } from './hooks/useHistoriesFilters'
+
+// Types
+export type {
+    FilterState,
+    ChatSessionSummary,
+    SearchSessionSummary,
+    AgentRunSessionSummary,
+    ExternalAgentRunDetail,
+    ExternalChatHistory,
+    ExternalSearchHistory,
+    HistoriesTab,
+} from './types/histories.types'

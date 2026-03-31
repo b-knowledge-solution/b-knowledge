@@ -1,6 +1,6 @@
 /**
  * @fileoverview TanStack Query hooks for admin histories.
- * Manages chat and search tabs, infinite scrolling, session details, and auto-select.
+ * Manages chat, search, and agent runs tabs, infinite scrolling, session details, and auto-select.
  * @module features/histories/api/historiesQueries
  */
 import { useState, useEffect, useRef } from 'react'
@@ -9,8 +9,10 @@ import type {
     FilterState,
     ChatSessionSummary,
     SearchSessionSummary,
+    AgentRunSessionSummary,
     ExternalChatHistory,
     ExternalSearchHistory,
+    ExternalAgentRunDetail,
     HistoriesTab,
 } from '../types/histories.types'
 import {
@@ -18,8 +20,13 @@ import {
     fetchExternalSearchHistory,
     fetchChatSessionDetails,
     fetchSearchSessionDetails,
+    fetchAgentRunHistory,
+    fetchAgentRunDetails,
 } from './historiesApi'
 import { queryKeys } from '@/lib/queryKeys'
+
+/** Union type for any selectable session/run item. */
+type SelectableItem = ChatSessionSummary | SearchSessionSummary | AgentRunSessionSummary
 
 /**
  * @description Return type for useHistoriesData hook.
@@ -30,21 +37,23 @@ export interface UseHistoriesDataReturn {
     switchTab: (tab: HistoriesTab) => void
     isSidebarOpen: boolean
     setIsSidebarOpen: (open: boolean) => void
-    selectedSession: ChatSessionSummary | SearchSessionSummary | null
-    setSelectedSession: (session: ChatSessionSummary | SearchSessionSummary | null) => void
-    flattenedData: (ChatSessionSummary | SearchSessionSummary)[]
+    selectedSession: SelectableItem | null
+    setSelectedSession: (session: SelectableItem | null) => void
+    flattenedData: SelectableItem[]
     isLoading: boolean
     isRefreshing: boolean
     sessionDetails: (ExternalChatHistory | ExternalSearchHistory)[] | undefined
+    agentRunDetails: ExternalAgentRunDetail | undefined
     isLoadingDetails: boolean
     loadMoreRef: React.RefObject<HTMLDivElement | null>
     handleRefresh: () => void
 }
 
 /**
- * @description Manages tab switching, infinite-scroll data fetching, session selection, and detail loading.
- * @param executedSearchQuery - Currently executed search query.
- * @param filters - Current filter state.
+ * @description Manages tab switching, infinite-scroll data fetching, session selection, and detail loading
+ * for chat, search, and agent runs tabs.
+ * @param {string} executedSearchQuery - Currently executed search query.
+ * @param {FilterState} filters - Current filter state.
  * @returns {UseHistoriesDataReturn} Data state and handlers.
  */
 export const useHistoriesData = (
@@ -53,7 +62,7 @@ export const useHistoriesData = (
 ): UseHistoriesDataReturn => {
     const [activeTab, setActiveTab] = useState<HistoriesTab>('chat')
     const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-    const [selectedSession, setSelectedSession] = useState<ChatSessionSummary | SearchSessionSummary | null>(null)
+    const [selectedSession, setSelectedSession] = useState<SelectableItem | null>(null)
     const loadMoreRef = useRef<HTMLDivElement>(null)
 
     // Chat infinite query
@@ -90,34 +99,97 @@ export const useHistoriesData = (
         enabled: activeTab === 'search',
     })
 
-    // Session details query
+    // Agent runs infinite query
+    const {
+        data: agentRunsData,
+        fetchNextPage: fetchNextAgentRunsPage,
+        hasNextPage: hasNextAgentRunsPage,
+        isFetchingNextPage: isFetchingNextAgentRunsPage,
+        isLoading: isLoadingAgentRuns,
+        refetch: refetchAgentRuns,
+        isRefetching: isRefetchingAgentRuns,
+    } = useInfiniteQuery({
+        queryKey: queryKeys.histories.agentRunsInfinite(executedSearchQuery, filters),
+        queryFn: ({ pageParam = 1 }) => fetchAgentRunHistory(executedSearchQuery, filters, pageParam),
+        initialPageParam: 1,
+        getNextPageParam: (lastPage, allPages) => (lastPage.length === 20 ? allPages.length + 1 : undefined),
+        enabled: activeTab === 'agentRuns',
+    })
+
+    // Session details query (for chat and search tabs)
+    const selectedSessionId = selectedSession && 'session_id' in selectedSession
+        ? selectedSession.session_id
+        : ''
     const {
         data: sessionDetails,
-        isLoading: isLoadingDetails,
+        isLoading: isLoadingSessionDetails,
         refetch: refetchDetails,
         isRefetching: isRefetchingDetails,
     } = useQuery<(ExternalChatHistory | ExternalSearchHistory)[]>({
-        queryKey: queryKeys.histories.sessionDetails(activeTab, selectedSession?.session_id ?? ''),
+        queryKey: queryKeys.histories.sessionDetails(activeTab, selectedSessionId),
         queryFn: async () => {
-            if (!selectedSession?.session_id) return []
+            if (!selectedSessionId) return []
             return activeTab === 'chat'
-                ? fetchChatSessionDetails(selectedSession.session_id)
-                : fetchSearchSessionDetails(selectedSession.session_id)
+                ? fetchChatSessionDetails(selectedSessionId)
+                : fetchSearchSessionDetails(selectedSessionId)
         },
-        enabled: !!selectedSession?.session_id,
+        enabled: !!selectedSessionId && (activeTab === 'chat' || activeTab === 'search'),
+    })
+
+    // Agent run details query (for agent runs tab)
+    const selectedRunId = selectedSession && 'run_id' in selectedSession
+        ? (selectedSession as AgentRunSessionSummary).run_id
+        : ''
+    const {
+        data: agentRunDetails,
+        isLoading: isLoadingRunDetails,
+        refetch: refetchRunDetails,
+        isRefetching: isRefetchingRunDetails,
+    } = useQuery<ExternalAgentRunDetail>({
+        queryKey: queryKeys.histories.agentRunDetails(selectedRunId),
+        queryFn: () => fetchAgentRunDetails(selectedRunId),
+        enabled: !!selectedRunId && activeTab === 'agentRuns',
     })
 
     // Derived values based on active tab
-    const isLoading = activeTab === 'chat' ? isLoadingChat : isLoadingSearch
-    const isFetchingNextPage = activeTab === 'chat' ? isFetchingNextChatPage : isFetchingNextSearchPage
-    const hasNextPage = activeTab === 'chat' ? hasNextChatPage : hasNextSearchPage
-    const fetchNextPage = activeTab === 'chat' ? fetchNextChatPage : fetchNextSearchPage
-    const isRefreshing = (activeTab === 'chat' ? isRefetchingChat : isRefetchingSearch) || isRefetchingDetails
+    const isLoading = activeTab === 'chat'
+        ? isLoadingChat
+        : activeTab === 'search'
+            ? isLoadingSearch
+            : isLoadingAgentRuns
+
+    const isFetchingNextPage = activeTab === 'chat'
+        ? isFetchingNextChatPage
+        : activeTab === 'search'
+            ? isFetchingNextSearchPage
+            : isFetchingNextAgentRunsPage
+
+    const hasNextPage = activeTab === 'chat'
+        ? hasNextChatPage
+        : activeTab === 'search'
+            ? hasNextSearchPage
+            : hasNextAgentRunsPage
+
+    const fetchNextPage = activeTab === 'chat'
+        ? fetchNextChatPage
+        : activeTab === 'search'
+            ? fetchNextSearchPage
+            : fetchNextAgentRunsPage
+
+    const isRefreshing = activeTab === 'chat'
+        ? isRefetchingChat
+        : activeTab === 'search'
+            ? isRefetchingSearch
+            : isRefetchingAgentRuns
+    const isRefreshingAll = isRefreshing || isRefetchingDetails || isRefetchingRunDetails
+
+    const isLoadingDetails = activeTab === 'agentRuns' ? isLoadingRunDetails : isLoadingSessionDetails
 
     // Flatten paginated data
     const flattenedData = (() => {
-        const pages = activeTab === 'chat' ? chatData?.pages : searchData?.pages
-        return (pages?.flat() || []) as (ChatSessionSummary | SearchSessionSummary)[]
+        if (activeTab === 'chat') return (chatData?.pages?.flat() || []) as SelectableItem[]
+        if (activeTab === 'search') return (searchData?.pages?.flat() || []) as SelectableItem[]
+        return (agentRunsData?.pages?.flat() || []) as SelectableItem[]
     })()
 
     // Infinite scroll observer
@@ -144,7 +216,7 @@ export const useHistoriesData = (
 
     /**
      * @description Switch tab and reset state.
-     * @param tab - The tab to switch to.
+     * @param {HistoriesTab} tab - The tab to switch to.
      */
     const switchTab = (tab: HistoriesTab) => {
         setActiveTab(tab)
@@ -156,8 +228,14 @@ export const useHistoriesData = (
      */
     const handleRefresh = () => {
         if (activeTab === 'chat') refetchChat()
-        else refetchSearch()
-        if (selectedSession) refetchDetails()
+        else if (activeTab === 'search') refetchSearch()
+        else refetchAgentRuns()
+
+        // Refresh details for the selected item
+        if (selectedSession) {
+            if (activeTab === 'agentRuns') refetchRunDetails()
+            else refetchDetails()
+        }
     }
 
     return {
@@ -170,8 +248,9 @@ export const useHistoriesData = (
         setSelectedSession,
         flattenedData,
         isLoading,
-        isRefreshing,
+        isRefreshing: isRefreshingAll,
         sessionDetails,
+        agentRunDetails,
         isLoadingDetails,
         loadMoreRef,
         handleRefresh,

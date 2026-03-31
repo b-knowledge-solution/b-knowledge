@@ -1,14 +1,14 @@
 /**
  * @fileoverview Filter and search state management hook for admin histories.
- * Includes email and sourceName fields not present in user-level history.
+ * Includes email, sourceName, and feedbackFilter fields not present in user-level history.
  *
  * @module features/histories/hooks/useHistoriesFilters
  */
 import { useState } from 'react'
 import type { FilterState } from '../types/histories.types'
 
-/** Default empty filter state. */
-const EMPTY_FILTERS: FilterState = { email: '', startDate: '', endDate: '', sourceName: '' }
+/** Default empty filter state with feedbackFilter defaulting to 'all'. */
+const EMPTY_FILTERS: FilterState = { email: '', startDate: '', endDate: '', sourceName: '', feedbackFilter: 'all' }
 
 /**
  * Return type for useHistoriesFilters hook.
@@ -30,8 +30,9 @@ export interface UseHistoriesFiltersReturn {
 }
 
 /**
- * Manages search query, filter dialog, and filter state for admin histories.
- * @returns Filter state and handlers.
+ * @description Manages search query, filter dialog, and filter state for admin histories.
+ * Includes feedbackFilter for filtering sessions by feedback status.
+ * @returns {UseHistoriesFiltersReturn} Filter state and handlers.
  */
 export const useHistoriesFilters = (): UseHistoriesFiltersReturn => {
   // Search state
@@ -43,8 +44,14 @@ export const useHistoriesFilters = (): UseHistoriesFiltersReturn => {
   const [tempFilters, setTempFilters] = useState<FilterState>(EMPTY_FILTERS)
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false)
 
-  // Derived: any filter active
-  const isFiltered = !!(filters.email || filters.startDate || filters.endDate || filters.sourceName)
+  // Derived: any filter active (including non-default feedbackFilter)
+  const isFiltered = !!(
+    filters.email ||
+    filters.startDate ||
+    filters.endDate ||
+    filters.sourceName ||
+    (filters.feedbackFilter && filters.feedbackFilter !== 'all')
+  )
 
   /** Submit search — copy searchQuery to executedSearchQuery. */
   const handleSearch = (e: React.FormEvent) => {

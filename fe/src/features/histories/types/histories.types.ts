@@ -5,7 +5,7 @@
 
 /**
  * Filter state for admin history queries.
- * Includes email and sourceName fields not present in user-level history.
+ * Includes email, sourceName, and feedbackFilter fields not present in user-level history.
  */
 export interface FilterState {
     /** Filter by user email. */
@@ -16,6 +16,8 @@ export interface FilterState {
     endDate: string
     /** Filter by source/knowledge base name. */
     sourceName?: string
+    /** Filter by feedback status. */
+    feedbackFilter?: 'all' | 'positive' | 'negative' | 'any' | 'none'
 }
 
 /**
@@ -34,6 +36,10 @@ export interface ChatSessionSummary {
     message_count: string | number
     /** Source name if available. */
     source_name?: string
+    /** Count of positive feedback in this session. */
+    positive_count?: number
+    /** Count of negative feedback in this session. */
+    negative_count?: number
 }
 
 /**
@@ -52,6 +58,73 @@ export interface SearchSessionSummary {
     message_count: string | number
     /** Source name if available. */
     source_name?: string
+    /** Count of positive feedback in this session. */
+    positive_count?: number
+    /** Count of negative feedback in this session. */
+    negative_count?: number
+}
+
+/**
+ * Summary of an agent run, used for the admin agent runs list view.
+ */
+export interface AgentRunSessionSummary {
+    /** Unique run identifier. */
+    run_id: string
+    /** Name of the agent. */
+    agent_name: string
+    /** UUID of the agent. */
+    agent_id: string
+    /** Execution status. */
+    status: string
+    /** User input text. */
+    input: string
+    /** Agent output text. */
+    output: string
+    /** When the run started. */
+    started_at: string
+    /** When the run completed. */
+    completed_at: string
+    /** Duration in milliseconds. */
+    duration_ms: number
+    /** Email of the user who triggered the run. */
+    user_email?: string
+    /** Count of positive feedback for this run. */
+    positive_count?: number
+    /** Count of negative feedback for this run. */
+    negative_count?: number
+}
+
+/**
+ * Detailed agent run record with steps and feedback.
+ */
+export interface ExternalAgentRunDetail {
+    /** The agent run record. */
+    run: AgentRunSessionSummary & {
+        /** Error message if failed. */
+        error?: string
+        /** Total nodes in the workflow. */
+        total_nodes: number
+        /** Completed nodes. */
+        completed_nodes: number
+    }
+    /** Steps executed during the run. */
+    steps: Array<{
+        id: string
+        node_id: string
+        node_type: string
+        status: string
+        input: string
+        output: string
+        started_at: string
+        completed_at: string
+    }>
+    /** Feedback records associated with this run. */
+    feedback: Array<{
+        id: string
+        thumbup: boolean
+        comment: string | null
+        created_at: string
+    }>
 }
 
 /**
@@ -81,4 +154,4 @@ export interface ExternalSearchHistory {
 }
 
 /** Active tab type for the histories page. */
-export type HistoriesTab = 'chat' | 'search'
+export type HistoriesTab = 'chat' | 'search' | 'agentRuns'
