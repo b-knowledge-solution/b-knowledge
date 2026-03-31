@@ -914,8 +914,8 @@ def main():
                 continue
 
             # Determine which queue the message came from
-            queue_key = queue_name_bytes if isinstance(queue_name_bytes, str) else queue_name_bytes
-            is_test_task = task.get("task_type") == "test_connection" or str(queue_key) == TEST_QUEUE_NAME
+            queue_name_str = queue_name_bytes if isinstance(queue_name_bytes, str) else queue_name_bytes.decode()
+            is_test_task = task.get("task_type") == "test_connection" or queue_name_str == TEST_QUEUE_NAME
 
             if is_test_task:
                 # Handle test connection request

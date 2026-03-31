@@ -33,7 +33,7 @@ const mockRedisLPush = vi.fn()
 const mockRedisSet = vi.fn()
 const mockRedisDel = vi.fn()
 const mockSyncLogUpdate = vi.fn()
-const mockDocumentDelete = vi.fn()
+const mockDocumentGetKnex = vi.fn()
 
 vi.mock('@/shared/models/factory.js', () => ({
   ModelFactory: {
@@ -51,7 +51,7 @@ vi.mock('@/shared/models/factory.js', () => ({
       update: (...args: any[]) => mockSyncLogUpdate(...args),
     },
     document: {
-      delete: (...args: any[]) => mockDocumentDelete(...args),
+      getKnex: (...args: any[]) => mockDocumentGetKnex(...args),
     },
   },
 }))
@@ -702,17 +702,25 @@ describe('SyncService', () => {
   // -------------------------------------------------------------------------
 
   describe('deleteConnector — cascade', () => {
-    /** @description Should cascade-delete documents when cascadeDocuments is true */
+    /** @description Should cascade-delete externally-synced documents when cascadeDocuments is true */
     it('should delete synced documents when cascadeDocuments is true', async () => {
       const mockConnector = { id: 'conn-1', kb_id: 'kb-1', source_type: 'notion', config: '{"host":"x"}' }
       mockConnectorFindById.mockResolvedValue({ ...mockConnector })
       mockConnectorDelete.mockResolvedValue(undefined)
-      mockDocumentDelete.mockResolvedValue(undefined)
+
+      // Mock the Knex query chain: getKnex().where(...).whereNotNull(...).del()
+      const mockDel = vi.fn().mockResolvedValue(5)
+      const mockWhereNotNull = vi.fn().mockReturnValue({ del: mockDel })
+      const mockWhere = vi.fn().mockReturnValue({ whereNotNull: mockWhereNotNull })
+      mockDocumentGetKnex.mockReturnValue({ where: mockWhere })
 
       await service.deleteConnector('conn-1', true)
 
-      // Verify document delete was called with kb_id filter
-      expect(mockDocumentDelete).toHaveBeenCalledWith({ kb_id: 'kb-1' })
+      // Verify only externally-synced documents are deleted (source_doc_id IS NOT NULL)
+      expect(mockDocumentGetKnex).toHaveBeenCalled()
+      expect(mockWhere).toHaveBeenCalledWith('kb_id', 'kb-1')
+      expect(mockWhereNotNull).toHaveBeenCalledWith('source_doc_id')
+      expect(mockDel).toHaveBeenCalled()
       // Verify the connector itself was also deleted
       expect(mockConnectorDelete).toHaveBeenCalledWith('conn-1')
     })
@@ -724,7 +732,7 @@ describe('SyncService', () => {
       await service.deleteConnector('conn-1', false)
 
       // Verify document delete was NOT called
-      expect(mockDocumentDelete).not.toHaveBeenCalled()
+      expect(mockDocumentGetKnex).not.toHaveBeenCalled()
       // Verify connector was still deleted
       expect(mockConnectorDelete).toHaveBeenCalledWith('conn-1')
     })
@@ -736,7 +744,7 @@ describe('SyncService', () => {
       await service.deleteConnector('conn-1')
 
       // Verify document delete was NOT called
-      expect(mockDocumentDelete).not.toHaveBeenCalled()
+      expect(mockDocumentGetKnex).not.toHaveBeenCalled()
       expect(mockConnectorDelete).toHaveBeenCalledWith('conn-1')
     })
   })

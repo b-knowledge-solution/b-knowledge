@@ -70,7 +70,10 @@ export const createConnectorSchema = z.object({
  * Schema for updating an existing connector.
  * @description All fields are optional for partial updates.
  */
-export const updateConnectorSchema = createConnectorSchema.partial()
+export const updateConnectorSchema = createConnectorSchema.partial().extend({
+  /** Connector status for pause/resume (not settable on create) */
+  status: z.enum(['active', 'paused']).optional(),
+})
 
 /**
  * Schema for triggering a manual sync.

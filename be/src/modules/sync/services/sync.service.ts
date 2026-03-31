@@ -121,6 +121,7 @@ export class SyncService {
       if (data.config !== undefined) updateData.config = this.encryptConfig(data.config as Record<string, unknown>)
       if (data.description !== undefined) updateData.description = data.description
       if (data.schedule !== undefined) updateData.schedule = data.schedule
+      if ((data as any).status !== undefined) updateData.status = (data as any).status
       if (user) updateData.updated_by = user.id
 
       const connector = await ModelFactory.connector.update(id, updateData as Partial<Connector>)
@@ -129,9 +130,16 @@ export class SyncService {
         if (data.schedule !== undefined) {
           syncSchedulerService.updateTask(id, data.schedule ?? null)
         }
+        // Handle pause/resume: unregister or re-register scheduled sync
+        if ((data as any).status === 'paused') {
+          syncSchedulerService.unregisterTask(id)
+        } else if ((data as any).status === 'active' && connector.schedule) {
+          syncSchedulerService.updateTask(id, connector.schedule)
+        }
         log.info('Connector updated', { id })
       }
-      return connector
+      // Decrypt config before returning to caller (SYN-FR-05)
+      return connector ? this.decryptConnectorConfig(connector) : undefined
     } catch (error) {
       log.error('Failed to update connector', { id, error: String(error) })
       throw error
@@ -148,14 +156,17 @@ export class SyncService {
    */
   async deleteConnector(id: string, cascadeDocuments: boolean = false): Promise<void> {
     try {
-      // Cascade-delete synced documents if requested
+      // Cascade-delete externally-synced documents if requested
+      // Only deletes documents with source_doc_id set (preserves manual uploads)
       if (cascadeDocuments) {
         const connector = await this.getConnector(id)
         if (connector) {
           try {
-            // Delete documents that were synced from this connector's KB with external source IDs
-            await ModelFactory.document.delete({ kb_id: connector.kb_id } as any)
-            log.info('Cascade-deleted synced documents', { connectorId: id, kbId: connector.kb_id })
+            const deleted = await ModelFactory.document.getKnex()
+              .where('kb_id', connector.kb_id)
+              .whereNotNull('source_doc_id')
+              .del()
+            log.info('Cascade-deleted synced documents', { connectorId: id, kbId: connector.kb_id, count: deleted })
           } catch (docErr) {
             log.warn('Failed to cascade-delete documents', { connectorId: id, error: String(docErr) })
           }
@@ -350,6 +361,8 @@ export class SyncService {
           clearTimeout(timeout)
           resolve({ success: false, message: 'Failed to subscribe for test results' })
         }
+        // Cleanup subscriber connection on connect failure to prevent leak
+        try { subscriber.quit().catch(() => {}) } catch { /* ignore */ }
       })
     })
   }
