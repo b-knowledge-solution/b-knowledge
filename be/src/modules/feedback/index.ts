@@ -12,4 +12,9 @@ export { default as feedbackRoutes } from './routes/feedback.routes.js'
 export { feedbackService } from './services/feedback.service.js'
 
 /** @description Feedback Zod schemas */
-export { createFeedbackSchema, searchFeedbackSchema } from './schemas/feedback.schemas.js'
+export {
+  createFeedbackSchema,
+  searchFeedbackSchema,
+  listFeedbackQuerySchema,
+  feedbackStatsQuerySchema,
+} from './schemas/feedback.schemas.js'

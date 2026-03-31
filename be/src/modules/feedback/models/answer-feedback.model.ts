@@ -12,13 +12,13 @@ import { AnswerFeedback } from '@/shared/models/types.js'
  */
 export interface FeedbackPaginationFilters {
   /** Filter by feedback source type */
-  source?: 'chat' | 'search' | 'agent'
+  source?: 'chat' | 'search' | 'agent' | undefined
   /** Filter by thumbup value */
-  thumbup?: boolean
+  thumbup?: boolean | undefined
   /** ISO date string for range start */
-  startDate?: string
+  startDate?: string | undefined
   /** ISO date string for range end */
-  endDate?: string
+  endDate?: string | undefined
   /** Tenant ID for multi-tenancy isolation */
   tenantId: string
   /** Page number (1-indexed) */
