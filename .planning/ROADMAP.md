@@ -65,13 +65,14 @@ Plans:
 **Goal:** Add assistant response evaluation (thumb up/down with optional comment) to chat, search, and agent run results. Enhance the admin Histories page with feedback indicators, filters, Agent Runs tab, and CSV export. Verify Dashboard "Response Quality" section includes agent feedback data.
 **Requirements**: EVAL-01 (thumb-down comment popover), EVAL-02 (agent run feedback), EVAL-03 (histories feedback enhancements), EVAL-04 (dashboard response quality), EVAL-05 (feedback export)
 **Depends on:** Phase 4
-**Plans:** 4/4 plans complete
+**Plans:** 5 plans
 
 Plans:
 - [ ] **05-01**: DB migration + BE feedback APIs — Extend source constraint for 'agent', add list/stats/export endpoints
 - [ ] **05-02**: FE FeedbackCommentPopover — Shared thumb-down comment popover, integrate into ChatMessage, SearchResultCard, RunHistorySheet
 - [ ] **05-03**: FE Histories enhancements — Feedback indicators, filter, Agent Runs tab, CSV export, BE admin-history enrichment
 - [ ] **05-04**: FE Dashboard verification — Enhance feedback components for agent source visibility
+- [ ] **05-05**: Fix review findings — Align dashboard FE/BE types, enrich detail queries with feedback, add tenant scoping, fix search comment callback, enrich export
 
 ---
 
