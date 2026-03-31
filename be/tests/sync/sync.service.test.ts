@@ -260,10 +260,10 @@ describe('SyncService', () => {
 
       const result = await service.listConnectors()
 
-      // Verify empty filter and descending order
+      // Verify empty filter, descending order, and safety limit
       expect(mockConnectorFindAll).toHaveBeenCalledWith(
         {},
-        { orderBy: { created_at: 'desc' } },
+        { orderBy: { created_at: 'desc' }, limit: 500 },
       )
       expect(result).toEqual(mockConnectors)
     })
@@ -275,10 +275,10 @@ describe('SyncService', () => {
 
       const result = await service.listConnectors('kb-1')
 
-      // Verify kb_id filter is applied
+      // Verify kb_id filter is applied with safety limit
       expect(mockConnectorFindAll).toHaveBeenCalledWith(
         { kb_id: 'kb-1' },
-        { orderBy: { created_at: 'desc' } },
+        { orderBy: { created_at: 'desc' }, limit: 500 },
       )
       expect(result).toEqual(mockConnectors)
     })
@@ -433,7 +433,7 @@ describe('SyncService', () => {
       expect(mockRedisSet).toHaveBeenCalledWith(
         'connector_sync_lock:conn-1',
         '1',
-        expect.objectContaining({ NX: true, EX: 3600 }),
+        expect.objectContaining({ NX: true, EX: 600 }),
       )
     })
 

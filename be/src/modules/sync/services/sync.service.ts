@@ -24,8 +24,8 @@ const CONNECTOR_TEST_QUEUE = 'rag_connector_test'
 /** Redis lock key prefix for concurrent sync prevention (SYN-BR-06) */
 const SYNC_LOCK_PREFIX = 'connector_sync_lock:'
 
-/** Lock TTL in seconds (1 hour — safety net for zombie locks) */
-const SYNC_LOCK_TTL = 3600
+/** Lock TTL in seconds (10 min — balance between long syncs and crash recovery) */
+const SYNC_LOCK_TTL = 600
 
 /**
  * @description Captures the acting user for audit trails on connector operations
@@ -96,8 +96,12 @@ export class SyncService {
    */
   async listConnectors(kbId?: string): Promise<Connector[]> {
     // Filter by kb_id if provided, otherwise return all
+    // Hard limit of 500 connectors to prevent unbounded memory usage
     const filter = kbId ? { kb_id: kbId } : {}
-    const connectors = await ModelFactory.connector.findAll(filter, { orderBy: { created_at: 'desc' } })
+    const connectors = await ModelFactory.connector.findAll(filter, {
+      orderBy: { created_at: 'desc' },
+      limit: 500,
+    })
     // Decrypt config for each connector (SYN-FR-05)
     return connectors.map((c) => this.decryptConnectorConfig(c))
   }
@@ -118,7 +122,19 @@ export class SyncService {
       if (data.source_type !== undefined) updateData.source_type = data.source_type
       if (data.kb_id !== undefined) updateData.kb_id = data.kb_id
       // Encrypt config at rest before storage (SYN-FR-05)
-      if (data.config !== undefined) updateData.config = this.encryptConfig(data.config as Record<string, unknown>)
+      // Preserve existing credentials for fields sent as masked '********'
+      if (data.config !== undefined) {
+        const configObj = data.config as Record<string, unknown>
+        const existing = await this.getConnector(id)
+        if (existing?.config && typeof existing.config === 'object') {
+          for (const [key, value] of Object.entries(configObj)) {
+            if (value === '********' && (existing.config as Record<string, unknown>)[key] !== undefined) {
+              configObj[key] = (existing.config as Record<string, unknown>)[key]
+            }
+          }
+        }
+        updateData.config = this.encryptConfig(configObj)
+      }
       if (data.description !== undefined) updateData.description = data.description
       if (data.schedule !== undefined) updateData.schedule = data.schedule
       if ((data as any).status !== undefined) updateData.status = (data as any).status
@@ -341,10 +357,12 @@ export class SyncService {
 
           try {
             const data = JSON.parse(message)
-            resolve({
-              success: data.success ?? false,
-              message: data.message || (data.success ? 'Connection successful' : 'Connection failed'),
-            })
+            // Sanitize error messages to prevent internal info leakage (IPs, ports, versions)
+            const safeMessage = data.success
+              ? 'Connection successful'
+              : (data.message || 'Connection failed').replace(/\d+\.\d+\.\d+\.\d+/g, '[redacted]')
+                .substring(0, 200)
+            resolve({ success: data.success ?? false, message: safeMessage })
           } catch {
             resolve({ success: false, message: 'Invalid response from worker' })
           }
