@@ -196,6 +196,10 @@ export const queryKeys = {
       [...queryKeys.histories.all, 'search', 'session', sessionId] as const,
     sessionDetails: (tab: string, sessionId: string) =>
       [...queryKeys.histories.all, 'session-details', tab, sessionId] as const,
+    agentRunsInfinite: (search: string, filters: unknown) =>
+      [...queryKeys.histories.all, 'agent-runs', 'infinite', search, filters] as const,
+    agentRunDetails: (runId: string) =>
+      [...queryKeys.histories.all, 'agent-runs', 'details', runId] as const,
   },
 
   // --------------------------------------------------------------------------
