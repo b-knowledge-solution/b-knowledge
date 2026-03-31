@@ -594,6 +594,8 @@ export interface UpdateConnectorDto {
   config?: Record<string, unknown> | undefined
   description?: string | undefined
   schedule?: string | null | undefined
+  /** Connector status for pause/resume functionality */
+  status?: 'active' | 'paused' | undefined
 }
 
 /** @description Sync log entry recording the result of a sync operation */

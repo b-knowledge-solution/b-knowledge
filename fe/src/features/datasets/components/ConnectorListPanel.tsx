@@ -6,7 +6,7 @@
  * @module features/datasets/components/ConnectorListPanel
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, RefreshCw, Pencil, Trash2, Clock, History, Pause, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -76,14 +76,12 @@ const ConnectorListPanel = ({ kbId, isAdmin }: ConnectorListPanelProps) => {
   const [syncFromDate, setSyncFromDate] = useState('')
   const [syncPopoverConnectorId, setSyncPopoverConnectorId] = useState<string | null>(null)
 
-  // Cascade delete state
-  const [cascadeDelete, setCascadeDelete] = useState(false)
-
-  // Clear SSE tracking when sync completes
-  if (syncStatus === 'completed' || syncStatus === 'failed') {
-    // Reset on next render cycle
-    if (syncingConnectorId) setSyncingConnectorId(null)
-  }
+  // Clear SSE tracking when sync reaches a terminal state
+  useEffect(() => {
+    if ((syncStatus === 'completed' || syncStatus === 'failed') && syncingConnectorId) {
+      setSyncingConnectorId(null)
+    }
+  }, [syncStatus, syncingConnectorId])
 
   /** Handle creating a new connector */
   const handleCreate = async (data: CreateConnectorDto | UpdateConnectorDto) => {
@@ -106,15 +104,15 @@ const ConnectorListPanel = ({ kbId, isAdmin }: ConnectorListPanelProps) => {
     }
   }
 
-  /** Handle deleting a connector with confirmation and optional cascade */
+  /** Handle deleting a connector with confirmation */
   const handleDelete = async (connector: Connector) => {
-    setCascadeDelete(false)
     const confirmed = await confirm({
       title: t('datasets.connectors.deleteConfirmTitle'),
       message: t('datasets.connectors.deleteConfirmDescription', { name: connector.name }),
     })
     if (!confirmed) return
-    await deleteMutation.mutateAsync({ id: connector.id, cascadeDocuments: cascadeDelete })
+    // Cascade document deletion is disabled by default — requires explicit user action
+    await deleteMutation.mutateAsync({ id: connector.id })
   }
 
   /** Toggle connector between paused and active status */
@@ -122,7 +120,7 @@ const ConnectorListPanel = ({ kbId, isAdmin }: ConnectorListPanelProps) => {
     const newStatus = connector.status === 'paused' ? 'active' : 'paused'
     await updateMutation.mutateAsync({
       id: connector.id,
-      data: { status: newStatus } as UpdateConnectorDto,
+      data: { status: newStatus },
     })
   }
 

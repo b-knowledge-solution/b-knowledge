@@ -16,6 +16,12 @@ const SENSITIVE_CONFIG_KEYS = new Set([
   'access_token', 'secret_key', 'api_token', 'password', 'client_secret',
   'service_account_json', 'db_password', 'token', 'api_key', 'secret',
   'refresh_token', 'private_key', 'confluence_token', 'access_key',
+  // Connector-specific credential keys
+  'slack_bot_token', 'discord_bot_token', 'github_access_token',
+  'gitlab_access_token', 'notion_integration_token', 'confluence_access_token',
+  'airtable_access_token', 'zendesk_token', 'client_id',
+  'access_key_id', 'secret_access_key', 'aws_access_key_id',
+  'aws_secret_access_key', 'r2_access_key_id', 'r2_secret_access_key',
 ])
 
 /** Masked value shown in API responses for sensitive fields */
