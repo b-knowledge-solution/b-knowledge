@@ -98,6 +98,10 @@ C4Context
 | [Guideline & Onboarding](/srs/management/fr-guideline-onboarding) | In-app help dialogs, guided tours, first-visit detection |
 | [Code Knowledge Graph](/srs/integrations/fr-code-graph) | Code structure graph (Memgraph), call analysis, NL queries |
 | [External API & API Keys](/srs/integrations/fr-external-api) | Programmatic API access with scoped API keys |
+| [Broadcast Messages](/srs/management/fr-broadcast) | System-wide announcements with per-user dismissal |
+| [User History](/srs/management/fr-user-history) | Personal chat and search session history browsing |
+| [System Tools](/srs/management/fr-system-tools) | Admin tool monitoring and health checks |
+| [Landing Page](/srs/management/fr-landing-page) | Public-facing platform entry page |
 
 ## 6. Technology Stack Summary
 
