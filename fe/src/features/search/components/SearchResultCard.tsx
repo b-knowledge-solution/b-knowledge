@@ -5,9 +5,9 @@
 
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FileText, FileSpreadsheet, FileImage, File, ExternalLink, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { FileText, FileSpreadsheet, FileImage, File, ExternalLink } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { FeedbackCommentPopover } from '@/components/FeedbackCommentPopover'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import type { SearchResult } from '../types/search.types'
@@ -28,8 +28,8 @@ interface SearchResultCardProps {
   onClick?: ((result: SearchResult) => void) | undefined
   /** Optional CSS class name */
   className?: string
-  /** Callback to send feedback on this result */
-  onFeedback?: ((thumbup: boolean, result: SearchResult) => void) | undefined
+  /** Callback to send feedback on this result, with optional comment */
+  onFeedback?: ((thumbup: boolean, result: SearchResult, comment?: string) => void) | undefined
 }
 
 // ============================================================================
@@ -82,7 +82,7 @@ function SearchResultCard({ result, query, onClick, className, onFeedback }: Sea
 
   // Determine if this chunk has an associated image
   const imageUrl = result.image_url
-    || (result.img_id ? `/api/documents/images/${result.img_id}` : undefined)
+    || (result.img_id ? `/api/rag/images/${result.img_id}` : undefined)
 
   /**
    * Handle thumbnail click -- open lightbox and prevent card click propagation.
@@ -94,28 +94,34 @@ function SearchResultCard({ result, query, onClick, className, onFeedback }: Sea
   }
 
   /**
-   * @description Handle feedback button click, toggle state, and notify parent.
-   * @param {React.MouseEvent} e - Mouse event to stop propagation
-   * @param {'up' | 'down'} type - Feedback type
+   * @description Handle feedback from FeedbackCommentPopover and notify parent.
+   * @param {boolean} thumbup - True for positive, false for negative
+   * @param {string} [comment] - Optional feedback comment
    */
-  function handleFeedback(e: React.MouseEvent, type: 'up' | 'down') {
-    // Prevent card click when clicking feedback buttons
-    e.stopPropagation()
-    const newValue = feedback === type ? null : type
-    setFeedback(newValue)
+  function handleFeedback(thumbup: boolean, comment?: string) {
+    setFeedback(thumbup ? 'up' : 'down')
 
-    // Only send feedback when toggling on (not when un-toggling)
-    if (newValue && onFeedback) {
-      onFeedback(type === 'up', result)
+    // Notify parent with feedback data
+    if (onFeedback) {
+      onFeedback(thumbup, result, comment)
     }
   }
 
   return (
     <>
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => onClick?.(result)}
+        onKeyDown={(e) => {
+          // Allow keyboard activation with Enter or Space, matching native button behavior
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onClick?.(result)
+          }
+        }}
         className={cn(
-          'w-full text-left border rounded-xl p-4 hover:shadow-md hover:border-primary/30 transition-all group bg-background',
+          'w-full text-left border rounded-xl p-4 hover:shadow-md hover:border-primary/30 transition-all group bg-background cursor-pointer',
           className,
         )}
       >
@@ -180,27 +186,13 @@ function SearchResultCard({ result, query, onClick, className, onFeedback }: Sea
           />
         </div>
 
-        {/* Feedback buttons -- shown when onFeedback callback is provided */}
+        {/* Feedback buttons -- shared popover component, shown when onFeedback callback is provided */}
         {onFeedback && (
-          <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn('h-6 w-6', feedback === 'up' && 'text-green-500')}
-              onClick={(e) => handleFeedback(e, 'up')}
-              title={t('search.helpful')}
-            >
-              <ThumbsUp className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn('h-6 w-6', feedback === 'down' && 'text-red-500')}
-              onClick={(e) => handleFeedback(e, 'down')}
-              title={t('search.notHelpful')}
-            >
-              <ThumbsDown className="h-3 w-3" />
-            </Button>
+          <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+            <FeedbackCommentPopover
+              feedback={feedback}
+              onFeedback={handleFeedback}
+            />
             {/* Show thank-you text after submitting feedback */}
             {feedback && (
               <span className="text-[10px] text-muted-foreground ml-1">
@@ -209,7 +201,7 @@ function SearchResultCard({ result, query, onClick, className, onFeedback }: Sea
             )}
           </div>
         )}
-      </button>
+      </div>
 
       {/* Image lightbox for full-size preview */}
       {imageUrl && (

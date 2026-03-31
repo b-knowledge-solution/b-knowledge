@@ -6,10 +6,11 @@
 
 import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Copy, Check, ThumbsUp, ThumbsDown, Bot, User, Volume2, Square, FileText, RefreshCw, Pencil, X, Send } from 'lucide-react'
+import { Copy, Check, Bot, User, Volume2, Square, FileText, RefreshCw, Pencil, X, Send } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { FeedbackCommentPopover } from '@/components/FeedbackCommentPopover'
 import type { ChatMessage as ChatMessageType, ChatReference, ChatChunk, DocAggregate } from '../types/chat.types'
 import { chatApi } from '../api/chatApi'
 import { useTts } from '../hooks/useTts'
@@ -90,20 +91,21 @@ function ChatMessage({ message, onCitationClick: _onCitationClick, onChunkCitati
   }
 
   /**
-   * @description Handle feedback button click, toggle state, and send to backend.
-   * @param type - Feedback type ('up' or 'down')
+   * @description Handle feedback submission from FeedbackCommentPopover.
+   * Sends thumb up/down with optional comment to the backend.
+   * @param {boolean} thumbup - True for positive, false for negative
+   * @param {string} [comment] - Optional feedback comment text
    */
-  const handleFeedback = async (type: 'up' | 'down') => {
-    const newValue = feedback === type ? null : type
+  const handleFeedback = async (thumbup: boolean, comment?: string) => {
+    const newValue = thumbup ? 'up' : 'down'
     setFeedback(newValue)
 
+    // Only send feedback for real messages (not temporary or error placeholders)
     if (conversationId && message.id && !message.id.startsWith('assistant-') && !message.id.startsWith('error-')) {
       try {
-        if (newValue) {
-          await chatApi.sendFeedback(conversationId, message.id, newValue === 'up')
-        }
+        await chatApi.sendFeedback(conversationId, message.id, thumbup, comment)
       } catch {
-        // Best-effort
+        // Best-effort — don't block the UI on feedback failure
       }
     }
   }
@@ -319,28 +321,13 @@ function ChatMessage({ message, onCitationClick: _onCitationClick, onChunkCitati
             </Button>
           )}
 
-          {/* Feedback buttons (assistant only) */}
+          {/* Feedback buttons (assistant only) — shared popover component */}
           {!isUser && (
-            <>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn('h-6 w-6', feedback === 'up' && 'text-green-500')}
-                onClick={() => handleFeedback('up')}
-                title={t('chat.thumbsUp')}
-              >
-                <ThumbsUp className="h-3 w-3" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn('h-6 w-6', feedback === 'down' && 'text-red-500')}
-                onClick={() => handleFeedback('down')}
-                title={t('chat.thumbsDown')}
-              >
-                <ThumbsDown className="h-3 w-3" />
-              </Button>
-            </>
+            <FeedbackCommentPopover
+              feedback={feedback}
+              onFeedback={handleFeedback}
+              disabled={isStreaming}
+            />
           )}
 
           {/* Regenerate button (last assistant message only) */}

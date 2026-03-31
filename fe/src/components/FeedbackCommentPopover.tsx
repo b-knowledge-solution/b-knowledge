@@ -26,7 +26,7 @@ export interface FeedbackCommentPopoverProps {
   /** Button size - sm for inline, md for standalone */
   size?: 'sm' | 'md'
   /** Whether buttons should be disabled (e.g. during streaming) */
-  disabled?: boolean
+  disabled?: boolean | undefined
 }
 
 // ============================================================================

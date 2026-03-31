@@ -191,3 +191,25 @@ export function useDeleteVersion() {
     },
   })
 }
+
+/**
+ * @description Submit feedback (thumbs up/down with optional comment) on an agent run
+ * @returns TanStack useMutation result for submitting agent run feedback
+ */
+export function useSubmitAgentRunFeedback() {
+  return useMutation({
+    mutationFn: (params: {
+      runId: string
+      thumbup: boolean
+      comment?: string
+      query: string
+      answer: string
+    }) =>
+      agentApi.submitRunFeedback(params.runId, {
+        thumbup: params.thumbup,
+        ...(params.comment ? { comment: params.comment } : {}),
+        query: params.query,
+        answer: params.answer,
+      }),
+  })
+}

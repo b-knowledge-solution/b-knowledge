@@ -14,7 +14,8 @@ import {
 } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useAgentRuns } from '../api/agentQueries'
+import { useAgentRuns, useSubmitAgentRunFeedback } from '../api/agentQueries'
+import { FeedbackCommentPopover } from '@/components/FeedbackCommentPopover'
 import type { AgentRun, AgentRunStatus } from '../types/agent.types'
 
 // ============================================================================
@@ -87,16 +88,39 @@ function formatDuration(ms: number | null): string {
 export function RunHistorySheet({ open, onClose, agentId }: RunHistorySheetProps) {
   const { t } = useTranslation()
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null)
+  // Track feedback state per run (keyed by run ID)
+  const [runFeedback, setRunFeedback] = useState<Record<string, 'up' | 'down' | null>>({})
 
   // Fetch run history for the agent
   const { data: runs, isLoading } = useAgentRuns(agentId)
   const runList = (runs ?? []) as AgentRun[]
+
+  // Mutation for submitting run feedback
+  const feedbackMutation = useSubmitAgentRunFeedback()
 
   /**
    * Toggle expanded state for a run row to show error/output details
    */
   const toggleExpand = (runId: string) => {
     setExpandedRunId((prev) => prev === runId ? null : runId)
+  }
+
+  /**
+   * @description Handle feedback submission for a completed agent run.
+   * Updates local state and sends feedback to backend.
+   * @param {AgentRun} run - The agent run being evaluated
+   * @param {boolean} thumbup - True for positive, false for negative
+   * @param {string} [comment] - Optional feedback comment
+   */
+  const handleRunFeedback = (run: AgentRun, thumbup: boolean, comment?: string) => {
+    setRunFeedback((prev) => ({ ...prev, [run.id]: thumbup ? 'up' : 'down' }))
+    feedbackMutation.mutate({
+      runId: run.id,
+      thumbup,
+      ...(comment ? { comment } : {}),
+      query: run.input || '[Agent run]',
+      answer: run.output || '[No output]',
+    })
   }
 
   return (
@@ -154,6 +178,18 @@ export function RunHistorySheet({ open, onClose, agentId }: RunHistorySheetProps
                         <span>{formatDuration(run.duration_ms)}</span>
                         {/* Node progress */}
                         <span>{run.completed_nodes}/{run.total_nodes}</span>
+
+                        {/* Feedback buttons — only on completed runs */}
+                        {run.status === 'completed' && (
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <FeedbackCommentPopover
+                              feedback={runFeedback[run.id] || null}
+                              onFeedback={(thumbup, comment) => handleRunFeedback(run, thumbup, comment)}
+                              size="sm"
+                            />
+                          </div>
+                        )}
+
                         {/* Expand chevron */}
                         {isExpanded
                           ? <ChevronUp className="h-4 w-4" />

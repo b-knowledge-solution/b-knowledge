@@ -177,4 +177,29 @@ export const agentApi = {
    */
   listRuns: (agentId: string) =>
     api.get<AgentRun[]>(`/api/agents/${agentId}/runs`),
+
+  // --------------------------------------------------------------------------
+  // Feedback
+  // --------------------------------------------------------------------------
+
+  /**
+   * @description Submit thumbs up/down feedback on an agent run result.
+   * Posts to the shared feedback endpoint with source='agent'.
+   * @param {string} runId - Agent run UUID
+   * @param {{ thumbup: boolean; comment?: string; query: string; answer: string }} data - Feedback payload
+   * @returns {Promise<void>}
+   */
+  submitRunFeedback: async (
+    runId: string,
+    data: { thumbup: boolean; comment?: string; query: string; answer: string },
+  ): Promise<void> => {
+    await api.post('/api/feedback', {
+      source: 'agent',
+      source_id: runId,
+      thumbup: data.thumbup,
+      ...(data.comment ? { comment: data.comment } : {}),
+      query: data.query,
+      answer: data.answer,
+    })
+  },
 }
