@@ -114,6 +114,10 @@ vi.mock('@/features/agents/components/canvas/forms/RewriteForm', () => ({
   RewriteForm: () => <div data-testid="rewrite-form" />,
 }))
 
+vi.mock('@/features/agents/components/canvas/forms/MemoryForm', () => ({
+  MemoryForm: () => <div data-testid="memory-form" />,
+}))
+
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, onClick, ...props }: any) => (
     <button onClick={onClick} {...props}>{children}</button>
@@ -122,6 +126,14 @@ vi.mock('@/components/ui/button', () => ({
 
 vi.mock('@/components/ui/textarea', () => ({
   Textarea: (props: any) => <textarea {...props} />,
+}))
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}))
+
+vi.mock('lucide-react', () => ({
+  X: () => null,
 }))
 
 import { NodeConfigPanel } from '@/features/agents/components/canvas/NodeConfigPanel'

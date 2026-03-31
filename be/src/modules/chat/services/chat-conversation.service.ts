@@ -692,10 +692,17 @@ export class ChatConversationService {
     const message = await ModelFactory.chatMessage.findById(messageId)
     if (!message) throw new Error('Message not found')
 
-    // Merge new feedback with existing citations data (preserving reference info)
-    const existing = (typeof message.citations === 'object' && message.citations) || {}
+    // Parse existing citations — handle both string (legacy double-stringify) and object formats
+    let existing: Record<string, unknown> = {}
+    if (typeof message.citations === 'string') {
+      try { existing = JSON.parse(message.citations) } catch { /* ignore parse errors */ }
+    } else if (typeof message.citations === 'object' && message.citations) {
+      existing = message.citations as Record<string, unknown>
+    }
+
+    // Merge feedback into existing citations data, preserving chunks and doc_aggs
     const updated = {
-      ...(existing as Record<string, unknown>),
+      ...existing,
       feedback: { thumbup, text: feedback || null, timestamp: new Date().toISOString() },
     }
 
@@ -905,7 +912,7 @@ export class ChatConversationService {
             session_id: conversationId,
             role: 'assistant',
             content: sqlResult.answer,
-            citations: JSON.stringify(sqlRef),
+            citations: sqlRef,
             created_by: userId,
           } as any)
 
@@ -1337,7 +1344,7 @@ export class ChatConversationService {
           session_id: conversationId,
           role: 'assistant',
           content: processedAnswer,
-          citations: finalReference ? JSON.stringify(finalReference) : null,
+          citations: finalReference ?? null,
           created_by: userId,
         } as any)
       }

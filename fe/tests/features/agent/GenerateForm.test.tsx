@@ -73,6 +73,12 @@ vi.mock('@/components/ui/select', () => ({
   SelectValue: ({ placeholder }: any) => <span>{placeholder}</span>,
 }))
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, fallback?: string) => `${key}:${JSON.stringify(fallback ?? '')}`,
+  }),
+}))
+
 import { GenerateForm } from '@/features/agents/components/canvas/forms/GenerateForm'
 
 // ---------------------------------------------------------------------------
@@ -93,13 +99,13 @@ describe('GenerateForm', () => {
   it('renders all form fields', () => {
     render(<GenerateForm {...defaultProps} />)
 
-    expect(screen.getByText('agents.generate.model')).toBeInTheDocument()
-    expect(screen.getByText('agents.generate.systemPrompt')).toBeInTheDocument()
-    expect(screen.getByText('agents.generate.temperature')).toBeInTheDocument()
-    expect(screen.getByText('agents.generate.topP')).toBeInTheDocument()
-    expect(screen.getByText('agents.generate.maxTokens')).toBeInTheDocument()
-    expect(screen.getByText('agents.generate.frequencyPenalty')).toBeInTheDocument()
-    expect(screen.getByText('agents.generate.messagePassthrough')).toBeInTheDocument()
+    expect(screen.getByText(/agents\.generate\.model/)).toBeInTheDocument()
+    expect(screen.getByText(/agents\.generate\.systemPrompt/)).toBeInTheDocument()
+    expect(screen.getByText(/agents\.generate\.temperature/)).toBeInTheDocument()
+    expect(screen.getByText(/agents\.generate\.topP/)).toBeInTheDocument()
+    expect(screen.getByText(/agents\.generate\.maxTokens/)).toBeInTheDocument()
+    expect(screen.getByText(/agents\.generate\.frequencyPenalty/)).toBeInTheDocument()
+    expect(screen.getByText(/agents\.generate\.messagePassthrough:"Message Passthrough"/)).toBeInTheDocument()
   })
 
   it('renders default temperature value', () => {
@@ -142,7 +148,7 @@ describe('GenerateForm', () => {
     const onUpdate = vi.fn()
     render(<GenerateForm {...defaultProps} onUpdate={onUpdate} />)
 
-    const textarea = screen.getByPlaceholderText('agents.generate.systemPromptPlaceholder')
+    const textarea = screen.getByPlaceholderText(/agents\.generate\.systemPromptPlaceholder/)
     fireEvent.change(textarea, { target: { value: 'New prompt' } })
 
     expect(onUpdate).toHaveBeenCalledWith(
@@ -204,7 +210,7 @@ describe('GenerateForm', () => {
 
   it('renders passthrough hint text', () => {
     render(<GenerateForm {...defaultProps} />)
-    expect(screen.getByText('agents.generate.messagePassthroughHint')).toBeInTheDocument()
+    expect(screen.getByText(/agents\.generate\.messagePassthroughHint/)).toBeInTheDocument()
   })
 
   it('re-syncs state when config prop changes', () => {
@@ -223,6 +229,6 @@ describe('GenerateForm', () => {
 
   it('renders model select placeholder', () => {
     render(<GenerateForm {...defaultProps} />)
-    expect(screen.getByText('agents.generate.selectModel')).toBeInTheDocument()
+    expect(screen.getByText(/agents\.generate\.selectModel/)).toBeInTheDocument()
   })
 })

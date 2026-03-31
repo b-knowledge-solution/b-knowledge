@@ -100,6 +100,11 @@ function SearchDocumentPreviewDrawer({
               downloadUrl={downloadUrl}
               showChunks={false}
               selectedChunk={selectedChunk as any}
+              initialPage={
+                Array.isArray(chunk?.page_num) ? chunk.page_num[0]
+                  : typeof chunk?.page_num === 'number' ? chunk.page_num
+                  : chunk?.positions?.[0]?.[0]
+              }
             />
           ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
