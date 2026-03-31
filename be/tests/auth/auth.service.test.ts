@@ -11,11 +11,12 @@ const mockFetch = vi.fn()
 global.fetch = mockFetch as any
 
 // Mock getUuid for standardized 32-char hex UUID generation
+const mockGetUuid = vi.hoisted(() => vi.fn(() => 'aabbccdd11223344aabbccdd11223344'))
 vi.mock('@/shared/utils/uuid.js', () => {
   const { z } = require('zod')
   const re = /^[0-9a-f]{32}$/
   return {
-    getUuid: vi.fn(() => 'aabbccdd11223344aabbccdd11223344'),
+    getUuid: mockGetUuid,
     hexId: z.string().regex(re, 'Invalid ID format (expected 32-char hex)'),
     hexIdWith: (msg: string) => z.string().regex(re, msg),
   }
@@ -74,6 +75,8 @@ const createService = () => new AuthService()
 describe('Auth Service', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Restore mock implementations cleared by global resetAllMocks
+    mockGetUuid.mockReturnValue('aabbccdd11223344aabbccdd11223344')
   })
 
   afterEach(() => {

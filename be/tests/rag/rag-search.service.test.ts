@@ -381,7 +381,7 @@ describe('RagSearchService', () => {
   // -----------------------------------------------------------------------
 
   describe('deleteChunksByDocId', () => {
-    it('strips hyphens from docId before querying', async () => {
+    it('passes docId as-is to the query', async () => {
       mockDeleteByQuery.mockResolvedValue({
         body: { deleted: 3 },
       })
@@ -392,8 +392,8 @@ describe('RagSearchService', () => {
       const docIdTerm = body.query.bool.must.find(
         (m: any) => m.term && 'doc_id' in m.term,
       )
-      // Hyphens should be removed
-      expect(docIdTerm.term.doc_id).toBe('abcdef123')
+      // docId is passed as-is (tenant isolation via index name)
+      expect(docIdTerm.term.doc_id).toBe('abc-def-123')
     })
 
     it('uses correct index and query structure', async () => {
@@ -407,13 +407,12 @@ describe('RagSearchService', () => {
       const callArg = mockDeleteByQuery.mock.calls[0]![0]
       // Index should follow knowledge_{tenantId} pattern
       expect(callArg.index).toBe('knowledge_t1')
-      // Query must include both kb_id and doc_id
+      // Query must include both kb_id and doc_id (tenant isolation via index name)
       const must = callArg.body.query.bool.must
       expect(must).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ term: { kb_id: 'ds1' } }),
           expect.objectContaining({ term: { doc_id: 'docid' } }),
-          expect.objectContaining({ term: { tenant_id: 't1' } }),
         ]),
       )
       expect(result.deleted).toBe(1)

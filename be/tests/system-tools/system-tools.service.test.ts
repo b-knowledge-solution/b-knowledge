@@ -66,7 +66,9 @@ vi.mock('@/shared/config/index.js', () => ({
     systemToolsConfigPath: '/env/path.json',
     redis: { url: 'redis://localhost', host: 'localhost' },
     database: { host: 'localhost' },
-    langfuse: { publicKey: 'p', secretKey: 's', baseUrl: 'http://b.com' }
+    langfuse: { publicKey: 'p', secretKey: 's', baseUrl: 'http://b.com' },
+    s3: { endpoint: 'http://localhost:9000', bucket: 'test-bucket' },
+    opensearch: { host: 'http://localhost:9200' },
   },
 }))
 

@@ -12,9 +12,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // Mocks
 // ---------------------------------------------------------------------------
 
-const { mockDel, mockWhere } = vi.hoisted(() => ({
+const { mockDel, mockWhere, mockDeleteAllByDataset } = vi.hoisted(() => ({
   mockDel: vi.fn(),
   mockWhere: vi.fn(),
+  mockDeleteAllByDataset: vi.fn(),
 }))
 
 vi.mock('../../src/shared/db/knex.js', () => {
@@ -37,6 +38,7 @@ vi.mock('../../src/shared/models/factory.js', () => ({
       softDelete: vi.fn(),
       beginParse: vi.fn(),
       findByDatasetIdAsc: vi.fn(),
+      deleteAllByDataset: mockDeleteAllByDataset,
     },
     ragFile: {
       createFile: vi.fn(),
@@ -103,20 +105,19 @@ describe('RagDocumentService.deleteAllByDataset', () => {
   })
 
   it('deletes all documents for a dataset and returns count', async () => {
-    // Simulate 5 rows deleted
-    mockDel.mockResolvedValue(5)
+    // Model layer returns the number of deleted rows
+    mockDeleteAllByDataset.mockResolvedValue(5)
 
     const count = await service.deleteAllByDataset('ds-1', 'tenant-1')
 
-    // Should query the 'document' table filtered by kb_id
-    expect(mockWhere).toHaveBeenCalledWith('document', 'kb_id', 'ds-1')
-    expect(mockDel).toHaveBeenCalledTimes(1)
+    // Should delegate to ragDocument model with the dataset ID
+    expect(mockDeleteAllByDataset).toHaveBeenCalledWith('ds-1')
     expect(count).toBe(5)
   })
 
   it('returns zero when dataset has no documents', async () => {
     // No rows affected
-    mockDel.mockResolvedValue(0)
+    mockDeleteAllByDataset.mockResolvedValue(0)
 
     const count = await service.deleteAllByDataset('empty-ds', 'tenant-1')
 
@@ -124,8 +125,8 @@ describe('RagDocumentService.deleteAllByDataset', () => {
   })
 
   it('passes through database errors', async () => {
-    // Simulate a database error
-    mockDel.mockRejectedValue(new Error('DB connection lost'))
+    // Simulate a database error from the model layer
+    mockDeleteAllByDataset.mockRejectedValue(new Error('DB connection lost'))
 
     await expect(
       service.deleteAllByDataset('ds-err', 'tenant-1'),

@@ -69,6 +69,7 @@ vi.mock('../../src/shared/prompts/index.js', () => ({
 
 vi.mock('../../src/modules/rag/index.js', () => ({
   queryLogService: { logQuery: vi.fn() },
+  ragSqlService: { querySql: vi.fn().mockResolvedValue(null) },
 }))
 
 vi.mock('../../src/shared/services/web-search.service.js', () => ({
@@ -94,6 +95,15 @@ vi.mock('../../src/shared/models/factory.js', () => ({
     },
     user: { getKnex: () => ({}) },
     team: { getKnex: () => ({}) },
+    dataset: {
+      findAll: () => Promise.resolve([]),
+      findById: () => Promise.resolve(null),
+      getKnex: () => ({
+        select: () => ({
+          whereIn: () => Promise.resolve([]),
+        }),
+      }),
+    },
   },
 }))
 

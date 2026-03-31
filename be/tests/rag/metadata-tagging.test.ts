@@ -29,6 +29,7 @@ const {
       findById: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      bulkUpdateMetadataTags: vi.fn().mockResolvedValue(undefined),
     },
     mockDbUpdate,
     mockDbWhereIn,
@@ -105,7 +106,7 @@ describe('Metadata Tagging - custom tags', () => {
   })
 
   it('should store metadata_tags in parser_config JSONB via merge mode', async () => {
-    // metadata_tags is stored inside parser_config.metadata_tags using jsonb_set
+    // metadata_tags is stored via model layer's bulkUpdateMetadataTags
     await service.bulkUpdateMetadata(
       ['11111111-1111-1111-1111-111111111111'],
       { department: 'engineering', project: 'alpha' },
@@ -113,21 +114,17 @@ describe('Metadata Tagging - custom tags', () => {
       'tenant-1',
     )
 
-    // Verify db('datasets').whereIn was called with the dataset IDs
-    expect(mockDbWhereIn).toHaveBeenCalledWith('id', ['11111111-1111-1111-1111-111111111111'])
-    // Verify tenant isolation was applied
-    expect(mockDbAndWhere).toHaveBeenCalledWith('tenant_id', 'tenant-1')
-    // Verify update was called (the raw SQL uses metadata_tags key, not metadata)
-    expect(mockDbUpdate).toHaveBeenCalled()
-    // Verify db.raw was called with metadata_tags path (NOT metadata)
-    const rawCall = mockDbRaw.mock.calls[0]
-    expect(rawCall[0]).toContain('metadata_tags')
-    // Ensure it does NOT reference the auto-extraction 'metadata' key path directly
-    expect(rawCall[0]).not.toContain("'{metadata}'")
+    // Verify model method was called with correct arguments
+    expect(mockDatasetModel.bulkUpdateMetadataTags).toHaveBeenCalledWith(
+      ['11111111-1111-1111-1111-111111111111'],
+      { department: 'engineering', project: 'alpha' },
+      'merge',
+      'tenant-1',
+    )
   })
 
   it('should keep metadata_tags separate from auto-extracted metadata', async () => {
-    // The raw SQL should use {metadata_tags} path, never {metadata}
+    // Overwrite mode also delegates to model layer with metadata_tags
     await service.bulkUpdateMetadata(
       ['22222222-2222-2222-2222-222222222222'],
       { category: 'internal' },
@@ -135,11 +132,13 @@ describe('Metadata Tagging - custom tags', () => {
       'tenant-1',
     )
 
-    const rawCall = mockDbRaw.mock.calls[0]
-    // Overwrite mode also uses metadata_tags path
-    expect(rawCall[0]).toContain('{metadata_tags}')
-    // Verify the tags JSON is passed as parameter (db.raw receives [sql, [params]])
-    expect(rawCall[1]).toEqual([JSON.stringify({ category: 'internal' })])
+    // Verify overwrite mode is passed through to model
+    expect(mockDatasetModel.bulkUpdateMetadataTags).toHaveBeenCalledWith(
+      ['22222222-2222-2222-2222-222222222222'],
+      { category: 'internal' },
+      'overwrite',
+      'tenant-1',
+    )
   })
 })
 
@@ -179,12 +178,13 @@ describe('Metadata Tagging - bulk operations', () => {
     ]
     await service.bulkUpdateMetadata(ids, { env: 'prod' }, 'merge', 'tenant-2')
 
-    // Should pass all IDs to whereIn
-    expect(mockDbWhereIn).toHaveBeenCalledWith('id', ids)
-    // Merge mode uses COALESCE to preserve existing tags
-    const rawCall = mockDbRaw.mock.calls[0]
-    expect(rawCall[0]).toContain('COALESCE')
-    expect(rawCall[0]).toContain('metadata_tags')
+    // Should pass all IDs and merge mode to model method
+    expect(mockDatasetModel.bulkUpdateMetadataTags).toHaveBeenCalledWith(
+      ids,
+      { env: 'prod' },
+      'merge',
+      'tenant-2',
+    )
   })
 
   it('should replace metadata_tags on multiple datasets in overwrite mode', async () => {
@@ -192,12 +192,13 @@ describe('Metadata Tagging - bulk operations', () => {
     const ids = ['55555555-5555-5555-5555-555555555555']
     await service.bulkUpdateMetadata(ids, { owner: 'team-a' }, 'overwrite', 'tenant-2')
 
-    expect(mockDbWhereIn).toHaveBeenCalledWith('id', ids)
-    // Overwrite mode does NOT use COALESCE for the inner merge
-    const rawCall = mockDbRaw.mock.calls[0]
-    expect(rawCall[0]).toContain('{metadata_tags}')
-    // Overwrite uses simple jsonb_set without COALESCE on metadata_tags
-    expect(rawCall[0]).not.toContain("COALESCE(parser_config->'metadata_tags'")
+    // Should pass overwrite mode to model method
+    expect(mockDatasetModel.bulkUpdateMetadataTags).toHaveBeenCalledWith(
+      ids,
+      { owner: 'team-a' },
+      'overwrite',
+      'tenant-2',
+    )
   })
 
   it('should enforce tenant_id isolation on bulk updates', async () => {
@@ -209,7 +210,12 @@ describe('Metadata Tagging - bulk operations', () => {
       'isolated-tenant',
     )
 
-    // Verify tenant_id filter was applied
-    expect(mockDbAndWhere).toHaveBeenCalledWith('tenant_id', 'isolated-tenant')
+    // Verify tenant_id is passed to model for isolation
+    expect(mockDatasetModel.bulkUpdateMetadataTags).toHaveBeenCalledWith(
+      ['66666666-6666-6666-6666-666666666666'],
+      { tag: 'value' },
+      'merge',
+      'isolated-tenant',
+    )
   })
 })
