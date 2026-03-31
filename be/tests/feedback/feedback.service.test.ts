@@ -5,12 +5,29 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+/** @description Create a chainable Knex query builder mock for export queries */
+const createChainableMock = vi.hoisted(() => {
+  return (resolvedData: any[] = []) => {
+    const chain: any = {}
+    const methods = ['from', 'leftJoin', 'select', 'where', 'orderBy', 'limit']
+    for (const m of methods) {
+      chain[m] = vi.fn().mockReturnValue(chain)
+    }
+    // limit() is the terminal call — resolve the promise
+    chain.limit = vi.fn().mockResolvedValue(resolvedData)
+    // Also make the chain thenable for cases where limit isn't last
+    chain.then = (resolve: any) => Promise.resolve(resolvedData).then(resolve)
+    return chain
+  }
+})
+
 const mockAnswerFeedbackModel = vi.hoisted(() => ({
   create: vi.fn(),
   findBySource: vi.fn(),
   findPaginated: vi.fn(),
   countBySource: vi.fn(),
   getTopFlaggedSessions: vi.fn(),
+  getKnex: vi.fn(),
 }))
 
 const mockLog = vi.hoisted(() => ({
@@ -145,36 +162,38 @@ describe('FeedbackService', () => {
   })
 
   describe('exportFeedback', () => {
-    it('should return all matching records without pagination metadata', async () => {
+    it('should return enriched records with user_email via JOIN', async () => {
       const mockRecords = [
-        { id: '1', source: 'chat', thumbup: true },
-        { id: '2', source: 'search', thumbup: false },
+        { id: '1', source: 'chat', thumbup: true, user_email: 'user@example.com' },
+        { id: '2', source: 'search', thumbup: false, user_email: 'admin@example.com' },
       ]
-      mockAnswerFeedbackModel.findPaginated.mockResolvedValueOnce({
-        data: mockRecords,
-        total: 2,
-      })
+      const chain = createChainableMock(mockRecords)
+      mockAnswerFeedbackModel.getKnex.mockReturnValueOnce(chain)
 
       const result = await feedbackService.exportFeedback({ tenantId: 'tenant-1' })
 
-      // Should return just the data array, not the pagination wrapper
+      // Should return enriched records with user_email
       expect(result).toEqual(mockRecords)
       expect(result).toHaveLength(2)
+      // Should build query with users JOIN
+      expect(chain.from).toHaveBeenCalledWith('answer_feedback')
+      expect(chain.leftJoin).toHaveBeenCalledWith('users', 'answer_feedback.user_id', 'users.id')
+      expect(chain.select).toHaveBeenCalledWith('answer_feedback.*', 'users.email as user_email')
     })
 
-    it('should use limit of 10000 for export', async () => {
-      mockAnswerFeedbackModel.findPaginated.mockResolvedValueOnce({ data: [], total: 0 })
+    it('should cap export at 10000 records', async () => {
+      const chain = createChainableMock([])
+      mockAnswerFeedbackModel.getKnex.mockReturnValueOnce(chain)
 
       await feedbackService.exportFeedback({ tenantId: 'tenant-1' })
 
-      // Export uses page 1 with limit 10000
-      expect(mockAnswerFeedbackModel.findPaginated).toHaveBeenCalledWith(
-        expect.objectContaining({ page: 1, limit: 10000 })
-      )
+      // Export caps at 10000 records
+      expect(chain.limit).toHaveBeenCalledWith(10000)
     })
 
-    it('should pass filter options through to findPaginated', async () => {
-      mockAnswerFeedbackModel.findPaginated.mockResolvedValueOnce({ data: [], total: 0 })
+    it('should apply source and date filters to export query', async () => {
+      const chain = createChainableMock([])
+      mockAnswerFeedbackModel.getKnex.mockReturnValueOnce(chain)
 
       await feedbackService.exportFeedback({
         source: 'agent',
@@ -184,14 +203,22 @@ describe('FeedbackService', () => {
         tenantId: 'tenant-1',
       })
 
-      expect(mockAnswerFeedbackModel.findPaginated).toHaveBeenCalledWith(
-        expect.objectContaining({
-          source: 'agent',
-          thumbup: false,
-          startDate: '2026-01-01',
-          endDate: '2026-03-31',
-        })
-      )
+      // Should filter by tenant, source, thumbup, and date range
+      expect(chain.where).toHaveBeenCalledWith('answer_feedback.tenant_id', 'tenant-1')
+      expect(chain.where).toHaveBeenCalledWith('answer_feedback.source', 'agent')
+      expect(chain.where).toHaveBeenCalledWith('answer_feedback.thumbup', false)
+      expect(chain.where).toHaveBeenCalledWith('answer_feedback.created_at', '>=', '2026-01-01')
+      expect(chain.where).toHaveBeenCalledWith('answer_feedback.created_at', '<=', '2026-03-31 23:59:59')
+    })
+
+    it('should scope export by tenant_id', async () => {
+      const chain = createChainableMock([])
+      mockAnswerFeedbackModel.getKnex.mockReturnValueOnce(chain)
+
+      await feedbackService.exportFeedback({ tenantId: 'org-42' })
+
+      // Tenant scoping is mandatory
+      expect(chain.where).toHaveBeenCalledWith('answer_feedback.tenant_id', 'org-42')
     })
   })
 })
