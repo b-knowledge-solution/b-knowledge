@@ -3,7 +3,7 @@
  * @module features/dashboard/api/dashboardApi
  */
 import { apiFetch } from '@/lib/api'
-import type { DashboardStats, QueryAnalytics, FeedbackAnalytics } from '../types/dashboard.types'
+import type { DashboardStats, QueryAnalytics, FeedbackAnalytics, FeedbackStatsResponse } from '../types/dashboard.types'
 
 /**
  * @description Fetch dashboard statistics from the admin API.
@@ -69,4 +69,26 @@ export async function fetchFeedbackAnalytics(
     const url = `/api/admin/dashboard/analytics/feedback${queryString ? `?${queryString}` : ''}`
 
     return apiFetch<FeedbackAnalytics>(url)
+}
+
+/**
+ * @description Fetch feedback stats (source breakdown and top flagged sessions) from the feedback API.
+ * Calls GET /api/feedback/stats which provides aggregated source breakdown and top flagged data.
+ * @param {string} [startDate] - Optional ISO date string for range start.
+ * @param {string} [endDate] - Optional ISO date string for range end.
+ * @returns {Promise<FeedbackStatsResponse>} Source breakdown and top flagged sessions.
+ */
+export async function fetchFeedbackStats(
+    startDate?: string,
+    endDate?: string
+): Promise<FeedbackStatsResponse> {
+    const params = new URLSearchParams()
+    // Only include date params when provided to allow unbounded queries
+    if (startDate) params.set('startDate', startDate)
+    if (endDate) params.set('endDate', endDate)
+
+    const queryString = params.toString()
+    const url = `/api/feedback/stats${queryString ? `?${queryString}` : ''}`
+
+    return apiFetch<FeedbackStatsResponse>(url)
 }

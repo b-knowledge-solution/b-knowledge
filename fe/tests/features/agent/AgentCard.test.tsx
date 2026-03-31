@@ -14,13 +14,21 @@ import { render, screen, fireEvent } from '@testing-library/react'
 
 const mockNavigate = vi.fn()
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom')
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  }
-})
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}))
+
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => mockNavigate,
+}))
+
+vi.mock('lucide-react', () => ({
+  MoreVertical: () => null,
+  Pencil: () => null,
+  Copy: () => null,
+  Trash2: () => null,
+  Download: () => null,
+}))
 
 vi.mock('@/components/ui/card', () => ({
   Card: ({ children, onClick, className }: any) => (
@@ -156,7 +164,7 @@ describe('AgentCard', () => {
     const card = screen.getByTestId('card')
     fireEvent.click(card)
 
-    expect(mockNavigate).toHaveBeenCalledWith('/agents/agent-1')
+    expect(mockNavigate).toHaveBeenCalledWith('/agent-studio/agents/agent-1')
   })
 
   it('renders kebab dropdown menu', () => {

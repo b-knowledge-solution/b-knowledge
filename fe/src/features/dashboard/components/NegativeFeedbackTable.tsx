@@ -1,12 +1,13 @@
 /**
- * @fileoverview Table displaying recent negative feedback entries with Langfuse deep links.
- * Shows query text, answer snippet, date, and "View in Langfuse" action when trace_id exists.
+ * @fileoverview Table displaying recent negative feedback entries with source badges and Langfuse deep links.
+ * Shows source type, query text, answer snippet, date, and "View in Langfuse" action when trace_id exists.
  * @module features/dashboard/components/NegativeFeedbackTable
  */
 import { useTranslation } from 'react-i18next'
 import { ExternalLink } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import type { FeedbackAnalytics } from '../types/dashboard.types'
 
 // ============================================================================
@@ -43,12 +44,31 @@ const truncate = (text: string, maxLen: number): string =>
 const buildLangfuseUrl = (baseUrl: string, traceId: string): string =>
     `${baseUrl.replace(/\/$/, '')}/trace/${traceId}`
 
+/**
+ * @description Get CSS classes for source type badge coloring.
+ * Blue for chat, green for search, purple for agent.
+ * @param {string} source - Source type string.
+ * @returns {string} Tailwind CSS class string for the badge.
+ */
+const getSourceBadgeClasses = (source: string): string => {
+    switch (source) {
+        case 'chat':
+            return 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300'
+        case 'search':
+            return 'border-green-300 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-950 dark:text-green-300'
+        case 'agent':
+            return 'border-purple-300 bg-purple-50 text-purple-700 dark:border-purple-700 dark:bg-purple-950 dark:text-purple-300'
+        default:
+            return ''
+    }
+}
+
 // ============================================================================
 // Component
 // ============================================================================
 
 /**
- * @description Table card showing recent negative feedback with query, answer, date,
+ * @description Table card showing recent negative feedback with source badge, query, answer, date,
  * and a "View in Langfuse" link for entries that have a trace_id.
  * @param {NegativeFeedbackTableProps} props - Component props.
  * @returns {JSX.Element} Negative feedback table card.
@@ -68,6 +88,9 @@ export function NegativeFeedbackTable({ feedback, langfuseBaseUrl }: NegativeFee
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b border-slate-200 dark:border-slate-700">
+                                <th className="px-5 py-2.5 text-left font-medium text-slate-500 dark:text-slate-400 w-24">
+                                    {t('dashboard.feedback.sourceColumn')}
+                                </th>
                                 <th className="px-5 py-2.5 text-left font-medium text-slate-500 dark:text-slate-400">
                                     {t('dashboard.analytics.queryColumn')}
                                 </th>
@@ -93,6 +116,16 @@ export function NegativeFeedbackTable({ feedback, langfuseBaseUrl }: NegativeFee
                                         ${index % 2 === 1 ? 'bg-slate-50/50 dark:bg-slate-800/20' : ''}
                                     `}
                                 >
+                                    {/* Source type badge with color coding */}
+                                    <td className="px-5 py-3">
+                                        {item.source ? (
+                                            <Badge variant="outline" className={getSourceBadgeClasses(item.source)}>
+                                                {item.source}
+                                            </Badge>
+                                        ) : (
+                                            <span className="text-xs text-slate-400">-</span>
+                                        )}
+                                    </td>
                                     {/* Query text truncated to 100 characters */}
                                     <td className="px-5 py-3 text-slate-700 dark:text-slate-200 max-w-[250px]">
                                         {truncate(item.query, 100)}
@@ -133,7 +166,7 @@ export function NegativeFeedbackTable({ feedback, langfuseBaseUrl }: NegativeFee
                             {feedback.length === 0 && (
                                 <tr>
                                     <td
-                                        colSpan={4}
+                                        colSpan={5}
                                         className="px-5 py-8 text-center text-slate-400 dark:text-slate-500"
                                     >
                                         {t('dashboard.noData')}

@@ -73,8 +73,8 @@ export interface FeedbackAnalytics {
   worstDatasets: { datasetId: string; name: string; satisfactionRate: number; feedbackCount: number }[]
   /** Daily feedback volume and satisfaction trend */
   trend: { date: string; count: number; satisfactionRate: number }[]
-  /** Recent negative feedback entries with trace links */
-  negativeFeedback: { id: string; query: string; answerPreview: string; traceId: string | null; langfuseUrl: string | null; createdAt: string }[]
+  /** Recent negative feedback entries with trace links and source type */
+  negativeFeedback: { id: string; query: string; answerPreview: string; source: string | null; traceId: string | null; langfuseUrl: string | null; createdAt: string }[]
 }
 
 /**
@@ -446,10 +446,10 @@ class DashboardService {
         GROUP BY date_trunc('day', created_at)::date
         ORDER BY date ASC
       `, [tenantId]),
-      // Recent negative feedback entries (last 20)
+      // Recent negative feedback entries (last 20) including source for column display
       baseQuery()
         .where('thumbup', false)
-        .select('id', 'query', 'answer', 'trace_id', 'created_at')
+        .select('id', 'query', 'answer', 'source', 'trace_id', 'created_at')
         .orderBy('created_at', 'desc')
         .limit(20),
     ])
@@ -477,12 +477,13 @@ class DashboardService {
       satisfactionRate: parseFloat(r.satisfaction_rate ?? '0'),
     }))
 
-    // Map negative feedback entries with Langfuse deep-link URLs
+    // Map negative feedback entries with Langfuse deep-link URLs and source type
     const negativeFeedback = (negativeRows as any[]).map((r: any) => ({
       id: r.id as string,
       query: r.query as string,
       // Truncate answer to 200 chars for preview
       answerPreview: (r.answer as string).length > 200 ? (r.answer as string).substring(0, 200) + '...' : r.answer as string,
+      source: (r.source as string) ?? null,
       traceId: r.trace_id ?? null,
       langfuseUrl: r.trace_id ? this.getLangfuseTraceUrl(r.trace_id) : null,
       createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),

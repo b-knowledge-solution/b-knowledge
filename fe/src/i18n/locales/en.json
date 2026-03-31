@@ -1128,7 +1128,15 @@
       "totalLabel": "Total",
       "positiveLabel": "Positive",
       "empty": "No feedback collected yet",
-      "emptyDescription": "Feedback data will appear here once users rate answers."
+      "emptyDescription": "Feedback data will appear here once users rate answers.",
+      "bySource": "By source",
+      "sourceChat": "Chat",
+      "sourceSearch": "Search",
+      "sourceAgent": "Agent",
+      "sourceColumn": "Source",
+      "topFlaggedSessions": "Top Flagged Sessions",
+      "noFlaggedSessions": "No flagged sessions",
+      "negativeFeedbackCount": "negative"
     }
   },
   "glossary": {

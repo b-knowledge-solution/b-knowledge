@@ -1131,7 +1131,15 @@
       "totalLabel": "Tổng",
       "positiveLabel": "Tích cực",
       "empty": "Chưa có phản hồi",
-      "emptyDescription": "Dữ liệu phản hồi sẽ xuất hiện khi người dùng đánh giá câu trả lời."
+      "emptyDescription": "Dữ liệu phản hồi sẽ xuất hiện khi người dùng đánh giá câu trả lời.",
+      "bySource": "Theo nguồn",
+      "sourceChat": "Trò chuyện",
+      "sourceSearch": "Tìm kiếm",
+      "sourceAgent": "Tác tử",
+      "sourceColumn": "Nguồn",
+      "topFlaggedSessions": "Phiên bị đánh dấu nhiều nhất",
+      "noFlaggedSessions": "Không có phiên bị đánh dấu",
+      "negativeFeedbackCount": "tiêu cực"
     }
   },
   "glossary": {

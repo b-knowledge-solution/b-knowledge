@@ -1117,7 +1117,15 @@
       "totalLabel": "合計",
       "positiveLabel": "肯定的",
       "empty": "フィードバックがまだありません",
-      "emptyDescription": "ユーザーが回答を評価すると、フィードバックデータがここに表示されます。"
+      "emptyDescription": "ユーザーが回答を評価すると、フィードバックデータがここに表示されます。",
+      "bySource": "ソース別",
+      "sourceChat": "チャット",
+      "sourceSearch": "検索",
+      "sourceAgent": "エージェント",
+      "sourceColumn": "ソース",
+      "topFlaggedSessions": "フラグ付きセッション",
+      "noFlaggedSessions": "フラグ付きセッションなし",
+      "negativeFeedbackCount": "否定的"
     }
   },
   "glossary": {

@@ -14,13 +14,24 @@ import { render, screen, fireEvent } from '@testing-library/react'
 
 const mockNavigate = vi.fn()
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom')
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  }
-})
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}))
+
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => mockNavigate,
+}))
+
+vi.mock('lucide-react', () => ({
+  ArrowLeft: () => null,
+  Save: () => null,
+  Play: () => null,
+  SkipForward: () => null,
+  Bug: () => null,
+  MoreHorizontal: () => null,
+  Download: () => null,
+  Trash2: () => null,
+}))
 
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, onClick, disabled, ...props }: any) => (
@@ -100,6 +111,12 @@ const defaultProps = {
   onNameChange: vi.fn(),
 }
 
+function getButtonByText(text: string) {
+  return screen.getAllByText(text)
+    .map((element) => element.tagName === 'BUTTON' ? element : element.closest('button'))
+    .find(Boolean) as HTMLButtonElement
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -131,20 +148,19 @@ describe('AgentToolbar', () => {
 
   it('save button is disabled when not dirty', () => {
     render(<AgentToolbar {...defaultProps} isDirty={false} />)
-    // Find the button with sr-only text
-    const saveBtn = screen.getByText('agents.agentSaved').closest('button')
+    const saveBtn = getButtonByText('agents.agentSaved')
     expect(saveBtn).toBeDisabled()
   })
 
   it('save button is enabled when dirty', () => {
     render(<AgentToolbar {...defaultProps} isDirty={true} />)
-    const saveBtn = screen.getByText('agents.agentSaved').closest('button')
+    const saveBtn = getButtonByText('agents.agentSaved')
     expect(saveBtn).not.toBeDisabled()
   })
 
   it('save button is disabled when saving', () => {
     render(<AgentToolbar {...defaultProps} isDirty={true} isSaving={true} />)
-    const saveBtn = screen.getByText('agents.agentSaved').closest('button')
+    const saveBtn = getButtonByText('agents.agentSaved')
     expect(saveBtn).toBeDisabled()
   })
 
@@ -152,15 +168,14 @@ describe('AgentToolbar', () => {
     const onSave = vi.fn()
     render(<AgentToolbar {...defaultProps} isDirty={true} onSave={onSave} />)
 
-    const saveBtn = screen.getByText('agents.agentSaved').closest('button')
-    fireEvent.click(saveBtn!)
+    fireEvent.click(getButtonByText('agents.agentSaved'))
 
     expect(onSave).toHaveBeenCalledTimes(1)
   })
 
   it('shows Run button when debug is not active', () => {
     render(<AgentToolbar {...defaultProps} />)
-    expect(screen.getByText('common.run')).toBeInTheDocument()
+    expect(getButtonByText('common.run')).toBeInTheDocument()
   })
 
   it('shows Step and Continue buttons when debug is active', () => {
@@ -326,17 +341,15 @@ describe('AgentToolbar', () => {
   it('navigates back on back button click', () => {
     render(<AgentToolbar {...defaultProps} />)
 
-    // The back button has sr-only text
-    const backBtn = screen.getByText('common.back').closest('button')
-    fireEvent.click(backBtn!)
+    fireEvent.click(getButtonByText('common.back'))
 
-    expect(mockNavigate).toHaveBeenCalledWith('/agents')
+    expect(mockNavigate).toHaveBeenCalledWith('/agent-studio/agents')
   })
 
   it('shows export and delete in more menu', () => {
     render(<AgentToolbar {...defaultProps} />)
 
-    expect(screen.getByText('agents.exportJson')).toBeInTheDocument()
-    expect(screen.getByText('agents.deleteAgent')).toBeInTheDocument()
+    expect(getButtonByText('agents.exportJson')).toBeInTheDocument()
+    expect(getButtonByText('agents.deleteAgent')).toBeInTheDocument()
   })
 })

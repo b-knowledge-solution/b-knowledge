@@ -110,6 +110,8 @@ export const queryKeys = {
       [...queryKeys.dashboard.all, 'analytics', { startDate, endDate }] as const,
     feedback: (startDate?: string, endDate?: string) =>
       [...queryKeys.dashboard.all, 'feedback', { startDate, endDate }] as const,
+    feedbackStats: (startDate?: string, endDate?: string) =>
+      [...queryKeys.dashboard.all, 'feedbackStats', { startDate, endDate }] as const,
   },
 
   // --------------------------------------------------------------------------

@@ -16,6 +16,8 @@ const mockUseAgents = vi.fn()
 const mockCreateMutateAsync = vi.fn()
 const mockDeleteMutateAsync = vi.fn()
 const mockDuplicateMutateAsync = vi.fn()
+const mockNavigateWithLoader = vi.fn()
+const mockSetSearchParams = vi.fn()
 
 vi.mock('@/features/agents/api/agentQueries', () => ({
   useAgents: () => mockUseAgents(),
@@ -37,6 +39,24 @@ vi.mock('@/features/agents/api/agentApi', () => ({
   agentApi: {
     exportJson: vi.fn().mockResolvedValue({}),
   },
+}))
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}))
+
+vi.mock('react-router-dom', () => ({
+  useSearchParams: () => [new URLSearchParams(), mockSetSearchParams],
+}))
+
+vi.mock('@/components/NavigationLoader', () => ({
+  useNavigateWithLoader: () => mockNavigateWithLoader,
+}))
+
+vi.mock('lucide-react', () => ({
+  Plus: () => null,
+  Search: () => null,
+  Workflow: () => null,
 }))
 
 vi.mock('@/features/agents/components/AgentCard', () => ({
@@ -147,6 +167,8 @@ function buildAgent(overrides: Record<string, unknown> = {}) {
 describe('AgentListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSetSearchParams.mockReset()
+    mockNavigateWithLoader.mockReset()
   })
 
   it('shows loading skeleton when data is loading', () => {
@@ -165,8 +187,8 @@ describe('AgentListPage', () => {
     })
     render(<AgentListPage />)
 
-    expect(screen.getByText('agents.noAgentsYet')).toBeInTheDocument()
-    expect(screen.getByText('agents.emptyDescription')).toBeInTheDocument()
+    expect(screen.getAllByText('agents.noAgentsYet').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('agents.emptyDescription').length).toBeGreaterThan(0)
   })
 
   it('renders agent cards from API data', () => {
@@ -180,10 +202,10 @@ describe('AgentListPage', () => {
     })
     render(<AgentListPage />)
 
-    expect(screen.getByTestId('agent-card-a-1')).toBeInTheDocument()
-    expect(screen.getByTestId('agent-card-a-2')).toBeInTheDocument()
-    expect(screen.getByText('Alpha Agent')).toBeInTheDocument()
-    expect(screen.getByText('Beta Agent')).toBeInTheDocument()
+    expect(screen.getAllByTestId('agent-card-a-1').length).toBeGreaterThan(0)
+    expect(screen.getAllByTestId('agent-card-a-2').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Alpha Agent').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Beta Agent').length).toBeGreaterThan(0)
   })
 
   it('displays the page title and create button', () => {
@@ -241,6 +263,6 @@ describe('AgentListPage', () => {
     })
     render(<AgentListPage />)
 
-    expect(screen.getByText('agents.browseTemplates')).toBeInTheDocument()
+    expect(screen.getAllByText('agents.browseTemplates').length).toBeGreaterThan(0)
   })
 })

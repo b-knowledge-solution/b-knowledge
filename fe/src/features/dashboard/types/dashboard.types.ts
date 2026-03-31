@@ -71,9 +71,33 @@ export interface FeedbackAnalytics {
     /** Daily feedback trend data */
     trend: { date: string; total: number; positive: number }[]
     /** Recent negative feedback entries */
-    negativeFeedback: { id: string; query: string; answer: string; trace_id: string | null; created_at: string }[]
+    negativeFeedback: { id: string; query: string; answer: string; source?: 'chat' | 'search' | 'agent'; trace_id: string | null; created_at: string }[]
     /** Base URL for constructing Langfuse trace links */
     langfuseBaseUrl: string
+}
+
+/**
+ * @description A session flagged with high negative feedback count.
+ */
+export interface TopFlaggedSession {
+    /** Feedback source type (chat, search, agent) */
+    source: string
+    /** Source identifier (conversation_id, search_app_id, or agent_run_id) */
+    source_id: string
+    /** Count of negative feedback records for this session */
+    negative_count: number
+    /** Total feedback records for this session */
+    total_count: number
+}
+
+/**
+ * @description Response shape from GET /api/feedback/stats endpoint.
+ */
+export interface FeedbackStatsResponse {
+    /** Feedback count breakdown by source type */
+    sourceBreakdown: { chat: number; search: number; agent: number }
+    /** Sessions with the most negative feedback, sorted by negative_count desc */
+    topFlagged: TopFlaggedSession[]
 }
 
 /**

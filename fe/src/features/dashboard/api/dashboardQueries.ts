@@ -6,7 +6,7 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { DashboardStats } from '../types/dashboard.types'
-import { fetchDashboardStats, fetchQueryAnalytics, fetchFeedbackAnalytics } from './dashboardApi'
+import { fetchDashboardStats, fetchQueryAnalytics, fetchFeedbackAnalytics, fetchFeedbackStats } from './dashboardApi'
 import { format } from 'date-fns'
 import { queryKeys } from '@/lib/queryKeys'
 
@@ -126,6 +126,27 @@ export const useFeedbackAnalytics = (startDate?: string, endDate?: string) => {
         queryKey: queryKeys.dashboard.feedback(startDate, endDate),
         queryFn: () => fetchFeedbackAnalytics(startDate, endDate),
         // 5-minute staleTime for manual refresh pattern per CONTEXT.md
+        staleTime: 5 * 60 * 1000,
+    })
+}
+
+// ============================================================================
+// Feedback Stats Hook (Source Breakdown + Top Flagged)
+// ============================================================================
+
+/**
+ * @description Hook for fetching feedback stats (source breakdown and top flagged sessions).
+ * Calls GET /api/feedback/stats which returns aggregated source counts and top flagged data.
+ * Uses 5-minute staleTime for manual refresh pattern.
+ * @param {string} [startDate] - Optional start date string (yyyy-MM-dd).
+ * @param {string} [endDate] - Optional end date string (yyyy-MM-dd).
+ * @returns TanStack Query result with feedback stats data.
+ */
+export const useFeedbackStats = (startDate?: string, endDate?: string) => {
+    return useQuery({
+        queryKey: queryKeys.dashboard.feedbackStats(startDate, endDate),
+        queryFn: () => fetchFeedbackStats(startDate, endDate),
+        // 5-minute staleTime for manual refresh pattern
         staleTime: 5 * 60 * 1000,
     })
 }
