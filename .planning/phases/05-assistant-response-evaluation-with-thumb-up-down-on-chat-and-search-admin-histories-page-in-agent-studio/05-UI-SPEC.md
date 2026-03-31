@@ -5,6 +5,7 @@ status: draft
 shadcn_initialized: true
 preset: new-york
 created: 2026-03-31
+revised: 2026-03-31
 ---
 
 # Phase 5 — UI Design Contract
@@ -48,17 +49,17 @@ Exceptions: Thumb buttons use 24px (h-6 w-6) touch targets with 12px (h-3 w-3) i
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Body | 14px | 400 (regular) | 1.5 |
-| Label | 12px | 500 (medium) | 1.4 |
+| Label | 12px | 400 (regular) | 1.4 |
 | Heading | 20px | 600 (semibold) | 1.2 |
 | Display | 28px | 600 (semibold) | 1.2 |
 
 Phase-specific notes:
 - Feedback comment textarea: 14px body at weight 400
-- Feedback "thank you" inline text: 10px (text-[10px]) matching existing SearchResultCard pattern
+- Feedback "thank you" inline text reuses existing SearchResultCard `text-[10px]` pattern -- this is NOT a new type scale entry; it already exists in the codebase and is not governed by this contract
 - Dashboard stat card values: 28px display weight 600
-- Dashboard stat card labels: 12px label weight 500
-- Session sidebar feedback counts: 12px label weight 500
-- CSV export button label: 14px body weight 500
+- Dashboard stat card labels: 12px label weight 400
+- Session sidebar feedback counts: 12px label weight 400
+- CSV export button label: 14px body weight 400
 
 ---
 
@@ -93,9 +94,9 @@ Accent reserved for: active tab indicator on Histories tabs, "Export feedback" b
 
 **Behavior:**
 - Popover opens below the thumbs-down button (side="bottom", align="end")
-- Contains: textarea (3 rows, placeholder from i18n), Submit button (primary, 14px), Skip link (ghost, 12px)
-- Submit sends comment + thumbdown=true to feedback API, closes popover
-- Skip sends thumbdown=true with no comment, closes popover
+- Contains: textarea (3 rows, placeholder from i18n), "Send feedback" button (primary, 14px), "Skip for now" link (ghost, 12px)
+- "Send feedback" sends comment + thumbdown=true to feedback API, closes popover
+- "Skip for now" sends thumbdown=true with no comment, closes popover
 - Clicking outside closes without submitting (no feedback recorded, thumb reverts)
 - Thumbs-up remains one-click with no popover (unchanged)
 
@@ -106,13 +107,15 @@ Accent reserved for: active tab indicator on Histories tabs, "Export feedback" b
 - Button row: 8px gap, right-aligned
 
 **States:**
-- Default: textarea empty, Submit disabled, Skip enabled
-- Has text: Submit enabled (primary variant), Skip still enabled
-- Submitting: Submit shows spinner, both buttons disabled
+- Default: textarea empty, "Send feedback" disabled, "Skip for now" enabled
+- Has text: "Send feedback" enabled (primary variant), "Skip for now" still enabled
+- Submitting: "Send feedback" shows spinner, both buttons disabled
 
 ### 2. Histories Page Feedback Indicators (ENHANCE existing)
 
 **Location:** `fe/src/features/histories/components/AdminSessionListSidebar.tsx`
+
+**Primary visual anchor:** The session sidebar is the focal point of the Histories page enhancement. Feedback summary badges on session cards provide at-a-glance quality signals, guiding admins to sessions that need attention (high negative count).
 
 **Session card enhancement:**
 - Add feedback summary badge to each session card: `[ThumbsUp icon] 3 [ThumbsDown icon] 1` in 12px label text
@@ -196,8 +199,8 @@ Accent reserved for: active tab indicator on Histories tabs, "Export feedback" b
 |---------|-----------|----------|
 | Thumb-down popover heading | What was wrong? | `feedback.whatWasWrong` |
 | Thumb-down popover placeholder | Tell us what could be better... | `feedback.commentPlaceholder` |
-| Thumb-down submit button | Submit | `feedback.submit` |
-| Thumb-down skip link | Skip | `feedback.skip` |
+| Thumb-down submit button | Send feedback | `feedback.sendFeedback` |
+| Thumb-down skip link | Skip for now | `feedback.skipForNow` |
 | Feedback thank-you text | Thanks for your feedback | `feedback.thankYou` |
 | Histories feedback filter label | Feedback | `histories.filters.feedback` |
 | Histories feedback filter: All | All | `histories.filters.feedbackAll` |
@@ -244,9 +247,9 @@ All copy MUST be translated to 3 locales: en, vi, ja.
 
 | State | Visual |
 |-------|--------|
-| Empty textarea | Submit button disabled (secondary variant), Skip enabled |
-| Has text | Submit button enabled (primary variant), Skip enabled |
-| Submitting | Spinner in Submit, both buttons disabled |
+| Empty textarea | "Send feedback" button disabled (secondary variant), "Skip for now" enabled |
+| Has text | "Send feedback" button enabled (primary variant), "Skip for now" enabled |
+| Submitting | Spinner in "Send feedback", both buttons disabled |
 | Success | Popover closes, thumb stays red-500, thank-you text appears inline |
 
 ### Export Feedback Button
