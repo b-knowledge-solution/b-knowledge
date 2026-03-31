@@ -12,7 +12,7 @@
 |----------|-------|-------|
 | Architecture | 8/10 | Clean layering, strong module boundaries, some god files |
 | Type Safety | 7/10 | Strict config, but 313 `any` usages leak through |
-| Testing | 7/10 | 92K lines of tests across 359 files, 26% test ratio |
+| Testing | 7.5/10 | 92K lines of tests across 359 files, ~44% test ratio (excl. upstream) |
 | Security | 8.5/10 | Genuinely impressive — RBAC, Zod, DOMPurify, helmet |
 | Code Organization | 7/10 | 22 BE modules, 24 FE features, 30 files >1000 lines |
 | Documentation | 8/10 | Excellent JSDoc/docstrings, inline comments, CLAUDE.md files |
@@ -23,7 +23,7 @@
 
 ---
 
-**Final Score: 7.4/10**
+**Final Score: 7.5/10**
 
 ---
 
@@ -160,13 +160,13 @@
 - `@fileoverview` blocks on service files describing architecture decisions
 
 **Weaknesses:**
-- No Swagger/OpenAPI spec for the REST API
+- No Swagger/OpenAPI spec for the full REST API (partial spec exists for external API)
 - No CHANGELOG file
-- No ADR (Architecture Decision Record) documents
+- Only 1 ADR exists (`docs/adr/001-mem0-memory-backend.md`) — needs more
 - `advance-rag/` internal utility functions have minimal docstrings
 - No API client documentation for external consumers
 
-**Recommendation:** Generate OpenAPI spec from Zod schemas (zod-to-openapi). Start a CHANGELOG. Create ADR template for architectural decisions.
+**Recommendation:** Generate OpenAPI spec from Zod schemas (zod-to-openapi). Start a CHANGELOG. Create more ADRs for key architectural decisions.
 
 ---
 
@@ -248,7 +248,7 @@
 - **Health check endpoint** at `/health` checks DB + Redis connectivity, returns `ok`/`degraded`
 - **Graceful shutdown** handlers for SIGTERM/SIGINT in 10+ files (app, DB, Redis, queues, MCP, sync)
 - **Structured logging** via Winston with daily rotation, error separation, 1-year retention
-- **Docker** with per-component Dockerfiles (`be/Dockerfile`, `advance-rag/Dockerfile`, `converter/Dockerfile`)
+- **Docker** with multi-stage builds (`be/Dockerfile` uses builder -> production stages, non-root user, alpine base)
 - **Multi-environment config** via `.env` files with production checklist in CLAUDE.md
 - **Database migrations** via Knex with timestamped migration files
 - **CI pipeline** at `.github/workflows/buid-ci.yml`
@@ -256,14 +256,14 @@
 - **S3-compatible storage** via RustFS for file persistence
 
 **Weaknesses:**
-- No multi-stage Docker builds (larger image sizes)
 - No Kubernetes/Helm charts for orchestration
 - No backup/restore automation scripts
-- No monitoring/alerting setup (Prometheus, Grafana)
+- No monitoring/alerting setup (Prometheus, Grafana) — though Langfuse provides LLM observability
 - No canary/blue-green deployment strategy
 - CI workflow file has typo in name (`buid-ci.yml` instead of `build-ci.yml`)
+- Converter Dockerfile runs as root (no non-root user)
 
-**Recommendation:** Add multi-stage Docker builds. Add monitoring stack. Create backup scripts. Fix CI workflow naming.
+**Recommendation:** Add monitoring stack. Create backup scripts. Fix CI workflow naming. Add non-root user to converter Dockerfile.
 
 ---
 
@@ -279,4 +279,4 @@ This is a well-engineered codebase with **strong architectural foundations** and
 **Top 3 Areas for Improvement:**
 1. **Error Handling (6/10)** — Needs custom error classes and centralized error middleware
 2. **DRY Principle (6/10)** — Controller patterns, audit imports, and shared types need extraction
-3. **Testing (7/10)** — Good coverage exists but needs coverage reporting and inter-service integration tests
+3. **Testing (7.5/10)** — Good coverage exists but needs coverage reporting and inter-service integration tests
