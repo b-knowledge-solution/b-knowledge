@@ -1,12 +1,44 @@
 /**
- * @fileoverview Feedback service for answer feedback CRUD operations.
- * @description Provides methods to create and query feedback records
+ * @fileoverview Feedback service for answer feedback CRUD and analytics operations.
+ * @description Provides methods to create, query, list, aggregate, and export feedback records
  *   stored in the answer_feedback table.
  * @module services/feedback
  */
 import { ModelFactory } from '@/shared/models/factory.js'
 import { AnswerFeedback, CreateAnswerFeedback } from '@/shared/models/types.js'
 import { log } from '@/shared/services/logger.service.js'
+import type {
+  FeedbackPaginationFilters,
+  PaginatedFeedbackResult,
+  SourceBreakdown,
+  TopFlaggedSession,
+} from '../models/answer-feedback.model.js'
+
+/**
+ * @description Shape of feedback statistics returned by getStats.
+ */
+export interface FeedbackStats {
+  /** Feedback count breakdown by source type */
+  sourceBreakdown: SourceBreakdown
+  /** Sessions with the most negative feedback */
+  topFlagged: TopFlaggedSession[]
+}
+
+/**
+ * @description Filter options for exporting feedback records (no pagination).
+ */
+export interface ExportFeedbackFilters {
+  /** Filter by feedback source type */
+  source?: 'chat' | 'search' | 'agent'
+  /** Filter by thumbup value */
+  thumbup?: boolean
+  /** ISO date string for range start */
+  startDate?: string
+  /** ISO date string for range end */
+  endDate?: string
+  /** Tenant ID for multi-tenancy isolation */
+  tenantId: string
+}
 
 /**
  * @description FeedbackService class encapsulating feedback business logic.
@@ -25,12 +57,68 @@ class FeedbackService {
 
   /**
    * @description Get all feedback records for a given source type and source ID.
-   * @param {('chat' | 'search')} source - The feedback source type
-   * @param {string} sourceId - The conversation_id (chat) or search_app_id (search)
+   * @param {('chat' | 'search' | 'agent')} source - The feedback source type
+   * @param {string} sourceId - The conversation_id (chat), search_app_id (search), or agent_run_id (agent)
    * @returns {Promise<AnswerFeedback[]>} Array of feedback records, newest first
    */
-  async getFeedbackBySource(source: 'chat' | 'search', sourceId: string): Promise<AnswerFeedback[]> {
+  async getFeedbackBySource(source: 'chat' | 'search' | 'agent', sourceId: string): Promise<AnswerFeedback[]> {
     return ModelFactory.answerFeedback.findBySource(source, sourceId)
+  }
+
+  /**
+   * @description List feedback records with filters and pagination for admin listing.
+   * Delegates to AnswerFeedbackModel.findPaginated for query execution.
+   * @param {FeedbackPaginationFilters} filters - Filter and pagination options
+   * @returns {Promise<PaginatedFeedbackResult>} Paginated feedback records with total count
+   */
+  async listFeedback(filters: FeedbackPaginationFilters): Promise<PaginatedFeedbackResult> {
+    log.info('Listing feedback', {
+      source: filters.source,
+      thumbup: filters.thumbup,
+      page: filters.page,
+      limit: filters.limit,
+    })
+    return ModelFactory.answerFeedback.findPaginated(filters)
+  }
+
+  /**
+   * @description Get aggregated feedback statistics for admin analytics.
+   * Returns source breakdown counts and top flagged sessions.
+   * @param {string} tenantId - Tenant ID for isolation
+   * @param {string} [startDate] - Optional ISO date string for range start
+   * @param {string} [endDate] - Optional ISO date string for range end
+   * @returns {Promise<FeedbackStats>} Source breakdown and top flagged sessions
+   */
+  async getStats(tenantId: string, startDate?: string, endDate?: string): Promise<FeedbackStats> {
+    // Run both aggregate queries in parallel for performance
+    const [sourceBreakdown, topFlagged] = await Promise.all([
+      ModelFactory.answerFeedback.countBySource(tenantId, startDate, endDate),
+      ModelFactory.answerFeedback.getTopFlaggedSessions(tenantId, 10, startDate, endDate),
+    ])
+
+    return { sourceBreakdown, topFlagged }
+  }
+
+  /**
+   * @description Export all feedback records matching filters (no pagination, max 10000).
+   * Returns raw records for CSV conversion on the frontend.
+   * @param {ExportFeedbackFilters} filters - Filter options for export
+   * @returns {Promise<AnswerFeedback[]>} Array of matching feedback records
+   */
+  async exportFeedback(filters: ExportFeedbackFilters): Promise<AnswerFeedback[]> {
+    // Use findPaginated with a high limit to cap exports at 10000 records
+    const result = await ModelFactory.answerFeedback.findPaginated({
+      source: filters.source,
+      thumbup: filters.thumbup,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      tenantId: filters.tenantId,
+      page: 1,
+      limit: 10000,
+    })
+
+    log.info('Exporting feedback', { count: result.data.length, tenantId: filters.tenantId })
+    return result.data
   }
 }
 

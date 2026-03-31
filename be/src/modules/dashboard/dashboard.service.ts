@@ -567,6 +567,45 @@ class DashboardService {
       sessionCount: row.sessionCount || 0
     }))
   }
+
+  /**
+   * @description Get feedback count breakdown by source type (chat, search, agent).
+   * Queries the answer_feedback table grouped by source column.
+   * @param {string} tenantId - Tenant ID for multi-tenancy isolation
+   * @param {string} [startDate] - Optional ISO date string for range start
+   * @param {string} [endDate] - Optional ISO date string for range end
+   * @returns {Promise<{ chat: number; search: number; agent: number }>} Feedback counts per source
+   */
+  async getFeedbackSourceBreakdown(
+    tenantId: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<{ chat: number; search: number; agent: number }> {
+    // Query answer_feedback grouped by source with tenant isolation
+    const query = db('answer_feedback')
+      .select('source')
+      .count('* as count')
+      .where('tenant_id', tenantId)
+      .modify((qb: any) => {
+        // Apply optional date range filters
+        if (startDate) qb.where('created_at', '>=', startDate)
+        if (endDate) qb.where('created_at', '<=', `${endDate} 23:59:59`)
+      })
+      .groupBy('source')
+
+    const rows = await query
+
+    // Initialize all sources to zero, then populate from query results
+    const result = { chat: 0, search: 0, agent: 0 }
+    for (const row of rows) {
+      const source = (row as any).source as keyof typeof result
+      if (source in result) {
+        result[source] = parseInt((row as any).count as string || '0', 10)
+      }
+    }
+
+    return result
+  }
 }
 
 /** Singleton dashboard service instance */

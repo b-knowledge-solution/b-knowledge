@@ -1,34 +1,29 @@
 /**
- * @fileoverview Unit tests for feedback service.
- *
- * Tests feedback creation and source-based querying with mocked database.
+ * @fileoverview Unit tests for FeedbackService.
+ * Tests listFeedback, getStats, and exportFeedback methods with mocked model.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Hoist mock objects so they are available before module imports
 const mockAnswerFeedbackModel = vi.hoisted(() => ({
   create: vi.fn(),
   findBySource: vi.fn(),
-  findAll: vi.fn(),
-  findById: vi.fn(),
+  findPaginated: vi.fn(),
+  countBySource: vi.fn(),
+  getTopFlaggedSessions: vi.fn(),
 }))
 
 const mockLog = vi.hoisted(() => ({
   info: vi.fn(),
-  warn: vi.fn(),
   error: vi.fn(),
-  debug: vi.fn(),
 }))
 
-// Mock ModelFactory to return our mock model
 vi.mock('../../src/shared/models/factory.js', () => ({
   ModelFactory: {
     answerFeedback: mockAnswerFeedbackModel,
   },
 }))
 
-// Mock logger to suppress output during tests
 vi.mock('../../src/shared/services/logger.service.js', () => ({
   log: mockLog,
 }))
@@ -38,161 +33,165 @@ describe('FeedbackService', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks()
-    // Re-import the module to get a fresh service instance with mocks applied
-    const module = await import('../../src/modules/feedback/services/feedback.service.js')
-    feedbackService = module.feedbackService
+    const mod = await import('../../src/modules/feedback/services/feedback.service.js')
+    feedbackService = mod.feedbackService
   })
 
-  describe('createFeedback', () => {
-    /**
-     * @description Should delegate to model create with all provided fields
-     */
-    it('should create a feedback record and return it', async () => {
-      const feedbackData = {
-        source: 'chat' as const,
-        source_id: 'conv-123',
-        message_id: 'msg-456',
-        user_id: 'user-1',
+  describe('listFeedback', () => {
+    it('should delegate to model findPaginated with all filters', async () => {
+      const mockResult = {
+        data: [{ id: '1', source: 'chat', thumbup: true }],
+        total: 1,
+      }
+      mockAnswerFeedbackModel.findPaginated.mockResolvedValueOnce(mockResult)
+
+      const result = await feedbackService.listFeedback({
+        source: 'chat',
         thumbup: true,
-        comment: 'Great answer!',
-        query: 'What is AI?',
-        answer: 'AI is artificial intelligence.',
-        chunks_used: [{ chunk_id: 'c1', doc_id: 'd1', score: 0.95 }],
-        trace_id: 'trace-789',
-        tenant_id: 'default',
-      }
+        startDate: '2026-01-01',
+        endDate: '2026-03-31',
+        tenantId: 'tenant-1',
+        page: 1,
+        limit: 20,
+      })
 
-      const createdRecord = { id: 'fb-1', ...feedbackData, created_at: new Date() }
-      mockAnswerFeedbackModel.create.mockResolvedValue(createdRecord)
-
-      const result = await feedbackService.createFeedback(feedbackData)
-
-      // Verify the model was called with the exact data
-      expect(mockAnswerFeedbackModel.create).toHaveBeenCalledWith(feedbackData)
-      expect(result).toEqual(createdRecord)
+      // Should pass all filters through to the model
+      expect(mockAnswerFeedbackModel.findPaginated).toHaveBeenCalledWith({
+        source: 'chat',
+        thumbup: true,
+        startDate: '2026-01-01',
+        endDate: '2026-03-31',
+        tenantId: 'tenant-1',
+        page: 1,
+        limit: 20,
+      })
+      expect(result.data).toHaveLength(1)
+      expect(result.total).toBe(1)
     })
 
-    /**
-     * @description Should log creation details including source, source_id, and thumbup
-     */
-    it('should log feedback creation metadata', async () => {
-      const feedbackData = {
-        source: 'search' as const,
-        source_id: 'search-app-1',
-        thumbup: false,
-        query: 'test query',
-        answer: 'test answer',
-      }
+    it('should work with minimal filters (tenant + pagination only)', async () => {
+      mockAnswerFeedbackModel.findPaginated.mockResolvedValueOnce({ data: [], total: 0 })
 
-      mockAnswerFeedbackModel.create.mockResolvedValue({ id: 'fb-2', ...feedbackData })
+      const result = await feedbackService.listFeedback({
+        tenantId: 'tenant-1',
+        page: 1,
+        limit: 20,
+      })
 
-      await feedbackService.createFeedback(feedbackData)
+      expect(result.data).toHaveLength(0)
+      expect(result.total).toBe(0)
+    })
 
-      // Verify logger was called with source context
-      expect(mockLog.info).toHaveBeenCalledWith(
-        'Creating answer feedback',
-        expect.objectContaining({
-          source: 'search',
-          source_id: 'search-app-1',
-          thumbup: false,
-        })
+    it('should filter by agent source', async () => {
+      mockAnswerFeedbackModel.findPaginated.mockResolvedValueOnce({
+        data: [{ id: '2', source: 'agent', thumbup: false }],
+        total: 1,
+      })
+
+      const result = await feedbackService.listFeedback({
+        source: 'agent',
+        tenantId: 'tenant-1',
+        page: 1,
+        limit: 20,
+      })
+
+      expect(mockAnswerFeedbackModel.findPaginated).toHaveBeenCalledWith(
+        expect.objectContaining({ source: 'agent' })
       )
-    })
-
-    /**
-     * @description Should propagate database errors to the caller
-     */
-    it('should propagate errors from the model layer', async () => {
-      mockAnswerFeedbackModel.create.mockRejectedValue(new Error('DB insert failed'))
-
-      await expect(
-        feedbackService.createFeedback({
-          source: 'chat',
-          source_id: 'conv-1',
-          thumbup: true,
-          query: 'q',
-          answer: 'a',
-        })
-      ).rejects.toThrow('DB insert failed')
-    })
-
-    /**
-     * @description Should handle minimal required fields (no optional fields)
-     */
-    it('should handle feedback with only required fields', async () => {
-      const minimalData = {
-        source: 'chat' as const,
-        source_id: 'conv-1',
-        thumbup: false,
-        query: 'Why?',
-        answer: 'Because.',
-      }
-
-      mockAnswerFeedbackModel.create.mockResolvedValue({ id: 'fb-3', ...minimalData })
-
-      const result = await feedbackService.createFeedback(minimalData)
-
-      expect(mockAnswerFeedbackModel.create).toHaveBeenCalledWith(minimalData)
-      expect(result.id).toBe('fb-3')
+      expect(result.data[0].source).toBe('agent')
     })
   })
 
-  describe('getFeedbackBySource', () => {
-    /**
-     * @description Should return feedback records for a chat source
-     */
-    it('should return feedback records for a chat conversation', async () => {
+  describe('getStats', () => {
+    it('should return sourceBreakdown and topFlagged', async () => {
+      // Mock both aggregate queries
+      mockAnswerFeedbackModel.countBySource.mockResolvedValueOnce({
+        chat: 10,
+        search: 5,
+        agent: 3,
+      })
+      mockAnswerFeedbackModel.getTopFlaggedSessions.mockResolvedValueOnce([
+        { source: 'chat', source_id: 'conv-1', negative_count: 5, total_count: 10 },
+      ])
+
+      const result = await feedbackService.getStats('tenant-1')
+
+      expect(result.sourceBreakdown).toEqual({ chat: 10, search: 5, agent: 3 })
+      expect(result.topFlagged).toHaveLength(1)
+      expect(result.topFlagged[0].negative_count).toBe(5)
+    })
+
+    it('should pass date range to aggregate queries', async () => {
+      mockAnswerFeedbackModel.countBySource.mockResolvedValueOnce({ chat: 0, search: 0, agent: 0 })
+      mockAnswerFeedbackModel.getTopFlaggedSessions.mockResolvedValueOnce([])
+
+      await feedbackService.getStats('tenant-1', '2026-01-01', '2026-03-31')
+
+      // Verify date range passed to both queries
+      expect(mockAnswerFeedbackModel.countBySource).toHaveBeenCalledWith('tenant-1', '2026-01-01', '2026-03-31')
+      expect(mockAnswerFeedbackModel.getTopFlaggedSessions).toHaveBeenCalledWith('tenant-1', 10, '2026-01-01', '2026-03-31')
+    })
+
+    it('should run aggregate queries in parallel', async () => {
+      // Both should be called (Promise.all)
+      mockAnswerFeedbackModel.countBySource.mockResolvedValueOnce({ chat: 0, search: 0, agent: 0 })
+      mockAnswerFeedbackModel.getTopFlaggedSessions.mockResolvedValueOnce([])
+
+      await feedbackService.getStats('tenant-1')
+
+      expect(mockAnswerFeedbackModel.countBySource).toHaveBeenCalledTimes(1)
+      expect(mockAnswerFeedbackModel.getTopFlaggedSessions).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('exportFeedback', () => {
+    it('should return all matching records without pagination metadata', async () => {
       const mockRecords = [
-        { id: 'fb-1', source: 'chat', source_id: 'conv-1', thumbup: true, created_at: new Date() },
-        { id: 'fb-2', source: 'chat', source_id: 'conv-1', thumbup: false, created_at: new Date() },
+        { id: '1', source: 'chat', thumbup: true },
+        { id: '2', source: 'search', thumbup: false },
       ]
+      mockAnswerFeedbackModel.findPaginated.mockResolvedValueOnce({
+        data: mockRecords,
+        total: 2,
+      })
 
-      mockAnswerFeedbackModel.findBySource.mockResolvedValue(mockRecords)
+      const result = await feedbackService.exportFeedback({ tenantId: 'tenant-1' })
 
-      const result = await feedbackService.getFeedbackBySource('chat', 'conv-1')
-
-      // Verify correct source and sourceId are passed to the model
-      expect(mockAnswerFeedbackModel.findBySource).toHaveBeenCalledWith('chat', 'conv-1')
+      // Should return just the data array, not the pagination wrapper
       expect(result).toEqual(mockRecords)
       expect(result).toHaveLength(2)
     })
 
-    /**
-     * @description Should return feedback records for a search source
-     */
-    it('should return feedback records for a search app', async () => {
-      const mockRecords = [
-        { id: 'fb-3', source: 'search', source_id: 'search-1', thumbup: true },
-      ]
+    it('should use limit of 10000 for export', async () => {
+      mockAnswerFeedbackModel.findPaginated.mockResolvedValueOnce({ data: [], total: 0 })
 
-      mockAnswerFeedbackModel.findBySource.mockResolvedValue(mockRecords)
+      await feedbackService.exportFeedback({ tenantId: 'tenant-1' })
 
-      const result = await feedbackService.getFeedbackBySource('search', 'search-1')
-
-      expect(mockAnswerFeedbackModel.findBySource).toHaveBeenCalledWith('search', 'search-1')
-      expect(result).toHaveLength(1)
+      // Export uses page 1 with limit 10000
+      expect(mockAnswerFeedbackModel.findPaginated).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 1, limit: 10000 })
+      )
     })
 
-    /**
-     * @description Should return an empty array when no feedback exists
-     */
-    it('should return empty array when no feedback exists for the source', async () => {
-      mockAnswerFeedbackModel.findBySource.mockResolvedValue([])
+    it('should pass filter options through to findPaginated', async () => {
+      mockAnswerFeedbackModel.findPaginated.mockResolvedValueOnce({ data: [], total: 0 })
 
-      const result = await feedbackService.getFeedbackBySource('chat', 'non-existent')
+      await feedbackService.exportFeedback({
+        source: 'agent',
+        thumbup: false,
+        startDate: '2026-01-01',
+        endDate: '2026-03-31',
+        tenantId: 'tenant-1',
+      })
 
-      expect(result).toEqual([])
-    })
-
-    /**
-     * @description Should propagate database errors to the caller
-     */
-    it('should propagate errors from the model layer', async () => {
-      mockAnswerFeedbackModel.findBySource.mockRejectedValue(new Error('DB query failed'))
-
-      await expect(
-        feedbackService.getFeedbackBySource('chat', 'conv-1')
-      ).rejects.toThrow('DB query failed')
+      expect(mockAnswerFeedbackModel.findPaginated).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: 'agent',
+          thumbup: false,
+          startDate: '2026-01-01',
+          endDate: '2026-03-31',
+        })
+      )
     })
   })
 })

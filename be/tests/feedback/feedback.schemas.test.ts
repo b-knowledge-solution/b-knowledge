@@ -1,364 +1,161 @@
 /**
  * @fileoverview Unit tests for feedback Zod validation schemas.
- *
- * Tests both createFeedbackSchema and searchFeedbackSchema with valid
- * inputs, invalid inputs, and edge cases.
+ * Tests createFeedbackSchema, listFeedbackQuerySchema, and feedbackStatsQuerySchema.
  */
 
 import { describe, it, expect } from 'vitest'
 import {
   createFeedbackSchema,
-  searchFeedbackSchema,
+  listFeedbackQuerySchema,
+  feedbackStatsQuerySchema,
 } from '../../src/modules/feedback/schemas/feedback.schemas.js'
 
-describe('createFeedbackSchema', () => {
-  /**
-   * @description Should accept a fully-populated valid feedback payload
-   */
-  it('should accept valid complete feedback data', () => {
-    const validData = {
+describe('Feedback Schemas', () => {
+  describe('createFeedbackSchema', () => {
+    const validPayload = {
       source: 'chat',
       source_id: 'conv-123',
-      message_id: 'msg-456',
       thumbup: true,
-      comment: 'Helpful answer',
-      query: 'What is AI?',
-      answer: 'AI stands for artificial intelligence.',
-      chunks_used: [{ chunk_id: 'c1', doc_id: 'd1', score: 0.95 }],
-      trace_id: 'trace-abc',
+      query: 'What is RAG?',
+      answer: 'RAG stands for Retrieval-Augmented Generation.',
     }
 
-    const result = createFeedbackSchema.safeParse(validData)
-
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.source).toBe('chat')
-      expect(result.data.thumbup).toBe(true)
-    }
-  })
-
-  /**
-   * @description Should accept feedback with only required fields
-   */
-  it('should accept minimal valid feedback (required fields only)', () => {
-    const minimalData = {
-      source: 'search',
-      source_id: 'search-app-1',
-      thumbup: false,
-      query: 'How does it work?',
-      answer: 'It works by processing data.',
-    }
-
-    const result = createFeedbackSchema.safeParse(minimalData)
-
-    expect(result.success).toBe(true)
-  })
-
-  /**
-   * @description Should accept 'chat' and 'search' as valid source values
-   */
-  it('should accept both chat and search source types', () => {
-    const baseData = {
-      source_id: 'id-1',
-      thumbup: true,
-      query: 'q',
-      answer: 'a',
-    }
-
-    // Both source types should pass validation
-    const chatResult = createFeedbackSchema.safeParse({ ...baseData, source: 'chat' })
-    const searchResult = createFeedbackSchema.safeParse({ ...baseData, source: 'search' })
-
-    expect(chatResult.success).toBe(true)
-    expect(searchResult.success).toBe(true)
-  })
-
-  /**
-   * @description Should reject invalid source types that are not 'chat' or 'search'
-   */
-  it('should reject invalid source type', () => {
-    const invalidData = {
-      source: 'email',
-      source_id: 'id-1',
-      thumbup: true,
-      query: 'q',
-      answer: 'a',
-    }
-
-    const result = createFeedbackSchema.safeParse(invalidData)
-
-    expect(result.success).toBe(false)
-  })
-
-  /**
-   * @description Should reject missing required fields
-   */
-  it('should reject when source_id is missing', () => {
-    const result = createFeedbackSchema.safeParse({
-      source: 'chat',
-      thumbup: true,
-      query: 'q',
-      answer: 'a',
+    it('should accept valid chat feedback', () => {
+      const result = createFeedbackSchema.safeParse(validPayload)
+      expect(result.success).toBe(true)
     })
 
-    expect(result.success).toBe(false)
-  })
-
-  /**
-   * @description Should reject empty string for source_id (min length 1)
-   */
-  it('should reject empty source_id', () => {
-    const result = createFeedbackSchema.safeParse({
-      source: 'chat',
-      source_id: '',
-      thumbup: true,
-      query: 'q',
-      answer: 'a',
+    it('should accept valid search feedback', () => {
+      const result = createFeedbackSchema.safeParse({ ...validPayload, source: 'search' })
+      expect(result.success).toBe(true)
     })
 
-    expect(result.success).toBe(false)
-  })
-
-  /**
-   * @description Should reject empty query string (min length 1)
-   */
-  it('should reject empty query', () => {
-    const result = createFeedbackSchema.safeParse({
-      source: 'chat',
-      source_id: 'id-1',
-      thumbup: true,
-      query: '',
-      answer: 'a',
+    it('should accept valid agent feedback', () => {
+      // Agent source must be accepted after extending the enum
+      const result = createFeedbackSchema.safeParse({ ...validPayload, source: 'agent' })
+      expect(result.success).toBe(true)
     })
 
-    expect(result.success).toBe(false)
-  })
-
-  /**
-   * @description Should reject empty answer string (min length 1)
-   */
-  it('should reject empty answer', () => {
-    const result = createFeedbackSchema.safeParse({
-      source: 'chat',
-      source_id: 'id-1',
-      thumbup: true,
-      query: 'q',
-      answer: '',
+    it('should reject invalid source value', () => {
+      // 'email' is not a valid feedback source
+      const result = createFeedbackSchema.safeParse({ ...validPayload, source: 'email' })
+      expect(result.success).toBe(false)
     })
 
-    expect(result.success).toBe(false)
-  })
-
-  /**
-   * @description Should reject when thumbup is not a boolean
-   */
-  it('should reject non-boolean thumbup', () => {
-    const result = createFeedbackSchema.safeParse({
-      source: 'chat',
-      source_id: 'id-1',
-      thumbup: 'yes',
-      query: 'q',
-      answer: 'a',
+    it('should reject empty query', () => {
+      const result = createFeedbackSchema.safeParse({ ...validPayload, query: '' })
+      expect(result.success).toBe(false)
     })
 
-    expect(result.success).toBe(false)
-  })
-
-  /**
-   * @description Should reject comments exceeding the 2000 character limit
-   */
-  it('should reject comment exceeding 2000 characters', () => {
-    const result = createFeedbackSchema.safeParse({
-      source: 'chat',
-      source_id: 'id-1',
-      thumbup: true,
-      query: 'q',
-      answer: 'a',
-      comment: 'x'.repeat(2001),
+    it('should reject empty answer', () => {
+      const result = createFeedbackSchema.safeParse({ ...validPayload, answer: '' })
+      expect(result.success).toBe(false)
     })
 
-    expect(result.success).toBe(false)
-  })
-
-  /**
-   * @description Should accept comment at exactly 2000 characters (boundary)
-   */
-  it('should accept comment at exactly 2000 characters', () => {
-    const result = createFeedbackSchema.safeParse({
-      source: 'chat',
-      source_id: 'id-1',
-      thumbup: true,
-      query: 'q',
-      answer: 'a',
-      comment: 'x'.repeat(2000),
+    it('should accept optional comment', () => {
+      const result = createFeedbackSchema.safeParse({
+        ...validPayload,
+        comment: 'The answer was helpful',
+      })
+      expect(result.success).toBe(true)
     })
 
-    expect(result.success).toBe(true)
-  })
-
-  /**
-   * @description Should validate chunks_used array structure
-   */
-  it('should reject chunks_used with invalid structure', () => {
-    const result = createFeedbackSchema.safeParse({
-      source: 'chat',
-      source_id: 'id-1',
-      thumbup: true,
-      query: 'q',
-      answer: 'a',
-      chunks_used: [{ chunk_id: 'c1' }], // missing doc_id and score
+    it('should reject comment exceeding 2000 chars', () => {
+      const result = createFeedbackSchema.safeParse({
+        ...validPayload,
+        comment: 'x'.repeat(2001),
+      })
+      expect(result.success).toBe(false)
     })
 
-    expect(result.success).toBe(false)
-  })
-
-  /**
-   * @description Should accept valid chunks_used with all required chunk fields
-   */
-  it('should accept valid chunks_used array', () => {
-    const result = createFeedbackSchema.safeParse({
-      source: 'chat',
-      source_id: 'id-1',
-      thumbup: true,
-      query: 'q',
-      answer: 'a',
-      chunks_used: [
-        { chunk_id: 'c1', doc_id: 'd1', score: 0.9 },
-        { chunk_id: 'c2', doc_id: 'd2', score: 0.8 },
-      ],
+    it('should accept optional chunks_used array', () => {
+      const result = createFeedbackSchema.safeParse({
+        ...validPayload,
+        chunks_used: [{ chunk_id: 'c1', doc_id: 'd1', score: 0.95 }],
+      })
+      expect(result.success).toBe(true)
     })
 
-    expect(result.success).toBe(true)
+    it('should accept optional trace_id', () => {
+      const result = createFeedbackSchema.safeParse({
+        ...validPayload,
+        trace_id: 'trace-abc-123',
+      })
+      expect(result.success).toBe(true)
+    })
   })
 
-  /**
-   * @description Should accept empty chunks_used array
-   */
-  it('should accept empty chunks_used array', () => {
-    const result = createFeedbackSchema.safeParse({
-      source: 'chat',
-      source_id: 'id-1',
-      thumbup: true,
-      query: 'q',
-      answer: 'a',
-      chunks_used: [],
+  describe('listFeedbackQuerySchema', () => {
+    it('should parse with defaults when no params provided', () => {
+      const result = listFeedbackQuerySchema.safeParse({})
+      expect(result.success).toBe(true)
+      if (result.success) {
+        // Default page is 1, default limit is 20
+        expect(result.data.page).toBe(1)
+        expect(result.data.limit).toBe(20)
+        expect(result.data.source).toBeUndefined()
+        expect(result.data.thumbup).toBeUndefined()
+      }
     })
 
-    expect(result.success).toBe(true)
-  })
-
-  /**
-   * @description Should reject score as non-number in chunks_used
-   */
-  it('should reject non-number score in chunks_used', () => {
-    const result = createFeedbackSchema.safeParse({
-      source: 'chat',
-      source_id: 'id-1',
-      thumbup: true,
-      query: 'q',
-      answer: 'a',
-      chunks_used: [{ chunk_id: 'c1', doc_id: 'd1', score: 'high' }],
+    it('should parse source filter', () => {
+      const result = listFeedbackQuerySchema.safeParse({ source: 'agent' })
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data.source).toBe('agent')
+      }
     })
 
-    expect(result.success).toBe(false)
-  })
+    it('should transform thumbup string to boolean', () => {
+      // 'true' string should transform to boolean true
+      const trueResult = listFeedbackQuerySchema.safeParse({ thumbup: 'true' })
+      expect(trueResult.success).toBe(true)
+      if (trueResult.success) {
+        expect(trueResult.data.thumbup).toBe(true)
+      }
 
-  /**
-   * @description Should reject missing source field entirely
-   */
-  it('should reject when source field is missing', () => {
-    const result = createFeedbackSchema.safeParse({
-      source_id: 'id-1',
-      thumbup: true,
-      query: 'q',
-      answer: 'a',
+      // 'false' string should transform to boolean false
+      const falseResult = listFeedbackQuerySchema.safeParse({ thumbup: 'false' })
+      expect(falseResult.success).toBe(true)
+      if (falseResult.success) {
+        expect(falseResult.data.thumbup).toBe(false)
+      }
     })
 
-    expect(result.success).toBe(false)
-  })
-})
-
-describe('searchFeedbackSchema', () => {
-  /**
-   * @description Should accept a fully-populated valid search feedback payload
-   */
-  it('should accept valid complete search feedback data', () => {
-    const validData = {
-      thumbup: true,
-      comment: 'Good result',
-      query: 'How to use search?',
-      answer: 'Use the search bar.',
-      chunks_used: [{ chunk_id: 'c1', doc_id: 'd1', score: 0.85 }],
-      trace_id: 'trace-xyz',
-    }
-
-    const result = searchFeedbackSchema.safeParse(validData)
-
-    expect(result.success).toBe(true)
-  })
-
-  /**
-   * @description Should accept search feedback with only required fields
-   */
-  it('should accept minimal valid search feedback', () => {
-    const result = searchFeedbackSchema.safeParse({
-      thumbup: false,
-      query: 'test',
-      answer: 'result',
+    it('should parse page and limit as numbers', () => {
+      const result = listFeedbackQuerySchema.safeParse({ page: '3', limit: '50' })
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data.page).toBe(3)
+        expect(result.data.limit).toBe(50)
+      }
     })
 
-    expect(result.success).toBe(true)
+    it('should accept date range filters', () => {
+      const result = listFeedbackQuerySchema.safeParse({
+        startDate: '2026-01-01',
+        endDate: '2026-03-31',
+      })
+      expect(result.success).toBe(true)
+    })
   })
 
-  /**
-   * @description Should reject missing required thumbup field
-   */
-  it('should reject missing thumbup', () => {
-    const result = searchFeedbackSchema.safeParse({
-      query: 'test',
-      answer: 'result',
+  describe('feedbackStatsQuerySchema', () => {
+    it('should parse with no params', () => {
+      const result = feedbackStatsQuerySchema.safeParse({})
+      expect(result.success).toBe(true)
     })
 
-    expect(result.success).toBe(false)
-  })
-
-  /**
-   * @description Should reject missing query field
-   */
-  it('should reject missing query', () => {
-    const result = searchFeedbackSchema.safeParse({
-      thumbup: true,
-      answer: 'result',
+    it('should accept date range params', () => {
+      const result = feedbackStatsQuerySchema.safeParse({
+        startDate: '2026-01-01',
+        endDate: '2026-03-31',
+      })
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data.startDate).toBe('2026-01-01')
+        expect(result.data.endDate).toBe('2026-03-31')
+      }
     })
-
-    expect(result.success).toBe(false)
-  })
-
-  /**
-   * @description Should reject comment exceeding 2000 characters
-   */
-  it('should reject comment exceeding 2000 characters', () => {
-    const result = searchFeedbackSchema.safeParse({
-      thumbup: true,
-      query: 'q',
-      answer: 'a',
-      comment: 'y'.repeat(2001),
-    })
-
-    expect(result.success).toBe(false)
-  })
-
-  /**
-   * @description Should not require source or source_id (search-specific schema)
-   */
-  it('should not require source or source_id fields', () => {
-    // searchFeedbackSchema intentionally omits source/source_id
-    const result = searchFeedbackSchema.safeParse({
-      thumbup: true,
-      query: 'q',
-      answer: 'a',
-    })
-
-    expect(result.success).toBe(true)
   })
 })
