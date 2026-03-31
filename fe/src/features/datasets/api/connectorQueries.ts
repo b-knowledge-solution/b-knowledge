@@ -72,7 +72,8 @@ export function useDeleteConnector(kbId: string) {
   const { t } = useTranslation()
 
   return useMutation({
-    mutationFn: (id: string) => connectorApi.deleteConnector(id),
+    mutationFn: ({ id, cascadeDocuments }: { id: string; cascadeDocuments?: boolean }) =>
+      connectorApi.deleteConnector(id, cascadeDocuments),
     meta: { successMessage: t('datasets.connectors.deleteSuccess') },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.datasets.connectors(kbId) })
@@ -112,5 +113,16 @@ export function useSyncLogs(connectorId: string, params?: { page?: number; limit
     queryKey: queryKeys.datasets.syncLogs(connectorId, params as Record<string, unknown>),
     queryFn: () => connectorApi.listSyncLogs(connectorId, params),
     enabled: !!connectorId,
+  })
+}
+
+/**
+ * @description Test connection to an external data source without creating a connector.
+ * @returns {object} Mutation result with mutateAsync, status, and data
+ */
+export function useTestConnection() {
+  return useMutation({
+    mutationFn: ({ sourceType, config }: { sourceType: string; config: Record<string, unknown> }) =>
+      connectorApi.testConnection(sourceType, config),
   })
 }

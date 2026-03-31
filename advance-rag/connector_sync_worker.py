@@ -803,6 +803,61 @@ def handle_sync_task(task: dict, r: redis.Redis):
         _publish_progress(r, connector_id, sync_log_id, -1, error_msg, status="failed")
 
 
+def handle_test_connection(task: dict, r: redis.Redis):
+    """Handle a test connection request by instantiating the connector and validating.
+
+    Publishes the result to a Redis pub/sub channel so the Node.js backend can
+    return the response to the waiting HTTP request.
+
+    Args:
+        task: Parsed task dictionary with keys: test_id, source_type, config.
+        r: Active Redis client for publishing results.
+    """
+    test_id = task.get("test_id", "")
+    source_type = task.get("source_type", "")
+    config = task.get("config", {})
+    result_channel = f"connector_test:{test_id}:result"
+
+    try:
+        # Resolve connector class
+        connector_cls = _get_connector_class(source_type)
+        if not connector_cls:
+            r.publish(result_channel, json.dumps({
+                "success": False,
+                "message": f"Unsupported source type: {source_type}",
+            }))
+            return
+
+        # Instantiate and load credentials
+        constructor_kwargs = _extract_constructor_kwargs(source_type, config)
+        connector = connector_cls(**constructor_kwargs)
+
+        credentials = _extract_credentials(source_type, config)
+        connector.load_credentials(credentials)
+
+        # Validate connector settings if available
+        if hasattr(connector, "validate_connector_settings"):
+            connector.validate_connector_settings()
+
+        logger.info(f"Test connection successful for source_type={source_type}")
+        r.publish(result_channel, json.dumps({
+            "success": True,
+            "message": "Connection successful",
+        }))
+
+    except Exception as e:
+        error_msg = str(e)
+        logger.warning(f"Test connection failed for source_type={source_type}: {error_msg}")
+        r.publish(result_channel, json.dumps({
+            "success": False,
+            "message": error_msg,
+        }))
+
+
+# Redis queue name for test connection tasks
+TEST_QUEUE_NAME = "rag_connector_test"
+
+
 def wait_for_database(max_retries: int = 30, retry_delay: int = 3):
     """Wait for the database to be reachable before processing tasks.
 
@@ -836,19 +891,19 @@ def main():
     Each popped message is parsed as JSON and dispatched to handle_sync_task.
     The loop runs indefinitely until the process is terminated.
     """
-    logger.info(f"Connector sync worker starting — listening on Redis queue '{QUEUE_NAME}'")
+    logger.info(f"Connector sync worker starting — listening on Redis queues '{QUEUE_NAME}', '{TEST_QUEUE_NAME}'")
 
     r = _get_redis()
 
     while True:
         try:
-            # BRPOP blocks until a message is available (timeout=0 means block forever)
-            result = r.brpop(QUEUE_NAME, timeout=0)
+            # BRPOP blocks on both sync and test queues (timeout=1s for round-robin)
+            result = r.brpop([QUEUE_NAME, TEST_QUEUE_NAME], timeout=1)
             if result is None:
                 continue
 
             # result is a tuple of (queue_name, message_json)
-            _, raw_message = result
+            queue_name_bytes, raw_message = result
             logger.debug(f"Received sync task: {raw_message[:200]}...")
 
             # Parse the task payload
@@ -858,14 +913,22 @@ def main():
                 logger.error(f"Invalid JSON in queue message: {e}")
                 continue
 
-            # Validate required fields
-            required_fields = ["sync_log_id", "connector_id", "kb_id", "source_type", "config"]
-            missing = [f for f in required_fields if f not in task]
-            if missing:
-                logger.error(f"Task missing required fields: {missing}. Skipping.")
-                continue
+            # Determine which queue the message came from
+            queue_key = queue_name_bytes if isinstance(queue_name_bytes, str) else queue_name_bytes
+            is_test_task = task.get("task_type") == "test_connection" or str(queue_key) == TEST_QUEUE_NAME
 
-            handle_sync_task(task, r)
+            if is_test_task:
+                # Handle test connection request
+                handle_test_connection(task, r)
+            else:
+                # Validate required fields for sync tasks
+                required_fields = ["sync_log_id", "connector_id", "kb_id", "source_type", "config"]
+                missing = [f for f in required_fields if f not in task]
+                if missing:
+                    logger.error(f"Task missing required fields: {missing}. Skipping.")
+                    continue
+
+                handle_sync_task(task, r)
 
         except redis.ConnectionError as e:
             logger.error(f"Redis connection error: {e}. Reconnecting in 5s...")

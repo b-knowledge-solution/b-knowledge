@@ -20,6 +20,7 @@ const mockDeleteConnector = vi.fn()
 const mockTriggerSync = vi.fn()
 const mockListSyncLogs = vi.fn()
 const mockSubscribeToSyncProgress = vi.fn()
+const mockTestConnection = vi.fn()
 
 vi.mock('../../src/modules/sync/services/sync.service.js', () => ({
   syncService: {
@@ -31,6 +32,7 @@ vi.mock('../../src/modules/sync/services/sync.service.js', () => ({
     triggerSync: (...args: any[]) => mockTriggerSync(...args),
     listSyncLogs: (...args: any[]) => mockListSyncLogs(...args),
     subscribeToSyncProgress: (...args: any[]) => mockSubscribeToSyncProgress(...args),
+    testConnection: (...args: any[]) => mockTestConnection(...args),
   },
 }))
 
@@ -129,6 +131,26 @@ describe('SyncController', () => {
       expect(mockListConnectors).toHaveBeenCalledWith(undefined)
     })
 
+    /** @description Should mask sensitive credential values in connector config */
+    it('should mask sensitive credentials in listConnectors response', async () => {
+      const connectors = [{
+        id: 'c1',
+        name: 'Test',
+        config: { access_token: 'real-token', host: 'example.com', api_key: 'secret-key' },
+      }]
+      mockListConnectors.mockResolvedValue(connectors)
+
+      const req = mockReq()
+      const res = mockRes()
+
+      await controller.listConnectors(req, res)
+
+      // Verify sensitive fields are masked while non-sensitive fields are preserved
+      expect(res.body[0].config.access_token).toBe('********')
+      expect(res.body[0].config.api_key).toBe('********')
+      expect(res.body[0].config.host).toBe('example.com')
+    })
+
     /** @description Should return 500 on service error */
     it('should return 500 on service error', async () => {
       mockListConnectors.mockRejectedValue(new Error('DB error'))
@@ -159,6 +181,26 @@ describe('SyncController', () => {
       await controller.getConnector(req, res)
 
       expect(res.body).toEqual(connector)
+    })
+
+    /** @description Should mask sensitive credential values in single connector config */
+    it('should mask sensitive credentials in getConnector response', async () => {
+      const connector = {
+        id: 'c1',
+        name: 'Test',
+        config: { access_token: 'real-token', password: 'secret-pass', host: 'example.com' },
+      }
+      mockGetConnector.mockResolvedValue(connector)
+
+      const req = mockReq({ params: { id: 'c1' } })
+      const res = mockRes()
+
+      await controller.getConnector(req, res)
+
+      // Verify sensitive fields are masked while non-sensitive fields are preserved
+      expect(res.body.config.access_token).toBe('********')
+      expect(res.body.config.password).toBe('********')
+      expect(res.body.config.host).toBe('example.com')
     })
 
     /** @description Should return 404 when connector not found */
@@ -332,6 +374,20 @@ describe('SyncController', () => {
 
       expect(res.statusCode).toBe(404)
     })
+
+    /** @description Should return 409 when sync is already in progress */
+    it('should return 409 when sync already in progress', async () => {
+      mockTriggerSync.mockRejectedValue(new Error('Sync already in progress for this connector'))
+
+      const req = mockReq({ params: { id: 'c1' }, body: {} })
+      const res = mockRes()
+
+      await controller.triggerSync(req, res)
+
+      // Verify 409 Conflict is returned for concurrent sync attempts
+      expect(res.statusCode).toBe(409)
+      expect(res.body).toEqual({ error: 'Sync already in progress for this connector' })
+    })
   })
 
   // -------------------------------------------------------------------------
@@ -414,6 +470,84 @@ describe('SyncController', () => {
       await closeHandler()
 
       expect(cleanupFn).toHaveBeenCalled()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // testConnection
+  // -------------------------------------------------------------------------
+
+  describe('testConnection', () => {
+    /** @description Should call syncService.testConnection with source_type and config */
+    it('should call testConnection with correct parameters', async () => {
+      const testResult = { success: true, message: 'Connection successful' }
+      mockTestConnection.mockResolvedValue(testResult)
+
+      const req = mockReq({
+        body: { source_type: 'github', config: { access_token: 'tok-123' } },
+      })
+      const res = mockRes()
+
+      await controller.testConnection(req, res)
+
+      // Verify service was called with correct arguments
+      expect(mockTestConnection).toHaveBeenCalledWith('github', { access_token: 'tok-123' })
+      expect(res.statusCode).toBe(200)
+      expect(res.body).toEqual(testResult)
+    })
+
+    /** @description Should return 500 when testConnection fails */
+    it('should return 500 on service error', async () => {
+      mockTestConnection.mockRejectedValue(new Error('Redis not available'))
+
+      const req = mockReq({
+        body: { source_type: 'github', config: { access_token: 'tok-123' } },
+      })
+      const res = mockRes()
+
+      await controller.testConnection(req, res)
+
+      expect(res.statusCode).toBe(500)
+      expect(res.body).toEqual({ error: 'Redis not available' })
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // deleteConnector — cascade
+  // -------------------------------------------------------------------------
+
+  describe('deleteConnector — cascade', () => {
+    /** @description Should parse cascade_documents query param and pass to service */
+    it('should pass cascade_documents=true from query params', async () => {
+      mockDeleteConnector.mockResolvedValue(undefined)
+
+      const req = mockReq({
+        params: { id: 'c1' },
+        query: { cascade_documents: true },
+      })
+      const res = mockRes()
+
+      await controller.deleteConnector(req, res)
+
+      // Verify cascade flag was passed to service
+      expect(mockDeleteConnector).toHaveBeenCalledWith('c1', true)
+      expect(res.statusCode).toBe(204)
+    })
+
+    /** @description Should default cascade_documents to false when not provided */
+    it('should default cascade_documents to false', async () => {
+      mockDeleteConnector.mockResolvedValue(undefined)
+
+      const req = mockReq({
+        params: { id: 'c1' },
+        query: {},
+      })
+      const res = mockRes()
+
+      await controller.deleteConnector(req, res)
+
+      // Verify cascade defaults to false
+      expect(mockDeleteConnector).toHaveBeenCalledWith('c1', false)
     })
   })
 })

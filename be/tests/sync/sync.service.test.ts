@@ -10,15 +10,30 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // Mocks
 // ---------------------------------------------------------------------------
 
+const mockEncrypt = vi.fn((val: string) => `encrypted:${val}`)
+const mockDecrypt = vi.fn((val: string) => val.startsWith('encrypted:') ? val.slice(10) : val)
+
+vi.mock('@/shared/services/crypto.service.js', () => ({
+  cryptoService: {
+    encrypt: (...args: any[]) => mockEncrypt(...args),
+    decrypt: (...args: any[]) => mockDecrypt(...args),
+    isEnabled: () => true,
+  },
+}))
+
 const mockConnectorCreate = vi.fn()
 const mockConnectorFindById = vi.fn()
 const mockConnectorFindAll = vi.fn()
 const mockConnectorUpdate = vi.fn()
 const mockConnectorDelete = vi.fn()
+const mockConnectorGetKnex = vi.fn()
 const mockSyncLogCreate = vi.fn()
 const mockSyncLogFindAll = vi.fn()
 const mockRedisLPush = vi.fn()
+const mockRedisSet = vi.fn()
+const mockRedisDel = vi.fn()
 const mockSyncLogUpdate = vi.fn()
+const mockDocumentDelete = vi.fn()
 
 vi.mock('@/shared/models/factory.js', () => ({
   ModelFactory: {
@@ -28,11 +43,15 @@ vi.mock('@/shared/models/factory.js', () => ({
       findAll: (...args: any[]) => mockConnectorFindAll(...args),
       update: (...args: any[]) => mockConnectorUpdate(...args),
       delete: (...args: any[]) => mockConnectorDelete(...args),
+      getKnex: (...args: any[]) => mockConnectorGetKnex(...args),
     },
     syncLog: {
       create: (...args: any[]) => mockSyncLogCreate(...args),
       findAll: (...args: any[]) => mockSyncLogFindAll(...args),
       update: (...args: any[]) => mockSyncLogUpdate(...args),
+    },
+    document: {
+      delete: (...args: any[]) => mockDocumentDelete(...args),
     },
   },
 }))
@@ -57,6 +76,8 @@ const mockRedisSubscriber = {
 // Mock Redis service for queue operations (wrapped in fn so tests can swap return)
 const mockGetRedisClient = vi.fn(() => ({
   lPush: (...args: any[]) => mockRedisLPush(...args),
+  set: (...args: any[]) => mockRedisSet(...args),
+  del: (...args: any[]) => mockRedisDel(...args),
   duplicate: () => mockRedisSubscriber,
 }))
 
@@ -94,9 +115,14 @@ describe('SyncService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    // Restore crypto mock implementations after clearAllMocks
+    mockEncrypt.mockImplementation((val: string) => `encrypted:${val}`)
+    mockDecrypt.mockImplementation((val: string) => val.startsWith('encrypted:') ? val.slice(10) : val)
     // Restore mock implementations cleared by global resetAllMocks
     mockGetRedisClient.mockReturnValue({
       lPush: (...args: any[]) => mockRedisLPush(...args),
+      set: (...args: any[]) => mockRedisSet(...args),
+      del: (...args: any[]) => mockRedisDel(...args),
       duplicate: () => mockRedisSubscriber,
     })
     mockRedisSubscriber.connect.mockResolvedValue(undefined)
@@ -152,6 +178,26 @@ describe('SyncService', () => {
       expect(result).toEqual(mockResult)
     })
 
+    /** @description Should encrypt config before storing in database */
+    it('should encrypt config before storage', async () => {
+      const configObj = { access_token: 'my-secret', host: 'example.com' }
+      const mockData = { name: 'Encrypted Connector', source_type: 'github', kb_id: 'kb-1', config: configObj }
+      const mockResult = { id: 'conn-3', ...mockData, status: 'active' }
+
+      mockConnectorCreate.mockResolvedValue(mockResult)
+
+      await service.createConnector(mockData)
+
+      // Verify encrypt was called with the JSON-stringified config
+      expect(mockEncrypt).toHaveBeenCalledWith(JSON.stringify(configObj))
+      // Verify the create call received the encrypted config string
+      expect(mockConnectorCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          config: `encrypted:${JSON.stringify(configObj)}`,
+        }),
+      )
+    })
+
     /** @description Should propagate errors from model layer */
     it('should throw when creation fails', async () => {
       mockConnectorCreate.mockRejectedValue(new Error('DB error'))
@@ -174,6 +220,22 @@ describe('SyncService', () => {
 
       expect(mockConnectorFindById).toHaveBeenCalledWith('conn-1')
       expect(result).toEqual(mockConnector)
+    })
+
+    /** @description Should decrypt config when retrieving connector */
+    it('should decrypt config and parse back to object', async () => {
+      const originalConfig = { access_token: 'my-secret', host: 'example.com' }
+      const encryptedConfig = `encrypted:${JSON.stringify(originalConfig)}`
+      const mockConnector = { id: 'conn-1', name: 'Test', config: encryptedConfig }
+
+      mockConnectorFindById.mockResolvedValue(mockConnector)
+
+      const result = await service.getConnector('conn-1')
+
+      // Verify decrypt was called with the encrypted config string
+      expect(mockDecrypt).toHaveBeenCalledWith(encryptedConfig)
+      // Verify config was parsed back to an object
+      expect(result!.config).toEqual(originalConfig)
     })
 
     /** @description Should return undefined when connector not found */
@@ -238,12 +300,12 @@ describe('SyncService', () => {
         { id: 'user-1', email: 'u@e.com' },
       )
 
-      // Verify config is JSON-stringified and user audit field is set
+      // Verify config is encrypted (encrypt wraps the JSON-stringified value) and user audit field is set
       expect(mockConnectorUpdate).toHaveBeenCalledWith(
         'conn-1',
         expect.objectContaining({
           name: 'Updated',
-          config: JSON.stringify({ key: 'val' }),
+          config: `encrypted:${JSON.stringify({ key: 'val' })}`,
           updated_by: 'user-1',
         }),
       )
@@ -322,6 +384,8 @@ describe('SyncService', () => {
       mockConnectorFindById.mockResolvedValue(mockConnector)
       mockSyncLogCreate.mockResolvedValue(mockSyncLog)
       mockRedisLPush.mockResolvedValue(1)
+      // Lock acquisition succeeds
+      mockRedisSet.mockResolvedValue('OK')
 
       const result = await service.triggerSync('conn-1')
 
@@ -352,10 +416,46 @@ describe('SyncService', () => {
       expect(result).toEqual(mockSyncLog)
     })
 
+    /** @description Should acquire Redis distributed lock with NX before syncing */
+    it('should acquire Redis SET NX lock before creating sync task', async () => {
+      const mockConnector = { id: 'conn-1', kb_id: 'kb-1', source_type: 'notion', config: '{}' }
+      const mockSyncLog = { id: 'sl-1', connector_id: 'conn-1', status: 'running' }
+
+      mockConnectorFindById.mockResolvedValue(mockConnector)
+      mockSyncLogCreate.mockResolvedValue(mockSyncLog)
+      mockRedisLPush.mockResolvedValue(1)
+      // Lock acquisition succeeds
+      mockRedisSet.mockResolvedValue('OK')
+
+      await service.triggerSync('conn-1')
+
+      // Verify Redis SET with NX (set-if-not-exists) was called for lock
+      expect(mockRedisSet).toHaveBeenCalledWith(
+        'connector_sync_lock:conn-1',
+        '1',
+        expect.objectContaining({ NX: true, EX: 3600 }),
+      )
+    })
+
+    /** @description Should throw when lock acquisition fails (sync already in progress) */
+    it('should throw when Redis lock acquisition fails', async () => {
+      const mockConnector = { id: 'conn-1', kb_id: 'kb-1', source_type: 'notion', config: '{}' }
+
+      mockConnectorFindById.mockResolvedValue(mockConnector)
+      // Lock acquisition fails — another sync is already running
+      mockRedisSet.mockResolvedValue(null)
+
+      await expect(service.triggerSync('conn-1')).rejects.toThrow(
+        'Sync already in progress for this connector',
+      )
+    })
+
     /** @description Should throw when sync log creation fails */
     it('should throw when sync log creation fails', async () => {
-      mockConnectorFindById.mockResolvedValue({ id: 'conn-1', kb_id: 'kb-1' })
+      mockConnectorFindById.mockResolvedValue({ id: 'conn-1', kb_id: 'kb-1', config: '{}' })
       mockSyncLogCreate.mockRejectedValue(new Error('DB write error'))
+      // Lock acquisition succeeds
+      mockRedisSet.mockResolvedValue('OK')
 
       await expect(service.triggerSync('conn-1')).rejects.toThrow('DB write error')
     })
@@ -543,6 +643,148 @@ describe('SyncService', () => {
 
       // Should not throw
       await cleanup()
+    })
+
+    /** @description Should release Redis lock on completed status */
+    it('should release Redis lock when sync completes', async () => {
+      let subscribeCb: ((message: string) => void) | undefined
+      mockRedisSubscriber.subscribe.mockImplementation((_channel: string, cb: (msg: string) => void) => {
+        subscribeCb = cb
+        return Promise.resolve()
+      })
+
+      mockConnectorUpdate.mockResolvedValue({ id: 'conn-1' })
+      mockRedisDel.mockResolvedValue(1)
+
+      await service.subscribeToSyncProgress('conn-1', 'sl-1')
+
+      // Simulate completed event
+      await subscribeCb!(JSON.stringify({
+        status: 'completed',
+        progress: 100,
+        message: 'Done',
+        docs_synced: 10,
+        docs_failed: 0,
+      }))
+
+      // Verify Redis DEL was called to release the sync lock
+      expect(mockRedisDel).toHaveBeenCalledWith('connector_sync_lock:conn-1')
+    })
+
+    /** @description Should release Redis lock on failed status */
+    it('should release Redis lock when sync fails', async () => {
+      let subscribeCb: ((message: string) => void) | undefined
+      mockRedisSubscriber.subscribe.mockImplementation((_channel: string, cb: (msg: string) => void) => {
+        subscribeCb = cb
+        return Promise.resolve()
+      })
+
+      mockRedisDel.mockResolvedValue(1)
+
+      await service.subscribeToSyncProgress('conn-1', 'sl-1')
+
+      // Simulate failed event
+      await subscribeCb!(JSON.stringify({
+        status: 'failed',
+        progress: 50,
+        message: 'Network timeout',
+        docs_synced: 3,
+        docs_failed: 2,
+      }))
+
+      // Verify Redis DEL was called to release the sync lock
+      expect(mockRedisDel).toHaveBeenCalledWith('connector_sync_lock:conn-1')
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // deleteConnector — cascade delete
+  // -------------------------------------------------------------------------
+
+  describe('deleteConnector — cascade', () => {
+    /** @description Should cascade-delete documents when cascadeDocuments is true */
+    it('should delete synced documents when cascadeDocuments is true', async () => {
+      const mockConnector = { id: 'conn-1', kb_id: 'kb-1', source_type: 'notion', config: '{"host":"x"}' }
+      mockConnectorFindById.mockResolvedValue({ ...mockConnector })
+      mockConnectorDelete.mockResolvedValue(undefined)
+      mockDocumentDelete.mockResolvedValue(undefined)
+
+      await service.deleteConnector('conn-1', true)
+
+      // Verify document delete was called with kb_id filter
+      expect(mockDocumentDelete).toHaveBeenCalledWith({ kb_id: 'kb-1' })
+      // Verify the connector itself was also deleted
+      expect(mockConnectorDelete).toHaveBeenCalledWith('conn-1')
+    })
+
+    /** @description Should not delete documents when cascadeDocuments is false (default) */
+    it('should not delete documents when cascadeDocuments is false', async () => {
+      mockConnectorDelete.mockResolvedValue(undefined)
+
+      await service.deleteConnector('conn-1', false)
+
+      // Verify document delete was NOT called
+      expect(mockDocumentDelete).not.toHaveBeenCalled()
+      // Verify connector was still deleted
+      expect(mockConnectorDelete).toHaveBeenCalledWith('conn-1')
+    })
+
+    /** @description Should not delete documents when cascadeDocuments is omitted (defaults to false) */
+    it('should default cascadeDocuments to false', async () => {
+      mockConnectorDelete.mockResolvedValue(undefined)
+
+      await service.deleteConnector('conn-1')
+
+      // Verify document delete was NOT called
+      expect(mockDocumentDelete).not.toHaveBeenCalled()
+      expect(mockConnectorDelete).toHaveBeenCalledWith('conn-1')
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // testConnection
+  // -------------------------------------------------------------------------
+
+  describe('testConnection', () => {
+    /** @description Should push test task to rag_connector_test Redis queue */
+    it('should push task to rag_connector_test queue', async () => {
+      const configObj = { access_token: 'tok-123', host: 'https://api.example.com' }
+
+      mockRedisLPush.mockResolvedValue(1)
+      // Simulate immediate result via subscriber callback
+      mockRedisSubscriber.subscribe.mockImplementation((_channel: string, cb: (msg: string) => void) => {
+        // Immediately fire the result
+        setTimeout(() => cb(JSON.stringify({ success: true, message: 'Connection successful' })), 0)
+        return Promise.resolve()
+      })
+
+      const resultPromise = service.testConnection('github', configObj)
+
+      const result = await resultPromise
+
+      // Verify task was pushed to the test queue
+      expect(mockRedisLPush).toHaveBeenCalledWith(
+        'rag_connector_test',
+        expect.any(String),
+      )
+      // Verify the payload contains expected fields
+      const payload = JSON.parse(mockRedisLPush.mock.calls[0][1])
+      expect(payload).toMatchObject({
+        task_type: 'test_connection',
+        source_type: 'github',
+        config: configObj,
+      })
+      expect(payload.test_id).toBeDefined()
+      expect(result).toEqual({ success: true, message: 'Connection successful' })
+    })
+
+    /** @description Should throw when Redis is not available */
+    it('should throw when Redis not available', async () => {
+      mockGetRedisClient.mockReturnValueOnce(null)
+
+      await expect(service.testConnection('github', { token: 'x' })).rejects.toThrow(
+        'Redis not available',
+      )
     })
   })
 })

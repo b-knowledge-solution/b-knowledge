@@ -25,40 +25,49 @@ graph LR
 
 ### 3.1 Connector CRUD
 
-| ID | Requirement | Priority | Notes |
-|----|-------------|----------|-------|
-| SYN-FR-01 | Admin SHALL be able to create a connector specifying: adapter type, credentials, source config, target dataset, sync schedule | Must | Adapter type from registry |
-| SYN-FR-02 | Admin SHALL be able to list connectors, optionally filtered by dataset / knowledge base | Must | Paginated, shows last sync status |
-| SYN-FR-03 | Admin SHALL be able to update connector configuration (credentials, schedule, source paths) | Must | Does not trigger immediate sync |
-| SYN-FR-04 | Admin SHALL be able to delete a connector and optionally remove synced documents | Must | Soft delete connector, optional cascade |
-| SYN-FR-05 | Connector credentials SHALL be stored encrypted at rest | Must | AES-256 or equivalent |
+| ID | Requirement | Priority | Status | Notes |
+|----|-------------|----------|--------|-------|
+| SYN-FR-01 | Admin SHALL be able to create a connector specifying: adapter type, credentials, source config, target dataset, sync schedule | Must | Implemented | Adapter type from registry |
+| SYN-FR-02 | Admin SHALL be able to list connectors, optionally filtered by dataset / knowledge base | Must | Implemented | Paginated, shows last sync status |
+| SYN-FR-03 | Admin SHALL be able to update connector configuration (credentials, schedule, source paths) | Must | Implemented | Does not trigger immediate sync |
+| SYN-FR-04 | Admin SHALL be able to delete a connector and optionally remove synced documents | Must | Implemented | Soft delete connector, optional cascade |
+| SYN-FR-05 | Connector credentials SHALL be stored encrypted at rest | Must | Implemented | AES-256 or equivalent |
+| SYN-FR-06 | Admin SHALL be able to pause and resume connectors to temporarily disable scheduled syncing | Must | Implemented | Toggle status between 'active' and 'paused' |
 
 ### 3.2 Sync Execution
 
-| ID | Requirement | Priority | Notes |
-|----|-------------|----------|-------|
-| SYN-FR-10 | Admin SHALL be able to trigger a manual sync for any connector | Must | Queued via Redis |
-| SYN-FR-11 | System SHALL execute scheduled syncs based on connector cron configuration | Should | Cron-based scheduling |
-| SYN-FR-12 | Sync process SHALL fetch only new or modified content since last sync (incremental) | Must | Use ETags, modified timestamps, or cursors |
-| SYN-FR-13 | Fetched content SHALL be created as documents in the target dataset | Must | Standard document creation flow |
-| SYN-FR-14 | After document creation, the system SHALL trigger parsing and indexing | Must | Same pipeline as manual uploads |
+| ID | Requirement | Priority | Status | Notes |
+|----|-------------|----------|--------|-------|
+| SYN-FR-10 | Admin SHALL be able to trigger a manual sync for any connector | Must | Implemented | Queued via Redis |
+| SYN-FR-11 | System SHALL execute scheduled syncs based on connector cron configuration | Should | Implemented | Cron-based scheduling |
+| SYN-FR-12 | Sync process SHALL fetch only new or modified content since last sync (incremental) | Must | Implemented | Use ETags, modified timestamps, or cursors |
+| SYN-FR-13 | Fetched content SHALL be created as documents in the target dataset | Must | Implemented | Standard document creation flow |
+| SYN-FR-14 | After document creation, the system SHALL trigger parsing and indexing | Must | Implemented | Same pipeline as manual uploads |
+| SYN-FR-15 | System SHALL prevent concurrent syncs for the same connector via Redis distributed lock | Must | Implemented | SYN-BR-06 implementation |
 
 ### 3.3 Sync Logs
 
-| ID | Requirement | Priority | Notes |
-|----|-------------|----------|-------|
-| SYN-FR-20 | System SHALL record a sync log entry for each sync execution | Must | Start time, end time, status, counts |
-| SYN-FR-21 | Sync log SHALL include: documents added, updated, deleted, errors encountered | Must | Summary counts and error details |
-| SYN-FR-22 | Admin SHALL be able to view paginated sync logs per connector | Must | Sorted by most recent first |
+| ID | Requirement | Priority | Status | Notes |
+|----|-------------|----------|--------|-------|
+| SYN-FR-20 | System SHALL record a sync log entry for each sync execution | Must | Implemented | Start time, end time, status, counts |
+| SYN-FR-21 | Sync log SHALL include: documents added, updated, deleted, errors encountered | Must | Implemented | Summary counts and error details |
+| SYN-FR-22 | Admin SHALL be able to view paginated sync logs per connector | Must | Implemented | Sorted by most recent first |
 
 ### 3.4 Adapter Registry
 
-| ID | Requirement | Priority | Notes |
-|----|-------------|----------|-------|
-| SYN-FR-30 | System SHALL support a pluggable adapter registry for connector types | Must | New adapters without core changes |
-| SYN-FR-31 | Each adapter SHALL implement a standard interface: `connect()`, `fetchChanges()`, `testConnection()` | Must | Adapter pattern |
-| SYN-FR-32 | System SHALL support built-in adapters exposed by the current sync module registry | Must | Exact set is implementation-defined |
-| SYN-FR-33 | Each adapter SHALL expose its required configuration schema for UI rendering | Should | JSON Schema for dynamic forms |
+| ID | Requirement | Priority | Status | Notes |
+|----|-------------|----------|--------|-------|
+| SYN-FR-30 | System SHALL support a pluggable adapter registry for connector types | Must | Implemented | New adapters without core changes |
+| SYN-FR-31 | Each adapter SHALL implement a standard interface: `connect()`, `fetchChanges()`, `testConnection()` | Must | Implemented | Adapter pattern |
+| SYN-FR-32 | System SHALL support built-in adapters exposed by the current sync module registry | Must | Implemented | Exact set is implementation-defined |
+| SYN-FR-33 | Each adapter SHALL expose its required configuration schema for UI rendering | Should | Implemented | JSON Schema for dynamic forms |
+
+### 3.5 Security
+
+| ID | Requirement | Priority | Status | Notes |
+|----|-------------|----------|--------|-------|
+| SYN-FR-40 | Connector credentials SHALL be encrypted at rest using AES-256-CBC | Must | Implemented | Uses cryptoService with RAGF wire format |
+| SYN-FR-41 | API responses SHALL mask sensitive credential values | Must | Implemented | Replaces tokens/passwords with ******** |
 
 ## 4. Sync Flow
 
@@ -143,3 +152,4 @@ classDiagram
 | DELETE | `/api/sync/connectors/:id` | Delete connector | manage_knowledge_base |
 | POST | `/api/sync/connectors/:id/sync` | Trigger manual sync | manage_knowledge_base |
 | GET | `/api/sync/connectors/:id/logs` | Get sync logs (paginated) | authenticated |
+| POST | `/api/sync/connectors/test-connection` | Test connection credentials | manage_knowledge_base |

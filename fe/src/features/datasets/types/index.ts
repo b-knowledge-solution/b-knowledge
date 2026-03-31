@@ -604,11 +604,21 @@ export interface SyncLog {
   status: 'running' | 'completed' | 'failed'
   docs_synced: number
   docs_failed: number
+  /** Number of unchanged documents skipped during delta sync */
+  docs_skipped: number
+  /** Number of orphaned documents deleted during full sync */
+  docs_deleted: number
   progress: number
   message?: string | null
   started_at?: string | null
   finished_at?: string | null
   created_at: string
   updated_at: string
+}
+
+/** @description Result of a test connection request */
+export interface TestConnectionResult {
+  success: boolean
+  message: string
 }
 
