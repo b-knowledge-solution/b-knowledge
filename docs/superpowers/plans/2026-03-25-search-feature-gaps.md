@@ -1424,7 +1424,7 @@ Search for `HoverCard` in `MarkdownRenderer.tsx`. Confirm the citation popovers 
 
 - [ ] **Step 2: Verify reference data is passed through in SearchResults**
 
-Check that `SearchResults.tsx` passes `reference={{ chunks: [...] }}` and `onCitationClick` to `MarkdownRenderer`. Verify chunk data includes `img_id`, `doc_name`, `page_num`, `score`.
+Check that `SearchResults.tsx` passes `reference={ { chunks: [...] } }` and `onCitationClick` to `MarkdownRenderer`. Verify chunk data includes `img_id`, `doc_name`, `page_num`, `score`.
 
 - [ ] **Step 3: Test visually**
 

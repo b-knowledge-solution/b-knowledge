@@ -240,8 +240,99 @@ Complete endpoint reference for the B-Knowledge REST API, grouped by module. All
 | POST | `/api/system-tools/cache/clear` | Yes | Clear cache |
 | GET | `/api/system-tools/config` | Yes | Get system config |
 
-## Feedback (1 endpoint)
+## Agents (~30 endpoints)
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/api/feedback` | Yes | Submit feedback |
+| GET | `/api/agents` | Yes | List agents |
+| POST | `/api/agents` | Yes | Create agent |
+| GET | `/api/agents/:id` | Yes | Get agent by ID |
+| PUT | `/api/agents/:id` | Yes | Update agent |
+| DELETE | `/api/agents/:id` | Yes | Delete agent |
+| POST | `/api/agents/:id/duplicate` | Yes | Duplicate agent |
+| GET | `/api/agents/:id/export` | Yes | Export agent definition |
+| POST | `/api/agents/:id/run` | Yes | Start agent run (SSE) |
+| GET | `/api/agents/:id/run/:runId/stream` | Yes | Stream agent run output |
+| POST | `/api/agents/:id/run/:runId/cancel` | Yes | Cancel running agent |
+| GET | `/api/agents/:id/runs` | Yes | List agent run history |
+| POST | `/api/agents/:id/debug` | Yes | Start debug session |
+| POST | `/api/agents/:id/debug/:runId/step` | Yes | Step to next node |
+| POST | `/api/agents/:id/debug/:runId/continue` | Yes | Continue debug execution |
+| POST | `/api/agents/:id/debug/:runId/breakpoint` | Yes | Set debug breakpoint |
+| DELETE | `/api/agents/:id/debug/:runId/breakpoint/:nodeId` | Yes | Remove breakpoint |
+| GET | `/api/agents/:id/debug/:runId/steps/:nodeId` | Yes | Get step details |
+| GET | `/api/agents/:id/versions` | Yes | List agent versions |
+| POST | `/api/agents/:id/versions` | Yes | Save agent version |
+| POST | `/api/agents/:id/versions/:versionId/restore` | Yes | Restore version |
+| DELETE | `/api/agents/:id/versions/:versionId` | Yes | Delete version |
+| GET | `/api/agents/tools/credentials` | Yes | List tool credentials |
+| POST | `/api/agents/tools/credentials` | Yes | Create tool credential |
+| PUT | `/api/agents/tools/credentials/:id` | Yes | Update tool credential |
+| DELETE | `/api/agents/tools/credentials/:id` | Yes | Delete tool credential |
+| GET | `/api/agents/embed/:token/:agentId/config` | No | Get agent embed config |
+| POST | `/api/agents/embed/:token/:agentId/run` | No | Run agent via embed widget (SSE) |
+| POST | `/api/agents/webhook/:agentId` | No | Trigger agent via webhook |
+
+## Memory (11 endpoints)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/memory` | Yes | List memory pools |
+| POST | `/api/memory` | Yes | Create memory pool |
+| GET | `/api/memory/:id` | Yes | Get memory pool by ID |
+| PUT | `/api/memory/:id` | Yes | Update memory pool |
+| DELETE | `/api/memory/:id` | Yes | Delete memory pool |
+| GET | `/api/memory/:id/messages` | Yes | List memory messages |
+| POST | `/api/memory/:id/messages` | Yes | Add memory message |
+| DELETE | `/api/memory/:id/messages/:messageId` | Yes | Delete memory message |
+| POST | `/api/memory/:id/search` | Yes | Search memory messages |
+| PUT | `/api/memory/:id/messages/:messageId/forget` | Yes | Mark message as forgotten |
+| POST | `/api/memory/:id/import` | Yes | Import chat history into memory |
+
+## Code Graph (11 endpoints)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/code-graph/:kbId/stats` | Yes | Get code graph statistics |
+| GET | `/api/code-graph/:kbId/callers` | Yes | Find callers of a function |
+| GET | `/api/code-graph/:kbId/callees` | Yes | Find callees of a function |
+| GET | `/api/code-graph/:kbId/snippet` | Yes | Get source code snippet |
+| GET | `/api/code-graph/:kbId/hierarchy` | Yes | Get class inheritance hierarchy |
+| GET | `/api/code-graph/:kbId/graph` | Yes | Get full graph data for visualization |
+| GET | `/api/code-graph/:kbId/schema` | Yes | Get graph schema (labels + types) |
+| GET | `/api/code-graph/:kbId/search` | Yes | Search code entities by name |
+| GET | `/api/code-graph/:kbId/dependencies` | Yes | Get import/dependency relationships |
+| POST | `/api/code-graph/:kbId/nl-query` | Yes | Natural language graph query |
+| POST | `/api/code-graph/:kbId/cypher` | Admin | Execute raw Cypher query |
+
+## External API (3 endpoints)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/v1/external/chat` | API Key | RAG chat with structured response |
+| POST | `/api/v1/external/search` | API Key | Search with AI summary |
+| POST | `/api/v1/external/retrieval` | API Key | Retrieval-only (no LLM generation) |
+
+## API Keys (4 endpoints)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/external/api-keys` | Yes | List user's API keys |
+| POST | `/api/external/api-keys` | Yes | Create API key |
+| PATCH | `/api/external/api-keys/:id` | Yes | Update API key (name, scopes, status) |
+| DELETE | `/api/external/api-keys/:id` | Yes | Delete API key |
+
+## Preview (1 endpoint)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/preview/:bucketName/*` | Yes | Preview file from S3 storage |
+
+## Feedback (4 endpoints)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/feedback` | Yes | List feedback records (paginated) |
+| GET | `/api/feedback/stats` | Yes | Get aggregated feedback statistics |
+| GET | `/api/feedback/export` | Yes | Export feedback records (JSON) |
+| POST | `/api/feedback` | Yes | Submit answer feedback |

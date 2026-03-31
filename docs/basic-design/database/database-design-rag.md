@@ -136,6 +136,8 @@ erDiagram
         varchar status "1 char"
         varchar source_url "2048 chars"
         jsonb policy_overrides "ABAC overrides"
+        varchar source_doc_id "512 chars, nullable, indexed"
+        timestamp source_updated_at "nullable"
         bigint create_time
         bigint update_time
     }
@@ -297,7 +299,7 @@ Legacy dataset container inherited from RAGFlow. Used by the Python advance-rag 
 
 ### document (Peewee legacy)
 
-Legacy document table used by the Python advance-rag worker. Tracks RAG processing state including progress, page ranges, content hashing, and S3 location. The `run` flag controls whether the document should be actively processed (pause/resume). `token_num` and `chunk_num` are populated after parsing. Supports ABAC permission overrides via `policy_overrides` JSONB.
+Legacy document table used by the Python advance-rag worker. Tracks RAG processing state including progress, page ranges, content hashing, and S3 location. The `run` flag controls whether the document should be actively processed (pause/resume). `token_num` and `chunk_num` are populated after parsing. Supports ABAC permission overrides via `policy_overrides` JSONB. Delta sync fields (`source_doc_id`, `source_updated_at`) enable change detection for connector-based ingestion by storing the external source's unique identifier and last-modified timestamp.
 
 ### file (Peewee legacy)
 

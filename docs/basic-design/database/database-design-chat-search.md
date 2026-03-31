@@ -185,7 +185,7 @@ erDiagram
 erDiagram
     answer_feedback {
         text id PK
-        varchar source "check IN (chat, search)"
+        varchar source "check IN (chat, search, agent)"
         text source_id
         text message_id
         text user_id
