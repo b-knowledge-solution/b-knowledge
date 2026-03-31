@@ -118,9 +118,9 @@ export async function fetchAgentRunDetails(runId: string): Promise<ExternalAgent
 
 /**
  * @description Export feedback records matching the current filters.
- * Calls GET /api/feedback/export with filter parameters.
- * @param {FilterState} filters - Current filter state for date range and feedback type.
- * @returns {Promise<any[]>} Array of feedback records for CSV export.
+ * Calls GET /api/feedback/export with filter parameters including source and thumbup.
+ * @param {FilterState} filters - Current filter state for date range, feedback type, and source.
+ * @returns {Promise<any[]>} Array of feedback records (with user_email) for CSV export.
  */
 export async function exportFeedback(filters: FilterState): Promise<any[]> {
     const params = new URLSearchParams({
@@ -128,11 +128,16 @@ export async function exportFeedback(filters: FilterState): Promise<any[]> {
         endDate: filters.endDate,
     })
 
-    // Map feedbackFilter to source/thumbup params for the export endpoint
+    // Map feedbackFilter to thumbup param for the export endpoint
     if (filters.feedbackFilter === 'positive') {
         params.set('thumbup', 'true')
     } else if (filters.feedbackFilter === 'negative') {
         params.set('thumbup', 'false')
+    }
+
+    // Pass source filter to scope export to the active tab (chat, search, agent)
+    if (filters.sourceName) {
+        params.set('source', filters.sourceName)
     }
 
     return apiFetch<any[]>(`/api/feedback/export?${params.toString()}`)

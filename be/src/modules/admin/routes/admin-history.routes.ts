@@ -6,9 +6,13 @@
 import { Router } from 'express';
 import { AdminHistoryController } from '../controllers/admin-history.controller.js';
 import { requireAuth, requireRole } from '@/shared/middleware/auth.middleware.js';
+import { requireTenant } from '@/shared/middleware/tenant.middleware.js';
 
 const router = Router();
 const controller = new AdminHistoryController();
+
+// Apply tenant scoping to all admin history routes
+router.use(requireTenant);
 
 /**
  * Route Definitions

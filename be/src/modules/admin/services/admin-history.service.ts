@@ -82,7 +82,8 @@ export class AdminHistoryService {
         startDate: string,
         endDate: string,
         sourceName?: string,
-        feedbackFilter?: FeedbackFilter
+        feedbackFilter?: FeedbackFilter,
+        tenantId?: string
     ) {
         // Calculate offset for pagination
         const offset = (page - 1) * limit;
@@ -105,19 +106,21 @@ export class AdminHistoryService {
                     SELECT COUNT(*) FROM history_chat_messages
                     WHERE session_id = history_chat_sessions.session_id
                 ) as message_count`),
-                // Subquery for positive feedback count
+                // Subquery for positive feedback count (tenant-scoped)
                 db.raw(`(
                     SELECT COUNT(*) FROM answer_feedback af
                     WHERE af.source = 'chat'
                     AND af.source_id = history_chat_sessions.session_id
                     AND af.thumbup = true
+                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
                 )::int as positive_count`),
-                // Subquery for negative feedback count
+                // Subquery for negative feedback count (tenant-scoped)
                 db.raw(`(
                     SELECT COUNT(*) FROM answer_feedback af
                     WHERE af.source = 'chat'
                     AND af.source_id = history_chat_sessions.session_id
                     AND af.thumbup = false
+                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
                 )::int as negative_count`)
             )
             .from('history_chat_sessions')
@@ -196,19 +199,21 @@ export class AdminHistoryService {
                     SELECT COUNT(*) FROM chat_messages
                     WHERE session_id = chat_sessions.id
                 )::int as message_count`),
-                // Subquery for positive feedback count
+                // Subquery for positive feedback count (tenant-scoped)
                 db.raw(`(
                     SELECT COUNT(*) FROM answer_feedback af
                     WHERE af.source = 'chat'
                     AND af.source_id = chat_sessions.id::text
                     AND af.thumbup = true
+                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
                 )::int as positive_count`),
-                // Subquery for negative feedback count
+                // Subquery for negative feedback count (tenant-scoped)
                 db.raw(`(
                     SELECT COUNT(*) FROM answer_feedback af
                     WHERE af.source = 'chat'
                     AND af.source_id = chat_sessions.id::text
                     AND af.thumbup = false
+                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
                 )::int as negative_count`),
                 'chat_sessions.title'
             )
@@ -261,10 +266,12 @@ export class AdminHistoryService {
     /**
      * @description Retrieve all messages for a specific chat session ordered chronologically.
      * Checks both external history_chat_messages and internal chat_messages tables.
+     * Enriches each message with feedback_thumbup and feedback_comment from answer_feedback.
      * @param {string} sessionId - The unique session identifier
-     * @returns {Promise<any[]>} Array of chat message records for the session
+     * @param {string} [tenantId] - Optional tenant ID for scoping feedback queries
+     * @returns {Promise<any[]>} Array of chat message records for the session with feedback fields
      */
-    async getChatSessionDetails(sessionId: string) {
+    async getChatSessionDetails(sessionId: string, tenantId?: string) {
         // Try external history first
         const external = await ModelFactory.historyChatMessage.getKnex()
             .from('history_chat_messages')
@@ -272,7 +279,27 @@ export class AdminHistoryService {
             .where('session_id', sessionId)
             .orderBy('created_at', 'asc');
 
-        if (external.length > 0) return external;
+        // Query feedback records for this chat session (tenant-scoped if provided)
+        let feedbackQuery = db('answer_feedback')
+            .where('source', 'chat')
+            .where('source_id', sessionId)
+            .select('message_id', 'thumbup', 'comment')
+        if (tenantId) {
+            feedbackQuery = feedbackQuery.where('tenant_id', tenantId)
+        }
+        const feedbackRecords = await feedbackQuery
+
+        // Build a lookup map from message_id to feedback data
+        const feedbackMap = new Map(feedbackRecords.map((f: any) => [f.message_id, f]))
+
+        if (external.length > 0) {
+            // Merge feedback into external messages by matching message_id to id
+            return external.map((msg: any) => ({
+                ...msg,
+                feedback_thumbup: feedbackMap.get(msg.id)?.thumbup ?? null,
+                feedback_comment: feedbackMap.get(msg.id)?.comment ?? null,
+            }))
+        }
 
         // Fall back to internal chat_messages
         const messages = await db('chat_messages')
@@ -285,6 +312,8 @@ export class AdminHistoryService {
             const msg = messages[i];
             if (msg.role === 'user') {
                 const assistantMsg = messages[i + 1]?.role === 'assistant' ? messages[i + 1] : null;
+                // Use assistant message ID for feedback lookup (feedback is on responses)
+                const feedbackId = assistantMsg?.id || msg.id
                 paired.push({
                     id: msg.id,
                     session_id: sessionId,
@@ -293,6 +322,8 @@ export class AdminHistoryService {
                     citations: assistantMsg?.citations || '[]',
                     created_at: msg.timestamp,
                     source: 'internal',
+                    feedback_thumbup: feedbackMap.get(feedbackId)?.thumbup ?? null,
+                    feedback_comment: feedbackMap.get(feedbackId)?.comment ?? null,
                 });
                 if (assistantMsg) i++;
             }
@@ -322,7 +353,8 @@ export class AdminHistoryService {
         startDate: string,
         endDate: string,
         sourceName?: string,
-        feedbackFilter?: FeedbackFilter
+        feedbackFilter?: FeedbackFilter,
+        tenantId?: string
     ) {
         // Calculate pagination offset
         const offset = (page - 1) * limit;
@@ -345,19 +377,21 @@ export class AdminHistoryService {
                     SELECT COUNT(*) FROM history_search_records
                     WHERE session_id = history_search_sessions.session_id
                 ) as message_count`),
-                // Subquery for positive feedback count
+                // Subquery for positive feedback count (tenant-scoped)
                 db.raw(`(
                     SELECT COUNT(*) FROM answer_feedback af
                     WHERE af.source = 'search'
                     AND af.source_id = history_search_sessions.session_id
                     AND af.thumbup = true
+                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
                 )::int as positive_count`),
-                // Subquery for negative feedback count
+                // Subquery for negative feedback count (tenant-scoped)
                 db.raw(`(
                     SELECT COUNT(*) FROM answer_feedback af
                     WHERE af.source = 'search'
                     AND af.source_id = history_search_sessions.session_id
                     AND af.thumbup = false
+                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
                 )::int as negative_count`)
             )
             .from('history_search_sessions')
@@ -419,17 +453,39 @@ export class AdminHistoryService {
     }
 
     /**
-     * @description Retrieve all search records for a specific search session ordered chronologically
+     * @description Retrieve all search records for a specific search session ordered chronologically.
+     * Enriches each record with feedback_thumbup and feedback_comment from answer_feedback.
      * @param {string} sessionId - The unique session identifier
-     * @returns {Promise<any[]>} Array of search records for the session
+     * @param {string} [tenantId] - Optional tenant ID for scoping feedback queries
+     * @returns {Promise<any[]>} Array of search records for the session with feedback fields
      */
-    async getSearchSessionDetails(sessionId: string) {
+    async getSearchSessionDetails(sessionId: string, tenantId?: string) {
         // Query to get all search entries for the session
-        return await ModelFactory.historySearchRecord.getKnex()
+        const records = await ModelFactory.historySearchRecord.getKnex()
             .from('history_search_records')
             .select('*')
             .where('session_id', sessionId)
             .orderBy('created_at', 'asc');
+
+        // Query feedback records for this search session (tenant-scoped if provided)
+        let feedbackQuery = db('answer_feedback')
+            .where('source', 'search')
+            .where('source_id', sessionId)
+            .select('message_id', 'thumbup', 'comment')
+        if (tenantId) {
+            feedbackQuery = feedbackQuery.where('tenant_id', tenantId)
+        }
+        const feedbackRecords = await feedbackQuery
+
+        // Build a lookup map from message_id to feedback data
+        const feedbackMap = new Map(feedbackRecords.map((f: any) => [f.message_id, f]))
+
+        // Merge feedback into search records by matching message_id to id
+        return records.map((record: any) => ({
+            ...record,
+            feedback_thumbup: feedbackMap.get(record.id)?.thumbup ?? null,
+            feedback_comment: feedbackMap.get(record.id)?.comment ?? null,
+        }))
     }
 
     /**
@@ -451,7 +507,8 @@ export class AdminHistoryService {
         email: string,
         startDate: string,
         endDate: string,
-        feedbackFilter?: FeedbackFilter
+        feedbackFilter?: FeedbackFilter,
+        tenantId?: string
     ) {
         // Calculate pagination offset
         const offset = (page - 1) * limit
@@ -470,24 +527,31 @@ export class AdminHistoryService {
                 'agent_runs.completed_at',
                 'agent_runs.duration_ms',
                 'users.email as user_email',
-                // Subquery for positive feedback count
+                // Subquery for positive feedback count (tenant-scoped)
                 db.raw(`(
                     SELECT COUNT(*) FROM answer_feedback af
                     WHERE af.source = 'agent'
                     AND af.source_id = agent_runs.id::text
                     AND af.thumbup = true
+                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
                 )::int as positive_count`),
-                // Subquery for negative feedback count
+                // Subquery for negative feedback count (tenant-scoped)
                 db.raw(`(
                     SELECT COUNT(*) FROM answer_feedback af
                     WHERE af.source = 'agent'
                     AND af.source_id = agent_runs.id::text
                     AND af.thumbup = false
+                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
                 )::int as negative_count`)
             )
             .orderBy('agent_runs.created_at', 'desc')
             .limit(limit)
             .offset(offset)
+
+        // Scope agent runs to the current tenant via the agents table
+        if (tenantId) {
+            query = query.where('agents.tenant_id', tenantId)
+        }
 
         // Filter by agent name or input text
         if (search) {
@@ -519,11 +583,12 @@ export class AdminHistoryService {
     /**
      * @description Retrieve a single agent run with its steps and associated feedback records.
      * @param {string} runId - UUID of the agent run
-     * @returns {Promise<{ run: any, steps: any[], feedback: any[] }>} Run details with steps and feedback
+     * @param {string} [tenantId] - Optional tenant ID for scoping feedback and agent queries
+     * @returns {Promise<{ run: any, steps: any[], feedback: any[] } | null>} Run details with steps and feedback
      */
-    async getAgentRunDetails(runId: string) {
-        // Fetch the run record with agent name
-        const run = await db('agent_runs')
+    async getAgentRunDetails(runId: string, tenantId?: string) {
+        // Fetch the run record with agent name, optionally scoped to tenant
+        let runQuery = db('agent_runs')
             .leftJoin('agents', 'agent_runs.agent_id', 'agents.id')
             .leftJoin('users', 'agent_runs.triggered_by', 'users.id')
             .select(
@@ -532,7 +597,11 @@ export class AdminHistoryService {
                 'users.email as user_email'
             )
             .where('agent_runs.id', runId)
-            .first()
+        // Scope to tenant via the agents table
+        if (tenantId) {
+            runQuery = runQuery.where('agents.tenant_id', tenantId)
+        }
+        const run = await runQuery.first()
 
         if (!run) return null
 
@@ -541,11 +610,15 @@ export class AdminHistoryService {
             .where('run_id', runId)
             .orderBy('started_at', 'asc')
 
-        // Fetch feedback records for this agent run
-        const feedback = await db('answer_feedback')
+        // Fetch feedback records for this agent run (tenant-scoped if provided)
+        let feedbackQuery = db('answer_feedback')
             .where('source', 'agent')
             .where('source_id', runId)
             .orderBy('created_at', 'desc')
+        if (tenantId) {
+            feedbackQuery = feedbackQuery.where('tenant_id', tenantId)
+        }
+        const feedback = await feedbackQuery
 
         return { run, steps, feedback }
     }

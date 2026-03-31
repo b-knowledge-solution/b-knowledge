@@ -69,8 +69,8 @@ interface SearchResultsProps {
   reference?: ChatReference | undefined
   /** Callback when a citation badge is clicked to open document preview */
   onCitationClick?: ((chunk: ChatChunk) => void) | undefined
-  /** Callback to submit feedback for the current answer or a specific result */
-  onFeedback?: ((thumbup: boolean, result?: SearchResult) => void) | undefined
+  /** Callback to submit feedback for the current answer or a specific result, with optional comment */
+  onFeedback?: ((thumbup: boolean, result?: SearchResult, comment?: string) => void) | undefined
   /** Custom message to show when search returns no results */
   emptyMessage?: string | undefined
 }
@@ -280,7 +280,7 @@ function SearchResults({
               result={result}
               query={query}
               onClick={onResultClick}
-              onFeedback={onFeedback ? ((thumbup) => onFeedback(thumbup, result)) : undefined}
+              onFeedback={onFeedback ? ((thumbup, _result, comment) => onFeedback(thumbup, result, comment)) : undefined}
             />
           ))}
         </div>

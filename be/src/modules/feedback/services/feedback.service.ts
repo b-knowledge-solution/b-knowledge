@@ -101,24 +101,42 @@ class FeedbackService {
 
   /**
    * @description Export all feedback records matching filters (no pagination, max 10000).
-   * Returns raw records for CSV conversion on the frontend.
+   * Joins with users table to include user_email in exported data.
+   * Returns enriched records for CSV conversion on the frontend.
    * @param {ExportFeedbackFilters} filters - Filter options for export
-   * @returns {Promise<AnswerFeedback[]>} Array of matching feedback records
+   * @returns {Promise<any[]>} Array of matching feedback records with user_email
    */
-  async exportFeedback(filters: ExportFeedbackFilters): Promise<AnswerFeedback[]> {
-    // Use findPaginated with a high limit to cap exports at 10000 records
-    const result = await ModelFactory.answerFeedback.findPaginated({
-      source: filters.source,
-      thumbup: filters.thumbup,
-      startDate: filters.startDate,
-      endDate: filters.endDate,
-      tenantId: filters.tenantId,
-      page: 1,
-      limit: 10000,
-    })
+  async exportFeedback(filters: ExportFeedbackFilters): Promise<any[]> {
+    // Build custom query with users join for user_email, tenant-scoped
+    let query = ModelFactory.answerFeedback.getKnex()
+      .from('answer_feedback')
+      .leftJoin('users', 'answer_feedback.user_id', 'users.id')
+      .select('answer_feedback.*', 'users.email as user_email')
+      .where('answer_feedback.tenant_id', filters.tenantId)
 
-    log.info('Exporting feedback', { count: result.data.length, tenantId: filters.tenantId })
-    return result.data
+    // Apply optional source filter
+    if (filters.source) {
+      query = query.where('answer_feedback.source', filters.source)
+    }
+
+    // Apply optional thumbup filter
+    if (filters.thumbup !== undefined) {
+      query = query.where('answer_feedback.thumbup', filters.thumbup)
+    }
+
+    // Apply optional date range filters
+    if (filters.startDate) {
+      query = query.where('answer_feedback.created_at', '>=', filters.startDate)
+    }
+    if (filters.endDate) {
+      query = query.where('answer_feedback.created_at', '<=', `${filters.endDate} 23:59:59`)
+    }
+
+    // Cap exports at 10000 records, ordered newest first
+    const data = await query.orderBy('answer_feedback.created_at', 'desc').limit(10000)
+
+    log.info('Exporting feedback', { count: data.length, tenantId: filters.tenantId })
+    return data
   }
 }
 

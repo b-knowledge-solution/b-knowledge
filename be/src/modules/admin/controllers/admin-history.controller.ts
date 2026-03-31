@@ -4,6 +4,7 @@
  */
 import { Request, Response } from 'express';
 import { log } from '@/shared/services/logger.service.js';
+import { getTenantId } from '@/shared/middleware/tenant.middleware.js';
 import { adminHistoryService } from '@/modules/admin/services/admin-history.service.js';
 import type { FeedbackFilter } from '@/modules/admin/services/admin-history.service.js';
 
@@ -40,8 +41,11 @@ export class AdminHistoryController {
             const sourceName = req.query.sourceName as string || '';
             const feedbackFilter = this.parseFeedbackFilter(req.query.feedbackFilter as string);
 
+            // Extract tenant ID for scoping feedback subqueries
+            const tenantId = getTenantId(req) || undefined
+
             // Fetch chat history from service with feedback enrichment
-            const sessions = await adminHistoryService.getChatHistory(page, limit, search, email, startDate, endDate, sourceName, feedbackFilter);
+            const sessions = await adminHistoryService.getChatHistory(page, limit, search, email, startDate, endDate, sourceName, feedbackFilter, tenantId);
             res.json(sessions);
         } catch (error) {
             // Log error and return 500 status
@@ -66,8 +70,11 @@ export class AdminHistoryController {
                 return;
             }
 
-            // Fetch session details from service
-            const messages = await adminHistoryService.getChatSessionDetails(sessionId);
+            // Extract tenant ID for scoping feedback queries
+            const tenantId = getTenantId(req) || undefined
+
+            // Fetch session details from service with feedback enrichment
+            const messages = await adminHistoryService.getChatSessionDetails(sessionId, tenantId);
             res.json(messages);
         } catch (error) {
             // Log error and return 500 status
@@ -94,8 +101,11 @@ export class AdminHistoryController {
             const sourceName = req.query.sourceName as string || '';
             const feedbackFilter = this.parseFeedbackFilter(req.query.feedbackFilter as string);
 
+            // Extract tenant ID for scoping feedback subqueries
+            const tenantId = getTenantId(req) || undefined
+
             // Fetch search history from service with feedback enrichment
-            const sessions = await adminHistoryService.getSearchHistory(page, limit, search, email, startDate, endDate, sourceName, feedbackFilter);
+            const sessions = await adminHistoryService.getSearchHistory(page, limit, search, email, startDate, endDate, sourceName, feedbackFilter, tenantId);
             res.json(sessions);
         } catch (error) {
             // Log error and return 500 status
@@ -120,8 +130,11 @@ export class AdminHistoryController {
                 return;
             }
 
-            // Fetch search session details from service
-            const messages = await adminHistoryService.getSearchSessionDetails(sessionId);
+            // Extract tenant ID for scoping feedback queries
+            const tenantId = getTenantId(req) || undefined
+
+            // Fetch search session details from service with feedback enrichment
+            const messages = await adminHistoryService.getSearchSessionDetails(sessionId, tenantId);
             res.json(messages);
         } catch (error) {
             // Log error and return 500 status
@@ -147,8 +160,11 @@ export class AdminHistoryController {
             const endDate = req.query.endDate as string || ''
             const feedbackFilter = this.parseFeedbackFilter(req.query.feedbackFilter as string)
 
-            // Fetch agent run history from service
-            const runs = await adminHistoryService.getAgentRunHistory(page, limit, search, email, startDate, endDate, feedbackFilter)
+            // Extract tenant ID for scoping agent run queries
+            const tenantId = getTenantId(req) || undefined
+
+            // Fetch agent run history from service (tenant-scoped)
+            const runs = await adminHistoryService.getAgentRunHistory(page, limit, search, email, startDate, endDate, feedbackFilter, tenantId)
             res.json(runs)
         } catch (error) {
             log.error('Error fetching agent run history', error as Record<string, unknown>)
@@ -171,7 +187,10 @@ export class AdminHistoryController {
                 return
             }
 
-            const details = await adminHistoryService.getAgentRunDetails(runId)
+            // Extract tenant ID for scoping agent run detail queries
+            const tenantId = getTenantId(req) || undefined
+
+            const details = await adminHistoryService.getAgentRunDetails(runId, tenantId)
             // Return 404 if run not found
             if (!details) {
                 res.status(404).json({ error: 'Agent run not found' })
