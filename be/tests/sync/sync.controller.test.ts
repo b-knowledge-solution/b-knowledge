@@ -430,7 +430,7 @@ describe('SyncController', () => {
 
       // Verify SSE headers
       expect(res.headers['Content-Type']).toBe('text/event-stream')
-      expect(res.headers['Cache-Control']).toBe('no-cache')
+      expect(res.headers['Cache-Control']).toBe('no-cache, no-store')
       expect(res.headers['Connection']).toBe('keep-alive')
 
       // Verify subscription was made

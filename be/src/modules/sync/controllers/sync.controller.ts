@@ -242,6 +242,8 @@ export class SyncController {
    */
   async testConnection(req: Request, res: Response): Promise<void> {
     try {
+      // Prevent caching of credential-related responses
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
       const { source_type, config: connConfig } = req.body
       const result = await syncService.testConnection(source_type, connConfig)
       res.json(result)
@@ -267,7 +269,7 @@ export class SyncController {
 
     // Configure SSE headers
     res.setHeader('Content-Type', 'text/event-stream')
-    res.setHeader('Cache-Control', 'no-cache')
+    res.setHeader('Cache-Control', 'no-cache, no-store')
     res.setHeader('Connection', 'keep-alive')
     res.flushHeaders()
 
@@ -282,8 +284,15 @@ export class SyncController {
         }
       })
 
+      // Auto-close SSE stream after 10 minutes to prevent leaked connections
+      const maxStreamTimeout = setTimeout(async () => {
+        await cleanup()
+        res.end()
+      }, 10 * 60 * 1000)
+
       // Clean up Redis subscriber on client disconnect
       req.on('close', async () => {
+        clearTimeout(maxStreamTimeout)
         await cleanup()
       })
     } catch (error) {

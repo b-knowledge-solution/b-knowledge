@@ -904,7 +904,8 @@ def main():
 
             # result is a tuple of (queue_name, message_json)
             queue_name_bytes, raw_message = result
-            logger.debug(f"Received sync task: {raw_message[:200]}...")
+            # Log task receipt without exposing credentials (first 200 chars may contain secrets)
+            logger.debug(f"Received task from queue={queue_name_str}, length={len(raw_message)} bytes")
 
             # Parse the task payload
             try:
