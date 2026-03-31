@@ -9,6 +9,7 @@ import { Request, Response } from 'express'
 import { syncService } from '../services/sync.service.js'
 import { log } from '@/shared/services/logger.service.js'
 import { getClientIp } from '@/shared/utils/ip.js'
+import { ragService } from '@/modules/rag/index.js'
 import type { Connector } from '../models/sync.types.js'
 
 /** Keys in connector config that contain sensitive credentials (SYN-BR-07) */
@@ -56,6 +57,25 @@ function sanitizeConnectors(connectors: Connector[]): Connector[] {
 }
 
 /**
+ * @description Verify that the current user has access to the KB linked to a connector.
+ *   Admins/leaders bypass the check. Returns false if access is denied.
+ * @param {Request} req - Express request with user context
+ * @param {string} kbId - Knowledge base UUID to check access for
+ * @returns {Promise<boolean>} True if user has access
+ */
+async function checkKbAccess(req: Request, kbId: string): Promise<boolean> {
+  const user = req.user as any
+  if (!user) return false
+  // Admin/leader roles have global KB access
+  if (user.role === 'admin' || user.role === 'superadmin' || user.role === 'leader') return true
+  try {
+    return await ragService.checkDatasetAccess(kbId, user.id, user.role, user.teamIds || [])
+  } catch {
+    return false
+  }
+}
+
+/**
  * SyncController class handling connector and sync task endpoints.
  * @description Class-based controller following project conventions.
  */
@@ -70,6 +90,11 @@ export class SyncController {
     try {
       // Extract optional kb_id filter from query params
       const kbId = req.query.kb_id as string | undefined
+      // Verify KB access when filtering by specific KB
+      if (kbId && !(await checkKbAccess(req, kbId))) {
+        res.status(403).json({ error: 'Access denied to this knowledge base' })
+        return
+      }
       const connectors = await syncService.listConnectors(kbId)
       // Mask sensitive credentials before sending to client (SYN-BR-07)
       res.json(sanitizeConnectors(connectors))
@@ -93,6 +118,11 @@ export class SyncController {
         res.status(404).json({ error: 'Connector not found' })
         return
       }
+      // Verify user has access to this connector's KB
+      if (!(await checkKbAccess(req, connector.kb_id))) {
+        res.status(403).json({ error: 'Access denied' })
+        return
+      }
       // Mask sensitive credentials before sending to client (SYN-BR-07)
       res.json(sanitizeConnectorConfig(connector))
     } catch (error) {
@@ -109,6 +139,11 @@ export class SyncController {
    */
   async createConnector(req: Request, res: Response): Promise<void> {
     try {
+      // Verify user has access to the target KB
+      if (req.body.kb_id && !(await checkKbAccess(req, req.body.kb_id))) {
+        res.status(403).json({ error: 'Access denied to this knowledge base' })
+        return
+      }
       // Build user context for audit trail
       const user = req.user
         ? { id: req.user.id, email: req.user.email, ip: getClientIp(req) }
@@ -139,6 +174,11 @@ export class SyncController {
     }
 
     try {
+      // Verify KB access before updating
+      const existing = await syncService.getConnector(id)
+      if (!existing) { res.status(404).json({ error: 'Connector not found' }); return }
+      if (!(await checkKbAccess(req, existing.kb_id))) { res.status(403).json({ error: 'Access denied' }); return }
+
       const user = req.user
         ? { id: req.user.id, email: req.user.email, ip: getClientIp(req) }
         : undefined
@@ -165,13 +205,14 @@ export class SyncController {
    */
   async deleteConnector(req: Request, res: Response): Promise<void> {
     const { id } = req.params
-    // Guard: ensure connector ID is provided
-    if (!id) {
-      res.status(400).json({ error: 'ID is required' })
-      return
-    }
+    if (!id) { res.status(400).json({ error: 'ID is required' }); return }
 
     try {
+      // Verify KB access before deleting
+      const existing = await syncService.getConnector(id)
+      if (!existing) { res.status(404).json({ error: 'Connector not found' }); return }
+      if (!(await checkKbAccess(req, existing.kb_id))) { res.status(403).json({ error: 'Access denied' }); return }
+
       // Pass cascade_documents flag from query params
       const cascadeDocuments = (req.query as any).cascade_documents === true
       await syncService.deleteConnector(id, cascadeDocuments)
@@ -190,13 +231,14 @@ export class SyncController {
    */
   async triggerSync(req: Request, res: Response): Promise<void> {
     const { id } = req.params
-    // Guard: ensure connector ID is provided
-    if (!id) {
-      res.status(400).json({ error: 'Connector ID is required' })
-      return
-    }
+    if (!id) { res.status(400).json({ error: 'Connector ID is required' }); return }
 
     try {
+      // Verify KB access before triggering sync
+      const existing = await syncService.getConnector(id)
+      if (!existing) { res.status(404).json({ error: 'Connector not found' }); return }
+      if (!(await checkKbAccess(req, existing.kb_id))) { res.status(403).json({ error: 'Access denied' }); return }
+
       const syncLog = await syncService.triggerSync(id, req.body?.poll_range_start)
       res.status(202).json(syncLog)
     } catch (error: any) {
@@ -204,6 +246,7 @@ export class SyncController {
       // Map known error messages to appropriate HTTP status codes
       const status = error.message === 'Connector not found' ? 404
         : error.message?.includes('already in progress') ? 409
+        : error.message?.includes('queue is full') ? 503
         : 500
       res.status(status).json({ error: error.message || 'Failed to trigger sync' })
     }
@@ -217,13 +260,14 @@ export class SyncController {
    */
   async listSyncLogs(req: Request, res: Response): Promise<void> {
     const { id } = req.params
-    // Guard: ensure connector ID is provided
-    if (!id) {
-      res.status(400).json({ error: 'Connector ID is required' })
-      return
-    }
+    if (!id) { res.status(400).json({ error: 'Connector ID is required' }); return }
 
     try {
+      // Verify KB access before listing logs
+      const existing = await syncService.getConnector(id)
+      if (!existing) { res.status(404).json({ error: 'Connector not found' }); return }
+      if (!(await checkKbAccess(req, existing.kb_id))) { res.status(403).json({ error: 'Access denied' }); return }
+
       const { page, limit, status } = req.query as any
       const logs = await syncService.listSyncLogs(id, page, limit, status)
       res.json(logs)
@@ -262,8 +306,15 @@ export class SyncController {
    */
   async streamProgress(req: Request, res: Response): Promise<void> {
     const { id } = req.params
-    if (!id) {
-      res.status(400).json({ error: 'Connector ID is required' })
+    if (!id) { res.status(400).json({ error: 'Connector ID is required' }); return }
+
+    // Verify KB access before streaming progress
+    try {
+      const existing = await syncService.getConnector(id)
+      if (!existing) { res.status(404).json({ error: 'Connector not found' }); return }
+      if (!(await checkKbAccess(req, existing.kb_id))) { res.status(403).json({ error: 'Access denied' }); return }
+    } catch {
+      res.status(500).json({ error: 'Access check failed' })
       return
     }
 

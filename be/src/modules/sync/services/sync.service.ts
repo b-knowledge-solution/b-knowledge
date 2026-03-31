@@ -27,6 +27,15 @@ const SYNC_LOCK_PREFIX = 'connector_sync_lock:'
 /** Lock TTL in seconds (10 min — balance between long syncs and crash recovery) */
 const SYNC_LOCK_TTL = 600
 
+/** Maximum pending tasks in the sync queue before rejecting new syncs */
+const MAX_QUEUE_DEPTH = 100
+
+/** Maximum concurrent testConnection requests to prevent Redis subscriber exhaustion */
+const MAX_CONCURRENT_TEST_CONNECTIONS = 10
+
+/** Counter for in-flight test connection requests */
+let activeTestConnections = 0
+
 /**
  * @description Captures the acting user for audit trails on connector operations
  */
@@ -231,6 +240,12 @@ export class SyncService {
         throw new Error('Redis not available — cannot queue sync task')
       }
 
+      // Guard against queue pile-up if Python worker is down
+      const queueDepth = await redisClient.lLen(CONNECTOR_SYNC_QUEUE)
+      if (queueDepth >= MAX_QUEUE_DEPTH) {
+        throw new Error('Sync queue is full — worker may be down. Please try again later.')
+      }
+
       const lockKey = `${SYNC_LOCK_PREFIX}${connectorId}`
       const lockAcquired = await redisClient.set(lockKey, '1', { NX: true, EX: SYNC_LOCK_TTL })
       if (!lockAcquired) {
@@ -323,6 +338,12 @@ export class SyncService {
       throw new Error('Redis not available')
     }
 
+    // Guard against too many concurrent test connections to prevent Redis subscriber exhaustion
+    if (activeTestConnections >= MAX_CONCURRENT_TEST_CONNECTIONS) {
+      return { success: false, message: 'Too many concurrent connection tests. Please try again.' }
+    }
+    activeTestConnections++
+
     // Generate unique test ID for this request
     const testId = crypto.randomUUID()
     const resultChannel = `connector_test:${testId}:result`
@@ -336,8 +357,8 @@ export class SyncService {
     })
     await redisClient.lPush(CONNECTOR_TEST_QUEUE, taskPayload)
 
-    // Subscribe and wait for result with 30s timeout
-    return new Promise<{ success: boolean; message: string }>((resolve) => {
+    // Subscribe and wait for result with 30s timeout; decrement counter on completion
+    const result = await new Promise<{ success: boolean; message: string }>((resolve) => {
       let settled = false
 
       // Timeout after 30 seconds
@@ -383,6 +404,8 @@ export class SyncService {
         try { subscriber.quit().catch(() => {}) } catch { /* ignore */ }
       })
     })
+    activeTestConnections--
+    return result
   }
 
   /**

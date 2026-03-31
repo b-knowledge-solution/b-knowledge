@@ -30,6 +30,7 @@ const mockConnectorGetKnex = vi.fn()
 const mockSyncLogCreate = vi.fn()
 const mockSyncLogFindAll = vi.fn()
 const mockRedisLPush = vi.fn()
+const mockRedisLLen = vi.fn()
 const mockRedisSet = vi.fn()
 const mockRedisDel = vi.fn()
 const mockSyncLogUpdate = vi.fn()
@@ -76,6 +77,7 @@ const mockRedisSubscriber = {
 // Mock Redis service for queue operations (wrapped in fn so tests can swap return)
 const mockGetRedisClient = vi.fn(() => ({
   lPush: (...args: any[]) => mockRedisLPush(...args),
+      lLen: (...args: any[]) => mockRedisLLen(...args),
   set: (...args: any[]) => mockRedisSet(...args),
   del: (...args: any[]) => mockRedisDel(...args),
   duplicate: () => mockRedisSubscriber,
@@ -118,9 +120,12 @@ describe('SyncService', () => {
     // Restore crypto mock implementations after clearAllMocks
     mockEncrypt.mockImplementation((val: string) => `encrypted:${val}`)
     mockDecrypt.mockImplementation((val: string) => val.startsWith('encrypted:') ? val.slice(10) : val)
+    // Default: queue is not full
+    mockRedisLLen.mockResolvedValue(0)
     // Restore mock implementations cleared by global resetAllMocks
     mockGetRedisClient.mockReturnValue({
       lPush: (...args: any[]) => mockRedisLPush(...args),
+      lLen: (...args: any[]) => mockRedisLLen(...args),
       set: (...args: any[]) => mockRedisSet(...args),
       del: (...args: any[]) => mockRedisDel(...args),
       duplicate: () => mockRedisSubscriber,

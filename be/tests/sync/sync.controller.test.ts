@@ -44,17 +44,28 @@ vi.mock('@/shared/utils/ip.js', () => ({
   getClientIp: () => '127.0.0.1',
 }))
 
+// Mock ragService for KB access checks
+const mockCheckDatasetAccess = vi.fn()
+vi.mock('@/modules/rag/index.js', () => ({
+  ragService: {
+    checkDatasetAccess: (...args: any[]) => mockCheckDatasetAccess(...args),
+  },
+}))
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 /** Create a mock Express Request */
+/** Default mock user with admin role for KB access checks */
+const defaultUser = { id: 'u1', email: 'test@test.com', role: 'admin', teamIds: [] }
+
 function mockReq(overrides: Partial<Request> = {}): Request {
   return {
     params: {},
     query: {},
     body: {},
-    user: undefined,
+    user: defaultUser,
     on: vi.fn(),
     ...overrides,
   } as unknown as Request
@@ -97,6 +108,10 @@ describe('SyncController', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    // Default: grant KB access for all tests (individual tests can override)
+    mockCheckDatasetAccess.mockResolvedValue(true)
+    // Default: getConnector returns a connector with kb_id for access checks
+    mockGetConnector.mockResolvedValue({ id: 'c1', kb_id: 'kb-1', name: 'Test', config: {} })
     controller = new SyncController()
   })
 
