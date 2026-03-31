@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_plan: 1
-status: Executing Phase 05
-stopped_at: Phase 5 fix plan 05-05 verified
-last_updated: "2026-03-31T10:09:55.808Z"
+status: Phase 05 Complete
+stopped_at: Completed 05-05-PLAN.md
+last_updated: "2026-03-31T10:26:00.000Z"
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 23
-  completed_plans: 17
+  completed_plans: 18
   percent: 100
 ---
 
@@ -24,8 +24,8 @@ Progress: [██████████] 100%
 
 ### Last Session
 
-- **Stopped at:** Phase 5 fix plan 05-05 verified
-- **Timestamp:** 2026-03-31T08:12:00Z
+- **Stopped at:** Completed 05-05-PLAN.md
+- **Timestamp:** 2026-03-31T10:26:00Z
 
 ## Accumulated Context
 
@@ -79,6 +79,9 @@ Progress: [██████████] 100%
 - [Phase 05-04]: Source breakdown displayed as Badge row card, not as a 5th gradient stat card
 - [Phase 05]: Agent run queries use db() directly in admin-history service for cross-table aggregation
 - [Phase 05]: Read-only feedback display on agent runs per D-08 (no FeedbackCommentPopover)
+- [Phase 05-05]: Tenant scoping on history tables via answer_feedback.tenant_id (history tables lack tenant_id)
+- [Phase 05-05]: Post-query feedback merge pattern for detail views (separate query + Map lookup)
+- [Phase 05-05]: Agent run tenant scoping via agents.tenant_id
 
 ### Performance Metrics
 
@@ -101,6 +104,7 @@ Progress: [██████████] 100%
 | Phase 05 P01 | 10min | 2 tasks | 12 files |
 | 05    | 04   | 10min    | 2     | 12    |
 | Phase 05 P03 | 39min | 3 tasks | 21 files |
+| 05    | 05   | 11min    | 2     | 9     |
 
 ### Pending Todos
 
