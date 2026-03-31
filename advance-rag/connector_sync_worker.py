@@ -123,7 +123,7 @@ def _get_connector_class(source_type: str) -> type | None:
         "blob_storage": ("common.data_source.blob_connector", "BlobStorageConnector"),
         "notion": ("common.data_source.notion_connector", "NotionConnector"),
         "slack": ("common.data_source.slack_connector", "SlackConnector"),
-        "sharepoint": ("common.data_source.sharepoint_connector", "SharepointConnector"),
+        "sharepoint": ("common.data_source.sharepoint_connector", "SharePointConnector"),
         "google_drive": ("common.data_source.google_drive.connector", "GoogleDriveConnector"),
         "dropbox": ("common.data_source.dropbox_connector", "DropboxConnector"),
         "discord": ("common.data_source.discord_connector", "DiscordConnector"),
@@ -133,10 +133,13 @@ def _get_connector_class(source_type: str) -> type | None:
         "airtable": ("common.data_source.airtable_connector", "AirtableConnector"),
         "asana": ("common.data_source.asana_connector", "AsanaConnector"),
         "zendesk": ("common.data_source.zendesk_connector", "ZendeskConnector"),
-        "seafile": ("common.data_source.seafile_connector", "SeafileConnector"),
+        "seafile": ("common.data_source.seafile_connector", "SeaFileConnector"),
         "moodle": ("common.data_source.moodle_connector", "MoodleConnector"),
-        "webdav": ("common.data_source.webdav_connector", "WebdavConnector"),
+        "webdav": ("common.data_source.webdav_connector", "WebDAVConnector"),
         "teams": ("common.data_source.teams_connector", "TeamsConnector"),
+        "bitbucket": ("common.data_source.bitbucket.connector", "BitbucketConnector"),
+        "rdbms": ("common.data_source.rdbms_connector", "RDBMSConnector"),
+        "dingtalk_ai_table": ("common.data_source.dingtalk_ai_table_connector", "DingTalkAITableConnector"),
     }
 
     entry = connector_map.get(source_type)
@@ -209,6 +212,29 @@ def _extract_constructor_kwargs(source_type: str, config: dict[str, Any]) -> dic
         return {
             "root_page_id": config.get("root_page_id", None),
         }
+    elif source_type == "bitbucket":
+        return {
+            "workspace": config.get("workspace", ""),
+            "repositories": config.get("repositories", None),
+            "projects": config.get("projects", None),
+        }
+    elif source_type == "rdbms":
+        return {
+            "db_type": config.get("db_type", ""),
+            "host": config.get("host", ""),
+            "port": config.get("port", 5432),
+            "database": config.get("database", ""),
+            "query": config.get("query", ""),
+            "content_columns": config.get("content_columns", ""),
+            "metadata_columns": config.get("metadata_columns", None),
+            "id_column": config.get("id_column", None),
+            "timestamp_column": config.get("timestamp_column", None),
+        }
+    elif source_type == "dingtalk_ai_table":
+        return {
+            "table_id": config.get("table_id", ""),
+            "operator_id": config.get("operator_id", ""),
+        }
     # Default: return empty kwargs for connectors with no required constructor args
     return {}
 
@@ -275,6 +301,20 @@ def _extract_credentials(source_type: str, config: dict[str, Any]) -> dict[str, 
         return {
             # Frontend sends "service_account_json", fall back to legacy "tokens"
             "google_drive_tokens": config.get("service_account_json", config.get("tokens", "")),
+        }
+    elif source_type == "bitbucket":
+        return {
+            "bitbucket_email": config.get("bitbucket_email", config.get("email", "")),
+            "bitbucket_api_token": config.get("bitbucket_api_token", config.get("api_token", "")),
+        }
+    elif source_type == "rdbms":
+        return {
+            "username": config.get("username", ""),
+            "password": config.get("password", ""),
+        }
+    elif source_type == "dingtalk_ai_table":
+        return {
+            "access_token": config.get("access_token", config.get("dingtalk_token", "")),
         }
     # Default: pass entire config as credentials
     return dict(config)
@@ -632,7 +672,10 @@ def handle_sync_task(task: dict, r: redis.Redis):
         total_deleted = 0
 
         # Determine the fetch method based on connector type
-        from common.data_source.interfaces import LoadConnector, PollConnector, CheckpointedConnector
+        from common.data_source.interfaces import (
+            LoadConnector, PollConnector, CheckpointedConnector,
+            CheckpointedConnectorWithPermSync,
+        )
 
         if isinstance(connector, PollConnector) and since_str:
             # Incremental sync via poll_source — only fetches recently modified docs
@@ -642,7 +685,7 @@ def handle_sync_task(task: dict, r: redis.Redis):
         elif isinstance(connector, LoadConnector) and hasattr(connector, 'load_from_state'):
             # Full sync via load_from_state — fetches all docs
             doc_batches = connector.load_from_state()
-        elif isinstance(connector, CheckpointedConnector):
+        elif isinstance(connector, (CheckpointedConnector, CheckpointedConnectorWithPermSync)):
             # Checkpointed loading — stateful incremental sync
             checkpoint = connector.build_dummy_checkpoint()
             now_ts = datetime.now(timezone.utc).timestamp()

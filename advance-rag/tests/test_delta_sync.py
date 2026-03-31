@@ -129,11 +129,13 @@ sys.modules["db.services.doc_metadata_service"].DocMetadataService = mock_DocMet
 mock_LoadConnector = type("LoadConnector", (), {})
 mock_PollConnector = type("PollConnector", (), {})
 mock_CheckpointedConnector = type("CheckpointedConnector", (), {})
+mock_CheckpointedConnectorWithPermSync = type("CheckpointedConnectorWithPermSync", (), {})
 mock_CheckpointOutputWrapper = MagicMock()
 
 sys.modules["common.data_source.interfaces"].LoadConnector = mock_LoadConnector
 sys.modules["common.data_source.interfaces"].PollConnector = mock_PollConnector
 sys.modules["common.data_source.interfaces"].CheckpointedConnector = mock_CheckpointedConnector
+sys.modules["common.data_source.interfaces"].CheckpointedConnectorWithPermSync = mock_CheckpointedConnectorWithPermSync
 sys.modules["common.data_source.interfaces"].CheckpointOutputWrapper = mock_CheckpointOutputWrapper
 
 sys.modules["common.misc_utils"].get_uuid = lambda: "new-uuid-001"
@@ -842,6 +844,41 @@ class TestHandleSyncTask:
 
     @patch("connector_sync_worker._get_connector_class")
     @patch("connector_sync_worker._get_existing_docs_manifest")
+    def test_checkpointed_with_perm_sync_connector_dispatches(self, mock_manifest, mock_get_cls):
+        """Should dispatch CheckpointedConnectorWithPermSync connectors (Jira, SharePoint, etc.)."""
+        fake_connector = MagicMock()
+        # Simulate load_from_checkpoint yielding no docs and returning a checkpoint
+        fake_connector.build_dummy_checkpoint.return_value = MagicMock()
+        fake_connector.load_from_checkpoint.return_value = iter([])
+        mock_get_cls.return_value = lambda **kw: fake_connector
+        fake_connector.load_credentials = MagicMock()
+
+        # Make connector pass isinstance check for CheckpointedConnectorWithPermSync
+        fake_connector.__class__ = type(
+            "FakeCheckpointPerm", (mock_CheckpointedConnectorWithPermSync,), {}
+        )
+        mock_manifest.return_value = {}
+
+        mock_redis = MagicMock()
+        task = {
+            "sync_log_id": "sl-1",
+            "connector_id": "conn-1",
+            "kb_id": "kb-1",
+            "source_type": "jira",
+            "config": {},
+            "tenant_id": "tenant-1",
+            "since": None,
+            "auto_parse": False,
+        }
+
+        csw.handle_sync_task(task, mock_redis)
+
+        # Should NOT hit the "unsupported fetch method" error
+        last_payload = json.loads(mock_redis.publish.call_args[0][1])
+        assert last_payload["status"] == "completed"
+
+    @patch("connector_sync_worker._get_connector_class")
+    @patch("connector_sync_worker._get_existing_docs_manifest")
     def test_exception_publishes_failure(self, mock_manifest, mock_get_cls):
         """Should publish failure status when an exception occurs during sync."""
         mock_get_cls.return_value = MagicMock(side_effect=RuntimeError("Boom"))
@@ -912,6 +949,36 @@ class TestExtractors:
 
         assert result["repo_owner"] == "org"
         assert result["repositories"] == "repo1,repo2"
+
+    def test_bitbucket_kwargs(self):
+        """Should extract Bitbucket constructor kwargs correctly."""
+        config = {"workspace": "myteam", "repositories": "repo1,repo2", "projects": "PROJ"}
+
+        result = csw._extract_constructor_kwargs("bitbucket", config)
+
+        assert result["workspace"] == "myteam"
+        assert result["repositories"] == "repo1,repo2"
+        assert result["projects"] == "PROJ"
+
+    def test_bitbucket_credentials(self):
+        """Should extract Bitbucket credentials correctly."""
+        config = {"bitbucket_email": "user@example.com", "bitbucket_api_token": "tok123"}
+
+        result = csw._extract_credentials("bitbucket", config)
+
+        assert result["bitbucket_email"] == "user@example.com"
+        assert result["bitbucket_api_token"] == "tok123"
+
+    def test_rdbms_kwargs(self):
+        """Should extract RDBMS constructor kwargs correctly."""
+        config = {"db_type": "postgres", "host": "localhost", "port": 5432,
+                  "database": "mydb", "query": "SELECT *", "content_columns": "body"}
+
+        result = csw._extract_constructor_kwargs("rdbms", config)
+
+        assert result["db_type"] == "postgres"
+        assert result["database"] == "mydb"
+        assert result["content_columns"] == "body"
 
     def test_unknown_source_returns_empty_kwargs(self):
         """Should return empty dict for unsupported source types."""
