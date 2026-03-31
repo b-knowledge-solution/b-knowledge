@@ -1,5 +1,5 @@
 /**
- * @fileoverview Area chart showing feedback trend over time (total vs positive).
+ * @fileoverview Area chart showing feedback trend over time (count vs satisfaction rate).
  * Reuses the existing ActivityTrendChart Recharts pattern with two area series.
  * @module features/dashboard/components/FeedbackTrendChart
  */
@@ -52,6 +52,7 @@ const cssVar = (name: string, defaultValue: string): string => {
 
 /**
  * @description Styled tooltip matching the dashboard theme.
+ * Formats satisfactionRate as a percentage with one decimal place.
  */
 const CustomTooltip = ({ active, payload, label }: any) => {
     // Only render tooltip when hovering over a data point with valid payload
@@ -73,7 +74,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
                         className="inline-block w-2 h-2 rounded-full"
                         style={{ backgroundColor: entry.color }}
                     />
-                    {entry.name}: <span className="font-semibold">{entry.value}</span>
+                    {/* Format satisfactionRate as percentage, show count as integer */}
+                    {entry.name}: <span className="font-semibold">
+                        {entry.dataKey === 'satisfactionRate' ? `${entry.value}%` : entry.value}
+                    </span>
                 </p>
             ))}
         </div>
@@ -85,7 +89,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 // ============================================================================
 
 /**
- * @description Area chart visualising daily feedback trend with total and positive counts.
+ * @description Area chart visualising daily feedback trend with count and satisfaction rate.
  * Uses gradient-filled areas with two series for comparison.
  * @param {FeedbackTrendChartProps} props - Component props.
  * @returns {JSX.Element} Feedback trend chart card.
@@ -175,10 +179,10 @@ export function FeedbackTrendChart({ trend }: FeedbackTrendChartProps) {
                             wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
                         />
 
-                        {/* Total feedback area */}
+                        {/* Total feedback count area */}
                         <Area
                             type="monotone"
-                            dataKey="total"
+                            dataKey="count"
                             name={t('dashboard.feedback.totalLabel')}
                             stroke={primaryColor}
                             strokeWidth={2}
@@ -186,10 +190,10 @@ export function FeedbackTrendChart({ trend }: FeedbackTrendChartProps) {
                             dot={false}
                             activeDot={{ r: 4, strokeWidth: 2 }}
                         />
-                        {/* Positive feedback area */}
+                        {/* Satisfaction rate area (percentage) */}
                         <Area
                             type="monotone"
-                            dataKey="positive"
+                            dataKey="satisfactionRate"
                             name={t('dashboard.feedback.positiveLabel')}
                             stroke={secondaryColor}
                             strokeWidth={2}

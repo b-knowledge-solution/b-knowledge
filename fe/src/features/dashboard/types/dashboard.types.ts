@@ -68,10 +68,10 @@ export interface FeedbackAnalytics {
     zeroResultRate: number
     /** Datasets with the lowest satisfaction rates */
     worstDatasets: { name: string; satisfactionRate: number }[]
-    /** Daily feedback trend data */
-    trend: { date: string; total: number; positive: number }[]
+    /** Daily feedback trend data (count = total feedback, satisfactionRate = % positive) */
+    trend: { date: string; count: number; satisfactionRate: number }[]
     /** Recent negative feedback entries */
-    negativeFeedback: { id: string; query: string; answer: string; source?: 'chat' | 'search' | 'agent'; trace_id: string | null; created_at: string }[]
+    negativeFeedback: { id: string; query: string; answerPreview: string; source?: 'chat' | 'search' | 'agent'; traceId: string | null; langfuseUrl: string | null; createdAt: string }[]
     /** Base URL for constructing Langfuse trace links */
     langfuseBaseUrl: string
 }

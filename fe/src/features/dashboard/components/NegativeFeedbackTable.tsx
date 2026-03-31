@@ -1,6 +1,6 @@
 /**
  * @fileoverview Table displaying recent negative feedback entries with source badges and Langfuse deep links.
- * Shows source type, query text, answer snippet, date, and "View in Langfuse" action when trace_id exists.
+ * Shows source type, query text, answer snippet, date, and "View in Langfuse" action when traceId exists.
  * @module features/dashboard/components/NegativeFeedbackTable
  */
 import { useTranslation } from 'react-i18next'
@@ -130,19 +130,19 @@ export function NegativeFeedbackTable({ feedback, langfuseBaseUrl }: NegativeFee
                                     <td className="px-5 py-3 text-slate-700 dark:text-slate-200 max-w-[250px]">
                                         {truncate(item.query, 100)}
                                     </td>
-                                    {/* Answer text truncated to 100 characters */}
+                                    {/* Answer preview text truncated to 100 characters */}
                                     <td className="px-5 py-3 text-slate-600 dark:text-slate-300 max-w-[250px]">
-                                        {truncate(item.answer, 100)}
+                                        {truncate(item.answerPreview, 100)}
                                     </td>
                                     {/* Relative date using formatDistanceToNow */}
                                     <td className="px-5 py-3 text-right text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                                        {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
+                                        {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
                                     </td>
                                     {/* Actions -- Langfuse link or disabled text */}
                                     <td className="px-5 py-3 text-right">
-                                        {item.trace_id ? (
+                                        {item.traceId ? (
                                             <a
-                                                href={buildLangfuseUrl(langfuseBaseUrl, item.trace_id)}
+                                                href={buildLangfuseUrl(langfuseBaseUrl, item.traceId)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline text-xs font-medium"
