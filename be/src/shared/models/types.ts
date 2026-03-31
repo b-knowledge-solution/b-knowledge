@@ -1419,13 +1419,13 @@ export interface TaskMessage {
 
 /**
  * @description AnswerFeedback interface representing a record in the 'answer_feedback' table.
- * Stores user feedback (thumbs up/down) on chat and search answers with retrieval context.
+ * Stores user feedback (thumbs up/down) on chat, search, and agent answers with retrieval context.
  */
 export interface AnswerFeedback {
     /** Unique UUID for the feedback record */
     id: string
-    /** Source of the answer: 'chat' or 'search' */
-    source: 'chat' | 'search'
+    /** Source of the answer: 'chat', 'search', or 'agent' */
+    source: 'chat' | 'search' | 'agent'
     /** conversation_id for chat, search_app_id for search */
     source_id: string
     /** Chat message ID; null for search feedback */
