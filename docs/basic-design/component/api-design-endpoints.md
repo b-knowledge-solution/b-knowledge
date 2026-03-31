@@ -2,245 +2,266 @@
 
 ## Overview
 
-Complete endpoint reference for the B-Knowledge REST API, grouped by module. All endpoints are prefixed with `/api`.
+Complete endpoint reference for the B-Knowledge REST API, grouped by module. All endpoints are prefixed with `/api` unless otherwise noted.
 
-## Auth (11 endpoints)
+## Auth (12 endpoints)
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/api/auth/login` | No | Local email/password login |
-| POST | `/api/auth/register` | No | Register new user account |
+| GET | `/api/auth/config` | No | Get public auth configuration (client IDs, flags) |
+| GET | `/api/auth/me` | No | Get current authenticated user (session-backed) |
+| GET | `/api/auth/login` | No | Initiate Azure AD OAuth login flow |
+| GET | `/api/auth/callback` | No | OAuth callback handler, completes session |
 | POST | `/api/auth/logout` | Yes | Destroy session |
-| GET | `/api/auth/me` | Yes | Get current user profile |
-| POST | `/api/auth/forgot-password` | No | Send password reset email |
-| POST | `/api/auth/reset-password` | No | Reset password with token |
-| POST | `/api/auth/change-password` | Yes | Change current password |
-| GET | `/api/auth/azure/login` | No | Initiate Azure AD OAuth |
-| GET | `/api/auth/azure/callback` | No | Azure AD OAuth callback |
-| POST | `/api/auth/refresh` | Yes | Refresh session |
-| GET | `/api/auth/settings` | No | Get public auth settings |
+| POST | `/api/auth/reauth` | Yes | Re-authenticate (refresh auth timestamps) |
+| POST | `/api/auth/refresh-token` | Yes | Refresh access token using stored refresh token |
+| GET | `/api/auth/token-status` | Yes | Report token freshness/expiry |
+| POST | `/api/auth/login/root` | No | Root user (local) login for bootstrap/admin |
+| GET | `/api/auth/abilities` | Yes | Get serialized CASL rules for current session |
+| GET | `/api/auth/orgs` | Yes | List user's organization memberships with roles |
+| POST | `/api/auth/switch-org` | Yes | Switch active organization, recompute CASL |
 
-## Users (8 endpoints)
+## Users (9 endpoints)
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/users` | Yes | List users (paginated) |
-| GET | `/api/users/:id` | Yes | Get user by ID |
-| POST | `/api/users` | Yes | Create user (admin) |
-| PUT | `/api/users/:id` | Yes | Update user |
-| DELETE | `/api/users/:id` | Yes | Delete user |
-| PUT | `/api/users/:id/role` | Yes | Update user role |
-| PUT | `/api/users/:id/status` | Yes | Activate/deactivate user |
-| GET | `/api/users/search` | Yes | Search users by name/email |
+| GET | `/api/users` | Yes | List all users (admin) |
+| POST | `/api/users` | Yes | Create local user (with optional password) |
+| PUT | `/api/users/:id` | Yes | Update user profile fields |
+| DELETE | `/api/users/:id` | Yes | Delete user (requires recent auth) |
+| PUT | `/api/users/:id/role` | Yes | Update user role (requires recent auth) |
+| PUT | `/api/users/:id/permissions` | Yes | Update user permissions |
+| GET | `/api/users/ip-history` | Yes | Get IP access history for all users |
+| GET | `/api/users/:id/ip-history` | Yes | Get IP access history for a specific user |
+| GET | `/api/users/:id/sessions` | Yes | Get active sessions for a user |
 
 ## Teams (8 endpoints)
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/api/teams` | Yes | List teams |
-| GET | `/api/teams/:id` | Yes | Get team by ID |
 | POST | `/api/teams` | Yes | Create team |
 | PUT | `/api/teams/:id` | Yes | Update team |
 | DELETE | `/api/teams/:id` | Yes | Delete team |
 | GET | `/api/teams/:id/members` | Yes | List team members |
 | POST | `/api/teams/:id/members` | Yes | Add members to team |
-| DELETE | `/api/teams/:id/members/:uid` | Yes | Remove member from team |
+| DELETE | `/api/teams/:id/members/:userId` | Yes | Remove member from team |
+| POST | `/api/teams/:id/permissions` | Yes | Grant team-level permissions |
 
-## Chat (~20 endpoints)
+## Chat (26 endpoints)
+
+### Conversations
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/chat/conversations` | Yes | List conversations |
+| GET | `/api/chat/conversations` | Yes | List conversations for a dialog |
 | POST | `/api/chat/conversations` | Yes | Create conversation |
-| GET | `/api/chat/conversations/:id` | Yes | Get conversation |
-| PUT | `/api/chat/conversations/:id` | Yes | Update conversation |
-| DELETE | `/api/chat/conversations/:id` | Yes | Delete conversation |
-| POST | `/api/chat/conversations/:id/messages` | Yes | Send message (SSE stream) |
-| GET | `/api/chat/conversations/:id/messages` | Yes | List messages |
-| DELETE | `/api/chat/conversations/:id/messages/:mid` | Yes | Delete message |
-| POST | `/api/chat/conversations/:id/stop` | Yes | Stop streaming response |
-| GET | `/api/chat/assistants` | Yes | List assistants |
-| POST | `/api/chat/assistants` | Yes | Create assistant |
-| PUT | `/api/chat/assistants/:id` | Yes | Update assistant |
-| DELETE | `/api/chat/assistants/:id` | Yes | Delete assistant |
-| GET | `/api/chat/assistants/:id` | Yes | Get assistant details |
-| POST | `/api/chat/embed` | No | Embedded chat widget endpoint |
-| POST | `/api/chat/files/upload` | Yes | Upload file for chat context |
-| GET | `/api/chat/files/:id` | Yes | Get uploaded file |
-| DELETE | `/api/chat/files/:id` | Yes | Delete uploaded file |
-| POST | `/api/v1/chat/completions` | Yes | OpenAI-compatible chat API |
-| GET | `/api/chat/shared/:token` | No | Access shared conversation |
+| GET | `/api/chat/conversations/:id` | Yes | Get conversation by ID |
+| PATCH | `/api/chat/conversations/:id` | Yes | Rename conversation |
+| DELETE | `/api/chat/conversations` | Yes | Bulk delete conversations |
+| DELETE | `/api/chat/conversations/:id/messages/:msgId` | Yes | Delete a specific message |
+| POST | `/api/chat/conversations/:id/completion` | Yes | Stream chat completion (SSE) |
+| POST | `/api/chat/conversations/:id/feedback` | Yes | Submit thumbs up/down feedback |
+| POST | `/api/chat/tts` | Yes | Convert text to speech audio stream |
 
-## Search (~15 endpoints)
+### Assistants
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/chat/assistants` | Yes | List accessible assistants (RBAC-filtered) |
+| POST | `/api/chat/assistants` | Admin | Create assistant |
+| GET | `/api/chat/assistants/:id` | Yes | Get assistant by ID |
+| PUT | `/api/chat/assistants/:id` | Admin | Update assistant |
+| DELETE | `/api/chat/assistants/:id` | Admin | Delete assistant |
+| GET | `/api/chat/assistants/:id/access` | Admin | Get assistant access control entries |
+| PUT | `/api/chat/assistants/:id/access` | Admin | Set assistant access control entries |
+
+### Files
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/chat/conversations/:id/files` | Yes | Upload files to conversation (max 5) |
+| GET | `/api/chat/files/:fileId/content` | Yes | Stream file content |
+
+### Embed Tokens
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/chat/dialogs/:id/embed-tokens` | Admin | Create embed token for dialog |
+| GET | `/api/chat/dialogs/:id/embed-tokens` | Admin | List embed tokens for dialog |
+| DELETE | `/api/chat/embed-tokens/:tokenId` | Admin | Revoke embed token |
+| GET | `/api/chat/embed/:token/info` | No | Get dialog info for embed widget |
+| POST | `/api/chat/embed/:token/sessions` | No | Create anonymous embed session |
+| POST | `/api/chat/embed/:token/completions` | No | Stream chat completion for embed (SSE) |
+
+### OpenAI-Compatible
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/v1/chat/completions` | Bearer | OpenAI-compatible chat completion |
+| GET | `/api/v1/models` | No | List available models (OpenAI format) |
+
+## Search (23 endpoints)
+
+### Search Apps
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/api/search/apps` | Yes | List search apps |
-| POST | `/api/search/apps` | Yes | Create search app |
-| GET | `/api/search/apps/:id` | Yes | Get search app |
-| PUT | `/api/search/apps/:id` | Yes | Update search app |
-| DELETE | `/api/search/apps/:id` | Yes | Delete search app |
-| POST | `/api/search/apps/:id/query` | Yes | Execute search query (SSE) |
-| POST | `/api/search/apps/:id/test` | Yes | Test search configuration |
-| GET | `/api/search/apps/:id/history` | Yes | Get search history |
-| POST | `/api/search/embed` | No | Embedded search widget |
-| GET | `/api/search/embed/:token` | No | Embedded search page |
-| POST | `/api/v1/search/completions` | Yes | OpenAI-compatible search API |
-| GET | `/api/search/apps/:id/analytics` | Yes | Search analytics |
-| PUT | `/api/search/apps/:id/datasets` | Yes | Link datasets to search app |
-| GET | `/api/search/apps/:id/datasets` | Yes | List linked datasets |
-| POST | `/api/search/apps/:id/feedback` | Yes | Submit search feedback |
+| POST | `/api/search/apps` | Admin | Create search app |
+| GET | `/api/search/apps/:id` | Yes | Get search app by ID |
+| PUT | `/api/search/apps/:id` | Admin | Update search app |
+| DELETE | `/api/search/apps/:id` | Admin | Delete search app |
+| GET | `/api/search/apps/:id/access` | Admin | Get access control entries |
+| PUT | `/api/search/apps/:id/access` | Admin | Set access control entries |
+| POST | `/api/search/apps/:id/search` | Yes | Execute search query |
+| POST | `/api/search/apps/:id/ask` | Yes | Stream AI summary answer (SSE) |
+| POST | `/api/search/apps/:id/related-questions` | Yes | Generate related questions |
+| POST | `/api/search/apps/:id/mindmap` | Yes | Generate mind map from results |
+| POST | `/api/search/apps/:id/retrieval-test` | Yes | Dry-run retrieval test (no LLM) |
+| POST | `/api/search/apps/:id/feedback` | Yes | Submit search answer feedback |
 
-## RAG (~30 endpoints)
+### Search Embed Tokens
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/rag/datasets` | Yes | List datasets |
-| POST | `/api/rag/datasets` | Yes | Create dataset |
-| GET | `/api/rag/datasets/:id` | Yes | Get dataset |
-| PUT | `/api/rag/datasets/:id` | Yes | Update dataset settings |
-| DELETE | `/api/rag/datasets/:id` | Yes | Delete dataset |
-| GET | `/api/rag/datasets/:id/documents` | Yes | List documents |
-| POST | `/api/rag/datasets/:id/documents` | Yes | Upload documents (multipart) |
-| GET | `/api/rag/datasets/:id/documents/:did` | Yes | Get document |
-| PUT | `/api/rag/datasets/:id/documents/:did` | Yes | Update document |
-| DELETE | `/api/rag/datasets/:id/documents/:did` | Yes | Delete document |
-| POST | `/api/rag/datasets/:id/documents/:did/parse` | Yes | Trigger document parsing |
-| POST | `/api/rag/datasets/:id/documents/:did/cancel` | Yes | Cancel parsing task |
-| POST | `/api/rag/datasets/:id/documents/web-crawl` | Yes | Crawl web page as document |
-| POST | `/api/rag/datasets/:id/documents/bulk-parse` | Yes | Bulk parse documents |
-| POST | `/api/rag/datasets/:id/documents/bulk-toggle` | Yes | Bulk enable/disable |
+| POST | `/api/search/apps/:id/embed-tokens` | Admin | Create embed token |
+| GET | `/api/search/apps/:id/embed-tokens` | Admin | List embed tokens |
+| DELETE | `/api/search/embed-tokens/:tokenId` | Admin | Revoke embed token |
+| GET | `/api/search/embed/:token/info` | No | Get search app info for embed |
+| GET | `/api/search/embed/:token/config` | No | Get search app config for embed |
+| POST | `/api/search/embed/:token/search` | No | Execute search via embed token |
+| POST | `/api/search/embed/:token/ask` | No | Stream AI answer via embed (SSE) |
+| POST | `/api/search/embed/:token/related-questions` | No | Related questions via embed |
+| POST | `/api/search/embed/:token/mindmap` | No | Mind map via embed |
+
+### OpenAI-Compatible
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/v1/search/completions` | Bearer | OpenAI-compatible search completion |
+
+## RAG (45 endpoints)
+
+### Datasets — CRUD
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/rag/datasets` | Yes | List accessible datasets |
+| POST | `/api/rag/datasets` | Yes | Create dataset (returns 409 if duplicate name) |
+| GET | `/api/rag/datasets/:id` | Yes | Get dataset by ID |
+| PUT | `/api/rag/datasets/:id` | Yes | Update dataset properties |
+| DELETE | `/api/rag/datasets/:id` | Yes | Soft-delete dataset |
+| POST | `/api/rag/datasets/bulk-metadata` | Yes | Bulk update metadata tags on datasets |
+| GET | `/api/rag/tags/aggregations` | Yes | Get unique tag keys and top values |
+
+### Dataset Versioning
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/rag/datasets/:id/versions` | Yes | List version datasets |
+| POST | `/api/rag/datasets/:id/versions` | Yes | Create version dataset with optional files |
+
+### Dataset Access Control
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/rag/datasets/:id/access` | Yes | Get dataset access control |
+| PUT | `/api/rag/datasets/:id/access` | Yes | Update dataset access control |
+
+### Dataset Settings
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/rag/datasets/:id/settings` | Yes | Get dataset settings |
+| PUT | `/api/rag/datasets/:id/settings` | Yes | Update dataset settings |
+| POST | `/api/rag/datasets/:id/generate-field-map` | Yes | Auto-detect field map from OpenSearch |
+
+### Dataset Overview & Logs
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/rag/datasets/:id/overview` | Yes | Dataset statistics |
+| GET | `/api/rag/datasets/:id/logs` | Yes | Paginated processing logs |
+| GET | `/api/rag/datasets/:id/graph` | Yes | Graph entities and relations |
+
+### Documents
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/rag/datasets/:id/documents` | Yes | List documents in dataset |
+| POST | `/api/rag/datasets/:id/documents` | Yes | Upload files to dataset |
+| GET | `/api/rag/datasets/:id/documents/:docId/download` | Yes | Download document file from S3 |
+| DELETE | `/api/rag/datasets/:id/documents/:docId` | Yes | Delete document and all data |
+| PATCH | `/api/rag/datasets/:id/documents/:docId/toggle` | Yes | Toggle document chunk availability |
+| GET | `/api/rag/datasets/:id/documents/:docId/logs` | Yes | Get RAG worker logs for document |
+
+### Document Parsing
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/rag/datasets/:id/documents/:docId/parse` | Yes | Trigger document parsing |
+| GET | `/api/rag/datasets/:id/documents/:docId/status` | Yes | Stream parsing progress (SSE) |
+| PUT | `/api/rag/datasets/:id/documents/:docId/parser` | Yes | Change document parser method |
+
+### Bulk Document Operations
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/rag/datasets/:id/documents/bulk-parse` | Yes | Bulk start/cancel parsing |
+| POST | `/api/rag/datasets/:id/documents/bulk-toggle` | Yes | Bulk enable/disable documents |
 | POST | `/api/rag/datasets/:id/documents/bulk-delete` | Yes | Bulk delete documents |
-| GET | `/api/rag/datasets/:id/documents/:did/chunks` | Yes | List chunks |
-| POST | `/api/rag/datasets/:id/documents/:did/chunks` | Yes | Create manual chunk |
-| PUT | `/api/rag/datasets/:id/chunks/:cid` | Yes | Update chunk |
-| DELETE | `/api/rag/datasets/:id/chunks/:cid` | Yes | Delete chunk |
-| POST | `/api/rag/datasets/:id/retrieval-test` | Yes | Test retrieval |
-| GET | `/api/rag/datasets/:id/graph` | Yes | Get knowledge graph |
-| POST | `/api/rag/datasets/:id/graph/build` | Yes | Trigger graph build |
-| DELETE | `/api/rag/datasets/:id/graph` | Yes | Delete graph |
-| GET | `/api/rag/datasets/:id/metadata` | Yes | Get dataset metadata |
-| PUT | `/api/rag/datasets/:id/metadata` | Yes | Update metadata |
-| GET | `/api/rag/tasks` | Yes | List processing tasks |
-| GET | `/api/rag/tasks/:id` | Yes | Get task status |
-| DELETE | `/api/rag/tasks/:id` | Yes | Cancel task |
-| GET | `/api/rag/datasets/:id/stats` | Yes | Dataset statistics |
+| POST | `/api/rag/datasets/:id/documents/web-crawl` | Yes | Create document from web URL |
 
-## Sync (6 endpoints)
+### Document Enrichment
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/sync/connectors` | Yes | List connectors |
-| POST | `/api/sync/connectors` | Yes | Create connector |
-| PUT | `/api/sync/connectors/:id` | Yes | Update connector |
-| DELETE | `/api/sync/connectors/:id` | Yes | Delete connector |
-| POST | `/api/sync/connectors/:id/run` | Yes | Trigger sync |
-| GET | `/api/sync/connectors/:id/logs` | Yes | Get sync logs |
+| POST | `/api/rag/datasets/:id/documents/:docId/:enrichType` | Yes | Run enrichment (keywords/questions/tags/metadata) |
 
-## Projects (~25 endpoints)
+### Chunks
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/projects` | Yes | List projects |
-| POST | `/api/projects` | Yes | Create project |
-| GET | `/api/projects/:id` | Yes | Get project |
-| PUT | `/api/projects/:id` | Yes | Update project |
-| DELETE | `/api/projects/:id` | Yes | Delete project |
-| GET | `/api/projects/:id/categories` | Yes | List categories |
-| POST | `/api/projects/:id/categories` | Yes | Create category |
-| PUT | `/api/projects/:id/categories/:cid` | Yes | Update category |
-| DELETE | `/api/projects/:id/categories/:cid` | Yes | Delete category |
-| GET | `/api/projects/:id/versions` | Yes | List versions |
-| POST | `/api/projects/:id/versions` | Yes | Create version |
-| PUT | `/api/projects/:id/versions/:vid` | Yes | Update version |
-| DELETE | `/api/projects/:id/versions/:vid` | Yes | Delete version |
-| GET | `/api/projects/:id/chats` | Yes | List project chats |
-| POST | `/api/projects/:id/chats` | Yes | Create project chat |
-| GET | `/api/projects/:id/searches` | Yes | List project searches |
-| POST | `/api/projects/:id/searches` | Yes | Create project search |
-| GET | `/api/projects/:id/members` | Yes | List project members |
-| POST | `/api/projects/:id/members` | Yes | Add project member |
-| DELETE | `/api/projects/:id/members/:uid` | Yes | Remove project member |
-| PUT | `/api/projects/:id/members/:uid` | Yes | Update member role |
-| GET | `/api/projects/:id/permissions` | Yes | Get project permissions |
-| PUT | `/api/projects/:id/permissions` | Yes | Update permissions |
-| GET | `/api/projects/:id/datasets` | Yes | List linked datasets |
-| PUT | `/api/projects/:id/datasets` | Yes | Link datasets |
+| GET | `/api/rag/datasets/:id/chunks` | Yes | List chunks (optional doc_id filter) |
+| POST | `/api/rag/datasets/:id/chunks` | Yes | Create manual chunk |
+| PUT | `/api/rag/datasets/:id/chunks/:chunkId` | Yes | Update chunk |
+| DELETE | `/api/rag/datasets/:id/chunks/:chunkId` | Yes | Delete chunk |
+| POST | `/api/rag/datasets/:id/chunks/bulk-switch` | Yes | Bulk enable/disable chunks |
 
-## Glossary (~10 endpoints)
+### Search & Retrieval
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/glossary/tasks` | Yes | List glossary tasks |
-| POST | `/api/glossary/tasks` | Yes | Create glossary task |
-| GET | `/api/glossary/tasks/:id` | Yes | Get glossary task |
-| PUT | `/api/glossary/tasks/:id` | Yes | Update glossary task |
-| DELETE | `/api/glossary/tasks/:id` | Yes | Delete glossary task |
-| POST | `/api/glossary/tasks/:id/run` | Yes | Execute glossary task |
-| GET | `/api/glossary/keywords` | Yes | List keywords |
-| POST | `/api/glossary/keywords` | Yes | Create keyword |
-| PUT | `/api/glossary/keywords/:id` | Yes | Update keyword |
-| DELETE | `/api/glossary/keywords/:id` | Yes | Delete keyword |
+| POST | `/api/rag/datasets/:id/search` | Yes | Search chunks within dataset |
+| POST | `/api/rag/datasets/:id/retrieval-test` | Yes | Test retrieval against dataset |
 
-## LLM Provider (8 endpoints)
+### Advanced Tasks
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/llm-provider/factories` | Yes | List LLM factories |
-| GET | `/api/llm-provider/models` | Yes | List available models |
-| GET | `/api/llm-provider/tenant-models` | Yes | List tenant model configs |
-| POST | `/api/llm-provider/tenant-models` | Yes | Add tenant model config |
-| PUT | `/api/llm-provider/tenant-models/:id` | Yes | Update model config |
-| DELETE | `/api/llm-provider/tenant-models/:id` | Yes | Delete model config |
-| POST | `/api/llm-provider/test` | Yes | Test model connection |
-| PUT | `/api/llm-provider/tenant-models/:id/default` | Yes | Set as default model |
+| POST | `/api/rag/datasets/:id/:taskType` | Yes | Start advanced task (graphrag/raptor/mindmap) |
+| GET | `/api/rag/datasets/:id/:taskType/status` | Yes | Get advanced task status |
+| GET | `/api/rag/datasets/:datasetId/graph/metrics` | Yes | GraphRAG entity/relation/community counts |
+| POST | `/api/rag/datasets/:datasetId/graph/run` | Yes | Trigger GraphRAG indexing |
 
-## Admin / Dashboard (5 endpoints)
+### Metadata & Images
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/admin/stats` | Yes | System-wide statistics |
-| GET | `/api/admin/health` | No | Health check |
-| GET | `/api/dashboard/overview` | Yes | Dashboard overview data |
-| GET | `/api/dashboard/usage` | Yes | Usage analytics |
-| GET | `/api/dashboard/trends` | Yes | Usage trends |
+| GET | `/api/rag/datasets/:id/metadata` | Yes | Get metadata schema |
+| PUT | `/api/rag/datasets/:id/metadata` | Yes | Update metadata schema |
+| GET | `/api/rag/images/:imageId` | Yes | Serve chunk image from S3 |
 
-## Audit (3 endpoints)
+### Tasks & System Config
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/audit/logs` | Yes | List audit logs (paginated) |
-| GET | `/api/audit/logs/:id` | Yes | Get audit log detail |
-| GET | `/api/audit/logs/export` | Yes | Export audit logs (CSV) |
+| GET | `/api/rag/tasks/:taskId/status` | Yes | Get task status |
+| GET | `/api/rag/system/config/parsing_scheduler` | Yes | Get parsing scheduler settings |
+| PUT | `/api/rag/system/config/parsing_scheduler` | Yes | Update parsing scheduler settings |
 
-## Broadcast (5 endpoints)
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/broadcast` | Yes | List broadcasts |
-| POST | `/api/broadcast` | Yes | Create broadcast |
-| PUT | `/api/broadcast/:id` | Yes | Update broadcast |
-| DELETE | `/api/broadcast/:id` | Yes | Delete broadcast |
-| POST | `/api/broadcast/:id/send` | Yes | Send broadcast |
-
-## User History (4 endpoints)
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/user-history` | Yes | List user activity |
-| GET | `/api/user-history/recent` | Yes | Recent activity |
-| GET | `/api/user-history/stats` | Yes | Activity statistics |
-| DELETE | `/api/user-history` | Yes | Clear history |
-
-## System Tools (3 endpoints)
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/system-tools/info` | Yes | System information |
-| POST | `/api/system-tools/cache/clear` | Yes | Clear cache |
-| GET | `/api/system-tools/config` | Yes | Get system config |
-
-## Agents (~30 endpoints)
+## Agents (28 endpoints)
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -289,6 +310,196 @@ Complete endpoint reference for the B-Knowledge REST API, grouped by module. All
 | PUT | `/api/memory/:id/messages/:messageId/forget` | Yes | Mark message as forgotten |
 | POST | `/api/memory/:id/import` | Yes | Import chat history into memory |
 
+## Sync (8 endpoints)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/sync/connectors` | Yes | List connectors |
+| GET | `/api/sync/connectors/:id` | Yes | Get connector by ID |
+| POST | `/api/sync/connectors` | Yes | Create connector |
+| PUT | `/api/sync/connectors/:id` | Yes | Update connector |
+| DELETE | `/api/sync/connectors/:id` | Yes | Delete connector |
+| POST | `/api/sync/connectors/:id/sync` | Yes | Trigger manual sync |
+| GET | `/api/sync/connectors/:id/logs` | Yes | Get sync logs (paginated) |
+| GET | `/api/sync/connectors/:id/progress` | Yes | Stream sync progress (SSE) |
+
+## Projects (44 endpoints)
+
+### Core CRUD
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/projects` | Yes | List projects |
+| POST | `/api/projects` | Yes | Create project |
+| GET | `/api/projects/:id` | Yes | Get project by ID |
+| PUT | `/api/projects/:id` | Yes | Update project |
+| DELETE | `/api/projects/:id` | Yes | Delete project |
+| GET | `/api/projects/cross-project-datasets` | Yes | Get cross-project datasets |
+
+### Permissions
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/projects/:id/permissions` | Yes | List project permissions |
+| POST | `/api/projects/:id/permissions` | Yes | Set project permission |
+| DELETE | `/api/projects/:id/permissions/:permId` | Yes | Delete permission |
+
+### Datasets
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/projects/:id/datasets` | Yes | List project datasets |
+| POST | `/api/projects/:id/datasets` | Yes | Link dataset to project |
+| DELETE | `/api/projects/:id/datasets/:datasetId` | Yes | Unlink dataset |
+| POST | `/api/projects/:id/datasets/bind` | Yes | Bind datasets to project |
+| DELETE | `/api/projects/:id/datasets/:datasetId/unbind` | Yes | Unbind dataset |
+
+### Categories & Versions
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/projects/:id/categories` | Yes | List categories |
+| GET | `/api/projects/:id/categories/:catId` | Yes | Get category |
+| POST | `/api/projects/:id/categories` | Yes | Create category |
+| PUT | `/api/projects/:id/categories/:catId` | Yes | Update category |
+| DELETE | `/api/projects/:id/categories/:catId` | Yes | Delete category |
+| GET | `/api/projects/:id/categories/:catId/versions` | Yes | List versions |
+| POST | `/api/projects/:id/categories/:catId/versions` | Yes | Create version |
+| PUT | `/api/projects/:id/categories/:catId/versions/:verId` | Yes | Update version |
+| DELETE | `/api/projects/:id/categories/:catId/versions/:verId` | Yes | Delete version |
+| GET | `/api/projects/:id/categories/:catId/versions/:verId/documents` | Yes | List version documents |
+
+### Chats & Searches
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/projects/:id/chats` | Yes | List project chats |
+| GET | `/api/projects/:id/chats/:chatId` | Yes | Get project chat |
+| POST | `/api/projects/:id/chats` | Yes | Create project chat |
+| PUT | `/api/projects/:id/chats/:chatId` | Yes | Update project chat |
+| DELETE | `/api/projects/:id/chats/:chatId` | Yes | Delete project chat |
+| GET | `/api/projects/:id/searches` | Yes | List project searches |
+| GET | `/api/projects/:id/searches/:searchId` | Yes | Get project search |
+| POST | `/api/projects/:id/searches` | Yes | Create project search |
+| PUT | `/api/projects/:id/searches/:searchId` | Yes | Update project search |
+| DELETE | `/api/projects/:id/searches/:searchId` | Yes | Delete project search |
+
+### Members
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/projects/:id/members` | Yes | List project members |
+| POST | `/api/projects/:id/members` | Yes | Add project member |
+| DELETE | `/api/projects/:id/members/:userId` | Yes | Remove project member |
+
+### Sync Configs
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/projects/:id/sync-configs` | Yes | List sync configurations |
+| POST | `/api/projects/:id/sync-configs` | Yes | Create sync configuration |
+| PUT | `/api/projects/:id/sync-configs/:configId` | Yes | Update sync configuration |
+| DELETE | `/api/projects/:id/sync-configs/:configId` | Yes | Delete sync configuration |
+
+### Entity Permissions & Activity
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/projects/:id/entity-permissions` | Yes | List entity permissions |
+| POST | `/api/projects/:id/entity-permissions` | Yes | Create entity permission |
+| DELETE | `/api/projects/:id/entity-permissions/:permId` | Yes | Delete entity permission |
+| GET | `/api/projects/:id/activity` | Yes | Get project activity feed |
+
+## Glossary (14 endpoints)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/glossary/search` | Yes | Search tasks and keywords |
+| POST | `/api/glossary/generate-prompt` | Yes | Generate prompt from task + keyword selections |
+| GET | `/api/glossary/tasks` | Yes | List all tasks |
+| GET | `/api/glossary/tasks/:id` | Yes | Get single task |
+| POST | `/api/glossary/tasks` | Admin | Create task |
+| PUT | `/api/glossary/tasks/:id` | Admin | Update task |
+| DELETE | `/api/glossary/tasks/:id` | Admin | Delete task |
+| GET | `/api/glossary/keywords/search` | Yes | Search keywords (paginated) |
+| GET | `/api/glossary/keywords` | Yes | List all keywords |
+| POST | `/api/glossary/keywords` | Admin | Create keyword |
+| PUT | `/api/glossary/keywords/:id` | Admin | Update keyword |
+| DELETE | `/api/glossary/keywords/:id` | Admin | Delete keyword |
+| POST | `/api/glossary/bulk-import` | Admin | Bulk import tasks from Excel |
+| POST | `/api/glossary/keywords/bulk-import` | Admin | Bulk import keywords from Excel |
+
+## LLM Provider (9 endpoints)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/llm-providers` | Yes | List all active providers |
+| GET | `/api/llm-providers/defaults` | Yes | Get default providers per model type |
+| GET | `/api/llm-providers/presets` | Yes | Get factory preset configurations |
+| GET | `/api/llm-providers/:id` | Yes | Get provider by ID |
+| POST | `/api/llm-providers` | Yes | Create provider |
+| PUT | `/api/llm-providers/:id` | Yes | Update provider |
+| DELETE | `/api/llm-providers/:id` | Yes | Soft-delete provider |
+| POST | `/api/llm-providers/:id/test-connection` | Yes | Test provider connectivity |
+| GET | `/api/models` | Yes | List active models by type (public) |
+
+## Admin (8 endpoints)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/admin/dashboard` | Admin | System statistics overview |
+| GET | `/api/admin/history/chat` | Admin | List all chat sessions |
+| GET | `/api/admin/history/chat/:sessionId` | Admin | Get chat session details |
+| GET | `/api/admin/history/search` | Admin | List all search history |
+| GET | `/api/admin/history/search/:sessionId` | Admin | Get search session details |
+| GET | `/api/admin/history/agent-runs` | Admin | List all agent runs |
+| GET | `/api/admin/history/agent-runs/:runId` | Admin | Get agent run details |
+| GET | `/api/admin/history/system-chat` | Admin | List system-level chat history |
+
+## Dashboard (3 endpoints)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/admin/dashboard/stats` | Admin | Aggregated dashboard statistics |
+| GET | `/api/admin/dashboard/analytics/queries` | Admin | Query analytics (volume, latency, trends) |
+| GET | `/api/admin/dashboard/analytics/feedback` | Admin | Feedback analytics (satisfaction, worst datasets) |
+
+## Audit (3 endpoints)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/audit` | Admin | List audit logs (paginated, filterable) |
+| GET | `/api/audit/actions` | Admin | List distinct action types |
+| GET | `/api/audit/resource-types` | Admin | List distinct resource types |
+
+## Broadcast (6 endpoints)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/broadcast-messages/active` | No | Get active broadcasts (filtered by dismissal) |
+| POST | `/api/broadcast-messages/:id/dismiss` | Yes | Dismiss a broadcast |
+| GET | `/api/broadcast-messages` | Admin | List all broadcast messages |
+| POST | `/api/broadcast-messages` | Admin | Create broadcast message |
+| PUT | `/api/broadcast-messages/:id` | Admin | Update broadcast message |
+| DELETE | `/api/broadcast-messages/:id` | Admin | Delete broadcast message |
+
+## User History (4 endpoints)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/user/history/chat` | Yes | List user's chat sessions |
+| GET | `/api/user/history/chat/:sessionId` | Yes | Get chat session details |
+| GET | `/api/user/history/search` | Yes | List user's search sessions |
+| GET | `/api/user/history/search/:sessionId` | Yes | Get search session details |
+
+## System Tools (3 endpoints)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/system-tools` | Yes | List available system tools |
+| GET | `/api/system-tools/health` | Yes | Get system health status |
+| POST | `/api/system-tools/:id/run` | Admin | Execute a system tool |
+
 ## Code Graph (11 endpoints)
 
 | Method | Path | Auth | Description |
@@ -332,7 +543,7 @@ Complete endpoint reference for the B-Knowledge REST API, grouped by module. All
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/feedback` | Yes | List feedback records (paginated) |
-| GET | `/api/feedback/stats` | Yes | Get aggregated feedback statistics |
-| GET | `/api/feedback/export` | Yes | Export feedback records (JSON) |
+| GET | `/api/feedback` | Admin | List feedback records (paginated) |
+| GET | `/api/feedback/stats` | Admin | Get aggregated feedback statistics |
+| GET | `/api/feedback/export` | Admin | Export feedback records (JSON) |
 | POST | `/api/feedback` | Yes | Submit answer feedback |
