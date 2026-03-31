@@ -19,6 +19,7 @@ export default withMermaid(
         { text: 'Basic Design', link: '/basic-design/system-infra/system-architecture' },
         { text: 'Detail Design', link: '/detail-design/auth/overview' },
         { text: 'RAG Pipeline', link: '/detail-design/rag-pipeline/overview' },
+        { text: 'ADR', link: '/adr/001-mem0-memory-backend' },
         { text: 'Superpowers', link: '/superpowers/specs/2026-03-25-source-code-sync' },
       ],
 
@@ -59,6 +60,8 @@ export default withMermaid(
               { text: 'LLM Provider', link: '/srs/management/fr-llm-provider' },
               { text: 'Admin Operations', link: '/srs/management/fr-admin-operations' },
               { text: 'Audit & Compliance', link: '/srs/management/fr-audit-compliance' },
+              { text: 'Feedback System', link: '/srs/management/fr-feedback-system' },
+              { text: 'Guideline & Onboarding', link: '/srs/management/fr-guideline-onboarding' },
             ],
           },
         ],
@@ -70,6 +73,8 @@ export default withMermaid(
               { text: 'Embed Widgets', link: '/srs/integrations/fr-embed-widgets' },
               { text: 'Sync Connectors', link: '/srs/integrations/fr-sync-connectors' },
               { text: 'Document Converter', link: '/srs/integrations/fr-document-converter' },
+              { text: 'Code Knowledge Graph', link: '/srs/integrations/fr-code-graph' },
+              { text: 'External API & API Keys', link: '/srs/integrations/fr-external-api' },
             ],
           },
         ],
@@ -113,6 +118,8 @@ export default withMermaid(
               { text: 'LLM Provider', link: '/srs/management/fr-llm-provider' },
               { text: 'Admin Operations', link: '/srs/management/fr-admin-operations' },
               { text: 'Audit & Compliance', link: '/srs/management/fr-audit-compliance' },
+              { text: 'Feedback System', link: '/srs/management/fr-feedback-system' },
+              { text: 'Guideline & Onboarding', link: '/srs/management/fr-guideline-onboarding' },
             ],
           },
           {
@@ -122,6 +129,8 @@ export default withMermaid(
               { text: 'Embed Widgets', link: '/srs/integrations/fr-embed-widgets' },
               { text: 'Sync Connectors', link: '/srs/integrations/fr-sync-connectors' },
               { text: 'Document Converter', link: '/srs/integrations/fr-document-converter' },
+              { text: 'Code Knowledge Graph', link: '/srs/integrations/fr-code-graph' },
+              { text: 'External API & API Keys', link: '/srs/integrations/fr-external-api' },
             ],
           },
         ],
@@ -404,6 +413,15 @@ export default withMermaid(
             items: [
               { text: 'Resume Parser', link: '/detail-design/rag-pipeline/specialized/resume-parser' },
               { text: 'Clinical Parser', link: '/detail-design/rag-pipeline/specialized/clinical-parser' },
+            ],
+          },
+        ],
+
+        '/adr/': [
+          {
+            text: 'Architecture Decision Records',
+            items: [
+              { text: 'ADR-001: mem0 Memory Backend', link: '/adr/001-mem0-memory-backend' },
             ],
           },
         ],

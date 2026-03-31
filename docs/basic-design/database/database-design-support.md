@@ -151,6 +151,8 @@ erDiagram
         integer docs_synced "default 0"
         integer docs_failed "default 0"
         integer progress "default 0"
+        integer docs_skipped "default 0"
+        integer docs_deleted "default 0"
         text message "nullable"
         timestamp started_at "nullable"
         timestamp finished_at "nullable"

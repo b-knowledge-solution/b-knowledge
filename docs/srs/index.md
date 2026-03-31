@@ -94,6 +94,10 @@ C4Context
 | [Agents](/srs/ai-features/fr-agents) | Workflow builder, execution engine, triggers |
 | [Memory](/srs/ai-features/fr-memory) | Memory pools, extraction, search, import |
 | [Project Management](/srs/management/fr-project-management) | Projects, categories, versions, datasets, chats, searches |
+| [Feedback System](/srs/management/fr-feedback-system) | Answer feedback collection, analytics, and export |
+| [Guideline & Onboarding](/srs/management/fr-guideline-onboarding) | In-app help dialogs, guided tours, first-visit detection |
+| [Code Knowledge Graph](/srs/integrations/fr-code-graph) | Code structure graph (Memgraph), call analysis, NL queries |
+| [External API & API Keys](/srs/integrations/fr-external-api) | Programmatic API access with scoped API keys |
 
 ## 6. Technology Stack Summary
 
