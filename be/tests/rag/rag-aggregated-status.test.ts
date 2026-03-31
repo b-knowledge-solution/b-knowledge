@@ -21,6 +21,7 @@ const { mockDatasetModel, mockDocumentModel, mockAuditLog, mockGetUserTeams } = 
   mockDocumentModel: {
     findByDatasetId: vi.fn(),
     findById: vi.fn(),
+    countByRunStatus: vi.fn().mockResolvedValue({}),
   },
   mockAuditLog: vi.fn(),
   mockGetUserTeams: vi.fn(),
@@ -29,7 +30,7 @@ const { mockDatasetModel, mockDocumentModel, mockAuditLog, mockGetUserTeams } = 
 vi.mock('../../src/shared/models/factory.js', () => ({
   ModelFactory: {
     dataset: mockDatasetModel,
-    document: mockDocumentModel,
+    ragDocument: mockDocumentModel,
   },
 }))
 
@@ -128,16 +129,17 @@ describe('RagService.getAggregatedParsingStatus', () => {
   })
 
   it('returns grouped status counts for a dataset with multiple statuses', async () => {
-    // Simulate DB returning rows grouped by run status
-    dbQueryResult = [
-      { run: '0', count: '5' },
-      { run: '1', count: '3' },
-      { run: '2', count: '1' },
-    ]
+    // Model layer returns already-transformed record keyed by run status
+    mockDocumentModel.countByRunStatus.mockResolvedValue({
+      '0': 5,
+      '1': 3,
+      '2': 1,
+    })
 
     const result = await service.getAggregatedParsingStatus('ds-1')
 
-    // Should transform array rows into a record keyed by run value
+    // Should delegate to model and return the record directly
+    expect(mockDocumentModel.countByRunStatus).toHaveBeenCalledWith('ds-1')
     expect(result).toEqual({
       '0': 5,
       '1': 3,
@@ -146,8 +148,8 @@ describe('RagService.getAggregatedParsingStatus', () => {
   })
 
   it('returns empty record for a dataset with no documents', async () => {
-    // Simulate empty dataset — no documents, so no rows returned
-    dbQueryResult = []
+    // No documents — model returns empty record
+    mockDocumentModel.countByRunStatus.mockResolvedValue({})
 
     const result = await service.getAggregatedParsingStatus('empty-ds')
 
@@ -156,9 +158,7 @@ describe('RagService.getAggregatedParsingStatus', () => {
 
   it('handles a single status group', async () => {
     // All documents share the same run status
-    dbQueryResult = [
-      { run: '1', count: '10' },
-    ]
+    mockDocumentModel.countByRunStatus.mockResolvedValue({ '1': 10 })
 
     const result = await service.getAggregatedParsingStatus('ds-2')
 
@@ -166,10 +166,8 @@ describe('RagService.getAggregatedParsingStatus', () => {
   })
 
   it('converts count strings to numbers', async () => {
-    // DB count() typically returns string values in some drivers
-    dbQueryResult = [
-      { run: '0', count: '42' },
-    ]
+    // Model layer handles string-to-number conversion internally
+    mockDocumentModel.countByRunStatus.mockResolvedValue({ '0': 42 })
 
     const result = await service.getAggregatedParsingStatus('ds-3')
 

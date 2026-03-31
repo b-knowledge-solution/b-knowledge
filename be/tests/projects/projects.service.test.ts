@@ -15,6 +15,7 @@ const mockProjectFindById = vi.fn()
 const mockProjectFindByTenant = vi.fn()
 const mockProjectUpdate = vi.fn()
 const mockProjectDelete = vi.fn()
+const mockProjectGetKnex = vi.fn()
 const mockPermissionFindByProjectId = vi.fn()
 const mockPermissionFindByGrantee = vi.fn()
 const mockPermissionCreate = vi.fn()
@@ -39,6 +40,7 @@ vi.mock('@/shared/models/factory.js', () => ({
       findByTenant: (...args: any[]) => mockProjectFindByTenant(...args),
       update: (...args: any[]) => mockProjectUpdate(...args),
       delete: (...args: any[]) => mockProjectDelete(...args),
+      getKnex: (...args: any[]) => mockProjectGetKnex(...args),
     },
     projectPermission: {
       findByProjectId: (...args: any[]) => mockPermissionFindByProjectId(...args),
@@ -134,6 +136,19 @@ vi.mock('@/shared/db/knex.js', () => {
 })
 
 vi.mock('@/shared/models/types.js', () => ({}))
+
+vi.mock('@/shared/config/index.js', () => ({
+  config: {
+    opensearch: { systemTenantId: 'test-tenant-id' },
+  },
+}))
+
+vi.mock('../../src/modules/projects/services/project-category.service.js', () => ({
+  projectCategoryService: {
+    createCategory: vi.fn().mockResolvedValue({ id: 'cat-1', name: 'Default' }),
+    createVersion: vi.fn().mockResolvedValue({ id: 'ver-1' }),
+  },
+}))
 
 // Import after mocks
 import { ProjectsService } from '../../src/modules/projects/services/projects.service'
@@ -270,14 +285,24 @@ describe('ProjectsService', () => {
   // -------------------------------------------------------------------------
 
   describe('createProject', () => {
-    /** @description Should create project, auto-create dataset, and log audit */
-    it('should create project with auto-created dataset', async () => {
-      const mockProject = { id: 'p1', name: 'New Project' }
-      const mockDataset = { id: 'ds-1', name: 'New Project_123' }
+    /** @description Creates a chainable Knex query builder mock for duplicate name checking */
+    const createChainableBuilder = (firstResult: any = undefined) => {
+      const builder: any = {
+        where: vi.fn().mockReturnThis(),
+        whereNot: vi.fn().mockReturnThis(),
+        andWhere: vi.fn().mockReturnThis(),
+        first: vi.fn().mockResolvedValue(firstResult),
+      }
+      return builder
+    }
 
+    /** @description Should create project and log audit */
+    it('should create project with audit logging', async () => {
+      const mockProject = { id: 'p1', name: 'New Project' }
+
+      // No duplicate project name exists
+      mockProjectGetKnex.mockReturnValue(createChainableBuilder(undefined))
       mockProjectCreate.mockResolvedValue(mockProject)
-      mockDatasetCreate.mockResolvedValue(mockDataset)
-      mockProjectDatasetCreate.mockResolvedValue({ project_id: 'p1', dataset_id: 'ds-1' })
 
       const result = await service.createProject(
         { name: 'New Project', is_private: true },
@@ -292,23 +317,6 @@ describe('ProjectsService', () => {
           status: 'active',
           is_private: true,
           created_by: 'user-1',
-        }),
-      )
-
-      // Verify auto-dataset creation
-      expect(mockDatasetCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          description: expect.stringContaining('New Project'),
-          status: 'active',
-        }),
-      )
-
-      // Verify dataset linked to project
-      expect(mockProjectDatasetCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          project_id: 'p1',
-          dataset_id: 'ds-1',
-          auto_created: true,
         }),
       )
 
@@ -327,6 +335,8 @@ describe('ProjectsService', () => {
 
     /** @description Should default is_private to false when not specified */
     it('should default is_private to false', async () => {
+      // No duplicate project name exists
+      mockProjectGetKnex.mockReturnValue(createChainableBuilder(undefined))
       mockProjectCreate.mockResolvedValue({ id: 'p1', name: 'Test' })
       mockDatasetCreate.mockResolvedValue({ id: 'ds-1' })
       mockProjectDatasetCreate.mockResolvedValue({})
@@ -338,21 +348,23 @@ describe('ProjectsService', () => {
       )
     })
 
-    /** @description Should still create project even if dataset creation fails */
-    it('should create project even when dataset auto-creation fails', async () => {
+    /** @description Should still create project even if category/version creation fails */
+    it('should create project even when category auto-creation fails', async () => {
       const mockProject = { id: 'p1', name: 'Partial' }
+      // No duplicate project name exists
+      mockProjectGetKnex.mockReturnValue(createChainableBuilder(undefined))
       mockProjectCreate.mockResolvedValue(mockProject)
-      // Dataset creation fails
-      mockDatasetCreate.mockRejectedValue(new Error('Dataset error'))
 
       const result = await service.createProject({ name: 'Partial' }, createUser())
 
-      // Project should still be returned despite dataset failure
+      // Project should still be returned
       expect(result).toEqual(mockProject)
     })
 
     /** @description Should propagate errors from project creation */
     it('should throw when project creation fails', async () => {
+      // No duplicate project name exists, but project creation itself fails
+      mockProjectGetKnex.mockReturnValue(createChainableBuilder(undefined))
       mockProjectCreate.mockRejectedValue(new Error('DB error'))
 
       await expect(service.createProject({ name: 'Fail' }, createUser())).rejects.toThrow('DB error')

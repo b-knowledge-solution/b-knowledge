@@ -22,6 +22,7 @@ const {
     findById: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    findByNameCaseInsensitive: vi.fn(),
   },
   mockDocumentModel: {
     findByDatasetId: vi.fn(),
@@ -35,6 +36,8 @@ vi.mock('../../src/shared/models/factory.js', () => ({
   ModelFactory: {
     dataset: mockDatasetModel,
     document: mockDocumentModel,
+    chatAssistant: { removeDatasetReference: vi.fn().mockResolvedValue(0) },
+    searchApp: { removeDatasetReference: vi.fn().mockResolvedValue(0) },
   },
 }))
 

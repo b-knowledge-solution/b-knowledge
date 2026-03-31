@@ -4,9 +4,19 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-vi.mock('@/shared/db/knex.js', () => ({
-    db: { raw: vi.fn((sql: string) => sql) },
-}))
+vi.mock('@/shared/db/knex.js', () => {
+    const createChain = (): any => new Proxy({}, {
+        get(_t, prop) {
+            if (prop === 'then') return (resolve: any) => Promise.resolve(resolve([]))
+            if (prop === 'first') return () => Promise.resolve(undefined)
+            if (prop === 'raw') return (sql: string) => sql
+            return () => createChain()
+        },
+    })
+    const dbFn: any = () => createChain()
+    dbFn.raw = vi.fn((sql: string) => sql)
+    return { db: dbFn }
+})
 
 import { adminHistoryService } from '../../src/modules/admin/services/admin-history.service.js';
 import { ModelFactory } from '../../src/shared/models/factory.js';

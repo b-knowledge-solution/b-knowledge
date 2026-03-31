@@ -273,7 +273,7 @@ describe('ChatAssistantService', () => {
         expect.objectContaining({
           name: 'New Bot',
           description: 'A new bot',
-          kb_ids: ['kb-1', 'kb-2'],
+          kb_ids: JSON.stringify(['kb-1', 'kb-2']),
           is_public: true,
           created_by: 'user-1',
         })
@@ -324,7 +324,7 @@ describe('ChatAssistantService', () => {
           description: null,
           icon: null,
           llm_id: null,
-          prompt_config: {},
+          prompt_config: JSON.stringify({}),
           is_public: false,
         })
       )

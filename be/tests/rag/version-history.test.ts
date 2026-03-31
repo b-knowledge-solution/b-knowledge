@@ -32,6 +32,7 @@ const {
       findById: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      findMaxVersionNumber: vi.fn().mockResolvedValue(0),
       getKnex: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ increment: vi.fn() }) }),
     },
     mockMaxFirstFn,
@@ -136,6 +137,7 @@ function clearMockHistory() {
   mockDatasetModel.create.mockClear()
   mockDatasetModel.update.mockClear()
   mockDatasetModel.getKnex.mockClear()
+  mockDatasetModel.findMaxVersionNumber.mockClear()
   mockMaxFirstFn.mockClear()
   mockSearchFn.mockClear()
 }
@@ -152,7 +154,7 @@ describe('Version History - createVersionDataset', () => {
     service = new RagService()
 
     // Reset default: no existing versions
-    mockMaxFirstFn.mockResolvedValue({ max: null })
+    mockDatasetModel.findMaxVersionNumber.mockResolvedValue(0)
   })
 
   it('should create a version dataset with inherited parent settings', async () => {
@@ -160,7 +162,7 @@ describe('Version History - createVersionDataset', () => {
     mockDatasetModel.findById.mockResolvedValue(parentDataset)
 
     // No existing versions
-    mockMaxFirstFn.mockResolvedValue({ max: null })
+    mockDatasetModel.findMaxVersionNumber.mockResolvedValue(0)
 
     // Mock dataset creation to return the new version dataset
     const createdDataset = {
@@ -207,7 +209,7 @@ describe('Version History - createVersionDataset', () => {
 
   it('should set pagerank equal to version_number', async () => {
     mockDatasetModel.findById.mockResolvedValue(parentDataset)
-    mockMaxFirstFn.mockResolvedValue({ max: null })
+    mockDatasetModel.findMaxVersionNumber.mockResolvedValue(0)
     mockDatasetModel.create.mockResolvedValue({ id: 'v-1', pagerank: 1, version_number: 1 })
 
     await service.createVersionDataset('parent-uuid-1234', null, null, 'user-1', 'tenant-1')
@@ -223,7 +225,7 @@ describe('Version History - createVersionDataset', () => {
     mockDatasetModel.findById.mockResolvedValue(parentDataset)
 
     // Existing versions: max version_number is 3
-    mockMaxFirstFn.mockResolvedValue({ max: 3 })
+    mockDatasetModel.findMaxVersionNumber.mockResolvedValue(3)
 
     mockDatasetModel.create.mockResolvedValue({ id: 'v-4', pagerank: 4, version_number: 4 })
 
@@ -360,7 +362,7 @@ describe('Version History - version metadata', () => {
 
   it('should store version_number, change_summary, version_created_by on dataset', async () => {
     mockDatasetModel.findById.mockResolvedValue(parentDataset)
-    mockMaxFirstFn.mockResolvedValue({ max: 1 })
+    mockDatasetModel.findMaxVersionNumber.mockResolvedValue(1)
     mockDatasetModel.create.mockResolvedValue({
       id: 'v-2',
       version_number: 2,

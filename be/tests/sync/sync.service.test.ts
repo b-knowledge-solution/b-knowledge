@@ -94,6 +94,15 @@ describe('SyncService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    // Restore mock implementations cleared by global resetAllMocks
+    mockGetRedisClient.mockReturnValue({
+      lPush: (...args: any[]) => mockRedisLPush(...args),
+      duplicate: () => mockRedisSubscriber,
+    })
+    mockRedisSubscriber.connect.mockResolvedValue(undefined)
+    mockRedisSubscriber.subscribe.mockResolvedValue(undefined)
+    mockRedisSubscriber.unsubscribe.mockResolvedValue(undefined)
+    mockRedisSubscriber.quit.mockResolvedValue(undefined)
     service = new SyncService()
   })
 

@@ -44,6 +44,7 @@ function createBuilder(overrides: Record<string, any> = {}): any {
     count: vi.fn().mockReturnThis(),
     select: vi.fn().mockReturnThis(),
     distinct: vi.fn().mockReturnThis(),
+    join: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
     whereNotNull: vi.fn().mockReturnThis(),
     whereNot: vi.fn().mockReturnThis(),
@@ -55,6 +56,7 @@ function createBuilder(overrides: Record<string, any> = {}): any {
     modify: vi.fn().mockImplementation(function (this: any, fn: any) { fn(this); return this }),
     first: vi.fn().mockResolvedValue({ count: '0' }),
     toQuery: vi.fn().mockReturnValue('SELECT 1'),
+    map: vi.fn().mockReturnValue([]),
     // When awaited directly (for array queries), resolve as empty array
     then: vi.fn().mockImplementation((resolve: any) => resolve([])),
     ...overrides,
