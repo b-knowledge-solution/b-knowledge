@@ -9,9 +9,12 @@ Usage:
 """
 import json
 import os
+import signal
 import sys
+import threading
 import time
 import traceback
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from datetime import datetime, timezone
 from typing import Any
 
@@ -32,6 +35,15 @@ from config import REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
 
 # Redis queue name this worker listens on
 QUEUE_NAME = "rag_connector_sync"
+
+# Graceful shutdown event — set on SIGTERM to stop accepting new tasks
+_shutdown_event = threading.Event()
+
+# Maximum time (seconds) a single sync task can run before being aborted
+TASK_TIMEOUT_SECONDS = int(os.environ.get("SYNC_TASK_TIMEOUT", "3600"))
+
+# Maximum number of documents in the delta sync manifest before switching to streaming
+MANIFEST_PAGE_SIZE = 10_000
 
 
 def _get_redis() -> redis.Redis:
@@ -341,21 +353,32 @@ def _get_existing_docs_manifest(kb_id: str, source_type: str, connector_id: str)
     src_label = f"{source_type}/{connector_id}"
     manifest: dict[str, dict] = {}
 
+    # Paginate to prevent OOM on large KBs (10K docs per batch)
     with DB.connection_context():
-        docs = DocumentService.query(kb_id=kb_id, source_type=src_label, status="1")
-        for doc in docs:
-            entry = {
-                "doc_id": doc.id,
-                "content_hash": doc.content_hash or "",
-                "source_updated_at": doc.source_updated_at,
-                "name": doc.name,
-            }
-            # Primary key: source_doc_id (set by delta sync)
-            if doc.source_doc_id:
-                manifest[doc.source_doc_id] = entry
-            else:
-                # Fallback for pre-migration documents: index by name
-                manifest[f"__name__:{doc.name}"] = entry
+        page = 1
+        while True:
+            docs = (DocumentService.query(kb_id=kb_id, source_type=src_label, status="1")
+                    .paginate(page, MANIFEST_PAGE_SIZE))
+            batch_count = 0
+            for doc in docs:
+                entry = {
+                    "doc_id": doc.id,
+                    "content_hash": doc.content_hash or "",
+                    "source_updated_at": doc.source_updated_at,
+                    "name": doc.name,
+                }
+                # Primary key: source_doc_id (set by delta sync)
+                if doc.source_doc_id:
+                    manifest[doc.source_doc_id] = entry
+                else:
+                    # Fallback for pre-migration documents: index by name
+                    manifest[f"__name__:{doc.name}"] = entry
+                batch_count += 1
+
+            # Stop when fewer results than page size (last page)
+            if batch_count < MANIFEST_PAGE_SIZE:
+                break
+            page += 1
 
     return manifest
 
@@ -885,26 +908,38 @@ def wait_for_database(max_retries: int = 30, retry_delay: int = 3):
 
 
 def main():
-    """Run the connector sync worker loop.
+    """Run the connector sync worker loop with graceful shutdown and task timeout support.
 
-    Connects to Redis and blocks on the ``rag_connector_sync`` list using BRPOP.
-    Each popped message is parsed as JSON and dispatched to handle_sync_task.
-    The loop runs indefinitely until the process is terminated.
+    Connects to Redis and blocks on the ``rag_connector_sync`` and ``rag_connector_test``
+    lists using BRPOP. Each popped message is parsed as JSON and dispatched to the
+    appropriate handler. Sync tasks are wrapped in a ThreadPoolExecutor with a timeout
+    to prevent worker hangs. The loop terminates on SIGTERM for graceful container shutdown.
     """
+    # Register SIGTERM handler for graceful Docker shutdown
+    def _sigterm_handler(signum, frame):
+        logger.info("Received SIGTERM — initiating graceful shutdown")
+        _shutdown_event.set()
+
+    signal.signal(signal.SIGTERM, _sigterm_handler)
+
     logger.info(f"Connector sync worker starting — listening on Redis queues '{QUEUE_NAME}', '{TEST_QUEUE_NAME}'")
 
     r = _get_redis()
+    # Thread pool for sync task timeout enforcement (max 1 concurrent task)
+    executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="sync_task")
 
-    while True:
+    while not _shutdown_event.is_set():
         try:
-            # BRPOP blocks on both sync and test queues (timeout=1s for round-robin)
-            result = r.brpop([QUEUE_NAME, TEST_QUEUE_NAME], timeout=1)
+            # BRPOP blocks on both sync and test queues (timeout=2s allows shutdown check)
+            result = r.brpop([QUEUE_NAME, TEST_QUEUE_NAME], timeout=2)
             if result is None:
                 continue
 
             # result is a tuple of (queue_name, message_json)
             queue_name_bytes, raw_message = result
-            # Log task receipt without exposing credentials (first 200 chars may contain secrets)
+
+            # Determine which queue the message came from
+            queue_name_str = queue_name_bytes if isinstance(queue_name_bytes, str) else queue_name_bytes.decode()
             logger.debug(f"Received task from queue={queue_name_str}, length={len(raw_message)} bytes")
 
             # Parse the task payload
@@ -914,12 +949,10 @@ def main():
                 logger.error(f"Invalid JSON in queue message: {e}")
                 continue
 
-            # Determine which queue the message came from
-            queue_name_str = queue_name_bytes if isinstance(queue_name_bytes, str) else queue_name_bytes.decode()
             is_test_task = task.get("task_type") == "test_connection" or queue_name_str == TEST_QUEUE_NAME
 
             if is_test_task:
-                # Handle test connection request
+                # Handle test connection request (lightweight, no timeout needed)
                 handle_test_connection(task, r)
             else:
                 # Validate required fields for sync tasks
@@ -929,7 +962,18 @@ def main():
                     logger.error(f"Task missing required fields: {missing}. Skipping.")
                     continue
 
-                handle_sync_task(task, r)
+                # Execute sync task with timeout to prevent indefinite hangs
+                future = executor.submit(handle_sync_task, task, r)
+                try:
+                    future.result(timeout=TASK_TIMEOUT_SECONDS)
+                except FutureTimeoutError:
+                    connector_id = task.get("connector_id", "unknown")
+                    sync_log_id = task.get("sync_log_id", "")
+                    error_msg = f"Sync task timed out after {TASK_TIMEOUT_SECONDS}s"
+                    logger.error(f"{error_msg}: connector_id={connector_id}")
+                    _publish_progress(r, connector_id, sync_log_id, -1, error_msg, status="failed")
+                except Exception as task_err:
+                    logger.exception(f"Sync task raised unhandled error: {task_err}")
 
         except redis.ConnectionError as e:
             logger.error(f"Redis connection error: {e}. Reconnecting in 5s...")
@@ -950,11 +994,17 @@ def main():
 
         except KeyboardInterrupt:
             logger.info("Connector sync worker shutting down (KeyboardInterrupt)")
+            _shutdown_event.set()
             break
 
         except Exception as e:
             logger.exception(f"Unexpected error in worker loop: {e}")
             time.sleep(1)
+
+    # Graceful shutdown: wait for in-flight task and close executor
+    logger.info("Shutting down executor (waiting for in-flight task)...")
+    executor.shutdown(wait=True, cancel_futures=True)
+    logger.info("Connector sync worker stopped.")
 
 
 if __name__ == "__main__":
