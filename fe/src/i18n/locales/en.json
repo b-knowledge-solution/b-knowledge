@@ -934,7 +934,27 @@
     "noSessions": "No sessions found",
     "anonymous": "Anonymous",
     "noSessionSelected": "No Session Selected",
-    "selectSessionHint": "Select a conversation or search session from the sidebar to view details."
+    "selectSessionHint": "Select a conversation or search session from the sidebar to view details.",
+    "filters": {
+      "feedback": "Feedback",
+      "feedbackAll": "All",
+      "feedbackPositive": "Positive only",
+      "feedbackNegative": "Negative only",
+      "feedbackAny": "Any feedback",
+      "feedbackNone": "No feedback"
+    },
+    "tabs": {
+      "agentRuns": "Agent Runs"
+    },
+    "exportFeedback": "Export feedback",
+    "exportingFeedback": "Exporting...",
+    "exportFeedbackError": "Failed to export feedback. Check your filters and try again.",
+    "viewFeedbackComment": "View feedback comment",
+    "feedbackCount": "{{up}} positive, {{down}} negative",
+    "agentRuns": {
+      "emptyTitle": "No agent runs found",
+      "emptyDescription": "Agent runs will appear here once agents have been executed."
+    }
   },
   "converter": {
     "status": {
@@ -2689,6 +2709,9 @@
     "noKeysDescription": "Create an API key to use the external evaluation API"
   },
   "agents": {
+    "runs": {
+      "noFeedback": "No feedback yet"
+    },
     "pageTitle": "Agents",
     "canvasTitle": "Agent Canvas",
     "createAgent": "Create Agent",

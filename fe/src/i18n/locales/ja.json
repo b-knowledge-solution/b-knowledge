@@ -922,8 +922,28 @@
     "searchSession": "Search Session",
     "noSessions": "No sessions found",
     "anonymous": "Anonymous",
-    "noSessionSelected": "No Session Selected",
-    "selectSessionHint": "Select a conversation or search session from the sidebar to view details."
+    "noSessionSelected": "セッション未選択",
+    "selectSessionHint": "サイドバーから会話または検索セッションを選択して詳細を表示してください。",
+    "filters": {
+      "feedback": "フィードバック",
+      "feedbackAll": "すべて",
+      "feedbackPositive": "ポジティブのみ",
+      "feedbackNegative": "ネガティブのみ",
+      "feedbackAny": "フィードバックあり",
+      "feedbackNone": "フィードバックなし"
+    },
+    "tabs": {
+      "agentRuns": "エージェント実行"
+    },
+    "exportFeedback": "フィードバックをエクスポート",
+    "exportingFeedback": "エクスポート中...",
+    "exportFeedbackError": "フィードバックのエクスポートに失敗しました。フィルターを確認して再度お試しください。",
+    "viewFeedbackComment": "フィードバックコメントを表示",
+    "feedbackCount": "{{up}} ポジティブ、{{down}} ネガティブ",
+    "agentRuns": {
+      "emptyTitle": "エージェント実行が見つかりません",
+      "emptyDescription": "エージェントが実行されると、ここに実行履歴が表示されます。"
+    }
   },
   "converter": {
     "status": {
@@ -2659,6 +2679,9 @@
     "noKeysDescription": "外部評価APIを使用するためにAPIキーを作成してください"
   },
   "agents": {
+    "runs": {
+      "noFeedback": "フィードバックはまだありません"
+    },
     "pageTitle": "エージェント",
     "canvasTitle": "エージェントキャンバス",
     "createAgent": "エージェント作成",

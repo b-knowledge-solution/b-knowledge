@@ -1,32 +1,44 @@
 /**
  * @fileoverview Admin Histories page component.
- * Displays system-wide chat and search history with filtering and detail views.
+ * Displays system-wide chat, search, and agent run history with filtering,
+ * feedback indicators, and CSV export.
  *
  * @module features/histories/pages/HistoriesPage
  */
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MessageSquare, PanelLeft } from 'lucide-react'
+import { MessageSquare, PanelLeft, Bot } from 'lucide-react'
 
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
 import { EmptyState } from '@/features/histories/components/EmptyState'
-import type { ChatSessionSummary, ExternalChatHistory, ExternalSearchHistory } from '../types/histories.types'
+import type {
+    ChatSessionSummary,
+    SearchSessionSummary,
+    AgentRunSessionSummary,
+    ExternalChatHistory,
+    ExternalSearchHistory,
+    HistoriesTab,
+} from '../types/histories.types'
 import { useHistoriesFilters } from '../hooks/useHistoriesFilters'
 import { useHistoriesData } from '../api/historiesQueries'
 import { AdminSessionListSidebar } from '../components/AdminSessionListSidebar'
 import { AdminFilterDialog } from '../components/AdminFilterDialog'
 import { AdminChatDetailView } from '../components/AdminChatDetailView'
 import { AdminSearchDetailView } from '../components/AdminSearchDetailView'
+import { AdminAgentRunsDetailView } from '../components/AdminAgentRunsDetailView'
+import { FeedbackExportButton } from '../components/FeedbackExportButton'
 
 /**
- * HistoriesPage Component.
+ * @description HistoriesPage Component.
  *
- * Admin page to view system-wide chat and search history with:
- * - Chat / Search tab switcher
- * - Infinite scrolling sessions with user email badges
- * - Email, sourceName, and date range filters
- * - Detailed session view
+ * Admin page to view system-wide chat, search, and agent run history with:
+ * - Chat / Search / Agent Runs tab switcher
+ * - Infinite scrolling sessions with user email badges and feedback indicators
+ * - Email, sourceName, feedback, and date range filters
+ * - Detailed session/run view with read-only feedback display
+ * - CSV feedback export button
  * - First-visit guideline dialog
+ * @returns {JSX.Element} Rendered Histories page
  */
 function HistoriesPage() {
     const { t } = useTranslation()
@@ -45,13 +57,60 @@ function HistoriesPage() {
     const dataState = useHistoriesData(filterState.executedSearchQuery, filterState.filters)
 
     /**
-     * Handle tab switch — also resets search/filters.
-     * @param tab - Target tab ('chat' | 'search').
+     * @description Handle tab switch -- also resets search/filters.
+     * @param {HistoriesTab} tab - Target tab.
      */
-    const handleTabSwitch = (tab: 'chat' | 'search') => {
+    const handleTabSwitch = (tab: HistoriesTab) => {
         dataState.switchTab(tab)
         filterState.setSearchQuery('')
         filterState.handleResetFilters()
+    }
+
+    /**
+     * @description Render the appropriate detail view based on the active tab and selected item.
+     * @returns {JSX.Element} Detail view component for the selected session/run.
+     */
+    const renderDetailView = () => {
+        if (!dataState.selectedSession) return null
+
+        // Agent Runs tab -- render agent run detail view
+        if (dataState.activeTab === 'agentRuns') {
+            return (
+                <AdminAgentRunsDetailView
+                    run={dataState.selectedSession as AgentRunSessionSummary}
+                    details={dataState.agentRunDetails}
+                    isLoadingDetails={dataState.isLoadingDetails}
+                    isSidebarOpen={dataState.isSidebarOpen}
+                    onOpenSidebar={() => dataState.setIsSidebarOpen(true)}
+                />
+            )
+        }
+
+        // Chat tab -- render chat detail view
+        if (dataState.activeTab === 'chat') {
+            return (
+                <AdminChatDetailView
+                    session={dataState.selectedSession as ChatSessionSummary}
+                    details={(dataState.sessionDetails || []) as ExternalChatHistory[]}
+                    isLoadingDetails={dataState.isLoadingDetails}
+                    searchQuery={filterState.executedSearchQuery}
+                    isSidebarOpen={dataState.isSidebarOpen}
+                    onOpenSidebar={() => dataState.setIsSidebarOpen(true)}
+                />
+            )
+        }
+
+        // Search tab -- render search detail view
+        return (
+            <AdminSearchDetailView
+                session={dataState.selectedSession as SearchSessionSummary}
+                details={(dataState.sessionDetails || []) as ExternalSearchHistory[]}
+                isLoadingDetails={dataState.isLoadingDetails}
+                searchQuery={filterState.executedSearchQuery}
+                isSidebarOpen={dataState.isSidebarOpen}
+                onOpenSidebar={() => dataState.setIsSidebarOpen(true)}
+            />
+        )
     }
 
     return (
@@ -80,26 +139,13 @@ function HistoriesPage() {
 
             {/* Main Content */}
             <div className="flex-1 relative overflow-hidden bg-slate-50 dark:bg-slate-950 flex flex-col">
+                {/* Export button in top-right corner */}
+                <div className="absolute top-4 right-4 z-10">
+                    <FeedbackExportButton filters={filterState.filters} />
+                </div>
+
                 {dataState.selectedSession ? (
-                    dataState.activeTab === 'chat' ? (
-                        <AdminChatDetailView
-                            session={dataState.selectedSession as ChatSessionSummary}
-                            details={(dataState.sessionDetails || []) as ExternalChatHistory[]}
-                            isLoadingDetails={dataState.isLoadingDetails}
-                            searchQuery={filterState.executedSearchQuery}
-                            isSidebarOpen={dataState.isSidebarOpen}
-                            onOpenSidebar={() => dataState.setIsSidebarOpen(true)}
-                        />
-                    ) : (
-                        <AdminSearchDetailView
-                            session={dataState.selectedSession as any}
-                            details={(dataState.sessionDetails || []) as ExternalSearchHistory[]}
-                            isLoadingDetails={dataState.isLoadingDetails}
-                            searchQuery={filterState.executedSearchQuery}
-                            isSidebarOpen={dataState.isSidebarOpen}
-                            onOpenSidebar={() => dataState.setIsSidebarOpen(true)}
-                        />
-                    )
+                    renderDetailView()
                 ) : (
                     <div className="flex-1 flex flex-col">
                         {!dataState.isSidebarOpen && (
@@ -112,10 +158,16 @@ function HistoriesPage() {
                             </button>
                         )}
                         <EmptyState
-                            icon={MessageSquare}
-                            title={t('histories.noSessionSelected', 'No Session Selected')}
-                            subtitle={t('histories.selectSessionHint', 'Select a conversation or search session from the sidebar to view details.')}
-                            glowColor="rgba(120,119,198,0.3)"
+                            icon={dataState.activeTab === 'agentRuns' ? Bot : MessageSquare}
+                            title={dataState.activeTab === 'agentRuns'
+                                ? t('histories.agentRuns.emptyTitle', 'No agent runs found')
+                                : t('histories.noSessionSelected', 'No Session Selected')
+                            }
+                            subtitle={dataState.activeTab === 'agentRuns'
+                                ? t('histories.agentRuns.emptyDescription', 'Agent runs will appear here once agents have been executed.')
+                                : t('histories.selectSessionHint', 'Select a conversation or search session from the sidebar to view details.')
+                            }
+                            glowColor={dataState.activeTab === 'agentRuns' ? 'rgba(139,92,246,0.3)' : 'rgba(120,119,198,0.3)'}
                         />
                     </div>
                 )}

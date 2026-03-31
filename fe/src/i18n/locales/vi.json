@@ -936,8 +936,28 @@
     "searchSession": "Search Session",
     "noSessions": "No sessions found",
     "anonymous": "Anonymous",
-    "noSessionSelected": "No Session Selected",
-    "selectSessionHint": "Select a conversation or search session from the sidebar to view details."
+    "noSessionSelected": "Chưa chọn phiên",
+    "selectSessionHint": "Chọn một cuộc trò chuyện hoặc phiên tìm kiếm từ thanh bên để xem chi tiết.",
+    "filters": {
+      "feedback": "Phản hồi",
+      "feedbackAll": "Tất cả",
+      "feedbackPositive": "Chỉ tích cực",
+      "feedbackNegative": "Chỉ tiêu cực",
+      "feedbackAny": "Có phản hồi",
+      "feedbackNone": "Không có phản hồi"
+    },
+    "tabs": {
+      "agentRuns": "Lịch sử Agent"
+    },
+    "exportFeedback": "Xuất phản hồi",
+    "exportingFeedback": "Đang xuất...",
+    "exportFeedbackError": "Không thể xuất phản hồi. Kiểm tra bộ lọc và thử lại.",
+    "viewFeedbackComment": "Xem bình luận phản hồi",
+    "feedbackCount": "{{up}} tích cực, {{down}} tiêu cực",
+    "agentRuns": {
+      "emptyTitle": "Không tìm thấy lịch sử chạy agent",
+      "emptyDescription": "Lịch sử chạy agent sẽ xuất hiện ở đây sau khi agent được thực thi."
+    }
   },
   "converter": {
     "status": {
@@ -2673,6 +2693,9 @@
     "noKeysDescription": "Tạo khóa API để sử dụng API đánh giá bên ngoài"
   },
   "agents": {
+    "runs": {
+      "noFeedback": "Chưa có phản hồi"
+    },
     "pageTitle": "Tác tử",
     "canvasTitle": "Canvas Tác tử",
     "createAgent": "Tạo tác tử",

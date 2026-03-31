@@ -1,11 +1,12 @@
 /**
- * @fileoverview Admin filter dialog with email, source name, and date range filters.
+ * @fileoverview Admin filter dialog with email, source name, date range, and feedback filters.
  * @module features/histories/components/AdminFilterDialog
  */
 import { useTranslation } from 'react-i18next'
 import { DatePicker } from '@/components/ui/date-picker'
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { FilterState } from '../types/histories.types'
 
 /**
@@ -27,9 +28,9 @@ interface AdminFilterDialogProps {
 }
 
 /**
- * Admin-specific filter dialog with email, source name, and date range fields.
- * @param props - Component props.
- * @returns Rendered filter dialog.
+ * @description Admin-specific filter dialog with email, source name, date range, and feedback status fields.
+ * @param {AdminFilterDialogProps} props - Component props.
+ * @returns {JSX.Element} Rendered filter dialog.
  */
 export const AdminFilterDialog = ({
     open,
@@ -74,6 +75,31 @@ export const AdminFilterDialog = ({
                         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                         placeholder={t('histories.sourceNamePlaceholder', 'e.g. My Knowledge Base')}
                     />
+                </div>
+
+                {/* Feedback Filter */}
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                        {t('histories.filters.feedback', 'Feedback')}
+                    </label>
+                    <Select
+                        value={tempFilters.feedbackFilter || 'all'}
+                        onValueChange={(value: string) => setTempFilters({
+                            ...tempFilters,
+                            feedbackFilter: value as 'all' | 'positive' | 'negative' | 'any' | 'none'
+                        })}
+                    >
+                        <SelectTrigger className="w-full">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">{t('histories.filters.feedbackAll', 'All')}</SelectItem>
+                            <SelectItem value="positive">{t('histories.filters.feedbackPositive', 'Positive only')}</SelectItem>
+                            <SelectItem value="negative">{t('histories.filters.feedbackNegative', 'Negative only')}</SelectItem>
+                            <SelectItem value="any">{t('histories.filters.feedbackAny', 'Any feedback')}</SelectItem>
+                            <SelectItem value="none">{t('histories.filters.feedbackNone', 'No feedback')}</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
 
                 {/* Date Range */}

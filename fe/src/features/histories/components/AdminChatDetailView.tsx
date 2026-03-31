@@ -5,9 +5,10 @@
  * @module features/histories/components/AdminChatDetailView
  */
 import { useTranslation } from 'react-i18next'
-import { MessageSquare, Clock, Sparkles, PanelLeft } from 'lucide-react'
+import { MessageSquare, Clock, Sparkles, PanelLeft, ThumbsUp, ThumbsDown, ChevronDown } from 'lucide-react'
 
 import { MarkdownRenderer } from '@/components/MarkdownRenderer'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import type { ChatSessionSummary, ExternalChatHistory } from '../types/histories.types'
 
 /**
@@ -135,6 +136,32 @@ export const AdminChatDetailView = ({
                                                         )
                                                     })}
                                                 </div>
+                                            </div>
+                                        )}
+
+                                        {/* Feedback indicator -- read-only display of existing feedback */}
+                                        {(item as any).feedback_thumbup !== undefined && (
+                                            <div className="pt-2 space-y-1">
+                                                <span className="inline-flex items-center gap-1">
+                                                    {(item as any).feedback_thumbup
+                                                        ? <ThumbsUp className="h-3 w-3 text-green-500" />
+                                                        : <ThumbsDown className="h-3 w-3 text-red-500" />
+                                                    }
+                                                </span>
+                                                {/* Collapsible comment if feedback has a comment */}
+                                                {(item as any).feedback_comment && (
+                                                    <Collapsible>
+                                                        <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                                                            <ChevronDown className="h-3 w-3" />
+                                                            {t('histories.viewFeedbackComment')}
+                                                        </CollapsibleTrigger>
+                                                        <CollapsibleContent>
+                                                            <p className="text-sm text-muted-foreground border-l-2 border-primary pl-3 mt-1">
+                                                                {(item as any).feedback_comment}
+                                                            </p>
+                                                        </CollapsibleContent>
+                                                    </Collapsible>
+                                                )}
                                             </div>
                                         )}
                                     </div>
