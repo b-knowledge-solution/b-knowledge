@@ -3077,5 +3077,12 @@
     "viewFullGraph": "View Full Graph",
     "selectCategoryForVersions": "Select a category to see versions",
     "selectVersionForDocs": "Select a version to see documents"
+  },
+  "feedback": {
+    "whatWasWrong": "What was wrong?",
+    "commentPlaceholder": "Tell us what could be better...",
+    "sendFeedback": "Send feedback",
+    "skipForNow": "Skip for now",
+    "thankYou": "Thanks for your feedback"
   }
 }

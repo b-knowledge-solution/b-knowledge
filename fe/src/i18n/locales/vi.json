@@ -2823,5 +2823,12 @@
     "viewFullGraph": "Xem đồ thị đầy đủ",
     "selectCategoryForVersions": "Chọn danh mục để xem phiên bản",
     "selectVersionForDocs": "Chọn phiên bản để xem tài liệu"
+  },
+  "feedback": {
+    "whatWasWrong": "Có gì không đúng?",
+    "commentPlaceholder": "Cho chúng tôi biết có thể cải thiện điều gì...",
+    "sendFeedback": "Gửi phản hồi",
+    "skipForNow": "Bỏ qua",
+    "thankYou": "Cảm ơn phản hồi của bạn"
   }
 }

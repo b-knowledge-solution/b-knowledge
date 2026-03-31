@@ -2809,5 +2809,12 @@
     "viewFullGraph": "フルグラフを表示",
     "selectCategoryForVersions": "カテゴリを選択してバージョンを表示",
     "selectVersionForDocs": "バージョンを選択してドキュメントを表示"
+  },
+  "feedback": {
+    "whatWasWrong": "何が問題でしたか？",
+    "commentPlaceholder": "改善点を教えてください...",
+    "sendFeedback": "フィードバックを送信",
+    "skipForNow": "スキップ",
+    "thankYou": "フィードバックありがとうございます"
   }
 }
