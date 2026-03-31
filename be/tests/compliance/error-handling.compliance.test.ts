@@ -72,6 +72,30 @@ vi.mock('../../src/modules/llm-provider/routes/llm-provider-public.routes.js', (
 vi.mock('../../src/modules/sync/routes/sync.routes.js', () => ({ default: express.Router() }))
 vi.mock('../../src/modules/projects/routes/projects.routes.js', () => ({ default: express.Router() }))
 vi.mock('../../src/modules/feedback/routes/feedback.routes.js', () => ({ default: express.Router() }))
+vi.mock('../../src/modules/external/routes/api-key.routes.js', () => ({ default: express.Router() }))
+vi.mock('../../src/modules/external/routes/external-api.routes.js', () => ({ default: express.Router() }))
+vi.mock('../../src/modules/agents/routes/agent.routes.js', () => ({ default: express.Router() }))
+vi.mock('../../src/modules/agents/routes/agent-webhook.routes.js', () => ({ default: express.Router() }))
+vi.mock('../../src/modules/agents/routes/agent-embed.routes.js', () => ({ default: express.Router() }))
+vi.mock('../../src/modules/memory/routes/memory.routes.js', () => ({ default: express.Router() }))
+vi.mock('../../src/modules/code-graph/code-graph.routes.js', () => ({ default: express.Router() }))
+vi.mock('../../src/modules/agents/controllers/agent.controller.js', () => ({
+  agentController: { listTemplates: vi.fn((_req: any, _res: any, next?: any) => next?.()) },
+}))
+vi.mock('../../src/modules/agents/controllers/agent-embed.controller.js', () => ({
+  agentEmbedController: {
+    getEmbedToken: vi.fn((_req: any, _res: any, next?: any) => next?.()),
+    listTokens: vi.fn((_req: any, _res: any, next?: any) => next?.()),
+    revokeToken: vi.fn((_req: any, _res: any, next?: any) => next?.()),
+  },
+}))
+vi.mock('../../src/shared/middleware/auth.middleware.js', () => ({
+  requireAuth: (_req: any, _res: any, next: any) => next(),
+  requireAbility: () => (_req: any, _res: any, next: any) => next(),
+}))
+vi.mock('../../src/shared/middleware/tenant.middleware.js', () => ({
+  requireTenant: (_req: any, _res: any, next: any) => next(),
+}))
 vi.mock('express-rate-limit', () => ({
   default: () => (_req: any, _res: any, next: any) => next(),
 }))

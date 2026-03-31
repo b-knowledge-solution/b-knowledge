@@ -1,6 +1,7 @@
 
 /**
  * Admin History Routes
+ * Defines endpoints for accessing chat, search, and agent run history.
  */
 import { Router } from 'express';
 import { AdminHistoryController } from '../controllers/admin-history.controller.js';
@@ -11,14 +12,14 @@ const controller = new AdminHistoryController();
 
 /**
  * Route Definitions
- * Define endpoints for accessing chat and search history.
+ * Define endpoints for accessing chat, search, and agent run history.
  * All routes are protected by authentication and role-based access control (RBAC).
  * Only users with 'admin' role can access these endpoints.
  */
 
 /**
  * @route GET /api/admin/history/chat
- * @description Retrieve paginated list of all chat sessions.
+ * @description Retrieve paginated list of all chat sessions with feedback counts.
  * @access Private (Admin, Leader)
  */
 // Ensure user is authenticated and has admin or leader privileges
@@ -34,7 +35,7 @@ router.get('/chat/:sessionId', requireAuth, requireRole('admin'), controller.get
 
 /**
  * @route GET /api/admin/history/search
- * @description Retrieve paginated list of all search history records.
+ * @description Retrieve paginated list of all search history records with feedback counts.
  * @access Private (Admin, Leader)
  */
 // Ensure user is authenticated and authorized before listing search history
@@ -47,6 +48,22 @@ router.get('/search', requireAuth, requireRole('admin'), controller.getSearchHis
  */
 // Ensure user is authenticated and authorized before fetching search session details
 router.get('/search/:sessionId', requireAuth, requireRole('admin'), controller.getSearchSessionDetails.bind(controller));
+
+/**
+ * @route GET /api/admin/history/agent-runs
+ * @description Retrieve paginated list of agent runs with feedback counts.
+ * @access Private (Admin, Leader)
+ */
+// Ensure user is authenticated and authorized before listing agent run history
+router.get('/agent-runs', requireAuth, requireRole('admin'), controller.getAgentRunHistory.bind(controller));
+
+/**
+ * @route GET /api/admin/history/agent-runs/:runId
+ * @description Retrieve details for a specific agent run including steps and feedback.
+ * @access Private (Admin, Leader)
+ */
+// Ensure user is authenticated and authorized before fetching agent run details
+router.get('/agent-runs/:runId', requireAuth, requireRole('admin'), controller.getAgentRunDetails.bind(controller));
 
 /**
  * @route GET /api/admin/history/system-chat

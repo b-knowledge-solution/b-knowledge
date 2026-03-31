@@ -19,7 +19,7 @@ describe('ChangeParserDialog (unit)', () => {
       const expected = [
         'naive', 'qa', 'resume', 'manual', 'table', 'paper', 'book',
         'laws', 'presentation', 'one', 'picture', 'audio', 'email',
-        'code', 'openapi', 'adr', 'clinical',
+        'openapi', 'adr', 'clinical', 'sdlc_checklist',
       ]
       for (const v of expected) {
         expect(values).toContain(v)

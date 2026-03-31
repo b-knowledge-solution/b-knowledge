@@ -1,18 +1,30 @@
 /**
  * @fileoverview Admin History Controller
- * Handles internal requests for viewing chat and search history.
+ * Handles internal requests for viewing chat, search, and agent run history.
  */
 import { Request, Response } from 'express';
 import { log } from '@/shared/services/logger.service.js';
 import { adminHistoryService } from '@/modules/admin/services/admin-history.service.js';
+import type { FeedbackFilter } from '@/modules/admin/services/admin-history.service.js';
 
 /**
- * @description Handles admin requests for viewing chat and search history across all users
+ * @description Handles admin requests for viewing chat, search, and agent run history across all users
  */
 export class AdminHistoryController {
     /**
-     * @description Retrieve paginated chat history with optional filters for email, date range, and search text
-     * @param {Request} req - Express request object containing query parameters (page, limit, q, email, startDate, endDate, sourceName)
+     * @description Parse feedbackFilter query param into a validated FeedbackFilter or undefined.
+     * @param {string | undefined} raw - Raw query parameter value
+     * @returns {FeedbackFilter | undefined} Validated feedback filter or undefined
+     */
+    private parseFeedbackFilter(raw?: string): FeedbackFilter | undefined {
+        // Only accept known filter values, ignore unknown input
+        const valid: FeedbackFilter[] = ['positive', 'negative', 'any', 'none']
+        return raw && valid.includes(raw as FeedbackFilter) ? raw as FeedbackFilter : undefined
+    }
+
+    /**
+     * @description Retrieve paginated chat history with optional filters for email, date range, search text, and feedback status
+     * @param {Request} req - Express request object containing query parameters (page, limit, q, email, startDate, endDate, sourceName, feedbackFilter)
      * @param {Response} res - Express response object
      * @returns {Promise<void>}
      */
@@ -26,9 +38,10 @@ export class AdminHistoryController {
             const startDate = req.query.startDate as string || '';
             const endDate = req.query.endDate as string || '';
             const sourceName = req.query.sourceName as string || '';
+            const feedbackFilter = this.parseFeedbackFilter(req.query.feedbackFilter as string);
 
-            // Fetch chat history from service
-            const sessions = await adminHistoryService.getChatHistory(page, limit, search, email, startDate, endDate, sourceName);
+            // Fetch chat history from service with feedback enrichment
+            const sessions = await adminHistoryService.getChatHistory(page, limit, search, email, startDate, endDate, sourceName, feedbackFilter);
             res.json(sessions);
         } catch (error) {
             // Log error and return 500 status
@@ -64,8 +77,8 @@ export class AdminHistoryController {
     }
 
     /**
-     * @description Retrieve paginated search history with optional filters for email, date range, and search text
-     * @param {Request} req - Express request object containing query parameters (page, limit, q, email, startDate, endDate, sourceName)
+     * @description Retrieve paginated search history with optional filters for email, date range, search text, and feedback status
+     * @param {Request} req - Express request object containing query parameters (page, limit, q, email, startDate, endDate, sourceName, feedbackFilter)
      * @param {Response} res - Express response object
      * @returns {Promise<void>}
      */
@@ -79,9 +92,10 @@ export class AdminHistoryController {
             const startDate = req.query.startDate as string || '';
             const endDate = req.query.endDate as string || '';
             const sourceName = req.query.sourceName as string || '';
+            const feedbackFilter = this.parseFeedbackFilter(req.query.feedbackFilter as string);
 
-            // Fetch search history from service
-            const sessions = await adminHistoryService.getSearchHistory(page, limit, search, email, startDate, endDate, sourceName);
+            // Fetch search history from service with feedback enrichment
+            const sessions = await adminHistoryService.getSearchHistory(page, limit, search, email, startDate, endDate, sourceName, feedbackFilter);
             res.json(sessions);
         } catch (error) {
             // Log error and return 500 status
@@ -113,6 +127,60 @@ export class AdminHistoryController {
             // Log error and return 500 status
             log.error('Error fetching search session details', error as Record<string, unknown>);
             res.status(500).json({ error: 'Internal server error' });
+        }
+    }
+
+    /**
+     * @description Retrieve paginated agent run history with feedback counts
+     * @param {Request} req - Express request with query params (page, limit, q, email, startDate, endDate, feedbackFilter)
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
+     */
+    async getAgentRunHistory(req: Request, res: Response): Promise<void> {
+        try {
+            // Parse pagination and filter parameters
+            const page = parseInt(req.query.page as string || '1', 10)
+            const limit = parseInt(req.query.limit as string || '20', 10)
+            const search = req.query.q as string || ''
+            const email = req.query.email as string || ''
+            const startDate = req.query.startDate as string || ''
+            const endDate = req.query.endDate as string || ''
+            const feedbackFilter = this.parseFeedbackFilter(req.query.feedbackFilter as string)
+
+            // Fetch agent run history from service
+            const runs = await adminHistoryService.getAgentRunHistory(page, limit, search, email, startDate, endDate, feedbackFilter)
+            res.json(runs)
+        } catch (error) {
+            log.error('Error fetching agent run history', error as Record<string, unknown>)
+            res.status(500).json({ error: 'Internal server error' })
+        }
+    }
+
+    /**
+     * @description Retrieve details for a specific agent run including steps and feedback
+     * @param {Request} req - Express request with runId route parameter
+     * @param {Response} res - Express response object
+     * @returns {Promise<void>}
+     */
+    async getAgentRunDetails(req: Request, res: Response): Promise<void> {
+        try {
+            const { runId } = req.params
+            // Guard: reject requests without a run ID
+            if (!runId) {
+                res.status(400).json({ error: 'Run ID is required' })
+                return
+            }
+
+            const details = await adminHistoryService.getAgentRunDetails(runId)
+            // Return 404 if run not found
+            if (!details) {
+                res.status(404).json({ error: 'Agent run not found' })
+                return
+            }
+            res.json(details)
+        } catch (error) {
+            log.error('Error fetching agent run details', error as Record<string, unknown>)
+            res.status(500).json({ error: 'Internal server error' })
         }
     }
 

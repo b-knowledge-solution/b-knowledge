@@ -7,8 +7,10 @@ React 19 / TypeScript 5.8 / Vite 7.3 / TanStack Query 5 / Tailwind CSS 3.4 / sha
 ```bash
 npm run dev:fe              # Vite dev server (port 5173)
 npm run build -w fe         # TypeScript check + Vite production build
-npm run test -w fe          # Vitest (jsdom)
-npm run test:run -w fe      # Single run (CI)
+npm run test -w fe          # Run unit + UI frontend tests
+npm run test:run -w fe      # Single run for both test suites
+npm run test:run:unit -w fe # Business-logic tests in Node
+npm run test:run:ui -w fe   # UI/jsdom tests
 npm run test:coverage -w fe # Istanbul coverage
 npm run lint -w fe          # ESLint with React Compiler rules
 ```

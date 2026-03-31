@@ -1,17 +1,69 @@
 /**
- * @fileoverview Admin history service for querying chat and search session records.
- * Provides paginated access to user activity history with full-text search support.
+ * @fileoverview Admin history service for querying chat, search, and agent run session records.
+ * Provides paginated access to user activity history with full-text search support
+ * and feedback enrichment (positive/negative counts).
  * @module services/admin-history
  */
 import { db } from '@/shared/db/knex.js';
 import { ModelFactory } from '@/shared/models/factory.js';
 
+/** Feedback filter options for session queries. */
+export type FeedbackFilter = 'positive' | 'negative' | 'any' | 'none'
+
 /**
- * @description Service for querying chat and search history across all users with filtering, pagination, and full-text search
+ * @description Service for querying chat, search, and agent run history across all users with filtering, pagination, full-text search, and feedback enrichment
  */
 export class AdminHistoryService {
     /**
-     * @description Retrieve paginated chat history sessions with optional full-text search, email, and date range filters
+     * @description Apply feedback filter EXISTS/NOT EXISTS clause to a query builder.
+     * @param {any} query - Knex query builder
+     * @param {string} source - Feedback source type ('chat' | 'search' | 'agent')
+     * @param {string} sourceIdColumn - The column expression for source_id matching
+     * @param {FeedbackFilter} [feedbackFilter] - Optional feedback filter
+     * @returns {any} Modified query builder
+     */
+    private applyFeedbackFilter(query: any, source: string, sourceIdColumn: string, feedbackFilter?: FeedbackFilter): any {
+        if (!feedbackFilter) return query
+
+        switch (feedbackFilter) {
+            case 'positive':
+                // Only sessions that have at least one positive feedback
+                return query.whereExists(function (this: any) {
+                    this.select(db.raw('1')).from('answer_feedback')
+                        .whereRaw(`answer_feedback.source_id = ${sourceIdColumn}`)
+                        .where('answer_feedback.source', source)
+                        .where('answer_feedback.thumbup', true)
+                })
+            case 'negative':
+                // Only sessions that have at least one negative feedback
+                return query.whereExists(function (this: any) {
+                    this.select(db.raw('1')).from('answer_feedback')
+                        .whereRaw(`answer_feedback.source_id = ${sourceIdColumn}`)
+                        .where('answer_feedback.source', source)
+                        .where('answer_feedback.thumbup', false)
+                })
+            case 'any':
+                // Only sessions that have any feedback at all
+                return query.whereExists(function (this: any) {
+                    this.select(db.raw('1')).from('answer_feedback')
+                        .whereRaw(`answer_feedback.source_id = ${sourceIdColumn}`)
+                        .where('answer_feedback.source', source)
+                })
+            case 'none':
+                // Only sessions with no feedback records
+                return query.whereNotExists(function (this: any) {
+                    this.select(db.raw('1')).from('answer_feedback')
+                        .whereRaw(`answer_feedback.source_id = ${sourceIdColumn}`)
+                        .where('answer_feedback.source', source)
+                })
+            default:
+                return query
+        }
+    }
+
+    /**
+     * @description Retrieve paginated chat history sessions with optional full-text search, email, date range, and feedback filters.
+     * Enriches results with positive_count and negative_count from answer_feedback table.
      * @param {number} page - Page number (1-based)
      * @param {number} limit - Maximum items per page
      * @param {string} search - Full-text search query applied to messages and email
@@ -19,7 +71,8 @@ export class AdminHistoryService {
      * @param {string} startDate - Lower bound date filter (inclusive)
      * @param {string} endDate - Upper bound date filter (inclusive, extended to end of day)
      * @param {string} [sourceName] - Optional source name filter
-     * @returns {Promise<any[]>} Paginated array of chat session summaries
+     * @param {FeedbackFilter} [feedbackFilter] - Optional feedback status filter
+     * @returns {Promise<any[]>} Paginated array of chat session summaries with feedback counts
      */
     async getChatHistory(
         page: number,
@@ -28,7 +81,8 @@ export class AdminHistoryService {
         email: string,
         startDate: string,
         endDate: string,
-        sourceName?: string
+        sourceName?: string,
+        feedbackFilter?: FeedbackFilter
     ) {
         // Calculate offset for pagination
         const offset = (page - 1) * limit;
@@ -42,15 +96,29 @@ export class AdminHistoryService {
 
                 // Subquery for first prompt
                 db.raw(`(
-                    SELECT user_prompt FROM history_chat_messages 
-                    WHERE session_id = history_chat_sessions.session_id 
+                    SELECT user_prompt FROM history_chat_messages
+                    WHERE session_id = history_chat_sessions.session_id
                     ORDER BY created_at ASC LIMIT 1
                 ) as user_prompt`),
                 // Subquery for message count
                 db.raw(`(
-                    SELECT COUNT(*) FROM history_chat_messages 
+                    SELECT COUNT(*) FROM history_chat_messages
                     WHERE session_id = history_chat_sessions.session_id
-                ) as message_count`)
+                ) as message_count`),
+                // Subquery for positive feedback count
+                db.raw(`(
+                    SELECT COUNT(*) FROM answer_feedback af
+                    WHERE af.source = 'chat'
+                    AND af.source_id = history_chat_sessions.session_id
+                    AND af.thumbup = true
+                )::int as positive_count`),
+                // Subquery for negative feedback count
+                db.raw(`(
+                    SELECT COUNT(*) FROM answer_feedback af
+                    WHERE af.source = 'chat'
+                    AND af.source_id = history_chat_sessions.session_id
+                    AND af.thumbup = false
+                )::int as negative_count`)
             )
             .from('history_chat_sessions')
             .orderBy('history_chat_sessions.updated_at', 'desc')
@@ -105,6 +173,9 @@ export class AdminHistoryService {
             extQuery = extQuery.where('history_chat_sessions.updated_at', '<=', `${endDate} 23:59:59`);
         }
 
+        // Apply feedback filter to external query
+        extQuery = this.applyFeedbackFilter(extQuery, 'chat', 'history_chat_sessions.session_id', feedbackFilter);
+
         const externalResults = await extQuery;
 
         // ── Internal chat_sessions ────────────────────────────────────────
@@ -125,6 +196,20 @@ export class AdminHistoryService {
                     SELECT COUNT(*) FROM chat_messages
                     WHERE session_id = chat_sessions.id
                 )::int as message_count`),
+                // Subquery for positive feedback count
+                db.raw(`(
+                    SELECT COUNT(*) FROM answer_feedback af
+                    WHERE af.source = 'chat'
+                    AND af.source_id = chat_sessions.id::text
+                    AND af.thumbup = true
+                )::int as positive_count`),
+                // Subquery for negative feedback count
+                db.raw(`(
+                    SELECT COUNT(*) FROM answer_feedback af
+                    WHERE af.source = 'chat'
+                    AND af.source_id = chat_sessions.id::text
+                    AND af.thumbup = false
+                )::int as negative_count`),
                 'chat_sessions.title'
             )
             .orderBy('chat_sessions.created_at', 'desc')
@@ -156,6 +241,9 @@ export class AdminHistoryService {
         if (endDate) {
             intQuery = intQuery.where('chat_sessions.created_at', '<=', `${endDate} 23:59:59`);
         }
+
+        // Apply feedback filter to internal query
+        intQuery = this.applyFeedbackFilter(intQuery, 'chat', 'chat_sessions.id::text', feedbackFilter);
 
         const internalResults = (await intQuery).map((r: any) => ({ ...r, source: 'internal' }));
 
@@ -214,7 +302,8 @@ export class AdminHistoryService {
     }
 
     /**
-     * @description Retrieve paginated search history sessions with optional full-text search, email, and date range filters
+     * @description Retrieve paginated search history sessions with optional full-text search, email, date range, and feedback filters.
+     * Enriches results with positive_count and negative_count from answer_feedback table.
      * @param {number} page - Page number (1-based)
      * @param {number} limit - Maximum items per page
      * @param {string} search - Full-text search query applied to records and email
@@ -222,7 +311,8 @@ export class AdminHistoryService {
      * @param {string} startDate - Lower bound date filter (inclusive)
      * @param {string} endDate - Upper bound date filter (inclusive, extended to end of day)
      * @param {string} [sourceName] - Optional source name filter
-     * @returns {Promise<any[]>} Paginated array of search session summaries
+     * @param {FeedbackFilter} [feedbackFilter] - Optional feedback status filter
+     * @returns {Promise<any[]>} Paginated array of search session summaries with feedback counts
      */
     async getSearchHistory(
         page: number,
@@ -231,7 +321,8 @@ export class AdminHistoryService {
         email: string,
         startDate: string,
         endDate: string,
-        sourceName?: string
+        sourceName?: string,
+        feedbackFilter?: FeedbackFilter
     ) {
         // Calculate pagination offset
         const offset = (page - 1) * limit;
@@ -245,15 +336,29 @@ export class AdminHistoryService {
 
                 // Subquery for first search input
                 db.raw(`(
-                    SELECT search_input FROM history_search_records 
-                    WHERE session_id = history_search_sessions.session_id 
+                    SELECT search_input FROM history_search_records
+                    WHERE session_id = history_search_sessions.session_id
                     ORDER BY created_at ASC LIMIT 1
                 ) as search_input`),
                 // Subquery for count
                 db.raw(`(
-                    SELECT COUNT(*) FROM history_search_records 
+                    SELECT COUNT(*) FROM history_search_records
                     WHERE session_id = history_search_sessions.session_id
-                ) as message_count`)
+                ) as message_count`),
+                // Subquery for positive feedback count
+                db.raw(`(
+                    SELECT COUNT(*) FROM answer_feedback af
+                    WHERE af.source = 'search'
+                    AND af.source_id = history_search_sessions.session_id
+                    AND af.thumbup = true
+                )::int as positive_count`),
+                // Subquery for negative feedback count
+                db.raw(`(
+                    SELECT COUNT(*) FROM answer_feedback af
+                    WHERE af.source = 'search'
+                    AND af.source_id = history_search_sessions.session_id
+                    AND af.thumbup = false
+                )::int as negative_count`)
             )
             .from('history_search_sessions')
 
@@ -307,7 +412,8 @@ export class AdminHistoryService {
             query = query.where('history_search_sessions.updated_at', '<=', `${endDate} 23:59:59`);
         }
 
-
+        // Apply feedback filter
+        query = this.applyFeedbackFilter(query, 'search', 'history_search_sessions.session_id', feedbackFilter);
 
         return await query;
     }
@@ -324,6 +430,124 @@ export class AdminHistoryService {
             .select('*')
             .where('session_id', sessionId)
             .orderBy('created_at', 'asc');
+    }
+
+    /**
+     * @description Retrieve paginated agent run history with feedback counts.
+     * Joins agent_runs with agents table for agent name, enriches with feedback subqueries.
+     * @param {number} page - Page number (1-based)
+     * @param {number} limit - Maximum items per page
+     * @param {string} search - Search query to filter by agent name or input text
+     * @param {string} email - Filter by triggering user email (partial match)
+     * @param {string} startDate - Lower bound date filter (inclusive)
+     * @param {string} endDate - Upper bound date filter (inclusive, extended to end of day)
+     * @param {FeedbackFilter} [feedbackFilter] - Optional feedback status filter
+     * @returns {Promise<any[]>} Paginated array of agent run summaries with feedback counts
+     */
+    async getAgentRunHistory(
+        page: number,
+        limit: number,
+        search: string,
+        email: string,
+        startDate: string,
+        endDate: string,
+        feedbackFilter?: FeedbackFilter
+    ) {
+        // Calculate pagination offset
+        const offset = (page - 1) * limit
+
+        let query = db('agent_runs')
+            .leftJoin('agents', 'agent_runs.agent_id', 'agents.id')
+            .leftJoin('users', 'agent_runs.triggered_by', 'users.id')
+            .select(
+                'agent_runs.id as run_id',
+                'agents.title as agent_name',
+                'agent_runs.agent_id',
+                'agent_runs.status',
+                'agent_runs.input',
+                'agent_runs.output',
+                'agent_runs.started_at',
+                'agent_runs.completed_at',
+                'agent_runs.duration_ms',
+                'users.email as user_email',
+                // Subquery for positive feedback count
+                db.raw(`(
+                    SELECT COUNT(*) FROM answer_feedback af
+                    WHERE af.source = 'agent'
+                    AND af.source_id = agent_runs.id::text
+                    AND af.thumbup = true
+                )::int as positive_count`),
+                // Subquery for negative feedback count
+                db.raw(`(
+                    SELECT COUNT(*) FROM answer_feedback af
+                    WHERE af.source = 'agent'
+                    AND af.source_id = agent_runs.id::text
+                    AND af.thumbup = false
+                )::int as negative_count`)
+            )
+            .orderBy('agent_runs.created_at', 'desc')
+            .limit(limit)
+            .offset(offset)
+
+        // Filter by agent name or input text
+        if (search) {
+            query = query.where(builder => {
+                builder.where('agents.title', 'ilike', `%${search}%`)
+                    .orWhere('agent_runs.input', 'ilike', `%${search}%`)
+            })
+        }
+
+        // Filter by triggering user email
+        if (email) {
+            query = query.where('users.email', 'ilike', `%${email}%`)
+        }
+
+        // Date range filters on run start time
+        if (startDate) {
+            query = query.where('agent_runs.started_at', '>=', startDate)
+        }
+        if (endDate) {
+            query = query.where('agent_runs.started_at', '<=', `${endDate} 23:59:59`)
+        }
+
+        // Apply feedback filter
+        query = this.applyFeedbackFilter(query, 'agent', 'agent_runs.id::text', feedbackFilter)
+
+        return await query
+    }
+
+    /**
+     * @description Retrieve a single agent run with its steps and associated feedback records.
+     * @param {string} runId - UUID of the agent run
+     * @returns {Promise<{ run: any, steps: any[], feedback: any[] }>} Run details with steps and feedback
+     */
+    async getAgentRunDetails(runId: string) {
+        // Fetch the run record with agent name
+        const run = await db('agent_runs')
+            .leftJoin('agents', 'agent_runs.agent_id', 'agents.id')
+            .leftJoin('users', 'agent_runs.triggered_by', 'users.id')
+            .select(
+                'agent_runs.*',
+                'agents.title as agent_name',
+                'users.email as user_email'
+            )
+            .where('agent_runs.id', runId)
+            .first()
+
+        if (!run) return null
+
+        // Fetch run steps ordered by execution sequence
+        const steps = await db('agent_run_steps')
+            .where('run_id', runId)
+            .orderBy('started_at', 'asc')
+
+        // Fetch feedback records for this agent run
+        const feedback = await db('answer_feedback')
+            .where('source', 'agent')
+            .where('source_id', runId)
+            .orderBy('created_at', 'desc')
+
+        return { run, steps, feedback }
     }
 
     /**

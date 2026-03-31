@@ -32,6 +32,8 @@ vi.mock('../../../src/features/users/api/userQueries', () => ({
   useUpdateUser: () => ({ mutate: vi.fn(), isPending: false }),
   useDeleteUser: () => ({ mutate: vi.fn(), isPending: false }),
   useUpdateUserRole: () => ({ mutate: vi.fn(), isPending: false }),
+  useUserIpHistory: () => ({ data: [], isLoading: false }),
+  useUserSessions: () => ({ data: [], isLoading: false }),
 }))
 
 vi.mock('@/features/auth', () => ({
@@ -65,7 +67,8 @@ vi.mock('lucide-react', () => ({
   UserPlus: () => <div />, Loader2: () => <div />, Eye: () => <div />,
   EyeOff: () => <div />, ChevronLeft: () => <div />, ChevronRight: () => <div />,
   MoreHorizontal: () => <div />, Check: () => <div />,
-  ChevronDown: () => <div />, ChevronUp: () => <div />,
+  ChevronDown: () => <div />, ChevronUp: () => <div />, Cloud: () => <div />,
+  Monitor: () => <div />, Wifi: () => <div />, WifiOff: () => <div />,
 }))
 
 vi.mock('@tanstack/react-query', () => ({

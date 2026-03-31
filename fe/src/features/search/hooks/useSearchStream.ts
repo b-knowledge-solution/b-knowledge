@@ -175,7 +175,11 @@ export function useSearchStream(apiOverrides?: SearchStreamApiOverrides): UseSea
             // Handle reference data (search result chunks)
             if (data.reference && !data.answer) {
               if (data.reference.chunks) {
-                setChunks(data.reference.chunks)
+                // Map backend kb_id to frontend dataset_id for document preview
+                setChunks(data.reference.chunks.map((c: any) => ({
+                  ...c,
+                  dataset_id: c.dataset_id || c.kb_id || '',
+                })))
               }
               if (data.reference.doc_aggs) {
                 setDocAggs(data.reference.doc_aggs)
@@ -185,11 +189,15 @@ export function useSearchStream(apiOverrides?: SearchStreamApiOverrides): UseSea
               }
             }
 
-            // Handle final processed answer
+            // Handle final processed answer (may arrive as string or object with nested text)
             if (data.answer !== undefined) {
-              finalAnswer = data.answer
+              finalAnswer = typeof data.answer === 'string' ? data.answer : ''
               if (data.reference?.chunks) {
-                setChunks(data.reference.chunks)
+                // Map backend kb_id to frontend dataset_id for document preview
+                setChunks(data.reference.chunks.map((c: any) => ({
+                  ...c,
+                  dataset_id: c.dataset_id || c.kb_id || '',
+                })))
               }
               if (data.reference?.doc_aggs) {
                 setDocAggs(data.reference.doc_aggs)

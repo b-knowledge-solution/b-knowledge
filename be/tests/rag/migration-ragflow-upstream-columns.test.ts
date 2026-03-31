@@ -18,6 +18,7 @@ import { up, down } from '../../src/shared/db/migrations/20260323140000_add_ragf
  */
 function createMockKnex() {
   const operations: Array<{ table: string; op: string; column: string; args?: unknown[] }> = []
+  const existingColumns = new Map<string, Set<string>>()
 
   function makeColumnBuilder(tableName: string, columnName: string): any {
     const builder: any = {}
@@ -34,6 +35,9 @@ function createMockKnex() {
 
   const knex = {
     schema: {
+      hasColumn: vi.fn().mockImplementation(async (tableName: string, columnName: string) => {
+        return existingColumns.get(tableName)?.has(columnName) ?? false
+      }),
       alterTable: vi.fn().mockImplementation(async (tableName: string, callback: (table: any) => void) => {
         const tableBuilder: any = {
           boolean: (col: string) => {

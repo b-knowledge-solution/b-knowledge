@@ -227,25 +227,27 @@ function SearchResults({
             </div>
           </div>
 
-          {/* Render answer with citation support */}
-          {showStreamingState ? (
-            <div className="text-sm">
+          {/* Render answer with citation support, scrollable when content exceeds max height */}
+          <div className="max-h-[300px] overflow-y-auto">
+            {showStreamingState ? (
+              <div className="text-sm">
+                <CitationInline
+                  content={displayAnswer}
+                  reference={reference}
+                  onCitationClick={onCitationClick}
+                />
+                {isStreamingAnswer && (
+                  <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse ml-0.5 align-text-bottom" />
+                )}
+              </div>
+            ) : (
               <CitationInline
                 content={displayAnswer}
                 reference={reference}
                 onCitationClick={onCitationClick}
               />
-              {isStreamingAnswer && (
-                <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse ml-0.5 align-text-bottom" />
-              )}
-            </div>
-          ) : (
-            <CitationInline
-              content={displayAnswer}
-              reference={reference}
-              onCitationClick={onCitationClick}
-            />
-          )}
+            )}
+          </div>
         </div>
       )}
 

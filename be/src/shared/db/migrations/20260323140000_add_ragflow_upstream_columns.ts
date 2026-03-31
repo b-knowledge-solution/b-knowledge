@@ -12,14 +12,20 @@ import type { Knex } from 'knex'
  */
 export async function up(knex: Knex): Promise<void> {
   // Add release boolean column with index for filtering published versions
-  await knex.schema.alterTable('user_canvas_version', (table) => {
-    table.boolean('release').notNullable().defaultTo(false).index()
-  })
+  const hasRelease = await knex.schema.hasColumn('user_canvas_version', 'release')
+  if (!hasRelease) {
+    await knex.schema.alterTable('user_canvas_version', (table) => {
+      table.boolean('release').notNullable().defaultTo(false).index()
+    })
+  }
 
   // Add version_title for display purposes in API conversations
-  await knex.schema.alterTable('api_4_conversation', (table) => {
-    table.string('version_title', 255).nullable()
-  })
+  const hasVersionTitle = await knex.schema.hasColumn('api_4_conversation', 'version_title')
+  if (!hasVersionTitle) {
+    await knex.schema.alterTable('api_4_conversation', (table) => {
+      table.string('version_title', 255).nullable()
+    })
+  }
 }
 
 /**

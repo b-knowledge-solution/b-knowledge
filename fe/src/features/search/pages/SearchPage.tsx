@@ -6,28 +6,21 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Search, Database, Brain, Settings2, KeyRound } from 'lucide-react'
+import { Search, Database, Brain } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/features/auth'
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
-import { api } from '@/lib/api'
-import { queryKeys } from '@/lib/queryKeys'
 import { globalMessage } from '@/app/App'
 import type { ChatChunk, ChatReference } from '@/features/chat/types/chat.types'
 import { Spotlight } from '@/components/Spotlight'
 import SearchBar from '../components/SearchBar'
 import SearchResults from '../components/SearchResults'
-import SearchFilters from '../components/SearchFilters'
 import SearchResultDocDialog from '../components/SearchResultDocDialog'
 import SearchMindMapDrawer from '../components/SearchMindMapDrawer'
 import TagFilterChips from '../components/TagFilterChips'
-import SearchAppConfig from '../components/SearchAppConfig'
-import SearchAppEmbedDialog from '../components/SearchAppEmbedDialog'
 import { searchApi } from '../api/searchApi'
 import { useAccessibleSearchApps, useSearchAppDetail, useSendSearchFeedback } from '../api/searchQueries'
 import { useSearchStream } from '../hooks/useSearchStream'
@@ -36,7 +29,6 @@ import type {
   SearchAppConfig as SearchAppConfigType,
   SearchFilters as SearchFiltersType,
   SearchResult,
-  CreateSearchAppPayload,
 } from '../types/search.types'
 
 /**
@@ -124,7 +116,6 @@ function buildRequestFilters(
 function DatasetSearchPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const { appId } = useParams<{ appId: string }>()
   const [urlParams, setUrlParams] = useSearchParams()
   const { user } = useAuth()
@@ -132,7 +123,6 @@ function DatasetSearchPage() {
   const [showGuide, setShowGuide] = useState(false)
   const searchStream = useSearchStream()
   const sendFeedback = useSendSearchFeedback()
-  const canManageApps = user?.role === 'admin' || user?.role === 'super-admin'
 
   const requestedQuery = urlParams.get('q') || ''
   const { apps: searchApps, activeAppId, setActiveAppId } = useAccessibleSearchApps()
@@ -140,7 +130,6 @@ function DatasetSearchPage() {
   const { data: currentApp } = useSearchAppDetail(resolvedAppId)
 
   const [filters, setFilters] = useState<SearchFiltersType>({})
-  const [showFilters, setShowFilters] = useState(false)
   const [paginatedResults, setPaginatedResults] = useState<SearchResult[]>([])
   const [paginatedTotal, setPaginatedTotal] = useState(0)
   const [paginatedDocAggs, setPaginatedDocAggs] = useState<Array<{ doc_id: string; doc_name: string; count: number }>>([])
@@ -150,31 +139,11 @@ function DatasetSearchPage() {
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([])
   const [tagFilters, setTagFilters] = useState<Record<string, string>>({})
   const [mindMapOpen, setMindMapOpen] = useState(false)
-  const [isConfigOpen, setIsConfigOpen] = useState(false)
-  const [isEmbedOpen, setIsEmbedOpen] = useState(false)
   const [previewDoc, setPreviewDoc] = useState<{
     open: boolean
     result: SearchResult | null
   }>({ open: false, result: null })
   const hydratedSearchKeyRef = useRef<string | null>(null)
-
-  const { data: rawDatasets = [] } = useQuery({
-    queryKey: queryKeys.datasets.list(),
-    queryFn: () => api.get<{ id: string; name: string; doc_count?: number }[]>('/api/rag/datasets'),
-    enabled: canManageApps,
-  })
-  const { data: rawProjects = [] } = useQuery({
-    queryKey: queryKeys.projects.all,
-    queryFn: () => api.get<{ id: string; name: string; dataset_count?: number }[]>('/api/projects'),
-    enabled: canManageApps,
-  })
-
-  const datasetItems = rawDatasets.map((d) => ({
-    id: d.id, name: d.name, type: 'dataset' as const, docCount: d.doc_count,
-  }))
-  const projectItems = rawProjects.map((p) => ({
-    id: p.id, name: p.name, type: 'project' as const, docCount: p.dataset_count,
-  }))
 
   const hasSearched = !!searchStream.lastQuery
   const currentAppName = currentApp?.name || searchApps.find((app) => app.id === resolvedAppId)?.name
@@ -247,25 +216,6 @@ function DatasetSearchPage() {
       query,
       buildRequestFilters(runtimeFilters, runtimeTagFilters, runtimeDocIds, 1, pageSize),
     )
-  }
-
-  /**
-   * Save search app configuration updates from the in-page admin dialog.
-   * @param {CreateSearchAppPayload} data - Updated app payload
-   */
-  const handleSaveConfig = async (data: CreateSearchAppPayload) => {
-    if (!currentApp) return
-
-    try {
-      await searchApi.updateSearchApp(currentApp.id, data)
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.search.all }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.search.detail(currentApp.id) }),
-      ])
-      globalMessage.success(t('common.updateSuccess'))
-    } catch (error: any) {
-      globalMessage.error(error?.message || t('common.error'))
-    }
   }
 
   /**
@@ -379,17 +329,6 @@ function DatasetSearchPage() {
   }
 
   /**
-   * Re-run the current query when runtime retrieval filters change.
-   * @param {SearchFiltersType} newFilters - Updated filter state
-   */
-  const handleFiltersChange = (newFilters: SearchFiltersType) => {
-    setFilters(newFilters)
-    if (searchStream.lastQuery) {
-      executeFreshSearch(searchStream.lastQuery, newFilters)
-    }
-  }
-
-  /**
    * Re-run the current query when tag filters change.
    * @param {Record<string, string>} newTags - Updated tag filters
    */
@@ -447,7 +386,11 @@ function DatasetSearchPage() {
         buildRequestFilters(filters, tagFilters, selectedDocIds, newPage, pageSize),
       )
       setPage(newPage)
-      setPaginatedResults(result.chunks)
+      // Map backend kb_id to frontend dataset_id for document preview
+      setPaginatedResults(result.chunks.map((c) => ({
+        ...c,
+        dataset_id: c.dataset_id || (c as any).kb_id || '',
+      })))
       setPaginatedTotal(result.total)
       setPaginatedDocAggs(result.doc_aggs || [])
     } catch (error: any) {
@@ -465,38 +408,61 @@ function DatasetSearchPage() {
   return (
     <>
       <div className="flex h-full w-full overflow-hidden">
-        {hasSearched && showFilters && (
-          <SearchFilters
-            filters={filters}
-            onFiltersChange={handleFiltersChange}
-            showScopeFilters={false}
-            visible={showFilters}
-            onToggle={() => setShowFilters(!showFilters)}
-            className="hidden md:block"
-          />
-        )}
-
         <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+          {/* Header bar with app selector dropdown */}
+          <div className="flex items-center gap-3 px-4 py-2 border-b bg-background">
+            {searchApps.length > 1 ? (
+              <Select value={resolvedAppId ?? ''} onValueChange={handleSelectApp}>
+                <SelectTrigger className="w-56 h-9">
+                  <SelectValue placeholder={t('search.selectApp')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {searchApps.map((app: SearchApp) => (
+                    <SelectItem key={app.id} value={app.id}>
+                      <span className="flex items-center gap-2">
+                        {app.avatar && <span>{app.avatar}</span>}
+                        {app.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : currentAppName ? (
+              <span className="text-sm font-medium text-foreground flex items-center gap-2">
+                {currentApp?.avatar && <span>{currentApp.avatar}</span>}
+                {currentAppName}
+              </span>
+            ) : null}
+
+            {/* Mind map button in header when enabled */}
+            {hasSearched && currentApp?.search_config?.enable_mindmap && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMindMapOpen(true)}
+                disabled={!resolvedAppId}
+                title={t('search.mindMap')}
+                className="ml-auto"
+              >
+                <Brain className="h-4 w-4 mr-1.5" />
+                {t('search.mindMap')}
+              </Button>
+            )}
+          </div>
+
           <div
             className={cn(
               'flex flex-col items-center transition-all duration-500',
               hasSearched
-                ? 'pt-6 pb-4 border-b bg-muted/20'
+                ? 'pt-6 pb-4 bg-muted/20'
                 : 'flex-1 justify-center pb-20',
             )}
           >
+            {/* Landing state: large hero with greeting */}
             {!hasSearched && (
               <div className="relative">
                 <Spotlight className="z-0" />
                 <div className="flex flex-col items-center gap-3 mb-8 relative z-10">
-                  {/* Show app avatar emoji or default search icon */}
-                  {currentApp?.avatar ? (
-                    <span className="text-5xl">{currentApp.avatar}</span>
-                  ) : (
-                    <div className="h-20 w-20 rounded-3xl bg-primary/10 flex items-center justify-center">
-                      <Search className="h-10 w-10 text-primary" />
-                    </div>
-                  )}
                   <h1 className="text-2xl font-bold text-foreground text-center">
                     {currentAppName || (user?.name
                       ? `${t('search.greeting')}, ${user.name}`
@@ -509,14 +475,29 @@ function DatasetSearchPage() {
               </div>
             )}
 
-            <SearchBar
-              onSearch={handleSearch}
-              isSearching={searchStream.isStreaming}
-              isStreaming={searchStream.isStreaming}
-              onStop={searchStream.stopStream}
-              defaultValue={searchStream.lastQuery || requestedQuery}
-              className={hasSearched ? 'max-w-xl' : 'max-w-2xl'}
-            />
+            {/* Search bar row with highlighted app logo inline */}
+            <div className={cn(
+              'flex items-center gap-3 w-full px-4',
+              hasSearched ? 'max-w-xl mx-auto' : 'max-w-2xl mx-auto',
+            )}>
+              {/* Highlighted app logo */}
+              <div className="shrink-0 h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center ring-2 ring-primary/20">
+                {currentApp?.avatar ? (
+                  <span className="text-2xl">{currentApp.avatar}</span>
+                ) : (
+                  <Search className="h-6 w-6 text-primary" />
+                )}
+              </div>
+
+              <SearchBar
+                onSearch={handleSearch}
+                isSearching={searchStream.isStreaming}
+                isStreaming={searchStream.isStreaming}
+                onStop={searchStream.stopStream}
+                defaultValue={searchStream.lastQuery || requestedQuery}
+                className="flex-1"
+              />
+            </div>
 
             {hasSearched && (
               <div className="mt-3 w-full max-w-xl px-4">
@@ -524,62 +505,6 @@ function DatasetSearchPage() {
                   activeFilters={tagFilters}
                   onFilterChange={handleTagFilterChange}
                 />
-              </div>
-            )}
-
-            {hasSearched && (
-              <div className="flex items-center gap-2 mt-3 flex-wrap justify-center">
-                {currentAppName && (
-                  <Badge variant="secondary" className="text-xs">
-                    {/* Show avatar alongside app name in compact search header */}
-                    {currentApp?.avatar && <span className="mr-1">{currentApp.avatar}</span>}
-                    {currentAppName}
-                  </Badge>
-                )}
-
-                <SearchFilters
-                  filters={filters}
-                  onFiltersChange={handleFiltersChange}
-                  showScopeFilters={false}
-                  visible={false}
-                  onToggle={() => setShowFilters(!showFilters)}
-                />
-
-                {currentApp?.search_config?.enable_mindmap && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setMindMapOpen(true)}
-                    disabled={!resolvedAppId}
-                    title={t('search.mindMap')}
-                  >
-                    <Brain className="h-4 w-4 mr-1.5" />
-                    {t('search.mindMap')}
-                  </Button>
-                )}
-
-                {canManageApps && currentApp && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsConfigOpen(true)}
-                      title={t('searchAdmin.editApp')}
-                    >
-                      <Settings2 className="h-4 w-4 mr-1.5" />
-                      {t('searchAdmin.editApp')}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsEmbedOpen(true)}
-                      title={t('searchAdmin.embedApp')}
-                    >
-                      <KeyRound className="h-4 w-4 mr-1.5" />
-                      {t('searchAdmin.embedApp')}
-                    </Button>
-                  </>
-                )}
               </div>
             )}
           </div>
@@ -618,23 +543,6 @@ function DatasetSearchPage() {
             </div>
           )}
 
-          {!hasSearched && searchApps.length > 1 && (
-            <div className="flex justify-center mt-4">
-              <Select value={resolvedAppId ?? ''} onValueChange={handleSelectApp}>
-                <SelectTrigger className="w-72">
-                  <SelectValue placeholder={t('search.selectApp')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {searchApps.map((app: SearchApp) => (
-                    <SelectItem key={app.id} value={app.id}>
-                      {app.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
           {!hasSearched && (
             <div className="flex items-center justify-center gap-2 mt-4 px-4 flex-wrap">
               <Database className="h-4 w-4 text-muted-foreground" />
@@ -649,9 +557,7 @@ function DatasetSearchPage() {
       <SearchResultDocDialog
         open={previewDoc.open}
         onClose={() => setPreviewDoc({ open: false, result: null })}
-        documentId={previewDoc.result?.doc_id}
-        documentName={previewDoc.result?.doc_name}
-        datasetId={previewDoc.result?.dataset_id}
+        result={previewDoc.result}
       />
 
       {resolvedAppId && currentApp?.search_config?.enable_mindmap && (
@@ -662,21 +568,6 @@ function DatasetSearchPage() {
           query={searchStream.lastQuery || requestedQuery}
         />
       )}
-
-      <SearchAppConfig
-        open={isConfigOpen}
-        onClose={() => setIsConfigOpen(false)}
-        onSave={handleSaveConfig}
-        app={currentApp ?? null}
-        datasets={datasetItems}
-        projects={projectItems}
-      />
-
-      <SearchAppEmbedDialog
-        open={isEmbedOpen}
-        onClose={() => setIsEmbedOpen(false)}
-        app={currentApp ?? null}
-      />
 
       <GuidelineDialog
         open={showGuide}

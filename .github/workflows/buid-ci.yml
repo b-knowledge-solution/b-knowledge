@@ -46,8 +46,13 @@ jobs:
       env:
         NODE_ENV: test
 
-    - name: Run frontend unit tests
-      run: npm run test:run -w fe -- --reporter=verbose
+    - name: Run frontend logic tests
+      run: npm run test:run:unit -w fe -- --reporter=verbose
+      env:
+        NODE_ENV: test
+
+    - name: Run frontend UI tests
+      run: npm run test:run:ui -w fe -- --reporter=verbose
       env:
         NODE_ENV: test
 

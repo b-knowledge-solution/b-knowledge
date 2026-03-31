@@ -623,7 +623,8 @@ export class SearchService {
       if (result.chunks.length === 0) {
         log.warn(`Dataset ${datasetId} returned no results — it may have been deleted`)
       }
-      allChunks.push(...result.chunks)
+      // Stamp each chunk with the dataset_id it came from for frontend document preview
+      allChunks.push(...result.chunks.map(c => ({ ...c, dataset_id: datasetId })))
       totalHits += result.total
     }
 
@@ -915,7 +916,7 @@ export class SearchService {
 
     // Send final event with complete answer, reference, related questions, and metrics
     res.write(`data: ${JSON.stringify({
-      answer: citedAnswer,
+      answer: citedAnswer.answer,
       reference,
       related_questions: relatedQuestions,
       metrics,
@@ -924,7 +925,7 @@ export class SearchService {
     // Update trace with final output and flush (fire-and-forget)
     if (trace) {
       try {
-        langfuseTraceService.updateTrace(trace, { output: citedAnswer })
+        langfuseTraceService.updateTrace(trace, { output: citedAnswer.answer })
         await langfuseTraceService.flush()
       } catch (err) {
         log.error('Langfuse trace finalization failed', { error: String(err) })
