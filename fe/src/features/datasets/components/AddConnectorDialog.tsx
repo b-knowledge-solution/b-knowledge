@@ -8,6 +8,7 @@
 
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Plug } from 'lucide-react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
@@ -19,6 +20,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import ConnectorSourceFields from './ConnectorSourceFields'
+import { useTestConnection } from '../api/connectorQueries'
 import type { Connector, ConnectorSourceType, CreateConnectorDto, UpdateConnectorDto } from '../types'
 
 // ============================================================================
@@ -243,20 +245,67 @@ const AddConnectorDialog = ({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={submitting}>
-            {t('common.cancel')}
-          </Button>
-          <Button onClick={handleSubmit} disabled={submitting || !name.trim()}>
-            {submitting
-              ? t('common.saving')
-              : isEdit
-                ? t('common.save')
-                : t('common.create')}
-          </Button>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          <TestConnectionButton sourceType={sourceType} config={config} />
+          <div className="flex gap-2 ml-auto">
+            <Button variant="outline" onClick={onClose} disabled={submitting}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={handleSubmit} disabled={submitting || !name.trim()}>
+              {submitting
+                ? t('common.saving')
+                : isEdit
+                  ? t('common.save')
+                  : t('common.create')}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// ============================================================================
+// Test Connection Button
+// ============================================================================
+
+/**
+ * @description Button to test connection to an external data source (SYN-FR-31).
+ *   Shows success/error feedback after the test completes.
+ * @param {{ sourceType: string; config: Record<string, unknown> }} props
+ * @returns {JSX.Element} Rendered test connection button
+ */
+function TestConnectionButton({ sourceType, config }: { sourceType: string; config: Record<string, unknown> }) {
+  const { t } = useTranslation()
+  const testMutation = useTestConnection()
+
+  const handleTest = async () => {
+    await testMutation.mutateAsync({ sourceType, config })
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={handleTest}
+        disabled={testMutation.isPending}
+      >
+        <Plug size={14} className="mr-1" />
+        {testMutation.isPending
+          ? t('datasets.connectors.testConnectionTesting')
+          : t('datasets.connectors.testConnection')}
+      </Button>
+      {/* Show result feedback */}
+      {testMutation.data && !testMutation.isPending && (
+        <span className={`text-xs ${testMutation.data.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+          {testMutation.data.success
+            ? t('datasets.connectors.testConnectionSuccess')
+            : testMutation.data.message || t('datasets.connectors.testConnectionFailed')}
+        </span>
+      )}
+    </div>
   )
 }
 

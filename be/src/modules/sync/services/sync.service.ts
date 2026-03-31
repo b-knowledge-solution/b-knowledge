@@ -10,12 +10,22 @@
 import { ModelFactory } from '@/shared/models/factory.js'
 import { log } from '@/shared/services/logger.service.js'
 import { getRedisClient } from '@/shared/services/redis.service.js'
+import { cryptoService } from '@/shared/services/crypto.service.js'
 import { config } from '@/shared/config/index.js'
 import { Connector, SyncLog } from '../models/sync.types.js'
 import { syncSchedulerService } from './sync-scheduler.service.js'
 
 /** Redis queue name that the Python connector_sync_worker listens on */
 const CONNECTOR_SYNC_QUEUE = 'rag_connector_sync'
+
+/** Redis queue name for test connection tasks */
+const CONNECTOR_TEST_QUEUE = 'rag_connector_test'
+
+/** Redis lock key prefix for concurrent sync prevention (SYN-BR-06) */
+const SYNC_LOCK_PREFIX = 'connector_sync_lock:'
+
+/** Lock TTL in seconds (1 hour — safety net for zombie locks) */
+const SYNC_LOCK_TTL = 3600
 
 /**
  * @description Captures the acting user for audit trails on connector operations
@@ -41,9 +51,15 @@ export class SyncService {
    */
   async createConnector(data: Partial<Connector>, user?: UserContext): Promise<Connector> {
     try {
+      // Encrypt config at rest before storage (SYN-FR-05)
+      const createData = { ...data }
+      if (createData.config && typeof createData.config === 'object') {
+        createData.config = this.encryptConfig(createData.config as Record<string, unknown>) as any
+      }
+
       // Build connector record with defaults
       const connector = await ModelFactory.connector.create({
-        ...data,
+        ...createData,
         status: 'active',
         created_by: user?.id || null,
         updated_by: user?.id || null,
@@ -68,7 +84,9 @@ export class SyncService {
    * @returns {Promise<Connector | undefined>} The connector or undefined if not found
    */
   async getConnector(id: string): Promise<Connector | undefined> {
-    return ModelFactory.connector.findById(id)
+    const connector = await ModelFactory.connector.findById(id)
+    // Decrypt config from encrypted storage (SYN-FR-05)
+    return connector ? this.decryptConnectorConfig(connector) : undefined
   }
 
   /**
@@ -79,7 +97,9 @@ export class SyncService {
   async listConnectors(kbId?: string): Promise<Connector[]> {
     // Filter by kb_id if provided, otherwise return all
     const filter = kbId ? { kb_id: kbId } : {}
-    return ModelFactory.connector.findAll(filter, { orderBy: { created_at: 'desc' } })
+    const connectors = await ModelFactory.connector.findAll(filter, { orderBy: { created_at: 'desc' } })
+    // Decrypt config for each connector (SYN-FR-05)
+    return connectors.map((c) => this.decryptConnectorConfig(c))
   }
 
   /**
@@ -97,7 +117,8 @@ export class SyncService {
       if (data.name !== undefined) updateData.name = data.name
       if (data.source_type !== undefined) updateData.source_type = data.source_type
       if (data.kb_id !== undefined) updateData.kb_id = data.kb_id
-      if (data.config !== undefined) updateData.config = JSON.stringify(data.config)
+      // Encrypt config at rest before storage (SYN-FR-05)
+      if (data.config !== undefined) updateData.config = this.encryptConfig(data.config as Record<string, unknown>)
       if (data.description !== undefined) updateData.description = data.description
       if (data.schedule !== undefined) updateData.schedule = data.schedule
       if (user) updateData.updated_by = user.id
@@ -118,17 +139,42 @@ export class SyncService {
   }
 
   /**
-   * @description Delete a connector and its associated sync logs
+   * @description Delete a connector and its associated sync logs.
+   *   Optionally cascade-deletes documents synced by this connector (SYN-FR-04).
    * @param {string} id - Connector UUID
+   * @param {boolean} [cascadeDocuments=false] - If true, delete synced documents from the KB
    * @returns {Promise<void>}
    * @throws {Error} If deletion fails
    */
-  async deleteConnector(id: string): Promise<void> {
+  async deleteConnector(id: string, cascadeDocuments: boolean = false): Promise<void> {
     try {
+      // Cascade-delete synced documents if requested
+      if (cascadeDocuments) {
+        const connector = await this.getConnector(id)
+        if (connector) {
+          try {
+            // Delete documents that were synced from this connector's KB with external source IDs
+            await ModelFactory.document.delete({ kb_id: connector.kb_id } as any)
+            log.info('Cascade-deleted synced documents', { connectorId: id, kbId: connector.kb_id })
+          } catch (docErr) {
+            log.warn('Failed to cascade-delete documents', { connectorId: id, error: String(docErr) })
+          }
+        }
+      }
+
       // Unregister scheduled sync before deletion
       syncSchedulerService.unregisterTask(id)
+
+      // Release any held sync lock
+      try {
+        const redisClient = getRedisClient()
+        if (redisClient) {
+          await redisClient.del(`${SYNC_LOCK_PREFIX}${id}`)
+        }
+      } catch { /* ignore lock cleanup errors */ }
+
       await ModelFactory.connector.delete(id)
-      log.info('Connector deleted', { id })
+      log.info('Connector deleted', { id, cascadeDocuments })
     } catch (error) {
       log.error('Failed to delete connector', { id, error: String(error) })
       throw error
@@ -145,13 +191,25 @@ export class SyncService {
    * @throws {Error} If connector not found or sync creation fails
    */
   async triggerSync(connectorId: string, pollRangeStart?: string): Promise<SyncLog> {
-    // Verify connector exists
-    const connector = await ModelFactory.connector.findById(connectorId)
+    // Verify connector exists and decrypt config
+    const connector = await this.getConnector(connectorId)
     if (!connector) {
       throw new Error('Connector not found')
     }
 
     try {
+      // Acquire distributed lock to prevent concurrent syncs (SYN-BR-06)
+      const redisClient = getRedisClient()
+      if (!redisClient) {
+        throw new Error('Redis not available — cannot queue sync task')
+      }
+
+      const lockKey = `${SYNC_LOCK_PREFIX}${connectorId}`
+      const lockAcquired = await redisClient.set(lockKey, '1', { NX: true, EX: SYNC_LOCK_TTL })
+      if (!lockAcquired) {
+        throw new Error('Sync already in progress for this connector')
+      }
+
       // Create sync log entry with running status
       const syncLog = await ModelFactory.syncLog.create({
         connector_id: connectorId,
@@ -164,7 +222,7 @@ export class SyncService {
         started_at: new Date(),
       })
 
-      // Parse config (may be stored as JSON string in DB)
+      // Config is already decrypted by getConnector(); ensure it's an object
       const connectorConfig = typeof connector.config === 'string'
         ? JSON.parse(connector.config)
         : connector.config
@@ -182,10 +240,6 @@ export class SyncService {
       })
 
       // LPUSH to Redis queue; Python connector_sync_worker BRPOPs from this queue
-      const redisClient = getRedisClient()
-      if (!redisClient) {
-        throw new Error('Redis not available — cannot queue sync task')
-      }
       await redisClient.lPush(CONNECTOR_SYNC_QUEUE, taskPayload)
 
       // Subscribe to progress updates in background (fire-and-forget)
@@ -224,6 +278,116 @@ export class SyncService {
       limit,
       offset: (page - 1) * limit,
     })
+  }
+
+  /**
+   * @description Test connection to an external data source by sending a lightweight
+   *   validation task to the Python worker and waiting for the result via Redis pub/sub.
+   * @param {string} sourceType - Connector source type (e.g. 'github', 'confluence')
+   * @param {Record<string, unknown>} connectorConfig - Connection credentials and settings
+   * @returns {Promise<{ success: boolean; message: string }>} Test result
+   */
+  async testConnection(
+    sourceType: string,
+    connectorConfig: Record<string, unknown>,
+  ): Promise<{ success: boolean; message: string }> {
+    const redisClient = getRedisClient()
+    if (!redisClient) {
+      throw new Error('Redis not available')
+    }
+
+    // Generate unique test ID for this request
+    const testId = crypto.randomUUID()
+    const resultChannel = `connector_test:${testId}:result`
+
+    // Push test task to the Python worker queue
+    const taskPayload = JSON.stringify({
+      task_type: 'test_connection',
+      test_id: testId,
+      source_type: sourceType,
+      config: connectorConfig,
+    })
+    await redisClient.lPush(CONNECTOR_TEST_QUEUE, taskPayload)
+
+    // Subscribe and wait for result with 30s timeout
+    return new Promise<{ success: boolean; message: string }>((resolve) => {
+      let settled = false
+
+      // Timeout after 30 seconds
+      const timeout = setTimeout(async () => {
+        if (settled) return
+        settled = true
+        resolve({ success: false, message: 'Connection test timed out after 30 seconds' })
+      }, 30_000)
+
+      // Subscribe to result channel
+      const subscriber = redisClient.duplicate()
+      subscriber.connect().then(() => {
+        subscriber.subscribe(resultChannel, async (message) => {
+          if (settled) return
+          settled = true
+          clearTimeout(timeout)
+
+          try {
+            const data = JSON.parse(message)
+            resolve({
+              success: data.success ?? false,
+              message: data.message || (data.success ? 'Connection successful' : 'Connection failed'),
+            })
+          } catch {
+            resolve({ success: false, message: 'Invalid response from worker' })
+          }
+
+          // Cleanup subscriber
+          try {
+            await subscriber.unsubscribe(resultChannel)
+            await subscriber.quit()
+          } catch { /* ignore cleanup errors */ }
+        })
+      }).catch(() => {
+        if (!settled) {
+          settled = true
+          clearTimeout(timeout)
+          resolve({ success: false, message: 'Failed to subscribe for test results' })
+        }
+      })
+    })
+  }
+
+  /**
+   * @description Encrypt a config object for storage at rest using AES-256 (SYN-FR-05)
+   * @param {Record<string, unknown>} configObj - Plain config object
+   * @returns {string} Encrypted config string (or JSON string if encryption disabled)
+   */
+  private encryptConfig(configObj: Record<string, unknown>): string {
+    const json = JSON.stringify(configObj)
+    return cryptoService.encrypt(json)
+  }
+
+  /**
+   * @description Decrypt connector config from DB storage. Handles both encrypted
+   *   and legacy plaintext JSON configs gracefully (SYN-FR-05).
+   * @param {Connector} connector - Connector with potentially encrypted config
+   * @returns {Connector} Connector with decrypted config object
+   */
+  private decryptConnectorConfig(connector: Connector): Connector {
+    if (typeof connector.config === 'string') {
+      // Preserve original string before any mutations for fallback parsing
+      const rawConfig = connector.config as string
+      // Decrypt (auto-detects encrypted vs plaintext via RAGF magic header)
+      const decrypted = cryptoService.decrypt(rawConfig)
+      try {
+        connector.config = JSON.parse(decrypted)
+      } catch {
+        // Fallback: if decrypted value is not valid JSON, try parsing the original
+        try {
+          connector.config = JSON.parse(rawConfig)
+        } catch {
+          connector.config = {}
+        }
+      }
+    }
+    return connector
   }
 
   /**
@@ -291,6 +455,17 @@ export class SyncService {
         // Unsubscribe on terminal state (guard against double-unsubscribe)
         if ((data.status === 'completed' || data.status === 'failed') && !isUnsubscribed) {
           isUnsubscribed = true
+
+          // Release distributed lock on sync completion/failure (SYN-BR-06)
+          try {
+            const lockRedis = getRedisClient()
+            if (lockRedis) {
+              await lockRedis.del(`${SYNC_LOCK_PREFIX}${connectorId}`)
+            }
+          } catch (lockErr) {
+            log.warn('Failed to release sync lock', { connectorId, error: String(lockErr) })
+          }
+
           await subscriber.unsubscribe(channel)
           await subscriber.quit()
         }

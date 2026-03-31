@@ -9,6 +9,45 @@ import { Request, Response } from 'express'
 import { syncService } from '../services/sync.service.js'
 import { log } from '@/shared/services/logger.service.js'
 import { getClientIp } from '@/shared/utils/ip.js'
+import type { Connector } from '../models/sync.types.js'
+
+/** Keys in connector config that contain sensitive credentials (SYN-BR-07) */
+const SENSITIVE_CONFIG_KEYS = new Set([
+  'access_token', 'secret_key', 'api_token', 'password', 'client_secret',
+  'service_account_json', 'db_password', 'token', 'api_key', 'secret',
+  'refresh_token', 'private_key', 'confluence_token', 'access_key',
+])
+
+/** Masked value shown in API responses for sensitive fields */
+const MASKED_VALUE = '********'
+
+/**
+ * @description Replace sensitive credential values in a connector config
+ *   with masked placeholders. Never exposes raw secrets in API responses (SYN-BR-07).
+ * @param {Connector} connector - Connector with decrypted config
+ * @returns {Connector} Connector with masked config values
+ */
+function sanitizeConnectorConfig(connector: Connector): Connector {
+  if (!connector.config || typeof connector.config !== 'object') return connector
+
+  const sanitized = { ...connector.config } as Record<string, unknown>
+  for (const key of Object.keys(sanitized)) {
+    // Mask values of known sensitive keys
+    if (SENSITIVE_CONFIG_KEYS.has(key) && sanitized[key]) {
+      sanitized[key] = MASKED_VALUE
+    }
+  }
+  return { ...connector, config: sanitized }
+}
+
+/**
+ * @description Sanitize an array of connectors for API response
+ * @param {Connector[]} connectors - Array of connectors
+ * @returns {Connector[]} Array with masked config values
+ */
+function sanitizeConnectors(connectors: Connector[]): Connector[] {
+  return connectors.map(sanitizeConnectorConfig)
+}
 
 /**
  * SyncController class handling connector and sync task endpoints.
@@ -26,7 +65,8 @@ export class SyncController {
       // Extract optional kb_id filter from query params
       const kbId = req.query.kb_id as string | undefined
       const connectors = await syncService.listConnectors(kbId)
-      res.json(connectors)
+      // Mask sensitive credentials before sending to client (SYN-BR-07)
+      res.json(sanitizeConnectors(connectors))
     } catch (error) {
       log.error('Failed to list connectors', { error: String(error) })
       res.status(500).json({ error: 'Failed to list connectors' })
@@ -47,7 +87,8 @@ export class SyncController {
         res.status(404).json({ error: 'Connector not found' })
         return
       }
-      res.json(connector)
+      // Mask sensitive credentials before sending to client (SYN-BR-07)
+      res.json(sanitizeConnectorConfig(connector))
     } catch (error) {
       log.error('Failed to get connector', { id: req.params.id, error: String(error) })
       res.status(500).json({ error: 'Failed to get connector' })
@@ -68,7 +109,8 @@ export class SyncController {
         : undefined
 
       const connector = await syncService.createConnector(req.body, user)
-      res.status(201).json(connector)
+      // Mask sensitive credentials before sending to client (SYN-BR-07)
+      res.status(201).json(sanitizeConnectorConfig(connector))
     } catch (error: any) {
       log.error('Failed to create connector', { error: String(error) })
       const status = error.message?.includes('already exists') ? 409 : 500
@@ -101,7 +143,8 @@ export class SyncController {
         res.status(404).json({ error: 'Connector not found' })
         return
       }
-      res.json(connector)
+      // Mask sensitive credentials before sending to client (SYN-BR-07)
+      res.json(sanitizeConnectorConfig(connector))
     } catch (error: any) {
       log.error('Failed to update connector', { id, error: String(error) })
       res.status(500).json({ error: error.message || 'Failed to update connector' })
@@ -123,7 +166,9 @@ export class SyncController {
     }
 
     try {
-      await syncService.deleteConnector(id)
+      // Pass cascade_documents flag from query params
+      const cascadeDocuments = (req.query as any).cascade_documents === true
+      await syncService.deleteConnector(id, cascadeDocuments)
       res.status(204).send()
     } catch (error: any) {
       log.error('Failed to delete connector', { id, error: String(error) })
@@ -150,7 +195,10 @@ export class SyncController {
       res.status(202).json(syncLog)
     } catch (error: any) {
       log.error('Failed to trigger sync', { connectorId: id, error: String(error) })
-      const status = error.message === 'Connector not found' ? 404 : 500
+      // Map known error messages to appropriate HTTP status codes
+      const status = error.message === 'Connector not found' ? 404
+        : error.message?.includes('already in progress') ? 409
+        : 500
       res.status(status).json({ error: error.message || 'Failed to trigger sync' })
     }
   }
@@ -176,6 +224,24 @@ export class SyncController {
     } catch (error) {
       log.error('Failed to list sync logs', { connectorId: id, error: String(error) })
       res.status(500).json({ error: 'Failed to list sync logs' })
+    }
+  }
+
+  /**
+   * @description Test connection to an external data source without creating a connector.
+   *   Validates credentials by sending a test task to the Python worker (SYN-FR-31).
+   * @param {Request} req - Express request (body: { source_type, config })
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
+   */
+  async testConnection(req: Request, res: Response): Promise<void> {
+    try {
+      const { source_type, config: connConfig } = req.body
+      const result = await syncService.testConnection(source_type, connConfig)
+      res.json(result)
+    } catch (error: any) {
+      log.error('Failed to test connection', { error: String(error) })
+      res.status(500).json({ error: error.message || 'Failed to test connection' })
     }
   }
 

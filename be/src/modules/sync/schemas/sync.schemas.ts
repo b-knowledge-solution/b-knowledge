@@ -93,3 +93,23 @@ export const listSyncLogsQuerySchema = z.object({
   /** Filter by sync status */
   status: z.enum(['pending', 'running', 'completed', 'failed']).optional(),
 })
+
+/**
+ * Schema for testing a connection to an external data source (SYN-FR-31).
+ * @description Validates source type and configuration without requiring a full connector.
+ */
+export const testConnectionSchema = z.object({
+  /** External data source type to test */
+  source_type: ConnectorSourceType,
+  /** Connection credentials and settings to validate */
+  config: z.record(z.unknown()).default({}),
+})
+
+/**
+ * Schema for delete connector query parameters.
+ * @description Optionally cascade-delete synced documents.
+ */
+export const deleteConnectorQuerySchema = z.object({
+  /** If true, also delete documents synced by this connector from the knowledge base */
+  cascade_documents: z.coerce.boolean().default(false),
+})

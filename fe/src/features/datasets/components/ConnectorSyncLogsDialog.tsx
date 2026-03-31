@@ -88,10 +88,22 @@ const ConnectorSyncLogsDialog = ({
                     {log.started_at ? new Date(log.started_at).toLocaleString() : '—'}
                   </span>
                 </div>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
+                <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2 flex-wrap">
                   <span>
                     {t('datasets.connectors.docsSynced')}: {log.docs_synced}
                   </span>
+                  {/* Show skipped count when delta sync detects unchanged docs */}
+                  {log.docs_skipped > 0 && (
+                    <span>
+                      {t('datasets.connectors.docsSkipped')}: {log.docs_skipped}
+                    </span>
+                  )}
+                  {/* Show deleted count when orphaned docs were removed */}
+                  {log.docs_deleted > 0 && (
+                    <span>
+                      {t('datasets.connectors.docsDeleted')}: {log.docs_deleted}
+                    </span>
+                  )}
                   <span>
                     {t('datasets.connectors.docsFailed')}: {log.docs_failed}
                   </span>

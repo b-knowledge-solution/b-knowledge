@@ -15,10 +15,22 @@ import {
   uuidParamSchema,
   triggerSyncSchema,
   listSyncLogsQuerySchema,
+  testConnectionSchema,
+  deleteConnectorQuerySchema,
 } from '../schemas/sync.schemas.js'
 
 const router = Router()
 const controller = new SyncController()
+
+// ── Test Connection (before :id routes to avoid param collision) ────────────
+
+/** Test connection to an external data source without creating a connector */
+router.post(
+  '/connectors/test-connection',
+  requirePermission('manage_knowledge_base'),
+  validate(testConnectionSchema),
+  controller.testConnection.bind(controller),
+)
 
 // ── Connector CRUD ──────────────────────────────────────────────────────────
 
@@ -49,11 +61,11 @@ router.put(
   controller.updateConnector.bind(controller),
 )
 
-/** Delete a connector */
+/** Delete a connector (optionally cascade-delete synced documents) */
 router.delete(
   '/connectors/:id',
   requirePermission('manage_knowledge_base'),
-  validate({ params: uuidParamSchema }),
+  validate({ params: uuidParamSchema, query: deleteConnectorQuerySchema }),
   controller.deleteConnector.bind(controller),
 )
 

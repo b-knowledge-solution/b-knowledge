@@ -6,7 +6,7 @@
  */
 
 import { api } from '@/lib/api'
-import type { Connector, CreateConnectorDto, UpdateConnectorDto, SyncLog } from '../types'
+import type { Connector, CreateConnectorDto, UpdateConnectorDto, SyncLog, TestConnectionResult } from '../types'
 
 /** @description Base URL prefix for sync API endpoints */
 const BASE_URL = '/api/sync'
@@ -57,12 +57,27 @@ export const connectorApi = {
   },
 
   /**
-   * @description Delete a connector by ID.
+   * @description Delete a connector by ID, optionally cascade-deleting synced documents.
    * @param {string} id - Connector UUID
+   * @param {boolean} [cascadeDocuments=false] - If true, also delete synced documents
    * @returns {Promise<void>}
    */
-  deleteConnector: async (id: string): Promise<void> => {
-    return api.delete(`${BASE_URL}/connectors/${id}`)
+  deleteConnector: async (id: string, cascadeDocuments: boolean = false): Promise<void> => {
+    const qs = cascadeDocuments ? '?cascade_documents=true' : ''
+    return api.delete(`${BASE_URL}/connectors/${id}${qs}`)
+  },
+
+  /**
+   * @description Test connection to an external data source without creating a connector (SYN-FR-31).
+   * @param {string} sourceType - Connector source type
+   * @param {Record<string, unknown>} config - Connection credentials and settings
+   * @returns {Promise<TestConnectionResult>} Test result with success flag and message
+   */
+  testConnection: async (sourceType: string, config: Record<string, unknown>): Promise<TestConnectionResult> => {
+    return api.post<TestConnectionResult>(`${BASE_URL}/connectors/test-connection`, {
+      source_type: sourceType,
+      config,
+    })
   },
 
   // ============================================================================
