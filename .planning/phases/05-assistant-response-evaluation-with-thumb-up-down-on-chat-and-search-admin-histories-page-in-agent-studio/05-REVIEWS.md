@@ -1,251 +1,173 @@
 ---
 phase: 5
-reviewers: [codex]
-reviewed_at: "2026-03-31T09:15:00Z"
+reviewers: [codex, gemini]
+reviewed_at: "2026-03-31T10:00:00Z"
 plans_reviewed: [05-01-PLAN.md, 05-02-PLAN.md, 05-03-PLAN.md, 05-04-PLAN.md]
+review_type: post-execution
 ---
 
-# Cross-AI Plan Review — Phase 5
+# Cross-AI Plan Review — Phase 5 (Post-Execution)
 
-## Codex Review
+> This is a post-execution review — plans have been implemented and the reviewers examined both plans AND actual code.
+
+## Codex Review (Post-Execution)
+
+**Findings**
+
+1. **[HIGH] Dashboard feedback UI is bound to the wrong response contract, so the new Response Quality views are likely broken at runtime.**  
+   The backend returns `trend: { date, count, satisfactionRate }[]` and `negativeFeedback: { answerPreview, traceId, createdAt, ... }[]` from [dashboard.service.ts](/mnt/d/Project/b-solution/b-knowledge/be/src/modules/dashboard/dashboard.service.ts#L437), but the frontend expects `trend: { total, positive }[]` and `negativeFeedback: { answer, trace_id, created_at }[]` in [dashboard.types.ts](/mnt/d/Project/b-solution/b-knowledge/fe/src/features/dashboard/types/dashboard.types.ts#L62). The components then render the wrong keys in [FeedbackTrendChart.tsx](/mnt/d/Project/b-solution/b-knowledge/fe/src/features/dashboard/components/FeedbackTrendChart.tsx#L178) and [NegativeFeedbackTable.tsx](/mnt/d/Project/b-solution/b-knowledge/fe/src/features/dashboard/components/NegativeFeedbackTable.tsx#L129).
+
+2. **[HIGH] Chat/search detail views cannot actually display feedback because the backend detail endpoints never enrich records with feedback fields.**  
+   The frontend renders `feedback_thumbup` / `feedback_comment` in [AdminChatDetailView.tsx](/mnt/d/Project/b-solution/b-knowledge/fe/src/features/histories/components/AdminChatDetailView.tsx#L142) and similarly in the search detail view, but `getChatSessionDetails()` just returns `history_chat_messages.*` or paired internal chat messages without any feedback join in [admin-history.service.ts](/mnt/d/Project/b-solution/b-knowledge/be/src/modules/admin/services/admin-history.service.ts#L267). The plan promised detail-level feedback indicators/comments, but the executed BE contract does not supply them.
+
+3. **[HIGH] Admin history queries are not tenant-scoped, which is a real data-isolation risk in a multi-tenant app.**  
+   The admin history routes use `requireAuth` + `requireRole('admin')` only in [admin-history.routes.ts](/mnt/d/Project/b-solution/b-knowledge/be/src/modules/admin/routes/admin-history.routes.ts#L26), and the service queries for chat/search/agent history do not filter by tenant at all in [admin-history.service.ts](/mnt/d/Project/b-solution/b-knowledge/be/src/modules/admin/services/admin-history.service.ts#L77) and [admin-history.service.ts](/mnt/d/Project/b-solution/b-knowledge/be/src/modules/admin/services/admin-history.service.ts#L447). That diverges from the tenant-scoped feedback/dashboard work elsewhere in the phase.
+
+4. **[MEDIUM] Search thumb-down comments are dropped before they reach the API, so EVAL-01 is incomplete for search results.**  
+   `SearchResultCard` supports `(thumbup, result, comment)`, but `SearchResults` re-wraps the callback as `(thumbup) => onFeedback(thumbup, result)` in [SearchResults.tsx](/mnt/d/Project/b-solution/b-knowledge/fe/src/features/search/components/SearchResults.tsx#L277). The optional comment collected by the shared popover is lost.
+
+5. **[MEDIUM] Feedback export does not match the promised CSV scope or schema.**  
+   The frontend exports columns including `user_email` in [FeedbackExportButton.tsx](/mnt/d/Project/b-solution/b-knowledge/fe/src/features/histories/components/FeedbackExportButton.tsx#L42), but the backend export returns raw `answer_feedback` rows only in [feedback.service.ts](/mnt/d/Project/b-solution/b-knowledge/be/src/modules/feedback/services/feedback.service.ts#L108). The FE request also ignores `source`, `email`, and `sourceName` in [historiesApi.ts](/mnt/d/Project/b-solution/b-knowledge/fe/src/features/histories/api/historiesApi.ts#L125), so the download does not reflect the page filters the plan describes.
+
+Code inspection only. I did not run the builds/tests in this review.
 
 ## 05-01 Review
 
-**Summary**
-
-This is a solid backend foundation plan. It covers the minimum schema change, extends validation/types consistently, and adds the admin-facing feedback list/stats/export primitives needed by later frontend work. The main weakness is that it mixes generic feedback admin APIs with dashboard-specific aggregation in a way that may duplicate responsibility and leave auth/tenant/export constraints under-specified.
+**Summary**  
+The plan is mostly well-scoped: reuse the existing `answer_feedback` table, add `agent` to the source enum, and expose list/stats/export endpoints. The main weakness is that the export contract was underdefined, and the implementation shipped an export that is technically functional but insufficient for the CSV UX described later.
 
 **Strengths**
-
-- Keeps the data model minimal and aligned with D-09/D-10 by reusing `answer_feedback`.
-- Extends DB, TypeScript types, and Zod schemas together, which reduces drift risk.
-- Adds model-level query methods instead of pushing query logic into services/controllers.
-- Includes test updates for schema and model behavior.
-- Uses paginated list endpoints plus aggregate stats, which fits the admin UI needs.
+- Reuses the existing feedback model instead of introducing needless schema churn.
+- Separates model/service/controller/route responsibilities cleanly.
+- Keeps `/api/feedback/stats` tenant-scoped and role-gated.
+- Adds source breakdown and top-flagged aggregation in the right layer.
 
 **Concerns**
-
-- `HIGH` `GET /api/feedback`, `/stats`, and `/export` are only described with `requireAuth`, not clearly `requireAdmin`. These are admin analytics/export endpoints and should not be user-accessible.
-- `HIGH` Export returning raw JSON “for CSV conversion on the frontend” is workable, but the requirement is feedback export; without clear size limits, this can become an unbounded data dump and expose sensitive `query`/`answer` data too broadly.
-- `MEDIUM` `findPaginated` and export filters omit user/email/source-name level filters that Plan 03’s Histories export UX may need to match “current filters”.
-- `MEDIUM` `countBySource` description says “using COUNT(*) FILTER ... grouped by source”; that is internally inconsistent. One row with filtered aggregates is enough; `GROUP BY` is unnecessary and can complicate mapping.
-- `MEDIUM` Dashboard ownership is fuzzy. Adding `getFeedbackSourceBreakdown()` in `dashboard.service.ts` while also adding `/api/feedback/stats` creates two aggregation sources for similar data.
-- `LOW` Date validation is weak. Plain `z.string().optional()` for `startDate/endDate` can allow malformed values and timezone ambiguity.
-- `LOW` No mention of deduplication/idempotency for repeated feedback submissions on the same source item.
+- **[MEDIUM]** Export payload shape was underspecified, and the implementation returns raw feedback rows without the `user_email` needed by the CSV UX.
+- **[LOW]** `page`/`limit` parsing is permissive and lacks min/max validation, so very large or invalid query values are not normalized.
+- **[LOW]** The plan says “JSON for CSV conversion,” but it never nails down the exact export schema, which created downstream mismatch.
 
 **Suggestions**
+- Define the export response explicitly: include `user_email`, `source`, `query`, `answer`, `thumbup`, `comment`, `created_at`.
+- Clamp `page` and `limit` in the query schema.
+- Add a contract test for `/api/feedback/export`.
 
-- Require `requireAdmin` on list/stats/export routes unless there is a documented non-admin use case.
-- Define export constraints now: max rows, required date range, or server-side CSV streaming if volume can grow.
-- Align filter contracts with Histories early: include `userEmail`, `feedbackFilter`, and possibly `sourceName` if Phase 5 export must mirror admin page filtering.
-- Keep dashboard aggregation in one place. Either consume `/api/feedback/stats` from FE or make dashboard endpoints authoritative, not both.
-- Tighten Zod query schemas with date parsing/coercion and page/limit bounds.
-- Clarify whether one source item can have multiple feedback rows; if not, enforce/update behavior in service/model.
-
-**Risk Assessment**
-
-**MEDIUM**. The core implementation path is sound, but admin authorization and export/data-governance details are under-specified, and those are the highest-risk parts of this backend slice.
-
----
+**Risk Assessment**  
+**MEDIUM.** The core storage/API work is solid, but EVAL-05 depends on export shape, and that contract gap propagated into the implementation.
 
 ## 05-02 Review
 
-**Summary**
-
-This plan is strong on UX consistency and reuse. Moving the thumb-down comment flow into a shared component is the right architectural choice for this monorepo. The biggest risks are behavioral regressions in existing chat/search feedback flows, unclear persistence/loading behavior in the shared component, and a likely mismatch between “component owns state” vs “parent owns current feedback state”.
+**Summary**  
+The plan is good architecturally: a shared popover component in `fe/src/components` respects module boundaries, and the agent feedback path sensibly reuses `/api/feedback`. The implementation mostly follows it, but one integration bug means search comments are not actually submitted.
 
 **Strengths**
-
-- Correctly centralizes shared UX in `fe/src/components/`, respecting module boundaries.
-- Reuses the same interaction model across chat, search, and agent runs.
-- Keeps thumb-up fast and thumb-down richer, matching the requirement.
-- Adds i18n coverage in all three locales.
-- Adds a dedicated component test suite instead of relying only on integration coverage.
-- Restricts agent feedback UI to completed runs, which is sensible.
+- Good shared-component extraction; avoids cross-feature imports.
+- Chat/search/agent surfaces use a common UX.
+- Agent feedback is routed through the shared feedback endpoint instead of inventing a new one.
 
 **Concerns**
-
-- `HIGH` The plan says the component receives `feedback` as a prop but also says “the component handles its own state” and “remove old local state”. That ownership model is inconsistent and likely to cause bugs.
-- `HIGH` “Re-clicking active thumb toggles it off” has no corresponding backend unsubmit/delete plan. UI state may imply feedback removal that the API does not support.
-- `MEDIUM` “Send feedback” disabled when textarea empty conflicts with the requirement that comment is optional. If comment is optional, thumb-down submit should be allowed without text; otherwise “Skip” is the only empty path.
-- `MEDIUM` No explicit loading/submission state in the popover. Users can double-submit if mutation latency exists.
-- `MEDIUM` Chat/search existing feedback APIs may have different request shapes; the plan assumes both can cleanly accept `comment` without checking actual contracts.
-- `MEDIUM` Agent run feedback posts directly to `/api/feedback`, but there is no plan to surface pre-existing feedback state when reopening run history.
-- `LOW` “Clicking outside closes and reverts thumb state to null” may feel odd if the parent already set temporary state or if existing feedback exists from the server.
+- **[MEDIUM]** Search comment text is dropped by the callback wrapper, so the popover UX does not fully work on search results.
+- **[LOW]** The shared component does not match some of the plan’s UX details: no `aria-pressed`, no toggle-off behavior, no explicit revert-on-close state.
+- **[LOW]** Feedback state is local-only; reopening a view does not appear to rehydrate newly submitted run feedback from the server.
 
 **Suggestions**
+- Pass `(thumbup, result, comment)` through unchanged from `SearchResults` to `SearchResultCard`.
+- Add component tests for comment propagation through the full search-results chain.
+- Either implement or remove the undocumented “toggle off / aria-pressed” behavior from the spec.
 
-- Decide state ownership explicitly:
-  - Parent owns persisted/current feedback.
-  - Popover owns only transient open/comment draft state.
-- Remove toggle-off unless backend supports deleting/updating feedback; otherwise keep one-way submission semantics.
-- Add pending state and disable both buttons during submission.
-- Preserve existing feedback if one already exists; don’t revert to `null` on dismiss in that case.
-- Verify chat/search API contracts before locking the shared `onFeedback(thumbup, comment?)` abstraction.
-- Add at least one integration test per surface, not just the shared component.
-
-**Risk Assessment**
-
-**MEDIUM**. The componentization strategy is good, but the state model and toggle semantics are likely to cause regressions unless tightened before implementation.
-
----
+**Risk Assessment**  
+**MEDIUM.** The shared design is good, but a single dropped callback argument leaves one requirement only partially implemented.
 
 ## 05-03 Review
 
-**Summary**
-
-This is the broadest and riskiest plan in the phase. It clearly maps to the Histories/admin requirements and covers both backend enrichment and frontend UX, but it is doing too much in one wave: new backend query enrichment, new agent-run history endpoints, new FE tab, new filters, new export path, and i18n. The biggest risks are backend query complexity/performance, filter-contract mismatch across layers, and scope overlap with Plan 01’s feedback export/list APIs.
+**Summary**  
+This is the weakest plan/implementation pair. The intended UX is clear and valuable, but the backend contracts required for detail-level feedback display and safe admin history access were not fully designed, and the executed code reflects that. The page gains visible chrome, but key behaviors are either missing or unsafe.
 
 **Strengths**
-
-- Covers the admin requirements comprehensively: indicators, filters, comments, Agent Runs tab, export.
-- Correctly treats admin history feedback as read-only display, not writable feedback UI.
-- Adds counts at the session-card level and comments at the detail-view level, which matches the product goal well.
-- Includes FE types/API/hooks changes rather than burying data-contract drift in UI components.
-- Includes targeted tests for backend enrichment and FE export behavior.
+- Good product direction: sidebar counts, feedback filters, agent-runs tab, CSV export.
+- Read-only agent feedback display in admin views is the right call.
+- FE structure stays within the histories feature and shared-component boundaries.
 
 **Concerns**
-
-- `HIGH` Query design in `admin-history.service.ts` uses correlated subqueries for every row. On large histories, this can become expensive; counts and `EXISTS` filters may need joins/CTEs/materialized summaries instead.
-- `HIGH` Agent runs likely belong to a different module/domain than chat/search histories. Adding them into admin histories may violate module boundary expectations unless the admin module already owns cross-domain reporting.
-- `HIGH` Export path is split-brain: Plan 01 adds `/api/feedback/export`, while Plan 03 also expects histories-specific current filters and `user_email` in CSV. Raw `answer_feedback` export may not contain enough joined data.
-- `MEDIUM` `feedbackFilter` contract differs between BE (`positive|negative|any|none`) and FE (`all|positive|negative|any|none`). That is manageable, but the mapping needs to be explicitly owned somewhere.
-- `MEDIUM` `getAgentRunDetails` says “with steps and feedback records”, but the source context only mentions run model/history sheet, not step schema. That may be scope creep.
-- `MEDIUM` No security note on admin-only protection for the new `/api/admin/history/agent-runs*` routes.
-- `MEDIUM` There is no explicit plan for how chat/search detail queries will include message-level feedback/comment data; session summary enrichment alone is not enough.
-- `LOW` CSV generation on the client is fine for modest data, but no row cap or cancellation behavior is defined.
+- **[HIGH]** Chat/search detail views expect feedback fields that the BE detail endpoints never provide.
+- **[HIGH]** Admin history queries are not tenant-scoped, including agent-run history and feedback count subqueries.
+- **[MEDIUM]** `sourceName` is carried through the FE and BE signatures but never applied in the service queries, so that filter is effectively dead.
+- **[MEDIUM]** Export does not honor the page’s full filter set and does not include the promised columns.
 
 **Suggestions**
+- Enrich `getChatSessionDetails()` and `getSearchSessionDetails()` with joined or aggregated feedback fields.
+- Add tenant filtering to all admin history queries and their feedback subqueries.
+- Either implement `sourceName` filtering or remove it from the UI for this phase.
+- Move CSV shaping server-side or at least return an enriched export DTO.
 
-- Separate summary counts from detail feedback enrichment in the backend design. Session-list queries and session-detail queries likely need different shapes.
-- Rework counts/filter SQL to use pre-aggregated subqueries or left joins instead of per-row correlated subqueries if history volume is non-trivial.
-- Explicitly define the export contract: which endpoint is canonical, and whether it joins user/session metadata server-side.
-- Confirm agent run “details” shape before planning steps/output expansion; avoid inventing a schema not already present.
-- Add admin auth requirements to all new admin routes.
-- Add tests for detail-view feedback/comment enrichment, not just summary counts.
-- Consider splitting this into two implementation chunks even if kept in one plan document: backend data contract first, FE rendering second.
-
-**Risk Assessment**
-
-**HIGH**. This plan can achieve the phase goal, but it has the most moving parts, the most query/performance risk, and the most opportunity for backend/FE contract mismatch.
-
----
+**Risk Assessment**  
+**HIGH.** Two phase goals, detail-level feedback review and safe admin history access, are not reliably met by the executed code.
 
 ## 05-04 Review
 
-**Summary**
-
-This is a focused and mostly appropriate dashboard plan. It leverages the work from Plan 01 and avoids inventing new storage. The main issue is some overlap/ambiguity between existing `getFeedbackAnalytics()` and the new `/api/feedback/stats` source, which could create a fragmented dashboard data model if not normalized.
-
-**Strengths**
-
-- Clearly scoped to dashboard completion rather than general feedback plumbing.
-- Reuses existing analytics where possible instead of rebuilding the dashboard wholesale.
-- Adds only the missing pieces for D-03: source breakdown, source visibility, top flagged sessions.
-- Keeps FE additions fairly modular with dedicated dashboard components/types/hooks.
-- Correctly notes that trend can remain aggregate for v1.
-
-**Concerns**
-
-- `MEDIUM` The dashboard would now combine data from two backend sources: `getFeedbackAnalytics()` and `/api/feedback/stats`. That can create inconsistent date filtering, caching, and loading behavior.
-- `MEDIUM` `FeedbackSummaryCards.tsx` appears to already contain multiple cards; adding source breakdown there while also adding a separate top-flagged card may make layout ownership messy unless `AdminDashboardPage` is refactored cleanly.
-- `MEDIUM` No test coverage is specified for the new dashboard types/API/components.
-- `LOW` Plan includes `FeedbackTrendChart.tsx` in modified files but likely leaves it unchanged; that suggests mild scope looseness.
-- `LOW` Color mapping says purple for agent, which may conflict with existing design tokens/themes if not aligned with the design system.
-
-**Suggestions**
-
-- Decide whether dashboard FE should call one combined dashboard endpoint or intentionally compose two endpoints; if two, define shared date/filter params and loading states.
-- Add at least lightweight FE tests for `TopFlaggedSessionsCard` and source rendering in `NegativeFeedbackTable`.
-- Keep `FeedbackSummaryCards` narrow; if the component becomes overloaded, split source breakdown into its own card component.
-- Ensure the backend negative feedback query includes `source` in a stable typed contract, not an optional ad hoc addition.
-
-**Risk Assessment**
-
-**LOW-MEDIUM**. This is the cleanest plan of the four, with moderate integration risk mainly from mixed data sources rather than implementation complexity.
-
----
-
-## Cross-Plan Assessment
-
-**Summary**
-
-The phase decomposition is generally good: Plan 01 establishes backend primitives, Plan 02 handles end-user submission UX, Plan 03 handles admin histories, and Plan 04 finishes dashboard visibility. The major cross-plan risk is contract drift. Export, stats, feedback state semantics, and dashboard/admin data ownership are defined in slightly different ways across plans.
+**Summary**  
+The plan is directionally correct: source breakdown and top-flagged sessions belong in the dashboard, and reusing `/api/feedback/stats` is sensible. The main problem is contract drift between the backend analytics payload and the frontend types/components, which makes this plan look complete on paper but fragile in practice.
 
 **Strengths**
-
-- Dependency ordering is mostly sensible.
-- Reuse of existing `answer_feedback` infrastructure is the right choice.
-- FE shared component strategy is appropriate for NX-style boundaries.
-- Admin surfaces and user submission surfaces are treated separately.
+- Good reuse of the feedback stats endpoint instead of duplicating aggregation logic.
+- Top-flagged sessions is a good fit for a dedicated card.
+- Source breakdown belongs on the dashboard and complements the satisfaction metrics well.
 
 **Concerns**
-
-- `HIGH` Authorization is not consistently called out for admin-only endpoints.
-- `HIGH` Export semantics are inconsistent between Plan 01 and Plan 03.
-- `HIGH` Feedback state semantics are inconsistent in Plan 02, especially toggle-off vs persisted submission.
-- `MEDIUM` Query/filter contracts are not fully harmonized across BE feedback APIs, admin history APIs, and dashboard APIs.
-- `MEDIUM` Performance risk is concentrated in Plan 03’s admin-history enrichment.
-- `MEDIUM` Test strategy is uneven; Plan 04 especially lacks explicit tests.
+- **[HIGH]** FE types/components do not match the actual BE payload for trend and negative-feedback items.
+- **[MEDIUM]** The plan allowed the dashboard contract to evolve in two places (`/api/admin/dashboard/analytics/feedback` and `/api/feedback/stats`) without a single typed integration checkpoint.
+- **[MEDIUM]** The dashboard service builds several raw SQL strings with interpolated date values instead of parameterized filters.
 
 **Suggestions**
+- Align one canonical `FeedbackAnalytics` contract across BE and FE, then add an API contract test.
+- Either change the backend payload to `total/positive` and `answer/trace_id/created_at`, or update the frontend to consume `count/satisfactionRate` and `answerPreview/traceId/createdAt`.
+- Parameterize the raw SQL date conditions.
 
-- Standardize these contracts before implementation:
-  - Who can access `/api/feedback` GET endpoints.
-  - Whether feedback is immutable, updatable, or removable.
-  - Which endpoint owns export.
-  - Which endpoint owns source breakdown/top flagged data for dashboard.
-  - Exact filter vocabulary and date semantics.
-- Add a short API contract document for Phase 5 before coding.
-- Add negative-path tests:
-  - unauthorized admin access,
-  - malformed date/filter params,
-  - duplicate feedback submission,
-  - export size limits/failures,
-  - empty-state handling for agent runs and dashboard cards.
-
-**Overall Risk Assessment**
-
-**MEDIUM-HIGH**. The plans are directionally correct and likely sufficient to deliver the phase, but they need tighter contract alignment and stronger attention to admin auth, export design, and query performance before execution.
+**Risk Assessment**  
+**HIGH.** The dashboard additions are conceptually right, but the payload mismatch is enough to break or misrender the new Response Quality section.
 
 ---
 
-## Post-Review Fixes Already Applied
+## Gemini Review
 
-Several HIGH-severity concerns from this review were identified independently during our own code review and have already been fixed:
-
-### 1. Authorization on admin endpoints (HIGH — FIXED)
-**Codex concern:** "GET /api/feedback, /stats, and /export are only described with requireAuth, not clearly requireAdmin."
-**Fix applied:** Added `requireTenant` + `requireRole('admin', 'leader')` to all three GET routes in `feedback.routes.ts`.
-
-### 2. Tenant isolation (HIGH — FIXED)
-**Codex concern (implicit):** Controller used `(req.user as any)?.tenant_id || 'default'` which is wrong.
-**Fix applied:** Replaced with `getTenantId(req)` + 403 guard in all 4 controller methods.
-
-### 3. Feedback state toggle semantics (HIGH — FIXED)
-**Codex concern:** "Re-clicking active thumb toggles it off has no corresponding backend unsubmit/delete plan."
-**Fix applied:** Clarified as intentionally final (no toggle). Removed misleading `aria-pressed` attributes and comments.
-
-### 4. Missing i18n strings (MEDIUM — FIXED)
-**Codex concern (implicit from i18n coverage):** Hardcoded English strings in AdminAgentRunsDetailView.
-**Fix applied:** Wrapped "Execution Steps", "Positive/Negative feedback" in `t()` calls.
-
-### 5. FE type strictness (LOW — FIXED)
-**Fix applied:** Added `| undefined` to optional props in FeedbackSummaryCards for `exactOptionalPropertyTypes` compliance.
-
-## Remaining Concerns (Not Yet Addressed)
-
-| Severity | Concern | Status |
-|----------|---------|--------|
-| HIGH | Export path split-brain (Plan 01 `/api/feedback/export` vs Plan 03 histories filters) | Acceptable — different use cases: raw export vs filtered admin view |
-| HIGH | Plan 03 correlated subqueries performance | Monitor — acceptable for MVP, optimize if history volume grows |
-| MEDIUM | Dashboard data from two sources (getFeedbackAnalytics + /api/feedback/stats) | Acceptable — different data shapes for different dashboard sections |
-| MEDIUM | No explicit loading/submission state in popover | Acceptable for v1 — fast mutation, low latency |
-| MEDIUM | feedbackFilter contract mapping (BE vs FE enum values) | Implemented correctly — FE maps 'all' to omit param |
-| LOW | No deduplication for repeated feedback submissions | Acceptable — backend upserts or last-write-wins is fine |
-| LOW | Date validation weakness in Zod schemas | Low risk — dates come from date picker UI, not free text |
+Gemini CLI was unavailable for this review (429 rate limit exceeded). Only Codex was used.
 
 ---
 
+## Consensus Summary
+
+### Critical Issues Found by Codex (Requiring Fixes)
+
+| # | Severity | Issue | Plans Affected |
+|---|----------|-------|---------------|
+| 1 | **HIGH** | Dashboard FE types don't match BE response shape (trend, negativeFeedback keys) | 05-04 |
+| 2 | **HIGH** | Chat/search detail views render feedback fields the BE never provides | 05-03 |
+| 3 | **HIGH** | Admin history queries not tenant-scoped | 05-03 |
+| 4 | **MEDIUM** | Search thumb-down comments dropped by callback wrapper in SearchResults | 05-02 |
+| 5 | **MEDIUM** | Export doesn't include user_email or honor page filters | 05-01, 05-03 |
+
+### Previously Fixed Issues (from earlier review round)
+
+| Issue | Status |
+|-------|--------|
+| Missing requireRole on admin feedback routes | FIXED |
+| Wrong tenant_id resolution in FeedbackController | FIXED |
+| Feedback toggle semantics / aria-pressed | FIXED |
+| Hardcoded English strings in AdminAgentRunsDetailView | FIXED |
+| exactOptionalPropertyTypes violation | FIXED |
+
+### Action Items
+
+These 5 new issues should be addressed before Phase 5 can be considered production-ready:
+
+1. **Align dashboard FE types with BE response** — update `dashboard.types.ts` trend/negativeFeedback interfaces to match actual `dashboard.service.ts` output
+2. **Enrich chat/search detail queries** — join `answer_feedback` in `getChatSessionDetails()` and `getSearchSessionDetails()`
+3. **Add tenant filtering to admin history queries** — apply tenant_id WHERE clause or requireTenant middleware
+4. **Fix search comment callback** — pass `comment` through `SearchResults.tsx` wrapper to `SearchResultCard`
+5. **Enrich export DTO** — join user_email, honor current filters in export endpoint
+
+
+---
 *Review conducted: 2026-03-31*
-*Reviewer: Codex (OpenAI)*
+*Reviewer: Codex (OpenAI) — post-execution code review*
+*Gemini: unavailable (rate limited)*
