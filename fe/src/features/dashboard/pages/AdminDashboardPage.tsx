@@ -11,7 +11,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { DateRangePicker, type DateRangePreset } from '@/components/ui/date-range-picker'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { EmptyState } from '@/components/ui/empty-state'
-import { useDashboardStats, useQueryAnalytics, useFeedbackAnalytics } from '../api/dashboardQueries'
+import { useDashboardStats, useQueryAnalytics, useFeedbackAnalytics, useFeedbackStats } from '../api/dashboardQueries'
 import { StatCards } from '../components/StatCards'
 import { ActivityTrendChart } from '../components/ActivityTrendChart'
 import { TopUsersTable } from '../components/TopUsersTable'
@@ -24,6 +24,7 @@ import { FailedQueriesTable } from '../components/FailedQueriesTable'
 import { FeedbackSummaryCards } from '../components/FeedbackSummaryCards'
 import { FeedbackTrendChart } from '../components/FeedbackTrendChart'
 import { NegativeFeedbackTable } from '../components/NegativeFeedbackTable'
+import { TopFlaggedSessionsCard } from '../components/TopFlaggedSessionsCard'
 import { queryKeys } from '@/lib/queryKeys'
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -57,6 +58,9 @@ function AdminDashboardPage() {
 
     // RAG Quality tab data
     const feedbackQuery = useFeedbackAnalytics(startStr, endStr)
+
+    // Feedback stats (source breakdown + top flagged sessions) from /api/feedback/stats
+    const feedbackStatsQuery = useFeedbackStats(startStr, endStr)
 
     /**
      * @description Handle date range change from the picker.
@@ -99,6 +103,7 @@ function AdminDashboardPage() {
             queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.analytics(startStr, endStr) })
         } else if (activeTab === 'ragQuality') {
             queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.feedback(startStr, endStr) })
+            queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.feedbackStats(startStr, endStr) })
         }
     }
 
@@ -288,15 +293,23 @@ function AdminDashboardPage() {
                         {/* Feedback content */}
                         {feedbackQuery.data && (
                             <>
-                                {/* Stat cards row */}
-                                <FeedbackSummaryCards data={feedbackQuery.data} />
+                                {/* Stat cards row with source breakdown */}
+                                <FeedbackSummaryCards
+                                    data={feedbackQuery.data}
+                                    sourceBreakdown={feedbackStatsQuery.data?.sourceBreakdown}
+                                    sourceBreakdownLoading={feedbackStatsQuery.isLoading}
+                                />
 
-                                {/* Feedback trend chart */}
-                                <div className="mb-6">
+                                {/* Top flagged sessions + Feedback trend chart in 2-column layout */}
+                                <div className="grid grid-cols-1 lg:grid-cols-[0.7fr_1fr] gap-4 mb-6">
+                                    <TopFlaggedSessionsCard
+                                        topFlagged={feedbackStatsQuery.data?.topFlagged}
+                                        isLoading={feedbackStatsQuery.isLoading}
+                                    />
                                     <FeedbackTrendChart trend={feedbackQuery.data.trend} />
                                 </div>
 
-                                {/* Negative feedback table with Langfuse links */}
+                                {/* Negative feedback table with source column and Langfuse links */}
                                 <NegativeFeedbackTable
                                     feedback={feedbackQuery.data.negativeFeedback}
                                     langfuseBaseUrl={feedbackQuery.data.langfuseBaseUrl}
