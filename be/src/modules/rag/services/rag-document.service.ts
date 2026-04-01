@@ -14,6 +14,7 @@ import { getRedisClient } from '@/shared/services/redis.service.js';
 import { DocumentRow, TaskRow, KnowledgebaseRow } from '@/shared/models/types.js';
 import { ragSearchService } from './rag-search.service.js';
 import { getUuid } from '@/shared/utils/uuid.js';
+import { ComparisonLiteral } from '@/shared/constants/index.js';
 
 /**
  * @description Service layer for RAG document and task metadata operations.
@@ -426,7 +427,7 @@ export class RagDocumentService {
         // Use provided name or derive from URL hostname + path
         const name = data.name || `${url.hostname}${url.pathname}`.replace(/\/$/, '').substring(0, 255)
         const dataset = await this.getKnowledgebase(datasetId)
-        if (!dataset) throw new Error('Dataset not found')
+        if (!dataset) throw new Error(ComparisonLiteral.DATASET_NOT_FOUND)
 
         // Generate a 32-char hex UUID matching the standardized format
         const docId = getUuid()

@@ -14,7 +14,7 @@ import { cryptoService } from '@/shared/services/crypto.service.js'
 import { config } from '@/shared/config/index.js'
 import { Connector, SyncLog } from '../models/sync.types.js'
 import { syncSchedulerService } from './sync-scheduler.service.js'
-import { ConnectorStatus, SyncStatus } from '@/shared/constants/index.js'
+import { ComparisonLiteral, ConnectorStatus, SyncStatus } from '@/shared/constants/index.js'
 
 /** Redis queue name that the Python connector_sync_worker listens on */
 const CONNECTOR_SYNC_QUEUE = 'rag_connector_sync'
@@ -231,7 +231,7 @@ export class SyncService {
     // Verify connector exists and decrypt config
     const connector = await this.getConnector(connectorId)
     if (!connector) {
-      throw new Error('Connector not found')
+      throw new Error(ComparisonLiteral.CONNECTOR_NOT_FOUND)
     }
 
     try {

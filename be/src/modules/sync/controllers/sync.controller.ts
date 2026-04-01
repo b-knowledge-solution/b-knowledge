@@ -11,7 +11,7 @@ import { log } from '@/shared/services/logger.service.js'
 import { getClientIp } from '@/shared/utils/ip.js'
 import { ragService } from '@/modules/rag/index.js'
 import type { Connector } from '../models/sync.types.js'
-import { UserRole, SyncStatus } from '@/shared/constants/index.js'
+import { ComparisonLiteral, UserRole, SyncStatus } from '@/shared/constants/index.js'
 
 /** Keys in connector config that contain sensitive credentials (SYN-BR-07) */
 const SENSITIVE_CONFIG_KEYS = new Set([
@@ -116,7 +116,7 @@ export class SyncController {
       const connector = await syncService.getConnector(req.params.id!)
       // Guard: return 404 if connector does not exist
       if (!connector) {
-        res.status(404).json({ error: 'Connector not found' })
+        res.status(404).json({ error: ComparisonLiteral.CONNECTOR_NOT_FOUND })
         return
       }
       // Verify user has access to this connector's KB
@@ -177,7 +177,7 @@ export class SyncController {
     try {
       // Verify KB access before updating
       const existing = await syncService.getConnector(id)
-      if (!existing) { res.status(404).json({ error: 'Connector not found' }); return }
+      if (!existing) { res.status(404).json({ error: ComparisonLiteral.CONNECTOR_NOT_FOUND }); return }
       if (!(await checkKbAccess(req, existing.kb_id))) { res.status(403).json({ error: 'Access denied' }); return }
 
       const user = req.user
@@ -187,7 +187,7 @@ export class SyncController {
       const connector = await syncService.updateConnector(id, req.body, user)
       // Guard: return 404 if connector not found
       if (!connector) {
-        res.status(404).json({ error: 'Connector not found' })
+        res.status(404).json({ error: ComparisonLiteral.CONNECTOR_NOT_FOUND })
         return
       }
       // Mask sensitive credentials before sending to client (SYN-BR-07)
@@ -211,7 +211,7 @@ export class SyncController {
     try {
       // Verify KB access before deleting
       const existing = await syncService.getConnector(id)
-      if (!existing) { res.status(404).json({ error: 'Connector not found' }); return }
+      if (!existing) { res.status(404).json({ error: ComparisonLiteral.CONNECTOR_NOT_FOUND }); return }
       if (!(await checkKbAccess(req, existing.kb_id))) { res.status(403).json({ error: 'Access denied' }); return }
 
       // Pass cascade_documents flag from query params
@@ -237,7 +237,7 @@ export class SyncController {
     try {
       // Verify KB access before triggering sync
       const existing = await syncService.getConnector(id)
-      if (!existing) { res.status(404).json({ error: 'Connector not found' }); return }
+      if (!existing) { res.status(404).json({ error: ComparisonLiteral.CONNECTOR_NOT_FOUND }); return }
       if (!(await checkKbAccess(req, existing.kb_id))) { res.status(403).json({ error: 'Access denied' }); return }
 
       const syncLog = await syncService.triggerSync(id, req.body?.poll_range_start)
@@ -245,7 +245,7 @@ export class SyncController {
     } catch (error: any) {
       log.error('Failed to trigger sync', { connectorId: id, error: String(error) })
       // Map known error messages to appropriate HTTP status codes
-      const status = error.message === 'Connector not found' ? 404
+      const status = error.message === ComparisonLiteral.CONNECTOR_NOT_FOUND ? 404
         : error.message?.includes('already in progress') ? 409
         : error.message?.includes('queue is full') ? 503
         : 500
@@ -266,7 +266,7 @@ export class SyncController {
     try {
       // Verify KB access before listing logs
       const existing = await syncService.getConnector(id)
-      if (!existing) { res.status(404).json({ error: 'Connector not found' }); return }
+      if (!existing) { res.status(404).json({ error: ComparisonLiteral.CONNECTOR_NOT_FOUND }); return }
       if (!(await checkKbAccess(req, existing.kb_id))) { res.status(403).json({ error: 'Access denied' }); return }
 
       const { page, limit, status } = req.query as any
@@ -312,7 +312,7 @@ export class SyncController {
     // Verify KB access before streaming progress
     try {
       const existing = await syncService.getConnector(id)
-      if (!existing) { res.status(404).json({ error: 'Connector not found' }); return }
+      if (!existing) { res.status(404).json({ error: ComparisonLiteral.CONNECTOR_NOT_FOUND }); return }
       if (!(await checkKbAccess(req, existing.kb_id))) { res.status(403).json({ error: 'Access denied' }); return }
     } catch {
       res.status(500).json({ error: 'Access check failed' })

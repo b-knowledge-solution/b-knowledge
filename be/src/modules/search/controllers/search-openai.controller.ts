@@ -19,6 +19,7 @@ import {
   buildOaiStreamChunk,
   extractLastUserMessage,
 } from '@/shared/services/openai-format.service.js'
+import { ComparisonLiteral } from '@/shared/constants/index.js'
 
 /** Default model identifier returned by the search API. */
 const MODEL_ID = 'b-knowledge-search'
@@ -138,7 +139,7 @@ function createSearchStreamInterceptor(
       if (!data.startsWith('data: ')) return true
 
       const payload = data.slice(6).trim()
-      if (payload === '[DONE]') {
+      if (payload === ComparisonLiteral.STREAM_DONE) {
         realRes.write(buildOaiStreamChunk(completionId, '', model, true))
         return true
       }
@@ -180,7 +181,7 @@ function createSearchBufferInterceptor(onDelta: (delta: string) => void) {
       if (!data.startsWith('data: ')) return true
 
       const payload = data.slice(6).trim()
-      if (payload === '[DONE]') return true
+      if (payload === ComparisonLiteral.STREAM_DONE) return true
 
       try {
         const parsed = JSON.parse(payload)

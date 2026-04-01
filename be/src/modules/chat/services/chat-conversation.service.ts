@@ -48,7 +48,7 @@ import { ChunkResult, ChatAssistant } from '@/shared/models/types.js'
 import { memoryExtractionService, memoryMessageService } from '@/modules/memory/index.js'
 import { Response as ExpressResponse } from 'express'
 import { getUuid } from '@/shared/utils/uuid.js'
-import { ModelType } from '@/shared/constants/index.js'
+import { ComparisonLiteral, ModelType } from '@/shared/constants/index.js'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -977,7 +977,7 @@ export class ChatConversationService {
           res.write(`data: ${JSON.stringify({ delta: sqlResult.answer })}\n\n`)
           const sqlRef = buildReference(sqlResult.chunks)
           res.write(`data: ${JSON.stringify({ answer: sqlResult.answer, reference: sqlRef })}\n\n`)
-          res.write(`data: [DONE]\n\n`)
+          res.write(`data: ${ComparisonLiteral.STREAM_DONE}\n\n`)
 
           // Persist assistant message with SQL answer
           await ModelFactory.chatMessage.create({
@@ -1242,7 +1242,7 @@ export class ChatConversationService {
         const resolvedEmptyResponse = resolveI18nField(cfg.empty_response, detectedLang)
         if (resolvedEmptyResponse) {
           res.write(`data: ${JSON.stringify({ delta: resolvedEmptyResponse })}\n\n`)
-          res.write(`data: [DONE]\n\n`)
+          res.write(`data: ${ComparisonLiteral.STREAM_DONE}\n\n`)
 
           // Store the empty response
           await ModelFactory.chatMessage.create({
@@ -1416,7 +1416,7 @@ export class ChatConversationService {
       })}\n\n`)
 
       // Send completion signal
-      res.write(`data: [DONE]\n\n`)
+      res.write(`data: ${ComparisonLiteral.STREAM_DONE}\n\n`)
 
       // ── Step 14: Persist assistant message (non-blocking) ─────────────
       // Answer already streamed to client via SSE — DB write must not delay res.end()

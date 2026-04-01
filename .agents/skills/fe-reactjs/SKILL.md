@@ -18,6 +18,12 @@ Use this skill when creating or modifying features, pages, components, or hooks 
 - Testing: `vitest` + `@testing-library/react`
 - Toast: `sonner`
 
+## Conditional Literal Rule (Mandatory)
+
+- Do **not** use hardcoded static string/number literals directly in conditional comparisons (`if`, `else if`, `switch`, ternary conditions).
+- Move comparison values to named constants/enums in `fe/src/constants/` (or feature-local constants when truly feature-specific), then compare against those constants.
+- Example: use `Theme.DARK` / `Theme.SYSTEM` instead of checking raw `'dark'` / `'system'` in conditions.
+
 ## Feature Module Structure
 
 Every domain feature lives under `fe/src/features/<domain>/`:

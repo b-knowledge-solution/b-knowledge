@@ -13,6 +13,7 @@ import { searchService } from '../services/search.service.js'
 import { feedbackService } from '@/modules/feedback/services/feedback.service.js'
 import { ModelFactory } from '@/shared/models/factory.js'
 import { getTenantId } from '@/shared/middleware/tenant.middleware.js'
+import { ComparisonLiteral } from '@/shared/constants/index.js'
 
 /**
  * @description Controller handling search app CRUD, search execution,
@@ -149,7 +150,7 @@ export class SearchController {
 
       // Guard: return 404 if search app does not exist
       if (!app) {
-        res.status(404).json({ error: 'Search app not found' })
+        res.status(404).json({ error: ComparisonLiteral.SEARCH_APP_NOT_FOUND })
         return
       }
 
@@ -185,7 +186,7 @@ export class SearchController {
 
       // Guard: return 404 if search app not found
       if (!updated) {
-        res.status(404).json({ error: 'Search app not found' })
+        res.status(404).json({ error: ComparisonLiteral.SEARCH_APP_NOT_FOUND })
         return
       }
 
@@ -224,7 +225,7 @@ export class SearchController {
       // Check public access for anonymous users
       const app = await searchService.getSearchApp(req.params.id!)
       if (!app) {
-        res.status(404).json({ error: 'Search app not found' })
+        res.status(404).json({ error: ComparisonLiteral.SEARCH_APP_NOT_FOUND })
         return
       }
       if (!req.user && !app.is_public) {
@@ -249,12 +250,12 @@ export class SearchController {
       // If headers already sent, send error via SSE
       if (res.headersSent) {
         res.write(`data: ${JSON.stringify({ error: errMsg })}\n\n`)
-        res.write('data: [DONE]\n\n')
+        res.write(`data: ${ComparisonLiteral.STREAM_DONE}\n\n`)
         res.end()
         return
       }
 
-      if (errMsg === 'Search app not found') {
+      if (errMsg === ComparisonLiteral.SEARCH_APP_NOT_FOUND) {
         res.status(404).json({ error: errMsg })
         return
       }
@@ -280,7 +281,7 @@ export class SearchController {
     } catch (error) {
       const errMsg = (error as Error).message
 
-      if (errMsg === 'Search app not found') {
+      if (errMsg === ComparisonLiteral.SEARCH_APP_NOT_FOUND) {
         res.status(404).json({ error: errMsg })
         return
       }
@@ -306,7 +307,7 @@ export class SearchController {
     } catch (error) {
       const errMsg = (error as Error).message
 
-      if (errMsg === 'Search app not found') {
+      if (errMsg === ComparisonLiteral.SEARCH_APP_NOT_FOUND) {
         res.status(404).json({ error: errMsg })
         return
       }
@@ -331,7 +332,7 @@ export class SearchController {
     } catch (error) {
       const errMsg = (error as Error).message
 
-      if (errMsg === 'Search app not found') {
+      if (errMsg === ComparisonLiteral.SEARCH_APP_NOT_FOUND) {
         res.status(404).json({ error: errMsg })
         return
       }
@@ -396,7 +397,7 @@ export class SearchController {
       // Check public access for anonymous users
       const app = await searchService.getSearchApp(req.params.id!)
       if (!app) {
-        res.status(404).json({ error: 'Search app not found' })
+        res.status(404).json({ error: ComparisonLiteral.SEARCH_APP_NOT_FOUND })
         return
       }
       if (!req.user && !app.is_public) {
@@ -441,7 +442,7 @@ export class SearchController {
       const errMsg = (error as Error).message
 
       // Return 404 if search app not found
-      if (errMsg === 'Search app not found') {
+      if (errMsg === ComparisonLiteral.SEARCH_APP_NOT_FOUND) {
         res.status(404).json({ error: errMsg })
         return
       }

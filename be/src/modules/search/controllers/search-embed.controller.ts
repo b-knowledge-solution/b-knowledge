@@ -10,6 +10,7 @@ import { log } from '@/shared/services/logger.service.js'
 import { searchEmbedTokenService } from '@/shared/services/embed-token.service.js'
 import { searchService } from '../services/search.service.js'
 import { ModelFactory } from '@/shared/models/factory.js'
+import { ComparisonLiteral } from '@/shared/constants/index.js'
 
 /**
  * @description Allowlist of search_config keys safe to expose via the public embed config endpoint.
@@ -53,7 +54,7 @@ export class SearchEmbedController {
       // Verify the search app exists
       const app = await ModelFactory.searchApp.findById(appId)
       if (!app) {
-        res.status(404).json({ error: 'Search app not found' })
+        res.status(404).json({ error: ComparisonLiteral.SEARCH_APP_NOT_FOUND })
         return
       }
 
@@ -81,7 +82,7 @@ export class SearchEmbedController {
       // Verify the search app exists
       const app = await ModelFactory.searchApp.findById(appId)
       if (!app) {
-        res.status(404).json({ error: 'Search app not found' })
+        res.status(404).json({ error: ComparisonLiteral.SEARCH_APP_NOT_FOUND })
         return
       }
 
@@ -143,7 +144,7 @@ export class SearchEmbedController {
       // Load the search app
       const app = await ModelFactory.searchApp.findById(tokenRow.app_id as string)
       if (!app) {
-        res.status(404).json({ error: 'Search app not found' })
+        res.status(404).json({ error: ComparisonLiteral.SEARCH_APP_NOT_FOUND })
         return
       }
 
@@ -179,7 +180,7 @@ export class SearchEmbedController {
       // Load the search app
       const app = await ModelFactory.searchApp.findById(tokenRow.app_id as string)
       if (!app) {
-        res.status(404).json({ error: 'Search app not found' })
+        res.status(404).json({ error: ComparisonLiteral.SEARCH_APP_NOT_FOUND })
         return
       }
 
@@ -227,7 +228,7 @@ export class SearchEmbedController {
       // Load app to resolve tenant ID
       const app = await ModelFactory.searchApp.findById(tokenRow.app_id as string)
       if (!app) {
-        res.status(404).json({ error: 'Search app not found' })
+        res.status(404).json({ error: ComparisonLiteral.SEARCH_APP_NOT_FOUND })
         return
       }
 
@@ -265,7 +266,7 @@ export class SearchEmbedController {
     } catch (error) {
       const errMsg = (error as Error).message
 
-      if (errMsg === 'Search app not found') {
+      if (errMsg === ComparisonLiteral.SEARCH_APP_NOT_FOUND) {
         res.status(404).json({ error: errMsg })
         return
       }
@@ -303,8 +304,8 @@ export class SearchEmbedController {
       // Resolve tenant from app creator for proper multi-tenant isolation
       const app = await ModelFactory.searchApp.findById(tokenRow.app_id as string)
       if (!app) {
-        res.write(`data: ${JSON.stringify({ error: 'Search app not found' })}\n\n`)
-        res.write('data: [DONE]\n\n')
+        res.write(`data: ${JSON.stringify({ error: ComparisonLiteral.SEARCH_APP_NOT_FOUND })}\n\n`)
+        res.write(`data: ${ComparisonLiteral.STREAM_DONE}\n\n`)
         res.end()
         return
       }
@@ -318,7 +319,7 @@ export class SearchEmbedController {
       // If headers already sent, send error via SSE
       if (res.headersSent) {
         res.write(`data: ${JSON.stringify({ error: errMsg })}\n\n`)
-        res.write('data: [DONE]\n\n')
+        res.write(`data: ${ComparisonLiteral.STREAM_DONE}\n\n`)
         res.end()
         return
       }
@@ -354,7 +355,7 @@ export class SearchEmbedController {
     } catch (error) {
       const errMsg = (error as Error).message
 
-      if (errMsg === 'Search app not found') {
+      if (errMsg === ComparisonLiteral.SEARCH_APP_NOT_FOUND) {
         res.status(404).json({ error: errMsg })
         return
       }
@@ -385,7 +386,7 @@ export class SearchEmbedController {
       // Load app to resolve tenant ID
       const app = await ModelFactory.searchApp.findById(tokenRow.app_id as string)
       if (!app) {
-        res.status(404).json({ error: 'Search app not found' })
+        res.status(404).json({ error: ComparisonLiteral.SEARCH_APP_NOT_FOUND })
         return
       }
 
@@ -398,7 +399,7 @@ export class SearchEmbedController {
     } catch (error) {
       const errMsg = (error as Error).message
 
-      if (errMsg === 'Search app not found') {
+      if (errMsg === ComparisonLiteral.SEARCH_APP_NOT_FOUND) {
         res.status(404).json({ error: errMsg })
         return
       }
