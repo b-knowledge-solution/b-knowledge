@@ -7,12 +7,13 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation, getI18n } from 'react-i18next'
-import { Menu } from 'lucide-react'
+import { Menu, Sparkles } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline'
 import ChatSidebar from '../components/ChatSidebar'
 import ChatMessageList from '../components/ChatMessageList'
 import ChatInput from '../components/ChatInput'
+import type { ChatInputHandle } from '../components/ChatInput'
 import ChatFileUpload from '../components/ChatFileUpload'
 import ChatReferencePanel from '../components/ChatReferencePanel'
 import CitationDocDrawer from '../components/CitationDocDrawer'
@@ -24,6 +25,7 @@ import { useChatStream } from '../hooks/useChatStream'
 import { useChatFiles } from '../hooks/useChatFiles'
 import type { ChatReference, ChatChunk, DocAggregate, PromptVariable, SendMessageOptions } from '../types/chat.types'
 import DocumentViewerDialog from '../components/DocumentViewerDialog'
+import { PromptBuilderModal } from '@/components/PromptBuilderModal'
 
 // ============================================================================
 // Helpers
@@ -92,6 +94,12 @@ function DatasetChatPage() {
 
   // Mobile sidebar drawer state
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+
+  // Prompt Builder modal state
+  const [promptBuilderOpen, setPromptBuilderOpen] = useState(false)
+
+  // Ref for ChatInput imperative handle (used by Prompt Builder to set textarea value)
+  const chatInputRef = useRef<ChatInputHandle>(null)
 
   // Hooks
   const assistants = useChatAssistants()
@@ -400,6 +408,7 @@ function DatasetChatPage() {
 
           {/* Chat input with assistant selector and toggles */}
           <ChatInput
+            ref={chatInputRef}
             onSend={handleSendMessage}
             onStop={stream.stopStream}
             isStreaming={stream.isStreaming}
@@ -410,14 +419,25 @@ function DatasetChatPage() {
             onFilesSelected={(files) => chatFiles.uploadFiles(files)}
             fileIds={chatFiles.fileIds}
             leftSlot={
-              <AssistantSelectorPopover
-                assistants={assistants.assistants}
-                activeAssistantId={assistants.activeAssistant?.id ?? null}
-                onSelect={(id) => {
-                  assistants.setActiveAssistantId(id)
-                  conversations.setActiveConversationId(null)
-                }}
-              />
+              <>
+                <AssistantSelectorPopover
+                  assistants={assistants.assistants}
+                  activeAssistantId={assistants.activeAssistant?.id ?? null}
+                  onSelect={(id) => {
+                    assistants.setActiveAssistantId(id)
+                    conversations.setActiveConversationId(null)
+                  }}
+                />
+                {/* Prompt Builder trigger button (per D-02) */}
+                <button
+                  type="button"
+                  className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
+                  onClick={() => setPromptBuilderOpen(true)}
+                  title={t('glossary.promptBuilder.title')}
+                >
+                  <Sparkles className="h-4 w-4" />
+                </button>
+              </>
             }
           />
         </div>
@@ -446,6 +466,16 @@ function DatasetChatPage() {
           </SheetContent>
         </Sheet>
       </div>
+
+      {/* Prompt Builder modal — opened by Sparkles button in ChatInput toggle row */}
+      <PromptBuilderModal
+        open={promptBuilderOpen}
+        onClose={() => setPromptBuilderOpen(false)}
+        onApply={(prompt) => {
+          // Insert generated prompt into chat textarea via imperative handle (per D-05)
+          chatInputRef.current?.setValue(prompt)
+        }}
+      />
 
       {/* Document preview drawer */}
       {(() => {
