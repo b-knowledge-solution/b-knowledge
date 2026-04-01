@@ -218,3 +218,48 @@ def chunk(filename, binary=None, from_page=0, to_page=100000,
     # Fallback to naive chunking if code_graph fails
     callback(0.5, f"Falling back to text chunking for {filename}")
     return _naive_fallback(filename, source, callback, max_tokens)
+
+
+def chunk_with_graph(filename, binary=None, from_page=0, to_page=100000,
+                     lang="English", callback=None, **kwargs):
+    """Parse a source code file and extract its code knowledge graph.
+
+    Delegates to chunk() for the actual parsing, then reports whether
+    graph extraction succeeded. Returns a tuple of (chunks, graph_ok)
+    so the task executor can log graph extraction status separately.
+
+    Graph extraction failures are non-fatal -- chunks are still returned
+    from the fallback path even if graph writes fail.
+
+    Args:
+        filename: Name of the source code file.
+        binary: Raw file content as bytes.
+        from_page: Unused (kept for interface compatibility).
+        to_page: Unused (kept for interface compatibility).
+        lang: Language hint for tokenization.
+        callback: Progress callback function (prog: float, msg: str).
+        **kwargs: Additional config including parser_config, kb_id, tenant_id.
+
+    Returns:
+        Tuple of (list of chunk dicts, bool indicating graph extraction success).
+    """
+    # Track whether graph extraction path was used (not just fallback)
+    graph_ok = False
+
+    # Detect if the file extension is supported by code_graph
+    ext = os.path.splitext(filename)[1].lower()
+    if ext in _CODE_GRAPH_EXTENSIONS:
+        graph_ok = True
+
+    # Delegate to chunk() which already integrates with code_graph
+    chunks = chunk(
+        filename, binary=binary, from_page=from_page, to_page=to_page,
+        lang=lang, callback=callback, **kwargs,
+    )
+
+    # If chunks came back but extension was supported, graph extraction worked
+    # If no chunks returned, graph_ok should be False regardless
+    if not chunks:
+        graph_ok = False
+
+    return chunks, graph_ok

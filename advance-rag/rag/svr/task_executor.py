@@ -429,19 +429,39 @@ async def build_chunks(task, progress_callback):
         raise
 
     try:
-        async with chunk_limiter:
-            cks = await thread_pool_exec(
-                chunker.chunk,
-                task["name"],
-                binary=binary,
-                from_page=task["from_page"],
-                to_page=task["to_page"],
-                lang=task["language"],
-                callback=progress_callback,
-                kb_id=task["kb_id"],
-                parser_config=task["parser_config"],
-                tenant_id=task["tenant_id"],
-            )
+        # For code parser, use chunk_with_graph to also extract the knowledge graph
+        if task["parser_id"].lower() == ParserType.CODE.value:
+            async with chunk_limiter:
+                cks, graph_ok = await thread_pool_exec(
+                    chunker.chunk_with_graph,
+                    task["name"],
+                    binary=binary,
+                    from_page=task["from_page"],
+                    to_page=task["to_page"],
+                    lang=task["language"],
+                    callback=progress_callback,
+                    kb_id=task["kb_id"],
+                    parser_config=task["parser_config"],
+                    tenant_id=task["tenant_id"],
+                )
+            if graph_ok:
+                logging.info("Code graph extracted for %s", task["name"])
+            else:
+                logging.warning("Code graph extraction skipped for %s", task["name"])
+        else:
+            async with chunk_limiter:
+                cks = await thread_pool_exec(
+                    chunker.chunk,
+                    task["name"],
+                    binary=binary,
+                    from_page=task["from_page"],
+                    to_page=task["to_page"],
+                    lang=task["language"],
+                    callback=progress_callback,
+                    kb_id=task["kb_id"],
+                    parser_config=task["parser_config"],
+                    tenant_id=task["tenant_id"],
+                )
         logging.info("Chunking({}) {}/{} done".format(timer() - st, task["location"], task["name"]))
     except TaskCanceledException:
         raise
