@@ -17,10 +17,13 @@ const pip = isWin
   ? join(venvDir, 'Scripts', 'pip')
   : join(venvDir, 'bin', 'pip')
 
+// Use 'python' on Windows, 'python3' on Linux/Mac
+const pythonCmd = isWin ? 'python' : 'python3'
+
 /** Create centralized venv if it doesn't exist */
 if (!existsSync(venvDir)) {
   console.log('[setup-worker] Creating centralized virtual environment...')
-  execSync(`python -m venv "${venvDir}"`, { cwd: rootDir, stdio: 'inherit' })
+  execSync(`${pythonCmd} -m venv "${venvDir}"`, { cwd: rootDir, stdio: 'inherit' })
 } else {
   console.log('[setup-worker] Virtual environment already exists, skipping creation.')
 }

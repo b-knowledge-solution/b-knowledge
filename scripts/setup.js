@@ -69,10 +69,13 @@ function getVersion(cmd, args = ['--version']) {
 // ==========================================================================
 section('Step 1: Checking prerequisites')
 
+// Use 'python' on Windows, 'python3' on Linux/Mac
+const pythonCmd = process.platform === 'win32' ? 'python' : 'python3'
+
 const prerequisites = [
   { cmd: 'node', label: 'Node.js' },
   { cmd: 'npm', label: 'npm' },
-  { cmd: 'python', label: 'Python' },
+  { cmd: pythonCmd, label: 'Python' },
 ]
 
 let missingPrereqs = false
