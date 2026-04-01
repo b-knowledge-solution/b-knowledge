@@ -1,6 +1,7 @@
 /**
- * Graph statistics overview cards.
+ * @fileoverview Graph statistics overview bar.
  * @description Shows node counts by label and relationship counts by type.
+ * Uses theme-aware classes for dark mode support.
  */
 import { useTranslation } from 'react-i18next'
 import { BarChart3, GitFork } from 'lucide-react'
@@ -8,24 +9,31 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import type { CodeGraphStats } from '../types/code-graph.types'
 
-/** Props for GraphStatsBar */
+/**
+ * @description Props for the GraphStatsBar component
+ */
 interface GraphStatsBarProps {
+  /** Graph statistics data (node/relationship counts) */
   stats: CodeGraphStats | undefined
+  /** Whether stats are still loading */
   isLoading: boolean
 }
 
 /**
- * Horizontal bar showing graph stats (node/rel counts) at the top of the page.
- * @param props - Component props
+ * @description Horizontal bar showing graph stats (node/rel counts) at the top of the page.
+ * Displays total node count, total edge count, and top node type badges.
+ * @param {GraphStatsBarProps} props - Component props
+ * @returns {JSX.Element} Stats bar with summary badges
  */
 const GraphStatsBar = ({ stats, isLoading }: GraphStatsBarProps) => {
   const { t } = useTranslation()
 
+  // Skeleton loading state
   if (isLoading || !stats) {
     return (
       <div className="flex gap-3">
         {[1, 2, 3].map((i) => (
-          <Card key={i} className="bg-slate-800 border-slate-700 animate-pulse">
+          <Card key={i} className="animate-pulse">
             <CardContent className="p-3 h-12" />
           </Card>
         ))}
@@ -38,27 +46,27 @@ const GraphStatsBar = ({ stats, isLoading }: GraphStatsBarProps) => {
 
   return (
     <div className="flex flex-wrap gap-2 items-center">
-      {/* Total nodes */}
-      <Card className="bg-slate-800 border-slate-700">
+      {/* Total node count */}
+      <Card>
         <CardContent className="p-2 px-3 flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-blue-400" />
-          <span className="text-sm text-slate-200 font-medium">
+          <BarChart3 className="h-4 w-4 text-primary" />
+          <span className="text-sm text-foreground font-medium">
             {totalNodes.toLocaleString()} {t('codeGraph.nodes', 'nodes')}
           </span>
         </CardContent>
       </Card>
 
-      {/* Total relationships */}
-      <Card className="bg-slate-800 border-slate-700">
+      {/* Total relationship count */}
+      <Card>
         <CardContent className="p-2 px-3 flex items-center gap-2">
-          <GitFork className="h-4 w-4 text-emerald-400" />
-          <span className="text-sm text-slate-200 font-medium">
+          <GitFork className="h-4 w-4 text-emerald-500" />
+          <span className="text-sm text-foreground font-medium">
             {totalRels.toLocaleString()} {t('codeGraph.relationships', 'edges')}
           </span>
         </CardContent>
       </Card>
 
-      {/* Node type badges */}
+      {/* Top node type badges sorted by count */}
       {stats.nodes
         .filter((n) => n.count > 0)
         .sort((a, b) => b.count - a.count)
@@ -67,7 +75,7 @@ const GraphStatsBar = ({ stats, isLoading }: GraphStatsBarProps) => {
           <Badge
             key={String(n.label)}
             variant="outline"
-            className="text-xs text-slate-300 border-slate-600"
+            className="text-xs"
           >
             {Array.isArray(n.label) ? n.label[0] : n.label}: {n.count}
           </Badge>
