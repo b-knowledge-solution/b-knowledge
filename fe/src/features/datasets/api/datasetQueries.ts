@@ -21,6 +21,7 @@ import type {
 } from '../types'
 import { globalMessage } from '@/app/App'
 import { queryKeys } from '@/lib/queryKeys'
+import { PollInterval } from '@/constants'
 
 // ============================================================================
 // Form data type (used by useDatasets)
@@ -310,7 +311,7 @@ export function useDocuments(datasetId: string | undefined): UseDocumentsReturn 
     // Auto-refresh every 5s when any document is parsing
     refetchInterval: (query) => {
       const docs = query.state.data
-      if (docs && docs.some((d: Document) => d.run === '1')) return 5000
+      if (docs && docs.some((d: Document) => d.run === '1')) return PollInterval.STANDARD
       return false
     },
   })
@@ -759,7 +760,7 @@ export function useGraphRAGStatus(datasetId: string | undefined) {
     enabled: !!datasetId,
     refetchInterval: (query) => {
       const status = query.state.data?.status
-      return status === 'running' ? 3000 : false
+      return status === 'running' ? PollInterval.FAST : false
     },
   })
   return query
@@ -776,7 +777,7 @@ export function useRaptorStatus(datasetId: string | undefined) {
     enabled: !!datasetId,
     refetchInterval: (query) => {
       const status = query.state.data?.status
-      return status === 'running' ? 3000 : false
+      return status === 'running' ? PollInterval.FAST : false
     },
   })
 }
@@ -793,7 +794,7 @@ export function useGraphMetrics(datasetId: string | undefined) {
     queryFn: () => datasetApi.getGraphMetrics(datasetId!),
     enabled: !!datasetId,
     // Refresh every 30s so metrics stay current while viewing
-    refetchInterval: 30000,
+    refetchInterval: PollInterval.DEFAULT,
   })
 }
 

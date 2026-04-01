@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import UserMultiSelect from '@/features/users/components/UserMultiSelect'
+import { UserRole } from '@/constants'
 import type { Team, TeamMember } from '../types/team.types'
 import type { User } from '@/features/auth'
 
@@ -129,8 +130,8 @@ export function TeamMembersDialog({
                                         </TableCell>
                                         <TableCell>
                                             <Badge
-                                                variant={member.role === 'leader' ? 'default' : 'secondary'}
-                                                className={`capitalize ${member.role === 'leader' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : ''}`}
+                                                variant={member.role === UserRole.LEADER ? 'default' : 'secondary'}
+                                                className={`capitalize ${member.role === UserRole.LEADER ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : ''}`}
                                             >
                                                 {t(`iam.teams.${member.role}`)}
                                             </Badge>

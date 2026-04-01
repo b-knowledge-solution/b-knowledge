@@ -13,6 +13,7 @@ import { ModelFactory } from '@/shared/models/factory.js'
 import { getUuid } from '@/shared/utils/uuid.js'
 import { socketService } from '@/shared/services/socket.service.js'
 import { log } from '@/shared/services/logger.service.js'
+import { AgentNodeType, ConditionOperator, EdgeHandle } from '@/shared/constants/index.js'
 import type { AgentRunStep } from '../models/agent-run-step.model.js'
 import type { AgentRun } from '../models/agent-run.model.js'
 import { agentExecutorService } from './agent-executor.service.js'
@@ -397,7 +398,7 @@ class AgentDebugService {
     const nodeDef = state.nodeDefs[nodeId]
 
     // Begin node receives user input directly
-    if (nodeDef?.type === 'begin') {
+    if (nodeDef?.type === AgentNodeType.BEGIN) {
       return { input: state.input }
     }
 
@@ -430,38 +431,38 @@ class AgentDebugService {
     userInput: string,
   ): Record<string, unknown> {
     switch (nodeDef.type) {
-      case 'begin':
+      case AgentNodeType.BEGIN:
         return { output: userInput }
 
-      case 'answer':
+      case AgentNodeType.ANSWER:
         return { output: inputData.content || inputData.output || '' }
 
-      case 'message':
+      case AgentNodeType.MESSAGE:
         return { output: (nodeDef.config?.content as string) || '' }
 
-      case 'switch': {
+      case AgentNodeType.SWITCH: {
         // Evaluate switch conditions
         const conditions = (nodeDef.config?.conditions || []) as Array<{ value: string; operator: string; target: string }>
         const inputValue = String(inputData.output || '')
         const matched = conditions.find((c) => {
-          if (c.operator === 'contains') return inputValue.includes(c.value)
-          if (c.operator === 'equals') return inputValue === c.value
+          if (c.operator === ConditionOperator.CONTAINS) return inputValue.includes(c.value)
+          if (c.operator === ConditionOperator.EQUALS) return inputValue === c.value
           return false
         })
         return { output: inputValue, matched_branch: matched?.target || 'default' }
       }
 
-      case 'condition': {
+      case AgentNodeType.CONDITION: {
         const expr = (nodeDef.config?.expression as string) || 'true'
         const result = expr === 'true' || inputData.output === expr
         return { output: inputData.output || '', condition_result: result }
       }
 
-      case 'merge':
-      case 'concentrator':
+      case AgentNodeType.MERGE:
+      case AgentNodeType.CONCENTRATOR:
         return { output: inputData.output || '', merged: true }
 
-      case 'template': {
+      case AgentNodeType.TEMPLATE: {
         let templateStr = (nodeDef.config?.template as string) || ''
         for (const [key, value] of Object.entries(inputData)) {
           templateStr = templateStr.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(value))
@@ -469,10 +470,10 @@ class AgentDebugService {
         return { output: templateStr }
       }
 
-      case 'note':
+      case AgentNodeType.NOTE:
         return { output: '' }
 
-      case 'keyword_extract':
+      case AgentNodeType.KEYWORD_EXTRACT:
         return { output: inputData.output || '', keywords: [] }
 
       default:
@@ -505,7 +506,7 @@ class AgentDebugService {
     // Build adjacency list, skipping loop-back edges
     for (const edge of edges) {
       const targetNode = nodes[edge.target]
-      if (targetNode?.type === 'loop' && edge.sourceHandle === 'loop_back') continue
+      if (targetNode?.type === AgentNodeType.LOOP && edge.sourceHandle === EdgeHandle.LOOP_BACK) continue
 
       adjList.get(edge.source)?.push(edge.target)
       inDegree.set(edge.target, (inDegree.get(edge.target) || 0) + 1)

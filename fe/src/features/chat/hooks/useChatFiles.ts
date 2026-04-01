@@ -8,6 +8,7 @@
 
 import { useState, useRef } from 'react'
 import { chatApi } from '../api/chatApi'
+import { FileSize, UploadLimit } from '@/constants'
 
 // ============================================================================
 // Types
@@ -59,10 +60,10 @@ const ALLOWED_TYPES = new Set([
 ])
 
 /** Maximum file size in bytes (20MB) */
-const MAX_FILE_SIZE = 20 * 1024 * 1024
+const MAX_FILE_SIZE = FileSize.MAX_CHAT_FILE
 
 /** Maximum number of files per upload */
-const MAX_FILES = 5
+const MAX_FILES = UploadLimit.MAX_CHAT_FILES
 
 // ============================================================================
 // Hook

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useAuth } from '@/features/auth';
+import { UserRole } from '@/constants';
 import { useDatasets } from '../api/datasetQueries';
 import DatasetCard from '../components/DatasetCard';
 import CreateDatasetModal from '../components/CreateDatasetModal';
@@ -23,7 +24,7 @@ const DatasetsPage: React.FC = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   // Grant admin privileges to admin and leader roles
-  const isAdmin = user?.role === 'admin' || user?.role === 'leader';
+  const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.LEADER;
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   // State for access control dialog
   const [accessDataset, setAccessDataset] = useState<Dataset | null>(null);

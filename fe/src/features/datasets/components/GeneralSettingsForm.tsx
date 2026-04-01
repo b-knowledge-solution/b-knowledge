@@ -29,6 +29,7 @@ import {
   LANGUAGE_OPTIONS, PARSER_OPTIONS, PDF_PARSER_OPTIONS, PARSER_DESCRIPTIONS,
 } from '../types'
 import { useProviders } from '@/features/llm-provider/api/llmProviderQueries'
+import { ModelType } from '@/constants'
 
 // ============================================================================
 // Pipeline introduction SVG imports
@@ -276,7 +277,7 @@ const GeneralSettingsForm: React.FC<GeneralSettingsFormProps> = ({
 }) => {
   const { t } = useTranslation()
   const { data: providers } = useProviders()
-  const embeddingModels = providers?.filter((p) => p.model_type === 'embedding') || []
+  const embeddingModels = providers?.filter((p) => p.model_type === ModelType.EMBEDDING) || []
 
   // ---- Section 1: Basic ----
   const [name, setName] = useState(settings.name)

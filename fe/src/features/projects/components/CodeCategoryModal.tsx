@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 
 import { useProviders } from '@/features/llm-provider/api/llmProviderQueries'
+import { ModelType } from '@/constants'
 
 // ============================================================================
 // Constants
@@ -275,7 +276,7 @@ const SliderField: React.FC<{
 const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel }: CodeCategoryModalProps) => {
   const { t } = useTranslation()
   const { data: providers } = useProviders()
-  const embeddingModels = providers?.filter((p) => p.model_type === 'embedding') || []
+  const embeddingModels = providers?.filter((p) => p.model_type === ModelType.EMBEDDING) || []
   const [formData, setFormData] = useState<CodeCategoryFormData>(INITIAL_FORM_DATA)
   const [nameError, setNameError] = useState('')
 

@@ -22,6 +22,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 
 import { useProviders } from '@/features/llm-provider/api/llmProviderQueries'
+import { ModelType } from '@/constants'
 
 // ============================================================================
 // Pipeline SVG imports (same as GeneralSettingsForm)
@@ -238,7 +239,7 @@ const SliderField: React.FC<{
 const CategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel }: CategoryModalProps) => {
   const { t } = useTranslation()
   const { data: providers } = useProviders()
-  const embeddingModels = providers?.filter((p) => p.model_type === 'embedding') || []
+  const embeddingModels = providers?.filter((p) => p.model_type === ModelType.EMBEDDING) || []
   const [formData, setFormData] = useState<CategoryFormData>(INITIAL_FORM_DATA)
   const [nameError, setNameError] = useState('')
   const [showIntroPanel, setShowIntroPanel] = useState(true)

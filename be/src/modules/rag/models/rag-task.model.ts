@@ -10,6 +10,7 @@
 
 import { db } from '@/shared/db/knex.js'
 import { TaskRow } from '@/shared/models/types.js'
+import { TaskStatus } from '@/shared/constants/index.js'
 
 /**
  * @description Get current Unix timestamp in milliseconds
@@ -101,11 +102,11 @@ export class RagTaskModel {
             .where('document.kb_id', normalizedKbId);
 
         // Filter by status if provided
-        if (status === 'done') {
+        if (status === TaskStatus.DONE) {
             baseQuery = baseQuery.where('task.progress', 1);
-        } else if (status === 'failed') {
+        } else if (status === TaskStatus.FAILED) {
             baseQuery = baseQuery.where('task.progress', -1);
-        } else if (status === 'running') {
+        } else if (status === TaskStatus.RUNNING) {
             baseQuery = baseQuery.where('task.progress', '>', 0).where('task.progress', '<', 1);
         }
 

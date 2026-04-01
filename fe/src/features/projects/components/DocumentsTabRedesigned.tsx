@@ -45,6 +45,7 @@ import EditVersionModal from './EditVersionModal'
 import DocumentListPanel from './DocumentListPanel'
 import JobManagementModal from './JobManagementModal'
 import { EntityPermissionModal } from './EntityPermissionModal'
+import { PollInterval } from '@/constants'
 
 // ============================================================================
 // Types
@@ -147,7 +148,7 @@ const DocumentsTabRedesigned = ({ projectId, initialCategories, embeddingModels 
       }
     }
     fetchActiveCount()
-    const timer = setInterval(fetchActiveCount, 30000)
+    const timer = setInterval(fetchActiveCount, PollInterval.DEFAULT)
     return () => clearInterval(timer)
   }, [selectedCategory, selectedVersion, projectId])
 

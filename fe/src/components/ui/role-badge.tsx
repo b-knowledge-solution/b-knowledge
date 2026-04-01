@@ -14,6 +14,7 @@
 
 import { Badge } from '@/components/ui/badge'
 import { useTranslation } from 'react-i18next'
+import { UserRole } from '@/constants'
 
 // ============================================================================
 // Constants
@@ -24,10 +25,10 @@ import { useTranslation } from 'react-i18next'
  * supporting both light and dark mode variants
  */
 const ROLE_STYLES: Record<string, string> = {
-  'super-admin': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-  'admin': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-  'leader': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  'user': 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300',
+  [UserRole.SUPER_ADMIN]: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+  [UserRole.ADMIN]: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+  [UserRole.LEADER]: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  [UserRole.USER]: 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300',
 }
 
 // ============================================================================
@@ -59,10 +60,10 @@ export function RoleBadge({ role, className }: RoleBadgeProps) {
   const roleKey = role.toLowerCase()
 
   // Fall back to user style for unrecognized roles
-  const style = ROLE_STYLES[roleKey] || ROLE_STYLES['user']
+  const style = ROLE_STYLES[roleKey] || ROLE_STYLES[UserRole.USER]
 
   // Map role key to i18n translation key (super-admin -> superAdmin)
-  const i18nKey = roleKey === 'super-admin' ? 'superAdmin' : roleKey
+  const i18nKey = roleKey === UserRole.SUPER_ADMIN ? 'superAdmin' : roleKey
   const label = t(`accessControl.roles.${i18nKey}`)
 
   return (

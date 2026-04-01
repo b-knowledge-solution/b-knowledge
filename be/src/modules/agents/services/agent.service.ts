@@ -9,6 +9,7 @@
 import { ModelFactory } from '@/shared/models/factory.js'
 import { db } from '@/shared/db/knex.js'
 import { log } from '@/shared/services/logger.service.js'
+import { AgentStatus } from '@/shared/constants/index.js'
 import type { Agent } from '../models/agent.model.js'
 import type { CreateAgentDto, UpdateAgentDto, ListAgentsQuery } from '../schemas/agent.schemas.js'
 
@@ -114,7 +115,7 @@ class AgentService {
       name: data.name,
       description: data.description ?? null,
       mode: data.mode,
-      status: 'draft',
+      status: AgentStatus.DRAFT,
       dsl,
       dsl_version: 1,
       tenant_id: tenantId,
@@ -141,7 +142,7 @@ class AgentService {
     const existing = await this.getById(id, tenantId)
 
     // Guard: published agents have immutable DSL — must revert to draft first
-    if (data.dsl && existing.status === 'published') {
+    if (data.dsl && existing.status === AgentStatus.PUBLISHED) {
       const error = new Error('Cannot update DSL on a published agent. Revert to draft first.')
       ;(error as any).statusCode = 409
       throw error
@@ -197,7 +198,7 @@ class AgentService {
       name: `${source.name} (copy)`,
       description: source.description,
       mode: source.mode,
-      status: 'draft',
+      status: AgentStatus.DRAFT,
       dsl: typeof source.dsl === 'string' ? JSON.parse(source.dsl) : source.dsl,
       dsl_version: source.dsl_version,
       tenant_id: tenantId,
@@ -305,7 +306,7 @@ class AgentService {
     const updated = await ModelFactory.agent.update(id, {
       dsl: typeof version.dsl === 'string' ? JSON.parse(version.dsl) : version.dsl,
       dsl_version: version.dsl_version,
-      status: 'draft',
+      status: AgentStatus.DRAFT,
     })
 
     log.info('Agent version restored', { agentId: id, versionId, versionNumber: version.version_number })

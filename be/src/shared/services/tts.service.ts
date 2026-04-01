@@ -12,6 +12,7 @@
 import { ModelFactory } from '@/shared/models/factory.js'
 import { ModelProvider } from '@/shared/models/types.js'
 import { log } from '@/shared/services/logger.service.js'
+import { ProviderStatus, ModelType } from '@/shared/constants/index.js'
 
 // ============================================================================
 // Types
@@ -248,7 +249,7 @@ export class TtsService {
     // If a specific provider ID is given, look it up directly
     if (providerId) {
       const provider = await ModelFactory.modelProvider.findById(providerId)
-      if (!provider || provider.status !== 'active') {
+      if (!provider || provider.status !== ProviderStatus.ACTIVE) {
         throw new Error(`TTS provider ${providerId} not found or inactive`)
       }
       return provider
@@ -256,13 +257,13 @@ export class TtsService {
 
     // Find default TTS providers (model_type = 'tts', is_default = true, status = 'active')
     const defaults = await ModelFactory.modelProvider.findDefaults()
-    const ttsDefault = defaults.find(p => p.model_type === 'tts')
+    const ttsDefault = defaults.find(p => p.model_type === ModelType.TTS)
     if (ttsDefault) {
       return ttsDefault
     }
 
     // Fallback: find any active TTS provider
-    const allProviders = await ModelFactory.modelProvider.findAll({ model_type: 'tts', status: 'active' })
+    const allProviders = await ModelFactory.modelProvider.findAll({ model_type: ModelType.TTS, status: ProviderStatus.ACTIVE })
     if (allProviders.length > 0) {
       return allProviders[0]!
     }

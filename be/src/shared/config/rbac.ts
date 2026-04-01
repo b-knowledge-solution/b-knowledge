@@ -10,12 +10,14 @@
  * @module config/rbac
  * @example
  * import { hasPermission, Role, Permission } from './config/rbac.js';
- * 
+ *
  * // Check if user can manage other users
  * if (hasPermission('manager', 'manage_users')) {
  *   // Allow user management
  * }
  */
+
+import { UserRole } from '@/shared/constants/index.js'
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -181,7 +183,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
  */
 export const hasPermission = (userRole: string, permission: Permission): boolean => {
     // Super-admin and admin roles have all permissions — no need to check the permission list
-    if (userRole === 'super-admin' || userRole === 'admin') return true;
+    if (userRole === UserRole.SUPER_ADMIN || userRole === UserRole.ADMIN) return true;
     const role = userRole as Role;
     const permissions = ROLE_PERMISSIONS[role] || [];
     return permissions.includes(permission);

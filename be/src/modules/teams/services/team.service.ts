@@ -12,6 +12,7 @@ import { getUuid } from '@/shared/utils/uuid.js';
 import { log } from '@/shared/services/logger.service.js';
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js';
 import { Team } from '@/shared/models/types.js';
+import { UserRole, TeamRole } from '@/shared/constants/index.js';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -104,7 +105,7 @@ export class TeamService {
             const members = await this.getTeamMembers(team.id);
             // Get leaders sorted by joined_at ascending (oldest first)
             const leaders = members
-                .filter(m => m.role === 'leader')
+                .filter(m => m.role === TeamRole.LEADER)
                 .sort((a, b) => new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime());
             const leader = leaders[0]; // Get the oldest leader
 
@@ -313,14 +314,14 @@ export class TeamService {
         }
 
         // Check for admin role - admins cannot be added to teams
-        const admins = users.filter(u => u.role === 'admin');
+        const admins = users.filter(u => u.role === UserRole.ADMIN);
         if (admins.length > 0) {
             throw new Error('Administrators cannot be added to teams');
         }
 
         // Add users to team in parallel with role mapping
         await Promise.all(users.map(user => {
-            const teamRole = user.role === 'leader' ? 'leader' : 'member';
+            const teamRole = user.role === UserRole.LEADER ? TeamRole.LEADER : TeamRole.MEMBER;
             return this.addUserToTeam(teamId, user.id, teamRole, actor);
         }));
     }
@@ -348,7 +349,7 @@ export class TeamService {
             const user = await ModelFactory.user.findById(member.id);
 
             // Skip admins - they already have full access
-            if (!user || user.role === 'admin') return;
+            if (!user || user.role === UserRole.ADMIN) return;
 
             // Parse existing permissions (handle both string and array formats)
             let currentPermissions: string[] = [];

@@ -12,6 +12,7 @@
 import { ModelFactory } from '@/shared/models/factory.js'
 import { ChatAssistant, ChatAssistantAccess } from '@/shared/models/types.js'
 import { log } from '@/shared/services/logger.service.js'
+import { UserRole } from '@/shared/constants/index.js'
 
 /**
  * Service class for chat assistant CRUD and RBAC access control operations.
@@ -116,7 +117,7 @@ export class ChatAssistantService {
     let query = ModelFactory.chatAssistant.getKnex()
 
     // Apply RBAC filtering (admins see all)
-    if (userRole !== 'admin' && userRole !== 'superadmin') {
+    if (userRole !== UserRole.ADMIN && userRole !== UserRole.SUPERADMIN) {
       // Get assistant IDs the user has been explicitly granted access to
       const accessibleIds = await ModelFactory.chatAssistantAccess.findAccessibleAssistantIds(userId, teamIds)
 
@@ -276,7 +277,7 @@ export class ChatAssistantService {
     teamIds: string[]
   ): Promise<boolean> {
     // Admins always have access
-    if (userRole === 'admin' || userRole === 'superadmin') {
+    if (userRole === UserRole.ADMIN || userRole === UserRole.SUPERADMIN) {
       return true
     }
 

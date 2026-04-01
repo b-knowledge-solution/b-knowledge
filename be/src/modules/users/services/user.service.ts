@@ -11,6 +11,7 @@ import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/se
 import { abilityService } from '@/shared/services/ability.service.js';
 import { getRedisClient } from '@/shared/services/redis.service.js';
 import { User, UserIpHistory } from '@/shared/models/types.js';
+import { UserRole } from '@/shared/constants/index.js';
 
 /**
  * @description Shape of an active user session returned to the frontend.
@@ -56,7 +57,7 @@ export class UserService {
                 id: 'root-user',
                 email: rootUserEmail,
                 display_name: 'System Administrator',
-                role: 'admin',
+                role: UserRole.ADMIN,
                 permissions: JSON.stringify(['*']),  // Wildcard grants all permissions
             });
 
@@ -147,7 +148,7 @@ export class UserService {
                 id: adUser.id,
                 email: adUser.email,
                 display_name: adUser.displayName,
-                role: 'user',
+                role: UserRole.USER,
                 permissions: JSON.stringify([]),
                 department: adUser.department || null,
                 job_title: adUser.jobTitle || null,
@@ -332,7 +333,7 @@ export class UserService {
         }
 
         // Validate role value
-        const validRoles = ['admin', 'leader', 'user'] as const;
+        const validRoles = [UserRole.ADMIN, UserRole.LEADER, UserRole.USER] as const;
         if (!validRoles.includes(role as any)) {
             throw new Error('Invalid role');
         }
@@ -348,7 +349,7 @@ export class UserService {
 
         // SECURITY: Prevent privilege escalation by managers
         // Only admins can promote someone to admin
-        if (role === 'admin' && actor.role !== 'admin') {
+        if (role === UserRole.ADMIN && actor.role !== UserRole.ADMIN) {
             log.warn('Unauthorized admin promotion attempt', {
                 userId: actor.id,
                 userRole: actor.role,

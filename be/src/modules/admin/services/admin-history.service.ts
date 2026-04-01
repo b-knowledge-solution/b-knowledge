@@ -6,6 +6,7 @@
  */
 import { db } from '@/shared/db/knex.js';
 import { ModelFactory } from '@/shared/models/factory.js';
+import { MessageRole, FeedbackFilter as FeedbackFilterConst } from '@/shared/constants/index.js';
 
 /** Feedback filter options for session queries. */
 export type FeedbackFilter = 'positive' | 'negative' | 'any' | 'none'
@@ -26,7 +27,7 @@ export class AdminHistoryService {
         if (!feedbackFilter) return query
 
         switch (feedbackFilter) {
-            case 'positive':
+            case FeedbackFilterConst.POSITIVE:
                 // Only sessions that have at least one positive feedback
                 return query.whereExists(function (this: any) {
                     this.select(db.raw('1')).from('answer_feedback')
@@ -34,7 +35,7 @@ export class AdminHistoryService {
                         .where('answer_feedback.source', source)
                         .where('answer_feedback.thumbup', true)
                 })
-            case 'negative':
+            case FeedbackFilterConst.NEGATIVE:
                 // Only sessions that have at least one negative feedback
                 return query.whereExists(function (this: any) {
                     this.select(db.raw('1')).from('answer_feedback')
@@ -42,14 +43,14 @@ export class AdminHistoryService {
                         .where('answer_feedback.source', source)
                         .where('answer_feedback.thumbup', false)
                 })
-            case 'any':
+            case FeedbackFilterConst.ANY:
                 // Only sessions that have any feedback at all
                 return query.whereExists(function (this: any) {
                     this.select(db.raw('1')).from('answer_feedback')
                         .whereRaw(`answer_feedback.source_id = ${sourceIdColumn}`)
                         .where('answer_feedback.source', source)
                 })
-            case 'none':
+            case FeedbackFilterConst.NONE:
                 // Only sessions with no feedback records
                 return query.whereNotExists(function (this: any) {
                     this.select(db.raw('1')).from('answer_feedback')
@@ -310,8 +311,8 @@ export class AdminHistoryService {
         const paired: any[] = [];
         for (let i = 0; i < messages.length; i++) {
             const msg = messages[i];
-            if (msg.role === 'user') {
-                const assistantMsg = messages[i + 1]?.role === 'assistant' ? messages[i + 1] : null;
+            if (msg.role === MessageRole.USER) {
+                const assistantMsg = messages[i + 1]?.role === MessageRole.ASSISTANT ? messages[i + 1] : null;
                 // Use assistant message ID for feedback lookup (feedback is on responses)
                 const feedbackId = assistantMsg?.id || msg.id
                 paired.push({

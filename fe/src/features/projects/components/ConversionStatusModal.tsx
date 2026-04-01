@@ -28,6 +28,7 @@ import {
   type ConversionJobStatus,
 } from '@/features/system/api/converterApi';
 import { useConverterSocket } from '@/features/system/hooks/useConverterSocket';
+import { PollInterval } from '@/constants';
 
 // ============================================================================
 // Props
@@ -174,7 +175,7 @@ const ConversionStatusModal = ({ open, onClose, projectId }: ConversionStatusMod
   // Auto-refresh every 15s while open (fallback)
   useEffect(() => {
     if (!open) return;
-    const id = setInterval(() => fetchData(true), 15000);
+    const id = setInterval(() => fetchData(true), PollInterval.CONVERSION);
     return () => clearInterval(id);
   }, [open, projectId]);
 

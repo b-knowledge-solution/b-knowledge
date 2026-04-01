@@ -25,6 +25,7 @@ import {
   useDeleteConnector,
   useTriggerSync,
 } from '../api/connectorQueries'
+import { ConnectorStatus, SyncStatus } from '@/constants'
 import { useSyncProgress } from '../hooks/useSyncProgress'
 import AddConnectorDialog from './AddConnectorDialog'
 import ConnectorSyncLogsDialog from './ConnectorSyncLogsDialog'
@@ -78,7 +79,7 @@ const ConnectorListPanel = ({ kbId, isAdmin }: ConnectorListPanelProps) => {
 
   // Clear SSE tracking when sync reaches a terminal state
   useEffect(() => {
-    if ((syncStatus === 'completed' || syncStatus === 'failed') && syncingConnectorId) {
+    if ((syncStatus === SyncStatus.COMPLETED || syncStatus === SyncStatus.FAILED) && syncingConnectorId) {
       setSyncingConnectorId(null)
     }
   }, [syncStatus, syncingConnectorId])
@@ -117,7 +118,7 @@ const ConnectorListPanel = ({ kbId, isAdmin }: ConnectorListPanelProps) => {
 
   /** Toggle connector between paused and active status */
   const handleTogglePause = async (connector: Connector) => {
-    const newStatus = connector.status === 'paused' ? 'active' : 'paused'
+    const newStatus = connector.status === ConnectorStatus.PAUSED ? ConnectorStatus.ACTIVE : ConnectorStatus.PAUSED
     await updateMutation.mutateAsync({
       id: connector.id,
       data: { status: newStatus },
@@ -142,11 +143,11 @@ const ConnectorListPanel = ({ kbId, isAdmin }: ConnectorListPanelProps) => {
   /** Get badge variant based on connector status */
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'active':
+      case ConnectorStatus.ACTIVE:
         return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">{t('datasets.connectors.statusActive')}</Badge>
-      case 'paused':
+      case ConnectorStatus.PAUSED:
         return <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">{t('datasets.connectors.statusPaused')}</Badge>
-      case 'error':
+      case ConnectorStatus.ERROR:
         return <Badge variant="destructive">{t('datasets.connectors.statusError')}</Badge>
       default:
         return <Badge variant="secondary">{status}</Badge>
@@ -196,7 +197,7 @@ const ConnectorListPanel = ({ kbId, isAdmin }: ConnectorListPanelProps) => {
       {/* Connector cards */}
       {connectors.map((connector) => {
         // Check if this connector is currently syncing via SSE
-        const isSyncing = syncingConnectorId === connector.id && syncStatus === 'running'
+        const isSyncing = syncingConnectorId === connector.id && syncStatus === SyncStatus.RUNNING
 
         return (
           <Card key={connector.id} className="dark:bg-slate-800 dark:border-slate-700">
@@ -232,7 +233,7 @@ const ConnectorListPanel = ({ kbId, isAdmin }: ConnectorListPanelProps) => {
                             e.preventDefault()
                             setSyncPopoverConnectorId(connector.id)
                           }}
-                          disabled={syncMutation.isPending || isSyncing || connector.status === 'paused'}
+                          disabled={syncMutation.isPending || isSyncing || connector.status === ConnectorStatus.PAUSED}
                           title={t('datasets.connectors.syncNow')}
                         >
                           <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
@@ -264,11 +265,11 @@ const ConnectorListPanel = ({ kbId, isAdmin }: ConnectorListPanelProps) => {
                       size="sm"
                       onClick={() => handleTogglePause(connector)}
                       disabled={updateMutation.isPending}
-                      title={connector.status === 'paused'
+                      title={connector.status === ConnectorStatus.PAUSED
                         ? t('datasets.connectors.resumeConnector')
                         : t('datasets.connectors.pauseConnector')}
                     >
-                      {connector.status === 'paused' ? <Play size={14} /> : <Pause size={14} />}
+                      {connector.status === ConnectorStatus.PAUSED ? <Play size={14} /> : <Pause size={14} />}
                     </Button>
                     {/* View Logs */}
                     <Button

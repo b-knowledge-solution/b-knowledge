@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { BookOpen, Tag } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useAuth } from '@/features/auth'
+import { UserRole } from '@/constants'
 import { useGlossaryTasks } from '../api/glossaryQueries'
 import { useGlossaryKeywords } from '../api/glossaryQueries'
 import { TaskManagementTab } from '../components/TaskManagementTab'
@@ -33,7 +34,7 @@ export const GlossaryPage = () => {
     const { user } = useAuth()
 
     // Determine admin/leader privileges
-    const isAdmin = user?.role === 'admin' || user?.role === 'leader'
+    const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.LEADER
 
     // Active tab and bulk import modal state
     const [activeTab, setActiveTab] = useState('tasks')

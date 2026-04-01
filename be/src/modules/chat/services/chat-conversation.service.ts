@@ -48,6 +48,7 @@ import { ChunkResult, ChatAssistant } from '@/shared/models/types.js'
 import { memoryExtractionService, memoryMessageService } from '@/modules/memory/index.js'
 import { Response as ExpressResponse } from 'express'
 import { getUuid } from '@/shared/utils/uuid.js'
+import { ModelType } from '@/shared/constants/index.js'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1377,7 +1378,7 @@ export class ChatConversationService {
       try {
         // Check if an embedding model is available for precise citation matching
         const embDefaults = await ModelFactory.modelProvider.findDefaults()
-        const hasEmbedding = embDefaults.some(p => p.model_type === 'embedding')
+        const hasEmbedding = embDefaults.some(p => p.model_type === ModelType.EMBEDDING)
 
         if (hasEmbedding && allChunks.length > 0) {
           const citationResult = await ragCitationService.insertCitations(fullAnswer, allChunks)

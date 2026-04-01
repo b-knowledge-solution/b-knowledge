@@ -37,6 +37,7 @@ import { RoleBadge } from '@/components/ui/role-badge'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { useAuth } from '@/features/auth'
 import { UserSessionDialog } from './UserSessionDialog'
+import { UserRole } from '@/constants'
 import type { User } from '@/features/auth'
 
 // ============================================================================
@@ -58,7 +59,7 @@ interface RoleManagementTableProps {
 }
 
 /** @description Available role options for the select dropdown */
-const ROLE_OPTIONS = ['admin', 'leader', 'user'] as const
+const ROLE_OPTIONS = [UserRole.ADMIN, UserRole.LEADER, UserRole.USER] as const
 
 // ============================================================================
 // Component
@@ -103,7 +104,7 @@ export function RoleManagementTable({
     if (member.role === newRole) return
 
     const userName = member.displayName || member.email || ''
-    const oldRole = member.role || 'user'
+    const oldRole = member.role || UserRole.USER
     const isSelf = member.id === currentUser?.id
 
     // Determine which confirmation message to show
@@ -246,7 +247,7 @@ export function RoleManagementTable({
 
                 {/* Current role badge */}
                 <TableCell>
-                  <RoleBadge role={member.role || 'user'} />
+                  <RoleBadge role={member.role || UserRole.USER} />
                 </TableCell>
 
                 {/* Actions: role select + dropdown menu */}
@@ -256,7 +257,7 @@ export function RoleManagementTable({
                       <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                     )}
                     <Select
-                      value={member.role || 'user'}
+                      value={member.role || UserRole.USER}
                       onValueChange={(value: string) => handleRoleSelect(member, value)}
                       disabled={isUpdating}
                     >

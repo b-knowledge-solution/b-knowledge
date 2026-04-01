@@ -15,6 +15,7 @@ import type { Dataset } from '../types';
 import { PARSER_OPTIONS, LANGUAGE_OPTIONS } from '../types';
 import type { DatasetFormData } from '../api/datasetQueries';
 import { useProviders } from '@/features/llm-provider/api/llmProviderQueries';
+import { ModelType } from '@/constants';
 
 /**
  * @description Props for the CreateDatasetModal component.
@@ -57,7 +58,7 @@ const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
   // Fetch available LLM providers to populate embedding model dropdown
   const { data: providers } = useProviders();
   // Filter providers to only show embedding-type models
-  const embeddingModels = providers?.filter((p) => p.model_type === 'embedding') || [];
+  const embeddingModels = providers?.filter((p) => p.model_type === ModelType.EMBEDDING) || [];
 
   return (
     <Dialog open={open} onOpenChange={(v: boolean) => !v && onCancel()}>

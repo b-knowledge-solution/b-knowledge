@@ -12,6 +12,7 @@
 import { ModelFactory } from '@/shared/models/factory.js'
 import { ChunkResult, ModelProvider } from '@/shared/models/types.js'
 import { log } from '@/shared/services/logger.service.js'
+import { ProviderStatus, ModelType } from '@/shared/constants/index.js'
 import { htmlToMarkdown } from '@/shared/utils/html-to-markdown.js'
 
 /**
@@ -229,7 +230,7 @@ export class RagRerankService {
     // If a specific ID is given, look it up directly
     if (rerankProviderId) {
       const provider = await ModelFactory.modelProvider.findById(rerankProviderId)
-      if (provider && provider.status === 'active' && provider.model_type === 'rerank') {
+      if (provider && provider.status === ProviderStatus.ACTIVE && provider.model_type === ModelType.RERANK) {
         return provider
       }
       return null
@@ -237,7 +238,7 @@ export class RagRerankService {
 
     // Find default rerank provider
     const defaults = await ModelFactory.modelProvider.findDefaults()
-    return defaults.find(p => p.model_type === 'rerank') || null
+    return defaults.find(p => p.model_type === ModelType.RERANK) || null
   }
 
   /**

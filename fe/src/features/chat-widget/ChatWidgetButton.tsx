@@ -8,6 +8,7 @@
 
 import { MessageCircle, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { NotificationLimit } from '@/constants'
 
 // ============================================================================
 // Props
@@ -71,7 +72,7 @@ export default function ChatWidgetButton({
             'animate-in fade-in zoom-in-50',
           )}
         >
-          {unreadCount > 99 ? '99+' : unreadCount}
+          {unreadCount > NotificationLimit.UNREAD_CAP ? `${NotificationLimit.UNREAD_CAP}+` : unreadCount}
         </span>
       )}
     </button>

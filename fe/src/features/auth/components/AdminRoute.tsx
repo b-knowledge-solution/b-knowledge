@@ -9,6 +9,7 @@
 
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
+import { UserRole } from '@/constants';
 
 // ============================================================================
 // Types
@@ -42,7 +43,7 @@ const AdminRoute = ({ children }: AdminRouteProps) => {
     }
 
     // Check if the user is authenticated and has admin-level role
-    if (!user || (user.role !== 'admin' && user.role !== 'super-admin')) {
+    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN)) {
         // Redirect to the 403 Forbidden page if access is denied
         return <Navigate to="/403" replace />;
     }

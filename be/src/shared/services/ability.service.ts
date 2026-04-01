@@ -14,6 +14,7 @@ import { AbilityBuilder, createMongoAbility, MongoAbility, RawRuleOf } from '@ca
 import { getRedisClient } from '@/shared/services/redis.service.js'
 import { config } from '@/shared/config/index.js'
 import { log } from '@/shared/services/logger.service.js'
+import { UserRole } from '@/shared/constants/index.js'
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -101,7 +102,7 @@ export function buildAbilityFor(user: AbilityUserContext, policies: AbacPolicyRu
   const { can, cannot, build } = new AbilityBuilder<AppAbility>(createMongoAbility)
 
   // Super-admin gets unrestricted access across all orgs
-  if (user.is_superuser === true || user.role === 'super-admin') {
+  if (user.is_superuser === true || user.role === UserRole.SUPER_ADMIN) {
     can('manage', 'all')
     return build()
   }
@@ -113,7 +114,7 @@ export function buildAbilityFor(user: AbilityUserContext, policies: AbacPolicyRu
   can('read', 'Document', tenantCondition)
 
   // Admin: full management within their org
-  if (user.role === 'admin') {
+  if (user.role === UserRole.ADMIN) {
     can('manage', 'User', tenantCondition)
     can('manage', 'Dataset', tenantCondition)
     can('manage', 'Document', tenantCondition)
@@ -126,7 +127,7 @@ export function buildAbilityFor(user: AbilityUserContext, policies: AbacPolicyRu
   }
 
   // Leader: create/update/delete datasets, manage documents and apps within their org
-  if (user.role === 'leader') {
+  if (user.role === UserRole.LEADER) {
     can('create', 'Dataset', tenantCondition)
     can('update', 'Dataset', tenantCondition)
     can('delete', 'Dataset', tenantCondition)

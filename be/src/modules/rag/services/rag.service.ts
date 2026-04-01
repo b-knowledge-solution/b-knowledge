@@ -13,6 +13,7 @@ import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/se
 import { Dataset, Document, AccessControl, UserContext } from '@/shared/models/types.js';
 import { teamService } from '@/modules/teams/services/team.service.js';
 import { getUuid } from '@/shared/utils/uuid.js';
+import { UserRole, DatasetStatus } from '@/shared/constants/index.js';
 
 /**
  * @description Core service for dataset CRUD, RBAC access control, and document operations.
@@ -33,7 +34,7 @@ export class RagService {
      */
     async getAvailableDatasets(user?: any): Promise<Dataset[]> {
         const allDatasets = await ModelFactory.dataset.findAll(
-            { status: 'active' },
+            { status: DatasetStatus.ACTIVE },
             { orderBy: { name: 'asc' } }
         );
 
@@ -46,7 +47,7 @@ export class RagService {
         }
 
         // Admins see all datasets without filtering
-        if (user.role === 'admin') {
+        if (user.role === UserRole.ADMIN) {
             return allDatasets;
         }
 
@@ -102,7 +103,7 @@ export class RagService {
                 pagerank: data.pagerank || 0,
                 access_control: JSON.stringify(data.access_control || { public: true }),
 
-                status: 'active',
+                status: DatasetStatus.ACTIVE,
                 created_by: user?.id || null,
                 updated_by: user?.id || null,
             });
@@ -189,7 +190,7 @@ export class RagService {
     async deleteDataset(id: string, user?: UserContext): Promise<void> {
         try {
             // Soft-delete the dataset by setting status to 'deleted'
-            await ModelFactory.dataset.update(id, { status: 'deleted' });
+            await ModelFactory.dataset.update(id, { status: DatasetStatus.DELETED });
 
             if (user) {
                 await auditService.log({
@@ -314,13 +315,13 @@ export class RagService {
         teamIds: string[]
     ): Promise<boolean> {
         // Admins always have access
-        if (userRole === 'admin' || userRole === 'superadmin') {
+        if (userRole === UserRole.ADMIN || userRole === UserRole.SUPERADMIN) {
             return true;
         }
 
         // Fetch the dataset to inspect access_control
         const dataset = await ModelFactory.dataset.findById(datasetId);
-        if (!dataset || dataset.status === 'deleted') {
+        if (!dataset || dataset.status === DatasetStatus.DELETED) {
             return false;
         }
 
@@ -376,7 +377,7 @@ export class RagService {
     ): Promise<Dataset> {
         // Fetch parent dataset to inherit settings
         const parent = await ModelFactory.dataset.findById(parentDatasetId)
-        if (!parent || parent.status === 'deleted') {
+        if (!parent || parent.status === DatasetStatus.DELETED) {
             throw new Error('Parent dataset not found')
         }
 
@@ -407,7 +408,7 @@ export class RagService {
 
             // Pagerank = version_number for recency boost in OpenSearch rank_feature queries
             pagerank: versionNumber,
-            status: 'active',
+            status: DatasetStatus.ACTIVE,
             tenant_id: tenantId || parent.tenant_id || null,
             parent_dataset_id: parentDatasetId,
             version_number: versionNumber,

@@ -17,6 +17,7 @@ import { useTts } from '../hooks/useTts'
 import { useAuth } from '@/features/auth'
 import CitationInline from '@/components/CitationInline'
 import { ReferenceImageList } from './ReferenceImageList'
+import { MessageRole } from '@/constants'
 
 // ============================================================================
 // Props
@@ -69,8 +70,8 @@ function ChatMessage({ message, onCitationClick: _onCitationClick, onChunkCitati
   const [editContent, setEditContent] = useState(message.content)
   const editTextareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const isUser = message.role === 'user'
-  const isAssistant = message.role === 'assistant'
+  const isUser = message.role === MessageRole.USER
+  const isAssistant = message.role === MessageRole.ASSISTANT
 
   // Determine bubble and avatar styling based on role — premium treatment
   const bubbleClass = isUser

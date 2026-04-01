@@ -8,6 +8,7 @@ import { log } from '@/shared/services/logger.service.js';
 import { cryptoService } from '@/shared/services/crypto.service.js';
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js';
 import { ModelProvider } from '@/shared/models/types.js';
+import { ProviderStatus, ModelType } from '@/shared/constants/index.js';
 
 /**
  * @description User context for audit logging on provider operations
@@ -41,7 +42,7 @@ export class LlmProviderService {
      */
     async list(): Promise<ModelProvider[]> {
         return ModelFactory.modelProvider.findAll(
-            { status: 'active' },
+            { status: ProviderStatus.ACTIVE },
             { orderBy: { factory_name: 'asc' } }
         );
     }
@@ -81,7 +82,7 @@ export class LlmProviderService {
             factory_name: data.factory_name,
             model_type: data.model_type,
             model_name: data.model_name,
-            status: 'deleted',
+            status: ProviderStatus.DELETED,
         });
 
         let provider: ModelProvider;
@@ -94,7 +95,7 @@ export class LlmProviderService {
                 api_base: data.api_base || null,
                 max_tokens: data.max_tokens || null,
                 vision: data.vision || false,
-                status: 'active',
+                status: ProviderStatus.ACTIVE,
                 is_default: data.is_default || false,
                 updated_by: user?.id || null,
             }))!;
@@ -108,7 +109,7 @@ export class LlmProviderService {
                 api_base: data.api_base || null,
                 max_tokens: data.max_tokens || null,
                 vision: data.vision || false,
-                status: 'active',
+                status: ProviderStatus.ACTIVE,
                 is_default: data.is_default || false,
                 created_by: user?.id || null,
                 updated_by: user?.id || null,
@@ -164,7 +165,7 @@ export class LlmProviderService {
             if (existing) {
                 await db('model_providers')
                     .where('model_type', existing.model_type)
-                    .where('status', 'active')
+                    .where('status', ProviderStatus.ACTIVE)
                     .whereNot('id', id)
                     .update({ is_default: false });
             }
@@ -202,18 +203,18 @@ export class LlmProviderService {
         const provider = await ModelFactory.modelProvider.findById(id);
 
         // Soft-delete the model_providers row
-        await ModelFactory.modelProvider.update(id, { status: 'deleted' });
+        await ModelFactory.modelProvider.update(id, { status: ProviderStatus.DELETED });
 
         // Also soft-delete any paired image2text companion
-        if (provider && provider.model_type === 'chat') {
+        if (provider && provider.model_type === ModelType.CHAT) {
             const [companion] = await ModelFactory.modelProvider.findAll({
                 factory_name: provider.factory_name,
                 model_name: provider.model_name,
-                model_type: 'image2text',
-                status: 'active',
+                model_type: ModelType.IMAGE2TEXT,
+                status: ProviderStatus.ACTIVE,
             });
             if (companion) {
-                await ModelFactory.modelProvider.update(companion.id, { status: 'deleted' });
+                await ModelFactory.modelProvider.update(companion.id, { status: ProviderStatus.DELETED });
             }
         }
 
@@ -236,7 +237,7 @@ export class LlmProviderService {
      */
     async testConnection(id: string): Promise<TestConnectionResult> {
         const provider = await ModelFactory.modelProvider.findById(id);
-        if (!provider || provider.status !== 'active') {
+        if (!provider || provider.status !== ProviderStatus.ACTIVE) {
             return { success: false, error: 'Provider not found or inactive' };
         }
 
@@ -353,7 +354,7 @@ export class LlmProviderService {
         body?: Record<string, unknown>;
     } {
         if (provider.factory_name === 'Ollama') {
-            if (provider.model_type === 'embedding') {
+            if (provider.model_type === ModelType.EMBEDDING) {
                 return {
                     endpoint: 'api/embed',
                     method: 'POST',
@@ -375,7 +376,7 @@ export class LlmProviderService {
         }
 
         switch (provider.model_type) {
-            case 'chat': {
+            case ModelType.CHAT: {
                 // Chat/VLM probe: send a real prompt to chat/completions
                 return {
                     endpoint: 'chat/completions',
@@ -388,7 +389,7 @@ export class LlmProviderService {
                     },
                 };
             }
-            case 'embedding': {
+            case ModelType.EMBEDDING: {
                 // Embedding probe: embed a short test string
                 return {
                     endpoint: 'embeddings',
@@ -399,7 +400,7 @@ export class LlmProviderService {
                     },
                 };
             }
-            case 'image2text': {
+            case ModelType.IMAGE2TEXT: {
                 // Image2text probe: same as chat (vision-capable chat model)
                 return {
                     endpoint: 'chat/completions',
@@ -432,7 +433,7 @@ export class LlmProviderService {
         // Only expose safe columns — never return api_key or api_base
         let query = db('model_providers')
             .select('id', 'factory_name', 'model_type', 'model_name', 'max_tokens', 'is_default', 'vision')
-            .where('status', 'active')
+            .where('status', ProviderStatus.ACTIVE)
             .orderBy('factory_name')
             .orderBy('model_name');
 
@@ -459,7 +460,7 @@ export class LlmProviderService {
      */
     private async syncVisionCompanion(provider: ModelProvider, data: any, user?: UserContext): Promise<void> {
         // Only applies to chat models
-        if (provider.model_type !== 'chat') return;
+        if (provider.model_type !== ModelType.CHAT) return;
 
         const isVision = data.vision ?? provider.vision ?? false;
 
@@ -468,10 +469,10 @@ export class LlmProviderService {
             const [existing] = await ModelFactory.modelProvider.findAll({
                 factory_name: provider.factory_name,
                 model_name: provider.model_name,
-                model_type: 'image2text',
+                model_type: ModelType.IMAGE2TEXT,
             });
 
-            if (existing && existing.status === 'active') {
+            if (existing && existing.status === ProviderStatus.ACTIVE) {
                 // Update existing active companion
                 await ModelFactory.modelProvider.update(existing.id, {
                     api_key: provider.api_key ?? null,
@@ -487,7 +488,7 @@ export class LlmProviderService {
                     api_key: provider.api_key ?? null,
                     api_base: provider.api_base ?? null,
                     max_tokens: provider.max_tokens ?? null,
-                    status: 'active',
+                    status: ProviderStatus.ACTIVE,
                     is_default: provider.is_default,
                     vision: true,
                     updated_by: user?.id || null,
@@ -496,13 +497,13 @@ export class LlmProviderService {
                 // Create new companion
                 await ModelFactory.modelProvider.create({
                     factory_name: provider.factory_name,
-                    model_type: 'image2text',
+                    model_type: ModelType.IMAGE2TEXT,
                     model_name: provider.model_name,
                     api_key: provider.api_key ?? null,
                     api_base: provider.api_base ?? null,
                     max_tokens: provider.max_tokens ?? null,
                     vision: true,
-                    status: 'active',
+                    status: ProviderStatus.ACTIVE,
                     is_default: provider.is_default,
                     created_by: user?.id || null,
                     updated_by: user?.id || null,
@@ -513,11 +514,11 @@ export class LlmProviderService {
             const [existing] = await ModelFactory.modelProvider.findAll({
                 factory_name: provider.factory_name,
                 model_name: provider.model_name,
-                model_type: 'image2text',
-                status: 'active',
+                model_type: ModelType.IMAGE2TEXT,
+                status: ProviderStatus.ACTIVE,
             });
             if (existing) {
-                await ModelFactory.modelProvider.update(existing.id, { status: 'deleted' });
+                await ModelFactory.modelProvider.update(existing.id, { status: ProviderStatus.DELETED });
             }
         }
     }

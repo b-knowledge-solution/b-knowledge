@@ -7,6 +7,7 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Send, Square, Brain, Globe, Paperclip } from 'lucide-react'
+import { ChatInputLimit, Key } from '@/constants'
 
 // ============================================================================
 // Props
@@ -92,7 +93,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
         // Manually trigger auto-resize since programmatic .value assignment
         // does not fire the onInput event that normally triggers autoResize()
         textareaRef.current.style.height = 'auto'
-        const newHeight = Math.min(textareaRef.current.scrollHeight, 200)
+        const newHeight = Math.min(textareaRef.current.scrollHeight, ChatInputLimit.MAX_HEIGHT_PX)
         textareaRef.current.style.height = `${newHeight}px`
         // Focus the textarea so user can immediately edit or send
         textareaRef.current.focus()
@@ -111,7 +112,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
     const textarea = textareaRef.current
     if (!textarea) return
     textarea.style.height = 'auto'
-    const newHeight = Math.min(textarea.scrollHeight, 200)
+    const newHeight = Math.min(textarea.scrollHeight, ChatInputLimit.MAX_HEIGHT_PX)
     textarea.style.height = `${newHeight}px`
   }
 
@@ -141,7 +142,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
    * @description Handle keyboard events: Enter to send, Shift+Enter for newline.
    */
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === Key.ENTER && !e.shiftKey) {
       e.preventDefault()
       handleSubmit()
     }

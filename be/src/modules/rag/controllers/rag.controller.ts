@@ -27,6 +27,7 @@ import { getTenantId } from '@/shared/middleware/tenant.middleware.js';
 import { datasetSyncService } from '../services/dataset-sync.service.js';
 import { minioClient } from '@/shared/services/minio.service.js'
 import { config } from '@/shared/config/index.js';
+import { DatasetStatus } from '@/shared/constants/index.js';
 
 /**
  * @description Resolve model_providers.id for an embedding model name
@@ -82,7 +83,7 @@ export class RagController {
         try {
             const dataset = await ragService.getDatasetById(req.params['id']!);
             // Return 404 for missing or soft-deleted datasets
-            if (!dataset || dataset.status === 'deleted') {
+            if (!dataset || dataset.status === DatasetStatus.DELETED) {
                 res.status(404).json({ error: 'Dataset not found' });
                 return;
             }
@@ -829,7 +830,7 @@ export class RagController {
 
         try {
             const dataset = await ragService.getDatasetById(id);
-            if (!dataset || dataset.status === 'deleted') {
+            if (!dataset || dataset.status === DatasetStatus.DELETED) {
                 res.status(404).json({ error: 'Dataset not found' });
                 return;
             }

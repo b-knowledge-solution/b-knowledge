@@ -11,6 +11,7 @@
 import { ModelFactory } from '@/shared/models/factory.js'
 import { agentExecutorService } from './agent-executor.service.js'
 import { log } from '@/shared/services/logger.service.js'
+import { AgentStatus } from '@/shared/constants/index.js'
 
 // ============================================================================
 // Types
@@ -50,7 +51,7 @@ class AgentWebhookService {
     }
 
     // Only published agents can be triggered via webhook
-    if (agent.status !== 'published') {
+    if (agent.status !== AgentStatus.PUBLISHED) {
       throw Object.assign(
         new Error('Agent must be published before it can be triggered via webhook'),
         { statusCode: 400 },

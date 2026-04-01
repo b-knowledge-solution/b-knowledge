@@ -39,6 +39,7 @@ import {
   type FileTrackingRecord,
   type ConversionJobStatus,
 } from '../../system/api/converterApi'
+import { PollInterval } from '@/constants'
 
 // ============================================================================
 // Types
@@ -267,7 +268,7 @@ const JobManagementModal = ({
           triggerParseAllRef.current?.(latestJobs)
         }
       }
-    }, 10000)
+    }, PollInterval.JOB)
     return () => clearInterval(timer)
   }, [open, projectId, categoryId, versionId])
 

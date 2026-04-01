@@ -13,6 +13,7 @@ import OpenAI from 'openai'
 import { ModelFactory } from '@/shared/models/factory.js'
 import { ModelProvider } from '@/shared/models/types.js'
 import { log } from '@/shared/services/logger.service.js'
+import { ProviderStatus, ModelType } from '@/shared/constants/index.js'
 import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
 import type { LangfuseParent } from '@/shared/services/langfuse.service.js'
 import { config } from '@/shared/config/index.js'
@@ -118,7 +119,7 @@ export class LlmClientService {
     // Look up specific provider when ID is given
     if (providerId) {
       const provider = await ModelFactory.modelProvider.findById(providerId)
-      if (!provider || provider.status !== 'active') {
+      if (!provider || provider.status !== ProviderStatus.ACTIVE) {
         throw new Error(`Model provider ${providerId} not found or inactive`)
       }
       return provider
@@ -126,7 +127,7 @@ export class LlmClientService {
 
     // Find default chat model from model_providers table
     const defaults = await ModelFactory.modelProvider.findDefaults()
-    const chatDefault = defaults.find(p => p.model_type === 'chat')
+    const chatDefault = defaults.find(p => p.model_type === ModelType.CHAT)
     if (!chatDefault) {
       throw new Error('No default chat model provider configured. Please add one via Admin > LLM Providers.')
     }
@@ -310,7 +311,7 @@ export class LlmClientService {
       provider = await this.resolveProvider(providerId)
     } else {
       const defaults = await ModelFactory.modelProvider.findDefaults()
-      const embeddingDefault = defaults.find(p => p.model_type === 'embedding')
+      const embeddingDefault = defaults.find(p => p.model_type === ModelType.EMBEDDING)
       if (!embeddingDefault) {
         throw new Error('No default embedding model provider configured. Please add one via Admin > LLM Providers.')
       }

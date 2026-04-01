@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import { useFirstVisit, GuidelineDialog } from '@/features/guideline';
+import { BroadcastLimit } from '@/constants';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -274,7 +275,7 @@ const BroadcastMessagePage: React.FC = () => {
                     <div>
                         <div className="flex justify-between items-center mb-1">
                             <label className="block text-sm font-medium">{t('common.message')}</label>
-                            <span className={`text-xs ${((editingMessage?.message?.length || 0) > 1900) ? 'text-red-500 font-bold' : 'text-slate-500'}`}>
+                            <span className={`text-xs ${((editingMessage?.message?.length || 0) > BroadcastLimit.MAX_MESSAGE_LENGTH) ? 'text-red-500 font-bold' : 'text-slate-500'}`}>
                                 {editingMessage?.message?.length || 0} / 2000 {t('common.characters')}
                             </span>
                         </div>

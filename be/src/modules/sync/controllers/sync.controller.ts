@@ -11,6 +11,7 @@ import { log } from '@/shared/services/logger.service.js'
 import { getClientIp } from '@/shared/utils/ip.js'
 import { ragService } from '@/modules/rag/index.js'
 import type { Connector } from '../models/sync.types.js'
+import { UserRole, SyncStatus } from '@/shared/constants/index.js'
 
 /** Keys in connector config that contain sensitive credentials (SYN-BR-07) */
 const SENSITIVE_CONFIG_KEYS = new Set([
@@ -67,7 +68,7 @@ async function checkKbAccess(req: Request, kbId: string): Promise<boolean> {
   const user = req.user as any
   if (!user) return false
   // Admin/leader roles have global KB access
-  if (user.role === 'admin' || user.role === 'superadmin' || user.role === 'leader') return true
+  if (user.role === UserRole.ADMIN || user.role === UserRole.SUPERADMIN || user.role === UserRole.LEADER) return true
   try {
     return await ragService.checkDatasetAccess(kbId, user.id, user.role, user.teamIds || [])
   } catch {
@@ -330,7 +331,7 @@ export class SyncController {
         res.write(`data: ${JSON.stringify(data)}\n\n`)
 
         // Close the stream on terminal status
-        if (data.status === 'completed' || data.status === 'failed') {
+        if (data.status === SyncStatus.COMPLETED || data.status === SyncStatus.FAILED) {
           res.end()
         }
       })

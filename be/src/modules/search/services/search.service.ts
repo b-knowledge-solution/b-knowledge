@@ -20,6 +20,7 @@ import { askSummaryPrompt, citationPrompt } from '@/shared/prompts/index.js'
 import { relatedQuestionsService } from '@/shared/services/related-questions.service.js'
 import { htmlToMarkdown } from '@/shared/utils/html-to-markdown.js'
 import { log } from '@/shared/services/logger.service.js'
+import { UserRole } from '@/shared/constants/index.js'
 import { tagRankingService } from '@/shared/services/tag-ranking.service.js'
 import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
 import { queryLogService } from '@/modules/rag/index.js'
@@ -179,7 +180,7 @@ export class SearchService {
     let baseQuery = ModelFactory.searchApp.getKnex()
 
     // RBAC filter: admins see all, others see own + public + shared
-    if (userRole !== 'admin' && userRole !== 'superadmin') {
+    if (userRole !== UserRole.ADMIN && userRole !== UserRole.SUPERADMIN) {
       const accessibleIds = await ModelFactory.searchAppAccess.findAccessibleAppIds(userId, teamIds)
       baseQuery = baseQuery.where(function (this: any) {
         this.where('created_by', userId)
@@ -334,7 +335,7 @@ export class SearchService {
     teamIds: string[]
   ): Promise<boolean> {
     // Admins always have access
-    if (userRole === 'admin' || userRole === 'superadmin') {
+    if (userRole === UserRole.ADMIN || userRole === UserRole.SUPERADMIN) {
       return true
     }
 

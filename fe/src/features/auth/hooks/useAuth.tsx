@@ -14,6 +14,7 @@ import { createContext, useContext, useEffect, useCallback, ReactNode } from 're
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
+import { CacheTime } from '@/constants';
 
 /** Backend API base URL */
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
@@ -155,7 +156,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     queryKey: queryKeys.auth.me(),
     queryFn: fetchCurrentUser,
     enabled: !isPublicPath,
-    staleTime: 5 * 60 * 1000,
+    staleTime: CacheTime.AUTH,
     retry: false,
   });
 

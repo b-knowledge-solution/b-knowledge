@@ -17,6 +17,7 @@ import { Response as ExpressResponse } from 'express'
 import { getUuid } from '@/shared/utils/uuid.js'
 import { ModelFactory } from '@/shared/models/factory.js'
 import { log } from '@/shared/services/logger.service.js'
+import { AgentNodeType, AgentStatus, ConditionOperator, EdgeHandle, StreamMessageType } from '@/shared/constants/index.js'
 import { agentRedisService, type AgentNodeTask } from './agent-redis.service.js'
 import type { AgentRun } from '../models/agent-run.model.js'
 import type { AgentRunStep } from '../models/agent-run-step.model.js'
@@ -75,19 +76,19 @@ interface AgentRunStatusResult {
 
 // Node types that execute inline in Node.js (lightweight logic)
 const INLINE_NODE_TYPES = new Set([
-  'begin', 'answer', 'message', 'switch', 'condition',
-  'merge', 'note', 'concentrator', 'template', 'keyword_extract',
+  AgentNodeType.BEGIN, AgentNodeType.ANSWER, AgentNodeType.MESSAGE, AgentNodeType.SWITCH, AgentNodeType.CONDITION,
+  AgentNodeType.MERGE, AgentNodeType.NOTE, AgentNodeType.CONCENTRATOR, AgentNodeType.TEMPLATE, AgentNodeType.KEYWORD_EXTRACT,
 ])
 
 // Node types dispatched to Python worker (compute-heavy)
 const DISPATCH_NODE_TYPES = new Set([
-  'generate', 'categorize', 'rewrite', 'relevant',
-  'retrieval', 'wikipedia', 'tavily', 'pubmed',
+  AgentNodeType.GENERATE, AgentNodeType.CATEGORIZE, AgentNodeType.REWRITE, AgentNodeType.RELEVANT,
+  AgentNodeType.RETRIEVAL, 'wikipedia', 'tavily', 'pubmed',
   'code', 'github', 'sql', 'api', 'email',
   'baidu', 'bing', 'duckduckgo', 'google',
   'google_scholar', 'arxiv', 'deepl', 'qweather',
   'exesql', 'crawler', 'invoke', 'akshare',
-  'yahoofinance', 'jin10', 'tushare', 'wencai', 'loop',
+  AgentNodeType.YAHOO_FINANCE, AgentNodeType.JIN10, AgentNodeType.TUSHARE, AgentNodeType.WENCAI, AgentNodeType.LOOP,
 ])
 
 /**
@@ -122,7 +123,7 @@ class AgentExecutorService {
     const agent = await ModelFactory.agent.findById(agentId)
     if (!agent) throw Object.assign(new Error('Agent not found'), { statusCode: 404 })
     if (agent.tenant_id !== tenantId) throw Object.assign(new Error('Agent not found'), { statusCode: 404 })
-    if (agent.status !== 'published') {
+    if (agent.status !== AgentStatus.PUBLISHED) {
       throw Object.assign(new Error('Agent must be published before execution'), { statusCode: 400 })
     }
 
@@ -211,7 +212,7 @@ class AgentExecutorService {
       res.write(`data: ${JSON.stringify(message)}\n\n`)
 
       // Check for terminal events
-      if (message.type === 'done' || message.type === 'error') {
+      if (message.type === StreamMessageType.DONE || message.type === StreamMessageType.ERROR) {
         ended = true
         res.write('data: [DONE]\n\n')
         res.end()
@@ -353,7 +354,7 @@ class AgentExecutorService {
       for (const edge of edges) {
         // Detect loop-back edges: edges targeting a node of type 'loop'
         const targetNode = nodes[edge.target]
-        if (targetNode?.type === 'loop' && edge.sourceHandle === 'loop_back') {
+        if (targetNode?.type === AgentNodeType.LOOP && edge.sourceHandle === EdgeHandle.LOOP_BACK) {
           loopBackEdges.add(`${edge.source}->${edge.target}`)
           continue
         }
@@ -490,7 +491,7 @@ class AgentExecutorService {
       }
 
       // Collect final output from the 'answer' node if present
-      const answerNode = nodeIds.find((id) => nodes[id]?.type === 'answer')
+      const answerNode = nodeIds.find((id) => nodes[id]?.type === AgentNodeType.ANSWER)
       const finalOutput = answerNode ? JSON.stringify(nodeOutputs.get(answerNode) || {}) : null
 
       // Mark run as completed
@@ -589,49 +590,49 @@ class AgentExecutorService {
     inputData: Record<string, unknown>,
   ): Record<string, unknown> {
     switch (node.type) {
-      case 'begin':
+      case AgentNodeType.BEGIN:
         // Pass through the user input to downstream nodes
         return { output: inputData.input || '' }
 
-      case 'answer':
+      case AgentNodeType.ANSWER:
         // Collect all inputs and produce final answer
         return { output: inputData.content || inputData.output || '' }
 
-      case 'message':
+      case AgentNodeType.MESSAGE:
         // Static message output from config
         return { output: (node.config?.content as string) || '' }
 
-      case 'switch': {
+      case AgentNodeType.SWITCH: {
         // Evaluate conditions and select matching branch
         const conditions = (node.config?.conditions || []) as Array<{ value: string; operator: string; target: string }>
         const inputValue = String(inputData.output || '')
         // Find the first matching condition
         const matched = conditions.find((c) => {
-          if (c.operator === 'contains') return inputValue.includes(c.value)
-          if (c.operator === 'equals') return inputValue === c.value
-          if (c.operator === 'startsWith') return inputValue.startsWith(c.value)
+          if (c.operator === ConditionOperator.CONTAINS) return inputValue.includes(c.value)
+          if (c.operator === ConditionOperator.EQUALS) return inputValue === c.value
+          if (c.operator === ConditionOperator.STARTS_WITH) return inputValue.startsWith(c.value)
           return false
         })
         return { output: inputValue, matched_branch: matched?.target || 'default' }
       }
 
-      case 'condition': {
+      case AgentNodeType.CONDITION: {
         // Boolean condition evaluation
         const expr = (node.config?.expression as string) || 'true'
         const result = expr === 'true' || inputData.output === expr
         return { output: inputData.output || '', condition_result: result }
       }
 
-      case 'merge':
-      case 'concentrator':
+      case AgentNodeType.MERGE:
+      case AgentNodeType.CONCENTRATOR:
         // Merge all inputs into a single output
         return { output: inputData.output || '', merged: true }
 
-      case 'note':
+      case AgentNodeType.NOTE:
         // Notes are pass-through (visual-only nodes on canvas)
         return { output: '' }
 
-      case 'template': {
+      case AgentNodeType.TEMPLATE: {
         // Simple string template interpolation using {{variable}} syntax
         let templateStr = (node.config?.template as string) || ''
         const vars = inputData as Record<string, unknown>
@@ -641,7 +642,7 @@ class AgentExecutorService {
         return { output: templateStr }
       }
 
-      case 'keyword_extract':
+      case AgentNodeType.KEYWORD_EXTRACT:
         // Pass input through; actual extraction happens if dispatched to Python
         return { output: inputData.output || '', keywords: [] }
 
@@ -729,7 +730,7 @@ class AgentExecutorService {
     node: AgentNodeDef,
   ): Record<string, unknown> {
     // Begin node receives the user input directly
-    if (node.type === 'begin') {
+    if (node.type === AgentNodeType.BEGIN) {
       return { input: userInput }
     }
 
@@ -777,7 +778,7 @@ class AgentExecutorService {
     const outEdges = edges.filter((e) => e.source === nodeId)
 
     // Switch nodes only activate the matching branch
-    if (node.type === 'switch' || node.type === 'categorize') {
+    if (node.type === AgentNodeType.SWITCH || node.type === AgentNodeType.CATEGORIZE) {
       const matchedBranch = result.matched_branch as string | undefined
       if (matchedBranch && matchedBranch !== 'default') {
         // Find the edge matching the branch
@@ -789,7 +790,7 @@ class AgentExecutorService {
     }
 
     // Condition nodes only activate the true/false branch
-    if (node.type === 'condition') {
+    if (node.type === AgentNodeType.CONDITION) {
       const conditionResult = result.condition_result as boolean
       const branch = conditionResult ? 'true' : 'false'
       const matched = outEdges.find((e) => e.sourceHandle === branch)
@@ -818,7 +819,7 @@ class AgentExecutorService {
     }
 
     // Check for begin node
-    const hasBegin = nodeIds.some((id) => nodes[id]?.type === 'begin')
+    const hasBegin = nodeIds.some((id) => nodes[id]?.type === AgentNodeType.BEGIN)
     if (!hasBegin) {
       throw Object.assign(new Error('Agent graph must have a begin node'), { statusCode: 400 })
     }
@@ -859,7 +860,7 @@ class AgentExecutorService {
     for (const edge of edges) {
       // Skip loop-back edges for cycle detection
       const targetNode = nodes[edge.target]
-      if (targetNode?.type === 'loop' && edge.sourceHandle === 'loop_back') continue
+      if (targetNode?.type === AgentNodeType.LOOP && edge.sourceHandle === EdgeHandle.LOOP_BACK) continue
 
       adjList.get(edge.source)?.push(edge.target)
       inDegree.set(edge.target, (inDegree.get(edge.target) || 0) + 1)

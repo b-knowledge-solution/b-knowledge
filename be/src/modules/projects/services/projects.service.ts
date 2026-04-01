@@ -10,6 +10,7 @@ import { teamService } from '@/modules/teams/services/team.service.js'
 import { Project, ProjectPermission, ProjectDataset, UserContext } from '@/shared/models/types.js'
 import { projectCategoryService } from './project-category.service.js'
 import { config } from '@/shared/config/index.js'
+import { UserRole } from '@/shared/constants/index.js'
 
 /**
  * @description Core project service handling CRUD operations, auto-dataset creation on project setup,
@@ -26,7 +27,7 @@ export class ProjectsService {
    */
   async getAccessibleProjects(user: UserContext, tenantId: string): Promise<Project[]> {
     // Admins see all active projects within the tenant scope
-    if (user.role === 'admin' || user.role === 'superadmin') {
+    if (user.role === UserRole.ADMIN || user.role === UserRole.SUPERADMIN) {
       return ModelFactory.project.findByTenant(tenantId)
     }
 

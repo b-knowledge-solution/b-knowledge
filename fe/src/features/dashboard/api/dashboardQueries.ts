@@ -9,6 +9,7 @@ import type { DashboardStats } from '../types/dashboard.types'
 import { fetchDashboardStats, fetchQueryAnalytics, fetchFeedbackAnalytics, fetchFeedbackStats } from './dashboardApi'
 import { format } from 'date-fns'
 import { queryKeys } from '@/lib/queryKeys'
+import { CacheTime } from '@/constants'
 
 // ============================================================================
 // Return Type
@@ -106,7 +107,7 @@ export const useQueryAnalytics = (startDate?: string, endDate?: string) => {
         queryKey: queryKeys.dashboard.analytics(startDate, endDate),
         queryFn: () => fetchQueryAnalytics(startDate, endDate),
         // 5-minute staleTime for manual refresh pattern per CONTEXT.md
-        staleTime: 5 * 60 * 1000,
+        staleTime: CacheTime.DASHBOARD,
     })
 }
 
@@ -126,7 +127,7 @@ export const useFeedbackAnalytics = (startDate?: string, endDate?: string) => {
         queryKey: queryKeys.dashboard.feedback(startDate, endDate),
         queryFn: () => fetchFeedbackAnalytics(startDate, endDate),
         // 5-minute staleTime for manual refresh pattern per CONTEXT.md
-        staleTime: 5 * 60 * 1000,
+        staleTime: CacheTime.DASHBOARD,
     })
 }
 
@@ -147,6 +148,6 @@ export const useFeedbackStats = (startDate?: string, endDate?: string) => {
         queryKey: queryKeys.dashboard.feedbackStats(startDate, endDate),
         queryFn: () => fetchFeedbackStats(startDate, endDate),
         // 5-minute staleTime for manual refresh pattern
-        staleTime: 5 * 60 * 1000,
+        staleTime: CacheTime.DASHBOARD,
     })
 }

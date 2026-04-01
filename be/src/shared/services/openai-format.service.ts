@@ -10,6 +10,7 @@
  */
 
 import { getUuid } from '@/shared/utils/uuid.js'
+import { MessageRole } from '@/shared/constants/index.js'
 
 // ---------------------------------------------------------------------------
 // Interfaces
@@ -156,7 +157,7 @@ export function extractLastUserMessage(messages: OaiMessage[]): string | null {
 
   // Walk backwards through messages to find the most recent user message
   for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i]!.role === 'user' && messages[i]!.content) {
+    if (messages[i]!.role === MessageRole.USER && messages[i]!.content) {
       return messages[i]!.content
     }
   }

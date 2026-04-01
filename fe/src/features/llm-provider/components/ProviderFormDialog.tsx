@@ -22,6 +22,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { MODEL_TYPES } from '../types/llmProvider.types'
+import { ModelType } from '@/constants'
 import type {
   ModelProvider,
   CreateProviderDTO,
@@ -100,7 +101,7 @@ export function ProviderFormDialog({
 
   // -- Form state ------------------------------------------------------------
   const [factoryName, setFactoryName] = useState('')
-  const [modelType, setModelType] = useState('chat')
+  const [modelType, setModelType] = useState(ModelType.CHAT)
   const [modelName, setModelName] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [apiBase, setApiBase] = useState('')
@@ -162,7 +163,7 @@ export function ProviderFormDialog({
     } else {
       // Create mode — reset to defaults
       setFactoryName('')
-      setModelType('chat')
+      setModelType(ModelType.CHAT)
       setModelName('')
       setApiKey('')
       setApiBase('')
@@ -196,7 +197,7 @@ export function ProviderFormDialog({
     setModelName('')
     setMaxTokens('')
     // Clear vision checkbox when switching away from chat
-    if (value !== 'chat') {
+    if (value !== ModelType.CHAT) {
       setSupportsVision(false)
     }
   }
@@ -231,7 +232,7 @@ export function ProviderFormDialog({
       max_tokens: maxTokens ? Number(maxTokens) : null,
       is_default: isDefault,
       // Include vision flag for chat models
-      vision: modelType === 'chat' ? supportsVision : false,
+      vision: modelType === ModelType.CHAT ? supportsVision : false,
     }
 
     // Only send api_key when user has entered a value (avoids overwriting with blank)
@@ -399,7 +400,7 @@ export function ProviderFormDialog({
           </div>
 
           {/* Vision support checkbox — only visible when model_type is "chat" */}
-          {modelType === 'chat' && (
+          {modelType === ModelType.CHAT && (
             <div className="flex items-center gap-2 rounded-md bg-purple-50 dark:bg-purple-950/30 p-3 border border-purple-200 dark:border-purple-800">
               <input
                 type="checkbox"

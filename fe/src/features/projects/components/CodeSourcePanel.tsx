@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { globalMessage } from '@/app/App'
 import { importGitRepo, importZipFile } from '../api/projectApi'
+import { FileSize } from '@/constants'
 
 // ============================================================================
 // Types
@@ -118,7 +119,8 @@ export default function CodeSourcePanel({ projectId, categoryId, datasetId: _dat
     e.preventDefault()
     const file = e.dataTransfer.files[0]
     // Only accept .zip files under 100MB
-    if (file && file.name.endsWith('.zip') && file.size <= 100 * 1024 * 1024) {
+    // Only accept .zip files under the max ZIP file size limit
+    if (file && file.name.endsWith('.zip') && file.size <= FileSize.MAX_ZIP_FILE) {
       setZipFile(file)
     }
   }

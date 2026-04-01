@@ -14,6 +14,7 @@ import { cryptoService } from '@/shared/services/crypto.service.js'
 import { config } from '@/shared/config/index.js'
 import { Connector, SyncLog } from '../models/sync.types.js'
 import { syncSchedulerService } from './sync-scheduler.service.js'
+import { ConnectorStatus, SyncStatus } from '@/shared/constants/index.js'
 
 /** Redis queue name that the Python connector_sync_worker listens on */
 const CONNECTOR_SYNC_QUEUE = 'rag_connector_sync'
@@ -69,7 +70,7 @@ export class SyncService {
       // Build connector record with defaults
       const connector = await ModelFactory.connector.create({
         ...createData,
-        status: 'active',
+        status: ConnectorStatus.ACTIVE,
         created_by: user?.id || null,
         updated_by: user?.id || null,
       } as Partial<Connector>)
@@ -156,9 +157,9 @@ export class SyncService {
           syncSchedulerService.updateTask(id, data.schedule ?? null)
         }
         // Handle pause/resume: unregister or re-register scheduled sync
-        if ((data as any).status === 'paused') {
+        if ((data as any).status === ConnectorStatus.PAUSED) {
           syncSchedulerService.unregisterTask(id)
-        } else if ((data as any).status === 'active' && connector.schedule) {
+        } else if ((data as any).status === ConnectorStatus.ACTIVE && connector.schedule) {
           syncSchedulerService.updateTask(id, connector.schedule)
         }
         log.info('Connector updated', { id })
@@ -256,7 +257,7 @@ export class SyncService {
       const syncLog = await ModelFactory.syncLog.create({
         connector_id: connectorId,
         kb_id: connector.kb_id,
-        status: 'running',
+        status: SyncStatus.RUNNING,
         docs_synced: 0,
         docs_failed: 0,
         progress: 0,
@@ -488,15 +489,15 @@ export class SyncService {
           }
 
           // Handle terminal states
-          if (data.status === 'completed') {
-            updatePayload.status = 'completed'
+          if (data.status === SyncStatus.COMPLETED) {
+            updatePayload.status = SyncStatus.COMPLETED
             updatePayload.finished_at = new Date()
             // Update connector last_synced_at on success
             await ModelFactory.connector.update(connectorId, {
               last_synced_at: new Date(),
             } as Partial<Connector>)
-          } else if (data.status === 'failed' || data.progress < 0) {
-            updatePayload.status = 'failed'
+          } else if (data.status === SyncStatus.FAILED || data.progress < 0) {
+            updatePayload.status = SyncStatus.FAILED
             updatePayload.finished_at = new Date()
           }
 
@@ -507,7 +508,7 @@ export class SyncService {
         if (onProgress) onProgress(data)
 
         // Unsubscribe on terminal state (guard against double-unsubscribe)
-        if ((data.status === 'completed' || data.status === 'failed') && !isUnsubscribed) {
+        if ((data.status === SyncStatus.COMPLETED || data.status === SyncStatus.FAILED) && !isUnsubscribed) {
           isUnsubscribed = true
 
           // Release distributed lock on sync completion/failure (SYN-BR-06)

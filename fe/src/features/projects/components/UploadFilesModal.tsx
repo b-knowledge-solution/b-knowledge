@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { UploadCloud, CheckCircle, XCircle, Loader } from 'lucide-react'
 import { globalMessage } from '@/app/App'
+import { UploadStatus } from '@/constants'
 import { uploadVersionDocument } from '../api/projectApi'
 
 // ============================================================================
@@ -58,7 +59,7 @@ interface FileUploadItem {
   key: string
   name: string
   size: number
-  status: 'pending' | 'uploading' | 'success' | 'failed'
+  status: typeof UploadStatus[keyof typeof UploadStatus]
   error?: string
 }
 
@@ -115,7 +116,7 @@ const UploadFilesModal = ({
       key: `${Date.now()}-${i}`,
       name: f.name,
       size: f.size,
-      status: 'pending' as const,
+      status: UploadStatus.PENDING as const,
     }))
     setFileList(items)
 
@@ -126,16 +127,16 @@ const UploadFilesModal = ({
     for (let i = 0; i < files.length; i++) {
       const file = files[i]!
       const item = items[i]!
-      item.status = 'uploading'
+      item.status = UploadStatus.UPLOADING
       setFileList([...items])
 
       try {
         await uploadVersionDocument(projectId, categoryId, versionId, file)
-        item.status = 'success'
+        item.status = UploadStatus.SUCCESS
         succeeded++
       } catch (err) {
         console.error(`Failed to upload ${file.name}:`, err)
-        item.status = 'failed'
+        item.status = UploadStatus.FAILED
         item.error = String(err)
         failed++
       }
@@ -184,7 +185,7 @@ const UploadFilesModal = ({
   }
 
   // Progress stats
-  const completedCount = fileList.filter((f) => f.status === 'success' || f.status === 'failed').length
+  const completedCount = fileList.filter((f) => f.status === UploadStatus.SUCCESS || f.status === UploadStatus.FAILED).length
   const overallPercent = fileList.length > 0 ? Math.round((completedCount / fileList.length) * 100) : 0
   const failedCount = fileList.filter((f) => f.status === 'failed').length
 

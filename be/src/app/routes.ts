@@ -9,6 +9,7 @@ import rateLimit from 'express-rate-limit';
 import { checkConnection } from '@/shared/db/index.js';
 import { getRedisStatus } from '@/shared/services/redis.service.js';
 import { log } from '@/shared/services/logger.service.js';
+import { HealthStatus } from '@/shared/constants/index.js';
 
 // Route imports
 import authRoutes from '@/modules/auth/auth.routes.js';
@@ -247,16 +248,16 @@ export function setupApiRoutes(app: Express): void {
 
         // Report 'ok' only when both DB and Redis are healthy; treat unconfigured Redis as acceptable
         const healthPayload = {
-            status: dbConnected && (redisStatus === 'connected' || redisStatus === 'not_configured') ? 'ok' : 'degraded',
+            status: dbConnected && (redisStatus === HealthStatus.CONNECTED || redisStatus === HealthStatus.NOT_CONFIGURED) ? HealthStatus.OK : HealthStatus.DEGRADED,
             timestamp,
             services: {
                 express: 'running',
-                database: dbConnected ? 'connected' : 'disconnected',
+                database: dbConnected ? HealthStatus.CONNECTED : HealthStatus.DISCONNECTED,
                 redis: redisStatus,
             },
         };
 
-        res.status(healthPayload.status === 'ok' ? 200 : 503).json(healthPayload);
+        res.status(healthPayload.status === HealthStatus.OK ? 200 : 503).json(healthPayload);
     });
 
     // Content-Type validation middleware

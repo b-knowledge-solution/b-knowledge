@@ -39,6 +39,7 @@ import {
 } from '../api/llmProviderApi'
 import { MODEL_TYPES } from '../types/llmProvider.types'
 import type { ModelProvider, CreateProviderDTO, UpdateProviderDTO } from '../types/llmProvider.types'
+import { ModelType } from '@/constants'
 
 // ============================================================================
 // Constants
@@ -113,8 +114,8 @@ export function LLMProviderPage() {
   // Apply model_type filter (include image2text companions when filtering chat)
   const filtered = typeFilter === 'all'
     ? providers
-    : typeFilter === 'chat'
-      ? providers.filter((p) => p.model_type === 'chat' || p.model_type === 'image2text')
+    : typeFilter === ModelType.CHAT
+      ? providers.filter((p) => p.model_type === ModelType.CHAT || p.model_type === ModelType.IMAGE2TEXT)
       : providers.filter((p) => p.model_type === typeFilter)
 
   // Group providers by factory_name + model_name for display
@@ -129,7 +130,7 @@ export function LLMProviderPage() {
         const group = map.get(key)!
         group.types.push(p)
         // Prefer chat as primary (for edit/delete actions)
-        if (p.model_type === 'chat') {
+        if (p.model_type === ModelType.CHAT) {
           group.primary = p
         }
       }
@@ -324,7 +325,7 @@ export function LLMProviderPage() {
                       <div className="flex items-center gap-1 flex-wrap">
                         {row.types.map((p) => (
                           <span key={p.model_type} className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${MODEL_TYPE_BADGE_CLASSES[p.model_type] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}>
-                            {p.model_type === 'image2text' && <Eye size={10} className="mr-0.5" />}
+                            {p.model_type === ModelType.IMAGE2TEXT && <Eye size={10} className="mr-0.5" />}
                             {t(`llmProviders.modelTypes.${p.model_type}`)}
                           </span>
                         ))}

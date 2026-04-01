@@ -15,6 +15,7 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useAuth } from '@/features/auth';
+import { UserRole } from '@/constants';
 import { datasetApi } from '../api/datasetApi';
 import { useDocuments, useChangeDocumentParser, useWebCrawl } from '../api/datasetQueries';
 import DocumentTable from '../components/DocumentTable';
@@ -43,7 +44,7 @@ const DatasetDetailPage: React.FC = () => {
   const navigate = useNavigateWithLoader();
   const { user } = useAuth();
   // Grant admin privileges to admin and leader roles for write operations
-  const isAdmin = user?.role === 'admin' || user?.role === 'leader';
+  const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.LEADER;
 
   const [dataset, setDataset] = useState<Dataset | null>(null);
   const [loadingDataset, setLoadingDataset] = useState(true);

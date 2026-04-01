@@ -8,6 +8,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { log } from '@/shared/services/logger.service.js';
 import { config } from '@/shared/config/index.js';
+import { HealthStatus } from '@/shared/constants/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -188,7 +189,7 @@ class SystemToolsService {
         ]);
 
         // Extract worker heartbeats from Redis (only if Redis is connected)
-        const redisData = redisResult.status === 'fulfilled' ? redisResult.value : { status: 'disconnected', client: null };
+        const redisData = redisResult.status === 'fulfilled' ? redisResult.value : { status: HealthStatus.DISCONNECTED, client: null };
         const [workerHeartbeats, converterHeartbeats] = await Promise.all([
             redisData.client ? this.getWorkerHeartbeats(redisData.client, 'TASKEXE') : [],
             redisData.client ? this.getWorkerHeartbeats(redisData.client, 'CONVERTER_WORKERS') : [],
@@ -204,7 +205,7 @@ class SystemToolsService {
             timestamp: new Date().toISOString(),
             services: {
                 database: {
-                    status: dbStatus.status === 'fulfilled' && dbStatus.value ? 'connected' : 'disconnected',
+                    status: dbStatus.status === 'fulfilled' && dbStatus.value ? HealthStatus.CONNECTED : HealthStatus.DISCONNECTED,
                     enabled: true,
                     host: config.database.host,
                 },
@@ -300,9 +301,9 @@ class SystemToolsService {
             await client.connect();
             await client.ping();
             // Return client for reuse by heartbeat checks (caller is responsible for disconnect)
-            return { status: 'connected', client };
+            return { status: HealthStatus.CONNECTED, client };
         } catch {
-            return { status: 'disconnected', client: null };
+            return { status: HealthStatus.DISCONNECTED, client: null };
         }
     }
 
@@ -373,9 +374,9 @@ class SystemToolsService {
                 )
             );
 
-            return { status: 'connected', provider, bucketCount, totalSize, objectCount };
+            return { status: HealthStatus.CONNECTED, provider, bucketCount, totalSize, objectCount };
         } catch {
-            return { status: 'disconnected', provider: 'S3', bucketCount: 0, totalSize: 0, objectCount: 0 };
+            return { status: HealthStatus.DISCONNECTED, provider: 'S3', bucketCount: 0, totalSize: 0, objectCount: 0 };
         }
     }
 
@@ -386,7 +387,7 @@ class SystemToolsService {
     private async checkOpenSearch(): Promise<{ status: string; enabled: boolean; host: string; clusterStatus?: string | undefined; nodeCount?: number | undefined }> {
         const host = config.opensearch.host;
         if (!host) {
-            return { status: 'not_configured', enabled: false, host: 'unknown' };
+            return { status: HealthStatus.NOT_CONFIGURED, enabled: false, host: 'unknown' };
         }
 
         try {
@@ -412,7 +413,7 @@ class SystemToolsService {
             if (response.ok) {
                 const data = await response.json() as { status?: string; number_of_nodes?: number };
                 return {
-                    status: 'connected',
+                    status: HealthStatus.CONNECTED,
                     enabled: true,
                     host: new URL(host).hostname,
                     clusterStatus: data.status,
@@ -420,9 +421,9 @@ class SystemToolsService {
                 };
             }
 
-            return { status: 'disconnected', enabled: true, host: new URL(host).hostname };
+            return { status: HealthStatus.DISCONNECTED, enabled: true, host: new URL(host).hostname };
         } catch {
-            return { status: 'disconnected', enabled: true, host: host };
+            return { status: HealthStatus.DISCONNECTED, enabled: true, host: host };
         }
     }
 
