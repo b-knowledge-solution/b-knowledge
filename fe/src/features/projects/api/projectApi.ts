@@ -575,6 +575,47 @@ export const parseVersionDocuments = (
   );
 
 // ============================================================================
+// Code Import API
+// ============================================================================
+
+/**
+ * @description Import code files from a Git repository into a code category
+ * @param {string} projectId - Project UUID
+ * @param {string} categoryId - Category UUID
+ * @param {object} params - Git import parameters
+ * @param {string} params.url - Git repository URL
+ * @param {string} [params.branch] - Branch name (defaults to 'main')
+ * @param {string} [params.path] - Subdirectory path to import from
+ * @returns {Promise<{ taskId: string; fileCount: number }>} Import task info
+ */
+export const importGitRepo = (
+  projectId: string,
+  categoryId: string,
+  params: { url: string; branch?: string; path?: string },
+): Promise<{ taskId: string; fileCount: number }> =>
+  api.post(`/api/projects/${projectId}/categories/${categoryId}/import-git`, params)
+
+/**
+ * @description Import code files from a ZIP archive into a code category
+ * @param {string} projectId - Project UUID
+ * @param {string} categoryId - Category UUID
+ * @param {File} file - ZIP file to upload
+ * @returns {Promise<{ taskId: string; fileCount: number }>} Import task info
+ */
+export const importZipFile = (
+  projectId: string,
+  categoryId: string,
+  file: File,
+): Promise<{ taskId: string; fileCount: number }> => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return apiFetch(`/api/projects/${projectId}/categories/${categoryId}/import-zip`, {
+    method: 'POST',
+    body: formData,
+  })
+}
+
+// ============================================================================
 // Project Chats API
 // ============================================================================
 
