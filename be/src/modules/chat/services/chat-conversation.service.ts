@@ -297,7 +297,7 @@ async function rerankChunks(
   // Build a concise reranking prompt
   const chunkSummaries = chunks
     .slice(0, 20) // Limit to 20 chunks for reranking efficiency
-    .map((c, i) => `[${i}] ${c.text.slice(0, 200)}`)
+    .map((c, i) => `[${i}] ${htmlToMarkdown(c.text).slice(0, 200)}`)
     .join('\n')
 
   const prompt: LlmMessage[] = [
@@ -1154,6 +1154,14 @@ export class ChatConversationService {
       retrievalTimings.totalRetrieval = metrics.retrievalMs
       log.info('Retrieval pipeline timings (ms)', { sessionId: conversationId, userMsgId, timings: retrievalTimings, chunkCount: allChunks.length })
       metrics.totalChunks = allChunks.length
+
+      // ── Step 9b: Convert HTML chunks to Markdown ──────────────────────
+      // Chunks from OpenSearch may contain raw HTML (e.g. <table> from Excel/CSV/DOCX parsers).
+      // Convert once here so ALL downstream consumers (LLM prompt, reference SSE, Langfuse traces,
+      // citation matching) receive clean Markdown instead of raw HTML.
+      for (const chunk of allChunks) {
+        chunk.text = htmlToMarkdown(chunk.text)
+      }
 
       // ── Step 10: Handle empty results ───────────────────────────────────
       if (allChunks.length === 0 && cfg.empty_response && kbIds.length > 0) {

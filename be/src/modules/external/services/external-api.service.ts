@@ -18,6 +18,7 @@ import { ragRerankService } from '@/modules/rag/services/rag-rerank.service.js'
 import { ragCitationService } from '@/modules/rag/services/rag-citation.service.js'
 import { llmClientService, LlmMessage } from '@/shared/services/llm-client.service.js'
 import { askSummaryPrompt, citationPrompt } from '@/shared/prompts/index.js'
+import { htmlToMarkdown } from '@/shared/utils/html-to-markdown.js'
 import { log } from '@/shared/services/logger.service.js'
 import type { ChunkResult, SearchRequest, ChatAssistant, SearchApp } from '@/shared/models/types.js'
 
@@ -159,6 +160,11 @@ class ExternalApiService {
       rankedChunks = chunks.slice(0, topK)
     }
 
+    // Convert HTML chunks to Markdown once before any downstream consumption
+    for (const c of rankedChunks) {
+      c.text = htmlToMarkdown(c.text)
+    }
+
     // ── LLM Generation ─────────────────────────────────────────────────
     const genStart = Date.now()
 
@@ -265,6 +271,11 @@ class ExternalApiService {
       }
     } else {
       rankedChunks = chunks.slice(0, topK)
+    }
+
+    // Convert HTML chunks to Markdown once before any downstream consumption
+    for (const c of rankedChunks) {
+      c.text = htmlToMarkdown(c.text)
     }
 
     // ── LLM Generation ─────────────────────────────────────────────────

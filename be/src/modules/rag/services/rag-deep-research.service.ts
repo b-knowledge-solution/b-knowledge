@@ -14,6 +14,7 @@ import { sufficiencyCheckPrompt, multiQueriesPrompt } from '@/shared/prompts/ind
 import { log } from '@/shared/services/logger.service.js'
 import { ChunkResult } from '@/shared/models/types.js'
 import { ragSearchService } from '@/modules/rag/services/rag-search.service.js'
+import { htmlToMarkdown } from '@/shared/utils/html-to-markdown.js'
 import { ragGraphragService } from '@/modules/rag/services/rag-graphrag.service.js'
 import { searchWeb } from '@/shared/services/web-search.service.js'
 
@@ -361,8 +362,9 @@ export class RagDeepResearchService {
       }
 
       // ── Sufficiency check ──
+      // Convert HTML chunks to Markdown before sending to LLM for sufficiency evaluation
       const currentContext = [...allChunks.values()]
-        .map(c => c.text)
+        .map(c => htmlToMarkdown(c.text))
         .join('\n---\n')
 
       onProgress?.({ subEvent: 'sufficiency_check', message: 'Checking information completeness...' })

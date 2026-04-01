@@ -11,6 +11,7 @@
 import { llmClientService } from '@/shared/services/llm-client.service.js'
 import { ChunkResult } from '@/shared/models/types.js'
 import { log } from '@/shared/services/logger.service.js'
+import { htmlToMarkdown } from '@/shared/utils/html-to-markdown.js'
 
 /**
  * Service for inserting embedding-based citations into LLM answers.
@@ -55,7 +56,8 @@ export class RagCitationService {
     try {
       // Step 2: Embed all sentences and chunk texts
       const sentenceTexts = sentences.map(s => s.text)
-      const chunkTexts = chunks.map(c => c.text.slice(0, 512))
+      // Convert HTML to Markdown for cleaner embedding comparison
+      const chunkTexts = chunks.map(c => htmlToMarkdown(c.text).slice(0, 512))
 
       const [sentenceVecs, chunkVecs] = await Promise.all([
         this.embed(sentenceTexts, embeddingProviderId),

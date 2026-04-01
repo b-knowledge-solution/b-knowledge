@@ -12,6 +12,7 @@
 import { ModelFactory } from '@/shared/models/factory.js'
 import { ChunkResult, ModelProvider } from '@/shared/models/types.js'
 import { log } from '@/shared/services/logger.service.js'
+import { htmlToMarkdown } from '@/shared/utils/html-to-markdown.js'
 
 /**
  * Service for reranking retrieved chunks using dedicated rerank models.
@@ -45,8 +46,8 @@ export class RagRerankService {
       return chunks.slice(0, topN)
     }
 
-    // Extract document texts for the rerank API
-    const documents = chunks.map(c => c.text.slice(0, 1024))
+    // Extract document texts for the rerank API — convert HTML to Markdown for cleaner scoring
+    const documents = chunks.map(c => htmlToMarkdown(c.text).slice(0, 1024))
 
     try {
       // Route to the correct rerank API based on factory_name

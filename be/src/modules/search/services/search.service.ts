@@ -648,6 +648,12 @@ export class SearchService {
       }
     }
 
+    // Convert HTML chunks (e.g. <table> from Excel/CSV/DOCX parsers) to Markdown once
+    // so all downstream consumers (LLM prompt, reference SSE, Langfuse, citations) get clean text
+    for (const c of chunks) {
+      c.text = htmlToMarkdown(c.text)
+    }
+
     return { chunks, total: totalHits }
   }
 
