@@ -156,8 +156,10 @@ const DocumentsTabRedesigned = ({ projectId, initialCategories, embeddingModels 
   /** Refresh categories from the API */
   const refreshCategories = async () => {
     const catData = await getDocumentCategories(projectId)
-    setCategories(catData)
-    return catData
+    // Filter to only document categories — API returns all types for the project
+    const filtered = catData.filter(c => c.category_type === 'documents')
+    setCategories(filtered)
+    return filtered
   }
 
   /** Refresh versions for the currently selected category */
@@ -178,7 +180,8 @@ const DocumentsTabRedesigned = ({ projectId, initialCategories, embeddingModels 
   const handleCreateCategory = async (data: { name: string; dataset_config: Record<string, any> }) => {
     try {
       setSaving(true)
-      await createDocumentCategory(projectId, data)
+      // Include category_type so the backend assigns the correct type
+      await createDocumentCategory(projectId, { ...data, category_type: 'documents' })
       setCategoryModalOpen(false)
       setEditingCategory(null)
       await refreshCategories()

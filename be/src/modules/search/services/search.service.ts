@@ -768,7 +768,15 @@ export class SearchService {
         name: 'search-pipeline',
         input: query,
         tags: ['search', 'ask-search'],
-        metadata: { searchId },
+        metadata: {
+          search_app_id: searchId,
+          search_app_name: app.name || null,
+          tenant_id: tenantId || null,
+          top_k: topK,
+          method,
+          similarity_threshold: similarityThreshold,
+          vector_similarity_weight: vectorSimilarityWeight ?? null,
+        },
       })
     } catch (err) {
       log.error('Langfuse search trace creation failed', { error: String(err) })
@@ -777,6 +785,29 @@ export class SearchService {
     // Attempt SQL-based retrieval for structured data before full-text/semantic search
     const datasetIds: string[] = typeof app.dataset_ids === 'string' ? JSON.parse(app.dataset_ids) : app.dataset_ids
     const providerId = searchConfig?.llm_id as string | undefined
+
+    // Enrich Langfuse trace with dataset and LLM metadata (available after parsing config)
+    if (trace) {
+      try {
+        trace.update({
+          metadata: {
+            search_app_id: searchId,
+            search_app_name: app.name || null,
+            tenant_id: tenantId || null,
+            dataset_ids: datasetIds,
+            dataset_count: datasetIds.length,
+            llm_id: providerId || null,
+            top_k: topK,
+            method,
+            similarity_threshold: similarityThreshold,
+            vector_similarity_weight: vectorSimilarityWeight ?? null,
+          },
+        })
+      } catch (err) {
+        log.error('Langfuse search trace metadata update failed', { error: String(err) })
+      }
+    }
+
     const sqlResult = await ragSqlService.querySql(query, datasetIds, providerId, tenantId)
     if (sqlResult) {
       res.write(`data: ${JSON.stringify({ status: 'generating' })}\n\n`)
@@ -928,11 +959,23 @@ export class SearchService {
       metrics,
     })}\n\n`)
 
-    // Update trace with final output and flush (fire-and-forget)
+    // Update trace with final output, metrics, and flush (non-blocking)
     if (trace) {
       try {
-        langfuseTraceService.updateTrace(trace, { output: citedAnswer.answer })
-        await langfuseTraceService.flush()
+        langfuseTraceService.updateTrace(trace, {
+          output: citedAnswer.answer,
+          metadata: {
+            chunks_retrieved: chunks.length,
+            chunks_cited: citedAnswer.citedIndices?.size ?? 0,
+            retrieval_ms: metrics.retrieval_ms,
+            total_ms: Date.now() - startTime,
+            failed_retrieval: chunks.length === 0,
+          },
+        })
+        // Fire-and-forget flush — must not block SSE stream completion
+        void langfuseTraceService.flush().catch(flushErr =>
+          log.warn('Langfuse flush failed (non-blocking)', { error: String(flushErr) })
+        )
       } catch (err) {
         log.error('Langfuse trace finalization failed', { error: String(err) })
       }

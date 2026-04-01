@@ -162,11 +162,13 @@ const DocumentsTab = ({ projectId, initialCategories, embeddingModels }: Documen
   const handleCreateCategory = async (data: { name: string; dataset_config: Record<string, any> }) => {
     try {
       setSaving(true)
-      await createDocumentCategory(projectId, data)
+      // Include category_type so the backend assigns the correct type
+      await createDocumentCategory(projectId, { ...data, category_type: 'documents' })
       setCategoryModalOpen(false)
       setEditingCategory(null)
       const catData = await getDocumentCategories(projectId)
-      setCategories(catData)
+      // Filter to only document categories — API returns all types for the project
+      setCategories(catData.filter(c => c.category_type === 'documents'))
     } catch (err) {
       globalMessage.error(String(err))
     } finally {

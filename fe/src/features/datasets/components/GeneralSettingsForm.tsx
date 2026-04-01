@@ -4,9 +4,8 @@
  * Organized into 5 sections matching RAGFlow's Configuration page:
  * 1. Basic — name, language, description, embedding model, page rank, tag sets
  * 2. Ingestion Pipeline — parser, PDF parser, chunk size, delimiter, toggles, sliders + right panel with SVG images
- * 3. Data Source — placeholder link data source
- * 4. Global Index — GraphRAG settings
- * 5. RAPTOR — summarization settings
+ * 3. Global Index — GraphRAG settings
+ * 4. RAPTOR — summarization settings
  *
  * Validation constants sourced from RAGFlow.
  *
@@ -24,7 +23,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { Save, Link2, X, Plus, Info } from 'lucide-react'
+import { Save, X, Plus, Info } from 'lucide-react'
 import type { DatasetSettings, GraphRAGConfig, RAPTORConfig } from '../types'
 import {
   LANGUAGE_OPTIONS, PARSER_OPTIONS, PDF_PARSER_OPTIONS, PARSER_DESCRIPTIONS,
@@ -672,25 +671,7 @@ const GeneralSettingsForm: React.FC<GeneralSettingsFormProps> = ({
         <hr className="border-border" />
 
         {/* --------------------------------------------------------- */}
-        {/* SECTION 3: DATA SOURCE                                    */}
-        {/* --------------------------------------------------------- */}
-        <section className="space-y-2">
-          <h3 className="text-lg font-semibold text-primary">Data source</h3>
-          <div className="flex items-center justify-between py-2">
-            <p className="text-sm text-muted-foreground">
-              Manage data source linkage with this dataset
-            </p>
-            <Button variant="outline" size="sm" disabled>
-              <Link2 className="w-4 h-4 mr-1.5" />
-              Link data source
-            </Button>
-          </div>
-        </section>
-
-        <hr className="border-border" />
-
-        {/* --------------------------------------------------------- */}
-        {/* SECTION 4: GLOBAL INDEX (GraphRAG)                        */}
+        {/* SECTION 3: GLOBAL INDEX (GraphRAG)                        */}
         {/* --------------------------------------------------------- */}
         <section className="space-y-4">
           <h3 className="text-lg font-semibold text-primary">Global index</h3>
@@ -800,7 +781,7 @@ const GeneralSettingsForm: React.FC<GeneralSettingsFormProps> = ({
         <hr className="border-border" />
 
         {/* --------------------------------------------------------- */}
-        {/* SECTION 5: RAPTOR                                         */}
+        {/* SECTION 4: RAPTOR                                         */}
         {/* --------------------------------------------------------- */}
         <section className="space-y-4">
           <h3 className="text-lg font-semibold text-primary">RAPTOR</h3>

@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import ConnectorSourceFields from './ConnectorSourceFields'
 import { useTestConnection } from '../api/connectorQueries'
 import type { Connector, ConnectorSourceType, CreateConnectorDto, UpdateConnectorDto } from '../types'
@@ -163,6 +164,7 @@ const AddConnectorDialog = ({
   return (
     <Dialog open={open} onOpenChange={(v: boolean) => !v && onClose()}>
       <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        <TooltipProvider>
         <DialogHeader>
           <DialogTitle>
             {isEdit
@@ -260,6 +262,7 @@ const AddConnectorDialog = ({
             </Button>
           </div>
         </DialogFooter>
+        </TooltipProvider>
       </DialogContent>
     </Dialog>
   )

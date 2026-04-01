@@ -12,7 +12,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Plus, Pencil, Trash2, MoreHorizontal,
-  FolderOpen, Lock, FileText, Settings, AlertCircle,
+  FolderOpen, Lock, FileText, Settings, AlertCircle, Link2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,8 +21,11 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip'
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { globalMessage } from '@/app/App'
 import {
@@ -36,6 +39,7 @@ import {
 import CategoryModal from './CategoryModal'
 import DocumentListPanel from './DocumentListPanel'
 import { EntityPermissionModal } from './EntityPermissionModal'
+import ConnectorListPanel from '@/features/datasets/components/ConnectorListPanel'
 
 // ============================================================================
 // Types
@@ -84,6 +88,9 @@ const StandardTabRedesigned = ({ projectId, initialCategories, embeddingModels }
   const [permCategoryId, setPermCategoryId] = useState<string | null>(null)
   const [permCategoryName, setPermCategoryName] = useState('')
 
+  // External sources dialog state — shows ConnectorListPanel for a category's dataset
+  const [sourcesCategory, setSourcesCategory] = useState<DocumentCategory | null>(null)
+
   // Sync with parent if initialCategories changes
   useEffect(() => {
     setCategories(initialCategories)
@@ -97,8 +104,10 @@ const StandardTabRedesigned = ({ projectId, initialCategories, embeddingModels }
    */
   const refreshCategories = async () => {
     const catData = await getDocumentCategories(projectId)
-    setCategories(catData)
-    return catData
+    // Filter to only standard categories — API returns all types for the project
+    const filtered = catData.filter(c => c.category_type === 'standard')
+    setCategories(filtered)
+    return filtered
   }
 
   // -- Category handlers --
@@ -110,7 +119,8 @@ const StandardTabRedesigned = ({ projectId, initialCategories, embeddingModels }
   const handleCreateCategory = async (data: { name: string; dataset_config: Record<string, any> }) => {
     try {
       setSaving(true)
-      await createDocumentCategory(projectId, data)
+      // Include category_type so the backend assigns the correct type
+      await createDocumentCategory(projectId, { ...data, category_type: 'standard' })
       setCategoryModalOpen(false)
       setEditingCategory(null)
       await refreshCategories()
@@ -244,6 +254,13 @@ const StandardTabRedesigned = ({ projectId, initialCategories, embeddingModels }
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          {/* Open external sources dialog — only if category has a linked dataset */}
+                          {cat.dataset_id && (
+                            <DropdownMenuItem onClick={(e: React.MouseEvent) => { e.stopPropagation(); setSourcesCategory(cat) }}>
+                              <Link2 size={14} className="mr-2" />
+                              {t('datasets.externalSources')}
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem onClick={(e: React.MouseEvent) => { e.stopPropagation(); setPermCategoryId(cat.id); setPermCategoryName(cat.name) }}>
                             <Lock size={14} className="mr-2" />
                             {t('projectManagement.entityPermissions.title', 'Permissions')}
@@ -252,6 +269,7 @@ const StandardTabRedesigned = ({ projectId, initialCategories, embeddingModels }
                             <Pencil size={14} className="mr-2" />
                             {t('projectManagement.categories.edit')}
                           </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive focus:text-destructive"
                             onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDeleteCategory(cat.id) }}
@@ -340,6 +358,20 @@ const StandardTabRedesigned = ({ projectId, initialCategories, embeddingModels }
           entityName={permCategoryName}
         />
       )}
+
+      {/* External Sources Dialog — shows ConnectorListPanel for the category's dataset */}
+      <Dialog open={!!sourcesCategory} onOpenChange={(v: boolean) => { if (!v) setSourcesCategory(null) }}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {t('datasets.externalSources')} — {sourcesCategory?.name}
+            </DialogTitle>
+          </DialogHeader>
+          {sourcesCategory?.dataset_id && (
+            <ConnectorListPanel kbId={sourcesCategory.dataset_id} isAdmin />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

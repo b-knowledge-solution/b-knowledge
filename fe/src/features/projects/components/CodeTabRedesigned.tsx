@@ -194,8 +194,10 @@ const CodeTabRedesigned = ({ projectId, initialCategories, embeddingModels: _emb
    */
   const refreshCategories = async () => {
     const catData = await getDocumentCategories(projectId)
-    setCategories(catData)
-    return catData
+    // Filter to only code categories — API returns all types for the project
+    const filtered = catData.filter(c => c.category_type === 'code')
+    setCategories(filtered)
+    return filtered
   }
 
   // -- Category handlers --
@@ -207,7 +209,8 @@ const CodeTabRedesigned = ({ projectId, initialCategories, embeddingModels: _emb
   const handleCreateCategory = async (data: { name: string; dataset_config: Record<string, any> }) => {
     try {
       setSaving(true)
-      await createDocumentCategory(projectId, data)
+      // Include category_type so the backend assigns the correct type
+      await createDocumentCategory(projectId, { ...data, category_type: 'code' })
       setCategoryModalOpen(false)
       setEditingCategory(null)
       await refreshCategories()

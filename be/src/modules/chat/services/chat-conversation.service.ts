@@ -41,7 +41,7 @@ import { detectLanguage, buildLanguageInstruction } from '@/shared/utils/languag
 import { htmlToMarkdown } from '@/shared/utils/html-to-markdown.js'
 import { abilityService, buildOpenSearchAbacFilters } from '@/shared/services/ability.service.js'
 import { log } from '@/shared/services/logger.service.js'
-import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
+import { langfuseTraceService, getLangfuseClient } from '@/shared/services/langfuse.service.js'
 import { queryLogService } from '@/modules/rag/index.js'
 import type { LangfuseTraceClient } from 'langfuse'
 import { ChunkResult, ChatAssistant } from '@/shared/models/types.js'
@@ -539,17 +539,29 @@ export class ChatConversationService {
       .where('session_id', conversationId)
       .orderBy('timestamp', 'asc')
 
-    // Map citations -> reference
+    // Map citations -> reference + feedback (extract feedback to top-level for the frontend)
     const mappedMessages = messages.map((msg: any) => {
       let reference = undefined
+      let feedback = undefined
       if (msg.citations) {
         try {
-          reference = typeof msg.citations === 'string'
+          const parsed = typeof msg.citations === 'string'
             ? JSON.parse(msg.citations)
             : msg.citations
+          // Extract feedback to a top-level field so the frontend can read it directly
+          // Strip langfuse_trace_id — internal field not needed by the frontend
+          if (parsed && typeof parsed === 'object') {
+            const { feedback: fb, langfuse_trace_id: _traceId, ...rest } = parsed as Record<string, unknown>
+            reference = rest
+            if (fb && typeof fb === 'object') {
+              feedback = fb
+            }
+          } else {
+            reference = parsed
+          }
         } catch { /* ignore parse errors */ }
       }
-      return { ...msg, reference }
+      return { ...msg, reference, feedback }
     })
 
     return { ...session, messages: mappedMessages }
@@ -700,6 +712,9 @@ export class ChatConversationService {
       existing = message.citations as Record<string, unknown>
     }
 
+    // Extract Langfuse trace ID stored during streaming (Step 14)
+    const langfuseTraceId = (existing.langfuse_trace_id as string) || null
+
     // Merge feedback into existing citations data, preserving chunks and doc_aggs
     const updated = {
       ...existing,
@@ -707,6 +722,25 @@ export class ChatConversationService {
     }
 
     await ModelFactory.chatMessage.update(messageId, { citations: updated } as any)
+
+    // Send feedback score to Langfuse for observability linking (non-blocking)
+    if (langfuseTraceId) {
+      try {
+        const langfuse = getLangfuseClient()
+        langfuse.score({
+          traceId: langfuseTraceId,
+          name: 'user-feedback',
+          value: thumbup ? 1 : 0,
+          comment: feedback || null,
+        })
+        // Fire-and-forget flush — must not block the feedback API response
+        void langfuseTraceService.flush().catch(flushErr =>
+          log.warn('Langfuse feedback flush failed (non-blocking)', { error: String(flushErr) })
+        )
+      } catch (err) {
+        log.warn('Failed to send feedback score to Langfuse', { error: (err as Error).message })
+      }
+    }
 
     // Dual-write to answer_feedback table for structured analytics
     try {
@@ -720,7 +754,7 @@ export class ChatConversationService {
         query: message.content || '',
         answer: message.content || '',
         chunks_used: null,
-        trace_id: null,
+        trace_id: langfuseTraceId,
         tenant_id: config.opensearch.systemTenantId,
       })
     } catch (err) {
@@ -781,6 +815,10 @@ export class ChatConversationService {
         sessionId: conversationId,
         input: content,
         tags: ['chat', 'rag-pipeline'],
+        metadata: {
+          dialog_id: dialogId || null,
+          tenant_id: tenantId || null,
+        },
       })
     } catch (err) {
       log.error('Langfuse trace creation failed', { error: String(err) })
@@ -823,6 +861,39 @@ export class ChatConversationService {
 
       // Flag to skip retrieval pipeline (set when no KBs configured on assistant)
       const skipRetrieval = kbIds.length === 0
+
+      // Enrich Langfuse trace with assistant config metadata (available after Step 2)
+      if (trace) {
+        try {
+          trace.update({
+            metadata: {
+              dialog_id: dialogId || null,
+              tenant_id: tenantId || null,
+              assistant_name: assistant?.name || null,
+              llm_id: providerId || null,
+              kb_ids: kbIds,
+              kb_count: kbIds.length,
+              top_n: topN,
+              temperature: effectiveTemperature,
+              max_tokens: effectiveMaxTokens || null,
+              reasoning: useReasoning,
+              use_internet: useInternet,
+              detected_language: detectedLang,
+              refine_multiturn: cfg.refine_multiturn || false,
+              cross_languages: cfg.cross_languages || null,
+              keyword_extraction: cfg.keyword || false,
+              citation_enabled: cfg.quote !== false,
+              similarity_threshold: cfg.similarity_threshold || null,
+              vector_similarity_weight: cfg.vector_similarity_weight || null,
+              rerank_id: cfg.rerank_id || null,
+              use_kg: cfg.use_kg || false,
+              skip_retrieval: skipRetrieval,
+            },
+          })
+        } catch (err) {
+          log.error('Langfuse trace metadata update failed', { error: String(err) })
+        }
+      }
 
       // ── Step 3: Load conversation history ───────────────────────────────
       const history = await ModelFactory.chatMessage.getKnex()
@@ -1346,15 +1417,22 @@ export class ChatConversationService {
       // Send completion signal
       res.write(`data: [DONE]\n\n`)
 
-      // ── Step 14: Persist assistant message ──────────────────────────────
+      // ── Step 14: Persist assistant message (non-blocking) ─────────────
+      // Answer already streamed to client via SSE — DB write must not delay res.end()
       if (processedAnswer) {
-        await ModelFactory.chatMessage.create({
+        // Store Langfuse trace ID inside citations so feedback can link back to the trace
+        const citationsWithTrace = trace?.id
+          ? { ...(finalReference ?? {}), langfuse_trace_id: trace.id }
+          : finalReference ?? null
+        void ModelFactory.chatMessage.create({
           session_id: conversationId,
           role: 'assistant',
           content: processedAnswer,
-          citations: finalReference ?? null,
+          citations: citationsWithTrace,
           created_by: userId,
-        } as any)
+        } as any).catch(err =>
+          log.error('Failed to persist assistant message', { conversationId, error: String(err) })
+        )
       }
 
       // ── Step 14b: Fire-and-forget memory extraction (Pitfall 5 -- non-blocking) ──
@@ -1367,15 +1445,22 @@ export class ChatConversationService {
           .catch(err => log.error('Memory extraction failed', { memoryId: assistant.memory_id, error: String(err) }))
       }
 
-      // Auto-generate session title from first user message
-      const msgCount = await ModelFactory.chatMessage.getKnex()
-        .where('session_id', conversationId)
-        .count('id as count')
-        .first()
-      if (Number(msgCount?.count) <= 2) {
-        const title = content.length > 100 ? content.slice(0, 100) + '...' : content
-        await ModelFactory.chatSession.update(conversationId, { title } as any)
-      }
+      // Auto-generate session title from first user message (non-blocking)
+      // Cosmetic operation — must not delay stream completion
+      void (async () => {
+        try {
+          const msgCount = await ModelFactory.chatMessage.getKnex()
+            .where('session_id', conversationId)
+            .count('id as count')
+            .first()
+          if (Number(msgCount?.count) <= 2) {
+            const title = content.length > 100 ? content.slice(0, 100) + '...' : content
+            await ModelFactory.chatSession.update(conversationId, { title } as any)
+          }
+        } catch (err) {
+          log.warn('Failed to auto-generate session title', { conversationId, error: String(err) })
+        }
+      })()
 
       // Async analytics logging — fire-and-forget, non-blocking (never awaited)
       // Uses the highest chunk similarity score as confidence proxy
@@ -1395,13 +1480,30 @@ export class ChatConversationService {
         failed_retrieval: allChunks.length === 0,
       })
 
-      // Update Langfuse trace with final output and flush (fire-and-forget)
+      // Update Langfuse trace with final output, pipeline metrics, and flush (non-blocking)
       if (trace) {
         try {
-          langfuseTraceService.updateTrace(trace, { output: processedAnswer })
+          langfuseTraceService.updateTrace(trace, {
+            output: processedAnswer,
+            metadata: {
+              pipeline_metrics: {
+                refinement_ms: metrics.refinementMs || null,
+                retrieval_ms: metrics.retrievalMs || null,
+                generation_ms: metrics.generationMs || null,
+                total_ms: Date.now() - metrics.startTime,
+              },
+              chunks_retrieved: allChunks.length,
+              chunks_cited: citedChunkIndices.size,
+              top_chunk_score: topChunkScore,
+              failed_retrieval: allChunks.length === 0,
+            },
+          })
           // End main-completion span if still open
           if (mainSpan) { mainSpan.end({ output: processedAnswer }) }
-          await langfuseTraceService.flush()
+          // Fire-and-forget flush — must not block SSE stream completion
+          void langfuseTraceService.flush().catch(flushErr =>
+            log.warn('Langfuse flush failed (non-blocking)', { error: String(flushErr) })
+          )
         } catch (err) {
           log.error('Langfuse trace finalization failed', { error: String(err) })
         }

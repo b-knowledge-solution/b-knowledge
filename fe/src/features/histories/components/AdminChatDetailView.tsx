@@ -140,7 +140,7 @@ export const AdminChatDetailView = ({
                                         )}
 
                                         {/* Feedback indicator -- read-only display of existing feedback */}
-                                        {(item as any).feedback_thumbup !== undefined && (
+                                        {(item as any).feedback_thumbup != null && (
                                             <div className="pt-2 space-y-1">
                                                 <span className="inline-flex items-center gap-1">
                                                     {(item as any).feedback_thumbup
