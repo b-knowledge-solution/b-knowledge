@@ -8,7 +8,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  Search, Download, ImageIcon, FileJson, Filter, Loader2,
+  Search, ImageIcon, FileJson, Filter, Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
