@@ -28,6 +28,8 @@ import {
 } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
+// Module boundary exception (D-04): shared component imports glossary API
+// via direct file path to avoid circular dependency through barrel
 import {
     glossaryApi,
     type GlossaryTask,
