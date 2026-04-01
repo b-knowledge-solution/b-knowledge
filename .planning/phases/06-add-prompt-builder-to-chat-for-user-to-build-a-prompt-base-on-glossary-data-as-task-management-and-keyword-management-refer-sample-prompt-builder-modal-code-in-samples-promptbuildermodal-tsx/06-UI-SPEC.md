@@ -5,6 +5,7 @@ status: draft
 shadcn_initialized: true
 preset: new-york
 created: 2026-04-01
+revised: 2026-04-01
 ---
 
 # Phase 6 — UI Design Contract
@@ -32,14 +33,14 @@ Declared values (must be multiples of 4):
 | Token | Value | Usage |
 |-------|-------|-------|
 | xs | 4px | Icon gaps, inline padding |
-| sm | 8px | Compact element spacing, toggle button gaps (gap-1.5 = 6px rounds to 8px in context) |
+| sm | 8px | Compact element spacing, toggle button gaps |
 | md | 16px | Default element spacing, dialog body padding |
 | lg | 24px | Section padding, dialog header/footer padding |
 | xl | 32px | Layout gaps |
 | 2xl | 48px | Not used in this phase |
 | 3xl | 64px | Not used in this phase |
 
-Exceptions: Toggle button row uses `gap-1.5` (6px) matching existing ChatInput pattern. Touch target for trigger button is 28x28px (`h-7 w-7`), matching existing toggle buttons in ChatInput.
+Exceptions: Toggle button row in ChatInput uses `gap-1.5` (6px) as an existing parent layout value. The Sparkles trigger button does NOT declare `gap-1.5` itself -- it inherits the parent's gap. If parent gap is refactored in a future phase, use `gap-1` (4px) or `gap-2` (8px). Touch target for trigger button is 28x28px (`h-7 w-7`), matching existing toggle buttons in ChatInput.
 
 ---
 
@@ -48,11 +49,10 @@ Exceptions: Toggle button row uses `gap-1.5` (6px) matching existing ChatInput p
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Body | 14px (text-sm) | 400 (normal) | 1.5 |
-| Label | 12px (text-xs) | 500 (medium) | 1.5 |
+| Label / Step indicator | 12px (text-xs) | 400 (normal) | 1.5 |
 | Heading | 18px (text-lg) | 600 (semibold) | 1.2 |
-| Step indicator | 12px (text-xs) | 500 (medium) | 1.5 |
 
-Source: Existing PromptBuilderModal and ChatInput use `text-sm` for body, `text-xs` for labels and step indicators. Dialog title uses shadcn `DialogTitle` which renders at `text-lg font-semibold`.
+Two weights only: 400 (normal) for body, labels, and step indicators; 600 (semibold) for dialog heading only. Source: shadcn `DialogTitle` renders at `text-lg font-semibold`. All other text uses `font-normal`.
 
 ---
 
@@ -72,6 +72,19 @@ Accent reserved for:
 - Sparkles trigger button hover state (inherits existing toggle button pattern: `text-slate-400` default, `hover:text-slate-600` on hover)
 
 Note: The Sparkles trigger button does NOT have an active/highlighted state (it is a one-shot action, not a toggle). It uses the same idle styling as the file upload button: `text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700`.
+
+---
+
+## Visual Hierarchy
+
+| Priority | Element | Role | Visual Treatment |
+|----------|---------|------|-----------------|
+| Primary focal point | Step indicator row | Orients user within the 3-step flow | Accent-colored active circle, muted inactive circles, primary-colored connecting lines for completed steps |
+| Secondary anchor | "Apply to Chat" button | Terminal action of the flow | Full accent background (`bg-primary text-primary-foreground`), positioned at dialog footer |
+| Supporting | Language / Task / Keyword selectors | Step content inputs | Standard form inputs with muted borders, no accent color |
+| Tertiary | Editable prompt textarea | Preview before applying | Body text at 14px, bordered container, dominant background |
+
+The step indicator row draws the eye first because it is the only element using accent-colored circles against a dominant white background. The "Apply to Chat" button anchors the bottom of the dialog as the completion target.
 
 ---
 
@@ -147,9 +160,10 @@ All components already exist in the codebase. No new shadcn components need to b
 | Step 3 label | "Keywords" | `glossary.promptBuilder.step3` (exists) |
 | Primary CTA | "Apply to Chat" | `glossary.promptBuilder.applyToChat` (exists) |
 | Applied toast | "Prompt applied to chat input." | `glossary.promptBuilder.appliedToChat` (UPDATE needed) |
-| Empty state heading | No data | `common.noData` (exists) |
-| Empty state body | (no body, just heading) | N/A |
-| Error state | Handled by existing API error handling | N/A |
+| Empty state heading | "No tasks found" | `glossary.promptBuilder.emptyHeading` (NEW) |
+| Empty state body | "Add tasks in Data Studio to build prompts." | `glossary.promptBuilder.emptyBody` (NEW) |
+| Error state heading | "Failed to load tasks" | `glossary.promptBuilder.errorHeading` (NEW) |
+| Error state body | "Check your connection and try again." | `glossary.promptBuilder.errorBody` (NEW) |
 
 ### i18n Updates Required
 
@@ -161,7 +175,14 @@ The `glossary.promptBuilder.appliedToChat` key currently says "Prompt copied! Pa
 | ja | (current Japanese copy) | "プロンプトがチャット入力に適用されました。" |
 | vi | (current Vietnamese copy) | "Prompt da duoc ap dung vao o nhap chat." |
 
-No new i18n keys are needed. All existing `glossary.promptBuilder.*` keys remain at their current namespace (i18n keys are path-independent).
+### New i18n Keys Required
+
+| Key | en | vi | ja |
+|-----|----|----|-----|
+| `glossary.promptBuilder.emptyHeading` | "No tasks found" | "Khong tim thay tac vu" | "タスクが見つかりません" |
+| `glossary.promptBuilder.emptyBody` | "Add tasks in Data Studio to build prompts." | "Them tac vu trong Data Studio de tao prompt." | "プロンプトを作成するには、Data Studioでタスクを追加してください。" |
+| `glossary.promptBuilder.errorHeading` | "Failed to load tasks" | "Khong the tai tac vu" | "タスクの読み込みに失敗しました" |
+| `glossary.promptBuilder.errorBody` | "Check your connection and try again." | "Kiem tra ket noi va thu lai." | "接続を確認してもう一度お試しください。" |
 
 ---
 
