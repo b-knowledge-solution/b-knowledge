@@ -12,7 +12,7 @@ export { useGlossaryKeywords, useGlossaryTasks } from './api/glossaryQueries'
 export type { UseGlossaryKeywordsReturn, UseGlossaryTasksReturn } from './api/glossaryQueries'
 
 // Components
-export { PromptBuilderModal } from './components/PromptBuilderModal'
+export { PromptBuilderModal } from '@/components/PromptBuilderModal'
 
 // Types
 export type {

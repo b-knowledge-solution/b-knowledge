@@ -32,7 +32,7 @@ import {
     glossaryApi,
     type GlossaryTask,
     type GlossaryKeyword,
-} from '../api/glossaryApi'
+} from '@/features/glossary/api/glossaryApi'
 import { globalMessage } from '@/app/App'
 
 
