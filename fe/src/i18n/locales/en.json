@@ -2406,7 +2406,18 @@
       "statusPending": "Pending",
       "statusParsing": "Parsing",
       "statusCancelled": "Cancelled",
-      "statusParsed": "Parsed"
+      "statusParsed": "Parsed",
+      "parse": "Parse",
+      "stopParse": "Stop",
+      "parseSuccess": "Parsing started",
+      "stopParseSuccess": "Parsing cancelled",
+      "parseError": "Failed to start parsing",
+      "parser": "Parser",
+      "processLog": "Process Log",
+      "forceConvert": "Force Convert Now",
+      "forceConvertSuccess": "Conversion triggered",
+      "forceConvertError": "Failed to trigger conversion",
+      "updatedAt": "Updated"
     },
     "versions": {
       "label": "Label",

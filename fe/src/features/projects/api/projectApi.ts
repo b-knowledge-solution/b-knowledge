@@ -899,6 +899,45 @@ export const syncVersionParserStatus = (
     `/api/projects/${projectId}/categories/${categoryId}/versions/${versionId}/documents/parser-status`,
   );
 
+/**
+ * @description Parse a single document in a version's dataset via the RAG parse endpoint.
+ * Triggers beginParse + queueParseInit on the backend.
+ * @param {string} datasetId - The RAG dataset UUID (version's ragflow_dataset_id)
+ * @param {string} docId - Document UUID
+ * @returns {Promise<{ status: string; doc_id: string }>} Parse status
+ */
+export const parseVersionSingleDocument = (
+  datasetId: string,
+  docId: string,
+): Promise<{ status: string; doc_id: string }> =>
+  api.post(`/api/rag/datasets/${datasetId}/documents/${docId}/parse`);
+
+/**
+ * @description Bulk start or cancel parsing for multiple documents.
+ * @param {string} datasetId - The RAG dataset UUID
+ * @param {string[]} docIds - Array of document UUIDs
+ * @param {number} run - 1 to start parsing, 2 to cancel
+ * @returns {Promise<{ results: Array<{ doc_id: string; status: string }> }>} Per-document results
+ */
+export const bulkParseVersionDocuments = (
+  datasetId: string,
+  docIds: string[],
+  run: number,
+): Promise<{ results: Array<{ doc_id: string; status: string }> }> =>
+  api.post(`/api/rag/datasets/${datasetId}/documents/bulk-parse`, { doc_ids: docIds, run });
+
+/**
+ * @description Get document process logs including task history.
+ * @param {string} datasetId - The RAG dataset UUID
+ * @param {string} docId - Document UUID
+ * @returns {Promise<{ document: Record<string, unknown>; tasks: Array<Record<string, unknown>> }>} Document with task history
+ */
+export const getVersionDocumentLogs = (
+  datasetId: string,
+  docId: string,
+): Promise<{ document: Record<string, unknown>; tasks: Array<Record<string, unknown>> }> =>
+  api.get(`/api/rag/datasets/${datasetId}/documents/${docId}/logs`);
+
 // ============================================================================
 // Project Datasets API
 // ============================================================================

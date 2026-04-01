@@ -25,6 +25,8 @@ import { getRedisClient } from '@/shared/services/redis.service.js';
 import { db } from '@/shared/db/knex.js';
 import { getTenantId } from '@/shared/middleware/tenant.middleware.js';
 import { datasetSyncService } from '../services/dataset-sync.service.js';
+import { converterQueueService } from '../services/converter-queue.service.js';
+import { RagDocumentService } from '../services/rag-document.service.js';
 import { minioClient } from '@/shared/services/minio.service.js'
 import { config } from '@/shared/config/index.js';
 import { DatasetStatus } from '@/shared/constants/index.js';
@@ -223,6 +225,9 @@ export class RagController {
             const files = req.files as Express.Multer.File[] | undefined
             const uploadedDocs = []
 
+            // Allow per-upload parser override via form field; fall back to parent default
+            const uploadParserId = req.body?.parser_id || versionDataset.parser_id || 'naive'
+
             if (files && files.length > 0) {
                 for (const file of files) {
                     const fileId = getUuid()
@@ -244,14 +249,14 @@ export class RagController {
                         type: fileType,
                     })
 
-                    // Create Document record using parser settings inherited from parent
+                    // Create Document record using upload parser override or inherited settings
                     const parserConfig = typeof versionDataset.parser_config === 'string'
                         ? JSON.parse(versionDataset.parser_config)
                         : versionDataset.parser_config
                     await ragDocumentService.createDocument({
                         id: docId,
                         kb_id: versionDataset.id,
-                        parser_id: versionDataset.parser_id || 'naive',
+                        parser_id: uploadParserId,
                         parser_config: parserConfig || { pages: [[1, 1000000]] },
                         name: filename,
                         location: storagePath,
@@ -268,6 +273,7 @@ export class RagController {
                         name: filename,
                         size: file.size,
                         type: fileType,
+                        suffix,
                         status: '1',
                         run: '0',
                     })
@@ -277,6 +283,55 @@ export class RagController {
                 await ModelFactory.dataset.getKnex()
                     .where({ id: versionDataset.id })
                     .increment('doc_count', uploadedDocs.length)
+
+                // Split uploaded docs into Office files (need conversion) vs direct-parseable
+                const officeFiles: { docId: string; fileName: string }[] = []
+                const directParseFiles: { docId: string }[] = []
+
+                for (const doc of uploadedDocs) {
+                    const docSuffix = (doc as any).suffix || doc.name.split('.').pop()?.toLowerCase() || ''
+                    if (RagDocumentService.isOfficeFile(docSuffix)) {
+                        officeFiles.push({ docId: doc.id, fileName: doc.name })
+                    } else {
+                        directParseFiles.push({ docId: doc.id })
+                    }
+                }
+
+                // Auto-trigger parsing for non-Office files (PDF, text, images, etc.)
+                for (const { docId } of directParseFiles) {
+                    try {
+                        await ragDocumentService.beginParse(docId)
+                        await ragRedisService.queueParseInit(docId)
+                    } catch (parseErr) {
+                        log.warn('Failed to auto-trigger parsing for version document', {
+                            docId,
+                            error: String(parseErr),
+                        })
+                    }
+                }
+
+                // Create converter job for Office files if any exist
+                if (officeFiles.length > 0) {
+                    try {
+                        await converterQueueService.createJob({
+                            datasetId: versionDataset.id,
+                            versionId: versionDataset.id,
+                            projectId: versionDataset.parent_dataset_id || versionDataset.id,
+                            categoryId: versionDataset.id,
+                            files: officeFiles.map(f => ({
+                                fileName: f.fileName,
+                                filePath: `${versionDataset.id}/${f.fileName}`,
+                            })),
+                        })
+                        // Trigger manual conversion so worker picks up immediately
+                        await converterQueueService.triggerManualConversion()
+                    } catch (convErr) {
+                        log.warn('Failed to create converter job for Office files', {
+                            versionId: versionDataset.id,
+                            error: String(convErr),
+                        })
+                    }
+                }
             }
 
             res.status(201).json({
@@ -456,6 +511,9 @@ export class RagController {
                 return;
             }
 
+            // Allow per-upload parser override via form field; fall back to dataset default
+            const uploadParserId = req.body?.parser_id || dataset.parser_id || 'naive'
+
             const results = [];
             for (const file of files) {
                 const fileId = getUuid();
@@ -477,14 +535,14 @@ export class RagController {
                     type: fileType,
                 });
 
-                // Create Document record — use parser settings from the dataset
+                // Create Document record — use upload parser override or dataset default
                 const parserConfig = typeof dataset.parser_config === 'string'
                     ? JSON.parse(dataset.parser_config)
                     : dataset.parser_config;
                 await ragDocumentService.createDocument({
                     id: docId,
                     kb_id: datasetId,
-                    parser_id: dataset.parser_id || 'naive',
+                    parser_id: uploadParserId,
                     parser_config: parserConfig || { pages: [[1, 1000000]] },
                     name: filename,
                     location: storagePath,
@@ -501,6 +559,7 @@ export class RagController {
                     name: filename,
                     size: file.size,
                     type: fileType,
+                    suffix,
                     status: '1',
                     run: '0',
                 });
@@ -510,6 +569,23 @@ export class RagController {
             await ModelFactory.dataset.getKnex()
                 .where({ id: datasetId })
                 .increment('doc_count', results.length);
+
+            // Auto-trigger parsing only for non-Office files (Office files need conversion first)
+            for (const result of results) {
+                if (RagDocumentService.isOfficeFile((result as any).suffix || '')) {
+                    // Office files cannot be parsed directly — user must convert first
+                    continue
+                }
+                try {
+                    await ragDocumentService.beginParse(result.id)
+                    await ragRedisService.queueParseInit(result.id)
+                } catch (parseErr) {
+                    log.warn('Failed to auto-trigger parsing for document', {
+                        docId: result.id,
+                        error: String(parseErr),
+                    })
+                }
+            }
 
             res.status(201).json(results);
         } catch (error) {
@@ -1848,6 +1924,44 @@ export class RagController {
             }
             log.error('Failed to update parsing scheduler config', { error: String(error) })
             res.status(500).json({ error: 'Failed to update parsing scheduler config' })
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Converter Job Status
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description GET /datasets/:id/converter-jobs/:jobId/status — Check converter job status.
+     * Reads the job hash from Redis and returns progress counters.
+     * @param {Request} req - Express request with dataset ID and job ID params
+     * @param {Response} res - Express response with job status object
+     * @returns {Promise<void>}
+     */
+    async getConverterJobStatus(req: Request, res: Response): Promise<void> {
+        const { jobId } = req.params
+        if (!jobId) {
+            res.status(400).json({ error: 'Job ID is required' })
+            return
+        }
+
+        try {
+            const jobData = await converterQueueService.getJobStatus(jobId)
+            if (!jobData) {
+                res.status(404).json({ error: 'Converter job not found' })
+                return
+            }
+
+            res.json({
+                id: jobData['id'],
+                status: jobData['status'],
+                fileCount: Number(jobData['fileCount'] || '0'),
+                completedCount: Number(jobData['completedCount'] || '0'),
+                failedCount: Number(jobData['failedCount'] || '0'),
+            })
+        } catch (error) {
+            log.error('Failed to get converter job status', { error: String(error) })
+            res.status(500).json({ error: 'Failed to get converter job status' })
         }
     }
 

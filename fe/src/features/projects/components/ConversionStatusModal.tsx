@@ -19,10 +19,12 @@ import {
   Loader2,
   AlertCircle,
   Clock,
+  Zap,
 } from 'lucide-react';
 import {
   getConverterJobs,
   getConverterStats,
+  triggerManualConversion,
   type VersionJob,
   type QueueStats,
   type ConversionJobStatus,
@@ -140,6 +142,7 @@ const ConversionStatusModal = ({ open, onClose, projectId }: ConversionStatusMod
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isFetchingRef = useRef(false);
+  const [forceConverting, setForceConverting] = useState(false);
 
   /**
    * @description Fetch conversion jobs and queue stats from the API
@@ -186,6 +189,22 @@ const ConversionStatusModal = ({ open, onClose, projectId }: ConversionStatusMod
     onJobUpdate: () => fetchData(true),
   });
 
+  /**
+   * @description Trigger manual conversion so the worker picks up pending jobs immediately
+   */
+  const handleForceConvert = async () => {
+    setForceConverting(true)
+    try {
+      await triggerManualConversion()
+      // Refresh after a short delay to show updated status
+      setTimeout(() => fetchData(true), 1500)
+    } catch {
+      setError(t('projectManagement.documents.forceConvertError'))
+    } finally {
+      setForceConverting(false)
+    }
+  }
+
   /** Format ISO date string into a compact DD/MM HH:MM display */
   const formatTime = (iso: string) => {
     if (!iso) return '—';
@@ -219,6 +238,16 @@ const ConversionStatusModal = ({ open, onClose, projectId }: ConversionStatusMod
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Force Convert Now button — wakes the converter worker immediately */}
+            <button
+              onClick={handleForceConvert}
+              disabled={forceConverting}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
+              title={t('projectManagement.documents.forceConvert')}
+            >
+              {forceConverting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+              {t('projectManagement.documents.forceConvert')}
+            </button>
             <button
               onClick={() => fetchData(false)}
               disabled={loading}

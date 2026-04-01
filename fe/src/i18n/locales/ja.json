@@ -2371,7 +2371,18 @@
       "statusPending": "保留中",
       "statusParsing": "解析中",
       "statusCancelled": "キャンセル済み",
-      "statusParsed": "解析済み"
+      "statusParsed": "解析済み",
+      "parse": "解析",
+      "stopParse": "停止",
+      "parseSuccess": "解析を開始しました",
+      "stopParseSuccess": "解析をキャンセルしました",
+      "parseError": "解析の開始に失敗しました",
+      "parser": "パーサー",
+      "processLog": "処理ログ",
+      "forceConvert": "今すぐ変換",
+      "forceConvertSuccess": "変換を開始しました",
+      "forceConvertError": "変換の開始に失敗しました",
+      "updatedAt": "更新日時"
     },
     "versions": {
       "label": "ラベル",

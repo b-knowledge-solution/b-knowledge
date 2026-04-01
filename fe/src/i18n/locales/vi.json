@@ -2390,7 +2390,18 @@
       "statusPending": "Đang chờ",
       "statusParsing": "Đang phân tích",
       "statusCancelled": "Đã hủy",
-      "statusParsed": "Đã phân tích"
+      "statusParsed": "Đã phân tích",
+      "parse": "Phân tích",
+      "stopParse": "Dừng",
+      "parseSuccess": "Đã bắt đầu phân tích",
+      "stopParseSuccess": "Đã hủy phân tích",
+      "parseError": "Không thể bắt đầu phân tích",
+      "parser": "Bộ phân tích",
+      "processLog": "Nhật ký xử lý",
+      "forceConvert": "Chuyển đổi ngay",
+      "forceConvertSuccess": "Đã kích hoạt chuyển đổi",
+      "forceConvertError": "Không thể kích hoạt chuyển đổi",
+      "updatedAt": "Cập nhật"
     },
     "versions": {
       "label": "Nhãn",

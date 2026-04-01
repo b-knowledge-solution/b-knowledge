@@ -127,6 +127,9 @@ router.put('/datasets/:id/metadata', requirePermission('manage_datasets'), contr
 // Chunk image serving — serves images extracted from documents during parsing
 router.get('/images/:imageId', requireAuth, controller.getChunkImage.bind(controller));
 
+// Converter job status
+router.get('/datasets/:id/converter-jobs/:jobId/status', requireAuth, controller.getConverterJobStatus.bind(controller));
+
 // Parsing scheduler system config
 router.get('/system/config/parsing_scheduler', requirePermission('manage_datasets'), controller.getParsingSchedulerConfig.bind(controller));
 router.put('/system/config/parsing_scheduler', requirePermission('manage_datasets'), controller.updateParsingSchedulerConfig.bind(controller));

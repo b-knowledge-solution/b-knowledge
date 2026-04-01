@@ -571,6 +571,29 @@ export class RagDocumentService {
     }> {
         return ModelFactory.ragTask.getOverviewStats(datasetId);
     }
+
+    // -----------------------------------------------------------------------
+    // File type detection
+    // -----------------------------------------------------------------------
+
+    /**
+     * @description Office file extensions that require conversion to PDF before parsing.
+     * Must match converter/src/converter.py OFFICE_EXTENSIONS.
+     */
+    private static readonly OFFICE_EXTENSIONS = new Set([
+        'doc', 'docx', 'docm',   // Word
+        'xls', 'xlsx', 'xlsm',   // Excel
+        'ppt', 'pptx', 'pptm',   // PowerPoint
+    ])
+
+    /**
+     * @description Check if a file suffix indicates an Office format that needs conversion.
+     * @param {string} suffix - File extension without the dot (e.g., 'docx', 'pdf')
+     * @returns {boolean} True if the file needs Office-to-PDF conversion
+     */
+    static isOfficeFile(suffix: string): boolean {
+        return RagDocumentService.OFFICE_EXTENSIONS.has(suffix.toLowerCase())
+    }
 }
 
 /** Singleton instance of the RAG document service */

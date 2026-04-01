@@ -13,6 +13,7 @@ export {
 export type { DatasetFormData, UseDatasetsReturn, UseDocumentsReturn, UseChunksReturn, UseDatasetSettingsReturn } from './api/datasetQueries';
 export { default as DatasetAccessDialog } from './components/DatasetAccessDialog';
 export { default as DatasetSettingsDrawer } from './components/DatasetSettingsDrawer';
+export { default as ProcessLogDialog } from './components/ProcessLogDialog';
 export type {
   Dataset, Document, CreateDatasetDto, UpdateDatasetDto, AccessControl, Chunk, ChunksResponse,
   DatasetSettings, GraphRAGConfig, RAPTORConfig, RetrievalTestResult, RetrievalChunk,

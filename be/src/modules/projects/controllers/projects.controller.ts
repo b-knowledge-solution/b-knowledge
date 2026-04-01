@@ -9,7 +9,8 @@ import { projectCategoryService } from '../services/project-category.service.js'
 import { projectChatService } from '../services/project-chat.service.js'
 import { projectSearchService } from '../services/project-search.service.js'
 import { projectSyncService } from '../services/project-sync.service.js'
-import { ragDocumentService, ragStorageService, ragRedisService, ragSearchService } from '@/modules/rag/index.js'
+import { ragDocumentService, ragStorageService, ragRedisService, ragSearchService, converterQueueService } from '@/modules/rag/index.js'
+import { RagDocumentService } from '@/modules/rag/services/rag-document.service.js'
 import { ModelFactory } from '@/shared/models/factory.js'
 import { log } from '@/shared/services/logger.service.js'
 import { getClientIp } from '@/shared/utils/ip.js'
@@ -473,7 +474,10 @@ export class ProjectsController {
       const files = req.files as Express.Multer.File[] | undefined
       if (!files || files.length === 0) { res.status(400).json({ error: 'No files provided' }); return }
 
-      const results = []
+      // Allow per-upload parser override via form field; fall back to dataset default
+      const uploadParserId = req.body?.parser_id || dataset.parser_id || 'naive'
+
+      const results: { id: string; name: string; size: number; type: string; suffix: string; status: string; run: string }[] = []
       for (const file of files) {
         const fileId = getUuid()
         const docId = getUuid()
@@ -494,14 +498,14 @@ export class ProjectsController {
           type: fileType,
         })
 
-        // Create Document record using parser settings inherited from the dataset
+        // Create Document record using upload parser override or dataset default
         const parserConfig = typeof dataset.parser_config === 'string'
           ? JSON.parse(dataset.parser_config)
           : dataset.parser_config
         await ragDocumentService.createDocument({
           id: docId,
           kb_id: datasetId,
-          parser_id: dataset.parser_id || 'naive',
+          parser_id: uploadParserId,
           parser_config: parserConfig || { pages: [[1, 1000000]] },
           name: filename,
           location: storagePath,
@@ -526,6 +530,7 @@ export class ProjectsController {
           name: filename,
           size: file.size,
           type: fileType,
+          suffix,
           status: '1',
           run: '0',
         })
@@ -533,6 +538,60 @@ export class ProjectsController {
 
       // Update doc count on the dataset
       await ragDocumentService.incrementDocCount(datasetId, results.length)
+
+      // Split results into Office files (need conversion) vs direct-parseable
+      const officeFiles: { docId: string; fileName: string }[] = []
+      const directParseFiles: { docId: string }[] = []
+
+      for (const result of results) {
+        if (RagDocumentService.isOfficeFile(result.suffix)) {
+          officeFiles.push({ docId: result.id, fileName: result.name })
+        } else {
+          directParseFiles.push({ docId: result.id })
+        }
+      }
+
+      // Auto-trigger parsing for non-Office files (PDF, text, images, etc.)
+      for (const { docId } of directParseFiles) {
+        try {
+          await ragDocumentService.beginParse(docId)
+          await ragRedisService.queueParseInit(docId)
+          // Update version file status to 'parsing'
+          await ModelFactory.documentCategoryVersionFile.getKnex()
+            .where({ version_id: versionId, ragflow_doc_id: docId })
+            .update({ status: 'parsing', updated_at: new Date() })
+        } catch (parseErr) {
+          log.warn('Failed to auto-trigger parsing', { docId, error: String(parseErr) })
+        }
+      }
+
+      // Create converter job for Office files if any exist
+      if (officeFiles.length > 0) {
+        try {
+          const projectId = req.params['id']!
+          const catId = req.params['catId']!
+          await converterQueueService.createJob({
+            datasetId,
+            versionId,
+            projectId,
+            categoryId: catId,
+            files: officeFiles.map(f => ({
+              fileName: f.fileName,
+              filePath: `${projectId}/${catId}/${versionId}/${f.fileName}`,
+            })),
+          })
+          // Trigger manual conversion so worker picks up immediately
+          await converterQueueService.triggerManualConversion()
+          // Update version file statuses to 'converting'
+          for (const { docId } of officeFiles) {
+            await ModelFactory.documentCategoryVersionFile.getKnex()
+              .where({ version_id: versionId, ragflow_doc_id: docId })
+              .update({ status: 'converting', updated_at: new Date() })
+          }
+        } catch (convErr) {
+          log.warn('Failed to create converter job', { versionId, error: String(convErr) })
+        }
+      }
 
       res.status(201).json(results)
     } catch (error) {
