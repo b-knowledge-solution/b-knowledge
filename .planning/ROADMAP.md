@@ -48,10 +48,10 @@ Plans:
 
 ### Phase 4: Enhance code parser with Code-Graph-RAG - Tree-sitter Knowledge Graph and Code RAG API
 
-**Goal:** Enhance the code parser with a full Code-Graph-RAG pipeline: add Memgraph graph DB to infrastructure, port all 12-language parsers from code-graph-rag (StructureProcessor, ImportProcessor, DefinitionProcessor, TypeInferenceEngine, CallProcessor), store code knowledge graph in Memgraph with Cypher support, add Node.js API for graph queries via Bolt protocol with AI NL-to-Cypher translation, and provide an interactive graph visualization UI.
-**Requirements**: Memgraph infrastructure, 12-language parser pipeline, code graph extraction from AST, deep cross-file relationship detection, Node.js Bolt API, AI Cypher generation, code snippet retrieval, reference-guided optimization, graph visualization with PNG/SVG/JSON export
+**Goal:** Enhance the code parser with a full Code-Graph-RAG pipeline: add Memgraph graph DB to infrastructure, port all 12-language parsers from code-graph-rag (StructureProcessor, ImportProcessor, DefinitionProcessor, TypeInferenceEngine, CallProcessor), store code knowledge graph in Memgraph with Cypher support, add Node.js API for graph queries via Bolt protocol with AI NL-to-Cypher translation, provide an interactive graph visualization UI, and redesign the Code tab UI with coding-style layout featuring Git clone and ZIP upload source options that feed into the code parsing → code graph → vector embedding pipeline.
+**Requirements**: Memgraph infrastructure, 12-language parser pipeline, code graph extraction from AST, deep cross-file relationship detection, Node.js Bolt API, AI Cypher generation, code snippet retrieval, reference-guided optimization, graph visualization with PNG/SVG/JSON export, Code tab UI redesign with Git/ZIP sources
 **Depends on:** Phase 3
-**Plans:** 5 plans in 5 waves
+**Plans:** 6 plans in 5 waves
 
 Plans:
 - [ ] **04-01**: Memgraph Infrastructure Setup — Docker service, env vars, neo4j driver
@@ -59,6 +59,7 @@ Plans:
 - [ ] **04-03**: Task Executor Integration + Tests — Wire chunk_with_graph() into pipeline, 10+ unit tests
 - [ ] **04-04**: Node.js Code-Graph API — Express module, Memgraph Bolt queries, AI NL-to-Cypher, code snippets
 - [ ] **04-05**: Frontend Graph Visualization — Interactive graph page, node details, PNG/SVG/JSON export
+- [ ] **04-06**: Code Tab UI Redesign — Coding-style layout with Git clone + ZIP upload sources, pipeline status, integrated code graph panel
 
 ### Phase 5: Assistant response evaluation with thumb up/down on chat and search, admin histories page in agent studio
 

@@ -1,6 +1,6 @@
 # B-Knowledge Architecture
 
-> Auto-generated from GitNexus knowledge graph (13,896 symbols, 300 execution flows, 59 functional clusters).
+> Auto-generated from  knowledge graph (13,896 symbols, 300 execution flows, 59 functional clusters).
 
 ## Overview
 

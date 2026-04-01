@@ -1,20 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100" width="400" height="100">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a" />
-      <stop offset="100%" stop-color="#312e81" />
+    <linearGradient id="km-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0891b2" />
+      <stop offset="100%" stop-color="#1d4ed8" />
     </linearGradient>
-    <linearGradient id="b" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#60a5fa" />
-      <stop offset="100%" stop-color="#c084fc" />
+    <linearGradient id="km-text" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#cffafe" />
+      <stop offset="100%" stop-color="#bfdbfe" />
     </linearGradient>
   </defs>
   
   <g transform="translate(10, 10)">
-    <rect width="80" height="80" rx="20" fill="url(#bg)" />
-    <text x="37" y="58" font-family="'Inter', system-ui, sans-serif" font-weight="800" font-size="52" fill="url(#b)" text-anchor="middle">B</text>
-    <path d="M 60 12 L 62.4 20.8 L 71.2 23.2 L 62.4 25.6 L 60 34.4 L 57.6 25.6 L 48.8 23.2 L 57.6 20.8 Z" fill="#fbbf24" />
+    <rect width="80" height="80" rx="20" fill="url(#km-bg)" />
+    <text x="37" y="58" font-family="'Inter', system-ui, sans-serif" font-weight="800" font-size="52" fill="url(#km-text)" text-anchor="middle">K</text>
+    <path d="M 62 18 L 68 18 L 68 24 L 74 24 L 74 30 L 68 30 L 68 36 L 62 36 L 62 30 L 56 30 L 56 24 L 62 24 Z" fill="#34d399" />
   </g>
   
-  <text x="110" y="66" font-family="'Inter', system-ui, sans-serif" font-weight="800" font-size="46" fill="#0f172a" letter-spacing="-1">Knowledge</text>
+  <text x="110" y="66" font-family="'Inter', system-ui, sans-serif" font-weight="800" font-size="46" fill="#0f172a" letter-spacing="-1">KnowMed</text>
 </svg>
