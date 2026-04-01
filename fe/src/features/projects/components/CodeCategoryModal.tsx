@@ -16,7 +16,7 @@
 
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Info, Code2, Network, FileCode } from 'lucide-react'
+import { Info, Code2, Network, FileCode, GitBranch, Archive, FolderGit2, Globe } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -59,11 +59,30 @@ const CODE_CHUNK_STEP = 64
 // Types
 // ============================================================================
 
+/** Git provider presets for quick URL construction */
+type GitProvider = 'github' | 'gitlab' | 'bitbucket' | 'custom'
+
+/** Source configuration for where code comes from */
+interface CodeSourceConfig {
+  /** Source type: 'git' for repository clone, 'upload' for ZIP file upload */
+  source_type: 'git' | 'upload'
+  /** Git provider for URL validation hints */
+  git_provider: GitProvider
+  /** Full git repository URL */
+  git_url: string
+  /** Branch to clone (defaults to 'main') */
+  git_branch: string
+  /** Optional subdirectory path within the repo */
+  git_path: string
+}
+
 /** Shape of the code-specific dataset configuration */
 interface CodeDatasetConfig {
   language: string
   embedding_model: string
   chunk_method: 'code'
+  /** Source configuration for Git clone or ZIP upload */
+  source_config: CodeSourceConfig
   parser_config: {
     /** Primary language override — 'auto' means detect from file extension */
     code_language: string
@@ -90,6 +109,14 @@ interface CodeCategoryFormData {
   dataset_config: CodeDatasetConfig
 }
 
+/** Git provider URL prefixes for placeholder generation */
+const GIT_PROVIDER_PLACEHOLDERS: Record<GitProvider, string> = {
+  github: 'https://github.com/owner/repo.git',
+  gitlab: 'https://gitlab.com/owner/repo.git',
+  bitbucket: 'https://bitbucket.org/owner/repo.git',
+  custom: 'https://git.example.com/owner/repo.git',
+}
+
 /** Initial form state */
 const INITIAL_FORM_DATA: CodeCategoryFormData = {
   name: '',
@@ -97,6 +124,13 @@ const INITIAL_FORM_DATA: CodeCategoryFormData = {
     language: 'English',
     embedding_model: '',
     chunk_method: 'code',
+    source_config: {
+      source_type: 'git',
+      git_provider: 'github',
+      git_url: '',
+      git_branch: 'main',
+      git_path: '',
+    },
     parser_config: {
       code_language: 'auto',
       enable_code_graph: true,
@@ -208,6 +242,13 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
           language: dc.language || 'English',
           embedding_model: dc.embedding_model || '',
           chunk_method: 'code',
+          source_config: {
+            source_type: dc.source_config?.source_type || 'git',
+            git_provider: dc.source_config?.git_provider || 'github',
+            git_url: dc.source_config?.git_url || '',
+            git_branch: dc.source_config?.git_branch || 'main',
+            git_path: dc.source_config?.git_path || '',
+          },
           parser_config: {
             code_language: pc.code_language || 'auto',
             enable_code_graph: pc.enable_code_graph ?? true,
@@ -237,6 +278,17 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
     }))
   }
 
+  /** Update a source_config field */
+  const updateSourceConfig = (field: string, value: unknown) => {
+    setFormData((prev) => ({
+      ...prev,
+      dataset_config: {
+        ...prev.dataset_config,
+        source_config: { ...prev.dataset_config.source_config, [field]: value },
+      },
+    }))
+  }
+
   /** Validate and submit the form */
   const handleOk = () => {
     // Validate required name field
@@ -249,6 +301,7 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
   }
 
   const pc = formData.dataset_config.parser_config
+  const sc = formData.dataset_config.source_config
 
   return (
     <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) onCancel() }}>
@@ -282,6 +335,132 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
               />
               {nameError && <p className="text-red-500 text-xs mt-1">{nameError}</p>}
             </div>
+
+            {/* ── SECTION: Code Source ── */}
+            <div className="flex items-center gap-2">
+              <Separator className="flex-1" />
+              <span className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+                <FolderGit2 className="h-3.5 w-3.5" />
+                {t('projects.codeSourceSection', 'Code Source')}
+              </span>
+              <Separator className="flex-1" />
+            </div>
+
+            {/* Source type toggle: Git Clone or ZIP Upload */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => updateSourceConfig('source_type', 'git')}
+                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                  sc.source_type === 'git'
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-600'
+                    : 'border-border bg-background text-muted-foreground hover:bg-muted dark:hover:bg-muted/50'
+                }`}
+              >
+                <GitBranch className="h-4 w-4" />
+                {t('projects.codeSourceGitTab', 'Git Clone')}
+              </button>
+              <button
+                type="button"
+                onClick={() => updateSourceConfig('source_type', 'upload')}
+                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                  sc.source_type === 'upload'
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-600'
+                    : 'border-border bg-background text-muted-foreground hover:bg-muted dark:hover:bg-muted/50'
+                }`}
+              >
+                <Archive className="h-4 w-4" />
+                {t('projects.codeSourceZipTab', 'ZIP Upload')}
+              </button>
+            </div>
+
+            {/* Git source config — shown when source_type is 'git' */}
+            {sc.source_type === 'git' && (
+              <div className="space-y-3 rounded-lg border border-border bg-slate-50 dark:bg-slate-900/50 p-3">
+                {/* Git provider selector */}
+                <div className="grid grid-cols-[140px_1fr] items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <Label className="text-sm">{t('projects.codeSourceGitProvider', 'Provider')}</Label>
+                  </div>
+                  <Select
+                    value={sc.git_provider}
+                    onValueChange={(v: string) => updateSourceConfig('git_provider', v)}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="github">
+                        <span className="flex items-center gap-1.5">GitHub</span>
+                      </SelectItem>
+                      <SelectItem value="gitlab">
+                        <span className="flex items-center gap-1.5">GitLab</span>
+                      </SelectItem>
+                      <SelectItem value="bitbucket">
+                        <span className="flex items-center gap-1.5">Bitbucket</span>
+                      </SelectItem>
+                      <SelectItem value="custom">
+                        <span className="flex items-center gap-1.5">
+                          <Globe className="h-3 w-3" />
+                          {t('projects.codeSourceGitCustom', 'Custom')}
+                        </span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Repository URL */}
+                <div>
+                  <Label className="text-sm mb-1">
+                    {t('projects.codeSourceGitUrl', 'Repository URL')} <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    placeholder={GIT_PROVIDER_PLACEHOLDERS[sc.git_provider]}
+                    value={sc.git_url}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSourceConfig('git_url', e.target.value)}
+                    className="font-mono text-sm"
+                  />
+                </div>
+
+                {/* Branch and Path on one row */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-sm mb-1">{t('projects.codeSourceGitBranch', 'Branch')}</Label>
+                    <Input
+                      placeholder="main"
+                      value={sc.git_branch}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSourceConfig('git_branch', e.target.value)}
+                      className="font-mono text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm mb-1">{t('projects.codeSourceGitPath', 'Subdirectory (optional)')}</Label>
+                    <Input
+                      placeholder="/src"
+                      value={sc.git_path}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSourceConfig('git_path', e.target.value)}
+                      className="font-mono text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Info text */}
+                <p className="text-[11px] text-muted-foreground">
+                  {t('projects.codeSourceGitDescription', 'Clone a Git repository and import code files for parsing, graph extraction, and embedding.')}
+                </p>
+              </div>
+            )}
+
+            {/* ZIP upload info — shown when source_type is 'upload' */}
+            {sc.source_type === 'upload' && (
+              <div className="rounded-lg border border-dashed border-border bg-slate-50 dark:bg-slate-900/50 p-4 text-center">
+                <Archive className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  {t('projects.codeSourceZipDescription', 'Upload a ZIP archive containing code files for parsing, graph extraction, and embedding.')}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {t('projects.codeSourceZipHint', 'You can upload ZIP files after creating the category from the Code tab.')}
+                </p>
+              </div>
+            )}
 
             {/* ── SECTION: Basic ── */}
             <div className="flex items-center gap-2">

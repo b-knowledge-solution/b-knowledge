@@ -84,12 +84,20 @@ export class ProjectCategoryService {
         const parserId = categoryType === 'code' ? 'code' : (project.default_chunk_method || 'naive')
         const tenantId = project.tenant_id || config.opensearch.systemTenantId
 
-        // Create a dataset named <projectname>_<categoryname>
+        // Generate a unique dataset name with timestamp suffix to avoid unique index violation
+        // (datasets_name_active_unique partial index enforces LOWER(name) uniqueness among active datasets)
+        const timestamp = Date.now().toString(36)
+        const datasetName = `${project.name}_${data.name}_${timestamp}`
+
+        // Use embedding model from category config if provided, else fall back to project default
+        const embeddingModel = data.dataset_config?.embedding_model || project.default_embedding_model || null
+
+        // Create a dataset named <projectname>_<categoryname>_<timestamp>
         const dataset = await ModelFactory.dataset.create({
-          name: `${project.name}_${data.name}`,
+          name: datasetName,
           description: `Auto-created dataset for project "${project.name}", category "${data.name}"`,
-          language: 'English',
-          embedding_model: project.default_embedding_model || null,
+          language: data.dataset_config?.language || 'English',
+          embedding_model: embeddingModel,
           parser_id: parserId,
           parser_config: JSON.stringify(data.dataset_config?.parser_config || {}),
           access_control: JSON.stringify({ public: !project.is_private }),
@@ -112,10 +120,17 @@ export class ProjectCategoryService {
         // Return updated category with dataset_id
         return { ...category, dataset_id: dataset.id }
       } catch (dsError) {
-        // Non-blocking: category is still created even if dataset creation fails
-        log.warn('Failed to auto-create dataset for category', {
+        // Dataset creation failed — delete the orphan category and re-throw
+        // so the frontend knows the operation failed entirely
+        log.error('Failed to auto-create dataset for category, rolling back category', {
           error: String(dsError), projectId, categoryName: data.name, categoryType,
         })
+        try {
+          await ModelFactory.documentCategory.delete(category.id)
+        } catch (cleanupErr) {
+          log.error('Failed to cleanup orphan category', { error: String(cleanupErr), categoryId: category.id })
+        }
+        throw new Error(`Failed to create code category: ${String(dsError)}`)
       }
     }
 
