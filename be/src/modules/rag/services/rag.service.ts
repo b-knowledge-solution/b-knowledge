@@ -13,7 +13,7 @@ import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/se
 import { Dataset, Document, AccessControl, UserContext } from '@/shared/models/types.js';
 import { teamService } from '@/modules/teams/services/team.service.js';
 import { getUuid } from '@/shared/utils/uuid.js';
-import { UserRole, DatasetStatus } from '@/shared/constants/index.js';
+import { ComparisonLiteral, UserRole, DatasetStatus } from '@/shared/constants/index.js';
 
 /**
  * @description Core service for dataset CRUD, RBAC access control, and document operations.
@@ -235,7 +235,7 @@ export class RagService {
         // Fetch the dataset record
         const dataset = await ModelFactory.dataset.findById(datasetId);
         if (!dataset) {
-            throw new Error('Dataset not found');
+            throw new Error(ComparisonLiteral.DATASET_NOT_FOUND);
         }
 
         // Parse access_control from string if needed

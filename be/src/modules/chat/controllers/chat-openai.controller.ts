@@ -20,6 +20,7 @@ import {
   extractLastUserMessage,
 } from '@/shared/services/openai-format.service.js'
 import { ModelFactory } from '@/shared/models/factory.js'
+import { ComparisonLiteral } from '@/shared/constants/index.js'
 
 /** @description Default model identifier returned by the API. */
 const MODEL_ID = 'b-knowledge-rag'
@@ -197,7 +198,7 @@ function createStreamInterceptor(
       if (!data.startsWith('data: ')) return true
 
       const payload = data.slice(6).trim()
-      if (payload === '[DONE]') {
+      if (payload === ComparisonLiteral.STREAM_DONE) {
         // Send final chunk
         realRes.write(buildOaiStreamChunk(completionId, '', model, true))
         return true
@@ -240,7 +241,7 @@ function createBufferInterceptor(onDelta: (delta: string) => void) {
       if (!data.startsWith('data: ')) return true
 
       const payload = data.slice(6).trim()
-      if (payload === '[DONE]') return true
+      if (payload === ComparisonLiteral.STREAM_DONE) return true
 
       try {
         const parsed = JSON.parse(payload)

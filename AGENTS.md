@@ -112,6 +112,7 @@ npm run generate:cert       # Generate self-signed SSL certs in certs/
 - Functional patterns where possible
 - JSDoc headers on every function/class (`@param`, `@returns`, `@description`)
 - Inline comments above significant logic/control flow
+- **No hardcoded literals in conditional comparisons:** do not compare against inline static string/number values in `if`/`else if`/`switch`/ternary checks. Move reusable values to named constants/enums in `be/src/shared/constants/` or `fe/src/constants/` and reference those constants in conditions.
 - If changes are extensive, run `npm run build` to verify
 
 ### NX-Style Module Boundary Rules

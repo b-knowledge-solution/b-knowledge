@@ -15,6 +15,7 @@ import { createContext, useContext, useEffect, useState, ReactNode, useCallback 
 import { useTranslation } from 'react-i18next';
 
 import { LanguageCode, SUPPORTED_LANGUAGES } from '@/i18n';
+import { Theme as ThemeConstant } from '@/constants';
 
 // ============================================================================
 // Types
@@ -23,7 +24,7 @@ import { LanguageCode, SUPPORTED_LANGUAGES } from '@/i18n';
 /**
  * @description Theme preference options: explicit light/dark or automatic system detection
  */
-export type Theme = 'light' | 'dark' | 'system';
+export type Theme = (typeof ThemeConstant)[keyof typeof ThemeConstant];
 
 /**
  * Settings context value type.
@@ -76,9 +77,9 @@ const STORAGE_KEY_LANGUAGE = 'kb-language';
  */
 function getSystemTheme(): 'light' | 'dark' {
   if (typeof window !== 'undefined' && window.matchMedia) {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? ThemeConstant.DARK : ThemeConstant.LIGHT;
   }
-  return 'light';
+  return ThemeConstant.LIGHT;
 }
 
 /**
@@ -88,11 +89,11 @@ function getSystemTheme(): 'light' | 'dark' {
 function getStoredTheme(): Theme {
   if (typeof window !== 'undefined') {
     const stored = localStorage.getItem(STORAGE_KEY_THEME);
-    if (stored === 'light' || stored === 'dark' || stored === 'system') {
+    if (stored === ThemeConstant.LIGHT || stored === ThemeConstant.DARK || stored === ThemeConstant.SYSTEM) {
       return stored;
     }
   }
-  return 'system';
+  return ThemeConstant.SYSTEM;
 }
 
 /**
@@ -145,21 +146,22 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
    */
   useEffect(() => {
     const updateDarkMode = () => {
-      const shouldBeDark = theme === 'dark' || (theme === 'system' && getSystemTheme() === 'dark');
+      const shouldBeDark = theme === ThemeConstant.DARK
+        || (theme === ThemeConstant.SYSTEM && getSystemTheme() === ThemeConstant.DARK);
       setIsDarkMode(shouldBeDark);
 
       // Apply dark class to document root for Tailwind
       if (shouldBeDark) {
-        document.documentElement.classList.add('dark');
+        document.documentElement.classList.add(ThemeConstant.DARK);
       } else {
-        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.remove(ThemeConstant.DARK);
       }
     };
 
     updateDarkMode();
 
     // Listen for system theme changes when using 'system' theme for real-time updates
-    if (theme === 'system') {
+    if (theme === ThemeConstant.SYSTEM) {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       const handler = () => updateDarkMode();
       mediaQuery.addEventListener('change', handler);
@@ -203,7 +205,7 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
         language,
         setLanguage,
         isDarkMode,
-        resolvedTheme: isDarkMode ? 'dark' : 'light',
+        resolvedTheme: isDarkMode ? ThemeConstant.DARK : ThemeConstant.LIGHT,
         isSettingsOpen,
         openSettings,
         closeSettings,

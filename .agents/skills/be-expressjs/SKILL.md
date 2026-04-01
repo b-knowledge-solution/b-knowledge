@@ -17,6 +17,12 @@ Use this skill when creating or modifying modules, routes, controllers, services
 - Logging: Winston via `@/shared/services/logger.service.js`
 - Config: Always use `config` object from `@/shared/config/index.js` — never `process.env` directly
 
+## Conditional Literal Rule (Mandatory)
+
+- Do **not** use hardcoded static string/number literals directly in conditional comparisons (`if`, `else if`, `switch`, ternary conditions).
+- Move comparison values to named constants/enums under `be/src/shared/constants/` (or module-level constants if domain-specific), then compare against the constant.
+- Example: use `ComparisonLiteral.SEARCH_APP_NOT_FOUND` instead of `if (message === 'Search app not found')`.
+
 ## Module Layout Decision
 
 Choose layout based on file count:
