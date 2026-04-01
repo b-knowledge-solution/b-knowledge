@@ -2,10 +2,23 @@
  * @fileoverview Service for document category and version management within projects.
  * @module services/project-category
  */
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
+import AdmZip from 'adm-zip'
 import { ModelFactory } from '@/shared/models/factory.js'
 import { config } from '@/shared/config/index.js'
 import { log } from '@/shared/services/logger.service.js'
 import { DocumentCategory, DocumentCategoryVersion, DocumentCategoryVersionFile, UserContext } from '@/shared/models/types.js'
+import { execFileNoThrow } from '@/shared/utils/execFileNoThrow.js'
+import { ragDocumentService, ragStorageService, ragRedisService } from '@/modules/rag/index.js'
+import { getUuid } from '@/shared/utils/uuid.js'
+
+/** Code file extensions supported for import (matches advance-rag EXTENSION_MAP) */
+const CODE_EXTENSIONS = new Set([
+  '.py', '.js', '.ts', '.tsx', '.jsx', '.java', '.go', '.rs',
+  '.c', '.cpp', '.h', '.hpp', '.cs', '.php', '.lua', '.scala', '.rb',
+])
 
 /**
  * @description Service handling document category CRUD, version management,
@@ -292,6 +305,232 @@ export class ProjectCategoryService {
    */
   async listVersionFiles(versionId: string): Promise<DocumentCategoryVersionFile[]> {
     return ModelFactory.documentCategoryVersionFile.findByVersionId(versionId)
+  }
+
+  // -------------------------------------------------------------------------
+  // Code Import
+  // -------------------------------------------------------------------------
+
+  /**
+   * @description Import code files from a Git repository into a code category's dataset.
+   *   Clones the repo (shallow, single branch), filters by code extensions, creates document
+   *   entries, and triggers the RAG parse pipeline. Requires `git` CLI on the host.
+   * @param {string} projectId - UUID of the project
+   * @param {string} categoryId - UUID of the code category
+   * @param {string} tenantId - Tenant ID for dataset scoping
+   * @param {object} params - Git import parameters
+   * @param {string} params.url - Git repository URL
+   * @param {string} [params.branch] - Branch to clone (default 'main')
+   * @param {string} [params.path] - Subdirectory to import from (default '/')
+   * @returns {Promise<{ taskId: string; fileCount: number }>} Import task info
+   * @throws {Error} If category not found, not type='code', or git clone fails
+   */
+  async importGitRepo(
+    projectId: string,
+    categoryId: string,
+    tenantId: string,
+    params: { url: string; branch?: string; path?: string },
+  ): Promise<{ taskId: string; fileCount: number }> {
+    // Verify category exists, is type='code', and has a dataset
+    const category = await ModelFactory.documentCategory.findById(categoryId)
+    if (!category) throw new Error('Category not found')
+    if (category.category_type !== 'code') throw new Error('Category must be type "code"')
+    if (!category.dataset_id) throw new Error('Category has no linked dataset')
+
+    const datasetId = category.dataset_id
+    const branch = params.branch || 'main'
+    const subPath = params.path || '/'
+
+    // Create temp directory for git clone
+    const tempDir = path.join(os.tmpdir(), `git-import-${getUuid()}`)
+    fs.mkdirSync(tempDir, { recursive: true })
+
+    try {
+      // Shallow clone the repository using execFileNoThrow for shell-injection safety
+      const cloneResult = await execFileNoThrow('git', [
+        'clone', '--depth', '1', '--branch', branch, params.url, tempDir,
+      ], { timeout: 120_000 })
+
+      if (cloneResult.code !== 0) {
+        throw new Error(`Git clone failed: ${cloneResult.stderr}`)
+      }
+
+      // Determine the root directory to scan
+      const scanRoot = subPath === '/'
+        ? tempDir
+        : path.join(tempDir, subPath.replace(/^\//, ''))
+
+      // Collect code files matching supported extensions
+      const codeFiles = this.collectCodeFiles(scanRoot)
+
+      // Import each code file into the dataset
+      const taskId = getUuid()
+      const dataset = await ModelFactory.dataset.findById(datasetId)
+      for (const filePath of codeFiles) {
+        await this.importSingleFile(datasetId, filePath, dataset)
+      }
+
+      // Update document count and trigger parsing for all imported files
+      if (codeFiles.length > 0) {
+        await ragDocumentService.incrementDocCount(datasetId, codeFiles.length)
+      }
+
+      return { taskId, fileCount: codeFiles.length }
+    } finally {
+      // Clean up temp directory regardless of success or failure
+      fs.rmSync(tempDir, { recursive: true, force: true })
+    }
+  }
+
+  /**
+   * @description Import code files from a ZIP archive into a code category's dataset.
+   *   Extracts the archive, filters by code extensions, creates document entries,
+   *   and triggers the RAG parse pipeline.
+   * @param {string} projectId - UUID of the project
+   * @param {string} categoryId - UUID of the code category
+   * @param {string} tenantId - Tenant ID for dataset scoping
+   * @param {Buffer} fileBuffer - ZIP file contents as a Buffer
+   * @param {string} fileName - Original file name of the uploaded ZIP
+   * @returns {Promise<{ taskId: string; fileCount: number }>} Import task info
+   * @throws {Error} If category not found, not type='code', or extraction fails
+   */
+  async importZipFile(
+    projectId: string,
+    categoryId: string,
+    tenantId: string,
+    fileBuffer: Buffer,
+    fileName: string,
+  ): Promise<{ taskId: string; fileCount: number }> {
+    // Verify category exists, is type='code', and has a dataset
+    const category = await ModelFactory.documentCategory.findById(categoryId)
+    if (!category) throw new Error('Category not found')
+    if (category.category_type !== 'code') throw new Error('Category must be type "code"')
+    if (!category.dataset_id) throw new Error('Category has no linked dataset')
+
+    const datasetId = category.dataset_id
+
+    // Create temp directory for ZIP extraction
+    const tempDir = path.join(os.tmpdir(), `zip-import-${getUuid()}`)
+    fs.mkdirSync(tempDir, { recursive: true })
+
+    try {
+      // Extract ZIP using adm-zip
+      const zip = new AdmZip(fileBuffer)
+      zip.extractAllTo(tempDir, true)
+
+      // Collect code files matching supported extensions
+      const codeFiles = this.collectCodeFiles(tempDir)
+
+      // Import each code file into the dataset
+      const taskId = getUuid()
+      const dataset = await ModelFactory.dataset.findById(datasetId)
+      for (const filePath of codeFiles) {
+        await this.importSingleFile(datasetId, filePath, dataset)
+      }
+
+      // Update document count
+      if (codeFiles.length > 0) {
+        await ragDocumentService.incrementDocCount(datasetId, codeFiles.length)
+      }
+
+      return { taskId, fileCount: codeFiles.length }
+    } finally {
+      // Clean up temp directory regardless of success or failure
+      fs.rmSync(tempDir, { recursive: true, force: true })
+    }
+  }
+
+  /**
+   * @description Recursively collect all code files from a directory tree,
+   *   filtering by the supported CODE_EXTENSIONS set.
+   * @param {string} dir - Root directory to scan
+   * @returns {string[]} Array of absolute file paths for code files
+   */
+  private collectCodeFiles(dir: string): string[] {
+    const results: string[] = []
+
+    // Guard: skip if directory does not exist
+    if (!fs.existsSync(dir)) return results
+
+    const entries = fs.readdirSync(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        // Skip hidden directories (e.g. .git, .idea)
+        if (entry.name.startsWith('.')) continue
+        results.push(...this.collectCodeFiles(fullPath))
+      } else if (entry.isFile()) {
+        const ext = path.extname(entry.name).toLowerCase()
+        // Only include files with recognized code extensions
+        if (CODE_EXTENSIONS.has(ext)) {
+          results.push(fullPath)
+        }
+      }
+    }
+
+    return results
+  }
+
+  /**
+   * @description Import a single code file into a dataset: upload to S3, create
+   *   File + Document records, link them, and queue for parsing.
+   * @param {string} datasetId - Target dataset UUID
+   * @param {string} filePath - Absolute path to the file on disk
+   * @param {any} dataset - Dataset record for parser settings
+   * @returns {Promise<void>}
+   */
+  private async importSingleFile(datasetId: string, filePath: string, dataset: any): Promise<void> {
+    const fileId = getUuid()
+    const docId = getUuid()
+    const filename = path.basename(filePath)
+    const suffix = path.extname(filename).toLowerCase().replace('.', '')
+    const fileType = ragStorageService.getFileType(suffix)
+    const fileBuffer = fs.readFileSync(filePath)
+
+    // Upload file to S3/MinIO storage
+    const storagePath = ragStorageService.buildStoragePath(datasetId, fileId, filename)
+    await ragStorageService.putFile(storagePath, fileBuffer)
+
+    // Create File record in PostgreSQL
+    await ragDocumentService.createFile({
+      id: fileId,
+      name: filename,
+      location: storagePath,
+      size: fileBuffer.length,
+      type: fileType,
+    })
+
+    // Parse dataset parser config from string if needed
+    const parserConfig = typeof dataset?.parser_config === 'string'
+      ? JSON.parse(dataset.parser_config)
+      : dataset?.parser_config
+
+    // Create Document record using parser settings from the dataset
+    await ragDocumentService.createDocument({
+      id: docId,
+      kb_id: datasetId,
+      parser_id: dataset?.parser_id || 'code',
+      parser_config: parserConfig || { pages: [[1, 1000000]] },
+      name: filename,
+      location: storagePath,
+      size: fileBuffer.length,
+      suffix,
+      type: fileType,
+    })
+
+    // Link file to document
+    await ragDocumentService.createFile2Document(fileId, docId)
+
+    // Queue the document for parsing
+    try {
+      await ragDocumentService.beginParse(docId)
+      await ragRedisService.queueParseInit(docId)
+    } catch (err) {
+      // Non-blocking: file is imported even if parse queueing fails
+      log.warn('Failed to queue parse for imported file', {
+        error: String(err), docId, filename,
+      })
+    }
   }
 }
 

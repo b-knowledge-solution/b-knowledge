@@ -260,6 +260,20 @@ export const bindDatasetsSchema = z.object({
 })
 
 // ---------------------------------------------------------------------------
+// Code Import schemas
+// ---------------------------------------------------------------------------
+
+/** @description Validates POST body for Git repository import into a code category */
+export const importGitSchema = z.object({
+  url: z.string().url().refine(
+    (u) => u.endsWith('.git') || u.includes('github.com') || u.includes('gitlab.com') || u.includes('bitbucket.org'),
+    { message: 'Must be a valid git repository URL' },
+  ),
+  branch: z.string().optional().default('main'),
+  path: z.string().optional().default('/'),
+})
+
+// ---------------------------------------------------------------------------
 // Activity Feed schemas
 // ---------------------------------------------------------------------------
 

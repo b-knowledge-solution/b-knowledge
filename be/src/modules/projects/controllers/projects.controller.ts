@@ -3,15 +3,18 @@
  * @module controllers/projects
  */
 import { Request, Response } from 'express'
+import path from 'path'
 import { projectsService } from '../services/projects.service.js'
 import { projectCategoryService } from '../services/project-category.service.js'
 import { projectChatService } from '../services/project-chat.service.js'
 import { projectSearchService } from '../services/project-search.service.js'
 import { projectSyncService } from '../services/project-sync.service.js'
+import { ragDocumentService, ragStorageService, ragRedisService, ragSearchService } from '@/modules/rag/index.js'
 import { ModelFactory } from '@/shared/models/factory.js'
 import { log } from '@/shared/services/logger.service.js'
 import { getClientIp } from '@/shared/utils/ip.js'
 import { getTenantId } from '@/shared/middleware/tenant.middleware.js'
+import { getUuid } from '@/shared/utils/uuid.js'
 
 /**
  * @description Build a UserContext object from the Express request's authenticated user
@@ -425,11 +428,301 @@ export class ProjectsController {
    */
   async listVersionDocuments(req: Request, res: Response): Promise<void> {
     try {
-      const files = await projectCategoryService.listVersionFiles(req.params['verId']!)
-      res.json(files)
+      const versionId = req.params['verId']!
+
+      // Look up the version to get its linked RAG dataset
+      const version = await projectCategoryService.getVersionById(versionId)
+      if (!version?.ragflow_dataset_id) {
+        // Fall back to local version files if no dataset is linked
+        const files = await projectCategoryService.listVersionFiles(versionId)
+        res.json(files)
+        return
+      }
+
+      // Query RAG documents from the linked dataset for full document metadata
+      const docs = await ragDocumentService.listDocuments(version.ragflow_dataset_id)
+      res.json(docs)
     } catch (error) {
       log.error('Failed to list version documents', { error: String(error) })
       res.status(500).json({ error: 'Failed to list version documents' })
+    }
+  }
+
+  /**
+   * @description POST /projects/:id/categories/:catId/versions/:verId/documents - Upload documents to a version's linked RAG dataset.
+   *   Resolves the version's ragflow_dataset_id, stores files in MinIO, and creates File/Document/File2Document records.
+   * @param {Request} req - Express request with multer files
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
+   */
+  async uploadVersionDocuments(req: Request, res: Response): Promise<void> {
+    try {
+      const versionId = req.params['verId']!
+
+      // Resolve the version's linked RAG dataset
+      const version = await projectCategoryService.getVersionById(versionId)
+      if (!version) { res.status(404).json({ error: 'Version not found' }); return }
+      if (!version.ragflow_dataset_id) { res.status(400).json({ error: 'Version has no linked dataset' }); return }
+
+      const datasetId = version.ragflow_dataset_id
+
+      // Verify the dataset exists
+      const dataset = await ModelFactory.dataset.findById(datasetId)
+      if (!dataset) { res.status(404).json({ error: 'Linked dataset not found' }); return }
+
+      const files = req.files as Express.Multer.File[] | undefined
+      if (!files || files.length === 0) { res.status(400).json({ error: 'No files provided' }); return }
+
+      const results = []
+      for (const file of files) {
+        const fileId = getUuid()
+        const docId = getUuid()
+        const filename = file.originalname || 'unknown'
+        const suffix = path.extname(filename).toLowerCase().replace('.', '')
+        const fileType = ragStorageService.getFileType(suffix)
+
+        // Store file in MinIO under the version's dataset storage path
+        const storagePath = ragStorageService.buildStoragePath(datasetId, fileId, filename)
+        await ragStorageService.putFile(storagePath, file.buffer)
+
+        // Create File record in PostgreSQL
+        await ragDocumentService.createFile({
+          id: fileId,
+          name: filename,
+          location: storagePath,
+          size: file.size,
+          type: fileType,
+        })
+
+        // Create Document record using parser settings inherited from the dataset
+        const parserConfig = typeof dataset.parser_config === 'string'
+          ? JSON.parse(dataset.parser_config)
+          : dataset.parser_config
+        await ragDocumentService.createDocument({
+          id: docId,
+          kb_id: datasetId,
+          parser_id: dataset.parser_id || 'naive',
+          parser_config: parserConfig || { pages: [[1, 1000000]] },
+          name: filename,
+          location: storagePath,
+          size: file.size,
+          suffix,
+          type: fileType,
+        })
+
+        // Create File2Document link
+        await ragDocumentService.createFile2Document(fileId, docId)
+
+        // Track the file in version_files table for project-level bookkeeping
+        await ModelFactory.documentCategoryVersionFile.create({
+          version_id: versionId,
+          file_name: filename,
+          ragflow_doc_id: docId,
+          status: 'imported',
+        })
+
+        results.push({
+          id: docId,
+          name: filename,
+          size: file.size,
+          type: fileType,
+          status: '1',
+          run: '0',
+        })
+      }
+
+      // Update doc count on the dataset
+      await ragDocumentService.incrementDocCount(datasetId, results.length)
+
+      res.status(201).json(results)
+    } catch (error) {
+      log.error('Failed to upload version documents', { error: String(error) })
+      res.status(500).json({ error: 'Failed to upload version documents' })
+    }
+  }
+
+  /**
+   * @description DELETE /projects/:id/categories/:catId/versions/:verId/documents - Delete documents from a version's linked RAG dataset by file names.
+   *   Resolves documents by name, deletes from S3, OpenSearch, and PostgreSQL.
+   * @param {Request} req - Express request with { fileNames: string[] } body
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
+   */
+  async deleteVersionDocuments(req: Request, res: Response): Promise<void> {
+    try {
+      const versionId = req.params['verId']!
+      const { fileNames } = req.body as { fileNames: string[] }
+      if (!Array.isArray(fileNames) || fileNames.length === 0) {
+        res.status(400).json({ error: 'fileNames must be a non-empty array' }); return
+      }
+
+      // Resolve the version's linked RAG dataset
+      const version = await projectCategoryService.getVersionById(versionId)
+      if (!version?.ragflow_dataset_id) { res.status(404).json({ error: 'Version or linked dataset not found' }); return }
+
+      const datasetId = version.ragflow_dataset_id
+      const tenantId = getTenantId(req) || ''
+
+      // List all documents in the dataset to match by name
+      const allDocs = await ragDocumentService.listDocuments(datasetId)
+      const deleted: string[] = []
+      const failed: string[] = []
+
+      for (const fileName of fileNames) {
+        // Find the document matching this file name
+        const doc = allDocs.find((d: any) => d.name === fileName)
+        if (!doc) { failed.push(fileName); continue }
+
+        try {
+          // Delete file from S3 storage
+          if (doc.location) {
+            try { await ragStorageService.deleteFile(doc.location) } catch { /* best-effort */ }
+          }
+          // Delete chunks from OpenSearch
+          try { await ragSearchService.deleteDocumentChunks(tenantId, doc.id) } catch { /* best-effort */ }
+          // Delete file and file2document records
+          try { await ragDocumentService.deleteFileRecords(doc.id) } catch { /* best-effort */ }
+          // Soft-delete the document row
+          await ragDocumentService.softDeleteDocument(doc.id)
+          deleted.push(fileName)
+        } catch {
+          failed.push(fileName)
+        }
+      }
+
+      // Decrement dataset doc count
+      if (deleted.length > 0) {
+        try { await ragDocumentService.incrementDocCount(datasetId, -deleted.length) } catch { /* best-effort */ }
+      }
+
+      res.json({ deleted, failed })
+    } catch (error) {
+      log.error('Failed to delete version documents', { error: String(error) })
+      res.status(500).json({ error: 'Failed to delete version documents' })
+    }
+  }
+
+  /**
+   * @description POST /projects/:id/categories/:catId/versions/:verId/documents/requeue - Re-queue documents for conversion.
+   *   Resets document status to allow re-processing by the converter worker.
+   * @param {Request} req - Express request with { fileNames: string[] } body
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
+   */
+  async requeueVersionDocuments(req: Request, res: Response): Promise<void> {
+    try {
+      const versionId = req.params['verId']!
+      const { fileNames } = req.body as { fileNames: string[] }
+      if (!Array.isArray(fileNames) || fileNames.length === 0) {
+        res.status(400).json({ error: 'fileNames must be a non-empty array' }); return
+      }
+
+      // Resolve the version's linked RAG dataset
+      const version = await projectCategoryService.getVersionById(versionId)
+      if (!version?.ragflow_dataset_id) { res.status(404).json({ error: 'Version or linked dataset not found' }); return }
+
+      const allDocs = await ragDocumentService.listDocuments(version.ragflow_dataset_id)
+      const queued: string[] = []
+      const failed: string[] = []
+
+      for (const fileName of fileNames) {
+        const doc = allDocs.find((d: any) => d.name === fileName)
+        if (!doc) { failed.push(fileName); continue }
+
+        try {
+          // Reset document to unstarted state for re-processing
+          await ragDocumentService.beginParse(doc.id)
+          await ragRedisService.queueParseInit(doc.id)
+          queued.push(fileName)
+        } catch {
+          failed.push(fileName)
+        }
+      }
+
+      res.json({ queued, failed })
+    } catch (error) {
+      log.error('Failed to requeue version documents', { error: String(error) })
+      res.status(500).json({ error: 'Failed to requeue version documents' })
+    }
+  }
+
+  /**
+   * @description POST /projects/:id/categories/:catId/versions/:verId/documents/parse - Trigger parsing for selected documents.
+   *   Queues documents for the RAG parse pipeline via Redis stream.
+   * @param {Request} req - Express request with { fileNames: string[] } body
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
+   */
+  async parseVersionDocuments(req: Request, res: Response): Promise<void> {
+    try {
+      const versionId = req.params['verId']!
+      const { fileNames } = req.body as { fileNames: string[] }
+      if (!Array.isArray(fileNames) || fileNames.length === 0) {
+        res.status(400).json({ error: 'fileNames must be a non-empty array' }); return
+      }
+
+      // Resolve the version's linked RAG dataset
+      const version = await projectCategoryService.getVersionById(versionId)
+      if (!version?.ragflow_dataset_id) { res.status(404).json({ error: 'Version or linked dataset not found' }); return }
+
+      const allDocs = await ragDocumentService.listDocuments(version.ragflow_dataset_id)
+      const parsed: string[] = []
+      const failed: string[] = []
+
+      for (const fileName of fileNames) {
+        const doc = allDocs.find((d: any) => d.name === fileName)
+        if (!doc) { failed.push(fileName); continue }
+
+        try {
+          // Mark document as queued and send parse_init task to Redis stream
+          await ragDocumentService.beginParse(doc.id)
+          await ragRedisService.queueParseInit(doc.id)
+          parsed.push(fileName)
+        } catch {
+          failed.push(fileName)
+        }
+      }
+
+      res.json({ parsed, failed })
+    } catch (error) {
+      log.error('Failed to parse version documents', { error: String(error) })
+      res.status(500).json({ error: 'Failed to parse version documents' })
+    }
+  }
+
+  /**
+   * @description POST /projects/:id/categories/:catId/versions/:verId/documents/sync-status - Sync parser status from RAG documents back to version files.
+   *   Returns the latest parsing status for each file in the version.
+   * @param {Request} req - Express request with version ID param
+   * @param {Response} res - Express response
+   * @returns {Promise<void>}
+   */
+  async syncVersionParserStatus(req: Request, res: Response): Promise<void> {
+    try {
+      const versionId = req.params['verId']!
+
+      // Resolve the version's linked RAG dataset
+      const version = await projectCategoryService.getVersionById(versionId)
+      if (!version?.ragflow_dataset_id) { res.status(404).json({ error: 'Version or linked dataset not found' }); return }
+
+      // Fetch all RAG documents for the dataset
+      const docs = await ragDocumentService.listDocuments(version.ragflow_dataset_id)
+
+      // Return status for each document
+      const results = docs.map((doc: any) => ({
+        fileName: doc.name,
+        ragflowDocId: doc.id,
+        ragflowRun: doc.run ?? null,
+        ragflowProgress: doc.progress ?? null,
+        ragflowProgressMsg: doc.progress_msg ?? null,
+        ragflowChunkCount: doc.chunk_count ?? null,
+        name: doc.name,
+      }))
+
+      res.json(results)
+    } catch (error) {
+      log.error('Failed to sync version parser status', { error: String(error) })
+      res.status(500).json({ error: 'Failed to sync version parser status' })
     }
   }
 
@@ -880,6 +1173,65 @@ export class ProjectsController {
     } catch (error) {
       log.error('Failed to get project activity', { error: String(error) })
       res.status(500).json({ error: 'Failed to get project activity' })
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Code Import
+  // -------------------------------------------------------------------------
+
+  /**
+   * @description POST /projects/:id/categories/:catId/import-git - Import code files
+   *   from a Git repository URL into a code category. Clones the repo, filters by code
+   *   extensions, and triggers the parse pipeline. Returns 202 Accepted.
+   * @param {Request} req - Express request with project ID, category ID, and git params in body
+   * @param {Response} res - Express response with taskId and fileCount
+   * @returns {Promise<void>}
+   */
+  async importGitRepo(req: Request, res: Response): Promise<void> {
+    try {
+      const projectId = req.params['id']!
+      const categoryId = req.params['catId']!
+      const tenantId = getTenantId(req) || ''
+
+      const result = await projectCategoryService.importGitRepo(
+        projectId, categoryId, tenantId, req.body,
+      )
+      res.status(202).json({ ...result, message: 'Import started' })
+    } catch (error) {
+      log.error('Failed to import git repo', { error: String(error) })
+      res.status(500).json({ error: String(error) })
+    }
+  }
+
+  /**
+   * @description POST /projects/:id/categories/:catId/import-zip - Import code files
+   *   from a ZIP archive uploaded via multipart. Extracts the archive, filters by code
+   *   extensions, and triggers the parse pipeline. Returns 202 Accepted.
+   * @param {Request} req - Express request with uploaded file via multer
+   * @param {Response} res - Express response with taskId and fileCount
+   * @returns {Promise<void>}
+   */
+  async importZipFile(req: Request, res: Response): Promise<void> {
+    try {
+      const projectId = req.params['id']!
+      const categoryId = req.params['catId']!
+      const tenantId = getTenantId(req) || ''
+
+      // Guard: ensure a file was uploaded
+      const file = req.file as Express.Multer.File | undefined
+      if (!file) {
+        res.status(400).json({ error: 'No file provided' })
+        return
+      }
+
+      const result = await projectCategoryService.importZipFile(
+        projectId, categoryId, tenantId, file.buffer, file.originalname,
+      )
+      res.status(202).json({ ...result, message: 'Import started' })
+    } catch (error) {
+      log.error('Failed to import zip file', { error: String(error) })
+      res.status(500).json({ error: String(error) })
     }
   }
 

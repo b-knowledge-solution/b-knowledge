@@ -3,6 +3,7 @@
  * @module routes/projects
  */
 import { Router } from 'express'
+import multer from 'multer'
 import { ProjectsController } from '../controllers/projects.controller.js'
 import { requireAuth, requireAbility, requireRole } from '@/shared/middleware/auth.middleware.js'
 import { requireTenant } from '@/shared/middleware/tenant.middleware.js'
@@ -36,10 +37,13 @@ import {
   memberParamSchema,
   bindDatasetsSchema,
   activityQuerySchema,
+  importGitSchema,
 } from '../schemas/projects.schemas.js'
 
 const router = Router()
 const controller = new ProjectsController()
+// Use memory storage for file uploads — files are forwarded to S3 immediately
+const upload = multer({ storage: multer.memoryStorage() })
 
 // -------------------------------------------------------------------------
 // Cross-Project Dataset Resolver — must be before /:id to avoid param collision
@@ -86,8 +90,21 @@ router.post('/:id/categories/:catId/versions', requireAuth, requireTenant, requi
 router.put('/:id/categories/:catId/versions/:verId', requireAuth, requireTenant, requireAbility('manage', 'Project'), validate({ params: versionParamSchema, body: updateCategoryVersionSchema }), controller.updateVersion.bind(controller))
 router.delete('/:id/categories/:catId/versions/:verId', requireAuth, requireTenant, requireAbility('manage', 'Project'), controller.deleteVersion.bind(controller))
 
-// Version Documents
+// -------------------------------------------------------------------------
+// Code Import — Git clone and ZIP upload into code categories
+// -------------------------------------------------------------------------
+router.post('/:id/categories/:catId/import-git', requireAuth, requireTenant, requireAbility('manage', 'Project'), validate({ params: categoryParamSchema, body: importGitSchema }), controller.importGitRepo.bind(controller))
+router.post('/:id/categories/:catId/import-zip', requireAuth, requireTenant, requireAbility('manage', 'Project'), upload.single('file'), controller.importZipFile.bind(controller))
+
+// Version Document sub-routes — registered before base /documents to avoid ambiguity
+router.post('/:id/categories/:catId/versions/:verId/documents/requeue', requireAuth, requireTenant, requireAbility('manage', 'Project'), controller.requeueVersionDocuments.bind(controller))
+router.post('/:id/categories/:catId/versions/:verId/documents/parse', requireAuth, requireTenant, requireAbility('manage', 'Project'), controller.parseVersionDocuments.bind(controller))
+router.get('/:id/categories/:catId/versions/:verId/documents/parser-status', requireAuth, requireTenant, requireAbility('read', 'Project'), controller.syncVersionParserStatus.bind(controller))
+
+// Version Documents — CRUD
 router.get('/:id/categories/:catId/versions/:verId/documents', requireAuth, requireTenant, requireAbility('read', 'Project'), controller.listVersionDocuments.bind(controller))
+router.post('/:id/categories/:catId/versions/:verId/documents', requireAuth, requireTenant, requireAbility('manage', 'Project'), upload.array('file'), controller.uploadVersionDocuments.bind(controller))
+router.delete('/:id/categories/:catId/versions/:verId/documents', requireAuth, requireTenant, requireAbility('manage', 'Project'), controller.deleteVersionDocuments.bind(controller))
 
 // -------------------------------------------------------------------------
 // Chats

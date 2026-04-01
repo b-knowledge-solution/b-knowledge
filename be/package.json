@@ -34,6 +34,7 @@
     "@opensearch-project/opensearch": "^3.5.1",
     "@types/dockerode": "^4.0.1",
     "@types/socket.io": "^3.0.1",
+    "adm-zip": "^0.5.16",
     "bcryptjs": "^2.4.3",
     "compression": "^1.8.1",
     "connect-redis": "^9.0.0",
@@ -66,6 +67,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.8.1",
     "@types/cookie-parser": "^1.4.10",
