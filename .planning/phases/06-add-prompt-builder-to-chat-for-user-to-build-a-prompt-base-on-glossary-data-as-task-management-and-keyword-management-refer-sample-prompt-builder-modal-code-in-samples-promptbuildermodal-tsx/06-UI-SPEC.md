@@ -40,7 +40,7 @@ Declared values (must be multiples of 4):
 | 2xl | 48px | Not used in this phase |
 | 3xl | 64px | Not used in this phase |
 
-Exceptions: Toggle button row in ChatInput uses `gap-1.5` (6px) as an existing parent layout value. The Sparkles trigger button does NOT declare `gap-1.5` itself -- it inherits the parent's gap. If parent gap is refactored in a future phase, use `gap-1` (4px) or `gap-2` (8px). Touch target for trigger button is 28x28px (`h-7 w-7`), matching existing toggle buttons in ChatInput.
+Exceptions: The Sparkles button inherits the ChatInput toggle row's existing gap. This phase does not declare or change that gap value. This phase actively uses only 4px, 8px, 16px, 24px, and 32px in its own layout. Touch target for trigger button is 28x28px (`h-7 w-7`), matching existing toggle buttons in ChatInput.
 
 ---
 
