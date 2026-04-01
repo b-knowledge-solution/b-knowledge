@@ -44,6 +44,8 @@ interface ChatInputProps {
 /**
  * @description Imperative handle for ChatInput, allowing parent components
  * to programmatically set the textarea value (e.g., from Prompt Builder).
+ * ChatInput uses an uncontrolled textarea (ref-based, not state-based),
+ * so setValue() directly sets the DOM .value property and triggers auto-resize.
  */
 export interface ChatInputHandle {
   /** Set the textarea value and trigger auto-resize */
@@ -81,10 +83,11 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Expose imperative handle for parent to set textarea value programmatically
+  // Uses direct DOM manipulation because ChatInput is uncontrolled (ref-based, not state-based)
   useImperativeHandle(ref, () => ({
     setValue: (text: string) => {
       if (textareaRef.current) {
-        // Set the textarea value directly (uncontrolled component)
+        // Set the textarea value directly (uncontrolled component -- no React state to update)
         textareaRef.current.value = text
         // Manually trigger auto-resize since programmatic .value assignment
         // does not fire the onInput event that normally triggers autoResize()
