@@ -74,6 +74,17 @@ Plans:
 - [ ] **05-04**: FE Dashboard verification — Enhance feedback components for agent source visibility
 - [ ] **05-05**: Fix review findings — Align dashboard FE/BE types, enrich detail queries with feedback, add tenant scoping, fix search comment callback, enrich export
 
+### Phase 6: Add Prompt builder to chat for user to build a prompt base on glossary data as task management and keyword management, refer sample prompt builder modal code in samples/PromptBuilderModal.tsx
+
+**Goal:** Integrate the existing glossary-based PromptBuilderModal into the chat interface. Move the component to shared, add forwardRef imperative handle to ChatInput, wire Sparkles trigger button and modal into ChatPage, and update i18n strings for direct-insertion behavior.
+**Requirements**: PB-01 (move component to shared), PB-02 (ChatInput forwardRef handle), PB-03 (glossary barrel re-export), PB-04 (Sparkles trigger button), PB-05 (ChatPage modal wiring), PB-06 (i18n updates), PB-07 (human verification)
+**Depends on:** Phase 5
+**Plans:** 2 plans
+
+Plans:
+- [ ] **06-01**: Move PromptBuilderModal to shared + ChatInput forwardRef — Relocate component, update imports, add useImperativeHandle setValue
+- [ ] **06-02**: ChatPage integration + i18n — Wire Sparkles button and modal into ChatPage, update appliedToChat and add empty/error i18n keys
+
 ---
 
 <!-- phases:start -->
