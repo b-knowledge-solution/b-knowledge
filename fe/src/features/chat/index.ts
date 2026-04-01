@@ -5,6 +5,7 @@
 
 export { default as ChatPage } from './pages/ChatPage'
 export { default as ChatInput } from './components/ChatInput'
+export type { ChatInputHandle } from './components/ChatInput'
 export { default as ChatAssistantConfig } from './components/ChatAssistantConfig'
 export { default as ChatVariableForm } from './components/ChatVariableForm'
 export { chatApi } from './api/chatApi'

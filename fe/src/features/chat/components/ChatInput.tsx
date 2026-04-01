@@ -4,7 +4,7 @@
  * @module features/chat/components/ChatInput
  */
 
-import { useRef, useState } from 'react'
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Send, Square, Brain, Globe, Paperclip } from 'lucide-react'
 
@@ -38,6 +38,19 @@ interface ChatInputProps {
 }
 
 // ============================================================================
+// Imperative Handle
+// ============================================================================
+
+/**
+ * @description Imperative handle for ChatInput, allowing parent components
+ * to programmatically set the textarea value (e.g., from Prompt Builder).
+ */
+export interface ChatInputHandle {
+  /** Set the textarea value and trigger auto-resize */
+  setValue: (text: string) => void
+}
+
+// ============================================================================
 // Component
 // ============================================================================
 
@@ -49,22 +62,40 @@ interface ChatInputProps {
  * @param {ChatInputProps} props - Component properties
  * @returns {JSX.Element} The rendered chat input
  */
-function ChatInput({
-  onSend,
-  onStop,
-  isStreaming,
-  disabled,
-  showReasoningToggle,
-  showInternetToggle,
-  onFilesSelected,
-  showFileUpload,
-  fileIds,
-  leftSlot,
-  className = '',
-}: ChatInputProps) {
+const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
+  function ChatInput({
+    onSend,
+    onStop,
+    isStreaming,
+    disabled,
+    showReasoningToggle,
+    showInternetToggle,
+    onFilesSelected,
+    showFileUpload,
+    fileIds,
+    leftSlot,
+    className = '',
+  }: ChatInputProps, ref) {
   const { t } = useTranslation()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Expose imperative handle for parent to set textarea value programmatically
+  useImperativeHandle(ref, () => ({
+    setValue: (text: string) => {
+      if (textareaRef.current) {
+        // Set the textarea value directly (uncontrolled component)
+        textareaRef.current.value = text
+        // Manually trigger auto-resize since programmatic .value assignment
+        // does not fire the onInput event that normally triggers autoResize()
+        textareaRef.current.style.height = 'auto'
+        const newHeight = Math.min(textareaRef.current.scrollHeight, 200)
+        textareaRef.current.style.height = `${newHeight}px`
+        // Focus the textarea so user can immediately edit or send
+        textareaRef.current.focus()
+      }
+    }
+  }))
 
   // Toggle states for reasoning and internet search
   const [reasoningEnabled, setReasoningEnabled] = useState(false)
@@ -240,6 +271,6 @@ function ChatInput({
       </div>
     </div>
   )
-}
+})
 
 export default ChatInput
