@@ -263,6 +263,13 @@ export const bindDatasetsSchema = z.object({
 // Code Import schemas
 // ---------------------------------------------------------------------------
 
+/** @description Git credentials for authenticating with private repositories */
+const gitCredentialsSchema = z.object({
+  auth_method: z.enum(['none', 'token', 'username_password']).default('none'),
+  token: z.string().optional().default(''),
+  username: z.string().optional().default(''),
+})
+
 /** @description Validates POST body for Git repository import into a code category */
 export const importGitSchema = z.object({
   url: z.string().url().refine(
@@ -271,6 +278,7 @@ export const importGitSchema = z.object({
   ),
   branch: z.string().optional().default('main'),
   path: z.string().optional().default('/'),
+  credentials: gitCredentialsSchema.optional().default({ auth_method: 'none', token: '', username: '' }),
 })
 
 // ---------------------------------------------------------------------------

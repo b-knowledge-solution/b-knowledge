@@ -586,12 +586,13 @@ export const parseVersionDocuments = (
  * @param {string} params.url - Git repository URL
  * @param {string} [params.branch] - Branch name (defaults to 'main')
  * @param {string} [params.path] - Subdirectory path to import from
+ * @param {object} [params.credentials] - Authentication credentials for private repos
  * @returns {Promise<{ taskId: string; fileCount: number }>} Import task info
  */
 export const importGitRepo = (
   projectId: string,
   categoryId: string,
-  params: { url: string; branch?: string; path?: string },
+  params: { url: string; branch?: string; path?: string; credentials?: { auth_method: string; token?: string; username?: string } },
 ): Promise<{ taskId: string; fileCount: number }> =>
   api.post(`/api/projects/${projectId}/categories/${categoryId}/import-git`, params)
 

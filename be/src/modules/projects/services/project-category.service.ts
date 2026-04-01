@@ -340,11 +340,47 @@ export class ProjectCategoryService {
    * @returns {Promise<{ taskId: string; fileCount: number }>} Import task info
    * @throws {Error} If category not found, not type='code', or git clone fails
    */
+  /**
+   * @description Build an authenticated git clone URL by embedding credentials into the HTTPS URL.
+   *   Supports token-only auth (GitHub PAT, GitLab PAT) and username+password auth (Bitbucket, custom).
+   *   Credentials are URL-encoded to handle special characters safely.
+   * @param {string} url - Original repository HTTPS URL
+   * @param {{ auth_method: string; token?: string; username?: string }} credentials - Auth config
+   * @returns {string} URL with embedded credentials, or original URL if auth_method is 'none'
+   */
+  private buildAuthenticatedUrl(
+    url: string,
+    credentials?: { auth_method: string; token?: string; username?: string },
+  ): string {
+    // No credentials or public auth — return URL as-is
+    if (!credentials || credentials.auth_method === 'none') return url
+
+    try {
+      const parsed = new URL(url)
+
+      if (credentials.auth_method === 'token' && credentials.token) {
+        // Token-only: use token as password with 'oauth2' or 'x-token-auth' as username
+        // GitHub/GitLab accept any non-empty username with PAT as password
+        parsed.username = 'oauth2'
+        parsed.password = encodeURIComponent(credentials.token)
+      } else if (credentials.auth_method === 'username_password' && credentials.token) {
+        // Username + password/token: embed both
+        parsed.username = encodeURIComponent(credentials.username || 'git')
+        parsed.password = encodeURIComponent(credentials.token)
+      }
+
+      return parsed.toString()
+    } catch {
+      // URL parsing failed — return original, let git clone handle the error
+      return url
+    }
+  }
+
   async importGitRepo(
     projectId: string,
     categoryId: string,
     tenantId: string,
-    params: { url: string; branch?: string; path?: string },
+    params: { url: string; branch?: string; path?: string; credentials?: { auth_method: string; token?: string; username?: string } },
   ): Promise<{ taskId: string; fileCount: number }> {
     // Verify category exists, is type='code', and has a dataset
     const category = await ModelFactory.documentCategory.findById(categoryId)
@@ -356,6 +392,9 @@ export class ProjectCategoryService {
     const branch = params.branch || 'main'
     const subPath = params.path || '/'
 
+    // Build clone URL with embedded credentials for private repos
+    const cloneUrl = this.buildAuthenticatedUrl(params.url, params.credentials)
+
     // Create temp directory for git clone
     const tempDir = path.join(os.tmpdir(), `git-import-${getUuid()}`)
     fs.mkdirSync(tempDir, { recursive: true })
@@ -363,7 +402,7 @@ export class ProjectCategoryService {
     try {
       // Shallow clone the repository using execFileNoThrow for shell-injection safety
       const cloneResult = await execFileNoThrow('git', [
-        'clone', '--depth', '1', '--branch', branch, params.url, tempDir,
+        'clone', '--depth', '1', '--branch', branch, cloneUrl, tempDir,
       ], { timeout: 120_000 })
 
       if (cloneResult.code !== 0) {

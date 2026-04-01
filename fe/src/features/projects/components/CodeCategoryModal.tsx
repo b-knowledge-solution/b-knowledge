@@ -16,7 +16,7 @@
 
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Info, Code2, Network, FileCode, GitBranch, Archive, FolderGit2, Globe } from 'lucide-react'
+import { Info, Code2, Network, FileCode, GitBranch, Archive, FolderGit2, Globe, KeyRound, Eye, EyeOff } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -62,6 +62,47 @@ const CODE_CHUNK_STEP = 64
 /** Git provider presets for quick URL construction */
 type GitProvider = 'github' | 'gitlab' | 'bitbucket' | 'custom'
 
+/** Authentication method for Git providers */
+type GitAuthMethod = 'none' | 'token' | 'username_password'
+
+/** Credentials for authenticating with Git providers */
+interface GitCredentials {
+  /** Authentication method: none (public), token (PAT/deploy token), or username+password */
+  auth_method: GitAuthMethod
+  /** Personal access token (GitHub PAT, GitLab PAT/Deploy Token, Bitbucket App Password) */
+  token: string
+  /** Username — required for Bitbucket App Password and custom providers */
+  username: string
+}
+
+/** Provider-specific auth labels and hints */
+const GIT_AUTH_HINTS: Record<GitProvider, { tokenLabel: string; tokenPlaceholder: string; usernameRequired: boolean; helpText: string }> = {
+  github: {
+    tokenLabel: 'Personal Access Token',
+    tokenPlaceholder: 'ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+    usernameRequired: false,
+    helpText: 'Generate at GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens. Needs "Contents" read access.',
+  },
+  gitlab: {
+    tokenLabel: 'Personal / Deploy Token',
+    tokenPlaceholder: 'glpat-xxxxxxxxxxxxxxxxxxxx',
+    usernameRequired: false,
+    helpText: 'Generate at GitLab → Settings → Access Tokens. Needs "read_repository" scope. For Deploy Tokens, use the token username.',
+  },
+  bitbucket: {
+    tokenLabel: 'App Password',
+    tokenPlaceholder: 'xxxxxxxxxxxxxxxxxxxx',
+    usernameRequired: true,
+    helpText: 'Generate at Bitbucket → Personal settings → App passwords. Needs "Repositories: Read" permission. Username is your Bitbucket username.',
+  },
+  custom: {
+    tokenLabel: 'Password / Token',
+    tokenPlaceholder: 'your-token-or-password',
+    usernameRequired: true,
+    helpText: 'Enter the username and password or token for your Git server.',
+  },
+}
+
 /** Source configuration for where code comes from */
 interface CodeSourceConfig {
   /** Source type: 'git' for repository clone, 'upload' for ZIP file upload */
@@ -74,6 +115,8 @@ interface CodeSourceConfig {
   git_branch: string
   /** Optional subdirectory path within the repo */
   git_path: string
+  /** Git credentials for private repositories */
+  credentials: GitCredentials
 }
 
 /** Shape of the code-specific dataset configuration */
@@ -130,6 +173,11 @@ const INITIAL_FORM_DATA: CodeCategoryFormData = {
       git_url: '',
       git_branch: 'main',
       git_path: '',
+      credentials: {
+        auth_method: 'none',
+        token: '',
+        username: '',
+      },
     },
     parser_config: {
       code_language: 'auto',
@@ -248,6 +296,11 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
             git_url: dc.source_config?.git_url || '',
             git_branch: dc.source_config?.git_branch || 'main',
             git_path: dc.source_config?.git_path || '',
+            credentials: {
+              auth_method: dc.source_config?.credentials?.auth_method || 'none',
+              token: dc.source_config?.credentials?.token || '',
+              username: dc.source_config?.credentials?.username || '',
+            },
           },
           parser_config: {
             code_language: pc.code_language || 'auto',
@@ -288,6 +341,23 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
       },
     }))
   }
+
+  /** Update a credentials field within source_config */
+  const updateCredentials = (field: string, value: unknown) => {
+    setFormData((prev) => ({
+      ...prev,
+      dataset_config: {
+        ...prev.dataset_config,
+        source_config: {
+          ...prev.dataset_config.source_config,
+          credentials: { ...prev.dataset_config.source_config.credentials, [field]: value },
+        },
+      },
+    }))
+  }
+
+  // Toggle visibility for token/password input
+  const [showToken, setShowToken] = useState(false)
 
   /** Validate and submit the form */
   const handleOk = () => {
@@ -440,6 +510,125 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
                       className="font-mono text-sm"
                     />
                   </div>
+                </div>
+
+                {/* ── Credentials section ── */}
+                <div className="border-t border-border/50 pt-3 mt-1">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {t('projects.codeSourceCredentials', 'Authentication')}
+                    </span>
+                  </div>
+
+                  {/* Auth method selector */}
+                  <div className="flex gap-1.5 mb-3">
+                    <button
+                      type="button"
+                      onClick={() => { updateCredentials('auth_method', 'none'); updateCredentials('token', ''); updateCredentials('username', '') }}
+                      className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                        sc.credentials.auth_method === 'none'
+                          ? 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200'
+                          : 'text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {t('projects.codeSourceAuthPublic', 'Public')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateCredentials('auth_method', 'token')}
+                      className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                        sc.credentials.auth_method === 'token'
+                          ? 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200'
+                          : 'text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {t('projects.codeSourceAuthToken', 'Token')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateCredentials('auth_method', 'username_password')}
+                      className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                        sc.credentials.auth_method === 'username_password'
+                          ? 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200'
+                          : 'text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {t('projects.codeSourceAuthUserPass', 'Username & Password')}
+                    </button>
+                  </div>
+
+                  {/* Token input — shown for 'token' auth method */}
+                  {sc.credentials.auth_method === 'token' && (
+                    <div className="space-y-2">
+                      <div>
+                        <Label className="text-xs mb-1">
+                          {GIT_AUTH_HINTS[sc.git_provider].tokenLabel}
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            type={showToken ? 'text' : 'password'}
+                            placeholder={GIT_AUTH_HINTS[sc.git_provider].tokenPlaceholder}
+                            value={sc.credentials.token}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateCredentials('token', e.target.value)}
+                            className="font-mono text-xs pr-9"
+                          />
+                          {/* Toggle token visibility */}
+                          <button
+                            type="button"
+                            onClick={() => setShowToken(!showToken)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          >
+                            {showToken ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+                      {/* Provider-specific help text */}
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">
+                        {GIT_AUTH_HINTS[sc.git_provider].helpText}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Username + password inputs — shown for 'username_password' auth method */}
+                  {sc.credentials.auth_method === 'username_password' && (
+                    <div className="space-y-2">
+                      <div>
+                        <Label className="text-xs mb-1">{t('projects.codeSourceAuthUsername', 'Username')}</Label>
+                        <Input
+                          placeholder={sc.git_provider === 'bitbucket' ? 'your-bitbucket-username' : 'username'}
+                          value={sc.credentials.username}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateCredentials('username', e.target.value)}
+                          className="font-mono text-xs"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1">
+                          {GIT_AUTH_HINTS[sc.git_provider].tokenLabel}
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            type={showToken ? 'text' : 'password'}
+                            placeholder={GIT_AUTH_HINTS[sc.git_provider].tokenPlaceholder}
+                            value={sc.credentials.token}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateCredentials('token', e.target.value)}
+                            className="font-mono text-xs pr-9"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowToken(!showToken)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          >
+                            {showToken ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+                      {/* Provider-specific help text */}
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">
+                        {GIT_AUTH_HINTS[sc.git_provider].helpText}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Info text */}
