@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 1
 status: Executing Phase 04
-stopped_at: Completed 04-03-PLAN.md (Task Executor Integration + Tests)
-last_updated: "2026-04-01T09:17:14.453Z"
+stopped_at: Completed 04-04-PLAN.md (Node.js Code-Graph API)
+last_updated: "2026-04-01T09:20:37.932Z"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 26
-  completed_plans: 23
+  completed_plans: 24
   percent: 100
 ---
 
@@ -24,7 +24,7 @@ Progress: [██████████] 100%
 
 ### Last Session
 
-- **Stopped at:** Completed 04-03-PLAN.md (Task Executor Integration + Tests)
+- **Stopped at:** Completed 04-04-PLAN.md (Node.js Code-Graph API)
 - **Timestamp:** 2026-04-01T05:40:12Z
 
 ## Accumulated Context
@@ -93,6 +93,8 @@ Progress: [██████████] 100%
 - [Phase 04]: CollectingIngestor decorator intercepts graph nodes for chunk conversion while delegating graph writes
 - [Phase 04]: InMemoryIngestor fallback when Memgraph unavailable -- chunks still produced
 - [Phase 04]: chunk_with_graph delegates to chunk() internally since code.py already integrates extract_and_chunk
+- [Phase 04]: Embedded Bolt driver in CodeGraphService instead of separate shared memgraphService for module self-containment
+- [Phase 04]: 11 code-graph endpoints (expanded from 6) with write-operation safety check on AI-generated Cypher
 
 ### Performance Metrics
 
@@ -123,6 +125,7 @@ Progress: [██████████] 100%
 | Phase 04 P01 | 1min | 5 tasks | 8 files |
 | Phase 04 P02 | 5min | 7 tasks | 66 files |
 | Phase 04 P03 | 4min | 2 tasks | 3 files |
+| Phase 04 P04 | 1min | 5 tasks | 7 files |
 
 ### Pending Todos
 
