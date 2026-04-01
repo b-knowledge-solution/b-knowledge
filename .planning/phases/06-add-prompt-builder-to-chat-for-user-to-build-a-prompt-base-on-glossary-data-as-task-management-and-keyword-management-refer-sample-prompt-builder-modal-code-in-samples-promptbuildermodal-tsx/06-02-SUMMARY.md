@@ -2,25 +2,22 @@
 phase: 06-add-prompt-builder-to-chat
 plan: 02
 subsystem: ui
-tags: [react, chat, i18n, prompt-builder, sparkles, imperative-handle]
+tags: [react, chat, i18n, prompt-builder, accessibility, aria-label]
 
 # Dependency graph
 requires:
   - phase: 06-01
-    provides: "Shared PromptBuilderModal and ChatInput forwardRef imperative handle"
+    provides: Shared PromptBuilderModal component and ChatInput imperative handle (setValue via forwardRef)
 provides:
-  - Sparkles trigger button in ChatInput toggle row
-  - PromptBuilderModal wired into ChatPage with onApply inserting into textarea
-  - Updated i18n strings for direct-insertion behavior in 3 locales (en, ja, vi)
-  - Empty/error state i18n keys for prompt builder
+  - Sparkles trigger button in ChatInput toggle row with accessibility attributes
+  - PromptBuilderModal wired into ChatPage with onApply inserting prompt into textarea
+  - Updated i18n strings in 3 locales for direct-insertion behavior and empty/error states
 affects: []
 
 # Tech tracking
 tech-stack:
   added: []
-  patterns:
-    - "Imperative handle pattern for cross-component text injection (chatInputRef.current.setValue)"
-    - "One-shot action button in ChatInput leftSlot (not a toggle)"
+  patterns: [one-shot action button in ChatInput toggle row, imperative handle for cross-component text insertion]
 
 key-files:
   created: []
@@ -31,11 +28,12 @@ key-files:
     - fe/src/i18n/locales/vi.json
 
 key-decisions:
-  - "Sparkles button is a one-shot action (not a toggle) matching existing button patterns in ChatInput"
-  - "Toast message changed from clipboard-copy wording to direct-insertion wording"
+  - "Sparkles button is one-shot action (not toggle) matching existing ChatInput button patterns"
+  - "onApply replaces existing textarea text per D-05 decision"
+  - "aria-label added for accessibility alongside title attribute"
 
 patterns-established:
-  - "leftSlot Fragment pattern for multiple buttons in ChatInput toggle row"
+  - "One-shot action button pattern: type=button with aria-label, no toggle state"
 
 requirements-completed: [PB-04, PB-05, PB-06, PB-07]
 
@@ -44,42 +42,42 @@ duration: 3min
 completed: 2026-04-01
 ---
 
-# Phase 06 Plan 02: ChatPage Integration and i18n Summary
+# Phase 6 Plan 02: ChatPage Integration and i18n Summary
 
-**Wired Sparkles trigger button and PromptBuilderModal into ChatPage with direct textarea insertion via imperative handle, updated i18n in 3 locales**
+**Sparkles trigger button with aria-label wired into ChatPage, PromptBuilderModal applying prompts via imperative handle, i18n updated in 3 locales for direct insertion**
 
 ## Performance
 
 - **Duration:** 3 min
-- **Started:** 2026-04-01T04:00:00Z
-- **Completed:** 2026-04-01T04:03:09Z
-- **Tasks:** 3 (2 auto + 1 checkpoint)
+- **Started:** 2026-04-01T05:31:00Z
+- **Completed:** 2026-04-01T05:40:12Z
+- **Tasks:** 3
 - **Files modified:** 4
 
 ## Accomplishments
-- Sparkles icon button added to ChatInput toggle row (left side, after assistant selector)
-- PromptBuilderModal rendered at ChatPage level with onApply wiring to chatInputRef.current.setValue
-- Toast message updated from "Prompt copied! Paste it into the chat input." to "Prompt applied to chat input." in all 3 locales
-- Added empty/error state i18n keys (emptyHeading, emptyBody, errorHeading, errorBody) in en, ja, vi
-- Human verification confirmed: button visible, modal opens, prompt applies to textarea, dark mode correct
+- Sparkles icon button added to ChatInput toggle row with proper accessibility (aria-label, type=button)
+- PromptBuilderModal wired into ChatPage with onApply that replaces textarea text via imperative handle (per D-05)
+- i18n strings updated in en/ja/vi: appliedToChat wording changed from clipboard copy to direct insertion, empty/error state keys added
+- Human verification checkpoint approved confirming full integration works
 
 ## Task Commits
 
 Each task was committed atomically:
 
-1. **Task 1: Wire Sparkles button and PromptBuilderModal into ChatPage** - `7da14fc` (feat)
-2. **Task 2: Update i18n strings in all 3 locales** - `9455097` (feat)
-3. **Task 3: Verify Prompt Builder integration in chat** - checkpoint approved (no commit)
+1. **Task 1: Wire Sparkles button and PromptBuilderModal into ChatPage** - `72539f2` (feat)
+2. **Task 2: Update i18n strings in all 3 locales** - `9455097` (feat, prior execution)
+3. **Task 3: Verify Prompt Builder integration in chat** - checkpoint:human-verify (approved, no code changes)
 
 ## Files Created/Modified
 - `fe/src/features/chat/pages/ChatPage.tsx` - Added Sparkles button in leftSlot, PromptBuilderModal with onApply, chatInputRef
-- `fe/src/i18n/locales/en.json` - Updated appliedToChat wording, added empty/error state keys
-- `fe/src/i18n/locales/ja.json` - Updated appliedToChat wording, added empty/error state keys
-- `fe/src/i18n/locales/vi.json` - Updated appliedToChat wording, added empty/error state keys
+- `fe/src/i18n/locales/en.json` - Updated appliedToChat, added emptyHeading/emptyBody/errorHeading/errorBody
+- `fe/src/i18n/locales/ja.json` - Updated appliedToChat, added empty/error state keys in Japanese
+- `fe/src/i18n/locales/vi.json` - Updated appliedToChat, added empty/error state keys in Vietnamese
 
 ## Decisions Made
-- Sparkles button styled as one-shot action button (not toggle) consistent with file upload button pattern
-- Toast message changed to reflect direct textarea insertion rather than clipboard copy
+- Sparkles button uses one-shot action pattern (not toggle) matching existing ChatInput buttons
+- onApply replaces existing textarea text intentionally per user decision D-05
+- aria-label added alongside title for screen reader accessibility
 
 ## Deviations from Plan
 
@@ -91,18 +89,17 @@ None
 ## User Setup Required
 None - no external service configuration required.
 
-## Known Stubs
-None - all components are fully wired to live data sources.
-
 ## Next Phase Readiness
-- Phase 06 is fully complete: Prompt Builder is accessible from chat, generates prompts from glossary data, and inserts directly into chat textarea
-- No blockers for future phases
+- Phase 6 is fully complete (both plans executed and verified)
+- Prompt Builder is integrated end-to-end: glossary data -> task selection -> prompt generation -> chat textarea insertion
+- Ready for next phase development
 
 ## Self-Check: PASSED
 
-- FOUND: commit 7da14fc (Task 1)
+- FOUND: fe/src/features/chat/pages/ChatPage.tsx
+- FOUND: fe/src/i18n/locales/en.json
+- FOUND: commit 72539f2 (Task 1)
 - FOUND: commit 9455097 (Task 2)
-- FOUND: 06-02-SUMMARY.md
 
 ---
 *Phase: 06-add-prompt-builder-to-chat*

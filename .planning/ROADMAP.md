@@ -82,8 +82,8 @@ Plans:
 **Plans:** 2/2 plans complete
 
 Plans:
-- [ ] **06-01**: Move PromptBuilderModal to shared + ChatInput forwardRef — Relocate component, update imports, add useImperativeHandle setValue
-- [ ] **06-02**: ChatPage integration + i18n — Wire Sparkles button and modal into ChatPage, update appliedToChat and add empty/error i18n keys
+- [x] **06-01**: Move PromptBuilderModal to shared + ChatInput forwardRef — Relocate component, update imports, add useImperativeHandle setValue
+- [x] **06-02**: ChatPage integration + i18n — Wire Sparkles button and modal into ChatPage, update appliedToChat and add empty/error i18n keys
 
 ---
 
