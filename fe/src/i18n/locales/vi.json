@@ -1294,7 +1294,11 @@
       "pressEnterToUse": "Press Enter to use \"{{keyword}}\"",
       "contextLabel": "Context",
       "contextPlaceholder": "Enter context for this keyword...",
-      "appliedToChat": "Prompt copied! Paste it into the chat input.",
+      "appliedToChat": "Prompt da duoc ap dung vao o nhap chat.",
+      "emptyHeading": "Khong tim thay tac vu",
+      "emptyBody": "Them tac vu trong Data Studio de tao prompt.",
+      "errorHeading": "Khong the tai tac vu",
+      "errorBody": "Kiem tra ket noi va thu lai.",
       "applyToChat": "Apply to Chat"
     }
   },

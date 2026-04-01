@@ -1280,7 +1280,11 @@
       "pressEnterToUse": "Press Enter to use \"{{keyword}}\"",
       "contextLabel": "Context",
       "contextPlaceholder": "Enter context for this keyword...",
-      "appliedToChat": "Prompt copied! Paste it into the chat input.",
+      "appliedToChat": "プロンプトがチャット入力に適用されました。",
+      "emptyHeading": "タスクが見つかりません",
+      "emptyBody": "プロンプトを作成するには、Data Studioでタスクを追加してください。",
+      "errorHeading": "タスクの読み込みに失敗しました",
+      "errorBody": "接続を確認してもう一度お試しください。",
       "applyToChat": "Apply to Chat"
     }
   },

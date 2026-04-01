@@ -1292,7 +1292,11 @@
       "copied": "Copied!",
       "insert": "Insert into chat",
       "applyToChat": "Apply to Chat",
-      "appliedToChat": "Prompt copied! Paste it into the chat input.",
+      "appliedToChat": "Prompt applied to chat input.",
+      "emptyHeading": "No tasks found",
+      "emptyBody": "Add tasks in Data Studio to build prompts.",
+      "errorHeading": "Failed to load tasks",
+      "errorBody": "Check your connection and try again.",
       "noTask": "Please select a task first"
     }
   },
