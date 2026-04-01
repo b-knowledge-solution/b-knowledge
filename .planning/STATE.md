@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 1
 status: Executing Phase 04
-stopped_at: Completed 04-01-PLAN.md (Memgraph Infrastructure Setup)
-last_updated: "2026-04-01T08:58:09.827Z"
+stopped_at: Completed 04-02-PLAN.md (Code Graph Parser Pipeline)
+last_updated: "2026-04-01T09:04:56.588Z"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 26
-  completed_plans: 21
+  completed_plans: 22
   percent: 100
 ---
 
@@ -24,7 +24,7 @@ Progress: [██████████] 100%
 
 ### Last Session
 
-- **Stopped at:** Completed 04-01-PLAN.md (Memgraph Infrastructure Setup)
+- **Stopped at:** Completed 04-02-PLAN.md (Code Graph Parser Pipeline)
 - **Timestamp:** 2026-04-01T05:40:12Z
 
 ## Accumulated Context
@@ -89,6 +89,9 @@ Progress: [██████████] 100%
 - [Phase 06]: Module boundary exception (D-04) documented with inline comment for shared PromptBuilderModal importing glossary API
 - [Phase 06]: ChatInputHandle JSDoc documents uncontrolled textarea design (ref-based, not state-based)
 - [Phase 04]: Memgraph over Neo4j for lower memory footprint; neo4j Python driver for Bolt protocol compatibility
+- [Phase 04]: Unified extract_and_chunk() replaces separate chunk()/extract_code_graph() for single-pass AST parsing
+- [Phase 04]: CollectingIngestor decorator intercepts graph nodes for chunk conversion while delegating graph writes
+- [Phase 04]: InMemoryIngestor fallback when Memgraph unavailable -- chunks still produced
 
 ### Performance Metrics
 
@@ -117,6 +120,7 @@ Progress: [██████████] 100%
 | Phase 06 P01 | 5min | 2 tasks | 2 files |
 | Phase 06 P02 | 3min | 3 tasks | 4 files |
 | Phase 04 P01 | 1min | 5 tasks | 8 files |
+| Phase 04 P02 | 5min | 7 tasks | 66 files |
 
 ### Pending Todos
 
