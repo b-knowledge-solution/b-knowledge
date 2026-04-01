@@ -2864,5 +2864,25 @@
     "sendFeedback": "フィードバックを送信",
     "skipForNow": "スキップ",
     "thankYou": "フィードバックありがとうございます"
+  },
+  "codeGraph": {
+    "title": "コードグラフ",
+    "noKbSelected": "ナレッジベースが選択されていません",
+    "noData": "グラフデータがありません。コードファイルをアップロードしてグラフを生成してください。",
+    "nodes": "ノード",
+    "relationships": "エッジ",
+    "callers": "呼び出し元",
+    "callees": "呼び出し先",
+    "noCallers": "呼び出し元が見つかりません",
+    "noCallees": "呼び出し先が見つかりません",
+    "sourceCode": "ソースコード",
+    "openVisualization": "コードグラフ",
+    "queryPlaceholder": "コードグラフについて質問...",
+    "queryError": "クエリに失敗しました",
+    "results": "件の結果",
+    "filter": "フィルター",
+    "nodeTypes": "ノードタイプ",
+    "exportPng": "PNG出力",
+    "exportJson": "JSON出力"
   }
 }

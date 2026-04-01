@@ -2878,5 +2878,25 @@
     "sendFeedback": "Gửi phản hồi",
     "skipForNow": "Bỏ qua",
     "thankYou": "Cảm ơn phản hồi của bạn"
+  },
+  "codeGraph": {
+    "title": "Đồ thị mã nguồn",
+    "noKbSelected": "Chưa chọn cơ sở tri thức",
+    "noData": "Chưa có dữ liệu đồ thị. Tải lên tệp mã nguồn để tạo đồ thị.",
+    "nodes": "nút",
+    "relationships": "cạnh",
+    "callers": "Hàm gọi đến",
+    "callees": "Hàm được gọi",
+    "noCallers": "Không tìm thấy hàm gọi đến",
+    "noCallees": "Không tìm thấy hàm được gọi",
+    "sourceCode": "Mã nguồn",
+    "openVisualization": "Đồ thị mã nguồn",
+    "queryPlaceholder": "Hỏi về đồ thị mã nguồn...",
+    "queryError": "Truy vấn thất bại",
+    "results": "kết quả",
+    "filter": "Bộ lọc",
+    "nodeTypes": "Loại nút",
+    "exportPng": "Xuất PNG",
+    "exportJson": "Xuất JSON"
   }
 }

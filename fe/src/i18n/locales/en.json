@@ -3132,5 +3132,25 @@
     "sendFeedback": "Send feedback",
     "skipForNow": "Skip for now",
     "thankYou": "Thanks for your feedback"
+  },
+  "codeGraph": {
+    "title": "Code Graph",
+    "noKbSelected": "No knowledge base selected",
+    "noData": "No graph data available. Upload code files to populate the graph.",
+    "nodes": "nodes",
+    "relationships": "edges",
+    "callers": "Callers",
+    "callees": "Callees",
+    "noCallers": "No callers found",
+    "noCallees": "No callees found",
+    "sourceCode": "Source Code",
+    "openVisualization": "Code Graph",
+    "queryPlaceholder": "Ask about the code graph...",
+    "queryError": "Query failed",
+    "results": "results",
+    "filter": "Filter",
+    "nodeTypes": "Node Types",
+    "exportPng": "Export PNG",
+    "exportJson": "Export JSON"
   }
 }
