@@ -79,7 +79,7 @@ Plans:
 **Goal:** Integrate the existing glossary-based PromptBuilderModal into the chat interface. Move the component to shared, add forwardRef imperative handle to ChatInput, wire Sparkles trigger button and modal into ChatPage, and update i18n strings for direct-insertion behavior.
 **Requirements**: PB-01 (move component to shared), PB-02 (ChatInput forwardRef handle), PB-03 (glossary barrel re-export), PB-04 (Sparkles trigger button), PB-05 (ChatPage modal wiring), PB-06 (i18n updates), PB-07 (human verification)
 **Depends on:** Phase 5
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] **06-01**: Move PromptBuilderModal to shared + ChatInput forwardRef — Relocate component, update imports, add useImperativeHandle setValue

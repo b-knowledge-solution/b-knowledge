@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 1
-status: Phase 05 Complete
-stopped_at: Phase 6 UI-SPEC approved
-last_updated: "2026-04-01T03:05:08.280Z"
+current_plan: 2
+status: Phase 06 Complete
+stopped_at: Completed 06-02-PLAN.md
+last_updated: "2026-04-01T04:04:46.213Z"
 progress:
   total_phases: 6
-  completed_phases: 4
-  total_plans: 23
-  completed_plans: 18
+  completed_phases: 5
+  total_plans: 25
+  completed_plans: 20
   percent: 100
 ---
 
@@ -24,8 +24,8 @@ Progress: [██████████] 100%
 
 ### Last Session
 
-- **Stopped at:** Phase 6 UI-SPEC approved
-- **Timestamp:** 2026-03-31T10:26:00Z
+- **Stopped at:** Completed 06-02-PLAN.md
+- **Timestamp:** 2026-04-01T04:03:09Z
 
 ## Accumulated Context
 
@@ -83,6 +83,9 @@ Progress: [██████████] 100%
 - [Phase 05-05]: Tenant scoping on history tables via answer_feedback.tenant_id (history tables lack tenant_id)
 - [Phase 05-05]: Post-query feedback merge pattern for detail views (separate query + Map lookup)
 - [Phase 05-05]: Agent run tenant scoping via agents.tenant_id
+- [Phase 06]: Import glossaryApi via direct file path to avoid circular dependency with shared component
+- [Phase 06]: ChatInputHandle type re-exported from chat barrel for cross-feature consumption
+- [Phase 06]: Sparkles button is one-shot action (not toggle) matching existing ChatInput button patterns
 
 ### Performance Metrics
 
@@ -106,6 +109,8 @@ Progress: [██████████] 100%
 | 05    | 04   | 10min    | 2     | 12    |
 | Phase 05 P03 | 39min | 3 tasks | 21 files |
 | 05    | 05   | 11min    | 2     | 9     |
+| Phase 06 P01 | 8min | 2 tasks | 4 files |
+| Phase 06 P02 | 3min | 3 tasks | 4 files |
 
 ### Pending Todos
 
