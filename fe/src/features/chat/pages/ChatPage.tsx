@@ -428,12 +428,13 @@ function DatasetChatPage() {
                     conversations.setActiveConversationId(null)
                   }}
                 />
-                {/* Prompt Builder trigger button (per D-02) */}
+                {/* Prompt Builder trigger button (per D-02) -- one-shot action, not a toggle */}
                 <button
                   type="button"
                   className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
                   onClick={() => setPromptBuilderOpen(true)}
                   title={t('glossary.promptBuilder.title')}
+                  aria-label={t('glossary.promptBuilder.title')}
                 >
                   <Sparkles className="h-4 w-4" />
                 </button>
@@ -473,6 +474,8 @@ function DatasetChatPage() {
         onClose={() => setPromptBuilderOpen(false)}
         onApply={(prompt) => {
           // Insert generated prompt into chat textarea via imperative handle (per D-05)
+          // This REPLACES existing textarea text -- intentional per user decision D-05
+          // All other chat state (files, reasoning, internet, assistant) is preserved (per D-07)
           chatInputRef.current?.setValue(prompt)
         }}
       />
