@@ -52,6 +52,15 @@ export interface HierarchyChain {
   chain: Array<{ name: string; qualified_name: string }>
 }
 
+/** Natural language query result from AI-powered Cypher translation */
+export interface NlQueryResult {
+  cypher: string
+  results: Record<string, unknown>[]
+  count: number
+  /** Node IDs returned by the query, used to highlight matched nodes in the graph */
+  nodeIds?: number[]
+}
+
 /** Cypher query result */
 export interface CypherResult {
   results: Record<string, unknown>[]

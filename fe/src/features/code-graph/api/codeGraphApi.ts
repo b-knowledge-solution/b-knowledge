@@ -10,6 +10,7 @@ import type {
   CodeSnippet,
   HierarchyChain,
   CypherResult,
+  NlQueryResult,
 } from '../types/code-graph.types'
 
 /** Base URL for code graph API */
@@ -68,6 +69,16 @@ export const codeGraphApi = {
    */
   getHierarchy: async (kbId: string, name: string): Promise<HierarchyChain[]> =>
     api.get<HierarchyChain[]>(`${BASE}/${kbId}/hierarchy?name=${encodeURIComponent(name)}`),
+
+  /**
+   * Execute natural language query against the code graph.
+   * @description Sends a question to the AI which translates it to Cypher and executes it
+   * @param kbId - Knowledge base ID
+   * @param question - Natural language question about the codebase
+   * @returns AI-translated Cypher result with matching nodes
+   */
+  queryNl: async (kbId: string, question: string): Promise<NlQueryResult> =>
+    api.post<NlQueryResult>(`${BASE}/${kbId}/query`, { question }),
 
   /**
    * Execute raw Cypher query (admin only).

@@ -75,7 +75,21 @@ export function useCodeGraphSnippet(kbId: string, name: string) {
 // ── Mutations ────────────────────────────────
 
 /**
- * Hook to execute raw Cypher query (admin).
+ * @description Hook to execute a natural language query against the code graph.
+ * Sends the question to the backend which translates it to Cypher via AI and runs it.
+ * @param kbId - Knowledge base ID
+ * @returns Mutation with NlQueryResult containing matched node IDs for graph highlighting
+ */
+export function useCodeGraphQuery(kbId: string) {
+  return useMutation({
+    mutationFn: (question: string) => codeGraphApi.queryNl(kbId, question),
+  })
+}
+
+/**
+ * @description Hook to execute raw Cypher query (admin).
+ * @param kbId - Knowledge base ID
+ * @returns Mutation with CypherResult
  */
 export function useExecuteCypher(kbId: string) {
   return useMutation({
