@@ -8,7 +8,7 @@ import { log } from '@/shared/services/logger.service.js';
 import { cryptoService } from '@/shared/services/crypto.service.js';
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js';
 import { ModelProvider } from '@/shared/models/types.js';
-import { ProviderStatus, ModelType } from '@/shared/constants/index.js';
+import { ProviderStatus, ModelType, ComparisonLiteral } from '@/shared/constants/index.js';
 
 /**
  * @description User context for audit logging on provider operations
@@ -148,7 +148,7 @@ export class LlmProviderService {
         if (data.model_type !== undefined) updateData.model_type = data.model_type;
         if (data.model_name !== undefined) updateData.model_name = data.model_name;
         // Encrypt the API key; skip masked placeholder '***' (means "keep existing")
-        if (data.api_key !== undefined && data.api_key !== '***') {
+        if (data.api_key !== undefined && data.api_key !== ComparisonLiteral.MASKED_SECRET) {
             updateData.api_key = data.api_key
                 ? cryptoService.encrypt(data.api_key)
                 : data.api_key;
@@ -292,7 +292,7 @@ export class LlmProviderService {
                 };
 
                 // Add body for POST requests
-                if (probeConfig.method === 'POST' && probeConfig.body) {
+                if (probeConfig.method === ComparisonLiteral.HTTP_METHOD_POST && probeConfig.body) {
                     fetchOpts.body = JSON.stringify(probeConfig.body);
                 }
 
@@ -353,7 +353,7 @@ export class LlmProviderService {
         method: 'GET' | 'POST';
         body?: Record<string, unknown>;
     } {
-        if (provider.factory_name === 'Ollama') {
+        if (provider.factory_name === ComparisonLiteral.OLLAMA_FACTORY) {
             if (provider.model_type === ModelType.EMBEDDING) {
                 return {
                     endpoint: 'api/embed',

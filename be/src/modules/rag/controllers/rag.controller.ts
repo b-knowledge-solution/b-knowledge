@@ -29,7 +29,7 @@ import { converterQueueService } from '../services/converter-queue.service.js';
 import { RagDocumentService } from '../services/rag-document.service.js';
 import { minioClient } from '@/shared/services/minio.service.js'
 import { config } from '@/shared/config/index.js';
-import { DatasetStatus } from '@/shared/constants/index.js';
+import { ComparisonLiteral, DatasetStatus, ParseRunAction } from '@/shared/constants/index.js';
 
 /**
  * @description Resolve model_providers.id for an embedding model name
@@ -86,7 +86,7 @@ export class RagController {
             const dataset = await ragService.getDatasetById(req.params['id']!);
             // Return 404 for missing or soft-deleted datasets
             if (!dataset || dataset.status === DatasetStatus.DELETED) {
-                res.status(404).json({ error: 'Dataset not found' });
+                res.status(404).json({ error: ComparisonLiteral.DATASET_NOT_FOUND });
                 return;
             }
             res.json(dataset);
@@ -142,7 +142,7 @@ export class RagController {
                 : undefined;
 
             const dataset = await ragService.updateDataset(id, req.body, user);
-            if (!dataset) { res.status(404).json({ error: 'Dataset not found' }); return; }
+            if (!dataset) { res.status(404).json({ error: ComparisonLiteral.DATASET_NOT_FOUND }); return; }
 
             // Sync changed fields to knowledgebase table (non-blocking)
             await datasetSyncService.syncUpdate(id, req.body);
@@ -426,7 +426,7 @@ export class RagController {
             res.json(access);
         } catch (error: any) {
             // Return 404 if dataset not found, 500 otherwise
-            const status = error.message === 'Dataset not found' ? 404 : 500;
+            const status = error.message === ComparisonLiteral.DATASET_NOT_FOUND ? 404 : 500;
             log.error('Failed to get dataset access', { error: String(error) });
             res.status(status).json({ error: error.message || 'Failed to get dataset access' });
         }
@@ -453,7 +453,7 @@ export class RagController {
             }
 
             const dataset = await ragService.setDatasetAccess(id, req.body, user);
-            if (!dataset) { res.status(404).json({ error: 'Dataset not found' }); return; }
+            if (!dataset) { res.status(404).json({ error: ComparisonLiteral.DATASET_NOT_FOUND }); return; }
 
             res.json(dataset);
         } catch (error: any) {
@@ -507,7 +507,7 @@ export class RagController {
             // Verify dataset exists in datasets table
             const dataset = await ModelFactory.dataset.findById(datasetId);
             if (!dataset) {
-                res.status(404).json({ error: 'Dataset not found' });
+                res.status(404).json({ error: ComparisonLiteral.DATASET_NOT_FOUND });
                 return;
             }
 
@@ -736,7 +736,7 @@ export class RagController {
             res.status(400).json({ error: 'doc_ids must be a non-empty array' });
             return;
         }
-        if (run !== 1 && run !== 2) {
+        if (run !== ParseRunAction.PARSE && run !== ParseRunAction.CANCEL) {
             res.status(400).json({ error: 'run must be 1 (parse) or 2 (cancel)' });
             return;
         }
@@ -749,7 +749,7 @@ export class RagController {
                 const doc = await ragDocumentService.getDocument(docId);
                 if (!doc) continue;
 
-                if (run === 1) {
+                if (run === ParseRunAction.PARSE) {
                     // Start parsing
                     await ragDocumentService.beginParse(docId);
                     await ragRedisService.queueParseInit(docId);
@@ -907,7 +907,7 @@ export class RagController {
         try {
             const dataset = await ragService.getDatasetById(id);
             if (!dataset || dataset.status === DatasetStatus.DELETED) {
-                res.status(404).json({ error: 'Dataset not found' });
+                res.status(404).json({ error: ComparisonLiteral.DATASET_NOT_FOUND });
                 return;
             }
             // Return relevant settings fields
@@ -945,7 +945,7 @@ export class RagController {
                 : undefined;
 
             const dataset = await ragService.updateDataset(id, req.body, user);
-            if (!dataset) { res.status(404).json({ error: 'Dataset not found' }); return; }
+            if (!dataset) { res.status(404).json({ error: ComparisonLiteral.DATASET_NOT_FOUND }); return; }
 
             // Sync to knowledgebase table
             try {
@@ -1141,7 +1141,8 @@ export class RagController {
             if (req.query['limit']) options.limit = parseInt(req.query['limit'] as string, 10);
             // Parse available filter: '1'/'true' = enabled, '0'/'false' = disabled
             if (req.query['available'] !== undefined) {
-                options.available = req.query['available'] === '1' || req.query['available'] === 'true';
+                options.available = req.query['available'] === ComparisonLiteral.QUERY_ONE
+                    || req.query['available'] === ComparisonLiteral.QUERY_TRUE;
             }
             // Extract tenant ID from request context for OpenSearch isolation
             const tenantId = getTenantId(req) || ''
@@ -1620,7 +1621,7 @@ export class RagController {
 
         try {
             const kb = await ragDocumentService.getKnowledgebase(id);
-            if (!kb) { res.status(404).json({ error: 'Dataset not found' }); return; }
+            if (!kb) { res.status(404).json({ error: ComparisonLiteral.DATASET_NOT_FOUND }); return; }
 
             // Metadata schema is stored in knowledgebase.parser_config.metadata_fields
             const parserConfig = typeof kb.parser_config === 'string'
@@ -1646,7 +1647,7 @@ export class RagController {
 
         try {
             const kb = await ragDocumentService.getKnowledgebase(id);
-            if (!kb) { res.status(404).json({ error: 'Dataset not found' }); return; }
+            if (!kb) { res.status(404).json({ error: ComparisonLiteral.DATASET_NOT_FOUND }); return; }
 
             // Update metadata_fields in parser_config
             const parserConfig = typeof kb.parser_config === 'string'
@@ -1863,7 +1864,7 @@ export class RagController {
             // Verify dataset exists
             const dataset = await ModelFactory.dataset.findById(datasetId)
             if (!dataset) {
-                res.status(404).json({ error: 'Dataset not found' })
+                res.status(404).json({ error: ComparisonLiteral.DATASET_NOT_FOUND })
                 return
             }
 

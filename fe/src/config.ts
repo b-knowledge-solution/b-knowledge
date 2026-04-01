@@ -1,3 +1,5 @@
+import { EnvBoolString } from '@/constants'
+
 /**
  * @fileoverview Application configuration module.
  * 
@@ -25,8 +27,8 @@
 const getBoolEnv = (key: string, defaultValue: boolean): boolean => {
     const value = import.meta.env[key];
     // Only accept explicit string booleans
-    if (value === 'true') return true;
-    if (value === 'false') return false;
+    if (value === EnvBoolString.TRUE) return true;
+    if (value === EnvBoolString.FALSE) return false;
     return defaultValue;
 };
 

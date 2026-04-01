@@ -20,7 +20,7 @@ import { askSummaryPrompt, citationPrompt } from '@/shared/prompts/index.js'
 import { relatedQuestionsService } from '@/shared/services/related-questions.service.js'
 import { htmlToMarkdown } from '@/shared/utils/html-to-markdown.js'
 import { log } from '@/shared/services/logger.service.js'
-import { UserRole } from '@/shared/constants/index.js'
+import { ComparisonLiteral, UserRole } from '@/shared/constants/index.js'
 import { tagRankingService } from '@/shared/services/tag-ranking.service.js'
 import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
 import { queryLogService } from '@/modules/rag/index.js'
@@ -396,7 +396,7 @@ export class SearchService {
     // Load the search app to get dataset IDs
     const app = await ModelFactory.searchApp.findById(searchId)
     if (!app) {
-      throw new Error('Search app not found')
+      throw new Error(ComparisonLiteral.SEARCH_APP_NOT_FOUND)
     }
 
     const searchConfig = (app.search_config as Record<string, unknown>) || {}
@@ -497,7 +497,7 @@ export class SearchService {
     data: any,
   ): Promise<{ chunks: any[]; total: number; page: number; page_size: number; doc_aggs: any[] }> {
     const app = await ModelFactory.searchApp.findById(searchId)
-    if (!app) throw new Error('Search app not found')
+    if (!app) throw new Error(ComparisonLiteral.SEARCH_APP_NOT_FOUND)
 
     const searchConfig = (app.search_config as Record<string, unknown>) || {}
     const page = data.page ?? 1
@@ -745,7 +745,7 @@ export class SearchService {
     // Load search app config
     const app = await ModelFactory.searchApp.findById(searchId)
     if (!app) {
-      throw new Error('Search app not found')
+      throw new Error(ComparisonLiteral.SEARCH_APP_NOT_FOUND)
     }
 
     const searchConfig = app.search_config as Record<string, unknown>
@@ -815,7 +815,7 @@ export class SearchService {
       const reference = { chunks: sqlResult.chunks, doc_aggs: [], total: sqlResult.chunks.length }
       res.write(`data: ${JSON.stringify({ reference })}\n\n`)
       res.write(`data: ${JSON.stringify({ answer: sqlResult.answer })}\n\n`)
-      res.write('data: [DONE]\n\n')
+      res.write(`data: ${ComparisonLiteral.STREAM_DONE}\n\n`)
       res.end()
       return
     }
@@ -890,7 +890,7 @@ export class SearchService {
           chunks_retrieved: chunks.length,
         },
       })}\n\n`)
-      res.write('data: [DONE]\n\n')
+      res.write(`data: ${ComparisonLiteral.STREAM_DONE}\n\n`)
       res.end()
       return
     }
@@ -983,7 +983,7 @@ export class SearchService {
     }
 
     // Signal stream completion
-    res.write('data: [DONE]\n\n')
+    res.write(`data: ${ComparisonLiteral.STREAM_DONE}\n\n`)
     res.end()
   }
 
@@ -998,7 +998,7 @@ export class SearchService {
     // Load search app to get LLM provider config
     const app = await ModelFactory.searchApp.findById(searchId)
     if (!app) {
-      throw new Error('Search app not found')
+      throw new Error(ComparisonLiteral.SEARCH_APP_NOT_FOUND)
     }
 
     const config = app.search_config as Record<string, unknown>
@@ -1041,7 +1041,7 @@ export class SearchService {
     // Load search app config
     const app = await ModelFactory.searchApp.findById(searchId)
     if (!app) {
-      throw new Error('Search app not found')
+      throw new Error(ComparisonLiteral.SEARCH_APP_NOT_FOUND)
     }
 
     const config = app.search_config as Record<string, unknown>
