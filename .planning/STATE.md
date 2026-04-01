@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 1
 status: Executing Phase 04
-stopped_at: Completed 04-04-PLAN.md (Node.js Code-Graph API)
-last_updated: "2026-04-01T09:20:37.932Z"
+stopped_at: Completed 04-05-PLAN.md (Frontend Graph Visualization)
+last_updated: "2026-04-01T09:29:41.928Z"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 26
-  completed_plans: 24
+  completed_plans: 25
   percent: 100
 ---
 
@@ -24,7 +24,7 @@ Progress: [██████████] 100%
 
 ### Last Session
 
-- **Stopped at:** Completed 04-04-PLAN.md (Node.js Code-Graph API)
+- **Stopped at:** Completed 04-05-PLAN.md (Frontend Graph Visualization)
 - **Timestamp:** 2026-04-01T05:40:12Z
 
 ## Accumulated Context
@@ -95,6 +95,8 @@ Progress: [██████████] 100%
 - [Phase 04]: chunk_with_graph delegates to chunk() internally since code.py already integrates extract_and_chunk
 - [Phase 04]: Embedded Bolt driver in CodeGraphService instead of separate shared memgraphService for module self-containment
 - [Phase 04]: 11 code-graph endpoints (expanded from 6) with write-operation safety check on AI-generated Cypher
+- [Phase 04]: Kept custom Canvas force simulation instead of react-force-graph-2d (zero deps, lighter)
+- [Phase 04]: NL query highlights matched nodes with golden ring, dims non-matching to 0.15 opacity
 
 ### Performance Metrics
 
@@ -126,6 +128,7 @@ Progress: [██████████] 100%
 | Phase 04 P02 | 5min | 7 tasks | 66 files |
 | Phase 04 P03 | 4min | 2 tasks | 3 files |
 | Phase 04 P04 | 1min | 5 tasks | 7 files |
+| Phase 04 P05 | 7min | 4 tasks | 12 files |
 
 ### Pending Todos
 
