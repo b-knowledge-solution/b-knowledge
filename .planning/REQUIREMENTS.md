@@ -10,10 +10,10 @@ Requirements for v0.2 milestone: Knowledge Base Refactor & Quality.
 ### Rename (Project → Knowledge Base)
 
 - [ ] **REN-01**: User sees "Knowledge Base" instead of "Project" across all UI pages, navigation, and labels (3 locales: en, vi, ja)
-- [ ] **REN-02**: All DB tables renamed (`projects` → `knowledge_base`, `project_*` → `knowledge_base_*`, all `project_id` FK columns → `knowledge_base_id`)
+- [x] **REN-02**: All DB tables renamed (`projects` → `knowledge_base`, `project_*` → `knowledge_base_*`, all `project_id` FK columns → `knowledge_base_id`)
 - [ ] **REN-03**: All BE module files, routes, models renamed (`/api/projects/*` → `/api/knowledge-base/*`, module directory `modules/knowledge-base/`, barrel exports)
 - [ ] **REN-04**: All FE feature files, routes, components renamed (`/projects/:id` → `/knowledge-bases/:id`, feature directory, API layer)
-- [ ] **REN-05**: Python worker `ragflow_doc_meta_` prefix renamed to `knowledge_doc_meta_` in all connector files
+- [x] **REN-05**: Python worker `ragflow_doc_meta_` prefix renamed to `knowledge_doc_meta_` in all connector files
 - [ ] **REN-06**: All test files updated to use new naming, full test suite passes after rename
 
 ### Chunk Quality
@@ -74,10 +74,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | REN-01 | Phase 8 | Pending |
-| REN-02 | Phase 7 | Pending |
+| REN-02 | Phase 7 | Complete |
 | REN-03 | Phase 7 | Pending |
 | REN-04 | Phase 8 | Pending |
-| REN-05 | Phase 7 | Pending |
+| REN-05 | Phase 7 | Complete |
 | REN-06 | Phase 8 | Pending |
 | CHUNK-01 | Phase 10 | Pending |
 | CHUNK-02 | Phase 10 | Pending |
