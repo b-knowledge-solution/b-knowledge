@@ -346,6 +346,7 @@ export default withMermaid(
               { text: 'GraphRAG', link: '/detail-design/supporting/graphrag-detail' },
               { text: 'Code Graph', link: '/detail-design/supporting/code-graph-detail' },
               { text: 'Guideline & Onboarding', link: '/detail-design/supporting/guideline-onboarding-detail' },
+              { text: 'Basic User Manual', link: '/detail-design/supporting/basic-user-manual' },
               { text: 'Feedback', link: '/detail-design/supporting/feedback-detail' },
               { text: 'History Browsing', link: '/detail-design/supporting/history-browsing-detail' },
               { text: 'API Keys', link: '/detail-design/supporting/api-keys-detail' },
