@@ -452,9 +452,31 @@ export interface VersionDocument {
   create_time: number;
   update_time: number;
   chunk_count: number;
+  chunk_num?: number;
   token_count: number;
+  token_num?: number;
   progress: number;
   progress_msg: string;
+  /** Parser ID (e.g., 'naive', 'pdf', 'table') — returned from RAG document table */
+  parser_id?: string;
+  /** Parser configuration */
+  parser_config?: Record<string, unknown>;
+  /** Processing duration in seconds */
+  process_duration?: number;
+  /** Source type (e.g., 'local', 'web_crawl') */
+  source_type?: string;
+  /** Source URL for web-crawled documents */
+  source_url?: string;
+  /** Document knowledgebase/dataset ID */
+  kb_id?: string;
+  /** Update date as ISO string */
+  update_date?: string | number;
+  /** Creation date as ISO string */
+  create_date?: string;
+  /** Created at ISO string */
+  created_at?: string;
+  /** Updated at ISO string */
+  updated_at?: string;
 }
 
 /**
@@ -937,6 +959,49 @@ export const getVersionDocumentLogs = (
   docId: string,
 ): Promise<{ document: Record<string, unknown>; tasks: Array<Record<string, unknown>> }> =>
   api.get(`/api/rag/datasets/${datasetId}/documents/${docId}/logs`);
+
+/**
+ * @description Toggle document availability (enabled/disabled) for search.
+ * Calls the RAG toggle endpoint directly since version documents are RAG documents.
+ * @param {string} datasetId - The RAG dataset UUID
+ * @param {string} docId - Document UUID
+ * @param {boolean} available - Whether the document should be available
+ * @returns {Promise<void>}
+ */
+export const toggleVersionDocumentAvailability = (
+  datasetId: string,
+  docId: string,
+  available: boolean,
+): Promise<void> =>
+  api.patch(`/api/rag/datasets/${datasetId}/documents/${docId}/toggle`, { available });
+
+/**
+ * @description Change a document's parser method. Deletes existing chunks and resets for re-parsing.
+ * @param {string} datasetId - The RAG dataset UUID
+ * @param {string} docId - Document UUID
+ * @param {object} data - New parser settings
+ * @param {string} data.parser_id - New parser ID
+ * @param {Record<string, unknown>} [data.parser_config] - Optional parser config override
+ * @returns {Promise<Record<string, unknown>>} Updated document
+ */
+export const changeVersionDocumentParser = (
+  datasetId: string,
+  docId: string,
+  data: { parser_id: string; parser_config?: Record<string, unknown> },
+): Promise<Record<string, unknown>> =>
+  api.put(`/api/rag/datasets/${datasetId}/documents/${docId}/parser`, data);
+
+/**
+ * @description Delete a single document from a RAG dataset.
+ * @param {string} datasetId - The RAG dataset UUID
+ * @param {string} docId - Document UUID
+ * @returns {Promise<void>}
+ */
+export const deleteVersionSingleDocument = (
+  datasetId: string,
+  docId: string,
+): Promise<void> =>
+  api.delete(`/api/rag/datasets/${datasetId}/documents/${docId}`);
 
 // ============================================================================
 // Project Datasets API

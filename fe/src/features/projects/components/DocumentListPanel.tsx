@@ -1,20 +1,26 @@
 /**
- * @fileoverview Document list panel for a selected version.
+ * @fileoverview Document list panel for a selected version — full feature parity with DatasetDetailPage.
  *
- * Fetches and displays documents from the RAGFlow dataset associated
- * with the selected version. Shows file name, size, type, and parsing status.
- * Includes upload buttons that open file/folder upload modals.
+ * Features: parse/stop per-document, inline progress bar, parser badge, enable/disable toggle,
+ * change parser dialog, process log dialog, inline delete, bulk parse/cancel/delete,
+ * chunk navigation, search, pagination, real-time WebSocket + polling updates.
  *
  * @module features/projects/components/DocumentListPanel
  */
 
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FileText, FileSpreadsheet, FileImage, File, UploadCloud, FolderUp, Trash2, Layers, RefreshCw, Play, Square, Loader2, Search } from 'lucide-react'
+import {
+  FileText, FileSpreadsheet, FileImage, File, UploadCloud, FolderUp,
+  Trash2, Layers, RefreshCw, Play, Square, Loader2, Search,
+  Settings2, XCircle, Tags,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
+import { Switch } from '@/components/ui/switch'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Spinner } from '@/components/ui/spinner'
@@ -26,9 +32,12 @@ import {
   getVersionDocuments, deleteVersionDocuments, requeueVersionDocuments,
   parseVersionDocuments, syncVersionParserStatus,
   parseVersionSingleDocument, bulkParseVersionDocuments,
+  toggleVersionDocumentAvailability, changeVersionDocumentParser,
+  deleteVersionSingleDocument,
   type VersionDocument,
 } from '../api/projectApi'
-import { ProcessLogDialog } from '../../datasets'
+import { ProcessLogDialog, ChangeParserDialog, MetadataManageDialog } from '../../datasets'
+import type { Document } from '../../datasets'
 
 import { useConverterSocket } from '../../system/hooks/useConverterSocket'
 import UploadFilesModal from './UploadFilesModal'
@@ -39,9 +48,9 @@ import UploadFolderModal from './UploadFolderModal'
 // ============================================================================
 
 /**
- * Format bytes into a human-readable size string.
- * @param bytes - File size in bytes
- * @returns Formatted size string (e.g. "1.5 MB")
+ * @description Format bytes into a human-readable size string
+ * @param {number} bytes - File size in bytes
+ * @returns {string} Formatted size string (e.g. "1.5 MB")
  */
 const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 B'
@@ -51,9 +60,9 @@ const formatFileSize = (bytes: number): string => {
 }
 
 /**
- * Get a file type icon based on file extension.
- * @param name - File name
- * @returns Lucide icon component
+ * @description Get a file type icon based on file extension
+ * @param {string} name - File name
+ * @returns {JSX.Element} Lucide icon component
  */
 const getFileIcon = (name: string) => {
   const ext = name.split('.').pop()?.toLowerCase() || ''
@@ -64,28 +73,81 @@ const getFileIcon = (name: string) => {
 }
 
 /**
- * Map document pipeline status to Badge variant and label.
- * @param run - Document run status string
- * @param t - Translation function
- * @returns Object with variant and label
+ * @description Map document pipeline status to Badge variant and label
+ * @param {VersionDocument} doc - Document to evaluate
+ * @param {Function} t - Translation function
+ * @returns {{ variant: string; label: string }} Badge display properties
  */
-const getStatusBadge = (run: string, t: (key: string) => string): { variant: 'secondary' | 'info' | 'destructive' | 'warning' | 'success' | 'default'; label: string } => {
+const getStatusBadge = (doc: VersionDocument, t: (key: string) => string): { variant: 'secondary' | 'info' | 'destructive' | 'warning' | 'success' | 'default'; label: string } => {
+  const run = doc.run
+  // RAGFlow run field takes precedence
+  if (run === '1') return { variant: 'info', label: t('projectManagement.documents.statusParsing') }
+  if (run === '2') return { variant: 'warning', label: t('projectManagement.documents.statusCancelled') }
+  // Check progress for completed/failed states
+  if (doc.progress === 1) return { variant: 'success', label: t('projectManagement.documents.statusParsed') }
+  if (doc.progress === -1) return { variant: 'destructive', label: t('projectManagement.documents.statusFailed') }
+  if (doc.progress > 0 && doc.progress < 1) return { variant: 'info', label: t('projectManagement.documents.statusParsing') }
+
+  // Local pipeline statuses
   const statusMap: Record<string, { variant: 'secondary' | 'info' | 'destructive' | 'warning' | 'success' | 'default'; label: string }> = {
-    // Local pipeline statuses
     local: { variant: 'secondary', label: t('projectManagement.documents.statusLocal') },
     converted: { variant: 'info', label: t('projectManagement.documents.statusConverted') },
     imported: { variant: 'info', label: t('projectManagement.documents.statusImported') },
     failed: { variant: 'destructive', label: t('projectManagement.documents.statusFailed') },
-    // RAGFlow parsing statuses
     UNSTART: { variant: 'secondary', label: t('projectManagement.documents.statusPending') },
     RUNNING: { variant: 'info', label: t('projectManagement.documents.statusParsing') },
     CANCEL: { variant: 'warning', label: t('projectManagement.documents.statusCancelled') },
     DONE: { variant: 'success', label: t('projectManagement.documents.statusParsed') },
     FAIL: { variant: 'destructive', label: t('projectManagement.documents.statusFailed') },
   }
-  return statusMap[run] || { variant: 'secondary', label: run }
+  return statusMap[run] || { variant: 'secondary', label: run || t('projectManagement.documents.statusPending') }
 }
 
+/** @description Format a raw timestamp to localized date string */
+const formatDate = (raw: number | string | undefined | null): string => {
+  if (!raw) return '-'
+  const d = typeof raw === 'number' ? new Date(raw) : new Date(raw)
+  if (isNaN(d.getTime())) return '-'
+  return d.toLocaleDateString()
+}
+
+/** @description Format update date, falling back through available date fields */
+const formatDocUpdateDate = (doc: VersionDocument): string =>
+  formatDate(doc.update_date || doc.update_time || doc.updated_at || doc.create_time || doc.create_date)
+
+/**
+ * @description Convert a VersionDocument to the datasets Document type for reuse in dialogs
+ * @param {VersionDocument} doc - Version document to convert
+ * @param {string} datasetId - RAG dataset UUID
+ * @returns {Document} Converted document matching datasets type
+ */
+const toDatasetDocument = (doc: VersionDocument, datasetId: string): Document => {
+  // Build a Document-compatible object from VersionDocument fields
+  // Use explicit undefined checks to satisfy exactOptionalPropertyTypes
+  const result: Document = {
+    id: doc.id,
+    dataset_id: datasetId,
+    name: doc.name,
+    size: doc.size,
+    status: doc.status,
+    progress: doc.progress,
+    chunk_count: doc.chunk_num ?? doc.chunk_count ?? 0,
+    token_count: doc.token_num ?? doc.token_count ?? 0,
+    created_at: doc.created_at || '',
+    updated_at: doc.updated_at || '',
+  }
+  // Only set optional fields when they have actual values
+  if (doc.type) result.type = doc.type
+  if (doc.progress_msg) result.progress_msg = doc.progress_msg
+  if (doc.run) result.run = doc.run
+  if (doc.parser_id) result.parser_id = doc.parser_id
+  if (doc.process_duration) result.process_duration = doc.process_duration
+  if (doc.create_time) result.create_time = doc.create_time
+  if (doc.create_date) result.create_date = doc.create_date
+  if (doc.source_type === 'local' || doc.source_type === 'web_crawl') result.source_type = doc.source_type
+  if (doc.source_url) result.source_url = doc.source_url
+  return result
+}
 
 // ============================================================================
 // Types
@@ -98,7 +160,7 @@ interface DocumentListPanelProps {
   categoryId: string
   /** Selected version ID */
   versionId: string
-  /** RAG dataset UUID linked to this version (for direct parse/log API calls) */
+  /** RAG dataset UUID linked to this version (for direct parse/log/toggle API calls) */
   datasetId?: string
   /** Display label for the selected version */
   versionLabel?: string
@@ -115,13 +177,16 @@ interface DocumentListPanelProps {
 // ============================================================================
 
 /**
- * Panel showing documents for a selected version with search, upload buttons, and pagination.
+ * @description Panel showing documents for a selected version with full dataset-detail parity.
+ * Includes: parse/stop buttons, progress bars, parser badges, enable/disable toggle,
+ * change parser dialog, process log, inline delete, bulk operations, chunk navigation.
  *
  * @param {DocumentListPanelProps} props - Component props
  * @returns {JSX.Element} The rendered document list panel
  */
 const DocumentListPanel = ({ projectId, categoryId, versionId, datasetId, versionLabel, refreshKey, onShowJobs, activeJobCount }: DocumentListPanelProps) => {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const confirm = useConfirm()
   const [documents, setDocuments] = useState<VersionDocument[]>([])
   const [loading, setLoading] = useState(false)
@@ -136,10 +201,16 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, datasetId, versio
   const [processLogOpen, setProcessLogOpen] = useState(false)
   const [processLogDoc, setProcessLogDoc] = useState<VersionDocument | null>(null)
 
+  // Change parser dialog state
+  const [changeParserDoc, setChangeParserDoc] = useState<VersionDocument | null>(null)
+
+  // Bulk metadata dialog state
+  const [bulkMetadataOpen, setBulkMetadataOpen] = useState(false)
+
   /** Counter to trigger refresh after upload */
   const [localRefreshKey, setLocalRefreshKey] = useState(0)
 
-  /** Selected row keys for multi-delete */
+  /** Selected row keys for multi-select operations */
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([])
   /** Loading state for delete operation */
   const [deleting, setDeleting] = useState(false)
@@ -153,6 +224,8 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, datasetId, versio
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 20
+
+  // ── Data Fetching ──────────────────────────────────────────────────────
 
   /** Fetch documents for the selected version */
   const fetchDocuments = async () => {
@@ -184,35 +257,35 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, datasetId, versio
   })
 
   // Polling fallback — auto-refresh every 5s while documents are in-progress
-  // This ensures status updates even if WebSocket is not connected
   useEffect(() => {
     const hasInProgress = documents.some(
-      (doc) => doc.run === 'local' || doc.run === 'converted',
+      (doc) => doc.run === '1' || doc.run === 'local' || doc.run === 'converted' || doc.run === 'RUNNING'
+        || (doc.progress > 0 && doc.progress < 1),
     )
     if (!hasInProgress || documents.length === 0) return
 
-    const interval = setInterval(() => {
-      fetchDocuments()
-    }, 5000)
-
+    const interval = setInterval(() => fetchDocuments(), 5000)
     return () => clearInterval(interval)
   }, [documents, projectId, categoryId, versionId, searchKeyword])
 
+  // ── Handlers ───────────────────────────────────────────────────────────
+
   /** Callback after upload completes */
-  const handleUploadComplete = () => {
-    setLocalRefreshKey((k) => k + 1)
-  }
+  const handleUploadComplete = () => setLocalRefreshKey((k) => k + 1)
+
+  /**
+   * @description Resolve selected doc IDs to file names for project-specific APIs.
+   * The projects controller expects file names, not UUIDs.
+   */
+  const selectedFileNames = (): string[] =>
+    documents.filter((d) => selectedRowKeys.includes(d.id)).map((d) => d.name)
 
   /** Delete selected documents after confirmation */
   const handleDeleteSelected = async () => {
     if (selectedRowKeys.length === 0) return
-
-    // Check if any imported documents are selected for the warning message
     const hasImported = documents.some(
       (doc) => selectedRowKeys.includes(doc.id) && doc.run === 'imported',
     )
-
-    // Prompt confirmation before deleting
     const confirmed = await confirm({
       title: t('common.delete'),
       message: hasImported
@@ -225,12 +298,13 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, datasetId, versio
 
     setDeleting(true)
     try {
-      const result = await deleteVersionDocuments(projectId, categoryId, versionId, selectedRowKeys)
+      // Project delete endpoint expects file names, not doc IDs
+      const result = await deleteVersionDocuments(projectId, categoryId, versionId, selectedFileNames())
       const deletedCount = result.deleted?.length ?? selectedRowKeys.length
       globalMessage.success(t('projectManagement.documents.deleteSuccess', { count: deletedCount }))
       setSelectedRowKeys([])
       setLocalRefreshKey((k) => k + 1)
-    } catch (err) {
+    } catch {
       globalMessage.error(t('projectManagement.documents.deleteError'))
     } finally {
       setDeleting(false)
@@ -242,7 +316,8 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, datasetId, versio
     if (selectedRowKeys.length === 0) return
     setRequeueing(true)
     try {
-      const result = await requeueVersionDocuments(projectId, categoryId, versionId, selectedRowKeys)
+      // Project requeue endpoint expects file names
+      const result = await requeueVersionDocuments(projectId, categoryId, versionId, selectedFileNames())
       const queuedCount = result.queued?.length ?? 0
       globalMessage.success(t('projectManagement.documents.retryParseSuccess', { count: queuedCount }))
       setSelectedRowKeys([])
@@ -254,12 +329,13 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, datasetId, versio
     }
   }
 
-  /** Start parsing selected imported documents in RAGFlow */
+  /** Start parsing selected imported documents */
   const handleStartParse = async () => {
     if (selectedRowKeys.length === 0) return
     setParsing(true)
     try {
-      const result = await parseVersionDocuments(projectId, categoryId, versionId, selectedRowKeys)
+      // Project parse endpoint expects file names
+      const result = await parseVersionDocuments(projectId, categoryId, versionId, selectedFileNames())
       const parsedCount = result.parsed?.length ?? 0
       globalMessage.success(t('projectManagement.documents.startParseSuccess', { count: parsedCount }))
       setSelectedRowKeys([])
@@ -271,43 +347,20 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, datasetId, versio
     }
   }
 
-  /** Check if any selected files are local-only (eligible for retry) */
-  const hasLocalSelected = selectedRowKeys.length > 0 && documents.some(
-    (doc) => selectedRowKeys.includes(doc.id) && doc.run === 'local',
-  )
-
-  /** Check if any selected files are imported (eligible for parsing) */
-  const hasImportedSelected = selectedRowKeys.length > 0 && documents.some(
-    (doc) => selectedRowKeys.includes(doc.id) && doc.run === 'imported',
-  )
-
-  /**
-   * Check if any doc in the list is in a parse-trackable state.
-   * Shows the Sync Parser Status button when relevant.
-   */
-  const hasParseableStatus = documents.some(
-    (doc) => doc.run === 'imported' || doc.run === 'UNSTART' || doc.run === 'RUNNING',
-  )
-
-  /** Sync live parser status from RAGFlow on demand */
-  const handleSyncParserStatus = async () => {
-    setSyncing(true)
+  /** Bulk cancel parsing for selected documents */
+  const handleBulkCancel = async () => {
+    if (!datasetId || selectedRowKeys.length === 0) return
     try {
-      await syncVersionParserStatus(projectId, categoryId, versionId)
-      // Refresh the local document list to pick up updated statuses
+      await bulkParseVersionDocuments(datasetId, selectedRowKeys, 2)
+      globalMessage.success(t('projectManagement.documents.stopParseSuccess'))
+      setSelectedRowKeys([])
       await fetchDocuments()
-      globalMessage.success(t('projectManagement.documents.syncParserSuccess'))
-    } catch (err) {
-      globalMessage.error(t('projectManagement.documents.syncParserError'))
-    } finally {
-      setSyncing(false)
+    } catch {
+      globalMessage.error(t('projectManagement.documents.parseError'))
     }
   }
 
-  /**
-   * @description Parse a single document — calls the RAG parse endpoint directly
-   * @param {string} docId - Document UUID
-   */
+  /** Parse a single document — calls the RAG parse endpoint directly */
   const handleParseSingle = async (docId: string) => {
     if (!datasetId) {
       globalMessage.error('Dataset ID not available')
@@ -322,10 +375,7 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, datasetId, versio
     }
   }
 
-  /**
-   * @description Stop parsing a single document — calls bulk parse with run=2
-   * @param {string} docId - Document UUID
-   */
+  /** Stop parsing a single document */
   const handleStopParseSingle = async (docId: string) => {
     if (!datasetId) return
     try {
@@ -337,13 +387,75 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, datasetId, versio
     }
   }
 
-  /**
-   * @description Open the process log dialog for a document
-   * @param {VersionDocument} doc - Document to show logs for
-   */
+  /** Toggle document availability (enabled/disabled) */
+  const handleToggleAvailability = async (docId: string, enabled: boolean) => {
+    if (!datasetId) return
+    try {
+      await toggleVersionDocumentAvailability(datasetId, docId, enabled)
+      await fetchDocuments()
+    } catch {
+      globalMessage.error('Failed to toggle document availability')
+    }
+  }
+
+  /** Delete a single document inline */
+  const handleDeleteSingle = async (docId: string) => {
+    if (!datasetId) return
+    const confirmed = await confirm({
+      title: t('common.delete'),
+      message: t('projectManagement.documents.deleteConfirm', { count: 1 }),
+      variant: 'danger',
+      confirmText: t('common.delete'),
+    })
+    if (!confirmed) return
+    try {
+      await deleteVersionSingleDocument(datasetId, docId)
+      globalMessage.success(t('projectManagement.documents.deleteSuccess', { count: 1 }))
+      await fetchDocuments()
+    } catch {
+      globalMessage.error(t('projectManagement.documents.deleteError'))
+    }
+  }
+
+  /** Loading state for parser change */
+  const [changingParser, setChangingParser] = useState(false)
+
+  /** Handle parser change from the ChangeParserDialog */
+  const handleChangeParser = async (docId: string, parserId: string, parserConfig?: Record<string, unknown>) => {
+    if (!datasetId) return
+    setChangingParser(true)
+    try {
+      await changeVersionDocumentParser(datasetId, docId, {
+        parser_id: parserId,
+        ...(parserConfig ? { parser_config: parserConfig } : {}),
+      })
+      setChangeParserDoc(null)
+      await fetchDocuments()
+    } catch {
+      globalMessage.error(t('projectManagement.documents.parseError'))
+    } finally {
+      setChangingParser(false)
+    }
+  }
+
+  /** Open the process log dialog for a document */
   const handleShowProcessLog = (doc: VersionDocument) => {
     setProcessLogDoc(doc)
     setProcessLogOpen(true)
+  }
+
+  /** Sync live parser status from RAGFlow on demand */
+  const handleSyncParserStatus = async () => {
+    setSyncing(true)
+    try {
+      await syncVersionParserStatus(projectId, categoryId, versionId)
+      await fetchDocuments()
+      globalMessage.success(t('projectManagement.documents.syncParserSuccess'))
+    } catch {
+      globalMessage.error(t('projectManagement.documents.syncParserError'))
+    } finally {
+      setSyncing(false)
+    }
   }
 
   /** Handle search input submission */
@@ -355,9 +467,7 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, datasetId, versio
   /** Toggle row selection for a single document */
   const toggleRowSelection = (docId: string) => {
     setSelectedRowKeys((prev) =>
-      prev.includes(docId)
-        ? prev.filter((k) => k !== docId)
-        : [...prev, docId]
+      prev.includes(docId) ? prev.filter((k) => k !== docId) : [...prev, docId]
     )
   }
 
@@ -369,6 +479,22 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, datasetId, versio
       setSelectedRowKeys(documents.map((d) => d.id))
     }
   }
+
+  // ── Derived State ──────────────────────────────────────────────────────
+
+  const hasLocalSelected = selectedRowKeys.length > 0 && documents.some(
+    (doc) => selectedRowKeys.includes(doc.id) && doc.run === 'local',
+  )
+  const hasImportedSelected = selectedRowKeys.length > 0 && documents.some(
+    (doc) => selectedRowKeys.includes(doc.id) && doc.run === 'imported',
+  )
+  const hasParsableSelected = selectedRowKeys.length > 0 && documents.some(
+    (doc) => selectedRowKeys.includes(doc.id) && doc.run !== '1' && doc.run !== 'RUNNING',
+  )
+  const hasParseableStatus = documents.some(
+    (doc) => doc.run === 'imported' || doc.run === 'UNSTART' || doc.run === 'RUNNING'
+      || doc.run === '1' || (doc.progress > 0 && doc.progress < 1),
+  )
 
   // Paginate documents locally
   const totalPages = Math.ceil(documents.length / pageSize)
@@ -395,36 +521,37 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, datasetId, versio
           )}
         </h4>
         <div className="flex items-center gap-2">
-          {/* Bulk action buttons -- visible when rows are selected */}
+          {/* Bulk action buttons — visible when rows are selected */}
           {selectedRowKeys.length > 0 && (
             <>
-              <Button
-                variant="destructive"
-                size="sm"
-                disabled={deleting}
-                onClick={handleDeleteSelected}
-              >
+              <Button variant="destructive" size="sm" disabled={deleting} onClick={handleDeleteSelected}>
                 {deleting ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Trash2 size={14} className="mr-1" />}
                 {t('projectManagement.documents.deleteSelected', { count: selectedRowKeys.length })}
               </Button>
               {hasLocalSelected && (
-                <Button
-                  size="sm"
-                  disabled={requeueing}
-                  onClick={handleRetryParse}
-                >
+                <Button size="sm" disabled={requeueing} onClick={handleRetryParse}>
                   {requeueing ? <Loader2 size={14} className="mr-1 animate-spin" /> : <RefreshCw size={14} className="mr-1" />}
                   {t('projectManagement.documents.retryParse')}
                 </Button>
               )}
               {hasImportedSelected && (
-                <Button
-                  size="sm"
-                  disabled={parsing}
-                  onClick={handleStartParse}
-                >
+                <Button size="sm" disabled={parsing} onClick={handleStartParse}>
                   {parsing ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Play size={14} className="mr-1" />}
                   {t('projectManagement.documents.startParse')}
+                </Button>
+              )}
+              {/* Bulk cancel parsing for selected documents */}
+              {datasetId && hasParsableSelected && (
+                <Button variant="outline" size="sm" onClick={handleBulkCancel}>
+                  <XCircle size={14} className="mr-1" />
+                  {t('projectManagement.documents.stopParse')}
+                </Button>
+              )}
+              {/* Edit Tags — opens MetadataManageDialog in bulk mode */}
+              {datasetId && (
+                <Button variant="outline" size="sm" onClick={() => setBulkMetadataOpen(true)}>
+                  <Tags size={14} className="mr-1" />
+                  {t('datasets.editTags', 'Edit Tags')}
                 </Button>
               )}
             </>
@@ -518,110 +645,129 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, datasetId, versio
         <EmptyState description={t('projectManagement.documents.noDocumentsHint')} />
       ) : (
         <>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[40px]">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-gray-300 dark:border-gray-600"
-                    checked={selectedRowKeys.length === documents.length && documents.length > 0}
-                    onChange={toggleAllRows}
-                  />
-                </TableHead>
-                <TableHead>{t('projectManagement.documents.name')}</TableHead>
-                <TableHead className="w-[100px]">{t('projectManagement.documents.size')}</TableHead>
-                <TableHead className="w-[160px]">{t('projectManagement.documents.status')}</TableHead>
-                <TableHead className="w-[80px]">{t('projectManagement.documents.chunks')}</TableHead>
-                <TableHead className="w-[60px]" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedDocuments.map((doc) => {
-                const status = getStatusBadge(doc.run, t)
-                // Determine if document is actively parsing (run='1' or 'RUNNING')
-                const isParsing = doc.run === '1' || doc.run === 'RUNNING'
-                // Determine if document can be parsed (idle, imported, or completed/failed states)
-                const canParse = !isParsing && doc.run !== 'local' && doc.run !== 'converted'
-                return (
-                  <TableRow key={doc.id} className="group" data-state={selectedRowKeys.includes(doc.id) ? 'selected' : undefined}>
-                    {/* Checkbox */}
-                    <TableCell>
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-gray-300 dark:border-gray-600"
-                        checked={selectedRowKeys.includes(doc.id)}
-                        onChange={() => toggleRowSelection(doc.id)}
-                      />
-                    </TableCell>
+          <div className="overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[40px]">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 dark:border-gray-600"
+                      checked={selectedRowKeys.length === documents.length && documents.length > 0}
+                      onChange={toggleAllRows}
+                    />
+                  </TableHead>
+                  <TableHead>{t('projectManagement.documents.name')}</TableHead>
+                  <TableHead className="w-[100px]">{t('projectManagement.documents.size')}</TableHead>
+                  <TableHead className="w-[100px]">{t('projectManagement.documents.parser')}</TableHead>
+                  <TableHead className="w-[160px]">{t('projectManagement.documents.status')}</TableHead>
+                  {datasetId && <TableHead className="w-[70px]">{t('datasets.enabled', 'Enabled')}</TableHead>}
+                  <TableHead className="w-[80px] text-right">{t('projectManagement.documents.chunks')}</TableHead>
+                  <TableHead className="w-[110px]">{t('projectManagement.documents.updatedAt')}</TableHead>
+                  {datasetId && <TableHead className="w-[100px]" />}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedDocuments.map((doc) => {
+                  const status = getStatusBadge(doc, t)
+                  const isParsing = doc.run === '1' || doc.run === 'RUNNING' || (doc.progress > 0 && doc.progress < 1)
+                  const canParse = !isParsing && doc.run !== 'local' && doc.run !== 'converted'
+                  // Document is enabled when status is '1' (RAGFlow convention) or 'completed'
+                  const isEnabled = doc.status === '1' || doc.status === 'completed'
+                  return (
+                    <TableRow key={doc.id} className="group" data-state={selectedRowKeys.includes(doc.id) ? 'selected' : undefined}>
+                      {/* Checkbox */}
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-gray-300 dark:border-gray-600"
+                          checked={selectedRowKeys.includes(doc.id)}
+                          onChange={() => toggleRowSelection(doc.id)}
+                        />
+                      </TableCell>
 
-                    {/* File name with icon */}
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getFileIcon(doc.name)}
-                        <span className="truncate" title={doc.name}>{doc.name}</span>
-                      </div>
-                    </TableCell>
-
-                    {/* File size */}
-                    <TableCell>
-                      <span className="text-gray-500 dark:text-gray-400 text-xs">{formatFileSize(doc.size)}</span>
-                    </TableCell>
-
-                    {/* Status badge — clickable to open process log + inline progress bar */}
-                    <TableCell>
-                      <div>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                onClick={() => handleShowProcessLog(doc)}
-                                className="cursor-pointer hover:opacity-80 transition-opacity"
-                              >
-                                <Badge variant={status.variant}>
-                                  {status.label}
-                                  {isParsing && doc.progress > 0 && doc.progress < 1 && ` ${Math.round(doc.progress * 100)}%`}
-                                </Badge>
-                              </button>
-                            </TooltipTrigger>
-                            {doc.progress_msg && (
-                              <TooltipContent className="max-w-[300px]">{doc.progress_msg}</TooltipContent>
-                            )}
-                          </Tooltip>
-                        </TooltipProvider>
-                        {/* Inline progress bar for actively parsing documents */}
-                        {isParsing && doc.progress > 0 && doc.progress < 1 && (
-                          <Progress value={Math.round(doc.progress * 100)} className="mt-1 h-1.5" />
-                        )}
-                      </div>
-                    </TableCell>
-
-                    {/* Chunk count */}
-                    <TableCell>
-                      <span className="text-gray-500 dark:text-gray-400 text-xs">{doc.chunk_count ?? '-'}</span>
-                    </TableCell>
-
-                    {/* Parse / Stop action button */}
-                    <TableCell>
-                      {datasetId && (
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {isParsing ? (
+                      {/* File name with icon — clickable to navigate to chunk detail */}
+                      <TableCell className="max-w-[300px]">
+                        <div className="flex items-center gap-2">
+                          {getFileIcon(doc.name)}
+                          {datasetId ? (
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-destructive hover:text-destructive"
-                                    onClick={() => handleStopParseSingle(doc.id)}
+                                  <span
+                                    className="font-medium truncate block cursor-pointer text-primary hover:underline transition-colors"
+                                    onClick={() => navigate(`/data-studio/datasets/${datasetId}/documents/${doc.id}/chunks`)}
                                   >
-                                    <Square size={14} />
-                                  </Button>
+                                    {doc.name}
+                                  </span>
                                 </TooltipTrigger>
-                                <TooltipContent>{t('projectManagement.documents.stopParse')}</TooltipContent>
+                                <TooltipContent>{doc.name}</TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
-                          ) : canParse ? (
+                          ) : (
+                            <span className="truncate" title={doc.name}>{doc.name}</span>
+                          )}
+                        </div>
+                      </TableCell>
+
+                      {/* File size */}
+                      <TableCell>
+                        <span className="text-gray-500 dark:text-gray-400 text-xs">{formatFileSize(doc.size)}</span>
+                      </TableCell>
+
+                      {/* Parser badge */}
+                      <TableCell>
+                        <Badge variant="outline" className="capitalize text-xs">
+                          {doc.parser_id === 'naive' ? 'General' : doc.parser_id || 'General'}
+                        </Badge>
+                      </TableCell>
+
+                      {/* Status badge — clickable to open process log + inline progress bar */}
+                      <TableCell>
+                        <div>
+                          <button
+                            onClick={() => handleShowProcessLog(doc)}
+                            className="text-left cursor-pointer hover:opacity-80 transition-opacity"
+                          >
+                            <Badge variant={status.variant}>
+                              {status.label}
+                              {isParsing && doc.progress > 0 && doc.progress < 1 && ` ${Math.round(doc.progress * 100)}%`}
+                            </Badge>
+                          </button>
+                          {/* Inline progress bar for actively parsing documents */}
+                          {isParsing && doc.progress > 0 && doc.progress < 1 && (
+                            <Progress value={Math.round(doc.progress * 100)} className="mt-1 h-1.5" />
+                          )}
+                        </div>
+                      </TableCell>
+
+                      {/* Enabled toggle */}
+                      {datasetId && (
+                        <TableCell>
+                          <Switch
+                            checked={isEnabled}
+                            onCheckedChange={(checked: boolean) => handleToggleAvailability(doc.id, checked)}
+                          />
+                        </TableCell>
+                      )}
+
+                      {/* Chunk count */}
+                      <TableCell className="text-right">
+                        <span className="text-gray-500 dark:text-gray-400 text-xs">
+                          {doc.chunk_num ?? doc.chunk_count ?? 0}
+                        </span>
+                      </TableCell>
+
+                      {/* Update date */}
+                      <TableCell>
+                        <span className="text-gray-500 dark:text-gray-400 text-xs">{formatDocUpdateDate(doc)}</span>
+                      </TableCell>
+
+                      {/* Action buttons — change parser, parse/stop, delete */}
+                      {datasetId && (
+                        <TableCell>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {/* Change Parser */}
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -629,23 +775,71 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, datasetId, versio
                                     variant="ghost"
                                     size="icon"
                                     className="h-7 w-7"
-                                    onClick={() => handleParseSingle(doc.id)}
+                                    onClick={() => setChangeParserDoc(doc)}
+                                    disabled={isParsing}
                                   >
-                                    <Play size={14} />
+                                    <Settings2 size={14} />
                                   </Button>
                                 </TooltipTrigger>
-                                <TooltipContent>{t('projectManagement.documents.parse')}</TooltipContent>
+                                <TooltipContent>{t('datasets.changeParser', 'Change Parser')}</TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
-                          ) : null}
-                        </div>
+
+                            {/* Parse / Stop */}
+                            {isParsing ? (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 text-destructive hover:text-destructive"
+                                      onClick={() => handleStopParseSingle(doc.id)}
+                                    >
+                                      <Square size={14} />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{t('projectManagement.documents.stopParse')}</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            ) : canParse ? (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleParseSingle(doc.id)}>
+                                      <Play size={14} />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{t('projectManagement.documents.parse')}</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            ) : null}
+
+                            {/* Delete */}
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-destructive hover:text-destructive"
+                                    onClick={() => handleDeleteSingle(doc.id)}
+                                  >
+                                    <Trash2 size={14} />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>{t('common.delete')}</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                        </TableCell>
                       )}
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
 
           {/* Pagination below table */}
           {totalPages > 1 && (
@@ -678,26 +872,33 @@ const DocumentListPanel = ({ projectId, categoryId, versionId, datasetId, versio
         onUploadComplete={handleUploadComplete}
       />
 
-      {/* Process log dialog — shows parse status and progress details */}
+      {/* Process log dialog — shows parse status, progress details, and error log */}
       <ProcessLogDialog
         open={processLogOpen}
         onClose={() => { setProcessLogOpen(false); setProcessLogDoc(null) }}
-        document={processLogDoc ? {
-          id: processLogDoc.id,
-          dataset_id: datasetId || '',
-          name: processLogDoc.name,
-          size: processLogDoc.size,
-          status: processLogDoc.status,
-          progress: processLogDoc.progress,
-          progress_msg: processLogDoc.progress_msg,
-          chunk_count: processLogDoc.chunk_count,
-          token_count: processLogDoc.token_count,
-          created_at: '',
-          updated_at: '',
-          run: processLogDoc.run,
-          create_time: processLogDoc.create_time,
-        } : null}
+        document={processLogDoc && datasetId ? toDatasetDocument(processLogDoc, datasetId) : null}
       />
+
+      {/* Bulk metadata dialog — edits metadata_tags for selected documents */}
+      {datasetId && (
+        <MetadataManageDialog
+          open={bulkMetadataOpen}
+          onClose={() => { setBulkMetadataOpen(false); setSelectedRowKeys([]) }}
+          datasetId={datasetId}
+          datasetIds={selectedRowKeys}
+        />
+      )}
+
+      {/* Change parser dialog — reused from datasets feature */}
+      {changeParserDoc && datasetId && (
+        <ChangeParserDialog
+          open={!!changeParserDoc}
+          onClose={() => setChangeParserDoc(null)}
+          document={toDatasetDocument(changeParserDoc, datasetId)}
+          submitting={changingParser}
+          onConfirm={handleChangeParser}
+        />
+      )}
     </div>
   )
 }

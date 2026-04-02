@@ -14,6 +14,8 @@ export type { DatasetFormData, UseDatasetsReturn, UseDocumentsReturn, UseChunksR
 export { default as DatasetAccessDialog } from './components/DatasetAccessDialog';
 export { default as DatasetSettingsDrawer } from './components/DatasetSettingsDrawer';
 export { default as ProcessLogDialog } from './components/ProcessLogDialog';
+export { default as ChangeParserDialog } from './components/ChangeParserDialog';
+export { default as MetadataManageDialog } from './components/MetadataManageDialog';
 export type {
   Dataset, Document, CreateDatasetDto, UpdateDatasetDto, AccessControl, Chunk, ChunksResponse,
   DatasetSettings, GraphRAGConfig, RAPTORConfig, RetrievalTestResult, RetrievalChunk,
