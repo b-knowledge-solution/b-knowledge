@@ -103,6 +103,30 @@ npm run generate:cert       # Generate self-signed SSL certs in certs/
 | OpenSearch | opensearch:3.5.0 | 9201 | Vector + text search |
 | RustFS | rustfs/rustfs:latest | 9000/9001 | S3-compatible file storage |
 
+## Code Intelligence (Mandatory)
+
+**PRIORITY RULE: Always use `code-review-graph` MCP tools FIRST for codebase understanding and search before falling back to basic Grep/Glob/Read.**
+
+The project has a code knowledge graph (15K+ nodes, 130K+ edges, semantic embeddings enabled) that provides far superior code understanding compared to basic text search.
+
+### When to use which tool
+
+| Task | Use First (code-review-graph) | Fallback |
+|------|-------------------------------|----------|
+| **Understand architecture** | `get_architecture_overview`, `list_communities`, `get_community` | Read CLAUDE.md files |
+| **Find related code** | `semantic_search_nodes`, `query_graph` | Grep/Glob |
+| **Impact analysis** | `get_impact_radius`, `get_affected_flows` | Manual trace |
+| **Trace data flows** | `list_flows`, `get_flow` | Read code manually |
+| **Before code changes** | `get_review_context`, `detect_changes` | git diff |
+| **Find large/complex functions** | `find_large_functions` | Manual search |
+| **Cross-repo search** | `cross_repo_search` | N/A |
+
+### Graph maintenance
+
+- Run `build_or_update_graph` after significant code changes
+- Run `embed_graph` after graph rebuild to update semantic search
+- Graph data stored in `.code-review-graph/` (gitignored)
+
 ## Coding Standards
 
 ### General

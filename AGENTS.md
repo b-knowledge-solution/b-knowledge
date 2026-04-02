@@ -103,6 +103,30 @@ npm run generate:cert       # Generate self-signed SSL certs in certs/
 | OpenSearch | opensearch:3.5.0 | 9201 | Vector + text search |
 | RustFS | rustfs/rustfs:latest | 9000/9001 | S3-compatible file storage |
 
+## Code Intelligence (Mandatory)
+
+**PRIORITY RULE: Always use `code-review-graph` MCP tools FIRST for codebase understanding and search before falling back to basic Grep/Glob/Read.**
+
+The project has a code knowledge graph (15K+ nodes, 130K+ edges, semantic embeddings enabled) that provides far superior code understanding compared to basic text search.
+
+### When to use which tool
+
+| Task | Use First (code-review-graph) | Fallback |
+|------|-------------------------------|----------|
+| **Understand architecture** | `get_architecture_overview`, `list_communities`, `get_community` | Read CLAUDE.md files |
+| **Find related code** | `semantic_search_nodes`, `query_graph` | Grep/Glob |
+| **Impact analysis** | `get_impact_radius`, `get_affected_flows` | Manual trace |
+| **Trace data flows** | `list_flows`, `get_flow` | Read code manually |
+| **Before code changes** | `get_review_context`, `detect_changes` | git diff |
+| **Find large/complex functions** | `find_large_functions` | Manual search |
+| **Cross-repo search** | `cross_repo_search` | N/A |
+
+### Graph maintenance
+
+- Run `build_or_update_graph` after significant code changes
+- Run `embed_graph` after graph rebuild to update semantic search
+- Graph data stored in `.code-review-graph/` (gitignored)
+
 ## Coding Standards
 
 ### General
@@ -110,10 +134,116 @@ npm run generate:cert       # Generate self-signed SSL certs in certs/
 - TypeScript strict mode (both BE and FE)
 - Single quotes, no semicolons
 - Functional patterns where possible
-- JSDoc headers on every function/class (`@param`, `@returns`, `@description`)
-- Inline comments above significant logic/control flow
-- **No hardcoded literals in conditional comparisons:** do not compare against inline static string/number values in `if`/`else if`/`switch`/ternary checks. Move reusable values to named constants/enums in `be/src/shared/constants/` or `fe/src/constants/` and reference those constants in conditions.
 - If changes are extensive, run `npm run build` to verify
+
+### Documentation Comments (Mandatory)
+
+**This is a mandatory convention — all generated code MUST include documentation comments.**
+
+#### TypeScript (BE + FE): JSDoc
+
+Every exported function, class, method, interface, and type alias MUST have a JSDoc block:
+
+```typescript
+/**
+ * @description Retrieves paginated audit logs filtered by date range and user
+ * @param {AuditLogQuery} query - Filter criteria including dateFrom, dateTo, userId
+ * @returns {Promise<PaginatedResult<AuditLog>>} Paginated audit log entries
+ */
+export async function getAuditLogs(query: AuditLogQuery): Promise<PaginatedResult<AuditLog>> {
+  // Validate date range before querying to prevent unbounded scans
+  const validRange = clampDateRange(query.dateFrom, query.dateTo)
+
+  // Use cursor-based pagination for large result sets
+  const results = await AuditLogModel.findPaginated(validRange)
+  return results
+}
+```
+
+**Required JSDoc tags:**
+| Tag | When Required |
+|-----|--------------|
+| `@description` | Always — one-line summary of purpose |
+| `@param` | Every parameter with type and meaning |
+| `@returns` | Every function that returns a value |
+| `@throws` | If function throws specific errors |
+| `@example` | Complex utility functions or non-obvious usage |
+
+**React components:**
+```typescript
+/**
+ * @description Displays a filterable, sortable data table with pagination controls
+ * @param {DataTableProps<T>} props - Table configuration including columns, data source, and filter options
+ * @returns {JSX.Element} Rendered data table with toolbar and pagination
+ */
+export function DataTable<T>({ columns, data, filters }: DataTableProps<T>) {
+  // Track sort state locally — not URL-synced since tables appear in dialogs too
+  const [sortConfig, setSortConfig] = useState<SortConfig>(defaultSort)
+  ...
+}
+```
+
+#### Python (advance-rag + converter): Google-style Docstrings
+
+Every function, class, and method MUST have a Google-style docstring:
+
+```python
+def chunk_document(content: str, method: ChunkMethod, config: ChunkConfig) -> list[Chunk]:
+    """Split document content into chunks using the specified method.
+
+    Args:
+        content: Raw document text content to be chunked.
+        method: Chunking strategy (e.g., RECURSIVE, SEMANTIC, FIXED_SIZE).
+        config: Chunking parameters including size, overlap, and separators.
+
+    Returns:
+        List of Chunk objects with text content and metadata.
+
+    Raises:
+        ChunkingError: If content is empty or method is unsupported.
+    """
+    # Normalize whitespace before chunking to prevent empty chunks
+    normalized = normalize_text(content)
+
+    # Select chunking strategy based on method enum
+    splitter = get_splitter(method, config)
+    return splitter.split(normalized)
+```
+
+**Required docstring sections:**
+| Section | When Required |
+|---------|--------------|
+| Summary line | Always — imperative mood, one line |
+| `Args` | Every parameter with type hint and meaning |
+| `Returns` | Every function that returns a value |
+| `Raises` | If function raises specific exceptions |
+
+#### Inline Comments (All Languages)
+
+Inline comments are MANDATORY above:
+- **Control flow:** `if`/`else` branches, `switch` cases, loops with non-obvious conditions
+- **Business logic:** Domain rules, calculations, thresholds, status transitions
+- **Integration points:** API calls, database queries, Redis operations, queue interactions
+- **Non-obvious code:** Workarounds, performance optimizations, regex patterns, bitwise operations
+- **Early returns / guard clauses:** Explain what condition is being guarded
+
+```typescript
+// Reject files exceeding 100MB to prevent memory exhaustion during parsing
+if (file.size > MAX_FILE_SIZE) {
+  throw new FileTooLargeError(file.name, file.size)
+}
+
+// Fall back to keyword search when embedding service is unavailable
+const results = embeddingAvailable
+  ? await vectorSearch(query, topK)
+  : await keywordSearch(query, topK)
+```
+
+#### What NOT to Comment
+
+- Obvious code (`i++`, `return result`, simple assignments)
+- Restating the code in English (`// set x to 5` above `x = 5`)
+- Commented-out code — delete it, git has history
 
 ### NX-Style Module Boundary Rules
 
@@ -132,9 +262,8 @@ These apply to **both** `be/src/modules/` and `fe/src/features/`:
 - All mutations use Zod validation via `validate()` middleware
 - Config access only through `config` object, never `process.env`
 - Knex ORM for all models; raw SQL only when Knex cannot support the query
-- **No direct DB in services:** Services must never import `db` directly — all DB access goes through `ModelFactory.<model>.<method>()`
 - Migration naming: `YYYYMMDDhhmmss_<name>.ts`
-- **RESTful API routes:** All routes must follow standard REST conventions (`GET` list/detail, `POST` create, `PUT` full update, `PATCH` partial update, `DELETE` remove). Listing/filtering uses query params (`?key=value`), not path nesting. Frontend `*Api.ts` files must mirror backend route patterns exactly — mismatches cause 404s. See `be/CLAUDE.md` for the full reference table.
+- **All DB migrations through Knex** — including schema changes to Peewee-managed tables (`document`, `knowledgebase`, `task`, `file`, `tenant_llm`, etc.). Never use Peewee migrators. The backend owns the migration lifecycle; Python workers only read/write data via their ORM.
 
 ### Frontend Conventions (details in `fe/CLAUDE.md`)
 
@@ -165,28 +294,6 @@ Each workspace has `.env.example` → copy to `.env`:
 | `be/.env` | Backend server, DB, Redis, session, CORS |
 | `fe/.env` | API URL, feature flags, Azure AD |
 | `advance-rag/.env` | DB, Redis, OpenSearch, S3, model defaults |
-
-## Browser E2E Testing (AI Agent Rule)
-
-When using the **browser tool** to verify UI changes, you **MUST** log in with a local account first. The database is seeded with test accounts via `npm run db:seed` (see `be/src/shared/db/seeds/00_sample_users.ts`).
-
-**Prerequisites:** `ENABLE_LOCAL_LOGIN=true` must be set in `be/.env`.
-
-**Login steps:**
-1. Navigate to `http://localhost:5173`
-2. Click "Local Login" (or go to the login page directly)
-3. Enter credentials from the table below
-4. Submit the form and wait for redirect to dashboard
-
-**Test accounts (password for all: `password123`):**
-
-| Role   | Email             | Use when verifying…                          |
-|--------|-------------------|----------------------------------------------|
-| admin  | admin1@baoda.vn   | System settings, admin panels, full CRUD     |
-| leader | leader1@baoda.vn  | Team management, knowledge bases, chat       |
-| user   | user1@baoda.vn    | Basic view-only / restricted-access pages    |
-
-> Default to **admin1@baoda.vn** unless the change specifically targets leader or user role permissions.
 
 **Production checklist:** Change all default passwords, set `ENABLE_LOCAL_LOGIN=false`, generate strong `SESSION_SECRET`, configure SSL.
 
