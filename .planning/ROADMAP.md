@@ -96,11 +96,16 @@ Plans:
 **Depends on**: Nothing (first phase of v0.2)
 **Requirements**: REN-02, REN-03, REN-05
 **Success Criteria** (what must be TRUE):
-  1. Database tables are renamed (`projects` -> `knowledge_bases`, all `project_*` -> `kb_*`, all `project_id` FK columns -> `kb_id`) and the application starts without errors
-  2. Backend API serves routes at `/api/knowledge-bases/*` and the old `/api/projects/*` routes no longer exist
+  1. Database tables are renamed (`projects` -> `knowledge_base`, all `project_*` -> `knowledge_base_*`, all `project_id` FK columns -> `knowledge_base_id`) and the application starts without errors
+  2. Backend API serves routes at `/api/knowledge-base/*` and the old `/api/projects/*` routes no longer exist
   3. Python worker models reference renamed tables and all `ragflow_doc_meta_` prefixes are replaced with `knowledge_doc_meta_`
   4. TypeScript backend build passes with zero `project`-named imports in the knowledge-base module
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 07-01-PLAN.md -- DB migration + Python prefix cleanup
+- [ ] 07-02-PLAN.md -- BE module directory/file rename with content updates
+- [ ] 07-03-PLAN.md -- Shared code + agents module updates + build verification
 
 ### Phase 8: Frontend Rename
 **Goal**: Users see "Knowledge Base" everywhere in the UI -- all pages, navigation, labels, URLs, and i18n strings reflect the new naming across all 3 locales
@@ -153,7 +158,7 @@ Note: Phases 8, 9, and 10 all depend on Phase 7 but are independent of each othe
 | 4. Code-Graph-RAG | v0.1 | 6/6 | Complete | - |
 | 5. Response Evaluation | v0.1 | 5/5 | Complete | - |
 | 6. Prompt Builder | v0.1 | 2/2 | Complete | - |
-| 7. DB + BE + Python Rename | v0.2 | 0/? | Not started | - |
+| 7. DB + BE + Python Rename | v0.2 | 0/3 | Not started | - |
 | 8. Frontend Rename | v0.2 | 0/? | Not started | - |
 | 9. Permission System | v0.2 | 0/? | Not started | - |
 | 10. Chunk Quality Pipeline | v0.2 | 0/? | Not started | - |
