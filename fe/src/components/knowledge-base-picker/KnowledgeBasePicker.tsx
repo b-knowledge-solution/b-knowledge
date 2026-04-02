@@ -265,7 +265,7 @@ function KbItemRow({
       >
         {item.type === 'dataset'
           ? t('kbPicker.dataset')
-          : t('kbPicker.project')}
+          : t('kbPicker.knowledgeBase')}
       </Badge>
       {/* Doc count */}
       {item.docCount !== undefined && item.docCount > 0 && (

@@ -121,7 +121,7 @@ export interface Agent {
   dsl_version: number
   policy_rules: Record<string, unknown> | null
   tenant_id: string
-  project_id: string | null
+  knowledge_base_id: string | null
   parent_id: string | null
   version_number: number
   version_label: string | null
@@ -217,7 +217,7 @@ export interface CreateAgentDto {
   name: string
   description?: string
   mode: AgentMode
-  project_id?: string
+  knowledge_base_id?: string
   template_id?: string
 }
 
