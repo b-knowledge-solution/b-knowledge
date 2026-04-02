@@ -1,43 +1,43 @@
 /**
- * @fileoverview Service for project chat configuration management.
- * @module services/project-chat
+ * @fileoverview Service for knowledge base chat configuration management.
+ * @module services/knowledge-base-chat
  */
 import { ModelFactory } from '@/shared/models/factory.js'
 import { log } from '@/shared/services/logger.service.js'
-import { ProjectChat, UserContext } from '@/shared/models/types.js'
+import { KnowledgeBaseChat, UserContext } from '@/shared/models/types.js'
 
 /**
- * @description Service handling CRUD operations for project chat assistant configurations
+ * @description Service handling CRUD operations for knowledge base chat assistant configurations
  */
-export class ProjectChatService {
+export class KnowledgeBaseChatService {
   /**
-   * @description List all chat assistant configurations for a project
-   * @param {string} projectId - UUID of the project
-   * @returns {Promise<ProjectChat[]>} Array of project chat records
+   * @description List all chat assistant configurations for a knowledge base
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
+   * @returns {Promise<KnowledgeBaseChat[]>} Array of knowledge base chat records
    */
-  async listChats(projectId: string): Promise<ProjectChat[]> {
-    return ModelFactory.projectChat.findByProjectId(projectId)
+  async listChats(knowledgeBaseId: string): Promise<KnowledgeBaseChat[]> {
+    return ModelFactory.knowledgeBaseChat.findByKnowledgeBaseId(knowledgeBaseId)
   }
 
   /**
    * @description Retrieve a single chat assistant configuration by its UUID
    * @param {string} chatId - UUID of the chat
-   * @returns {Promise<ProjectChat | undefined>} Chat record or undefined if not found
+   * @returns {Promise<KnowledgeBaseChat | undefined>} Chat record or undefined if not found
    */
-  async getChatById(chatId: string): Promise<ProjectChat | undefined> {
-    return ModelFactory.projectChat.findById(chatId)
+  async getChatById(chatId: string): Promise<KnowledgeBaseChat | undefined> {
+    return ModelFactory.knowledgeBaseChat.findById(chatId)
   }
 
   /**
-   * @description Create a new project chat assistant with serialized JSON configurations
-   * @param {string} projectId - UUID of the project
+   * @description Create a new knowledge base chat assistant with serialized JSON configurations
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
    * @param {any} data - Chat creation data including name, dataset_ids, llm_config, prompt_config
    * @param {UserContext} user - Authenticated user context
-   * @returns {Promise<ProjectChat>} Created chat record
+   * @returns {Promise<KnowledgeBaseChat>} Created chat record
    */
-  async createChat(projectId: string, data: any, user: UserContext): Promise<ProjectChat> {
-    return ModelFactory.projectChat.create({
-      project_id: projectId,
+  async createChat(knowledgeBaseId: string, data: any, user: UserContext): Promise<KnowledgeBaseChat> {
+    return ModelFactory.knowledgeBaseChat.create({
+      knowledge_base_id: knowledgeBaseId,
       name: data.name,
       // Serialize array and object fields as JSON strings for storage
       dataset_ids: JSON.stringify(data.dataset_ids || []),
@@ -51,13 +51,13 @@ export class ProjectChatService {
   }
 
   /**
-   * @description Update a project chat assistant with partial data
+   * @description Update a knowledge base chat assistant with partial data
    * @param {string} chatId - UUID of the chat
    * @param {any} data - Partial update data
    * @param {UserContext} user - Authenticated user context
-   * @returns {Promise<ProjectChat | undefined>} Updated chat record or undefined if not found
+   * @returns {Promise<KnowledgeBaseChat | undefined>} Updated chat record or undefined if not found
    */
-  async updateChat(chatId: string, data: any, user: UserContext): Promise<ProjectChat | undefined> {
+  async updateChat(chatId: string, data: any, user: UserContext): Promise<KnowledgeBaseChat | undefined> {
     // Build update payload including only provided fields
     const updateData: any = { updated_by: user.id }
     if (data.name !== undefined) updateData.name = data.name
@@ -68,18 +68,18 @@ export class ProjectChatService {
     if (data.prompt_config !== undefined) updateData.prompt_config = JSON.stringify(data.prompt_config)
     if (data.status !== undefined) updateData.status = data.status
 
-    return ModelFactory.projectChat.update(chatId, updateData)
+    return ModelFactory.knowledgeBaseChat.update(chatId, updateData)
   }
 
   /**
-   * @description Delete a project chat assistant by its UUID
+   * @description Delete a knowledge base chat assistant by its UUID
    * @param {string} chatId - UUID of the chat
    * @returns {Promise<void>}
    */
   async deleteChat(chatId: string): Promise<void> {
-    await ModelFactory.projectChat.delete(chatId)
+    await ModelFactory.knowledgeBaseChat.delete(chatId)
   }
 }
 
 /** Singleton instance */
-export const projectChatService = new ProjectChatService()
+export const knowledgeBaseChatService = new KnowledgeBaseChatService()

@@ -1,48 +1,48 @@
 /**
- * @fileoverview Service for project sync configuration management.
- * @module services/project-sync
+ * @fileoverview Service for knowledge base sync configuration management.
+ * @module services/knowledge-base-sync
  */
 import { ModelFactory } from '@/shared/models/factory.js'
 import { log } from '@/shared/services/logger.service.js'
 import { cryptoService } from '@/shared/services/crypto.service.js'
-import { ProjectSyncConfig, UserContext } from '@/shared/models/types.js'
+import { KnowledgeBaseSyncConfig, UserContext } from '@/shared/models/types.js'
 
 /**
  * @description Service handling CRUD for external data source sync configurations,
  *   including encrypted connection config management
  */
-export class ProjectSyncService {
+export class KnowledgeBaseSyncService {
   /**
-   * @description List all sync configurations for a project (connection_config remains encrypted)
-   * @param {string} projectId - UUID of the project
-   * @returns {Promise<ProjectSyncConfig[]>} Array of sync config records
+   * @description List all sync configurations for a knowledge base (connection_config remains encrypted)
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
+   * @returns {Promise<KnowledgeBaseSyncConfig[]>} Array of sync config records
    */
-  async listSyncConfigs(projectId: string): Promise<ProjectSyncConfig[]> {
-    return ModelFactory.projectSyncConfig.findByProjectId(projectId)
+  async listSyncConfigs(knowledgeBaseId: string): Promise<KnowledgeBaseSyncConfig[]> {
+    return ModelFactory.knowledgeBaseSyncConfig.findByKnowledgeBaseId(knowledgeBaseId)
   }
 
   /**
    * @description Retrieve a single sync config by UUID
    * @param {string} configId - UUID of the sync config
-   * @returns {Promise<ProjectSyncConfig | undefined>} Sync config record or undefined if not found
+   * @returns {Promise<KnowledgeBaseSyncConfig | undefined>} Sync config record or undefined if not found
    */
-  async getSyncConfigById(configId: string): Promise<ProjectSyncConfig | undefined> {
-    return ModelFactory.projectSyncConfig.findById(configId)
+  async getSyncConfigById(configId: string): Promise<KnowledgeBaseSyncConfig | undefined> {
+    return ModelFactory.knowledgeBaseSyncConfig.findById(configId)
   }
 
   /**
    * @description Create a new sync config, encrypting the connection_config before storage
-   * @param {string} projectId - UUID of the project
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
    * @param {any} data - Sync config creation data including source_type, connection_config
    * @param {UserContext} user - Authenticated user context
-   * @returns {Promise<ProjectSyncConfig>} Created sync config record
+   * @returns {Promise<KnowledgeBaseSyncConfig>} Created sync config record
    */
-  async createSyncConfig(projectId: string, data: any, user: UserContext): Promise<ProjectSyncConfig> {
+  async createSyncConfig(knowledgeBaseId: string, data: any, user: UserContext): Promise<KnowledgeBaseSyncConfig> {
     // Encrypt connection config before storage
     const encryptedConfig = cryptoService.encrypt(data.connection_config)
 
-    return ModelFactory.projectSyncConfig.create({
-      project_id: projectId,
+    return ModelFactory.knowledgeBaseSyncConfig.create({
+      knowledge_base_id: knowledgeBaseId,
       source_type: data.source_type,
       connection_config: encryptedConfig,
       sync_schedule: data.sync_schedule || null,
@@ -58,9 +58,9 @@ export class ProjectSyncService {
    * @param {string} configId - UUID of the sync config
    * @param {any} data - Partial update data
    * @param {UserContext} user - Authenticated user context
-   * @returns {Promise<ProjectSyncConfig | undefined>} Updated sync config or undefined if not found
+   * @returns {Promise<KnowledgeBaseSyncConfig | undefined>} Updated sync config or undefined if not found
    */
-  async updateSyncConfig(configId: string, data: any, user: UserContext): Promise<ProjectSyncConfig | undefined> {
+  async updateSyncConfig(configId: string, data: any, user: UserContext): Promise<KnowledgeBaseSyncConfig | undefined> {
     const updateData: any = { updated_by: user.id }
     // Encrypt connection config if being updated
     if (data.connection_config !== undefined) {
@@ -70,7 +70,7 @@ export class ProjectSyncService {
     if (data.filter_rules !== undefined) updateData.filter_rules = JSON.stringify(data.filter_rules)
     if (data.status !== undefined) updateData.status = data.status
 
-    return ModelFactory.projectSyncConfig.update(configId, updateData)
+    return ModelFactory.knowledgeBaseSyncConfig.update(configId, updateData)
   }
 
   /**
@@ -79,7 +79,7 @@ export class ProjectSyncService {
    * @returns {Promise<void>}
    */
   async deleteSyncConfig(configId: string): Promise<void> {
-    await ModelFactory.projectSyncConfig.delete(configId)
+    await ModelFactory.knowledgeBaseSyncConfig.delete(configId)
   }
 
   /**
@@ -98,4 +98,4 @@ export class ProjectSyncService {
 }
 
 /** Singleton instance */
-export const projectSyncService = new ProjectSyncService()
+export const knowledgeBaseSyncService = new KnowledgeBaseSyncService()

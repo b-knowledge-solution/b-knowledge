@@ -1,14 +1,14 @@
 /**
- * @fileoverview Controller for all project-related HTTP request handlers.
- * @module controllers/projects
+ * @fileoverview Controller for all knowledge-base-related HTTP request handlers.
+ * @module controllers/knowledge-base
  */
 import { Request, Response } from 'express'
 import path from 'path'
-import { projectsService } from '../services/projects.service.js'
-import { projectCategoryService } from '../services/project-category.service.js'
-import { projectChatService } from '../services/project-chat.service.js'
-import { projectSearchService } from '../services/project-search.service.js'
-import { projectSyncService } from '../services/project-sync.service.js'
+import { knowledgeBaseService } from '../services/knowledge-base.service.js'
+import { knowledgeBaseCategoryService } from '../services/knowledge-base-category.service.js'
+import { knowledgeBaseChatService } from '../services/knowledge-base-chat.service.js'
+import { knowledgeBaseSearchService } from '../services/knowledge-base-search.service.js'
+import { knowledgeBaseSyncService } from '../services/knowledge-base-sync.service.js'
 import { ragDocumentService, ragStorageService, ragRedisService, ragSearchService, converterQueueService } from '@/modules/rag/index.js'
 import { RagDocumentService } from '@/modules/rag/services/rag-document.service.js'
 import { ModelFactory } from '@/shared/models/factory.js'
@@ -29,111 +29,111 @@ function getUserContext(req: Request) {
 }
 
 /**
- * @description Controller handling all project-related HTTP endpoints including CRUD,
+ * @description Controller handling all knowledge-base-related HTTP endpoints including CRUD,
  *   permissions, datasets, categories, versions, chats, searches, sync configs,
  *   and entity-level permissions
  */
-export class ProjectsController {
+export class KnowledgeBaseController {
   // -------------------------------------------------------------------------
-  // Projects CRUD
+  // Knowledge Base CRUD
   // -------------------------------------------------------------------------
 
   /**
-   * @description GET /projects - List accessible projects for the current user
+   * @description GET /knowledge-base - List accessible knowledge bases for the current user
    * @param {Request} req - Express request
    * @param {Response} res - Express response
    * @returns {Promise<void>}
    */
-  async listProjects(req: Request, res: Response): Promise<void> {
+  async listKnowledgeBases(req: Request, res: Response): Promise<void> {
     try {
       const user = getUserContext(req)
-      // Guard: require authentication before listing projects
+      // Guard: require authentication before listing knowledge bases
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
       // Extract tenant ID from request context for multi-tenant isolation
       const tenantId = getTenantId(req) || ''
-      const projects = await projectsService.getAccessibleProjects(user, tenantId)
-      res.json(projects)
+      const knowledgeBases = await knowledgeBaseService.getAccessibleKnowledgeBases(user, tenantId)
+      res.json(knowledgeBases)
     } catch (error) {
-      log.error('Failed to list projects', { error: String(error) })
-      res.status(500).json({ error: 'Failed to list projects' })
+      log.error('Failed to list knowledge bases', { error: String(error) })
+      res.status(500).json({ error: 'Failed to list knowledge bases' })
     }
   }
 
   /**
-   * @description GET /projects/:id - Retrieve a single project by its UUID
-   * @param {Request} req - Express request with project ID param
+   * @description GET /knowledge-base/:id - Retrieve a single knowledge base by its UUID
+   * @param {Request} req - Express request with knowledge base ID param
    * @param {Response} res - Express response
    * @returns {Promise<void>}
    */
-  async getProject(req: Request, res: Response): Promise<void> {
+  async getKnowledgeBase(req: Request, res: Response): Promise<void> {
     try {
-      const project = await projectsService.getProjectById(req.params['id']!)
-      // Guard: return 404 if project does not exist
-      if (!project) { res.status(404).json({ error: 'Project not found' }); return }
-      res.json(project)
+      const knowledgeBase = await knowledgeBaseService.getKnowledgeBaseById(req.params['id']!)
+      // Guard: return 404 if knowledge base does not exist
+      if (!knowledgeBase) { res.status(404).json({ error: 'Knowledge base not found' }); return }
+      res.json(knowledgeBase)
     } catch (error) {
-      log.error('Failed to get project', { error: String(error) })
-      res.status(500).json({ error: 'Failed to get project' })
+      log.error('Failed to get knowledge base', { error: String(error) })
+      res.status(500).json({ error: 'Failed to get knowledge base' })
     }
   }
 
   /**
-   * @description POST /projects - Create a new project with an auto-created linked dataset
-   * @param {Request} req - Express request with project body
+   * @description POST /knowledge-base - Create a new knowledge base with an auto-created linked dataset
+   * @param {Request} req - Express request with knowledge base body
    * @param {Response} res - Express response
    * @returns {Promise<void>}
    */
-  async createProject(req: Request, res: Response): Promise<void> {
+  async createKnowledgeBase(req: Request, res: Response): Promise<void> {
     try {
       const user = getUserContext(req)
-      // Guard: require authentication for project creation
+      // Guard: require authentication for knowledge base creation
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
       const tenantId = getTenantId(req) || ''
-      const project = await projectsService.createProject(req.body, user, tenantId)
-      res.status(201).json(project)
+      const knowledgeBase = await knowledgeBaseService.createKnowledgeBase(req.body, user, tenantId)
+      res.status(201).json(knowledgeBase)
     } catch (error: any) {
-      log.error('Failed to create project', { error: String(error) })
-      res.status(500).json({ error: error.message || 'Failed to create project' })
+      log.error('Failed to create knowledge base', { error: String(error) })
+      res.status(500).json({ error: error.message || 'Failed to create knowledge base' })
     }
   }
 
   /**
-   * @description PUT /projects/:id - Update an existing project by UUID
-   * @param {Request} req - Express request with project ID and update body
+   * @description PUT /knowledge-base/:id - Update an existing knowledge base by UUID
+   * @param {Request} req - Express request with knowledge base ID and update body
    * @param {Response} res - Express response
    * @returns {Promise<void>}
    */
-  async updateProject(req: Request, res: Response): Promise<void> {
+  async updateKnowledgeBase(req: Request, res: Response): Promise<void> {
     try {
       const user = getUserContext(req)
-      // Guard: require authentication for project updates
+      // Guard: require authentication for knowledge base updates
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
-      const project = await projectsService.updateProject(req.params['id']!, req.body, user)
-      // Guard: return 404 if project not found
-      if (!project) { res.status(404).json({ error: 'Project not found' }); return }
-      res.json(project)
+      const knowledgeBase = await knowledgeBaseService.updateKnowledgeBase(req.params['id']!, req.body, user)
+      // Guard: return 404 if knowledge base not found
+      if (!knowledgeBase) { res.status(404).json({ error: 'Knowledge base not found' }); return }
+      res.json(knowledgeBase)
     } catch (error: any) {
-      log.error('Failed to update project', { error: String(error) })
-      res.status(500).json({ error: error.message || 'Failed to update project' })
+      log.error('Failed to update knowledge base', { error: String(error) })
+      res.status(500).json({ error: error.message || 'Failed to update knowledge base' })
     }
   }
 
   /**
-   * @description DELETE /projects/:id - Delete a project and cascade-delete auto-created datasets
-   * @param {Request} req - Express request with project ID
+   * @description DELETE /knowledge-base/:id - Delete a knowledge base and cascade-delete auto-created datasets
+   * @param {Request} req - Express request with knowledge base ID
    * @param {Response} res - Express response (204 on success)
    * @returns {Promise<void>}
    */
-  async deleteProject(req: Request, res: Response): Promise<void> {
+  async deleteKnowledgeBase(req: Request, res: Response): Promise<void> {
     try {
       const user = getUserContext(req)
-      // Guard: require authentication for project deletion
+      // Guard: require authentication for knowledge base deletion
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
-      await projectsService.deleteProject(req.params['id']!, user)
+      await knowledgeBaseService.deleteKnowledgeBase(req.params['id']!, user)
       res.status(204).send()
     } catch (error) {
-      log.error('Failed to delete project', { error: String(error) })
-      res.status(500).json({ error: 'Failed to delete project' })
+      log.error('Failed to delete knowledge base', { error: String(error) })
+      res.status(500).json({ error: 'Failed to delete knowledge base' })
     }
   }
 
@@ -142,14 +142,14 @@ export class ProjectsController {
   // -------------------------------------------------------------------------
 
   /**
-   * @description GET /projects/:id/permissions - List all permission entries for a project
-   * @param {Request} req - Express request with project ID
+   * @description GET /knowledge-base/:id/permissions - List all permission entries for a knowledge base
+   * @param {Request} req - Express request with knowledge base ID
    * @param {Response} res - Express response
    * @returns {Promise<void>}
    */
   async listPermissions(req: Request, res: Response): Promise<void> {
     try {
-      const perms = await projectsService.getPermissions(req.params['id']!)
+      const perms = await knowledgeBaseService.getPermissions(req.params['id']!)
       res.json(perms)
     } catch (error) {
       log.error('Failed to list permissions', { error: String(error) })
@@ -158,7 +158,7 @@ export class ProjectsController {
   }
 
   /**
-   * @description POST /projects/:id/permissions - Create or update a permission entry for a project
+   * @description POST /knowledge-base/:id/permissions - Create or update a permission entry for a knowledge base
    * @param {Request} req - Express request with permission body
    * @param {Response} res - Express response
    * @returns {Promise<void>}
@@ -168,7 +168,7 @@ export class ProjectsController {
       const user = getUserContext(req)
       // Guard: require authentication for permission changes
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
-      const perm = await projectsService.setPermission(req.params['id']!, req.body, user)
+      const perm = await knowledgeBaseService.setPermission(req.params['id']!, req.body, user)
       res.status(201).json(perm)
     } catch (error: any) {
       log.error('Failed to set permission', { error: String(error) })
@@ -177,14 +177,14 @@ export class ProjectsController {
   }
 
   /**
-   * @description DELETE /projects/:id/permissions/:permId - Remove a permission entry
+   * @description DELETE /knowledge-base/:id/permissions/:permId - Remove a permission entry
    * @param {Request} req - Express request with permission ID
    * @param {Response} res - Express response (204 on success)
    * @returns {Promise<void>}
    */
   async deletePermission(req: Request, res: Response): Promise<void> {
     try {
-      await projectsService.deletePermission(req.params['permId']!)
+      await knowledgeBaseService.deletePermission(req.params['permId']!)
       res.status(204).send()
     } catch (error) {
       log.error('Failed to delete permission', { error: String(error) })
@@ -193,27 +193,27 @@ export class ProjectsController {
   }
 
   // -------------------------------------------------------------------------
-  // Project Datasets
+  // Knowledge Base Datasets
   // -------------------------------------------------------------------------
 
   /**
-   * @description GET /projects/:id/datasets - List all datasets linked to a project
-   * @param {Request} req - Express request with project ID
+   * @description GET /knowledge-base/:id/datasets - List all datasets linked to a knowledge base
+   * @param {Request} req - Express request with knowledge base ID
    * @param {Response} res - Express response
    * @returns {Promise<void>}
    */
   async listDatasets(req: Request, res: Response): Promise<void> {
     try {
-      const datasets = await projectsService.getProjectDatasets(req.params['id']!)
+      const datasets = await knowledgeBaseService.getKnowledgeBaseDatasets(req.params['id']!)
       res.json(datasets)
     } catch (error) {
-      log.error('Failed to list project datasets', { error: String(error) })
+      log.error('Failed to list knowledge base datasets', { error: String(error) })
       res.status(500).json({ error: 'Failed to list datasets' })
     }
   }
 
   /**
-   * @description POST /projects/:id/datasets - Link an existing dataset or create a new one for a project
+   * @description POST /knowledge-base/:id/datasets - Link an existing dataset or create a new one for a knowledge base
    * @param {Request} req - Express request with link/create body
    * @param {Response} res - Express response
    * @returns {Promise<void>}
@@ -223,7 +223,7 @@ export class ProjectsController {
       const user = getUserContext(req)
       // Guard: require authentication for dataset linking
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
-      const link = await projectsService.linkDataset(req.params['id']!, req.body, user)
+      const link = await knowledgeBaseService.linkDataset(req.params['id']!, req.body, user)
       res.status(201).json(link)
     } catch (error: any) {
       log.error('Failed to link dataset', { error: String(error) })
@@ -234,14 +234,14 @@ export class ProjectsController {
   }
 
   /**
-   * @description DELETE /projects/:id/datasets/:datasetId - Remove a dataset link from a project
-   * @param {Request} req - Express request with project and dataset IDs
+   * @description DELETE /knowledge-base/:id/datasets/:datasetId - Remove a dataset link from a knowledge base
+   * @param {Request} req - Express request with knowledge base and dataset IDs
    * @param {Response} res - Express response (204 on success)
    * @returns {Promise<void>}
    */
   async unlinkDataset(req: Request, res: Response): Promise<void> {
     try {
-      await projectsService.unlinkDataset(req.params['id']!, req.params['datasetId']!)
+      await knowledgeBaseService.unlinkDataset(req.params['id']!, req.params['datasetId']!)
       res.status(204).send()
     } catch (error) {
       log.error('Failed to unlink dataset', { error: String(error) })
@@ -254,14 +254,14 @@ export class ProjectsController {
   // -------------------------------------------------------------------------
 
   /**
-   * @description GET /projects/:id/categories - List all document categories for a project
-   * @param {Request} req - Express request with project ID
+   * @description GET /knowledge-base/:id/categories - List all document categories for a knowledge base
+   * @param {Request} req - Express request with knowledge base ID
    * @param {Response} res - Express response
    * @returns {Promise<void>}
    */
   async listCategories(req: Request, res: Response): Promise<void> {
     try {
-      const categories = await projectCategoryService.listCategories(req.params['id']!)
+      const categories = await knowledgeBaseCategoryService.listCategories(req.params['id']!)
       res.json(categories)
     } catch (error) {
       log.error('Failed to list categories', { error: String(error) })
@@ -270,14 +270,14 @@ export class ProjectsController {
   }
 
   /**
-   * @description GET /projects/:id/categories/:catId - Retrieve a single category by UUID
+   * @description GET /knowledge-base/:id/categories/:catId - Retrieve a single category by UUID
    * @param {Request} req - Express request with category ID
    * @param {Response} res - Express response
    * @returns {Promise<void>}
    */
   async getCategory(req: Request, res: Response): Promise<void> {
     try {
-      const category = await projectCategoryService.getCategoryById(req.params['catId']!)
+      const category = await knowledgeBaseCategoryService.getCategoryById(req.params['catId']!)
       // Guard: return 404 if category does not exist
       if (!category) { res.status(404).json({ error: 'Category not found' }); return }
       res.json(category)
@@ -288,7 +288,7 @@ export class ProjectsController {
   }
 
   /**
-   * @description POST /projects/:id/categories - Create a new document category in a project
+   * @description POST /knowledge-base/:id/categories - Create a new document category in a knowledge base
    * @param {Request} req - Express request with category body
    * @param {Response} res - Express response
    * @returns {Promise<void>}
@@ -298,7 +298,7 @@ export class ProjectsController {
       const user = getUserContext(req)
       // Guard: require authentication for category creation
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
-      const category = await projectCategoryService.createCategory(req.params['id']!, req.body, user)
+      const category = await knowledgeBaseCategoryService.createCategory(req.params['id']!, req.body, user)
       res.status(201).json(category)
     } catch (error: any) {
       log.error('Failed to create category', { error: String(error) })
@@ -307,7 +307,7 @@ export class ProjectsController {
   }
 
   /**
-   * @description PUT /projects/:id/categories/:catId - Update an existing document category
+   * @description PUT /knowledge-base/:id/categories/:catId - Update an existing document category
    * @param {Request} req - Express request with category ID and update body
    * @param {Response} res - Express response
    * @returns {Promise<void>}
@@ -317,7 +317,7 @@ export class ProjectsController {
       const user = getUserContext(req)
       // Guard: require authentication for category updates
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
-      const category = await projectCategoryService.updateCategory(req.params['catId']!, req.body, user)
+      const category = await knowledgeBaseCategoryService.updateCategory(req.params['catId']!, req.body, user)
       // Guard: return 404 if category not found
       if (!category) { res.status(404).json({ error: 'Category not found' }); return }
       res.json(category)
@@ -328,14 +328,14 @@ export class ProjectsController {
   }
 
   /**
-   * @description DELETE /projects/:id/categories/:catId - Delete a document category and cascade to versions/files
+   * @description DELETE /knowledge-base/:id/categories/:catId - Delete a document category and cascade to versions/files
    * @param {Request} req - Express request with category ID
    * @param {Response} res - Express response (204 on success)
    * @returns {Promise<void>}
    */
   async deleteCategory(req: Request, res: Response): Promise<void> {
     try {
-      await projectCategoryService.deleteCategory(req.params['catId']!)
+      await knowledgeBaseCategoryService.deleteCategory(req.params['catId']!)
       res.status(204).send()
     } catch (error) {
       log.error('Failed to delete category', { error: String(error) })
@@ -348,14 +348,14 @@ export class ProjectsController {
   // -------------------------------------------------------------------------
 
   /**
-   * @description GET /projects/:id/categories/:catId/versions - List all versions for a document category
+   * @description GET /knowledge-base/:id/categories/:catId/versions - List all versions for a document category
    * @param {Request} req - Express request with category ID
    * @param {Response} res - Express response
    * @returns {Promise<void>}
    */
   async listVersions(req: Request, res: Response): Promise<void> {
     try {
-      const versions = await projectCategoryService.listVersions(req.params['catId']!)
+      const versions = await knowledgeBaseCategoryService.listVersions(req.params['catId']!)
       res.json(versions)
     } catch (error) {
       log.error('Failed to list versions', { error: String(error) })
@@ -364,7 +364,7 @@ export class ProjectsController {
   }
 
   /**
-   * @description POST /projects/:id/categories/:catId/versions - Create a new category version
+   * @description POST /knowledge-base/:id/categories/:catId/versions - Create a new category version
    * @param {Request} req - Express request with version body
    * @param {Response} res - Express response
    * @returns {Promise<void>}
@@ -374,7 +374,7 @@ export class ProjectsController {
       const user = getUserContext(req)
       // Guard: require authentication for version creation
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
-      const version = await projectCategoryService.createVersion(req.params['catId']!, req.body, user)
+      const version = await knowledgeBaseCategoryService.createVersion(req.params['catId']!, req.body, user)
       res.status(201).json(version)
     } catch (error: any) {
       log.error('Failed to create version', { error: String(error) })
@@ -385,7 +385,7 @@ export class ProjectsController {
   }
 
   /**
-   * @description PUT /projects/:id/categories/:catId/versions/:verId - Update a category version
+   * @description PUT /knowledge-base/:id/categories/:catId/versions/:verId - Update a category version
    * @param {Request} req - Express request with version ID and update body
    * @param {Response} res - Express response
    * @returns {Promise<void>}
@@ -395,7 +395,7 @@ export class ProjectsController {
       const user = getUserContext(req)
       // Guard: require authentication for version updates
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
-      const version = await projectCategoryService.updateVersion(req.params['verId']!, req.body, user)
+      const version = await knowledgeBaseCategoryService.updateVersion(req.params['verId']!, req.body, user)
       // Guard: return 404 if version not found
       if (!version) { res.status(404).json({ error: 'Version not found' }); return }
       res.json(version)
@@ -406,14 +406,14 @@ export class ProjectsController {
   }
 
   /**
-   * @description DELETE /projects/:id/categories/:catId/versions/:verId - Delete a category version and its files
+   * @description DELETE /knowledge-base/:id/categories/:catId/versions/:verId - Delete a category version and its files
    * @param {Request} req - Express request with version ID
    * @param {Response} res - Express response (204 on success)
    * @returns {Promise<void>}
    */
   async deleteVersion(req: Request, res: Response): Promise<void> {
     try {
-      await projectCategoryService.deleteVersion(req.params['verId']!)
+      await knowledgeBaseCategoryService.deleteVersion(req.params['verId']!)
       res.status(204).send()
     } catch (error) {
       log.error('Failed to delete version', { error: String(error) })
@@ -422,7 +422,7 @@ export class ProjectsController {
   }
 
   /**
-   * @description GET /projects/:id/categories/:catId/versions/:verId/documents - List files attached to a category version
+   * @description GET /knowledge-base/:id/categories/:catId/versions/:verId/documents - List files attached to a category version
    * @param {Request} req - Express request with version ID
    * @param {Response} res - Express response
    * @returns {Promise<void>}
@@ -432,10 +432,10 @@ export class ProjectsController {
       const versionId = req.params['verId']!
 
       // Look up the version to get its linked RAG dataset
-      const version = await projectCategoryService.getVersionById(versionId)
+      const version = await knowledgeBaseCategoryService.getVersionById(versionId)
       if (!version?.ragflow_dataset_id) {
         // Fall back to local version files if no dataset is linked
-        const files = await projectCategoryService.listVersionFiles(versionId)
+        const files = await knowledgeBaseCategoryService.listVersionFiles(versionId)
         res.json(files)
         return
       }
@@ -450,7 +450,7 @@ export class ProjectsController {
   }
 
   /**
-   * @description POST /projects/:id/categories/:catId/versions/:verId/documents - Upload documents to a version's linked RAG dataset.
+   * @description POST /knowledge-base/:id/categories/:catId/versions/:verId/documents - Upload documents to a version's linked RAG dataset.
    *   Resolves the version's ragflow_dataset_id, stores files in MinIO, and creates File/Document/File2Document records.
    * @param {Request} req - Express request with multer files
    * @param {Response} res - Express response
@@ -461,7 +461,7 @@ export class ProjectsController {
       const versionId = req.params['verId']!
 
       // Resolve the version's linked RAG dataset
-      const version = await projectCategoryService.getVersionById(versionId)
+      const version = await knowledgeBaseCategoryService.getVersionById(versionId)
       if (!version) { res.status(404).json({ error: 'Version not found' }); return }
       if (!version.ragflow_dataset_id) { res.status(400).json({ error: 'Version has no linked dataset' }); return }
 
@@ -517,7 +517,7 @@ export class ProjectsController {
         // Create File2Document link
         await ragDocumentService.createFile2Document(fileId, docId)
 
-        // Track the file in version_files table for project-level bookkeeping
+        // Track the file in version_files table for knowledge-base-level bookkeeping
         await ModelFactory.documentCategoryVersionFile.create({
           version_id: versionId,
           file_name: filename,
@@ -568,16 +568,16 @@ export class ProjectsController {
       // Create converter job for Office files if any exist
       if (officeFiles.length > 0) {
         try {
-          const projectId = req.params['id']!
+          const knowledgeBaseId = req.params['id']!
           const catId = req.params['catId']!
           await converterQueueService.createJob({
             datasetId,
             versionId,
-            projectId,
+            projectId: knowledgeBaseId,
             categoryId: catId,
             files: officeFiles.map(f => ({
               fileName: f.fileName,
-              filePath: `${projectId}/${catId}/${versionId}/${f.fileName}`,
+              filePath: `${knowledgeBaseId}/${catId}/${versionId}/${f.fileName}`,
             })),
           })
           // Trigger manual conversion so worker picks up immediately
@@ -601,7 +601,7 @@ export class ProjectsController {
   }
 
   /**
-   * @description DELETE /projects/:id/categories/:catId/versions/:verId/documents - Delete documents from a version's linked RAG dataset by file names.
+   * @description DELETE /knowledge-base/:id/categories/:catId/versions/:verId/documents - Delete documents from a version's linked RAG dataset by file names.
    *   Resolves documents by name, deletes from S3, OpenSearch, and PostgreSQL.
    * @param {Request} req - Express request with { fileNames: string[] } body
    * @param {Response} res - Express response
@@ -616,7 +616,7 @@ export class ProjectsController {
       }
 
       // Resolve the version's linked RAG dataset
-      const version = await projectCategoryService.getVersionById(versionId)
+      const version = await knowledgeBaseCategoryService.getVersionById(versionId)
       if (!version?.ragflow_dataset_id) { res.status(404).json({ error: 'Version or linked dataset not found' }); return }
 
       const datasetId = version.ragflow_dataset_id
@@ -662,7 +662,7 @@ export class ProjectsController {
   }
 
   /**
-   * @description POST /projects/:id/categories/:catId/versions/:verId/documents/requeue - Re-queue documents for conversion.
+   * @description POST /knowledge-base/:id/categories/:catId/versions/:verId/documents/requeue - Re-queue documents for conversion.
    *   Resets document status to allow re-processing by the converter worker.
    * @param {Request} req - Express request with { fileNames: string[] } body
    * @param {Response} res - Express response
@@ -677,7 +677,7 @@ export class ProjectsController {
       }
 
       // Resolve the version's linked RAG dataset
-      const version = await projectCategoryService.getVersionById(versionId)
+      const version = await knowledgeBaseCategoryService.getVersionById(versionId)
       if (!version?.ragflow_dataset_id) { res.status(404).json({ error: 'Version or linked dataset not found' }); return }
 
       const allDocs = await ragDocumentService.listDocuments(version.ragflow_dataset_id)
@@ -706,7 +706,7 @@ export class ProjectsController {
   }
 
   /**
-   * @description POST /projects/:id/categories/:catId/versions/:verId/documents/parse - Trigger parsing for selected documents.
+   * @description POST /knowledge-base/:id/categories/:catId/versions/:verId/documents/parse - Trigger parsing for selected documents.
    *   Queues documents for the RAG parse pipeline via Redis stream.
    * @param {Request} req - Express request with { fileNames: string[] } body
    * @param {Response} res - Express response
@@ -721,7 +721,7 @@ export class ProjectsController {
       }
 
       // Resolve the version's linked RAG dataset
-      const version = await projectCategoryService.getVersionById(versionId)
+      const version = await knowledgeBaseCategoryService.getVersionById(versionId)
       if (!version?.ragflow_dataset_id) { res.status(404).json({ error: 'Version or linked dataset not found' }); return }
 
       const allDocs = await ragDocumentService.listDocuments(version.ragflow_dataset_id)
@@ -750,7 +750,7 @@ export class ProjectsController {
   }
 
   /**
-   * @description POST /projects/:id/categories/:catId/versions/:verId/documents/sync-status - Sync parser status from RAG documents back to version files.
+   * @description POST /knowledge-base/:id/categories/:catId/versions/:verId/documents/sync-status - Sync parser status from RAG documents back to version files.
    *   Returns the latest parsing status for each file in the version.
    * @param {Request} req - Express request with version ID param
    * @param {Response} res - Express response
@@ -761,7 +761,7 @@ export class ProjectsController {
       const versionId = req.params['verId']!
 
       // Resolve the version's linked RAG dataset
-      const version = await projectCategoryService.getVersionById(versionId)
+      const version = await knowledgeBaseCategoryService.getVersionById(versionId)
       if (!version?.ragflow_dataset_id) { res.status(404).json({ error: 'Version or linked dataset not found' }); return }
 
       // Fetch all RAG documents for the dataset
@@ -790,14 +790,14 @@ export class ProjectsController {
   // -------------------------------------------------------------------------
 
   /**
-   * @description GET /projects/:id/chats - List all chat assistants configured for a project
-   * @param {Request} req - Express request with project ID
+   * @description GET /knowledge-base/:id/chats - List all chat assistants configured for a knowledge base
+   * @param {Request} req - Express request with knowledge base ID
    * @param {Response} res - Express response
    * @returns {Promise<void>}
    */
   async listChats(req: Request, res: Response): Promise<void> {
     try {
-      const chats = await projectChatService.listChats(req.params['id']!)
+      const chats = await knowledgeBaseChatService.listChats(req.params['id']!)
       res.json(chats)
     } catch (error) {
       log.error('Failed to list chats', { error: String(error) })
@@ -806,14 +806,14 @@ export class ProjectsController {
   }
 
   /**
-   * @description GET /projects/:id/chats/:chatId - Retrieve a single chat assistant by UUID
+   * @description GET /knowledge-base/:id/chats/:chatId - Retrieve a single chat assistant by UUID
    * @param {Request} req - Express request with chat ID
    * @param {Response} res - Express response
    * @returns {Promise<void>}
    */
   async getChat(req: Request, res: Response): Promise<void> {
     try {
-      const chat = await projectChatService.getChatById(req.params['chatId']!)
+      const chat = await knowledgeBaseChatService.getChatById(req.params['chatId']!)
       // Guard: return 404 if chat does not exist
       if (!chat) { res.status(404).json({ error: 'Chat not found' }); return }
       res.json(chat)
@@ -824,7 +824,7 @@ export class ProjectsController {
   }
 
   /**
-   * @description POST /projects/:id/chats - Create a new chat assistant for a project
+   * @description POST /knowledge-base/:id/chats - Create a new chat assistant for a knowledge base
    * @param {Request} req - Express request with chat body
    * @param {Response} res - Express response
    * @returns {Promise<void>}
@@ -834,7 +834,7 @@ export class ProjectsController {
       const user = getUserContext(req)
       // Guard: require authentication for chat creation
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
-      const chat = await projectChatService.createChat(req.params['id']!, req.body, user)
+      const chat = await knowledgeBaseChatService.createChat(req.params['id']!, req.body, user)
       res.status(201).json(chat)
     } catch (error: any) {
       log.error('Failed to create chat', { error: String(error) })
@@ -843,7 +843,7 @@ export class ProjectsController {
   }
 
   /**
-   * @description PUT /projects/:id/chats/:chatId - Update an existing project chat assistant
+   * @description PUT /knowledge-base/:id/chats/:chatId - Update an existing knowledge base chat assistant
    * @param {Request} req - Express request with chat ID and update body
    * @param {Response} res - Express response
    * @returns {Promise<void>}
@@ -853,7 +853,7 @@ export class ProjectsController {
       const user = getUserContext(req)
       // Guard: require authentication for chat updates
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
-      const chat = await projectChatService.updateChat(req.params['chatId']!, req.body, user)
+      const chat = await knowledgeBaseChatService.updateChat(req.params['chatId']!, req.body, user)
       // Guard: return 404 if chat not found
       if (!chat) { res.status(404).json({ error: 'Chat not found' }); return }
       res.json(chat)
@@ -864,14 +864,14 @@ export class ProjectsController {
   }
 
   /**
-   * @description DELETE /projects/:id/chats/:chatId - Delete a project chat assistant
+   * @description DELETE /knowledge-base/:id/chats/:chatId - Delete a knowledge base chat assistant
    * @param {Request} req - Express request with chat ID
    * @param {Response} res - Express response (204 on success)
    * @returns {Promise<void>}
    */
   async deleteChat(req: Request, res: Response): Promise<void> {
     try {
-      await projectChatService.deleteChat(req.params['chatId']!)
+      await knowledgeBaseChatService.deleteChat(req.params['chatId']!)
       res.status(204).send()
     } catch (error) {
       log.error('Failed to delete chat', { error: String(error) })
@@ -884,14 +884,14 @@ export class ProjectsController {
   // -------------------------------------------------------------------------
 
   /**
-   * @description GET /projects/:id/searches - List all search apps configured for a project
-   * @param {Request} req - Express request with project ID
+   * @description GET /knowledge-base/:id/searches - List all search apps configured for a knowledge base
+   * @param {Request} req - Express request with knowledge base ID
    * @param {Response} res - Express response
    * @returns {Promise<void>}
    */
   async listSearches(req: Request, res: Response): Promise<void> {
     try {
-      const searches = await projectSearchService.listSearches(req.params['id']!)
+      const searches = await knowledgeBaseSearchService.listSearches(req.params['id']!)
       res.json(searches)
     } catch (error) {
       log.error('Failed to list searches', { error: String(error) })
@@ -900,14 +900,14 @@ export class ProjectsController {
   }
 
   /**
-   * @description GET /projects/:id/searches/:searchId - Retrieve a single search app by UUID
+   * @description GET /knowledge-base/:id/searches/:searchId - Retrieve a single search app by UUID
    * @param {Request} req - Express request with search ID
    * @param {Response} res - Express response
    * @returns {Promise<void>}
    */
   async getSearch(req: Request, res: Response): Promise<void> {
     try {
-      const search = await projectSearchService.getSearchById(req.params['searchId']!)
+      const search = await knowledgeBaseSearchService.getSearchById(req.params['searchId']!)
       // Guard: return 404 if search app does not exist
       if (!search) { res.status(404).json({ error: 'Search not found' }); return }
       res.json(search)
@@ -918,7 +918,7 @@ export class ProjectsController {
   }
 
   /**
-   * @description POST /projects/:id/searches - Create a new search app for a project
+   * @description POST /knowledge-base/:id/searches - Create a new search app for a knowledge base
    * @param {Request} req - Express request with search body
    * @param {Response} res - Express response
    * @returns {Promise<void>}
@@ -928,7 +928,7 @@ export class ProjectsController {
       const user = getUserContext(req)
       // Guard: require authentication for search creation
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
-      const search = await projectSearchService.createSearch(req.params['id']!, req.body, user)
+      const search = await knowledgeBaseSearchService.createSearch(req.params['id']!, req.body, user)
       res.status(201).json(search)
     } catch (error: any) {
       log.error('Failed to create search', { error: String(error) })
@@ -937,7 +937,7 @@ export class ProjectsController {
   }
 
   /**
-   * @description PUT /projects/:id/searches/:searchId - Update an existing project search app
+   * @description PUT /knowledge-base/:id/searches/:searchId - Update an existing knowledge base search app
    * @param {Request} req - Express request with search ID and update body
    * @param {Response} res - Express response
    * @returns {Promise<void>}
@@ -947,7 +947,7 @@ export class ProjectsController {
       const user = getUserContext(req)
       // Guard: require authentication for search updates
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
-      const search = await projectSearchService.updateSearch(req.params['searchId']!, req.body, user)
+      const search = await knowledgeBaseSearchService.updateSearch(req.params['searchId']!, req.body, user)
       // Guard: return 404 if search app not found
       if (!search) { res.status(404).json({ error: 'Search not found' }); return }
       res.json(search)
@@ -958,14 +958,14 @@ export class ProjectsController {
   }
 
   /**
-   * @description DELETE /projects/:id/searches/:searchId - Delete a project search app
+   * @description DELETE /knowledge-base/:id/searches/:searchId - Delete a knowledge base search app
    * @param {Request} req - Express request with search ID
    * @param {Response} res - Express response (204 on success)
    * @returns {Promise<void>}
    */
   async deleteSearch(req: Request, res: Response): Promise<void> {
     try {
-      await projectSearchService.deleteSearch(req.params['searchId']!)
+      await knowledgeBaseSearchService.deleteSearch(req.params['searchId']!)
       res.status(204).send()
     } catch (error) {
       log.error('Failed to delete search', { error: String(error) })
@@ -978,14 +978,14 @@ export class ProjectsController {
   // -------------------------------------------------------------------------
 
   /**
-   * @description GET /projects/:id/sync-configs - List all external data sync configurations for a project
-   * @param {Request} req - Express request with project ID
+   * @description GET /knowledge-base/:id/sync-configs - List all external data sync configurations for a knowledge base
+   * @param {Request} req - Express request with knowledge base ID
    * @param {Response} res - Express response
    * @returns {Promise<void>}
    */
   async listSyncConfigs(req: Request, res: Response): Promise<void> {
     try {
-      const configs = await projectSyncService.listSyncConfigs(req.params['id']!)
+      const configs = await knowledgeBaseSyncService.listSyncConfigs(req.params['id']!)
       res.json(configs)
     } catch (error) {
       log.error('Failed to list sync configs', { error: String(error) })
@@ -994,7 +994,7 @@ export class ProjectsController {
   }
 
   /**
-   * @description POST /projects/:id/sync-configs - Create a new external data sync configuration
+   * @description POST /knowledge-base/:id/sync-configs - Create a new external data sync configuration
    * @param {Request} req - Express request with sync config body
    * @param {Response} res - Express response
    * @returns {Promise<void>}
@@ -1004,7 +1004,7 @@ export class ProjectsController {
       const user = getUserContext(req)
       // Guard: require authentication for sync config creation
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
-      const config = await projectSyncService.createSyncConfig(req.params['id']!, req.body, user)
+      const config = await knowledgeBaseSyncService.createSyncConfig(req.params['id']!, req.body, user)
       res.status(201).json(config)
     } catch (error: any) {
       log.error('Failed to create sync config', { error: String(error) })
@@ -1013,7 +1013,7 @@ export class ProjectsController {
   }
 
   /**
-   * @description PUT /projects/:id/sync-configs/:configId - Update an existing sync configuration
+   * @description PUT /knowledge-base/:id/sync-configs/:configId - Update an existing sync configuration
    * @param {Request} req - Express request with config ID and update body
    * @param {Response} res - Express response
    * @returns {Promise<void>}
@@ -1023,7 +1023,7 @@ export class ProjectsController {
       const user = getUserContext(req)
       // Guard: require authentication for sync config updates
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
-      const config = await projectSyncService.updateSyncConfig(req.params['configId']!, req.body, user)
+      const config = await knowledgeBaseSyncService.updateSyncConfig(req.params['configId']!, req.body, user)
       // Guard: return 404 if sync config not found
       if (!config) { res.status(404).json({ error: 'Sync config not found' }); return }
       res.json(config)
@@ -1034,14 +1034,14 @@ export class ProjectsController {
   }
 
   /**
-   * @description DELETE /projects/:id/sync-configs/:configId - Delete an external data sync configuration
+   * @description DELETE /knowledge-base/:id/sync-configs/:configId - Delete an external data sync configuration
    * @param {Request} req - Express request with config ID
    * @param {Response} res - Express response (204 on success)
    * @returns {Promise<void>}
    */
   async deleteSyncConfig(req: Request, res: Response): Promise<void> {
     try {
-      await projectSyncService.deleteSyncConfig(req.params['configId']!)
+      await knowledgeBaseSyncService.deleteSyncConfig(req.params['configId']!)
       res.status(204).send()
     } catch (error) {
       log.error('Failed to delete sync config', { error: String(error) })
@@ -1054,14 +1054,14 @@ export class ProjectsController {
   // -------------------------------------------------------------------------
 
   /**
-   * @description GET /projects/:id/entity-permissions - List fine-grained entity-level permissions for a project
-   * @param {Request} req - Express request with project ID
+   * @description GET /knowledge-base/:id/entity-permissions - List fine-grained entity-level permissions for a knowledge base
+   * @param {Request} req - Express request with knowledge base ID
    * @param {Response} res - Express response
    * @returns {Promise<void>}
    */
   async listEntityPermissions(req: Request, res: Response): Promise<void> {
     try {
-      const perms = await projectsService.getEntityPermissions(req.params['id']!)
+      const perms = await knowledgeBaseService.getEntityPermissions(req.params['id']!)
       res.json(perms)
     } catch (error) {
       log.error('Failed to list entity permissions', { error: String(error) })
@@ -1070,7 +1070,7 @@ export class ProjectsController {
   }
 
   /**
-   * @description POST /projects/:id/entity-permissions - Create a new entity-level permission grant
+   * @description POST /knowledge-base/:id/entity-permissions - Create a new entity-level permission grant
    * @param {Request} req - Express request with entity permission body
    * @param {Response} res - Express response
    * @returns {Promise<void>}
@@ -1080,7 +1080,7 @@ export class ProjectsController {
       const user = getUserContext(req)
       // Guard: require authentication for entity permission creation
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
-      const perm = await projectsService.createEntityPermission(req.params['id']!, req.body, user)
+      const perm = await knowledgeBaseService.createEntityPermission(req.params['id']!, req.body, user)
       res.status(201).json(perm)
     } catch (error: any) {
       log.error('Failed to create entity permission', { error: String(error) })
@@ -1089,14 +1089,14 @@ export class ProjectsController {
   }
 
   /**
-   * @description DELETE /projects/:id/entity-permissions/:permId - Remove an entity-level permission grant
+   * @description DELETE /knowledge-base/:id/entity-permissions/:permId - Remove an entity-level permission grant
    * @param {Request} req - Express request with permission ID
    * @param {Response} res - Express response (204 on success)
    * @returns {Promise<void>}
    */
   async deleteEntityPermission(req: Request, res: Response): Promise<void> {
     try {
-      await projectsService.deleteEntityPermission(req.params['permId']!)
+      await knowledgeBaseService.deleteEntityPermission(req.params['permId']!)
       res.status(204).send()
     } catch (error) {
       log.error('Failed to delete entity permission', { error: String(error) })
@@ -1105,28 +1105,28 @@ export class ProjectsController {
   }
 
   // -------------------------------------------------------------------------
-  // Member Management (PROJ-03)
+  // Member Management
   // -------------------------------------------------------------------------
 
   /**
-   * @description GET /projects/:id/members - List all user members of a project with profile details
-   * @param {Request} req - Express request with project ID
+   * @description GET /knowledge-base/:id/members - List all user members of a knowledge base with profile details
+   * @param {Request} req - Express request with knowledge base ID
    * @param {Response} res - Express response with members array
    * @returns {Promise<void>}
    */
   async getMembers(req: Request, res: Response): Promise<void> {
     try {
-      const members = await projectsService.getProjectMembers(req.params['id']!)
+      const members = await knowledgeBaseService.getKnowledgeBaseMembers(req.params['id']!)
       res.json(members)
     } catch (error) {
-      log.error('Failed to list project members', { error: String(error) })
-      res.status(500).json({ error: 'Failed to list project members' })
+      log.error('Failed to list knowledge base members', { error: String(error) })
+      res.status(500).json({ error: 'Failed to list knowledge base members' })
     }
   }
 
   /**
-   * @description POST /projects/:id/members - Add a user as a project member with default view permissions
-   * @param {Request} req - Express request with project ID and { user_id } body
+   * @description POST /knowledge-base/:id/members - Add a user as a knowledge base member with default view permissions
+   * @param {Request} req - Express request with knowledge base ID and { user_id } body
    * @param {Response} res - Express response (201 with created permission)
    * @returns {Promise<void>}
    */
@@ -1136,10 +1136,10 @@ export class ProjectsController {
       // Guard: require authentication for member management
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
       const tenantId = getTenantId(req) || ''
-      const permission = await projectsService.addMember(req.params['id']!, req.body.user_id, user.id, tenantId)
+      const permission = await knowledgeBaseService.addMember(req.params['id']!, req.body.user_id, user.id, tenantId)
       res.status(201).json(permission)
     } catch (error: any) {
-      log.error('Failed to add project member', { error: String(error) })
+      log.error('Failed to add knowledge base member', { error: String(error) })
       // Return 404 for user-not-found errors, 500 otherwise
       const status = error.message?.includes('not found') ? 404 : 500
       res.status(status).json({ error: error.message || 'Failed to add member' })
@@ -1147,8 +1147,8 @@ export class ProjectsController {
   }
 
   /**
-   * @description DELETE /projects/:id/members/:userId - Remove a user from a project
-   * @param {Request} req - Express request with project ID and user ID params
+   * @description DELETE /knowledge-base/:id/members/:userId - Remove a user from a knowledge base
+   * @param {Request} req - Express request with knowledge base ID and user ID params
    * @param {Response} res - Express response (204 on success)
    * @returns {Promise<void>}
    */
@@ -1158,23 +1158,23 @@ export class ProjectsController {
       // Guard: require authentication for member removal
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
       const tenantId = getTenantId(req) || ''
-      await projectsService.removeMember(req.params['id']!, req.params['userId']!, user.id, tenantId)
+      await knowledgeBaseService.removeMember(req.params['id']!, req.params['userId']!, user.id, tenantId)
       res.status(204).send()
     } catch (error: any) {
-      log.error('Failed to remove project member', { error: String(error) })
-      // Return 403 if trying to remove project creator
+      log.error('Failed to remove knowledge base member', { error: String(error) })
+      // Return 403 if trying to remove knowledge base creator
       const status = error.message?.includes('Cannot remove') ? 403 : 500
       res.status(status).json({ error: error.message || 'Failed to remove member' })
     }
   }
 
   // -------------------------------------------------------------------------
-  // Dataset Binding (PROJ-02)
+  // Dataset Binding
   // -------------------------------------------------------------------------
 
   /**
-   * @description POST /projects/:id/datasets/bind - Bind multiple datasets to a project in one request
-   * @param {Request} req - Express request with project ID and { dataset_ids } body
+   * @description POST /knowledge-base/:id/datasets/bind - Bind multiple datasets to a knowledge base in one request
+   * @param {Request} req - Express request with knowledge base ID and { dataset_ids } body
    * @param {Response} res - Express response (200 on success)
    * @returns {Promise<void>}
    */
@@ -1184,7 +1184,7 @@ export class ProjectsController {
       // Guard: require authentication for dataset binding
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
       const tenantId = getTenantId(req) || ''
-      await projectsService.bindDatasets(req.params['id']!, req.body.dataset_ids, user.id, tenantId)
+      await knowledgeBaseService.bindDatasets(req.params['id']!, req.body.dataset_ids, user.id, tenantId)
       res.json({ message: 'Datasets bound successfully' })
     } catch (error: any) {
       log.error('Failed to bind datasets', { error: String(error) })
@@ -1193,8 +1193,8 @@ export class ProjectsController {
   }
 
   /**
-   * @description DELETE /projects/:id/datasets/:datasetId/unbind - Unbind a dataset from a project
-   * @param {Request} req - Express request with project ID and dataset ID params
+   * @description DELETE /knowledge-base/:id/datasets/:datasetId/unbind - Unbind a dataset from a knowledge base
+   * @param {Request} req - Express request with knowledge base ID and dataset ID params
    * @param {Response} res - Express response (204 on success)
    * @returns {Promise<void>}
    */
@@ -1204,7 +1204,7 @@ export class ProjectsController {
       // Guard: require authentication for dataset unbinding
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
       const tenantId = getTenantId(req) || ''
-      await projectsService.unbindDataset(req.params['id']!, req.params['datasetId']!, user.id, tenantId)
+      await knowledgeBaseService.unbindDataset(req.params['id']!, req.params['datasetId']!, user.id, tenantId)
       res.status(204).send()
     } catch (error) {
       log.error('Failed to unbind dataset', { error: String(error) })
@@ -1217,8 +1217,8 @@ export class ProjectsController {
   // -------------------------------------------------------------------------
 
   /**
-   * @description GET /projects/:id/activity - Get paginated audit activity feed for a project
-   * @param {Request} req - Express request with project ID and optional limit/offset query params
+   * @description GET /knowledge-base/:id/activity - Get paginated audit activity feed for a knowledge base
+   * @param {Request} req - Express request with knowledge base ID and optional limit/offset query params
    * @param {Response} res - Express response with { data, total } payload
    * @returns {Promise<void>}
    */
@@ -1227,11 +1227,11 @@ export class ProjectsController {
       const tenantId = getTenantId(req) || ''
       const limit = Number(req.query['limit']) || 20
       const offset = Number(req.query['offset']) || 0
-      const result = await projectsService.getProjectActivity(req.params['id']!, tenantId, limit, offset)
+      const result = await knowledgeBaseService.getKnowledgeBaseActivity(req.params['id']!, tenantId, limit, offset)
       res.json(result)
     } catch (error) {
-      log.error('Failed to get project activity', { error: String(error) })
-      res.status(500).json({ error: 'Failed to get project activity' })
+      log.error('Failed to get knowledge base activity', { error: String(error) })
+      res.status(500).json({ error: 'Failed to get knowledge base activity' })
     }
   }
 
@@ -1240,21 +1240,21 @@ export class ProjectsController {
   // -------------------------------------------------------------------------
 
   /**
-   * @description POST /projects/:id/categories/:catId/import-git - Import code files
+   * @description POST /knowledge-base/:id/categories/:catId/import-git - Import code files
    *   from a Git repository URL into a code category. Clones the repo, filters by code
    *   extensions, and triggers the parse pipeline. Returns 202 Accepted.
-   * @param {Request} req - Express request with project ID, category ID, and git params in body
+   * @param {Request} req - Express request with knowledge base ID, category ID, and git params in body
    * @param {Response} res - Express response with taskId and fileCount
    * @returns {Promise<void>}
    */
   async importGitRepo(req: Request, res: Response): Promise<void> {
     try {
-      const projectId = req.params['id']!
+      const knowledgeBaseId = req.params['id']!
       const categoryId = req.params['catId']!
       const tenantId = getTenantId(req) || ''
 
-      const result = await projectCategoryService.importGitRepo(
-        projectId, categoryId, tenantId, req.body,
+      const result = await knowledgeBaseCategoryService.importGitRepo(
+        knowledgeBaseId, categoryId, tenantId, req.body,
       )
       res.status(202).json({ ...result, message: 'Import started' })
     } catch (error) {
@@ -1264,7 +1264,7 @@ export class ProjectsController {
   }
 
   /**
-   * @description POST /projects/:id/categories/:catId/import-zip - Import code files
+   * @description POST /knowledge-base/:id/categories/:catId/import-zip - Import code files
    *   from a ZIP archive uploaded via multipart. Extracts the archive, filters by code
    *   extensions, and triggers the parse pipeline. Returns 202 Accepted.
    * @param {Request} req - Express request with uploaded file via multer
@@ -1273,7 +1273,7 @@ export class ProjectsController {
    */
   async importZipFile(req: Request, res: Response): Promise<void> {
     try {
-      const projectId = req.params['id']!
+      const knowledgeBaseId = req.params['id']!
       const categoryId = req.params['catId']!
       const tenantId = getTenantId(req) || ''
 
@@ -1284,8 +1284,8 @@ export class ProjectsController {
         return
       }
 
-      const result = await projectCategoryService.importZipFile(
-        projectId, categoryId, tenantId, file.buffer, file.originalname,
+      const result = await knowledgeBaseCategoryService.importZipFile(
+        knowledgeBaseId, categoryId, tenantId, file.buffer, file.originalname,
       )
       res.status(202).json({ ...result, message: 'Import started' })
     } catch (error) {
@@ -1295,48 +1295,48 @@ export class ProjectsController {
   }
 
   // -------------------------------------------------------------------------
-  // Project Datasets (enhanced listing with dataset name)
+  // Knowledge Base Datasets (enhanced listing with dataset name)
   // -------------------------------------------------------------------------
 
   /**
-   * @description GET /projects/:id/datasets/details - Get project datasets with dataset name via JOIN.
+   * @description GET /knowledge-base/:id/datasets/details - Get knowledge base datasets with dataset name via JOIN.
    *   Returns richer dataset info than the basic listDatasets endpoint.
-   * @param {Request} req - Express request with project ID
+   * @param {Request} req - Express request with knowledge base ID
    * @param {Response} res - Express response with enriched dataset link records
    * @returns {Promise<void>}
    */
-  async getProjectDatasets(req: Request, res: Response): Promise<void> {
+  async getKnowledgeBaseDatasets(req: Request, res: Response): Promise<void> {
     try {
-      const datasets = await ModelFactory.projectDataset.findByProjectId(req.params['id']!)
+      const datasets = await ModelFactory.knowledgeBaseDataset.findByKnowledgeBaseId(req.params['id']!)
       res.json(datasets)
     } catch (error) {
-      log.error('Failed to get project datasets', { error: String(error) })
-      res.status(500).json({ error: 'Failed to get project datasets' })
+      log.error('Failed to get knowledge base datasets', { error: String(error) })
+      res.status(500).json({ error: 'Failed to get knowledge base datasets' })
     }
   }
 
   // -------------------------------------------------------------------------
-  // Cross-Project Dataset Resolver (PROJ-04)
+  // Cross-Knowledge-Base Dataset Resolver
   // -------------------------------------------------------------------------
 
   /**
-   * @description GET /cross-project-datasets - Resolve all dataset IDs accessible to the current user
-   *   across all their projects. Used by search/chat to determine searchable scope.
+   * @description GET /cross-knowledge-base-datasets - Resolve all dataset IDs accessible to the current user
+   *   across all their knowledge bases. Used by search/chat to determine searchable scope.
    * @param {Request} req - Express request with authenticated user
    * @param {Response} res - Express response with { dataset_ids: string[] }
    * @returns {Promise<void>}
    */
-  async getCrossProjectDatasets(req: Request, res: Response): Promise<void> {
+  async getCrossKnowledgeBaseDatasets(req: Request, res: Response): Promise<void> {
     try {
       const user = getUserContext(req)
-      // Guard: require authentication for cross-project resolution
+      // Guard: require authentication for cross-knowledge-base resolution
       if (!user) { res.status(401).json({ error: 'Authentication required' }); return }
       const tenantId = getTenantId(req) || ''
-      const datasetIds = await projectsService.resolveProjectDatasets(user.id, tenantId)
+      const datasetIds = await knowledgeBaseService.resolveKnowledgeBaseDatasets(user.id, tenantId)
       res.json({ dataset_ids: datasetIds })
     } catch (error) {
-      log.error('Failed to resolve cross-project datasets', { error: String(error) })
-      res.status(500).json({ error: 'Failed to resolve cross-project datasets' })
+      log.error('Failed to resolve cross-knowledge-base datasets', { error: String(error) })
+      res.status(500).json({ error: 'Failed to resolve cross-knowledge-base datasets' })
     }
   }
 }
