@@ -113,11 +113,15 @@ Plans:
 **Requirements**: REN-01, REN-04, REN-06
 **Success Criteria** (what must be TRUE):
   1. User sees "Knowledge Base" (not "Project") on every page, navigation item, breadcrumb, and label in English, Vietnamese, and Japanese
-  2. Browser URL paths use `/knowledge-bases/` instead of `/projects/`
+  2. Browser URL paths use `/knowledge-base/` instead of `/projects/`
   3. FE feature directory is renamed and all TanStack Query keys reference new entity names
   4. Full test suite (BE + FE) passes after rename with zero grep hits for stale `project` references in active code
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 3 plans
+
+Plans:
+- [ ] 08-01-PLAN.md -- Core feature directory rename + types + API + query keys + routes
+- [ ] 08-02-PLAN.md -- i18n key rename (3 locales) + cross-feature reference updates
+- [ ] 08-03-PLAN.md -- Test file rename + full suite verification + stale reference audit
 
 ### Phase 9: Permission System
 **Goal**: Admins can control who accesses each Knowledge Base and at what level, with permissions enforced across UI, API, and search retrieval
@@ -159,6 +163,6 @@ Note: Phases 8, 9, and 10 all depend on Phase 7 but are independent of each othe
 | 5. Response Evaluation | v0.1 | 5/5 | Complete | - |
 | 6. Prompt Builder | v0.1 | 2/2 | Complete | - |
 | 7. DB + BE + Python Rename | v0.2 | 0/3 | Not started | - |
-| 8. Frontend Rename | v0.2 | 0/? | Not started | - |
+| 8. Frontend Rename | v0.2 | 0/3 | Not started | - |
 | 9. Permission System | v0.2 | 0/? | Not started | - |
 | 10. Chunk Quality Pipeline | v0.2 | 0/? | Not started | - |
