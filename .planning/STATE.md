@@ -1,134 +1,63 @@
----
-gsd_state_version: 1.0
-milestone: v0.2
-milestone_name: Knowledge Base Refactor & Quality
-current_plan: Not started
-status: Defining requirements
-stopped_at: ""
-last_updated: "2026-04-02T00:00:00.000Z"
-progress:
-  total_phases: 0
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
----
-
 # Project State
 
-## Current Phase
+## Project Reference
 
-Phase: Not started (defining requirements)
-Current Plan: —
-Status: Defining requirements
-Last activity: 2026-04-02 — Milestone v0.2 started
+See: .planning/PROJECT.md (updated 2026-04-02)
+
+**Core value:** Unified AI knowledge management -- one platform for document ingestion, RAG-powered search, and conversational AI with full control over parsing, chunking, and embedding.
+**Current focus:** Phase 7 -- DB + BE + Python Rename
+
+## Current Position
+
+Phase: 7 of 10 (DB + BE + Python Rename)
+Plan: 0 of ? in current phase
+Status: Ready to plan
+Last activity: 2026-04-02 -- Roadmap created for v0.2
+
+Progress: [██████░░░░] 60% (6/10 phases complete across all milestones)
+
+## Performance Metrics
+
+**Velocity:**
+- Total plans completed: 31 (v0.1/v1.0)
+- Average duration: ~7 min
+- Total execution time: ~3.6 hours
+
+**By Phase (v0.1/v1.0):**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| 01 | 5 | 63min | 13min |
+| 02 | 3 | 13min | 4min |
+| 03 | 5 | 18min | 4min |
+| 04 | 6 | 31min | 5min |
+| 05 | 5 | 79min | 16min |
+| 06 | 2 | 11min | 6min |
 
 ## Accumulated Context
 
-### Roadmap Evolution
-
-- Phase 1 added: Migrate latest RAGFlow upstream to b-knowledge (Option A selective copy)
-- Phase 2 added: Investigate mem0 for memory feature
-- Phase 3 added: Refactor project feature - separate project creation, category management (documents/standard/code), and versioned datasets
-- Phase 4 added: Enhance code parser with Code-Graph-RAG - Tree-sitter Knowledge Graph and Code RAG API
-- Phase 5 added: Assistant response evaluation with thumb up/down on chat and search, admin histories page in agent studio
-- Phase 6 added: Add Prompt builder to chat for user to build a prompt base on glossary data as task management and keyword management
-
 ### Decisions
 
-- Backup and restore opensearch_conn.py to preserve b-knowledge OpenSearch customizations
-- Remove upstream es_conn.py since b-knowledge uses OpenSearch not Elasticsearch
-- Removed get_picture override from naive.py Docx — now inherited from parent DocxParser
-- Skipped sync_data_source.py — not present in b-knowledge (RAGFlow-only connector)
-- Skipped handle_save_to_memory_task import — b-knowledge memory via Node.js backend
-- Added API4Conversation and UserCanvasVersion models to db_models.py — missing from b-knowledge
-- Skipped doc_metadata_service refactoring — b-knowledge version already more complete than upstream
-- Applied retry_deadlock_operation to delete_document_and_update_kb_counts for atomic safety
-- Used db() direct queries for user_canvas_version since no BaseModel exists for that Peewee table
-- Added user_id as optional field to MemoryMessageDoc for backward compatibility
-- Threshold bypass applies to both search dispatch and post-filter for consistency
-- Pre-existing TS build error in guideline components fixed as blocking issue (super-admin missing from roleHierarchy)
-- Pre-existing test failures (6 BE, FE hanging) documented but not fixed per scope boundary rules
-- [Phase 03]: category_type defaults to documents for backward compatibility
-- [Phase 03]: category_type is immutable after creation (excluded from updateCategorySchema)
-- [Phase 03]: dataset_id FK uses ON DELETE SET NULL to preserve category if dataset removed
-- [Phase 03-02]: Dataset name format: ${project.name}_${category.name} for standard/code categories
-- [Phase 03-02]: Code categories force parser_id='code'; standard uses project default or 'naive'
-- [Phase 03-02]: Dataset auto-creation is non-blocking (try/catch with warn log)
-- [Phase 03-03]: Removed ProjectCategory type entirely, projects are type-agnostic containers per D-01
-- [Phase 03-03]: CategoryFilterTabs.tsx left as dead code rather than deleted to minimize scope
-- [Phase 03-04]: Documents tab reuses existing DocumentsTab with internal sidebar; refactoring deferred
-- [Phase 03-04]: Standard/Code tab content is placeholder until Plan 05 implements dedicated views
-- [Phase 03-04]: CategoryModal categoryType prop set by parent (active tab), not internally managed
-- [Phase 03]: DocumentListPanel reused as-is for standard/code views, passing dataset_id as versionId
-- [Phase 03]: Git sync panel deferred as disabled Collapsible placeholder per RESEARCH.md
-- [Phase 03]: Japanese/Vietnamese translations use proper Unicode instead of romanized text
-- [Phase 02]: mem0ai 1.0.7 installed (Apache 2.0 confirmed); REST API server importable; custom sidecar recommended
-- [Phase 02]: Tenant isolation via separate OpenSearch collection_name per tenant (index-level hard isolation)
-- [Phase 02]: Apache AGE check graceful -- skips if extension not in PG Docker image
-- [Phase 02]: Benchmark tests auto-skip when OPENAI_API_KEY or OpenSearch unavailable
-- [Phase 02]: GO decision: Adopt mem0 as memory backend (ADR-001 approved)
-- [Phase 05]: FeedbackCommentPopover placed in shared fe/src/components/ to respect NX module boundary rules
-- [Phase 05]: Agent feedback uses POST /api/feedback with source=agent (shared endpoint)
-- [Phase 05]: Used Knex modify() for optional date filters before groupBy in feedback model
-- [Phase 05-04]: Source badge colors: blue=chat, green=search, purple=agent -- consistent across all dashboard components
-- [Phase 05-04]: TopFlaggedSessionsCard placed alongside FeedbackTrendChart in 2-column layout
-- [Phase 05-04]: Source breakdown displayed as Badge row card, not as a 5th gradient stat card
-- [Phase 05]: Agent run queries use db() directly in admin-history service for cross-table aggregation
-- [Phase 05]: Read-only feedback display on agent runs per D-08 (no FeedbackCommentPopover)
-- [Phase 05-05]: Tenant scoping on history tables via answer_feedback.tenant_id (history tables lack tenant_id)
-- [Phase 05-05]: Post-query feedback merge pattern for detail views (separate query + Map lookup)
-- [Phase 05-05]: Agent run tenant scoping via agents.tenant_id
-- [Phase 06]: Import glossaryApi via direct file path to avoid circular dependency with shared component
-- [Phase 06]: ChatInputHandle type re-exported from chat barrel for cross-feature consumption
-- [Phase 06]: Sparkles button is one-shot action (not toggle) matching existing ChatInput button patterns
-- [Phase 06]: Module boundary exception (D-04) documented with inline comment for shared PromptBuilderModal importing glossary API
-- [Phase 06]: ChatInputHandle JSDoc documents uncontrolled textarea design (ref-based, not state-based)
-- [Phase 04]: Memgraph over Neo4j for lower memory footprint; neo4j Python driver for Bolt protocol compatibility
-- [Phase 04]: Unified extract_and_chunk() replaces separate chunk()/extract_code_graph() for single-pass AST parsing
-- [Phase 04]: CollectingIngestor decorator intercepts graph nodes for chunk conversion while delegating graph writes
-- [Phase 04]: InMemoryIngestor fallback when Memgraph unavailable -- chunks still produced
-- [Phase 04]: chunk_with_graph delegates to chunk() internally since code.py already integrates extract_and_chunk
-- [Phase 04]: Embedded Bolt driver in CodeGraphService instead of separate shared memgraphService for module self-containment
-- [Phase 04]: 11 code-graph endpoints (expanded from 6) with write-operation safety check on AI-generated Cypher
-- [Phase 04]: Kept custom Canvas force simulation instead of react-force-graph-2d (zero deps, lighter)
-- [Phase 04]: NL query highlights matched nodes with golden ring, dims non-matching to 0.15 opacity
-- [Phase 04]: execFileNoThrow utility created in shared/utils for safe subprocess execution in Git clone
-- [Phase 04]: PipelineStatusBar uses polling (5s) via syncVersionParserStatus -- no socket events for pipeline status
-
-### Performance Metrics
-
-| Phase | Plan | Duration | Tasks | Files |
-|-------|------|----------|-------|-------|
-| 01    | 01   | 2min     | 1     | 263   |
-| 01    | 02   | 7min     | 2     | 5     |
-| 01    | 03   | 5min     | 2     | 8     |
-| 01    | 04   | 5min     | 2     | 7     |
-| 01    | 05   | 44min    | 2     | 3     |
-| Phase 03 P01 | 1min | 2 tasks | 3 files |
-| 03    | 02   | 3min     | 1     | 2     |
-| 03    | 03   | 3min     | 2     | 5     |
-| 03    | 04   | 3min     | 2     | 4     |
-| Phase 03 P05 | 8min | 3 tasks | 9 files |
-| Phase 02 P01 | 6min | 2 tasks | 5 files |
-| Phase 02 P02 | 4min | 2 tasks | 3 files |
-| Phase 02 P03 | 3min | 2 tasks | 2 files |
-| Phase 05 P02 | 9min | 2 tasks | 10 files |
-| Phase 05 P01 | 10min | 2 tasks | 12 files |
-| 05    | 04   | 10min    | 2     | 12    |
-| Phase 05 P03 | 39min | 3 tasks | 21 files |
-| 05    | 05   | 11min    | 2     | 9     |
-| Phase 06 P01 | 8min | 2 tasks | 4 files |
-| Phase 06 P02 | 3min | 3 tasks | 4 files |
-| Phase 06 P01 | 5min | 2 tasks | 2 files |
-| Phase 06 P02 | 3min | 3 tasks | 4 files |
-| Phase 04 P01 | 1min | 5 tasks | 8 files |
-| Phase 04 P02 | 5min | 7 tasks | 66 files |
-| Phase 04 P03 | 4min | 2 tasks | 3 files |
-| Phase 04 P04 | 1min | 5 tasks | 7 files |
-| Phase 04 P05 | 7min | 4 tasks | 12 files |
-| Phase 04 P06 | 13min | 2 tasks | 13 files |
+Recent decisions affecting current work:
+- [v0.2]: Rename is big-bang (no API versioning) -- no external consumers
+- [v0.2]: Use knex.raw() for ALTER TABLE RENAME (avoids .renameColumn() DEFAULT bug)
+- [v0.2]: Peewee model updates must be in same PR as Knex migration
+- [v0.2]: CASL already integrated; extend in place for KB permissions
+- [v0.2]: OpenSearch is single source of truth for chunk quality scores
+- [v0.2]: Authority resolution ADR required before Phase 9 implementation
 
 ### Pending Todos
 
 - 1 pending todo(s) in `.planning/todos/pending/`
+
+### Blockers/Concerns
+
+- Dual-ORM schema drift risk: Peewee models must be updated alongside every Knex migration
+- 378 "project" occurrences in FE TypeScript files -- need full impact inventory before rename
+- Authority resolution ADR needed before Phase 9 (system role vs KB grant collision)
+
+## Session Continuity
+
+Last session: 2026-04-02
+Stopped at: Roadmap created for v0.2 milestone
+Resume file: None

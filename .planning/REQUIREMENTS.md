@@ -73,30 +73,30 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REN-01 | — | Pending |
-| REN-02 | — | Pending |
-| REN-03 | — | Pending |
-| REN-04 | — | Pending |
-| REN-05 | — | Pending |
-| REN-06 | — | Pending |
-| CHUNK-01 | — | Pending |
-| CHUNK-02 | — | Pending |
-| CHUNK-03 | — | Pending |
-| CHUNK-04 | — | Pending |
-| CHUNK-05 | — | Pending |
-| CHUNK-06 | — | Pending |
-| PERM-01 | — | Pending |
-| PERM-02 | — | Pending |
-| PERM-03 | — | Pending |
-| PERM-04 | — | Pending |
-| PERM-05 | — | Pending |
-| KB-01 | — | Pending |
+| REN-01 | Phase 8 | Pending |
+| REN-02 | Phase 7 | Pending |
+| REN-03 | Phase 7 | Pending |
+| REN-04 | Phase 8 | Pending |
+| REN-05 | Phase 7 | Pending |
+| REN-06 | Phase 8 | Pending |
+| CHUNK-01 | Phase 10 | Pending |
+| CHUNK-02 | Phase 10 | Pending |
+| CHUNK-03 | Phase 10 | Pending |
+| CHUNK-04 | Phase 10 | Pending |
+| CHUNK-05 | Phase 10 | Pending |
+| CHUNK-06 | Phase 10 | Pending |
+| PERM-01 | Phase 9 | Pending |
+| PERM-02 | Phase 9 | Pending |
+| PERM-03 | Phase 9 | Pending |
+| PERM-04 | Phase 9 | Pending |
+| PERM-05 | Phase 9 | Pending |
+| KB-01 | Phase 10 | Pending |
 
 **Coverage:**
 - v0.2 requirements: 18 total
-- Mapped to phases: 0
-- Unmapped: 18
+- Mapped to phases: 18
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-02*
-*Last updated: 2026-04-02 after initial definition*
+*Last updated: 2026-04-02 after roadmap creation*
