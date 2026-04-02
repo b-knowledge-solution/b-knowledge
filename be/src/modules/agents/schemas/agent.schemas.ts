@@ -14,7 +14,7 @@ export const createAgentSchema = z.object({
   name: z.string().min(1).max(255),
   description: z.string().max(2000).optional(),
   mode: z.enum(['agent', 'pipeline']).default('agent'),
-  project_id: hexId.optional(),
+  knowledge_base_id: hexId.optional(),
   template_id: hexId.optional(),
 })
 
@@ -47,7 +47,7 @@ export const versionIdParamSchema = z.object({
 export const listAgentsQuerySchema = z.object({
   mode: z.enum(['agent', 'pipeline']).optional(),
   status: z.enum(['draft', 'published']).optional(),
-  project_id: hexId.optional(),
+  knowledge_base_id: hexId.optional(),
   page: z.coerce.number().int().positive().default(1),
   page_size: z.coerce.number().int().min(1).max(100).default(20),
   search: z.string().max(255).optional(),
