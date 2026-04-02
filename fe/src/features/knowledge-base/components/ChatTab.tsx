@@ -19,10 +19,10 @@ import { globalMessage } from '@/app/App'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
   getKnowledgeBaseChats,
-  createProjectChat,
-  updateProjectChat,
-  deleteProjectChat,
-  syncProjectChat,
+  createKnowledgeBaseChat,
+  updateKnowledgeBaseChat,
+  deleteKnowledgeBaseChat,
+  syncKnowledgeBaseChat,
   type KnowledgeBaseChat,
   type DocumentCategory,
   type DocumentCategoryVersion,
@@ -38,7 +38,7 @@ interface ChatTabProps {
   /** Current project ID */
   knowledgeBaseId: string
   /** Initial chat list fetched by the parent */
-  initialChats: ProjectChat[]
+  initialChats: KnowledgeBaseChat[]
   /** Knowledge base document categories */
   categories: DocumentCategory[]
   /** Map of category ID -> its versions (pre-fetched by parent) */
@@ -69,9 +69,9 @@ const ChatTab = ({
   const confirm = useConfirm()
 
   // -- State --
-  const [chats, setChats] = useState<ProjectChat[]>(initialChats)
+  const [chats, setChats] = useState<KnowledgeBaseChat[]>(initialChats)
   const [chatModalOpen, setChatModalOpen] = useState(false)
-  const [editingChat, setEditingChat] = useState<ProjectChat | null>(null)
+  const [editingChat, setEditingChat] = useState<KnowledgeBaseChat | null>(null)
   const [saving, setSaving] = useState(false)
   const [syncingId, setSyncingId] = useState<string | null>(null)
   const [permChatId, setPermChatId] = useState<string | null>(null)
@@ -118,7 +118,7 @@ const ChatTab = ({
    * @param chat - The chat record
    * @returns Array of category names that match
    */
-  const getChatCategoryNames = (chat: ProjectChat): string[] => {
+  const getChatCategoryNames = (chat: KnowledgeBaseChat): string[] => {
     const names: string[] = []
     const matchedCatIds = new Set<string>()
 
@@ -149,7 +149,7 @@ const ChatTab = ({
    *
    * @param chat - Chat record to edit
    */
-  const handleOpenEdit = (chat: ProjectChat) => {
+  const handleOpenEdit = (chat: KnowledgeBaseChat) => {
     setEditingChat(chat)
     setChatModalOpen(true)
   }
@@ -180,11 +180,11 @@ const ChatTab = ({
 
       if (editingChat) {
         // Update existing chat
-        await updateProjectChat(knowledgeBaseId, editingChat.id, payload)
+        await updateKnowledgeBaseChat(knowledgeBaseId, editingChat.id, payload)
         globalMessage.success(t('projectManagement.chats.updateSuccess'))
       } else {
         // Create new chat
-        await createProjectChat(knowledgeBaseId, payload)
+        await createKnowledgeBaseChat(knowledgeBaseId, payload)
         globalMessage.success(t('projectManagement.chats.createSuccess'))
       }
 
@@ -215,7 +215,7 @@ const ChatTab = ({
     if (!confirmed) return
 
     try {
-      await deleteProjectChat(knowledgeBaseId, chatId)
+      await deleteKnowledgeBaseChat(knowledgeBaseId, chatId)
       const chatData = await getKnowledgeBaseChats(knowledgeBaseId)
       setChats(chatData)
     } catch (err) {
@@ -231,7 +231,7 @@ const ChatTab = ({
   const handleSyncChat = async (chatId: string) => {
     try {
       setSyncingId(chatId)
-      await syncProjectChat(knowledgeBaseId, chatId)
+      await syncKnowledgeBaseChat(knowledgeBaseId, chatId)
       const chatData = await getKnowledgeBaseChats(knowledgeBaseId)
       setChats(chatData)
       globalMessage.success(t('projectManagement.chats.syncSuccess'))

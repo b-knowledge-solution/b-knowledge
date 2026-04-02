@@ -218,7 +218,7 @@ const JobManagementPanel = ({
     if (!silent) setLoading(true)
     try {
       const result = await getConverterJobs({
-        knowledgeBaseId,
+        projectId: knowledgeBaseId,
         categoryId,
         versionId,
         page: 1,

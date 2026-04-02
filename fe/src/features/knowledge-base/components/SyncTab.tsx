@@ -44,7 +44,7 @@ interface SyncTabProps {
  */
 const SyncTab = ({ knowledgeBaseId }: SyncTabProps) => {
   const { t } = useTranslation()
-  const [configs, setConfigs] = useState<ProjectSyncConfig[]>([])
+  const [configs, setConfigs] = useState<KnowledgeBaseSyncConfig[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [triggering, setTriggering] = useState(false)

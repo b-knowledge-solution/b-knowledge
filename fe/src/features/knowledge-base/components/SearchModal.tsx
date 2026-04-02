@@ -33,7 +33,7 @@ import { ChevronDown } from 'lucide-react'
 import type {
   DocumentCategory,
   DocumentCategoryVersion,
-  ProjectSearch,
+  KnowledgeBaseSearch,
 } from '../api/knowledgeBaseApi'
 
 // ============================================================================
@@ -221,7 +221,7 @@ interface SearchModalProps {
   /** Whether in edit mode */
   isEditing: boolean
   /** Search being edited (null for create) */
-  editingSearch: ProjectSearch | null
+  editingSearch: KnowledgeBaseSearch | null
   /** Knowledge base document categories */
   categories: DocumentCategory[]
   /** Map of category ID -> its versions */

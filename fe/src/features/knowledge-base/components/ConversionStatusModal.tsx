@@ -156,7 +156,7 @@ const ConversionStatusModal = ({ open, onClose, knowledgeBaseId }: ConversionSta
       setError(null);
 
       const [jobsData, statsData] = await Promise.all([
-        getConverterJobs({ knowledgeBaseId, page: 1, pageSize: 100 }),
+        getConverterJobs({ projectId: knowledgeBaseId, page: 1, pageSize: 100 }),
         getConverterStats(),
       ]);
 
