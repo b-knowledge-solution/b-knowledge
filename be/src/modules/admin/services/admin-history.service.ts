@@ -109,39 +109,19 @@ export class AdminHistoryService {
         tenantId?: string
     ) {
         // Calculate offset for pagination
-        const offset = (page - 1) * limit;
+        const offset = (page - 1) * limit
 
-        // ── External history_chat_sessions ────────────────────────────────
-        const extMessageCount = db('history_chat_messages as hcm_count')
-            .select('hcm_count.session_id')
-            .count('* as message_count')
-            .groupBy('hcm_count.session_id')
-
-        const extFirstPrompt = db('history_chat_messages as hcm_first')
-            .distinctOn('hcm_first.session_id')
-            .select('hcm_first.session_id', 'hcm_first.user_prompt')
-            .orderBy('hcm_first.session_id')
-            .orderBy('hcm_first.created_at', 'asc')
-
-        const extFeedbackAgg = this.buildFeedbackAggregate('chat', tenantId)
-
+        // ── External history_chat_sessions (page first, then enrich) ─────
         let extQuery = ModelFactory.historyChatSession.getKnex()
             .select(
                 'history_chat_sessions.session_id',
                 'history_chat_sessions.updated_at as created_at',
-                'history_chat_sessions.user_email',
-                db.raw('COALESCE(hcm_first.user_prompt, \'\') as user_prompt'),
-                db.raw('COALESCE(hcm_count.message_count, 0)::int as message_count'),
-                db.raw('COALESCE(chat_fb.positive_count, 0)::int as positive_count'),
-                db.raw('COALESCE(chat_fb.negative_count, 0)::int as negative_count')
+                'history_chat_sessions.user_email'
             )
             .from('history_chat_sessions')
-            .leftJoin(extFirstPrompt.as('hcm_first'), 'hcm_first.session_id', 'history_chat_sessions.session_id')
-            .leftJoin(extMessageCount.as('hcm_count'), 'hcm_count.session_id', 'history_chat_sessions.session_id')
-            .leftJoin(extFeedbackAgg.as('chat_fb'), 'chat_fb.source_id', 'history_chat_sessions.session_id')
             .orderBy('history_chat_sessions.updated_at', 'desc')
             .limit(limit)
-            .offset(offset);
+            .offset(offset)
 
         // Apply full-text search filter across email and message content
         if (search) {
@@ -194,41 +174,54 @@ export class AdminHistoryService {
         // Apply feedback filter to external query
         extQuery = this.applyFeedbackFilter(extQuery, 'chat', 'history_chat_sessions.session_id', feedbackFilter);
 
-        const externalResults = await extQuery;
+        const externalBase = await extQuery
+        const externalIds = externalBase.map((row: any) => row.session_id)
+        let externalResults = externalBase.map((row: any) => ({ ...row, user_prompt: '', message_count: 0, positive_count: 0, negative_count: 0 }))
 
-        // ── Internal chat_sessions ────────────────────────────────────────
-        const intFirstPrompt = db('chat_messages as cm_first')
-            .distinctOn('cm_first.session_id')
-            .select('cm_first.session_id', 'cm_first.content as user_prompt')
-            .where('cm_first.role', MessageRole.USER)
-            .orderBy('cm_first.session_id')
-            .orderBy('cm_first.timestamp', 'asc')
+        if (externalIds.length > 0) {
+            const [firstPrompts, messageCounts, feedbackRows] = await Promise.all([
+                db('history_chat_messages as hcm_first')
+                    .distinctOn('hcm_first.session_id')
+                    .select('hcm_first.session_id', 'hcm_first.user_prompt')
+                    .whereIn('hcm_first.session_id', externalIds)
+                    .orderBy('hcm_first.session_id')
+                    .orderBy('hcm_first.created_at', 'asc'),
+                db('history_chat_messages as hcm_count')
+                    .select('hcm_count.session_id')
+                    .count('* as message_count')
+                    .whereIn('hcm_count.session_id', externalIds)
+                    .groupBy('hcm_count.session_id'),
+                this.buildFeedbackAggregate('chat', tenantId).whereIn('af.source_id', externalIds),
+            ])
 
-        const intMessageCount = db('chat_messages as cm_count')
-            .select('cm_count.session_id')
-            .count('* as message_count')
-            .groupBy('cm_count.session_id')
+            const promptMap = new Map(firstPrompts.map((row: any) => [row.session_id, row.user_prompt]))
+            const countMap = new Map(messageCounts.map((row: any) => [row.session_id, Number(row.message_count ?? 0)]))
+            const feedbackMap = new Map(feedbackRows.map((row: any) => [row.source_id, row]))
 
-        const intFeedbackAgg = this.buildFeedbackAggregate('chat', tenantId)
+            externalResults = externalBase.map((row: any) => {
+                const feedback = feedbackMap.get(row.session_id)
+                return {
+                    ...row,
+                    user_prompt: promptMap.get(row.session_id) ?? '',
+                    message_count: countMap.get(row.session_id) ?? 0,
+                    positive_count: Number(feedback?.positive_count ?? 0),
+                    negative_count: Number(feedback?.negative_count ?? 0),
+                }
+            })
+        }
 
+        // ── Internal chat_sessions (page first, then enrich) ──────────────
         let intQuery = db('chat_sessions')
             .leftJoin('users', 'chat_sessions.user_id', 'users.id')
-            .leftJoin(intFirstPrompt.as('cm_first'), 'cm_first.session_id', 'chat_sessions.id')
-            .leftJoin(intMessageCount.as('cm_count'), 'cm_count.session_id', 'chat_sessions.id')
-            .joinRaw('LEFT JOIN (?) as chat_fb ON chat_fb.source_id = chat_sessions.id::text', [intFeedbackAgg])
             .select(
                 'chat_sessions.id as session_id',
                 'chat_sessions.created_at',
                 'users.email as user_email',
-                db.raw('COALESCE(cm_first.user_prompt, \'\') as user_prompt'),
-                db.raw('COALESCE(cm_count.message_count, 0)::int as message_count'),
-                db.raw('COALESCE(chat_fb.positive_count, 0)::int as positive_count'),
-                db.raw('COALESCE(chat_fb.negative_count, 0)::int as negative_count'),
                 'chat_sessions.title'
             )
             .orderBy('chat_sessions.created_at', 'desc')
             .limit(limit)
-            .offset(offset);
+            .offset(offset)
 
         // Apply search filter
         if (search) {
@@ -259,10 +252,46 @@ export class AdminHistoryService {
         // Apply feedback filter to internal query
         intQuery = this.applyFeedbackFilter(intQuery, 'chat', 'chat_sessions.id::text', feedbackFilter);
 
-        const internalResults = (await intQuery).map((r: any) => ({ ...r, source: 'internal' }));
+        const internalBase = await intQuery
+        const internalIds = internalBase.map((row: any) => row.session_id)
+        let internalResults = internalBase.map((r: any) => ({ ...r, user_prompt: '', message_count: 0, positive_count: 0, negative_count: 0, source: 'internal' }))
+
+        if (internalIds.length > 0) {
+            const [firstPrompts, messageCounts, feedbackRows] = await Promise.all([
+                db('chat_messages as cm_first')
+                    .distinctOn('cm_first.session_id')
+                    .select('cm_first.session_id', 'cm_first.content as user_prompt')
+                    .where('cm_first.role', MessageRole.USER)
+                    .whereIn('cm_first.session_id', internalIds)
+                    .orderBy('cm_first.session_id')
+                    .orderBy('cm_first.timestamp', 'asc'),
+                db('chat_messages as cm_count')
+                    .select('cm_count.session_id')
+                    .count('* as message_count')
+                    .whereIn('cm_count.session_id', internalIds)
+                    .groupBy('cm_count.session_id'),
+                this.buildFeedbackAggregate('chat', tenantId).whereIn('af.source_id', internalIds),
+            ])
+
+            const promptMap = new Map(firstPrompts.map((row: any) => [row.session_id, row.user_prompt]))
+            const countMap = new Map(messageCounts.map((row: any) => [row.session_id, Number(row.message_count ?? 0)]))
+            const feedbackMap = new Map(feedbackRows.map((row: any) => [row.source_id, row]))
+
+            internalResults = internalBase.map((row: any) => {
+                const feedback = feedbackMap.get(row.session_id)
+                return {
+                    ...row,
+                    user_prompt: promptMap.get(row.session_id) ?? '',
+                    message_count: countMap.get(row.session_id) ?? 0,
+                    positive_count: Number(feedback?.positive_count ?? 0),
+                    negative_count: Number(feedback?.negative_count ?? 0),
+                    source: 'internal',
+                }
+            })
+        }
 
         // ── Merge & sort by date descending ───────────────────────────────
-        const merged = [...externalResults, ...internalResults];
+        const merged = [...externalResults, ...internalResults]
         merged.sort((a: any, b: any) => {
             const dateA = new Date(a.created_at).getTime();
             const dateB = new Date(b.created_at).getTime();
@@ -366,40 +395,20 @@ export class AdminHistoryService {
         tenantId?: string
     ) {
         // Calculate pagination offset
-        const offset = (page - 1) * limit;
+        const offset = (page - 1) * limit
 
-        // Base query on sessions
-        const searchFirstInput = db('history_search_records as hsr_first')
-            .distinctOn('hsr_first.session_id')
-            .select('hsr_first.session_id', 'hsr_first.search_input')
-            .orderBy('hsr_first.session_id')
-            .orderBy('hsr_first.created_at', 'asc')
-
-        const searchMessageCount = db('history_search_records as hsr_count')
-            .select('hsr_count.session_id')
-            .count('* as message_count')
-            .groupBy('hsr_count.session_id')
-
-        const searchFeedbackAgg = this.buildFeedbackAggregate('search', tenantId)
-
+        // Base query on sessions (page first), then enrich only paged session IDs
         let query = ModelFactory.historySearchSession.getKnex()
             .select(
                 'history_search_sessions.session_id',
                 'history_search_sessions.updated_at as created_at',
                 'history_search_sessions.user_email',
-                db.raw('COALESCE(hsr_first.search_input, \'\') as search_input'),
-                db.raw('COALESCE(hsr_count.message_count, 0)::int as message_count'),
-                db.raw('COALESCE(search_fb.positive_count, 0)::int as positive_count'),
-                db.raw('COALESCE(search_fb.negative_count, 0)::int as negative_count')
             )
             .from('history_search_sessions')
-            .leftJoin(searchFirstInput.as('hsr_first'), 'hsr_first.session_id', 'history_search_sessions.session_id')
-            .leftJoin(searchMessageCount.as('hsr_count'), 'hsr_count.session_id', 'history_search_sessions.session_id')
-            .leftJoin(searchFeedbackAgg.as('search_fb'), 'search_fb.source_id', 'history_search_sessions.session_id')
 
             .orderBy('history_search_sessions.updated_at', 'desc')
             .limit(limit)
-            .offset(offset);
+            .offset(offset)
 
         // Apply full-text search filter across email and search record content
         if (search) {
@@ -447,10 +456,41 @@ export class AdminHistoryService {
             query = query.where('history_search_sessions.updated_at', '<=', `${endDate} 23:59:59`);
         }
 
-        // Apply feedback filter
+        // Apply feedback filter before pagination
         query = this.applyFeedbackFilter(query, 'search', 'history_search_sessions.session_id', feedbackFilter);
+        const baseSessions = await query
+        if (baseSessions.length === 0) return []
 
-        return await query;
+        const sessionIds = baseSessions.map((row: any) => row.session_id)
+        const [firstInputs, messageCounts, feedbackRows] = await Promise.all([
+            db('history_search_records as hsr_first')
+                .distinctOn('hsr_first.session_id')
+                .select('hsr_first.session_id', 'hsr_first.search_input')
+                .whereIn('hsr_first.session_id', sessionIds)
+                .orderBy('hsr_first.session_id')
+                .orderBy('hsr_first.created_at', 'asc'),
+            db('history_search_records as hsr_count')
+                .select('hsr_count.session_id')
+                .count('* as message_count')
+                .whereIn('hsr_count.session_id', sessionIds)
+                .groupBy('hsr_count.session_id'),
+            this.buildFeedbackAggregate('search', tenantId).whereIn('af.source_id', sessionIds),
+        ])
+
+        const inputMap = new Map(firstInputs.map((row: any) => [row.session_id, row.search_input]))
+        const countMap = new Map(messageCounts.map((row: any) => [row.session_id, Number(row.message_count ?? 0)]))
+        const feedbackMap = new Map(feedbackRows.map((row: any) => [row.source_id, row]))
+
+        return baseSessions.map((row: any) => {
+            const feedback = feedbackMap.get(row.session_id)
+            return {
+                ...row,
+                search_input: inputMap.get(row.session_id) ?? '',
+                message_count: countMap.get(row.session_id) ?? 0,
+                positive_count: Number(feedback?.positive_count ?? 0),
+                negative_count: Number(feedback?.negative_count ?? 0),
+            }
+        })
     }
 
     /**
