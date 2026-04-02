@@ -30,8 +30,8 @@ export interface Agent {
   policy_rules: Record<string, unknown> | null
   /** Multi-tenant isolation identifier */
   tenant_id: string
-  /** Optional project association UUID */
-  project_id: string | null
+  /** Optional knowledge base association UUID */
+  knowledge_base_id: string | null
   /** Version-as-row: parent_id points to the original agent (null = parent) */
   parent_id: string | null
   /** Monotonically increasing version number (0 = parent) */
@@ -80,13 +80,13 @@ export class AgentModel extends BaseModel<Agent> {
   }
 
   /**
-   * @description Find all agents associated with a project, ordered newest first.
-   * @param {string} projectId - UUID of the project
-   * @returns {Promise<Agent[]>} Array of agents within the project
+   * @description Find all agents associated with a knowledge base, ordered newest first.
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
+   * @returns {Promise<Agent[]>} Array of agents within the knowledge base
    */
-  async findByProject(projectId: string): Promise<Agent[]> {
+  async findByKnowledgeBase(knowledgeBaseId: string): Promise<Agent[]> {
     return this.knex(this.tableName)
-      .where('project_id', projectId)
+      .where('knowledge_base_id', knowledgeBaseId)
       .orderBy('created_at', 'desc')
   }
 }

@@ -20,7 +20,7 @@ import type { CreateAgentDto, UpdateAgentDto, ListAgentsQuery } from '../schemas
 class AgentService {
   /**
    * @description List root agents (parent_id IS NULL) for a tenant with optional filters.
-   *   Supports pagination, mode/status filtering, project association, and name search.
+   *   Supports pagination, mode/status filtering, knowledge base association, and name search.
    * @param {string} tenantId - Tenant/organization identifier for multi-tenant isolation
    * @param {ListAgentsQuery} filters - Pagination and filter parameters
    * @returns {Promise<{ data: Agent[]; total: number; page: number; page_size: number }>} Paginated agent list
@@ -31,7 +31,7 @@ class AgentService {
     page: number
     page_size: number
   }> {
-    const { page, page_size, mode, status, project_id, search } = filters
+    const { page, page_size, mode, status, knowledge_base_id, search } = filters
 
     // Base query: root agents only (not version rows), scoped to tenant
     let query = ModelFactory.agent.getKnex()
@@ -44,8 +44,8 @@ class AgentService {
     // Apply optional status filter (draft vs published)
     if (status) query = query.andWhere('status', status)
 
-    // Apply optional project association filter
-    if (project_id) query = query.andWhere('project_id', project_id)
+    // Apply optional knowledge base association filter
+    if (knowledge_base_id) query = query.andWhere('knowledge_base_id', knowledge_base_id)
 
     // Apply optional name/description search (case-insensitive ILIKE)
     if (search) {
@@ -92,7 +92,7 @@ class AgentService {
 
   /**
    * @description Create a new agent. If template_id is provided, copy DSL from the template.
-   * @param {CreateAgentDto} data - Agent creation data (name, description, mode, project_id, template_id)
+   * @param {CreateAgentDto} data - Agent creation data (name, description, mode, knowledge_base_id, template_id)
    * @param {string} tenantId - Tenant/organization identifier
    * @param {string} userId - UUID of the creating user
    * @returns {Promise<Agent>} The created agent record
@@ -119,7 +119,7 @@ class AgentService {
       dsl,
       dsl_version: 1,
       tenant_id: tenantId,
-      project_id: data.project_id ?? null,
+      knowledge_base_id: data.knowledge_base_id ?? null,
       parent_id: null,
       version_number: 0,
       version_label: null,
@@ -202,7 +202,7 @@ class AgentService {
       dsl: typeof source.dsl === 'string' ? JSON.parse(source.dsl) : source.dsl,
       dsl_version: source.dsl_version,
       tenant_id: tenantId,
-      project_id: source.project_id,
+      knowledge_base_id: source.knowledge_base_id,
       parent_id: null,
       version_number: 0,
       version_label: null,
@@ -253,7 +253,7 @@ class AgentService {
       dsl: typeof parent.dsl === 'string' ? JSON.parse(parent.dsl) : parent.dsl,
       dsl_version: parent.dsl_version,
       tenant_id: tenantId,
-      project_id: parent.project_id,
+      knowledge_base_id: parent.knowledge_base_id,
       parent_id: id,
       version_number: nextVersion,
       version_label: label ?? null,
