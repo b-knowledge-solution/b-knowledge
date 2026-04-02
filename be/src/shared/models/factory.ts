@@ -3,6 +3,7 @@
  * Lazy-loaded singletons for all data models to keep connection sharing consistent.
  */
 import { UserModel } from '@/modules/users/models/user.model.js';
+import { UserTenantModel } from '@/modules/users/models/user-tenant.model.js';
 import { TeamModel } from '@/modules/teams/models/team.model.js';
 import { UserTeamModel } from '@/modules/teams/models/user-team.model.js';
 import { ChatSessionModel } from '@/modules/chat/models/chat-session.model.js';
@@ -84,6 +85,8 @@ export class ModelFactory {
   // Private static fields to hold singleton instances
   /** User model singleton instance */
   private static userModel: UserModel;
+  /** User-Tenant membership model singleton instance */
+  private static userTenantModel: UserTenantModel;
   /** Team model singleton instance */
   private static teamModel: TeamModel;
   /** User-Team relationship model singleton instance */
@@ -228,6 +231,17 @@ export class ModelFactory {
     // Create instance on first access (lazy initialization)
     if (!this.userModel) this.userModel = new UserModel();
     return this.userModel;
+  }
+
+  /**
+   * @description Get the UserTenant model singleton.
+   * Manages user-to-tenant (organization) membership relationships.
+   * @returns {UserTenantModel} Instance for user-tenant membership operations
+   */
+  static get userTenant() {
+    // Create instance on first access (lazy initialization)
+    if (!this.userTenantModel) this.userTenantModel = new UserTenantModel();
+    return this.userTenantModel;
   }
 
   /**

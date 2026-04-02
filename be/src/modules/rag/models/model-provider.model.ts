@@ -37,6 +37,19 @@ export class ModelProviderModel extends BaseModel<ModelProvider> {
   }
 
   /**
+   * @description Find an active embedding provider by model name
+   * @param {string} modelName - The embedding model name (e.g., "text-embedding-3-small")
+   * @returns {Promise<ModelProvider | undefined>} The matching active embedding provider or undefined
+   */
+  async findActiveEmbeddingByModelName(modelName: string): Promise<ModelProvider | undefined> {
+    return this.knex(this.tableName)
+      .where('model_name', modelName)
+      .where('model_type', 'embedding')
+      .where('status', ProviderStatus.ACTIVE)
+      .first()
+  }
+
+  /**
    * @description Clear the is_default flag for all active providers of a given model type,
    * excluding the specified provider. Used when marking a new provider as default.
    * @param {string} modelType - The model type to clear defaults for (e.g. 'chat', 'embedding')

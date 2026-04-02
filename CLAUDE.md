@@ -265,6 +265,38 @@ These apply to **both** `be/src/modules/` and `fe/src/features/`:
 - Migration naming: `YYYYMMDDhhmmss_<name>.ts`
 - **All DB migrations through Knex** — including schema changes to Peewee-managed tables (`document`, `knowledgebase`, `task`, `file`, `tenant_llm`, etc.). Never use Peewee migrators. The backend owns the migration lifecycle; Python workers only read/write data via their ORM.
 
+#### Database Access Layer Rules (STRICT — No Exceptions)
+
+**All database queries MUST live in model files.** Services, controllers, and middleware must NEVER:
+- Import `db` from `@/shared/db/knex.js`
+- Call `db('table')`, `db.raw()`, `db.transaction()` directly
+- Use `.getKnex()` on models to build inline queries
+- Use `.whereRaw()`, `.selectRaw()`, `.groupByRaw()` outside model files
+
+**The ONLY correct pattern:**
+```typescript
+// ✅ CORRECT — In service or controller:
+const result = await ModelFactory.user.findByEmail(email)
+
+// ❌ WRONG — Direct DB access in service/controller:
+import { db } from '@/shared/db/knex.js'
+const result = await db('users').where({ email }).first()
+
+// ❌ WRONG — getKnex() bypass in service/controller:
+const result = await ModelFactory.user.getKnex().where({ email }).first()
+```
+
+**When a model lacks the needed query:** Add a new method to the model class — NEVER bypass via raw `db()` in the caller.
+
+**Model query best practices:**
+- **Single responsibility:** Each model method does ONE query or one transaction
+- **Batch operations:** Use `whereIn()` for multi-ID lookups, avoid N+1 patterns
+- **Pagination:** Accept `limit`/`offset` params, return `{ data, total }` for paginated queries
+- **Transactions:** Models own transaction boundaries via `this.knex.transaction()`
+- **Index-aware queries:** Use indexed columns in WHERE/JOIN/ORDER BY clauses
+- **Select only needed columns:** Use `.select(columns)` for large tables, avoid `SELECT *` in list queries
+- **Cross-table analytics:** Create dedicated module-level models (e.g. `DashboardModel`, `AdminHistoryModel`)
+
 ### Frontend Conventions (details in `fe/CLAUDE.md`)
 
 - API layer split: `<domain>Api.ts` (raw HTTP) + `<domain>Queries.ts` (TanStack Query hooks)

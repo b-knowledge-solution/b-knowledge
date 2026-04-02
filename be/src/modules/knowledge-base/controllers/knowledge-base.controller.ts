@@ -557,9 +557,7 @@ export class KnowledgeBaseController {
           await ragDocumentService.beginParse(docId)
           await ragRedisService.queueParseInit(docId)
           // Update version file status to 'parsing'
-          await ModelFactory.documentCategoryVersionFile.getKnex()
-            .where({ version_id: versionId, ragflow_doc_id: docId })
-            .update({ status: 'parsing', updated_at: new Date() })
+          await ModelFactory.documentCategoryVersionFile.updateStatusByVersionAndDocId(versionId, docId, 'parsing')
         } catch (parseErr) {
           log.warn('Failed to auto-trigger parsing', { docId, error: String(parseErr) })
         }
@@ -584,9 +582,7 @@ export class KnowledgeBaseController {
           await converterQueueService.triggerManualConversion()
           // Update version file statuses to 'converting'
           for (const { docId } of officeFiles) {
-            await ModelFactory.documentCategoryVersionFile.getKnex()
-              .where({ version_id: versionId, ragflow_doc_id: docId })
-              .update({ status: 'converting', updated_at: new Date() })
+            await ModelFactory.documentCategoryVersionFile.updateStatusByVersionAndDocId(versionId, docId, 'converting')
           }
         } catch (convErr) {
           log.warn('Failed to create converter job', { versionId, error: String(convErr) })

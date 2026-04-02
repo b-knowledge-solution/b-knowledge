@@ -22,7 +22,6 @@ import { log } from '@/shared/services/logger.service.js';
 import { ModelFactory } from '@/shared/models/factory.js';
 import { getClientIp } from '@/shared/utils/ip.js';
 import { getRedisClient } from '@/shared/services/redis.service.js';
-import { db } from '@/shared/db/knex.js';
 import { getTenantId } from '@/shared/middleware/tenant.middleware.js';
 import { datasetSyncService } from '../services/dataset-sync.service.js';
 import { converterQueueService } from '../services/converter-queue.service.js';
@@ -39,12 +38,7 @@ import { ComparisonLiteral, DatasetStatus, ParseRunAction } from '@/shared/const
 async function resolveEmbeddingProviderId(modelName: string): Promise<string | null> {
     if (!modelName) return null;
     // Look up the active embedding provider by model name
-    const provider = await db('model_providers')
-        .select('id')
-        .where('model_name', modelName)
-        .where('model_type', 'embedding')
-        .where('status', 'active')
-        .first();
+    const provider = await ModelFactory.modelProvider.findActiveEmbeddingByModelName(modelName);
     return provider?.id || null;
 }
 
@@ -280,9 +274,7 @@ export class RagController {
                 }
 
                 // Update doc count on the version dataset
-                await ModelFactory.dataset.getKnex()
-                    .where({ id: versionDataset.id })
-                    .increment('doc_count', uploadedDocs.length)
+                await ModelFactory.dataset.incrementDocCount(versionDataset.id, uploadedDocs.length)
 
                 // Split uploaded docs into Office files (need conversion) vs direct-parseable
                 const officeFiles: { docId: string; fileName: string }[] = []
@@ -566,9 +558,7 @@ export class RagController {
             }
 
             // Update doc count on datasets table
-            await ModelFactory.dataset.getKnex()
-                .where({ id: datasetId })
-                .increment('doc_count', results.length);
+            await ModelFactory.dataset.incrementDocCount(datasetId, results.length);
 
             // Auto-trigger parsing only for non-Office files (Office files need conversion first)
             for (const result of results) {

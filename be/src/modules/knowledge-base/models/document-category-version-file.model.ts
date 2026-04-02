@@ -24,4 +24,17 @@ export class DocumentCategoryVersionFileModel extends BaseModel<DocumentCategory
       .where('version_id', versionId)
       .orderBy('created_at', 'desc')
   }
+
+  /**
+   * @description Update the status of a version file identified by version_id and ragflow_doc_id
+   * @param {string} versionId - UUID of the category version
+   * @param {string} ragflowDocId - The ragflow document ID
+   * @param {string} status - New status value (e.g. 'parsing', 'converting')
+   * @returns {Promise<void>}
+   */
+  async updateStatusByVersionAndDocId(versionId: string, ragflowDocId: string, status: string): Promise<void> {
+    await this.knex(this.tableName)
+      .where({ version_id: versionId, ragflow_doc_id: ragflowDocId })
+      .update({ status, updated_at: new Date() })
+  }
 }

@@ -137,4 +137,16 @@ export class DatasetModel extends BaseModel<Dataset> {
       .where('tenant_id', tenantId)
       .select('id', 'name', 'tenant_id')
   }
+
+  /**
+   * @description Increment the doc_count column for a dataset by a given amount
+   * @param {string} datasetId - The dataset UUID to update
+   * @param {number} count - The number to add to the current doc_count
+   * @returns {Promise<void>}
+   */
+  async incrementDocCount(datasetId: string, count: number): Promise<void> {
+    await this.knex(this.tableName)
+      .where({ id: datasetId })
+      .increment('doc_count', count)
+  }
 }

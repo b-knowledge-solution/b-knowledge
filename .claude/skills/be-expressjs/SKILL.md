@@ -288,7 +288,7 @@ export const domainService = new DomainService()
 
 ### Model (`models/<domain>.model.ts`)
 
-Extend `BaseModel` from shared:
+Extend `BaseModel` from shared. **ONLY models may access the database.**
 
 ```ts
 import { BaseModel } from '@/shared/models/base.model.js'
@@ -296,16 +296,171 @@ import { db } from '@/shared/db/knex.js'
 import type { DomainItem } from '@/shared/models/types.js'
 
 /**
- * Knex model for the domain_items table.
- * @description Inherits CRUD operations from BaseModel.
+ * @description Knex model for the domain_items table.
+ * Inherits CRUD from BaseModel; add domain-specific query methods here.
  */
 export class DomainModel extends BaseModel<DomainItem> {
   protected tableName = 'domain_items'
   protected knex = db
+
+  /**
+   * @description Find items by creator with pagination
+   * @param {string} userId - Creator's UUID
+   * @param {number} limit - Page size
+   * @param {number} offset - Records to skip
+   * @param {string} [search] - Optional search term
+   * @returns {Promise<{ data: DomainItem[]; total: number }>} Paginated results
+   */
+  async findByCreatorPaginated(
+    userId: string, limit: number, offset: number, search?: string
+  ): Promise<{ data: DomainItem[]; total: number }> {
+    // Base query scoped to creator
+    let query = this.knex(this.tableName).where('created_by', userId)
+
+    // Apply optional search filter
+    if (search) {
+      query = query.andWhere(function () {
+        this.whereILike('name', `%${search}%`)
+          .orWhereILike('description', `%${search}%`)
+      })
+    }
+
+    // Run count and data queries in parallel
+    const [countResult, data] = await Promise.all([
+      query.clone().count('* as cnt').first(),
+      query.clone().orderBy('created_at', 'desc').limit(limit).offset(offset),
+    ])
+
+    return { data, total: Number((countResult as any)?.cnt ?? 0) }
+  }
+
+  /**
+   * @description Batch find items by IDs
+   * @param {string[]} ids - Array of UUIDs
+   * @returns {Promise<DomainItem[]>} Matching items
+   */
+  async findByIds(ids: string[]): Promise<DomainItem[]> {
+    if (ids.length === 0) return []
+    return this.knex(this.tableName).whereIn('id', ids)
+  }
+
+  /**
+   * @description Atomically increment a counter column
+   * @param {string} id - Record UUID
+   * @param {string} column - Column to increment
+   * @param {number} amount - Amount to increment by
+   * @returns {Promise<void>}
+   */
+  async incrementColumn(id: string, column: string, amount: number): Promise<void> {
+    await this.knex(this.tableName).where({ id }).increment(column, amount)
+  }
+
+  /**
+   * @description Transactional multi-step operation example
+   * @param {string} id - Item UUID
+   * @param {Record<string, unknown>} data - Update data
+   * @returns {Promise<DomainItem>} Updated item
+   */
+  async updateWithAudit(id: string, data: Record<string, unknown>): Promise<DomainItem> {
+    return this.knex.transaction(async (trx) => {
+      const [updated] = await trx(this.tableName)
+        .where({ id })
+        .update(data)
+        .returning('*')
+
+      await trx('audit_logs').insert({
+        resource_id: id,
+        action: 'update',
+        details: JSON.stringify(data),
+      })
+
+      return updated
+    })
+  }
 }
 ```
 
 Register in `shared/models/factory.ts` as a lazy singleton getter.
+
+---
+
+## Database Access Rules (STRICT — No Exceptions)
+
+**ALL database queries MUST live in model files.** This is the most critical architectural rule.
+
+### What is FORBIDDEN in services, controllers, and middleware:
+
+```ts
+// ❌ NEVER import db in a service/controller:
+import { db } from '@/shared/db/knex.js'
+
+// ❌ NEVER call db() directly:
+const result = await db('users').where({ email }).first()
+
+// ❌ NEVER use db.raw():
+await db.raw('SELECT 1')
+
+// ❌ NEVER use db.transaction() outside a model:
+await db.transaction(async (trx) => { ... })
+
+// ❌ NEVER use getKnex() to build inline queries:
+const rows = await ModelFactory.user.getKnex().where({ role: 'admin' })
+```
+
+### The ONLY correct pattern:
+
+```ts
+// ✅ In service/controller — delegate to model:
+const user = await ModelFactory.user.findByEmail(email)
+const stats = await ModelFactory.dashboard.getTopUsers(startDate, endDate)
+await ModelFactory.canvasVersion.releaseVersion(canvasId, versionId, tenantId)
+
+// ✅ In model — all DB access lives here:
+async findByEmail(email: string): Promise<User | undefined> {
+  return this.knex(this.tableName).where({ email }).first()
+}
+```
+
+### When the model lacks a method:
+
+**Add a new method to the model class.** Never work around it.
+
+### Model Query Best Practices:
+
+| Practice | Example | Why |
+|----------|---------|-----|
+| Batch lookups | `whereIn('id', ids)` | Avoid N+1 round-trips |
+| Select specific columns | `.select('id', 'name', 'email')` | Skip large JSONB/text columns |
+| Pagination pattern | Return `{ data, total }` | Consistent list API |
+| Index-aware WHERE | Filter on indexed columns | Prevent full table scans |
+| Transactions in models | `this.knex.transaction()` | Keep atomic ops in data layer |
+| Cross-table analytics | Dedicated model class | `DashboardModel`, `AdminHistoryModel` |
+| Distinct + whereIn | For permission lookups | Single query, not N+1 |
+| Parallel queries | `Promise.all([query1, query2])` | Reduce latency for independent queries |
+
+### Anti-patterns to avoid:
+
+```ts
+// ❌ N+1 query — fetching in a loop:
+for (const id of ids) {
+  const item = await ModelFactory.item.findById(id) // BAD: N queries
+}
+
+// ✅ Batch query — single round-trip:
+const items = await ModelFactory.item.findByIds(ids) // GOOD: 1 query
+
+// ❌ SELECT * on large tables:
+const items = await ModelFactory.item.findAll() // BAD: transfers all columns
+
+// ✅ Select only needed columns:
+const items = await ModelFactory.item.findListColumns(filters) // GOOD: lightweight
+
+// ❌ Inline query building in service:
+const q = ModelFactory.item.getKnex().where(...).join(...) // BAD: bypasses model
+
+// ✅ Encapsulated in model method:
+const items = await ModelFactory.item.findWithJoinedDetails(filters) // GOOD: reusable
+```
 
 ### Route Registration
 
@@ -366,18 +521,20 @@ Frontend uses `useSocketEvent()` or `useSocketQueryInvalidation()` to react.
 
 1. [ ] Create `be/src/modules/<domain>/` with correct layout (flat or sub-dir)
 2. [ ] Create Zod schemas for all mutation endpoints
-3. [ ] Create service class with singleton export
-4. [ ] Create controller class with async methods
-5. [ ] Create routes with `requireAuth` + `validate()` on mutations
-6. [ ] Create `index.ts` barrel file
-7. [ ] Register routes in `be/src/app/routes.ts`
-8. [ ] If new DB table: create migration via `npm run db:migrate:make <name>`
-9. [ ] If new model: extend `BaseModel`, register in `ModelFactory`
-10. [ ] Add JSDoc headers to every function (`@param`, `@returns`, `@description`)
-11. [ ] Add inline comments above significant logic lines
-12. [ ] Use `.js` extensions in all imports
-13. [ ] Use `config` object for env access, never `process.env`
-14. [ ] Verify with `npm run build` if changes are extensive
+3. [ ] Create model class extending `BaseModel`, register in `ModelFactory`
+4. [ ] **All DB queries in model methods only** — never in services/controllers
+5. [ ] Create service class with singleton export — uses `ModelFactory` for all DB access
+6. [ ] Create controller class with async methods — delegates to service
+7. [ ] Create routes with `requireAuth` + `validate()` on mutations
+8. [ ] Create `index.ts` barrel file
+9. [ ] Register routes in `be/src/app/routes.ts`
+10. [ ] If new DB table: create migration via `npm run db:migrate:make <name>`
+11. [ ] Add JSDoc headers to every function (`@param`, `@returns`, `@description`)
+12. [ ] Add inline comments above significant logic lines
+13. [ ] Use `.js` extensions in all imports
+14. [ ] Use `config` object for env access, never `process.env`
+15. [ ] **Verify no `db` imports or `.getKnex()` calls in services/controllers**
+16. [ ] Verify with `npm run build` if changes are extensive
 
 ## Middleware Reference
 

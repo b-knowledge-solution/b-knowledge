@@ -82,10 +82,46 @@ modules/<domain>/
 
 ### Models (Factory + Singleton)
 - All models extend `BaseModel<T>` with standard CRUD
-- Access via `ModelFactory.users`, `ModelFactory.chatSessions`, etc.
+- Access via `ModelFactory.user`, `ModelFactory.chatSession`, etc.
 - Always use Knex ORM; raw SQL only when Knex cannot support the query
 - Transaction support via optional `trx` parameter
-- **No direct DB in services:** Services must **never** import `db` from `@/shared/db/knex.js` or call `db('table')` directly. All database access from service files must go through `ModelFactory.<model>.<method>()`. If a model lacks the needed query, add a new method to the model class — do not bypass via raw `db()` in the service.
+- Register all new models in `ModelFactory` with lazy getter pattern
+
+### Database Access Rules (STRICT)
+
+**ALL database queries MUST live in model files. No exceptions.**
+
+Services, controllers, and middleware must **NEVER**:
+- Import `db` from `@/shared/db/knex.js`
+- Call `db('table')`, `db.raw()`, or `db.transaction()` directly
+- Use `.getKnex()` on models to build inline queries
+- Use raw Knex builder methods (`.whereRaw()`, `.selectRaw()`) outside models
+
+**Only models may access the database.** If a model lacks the needed query, add a new method to the model — never bypass via raw `db()` in the caller.
+
+```typescript
+// ✅ CORRECT — In service/controller:
+const user = await ModelFactory.user.findByEmail(email)
+const stats = await ModelFactory.dashboard.countRows('chat_sessions', 'created_at')
+
+// ❌ WRONG — Direct DB in service/controller:
+import { db } from '@/shared/db/knex.js'
+const user = await db('users').where({ email }).first()
+
+// ❌ WRONG — getKnex() bypass:
+const user = await ModelFactory.user.getKnex().where({ email }).first()
+```
+
+**Model query best practices:**
+| Practice | Why |
+|----------|-----|
+| Single responsibility per method | Easy to test, reuse, and maintain |
+| `whereIn()` for batch lookups | Avoid N+1 round-trips |
+| `{ data, total }` for paginated queries | Consistent API for list endpoints |
+| Models own transactions (`this.knex.transaction()`) | Atomic operations stay in the data layer |
+| `.select(columns)` on list queries | Avoid transferring unused JSONB/text columns |
+| Use indexed columns in WHERE/ORDER BY | Prevent full table scans |
+| Dedicated analytics models for cross-table queries | `DashboardModel`, `AdminHistoryModel` pattern |
 
 ### RESTful API Route Conventions
 
