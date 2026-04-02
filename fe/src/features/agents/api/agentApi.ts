@@ -35,7 +35,7 @@ interface PaginatedResponse<T> {
 interface ListAgentsParams {
   mode?: 'agent' | 'pipeline'
   status?: 'draft' | 'published'
-  project_id?: string
+  knowledge_base_id?: string
   page?: number
   page_size?: number
   search?: string
@@ -50,7 +50,7 @@ interface ListAgentsParams {
  */
 export const agentApi = {
   /**
-   * @description List agents with optional filtering by mode, status, project, and search term
+   * @description List agents with optional filtering by mode, status, knowledge base, and search term
    * @param {ListAgentsParams} [params] - Optional filter and pagination parameters
    * @returns {Promise<PaginatedResponse<Agent>>} Paginated list of agents
    */
@@ -59,7 +59,7 @@ export const agentApi = {
     const qs = new URLSearchParams()
     if (params?.mode) qs.set('mode', params.mode)
     if (params?.status) qs.set('status', params.status)
-    if (params?.project_id) qs.set('project_id', params.project_id)
+    if (params?.knowledge_base_id) qs.set('knowledge_base_id', params.knowledge_base_id)
     if (params?.page) qs.set('page', String(params.page))
     if (params?.page_size) qs.set('page_size', String(params.page_size))
     if (params?.search) qs.set('search', params.search)
@@ -76,7 +76,7 @@ export const agentApi = {
     api.get<Agent>(`/api/agents/${id}`),
 
   /**
-   * @description Create a new agent with name, mode, and optional template/project association
+   * @description Create a new agent with name, mode, and optional template/knowledge base association
    * @param {CreateAgentDto} data - Agent creation payload
    * @returns {Promise<Agent>} Created agent record
    */
