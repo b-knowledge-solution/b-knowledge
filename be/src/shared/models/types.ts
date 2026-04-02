@@ -763,18 +763,18 @@ export interface BulkImportGlossaryResult {
 }
 
 // ---------------------------------------------------------------------------
-// Project types
+// Knowledge Base types
 // ---------------------------------------------------------------------------
 
 /**
- * @description Project interface representing a record in the 'projects' table.
+ * @description KnowledgeBase interface representing a record in the 'knowledge_base' table.
  */
-export interface Project {
-  /** Unique UUID for the project */
+export interface KnowledgeBase {
+  /** Unique UUID for the knowledge base */
   id: string
-  /** Project name */
+  /** Knowledge base name */
   name: string
-  /** Project description */
+  /** Knowledge base description */
   description?: string | null
   /** Avatar image URL or base64 */
   avatar?: string | null
@@ -784,11 +784,11 @@ export interface Project {
   default_chunk_method?: string | null
   /** Default parser configuration (JSONB) */
   default_parser_config: any
-  /** Project status: active, archived */
+  /** Knowledge base status: active, archived */
   status: string
   /** Tenant ID for multi-org isolation */
   tenant_id: string
-  /** Whether the project is private */
+  /** Whether the knowledge base is private */
   is_private: boolean
   /** User ID who created this record */
   created_by?: string | null
@@ -801,13 +801,13 @@ export interface Project {
 }
 
 /**
- * @description ProjectPermission interface representing tab-level access control.
+ * @description KnowledgeBasePermission interface representing tab-level access control.
  */
-export interface ProjectPermission {
+export interface KnowledgeBasePermission {
   /** Unique UUID */
   id: string
-  /** Reference to the project */
-  project_id: string
+  /** Reference to the knowledge base */
+  knowledge_base_id: string
   /** Grantee type: 'user' or 'team' */
   grantee_type: string
   /** UUID of the grantee */
@@ -829,29 +829,29 @@ export interface ProjectPermission {
 }
 
 /**
- * @description ProjectDataset interface representing the project-dataset junction table.
+ * @description KnowledgeBaseDataset interface representing the knowledge-base-dataset junction table.
  */
-export interface ProjectDataset {
+export interface KnowledgeBaseDataset {
   /** Unique UUID */
   id: string
-  /** Reference to the project */
-  project_id: string
+  /** Reference to the knowledge base */
+  knowledge_base_id: string
   /** Reference to the dataset */
   dataset_id: string
-  /** Whether auto-created with the project */
+  /** Whether auto-created with the knowledge base */
   auto_created: boolean
   /** Timestamp of record creation */
   created_at: Date
 }
 
 /**
- * @description ProjectSyncConfig interface for external data source sync configuration.
+ * @description KnowledgeBaseSyncConfig interface for external data source sync configuration.
  */
-export interface ProjectSyncConfig {
+export interface KnowledgeBaseSyncConfig {
   /** Unique UUID */
   id: string
-  /** Reference to the project */
-  project_id: string
+  /** Reference to the knowledge base */
+  knowledge_base_id: string
   /** Source type: sharepoint, jira, confluence, gitlab, github */
   source_type: string
   /** Encrypted connection configuration */
@@ -875,13 +875,13 @@ export interface ProjectSyncConfig {
 }
 
 /**
- * @description DocumentCategory interface representing a grouping within a project.
+ * @description DocumentCategory interface representing a grouping within a knowledge base.
  */
 export interface DocumentCategory {
   /** Unique UUID */
   id: string
-  /** Reference to the parent project */
-  project_id: string
+  /** Reference to the parent knowledge base */
+  knowledge_base_id: string
   /** Category name */
   name: string
   /** Category description */
@@ -957,13 +957,13 @@ export interface DocumentCategoryVersionFile {
 }
 
 /**
- * @description ProjectChat interface for chat assistants linked to projects.
+ * @description KnowledgeBaseChat interface for chat assistants linked to knowledge bases.
  */
-export interface ProjectChat {
+export interface KnowledgeBaseChat {
   /** Unique UUID */
   id: string
-  /** Reference to the parent project */
-  project_id: string
+  /** Reference to the parent knowledge base */
+  knowledge_base_id: string
   /** Chat name */
   name: string
   /** RAGFlow chat assistant ID */
@@ -991,13 +991,13 @@ export interface ProjectChat {
 }
 
 /**
- * @description ProjectSearch interface for search apps linked to projects.
+ * @description KnowledgeBaseSearch interface for search apps linked to knowledge bases.
  */
-export interface ProjectSearch {
+export interface KnowledgeBaseSearch {
   /** Unique UUID */
   id: string
-  /** Reference to the parent project */
-  project_id: string
+  /** Reference to the parent knowledge base */
+  knowledge_base_id: string
   /** Search app name */
   name: string
   /** Description */
@@ -1025,13 +1025,13 @@ export interface ProjectSearch {
 }
 
 /**
- * @description ProjectEntityPermission interface for granular entity-level access.
+ * @description KnowledgeBaseEntityPermission interface for granular entity-level access.
  */
-export interface ProjectEntityPermission {
+export interface KnowledgeBaseEntityPermission {
   /** Unique UUID */
   id: string
-  /** Reference to the parent project */
-  project_id: string
+  /** Reference to the parent knowledge base */
+  knowledge_base_id: string
   /** Entity type: category, chat, search */
   entity_type: string
   /** UUID of the entity */

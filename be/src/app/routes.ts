@@ -38,7 +38,7 @@ import ragRoutes from '@/modules/rag/routes/rag.routes.js';
 import llmProviderRoutes from '@/modules/llm-provider/routes/llm-provider.routes.js';
 import llmProviderPublicRoutes from '@/modules/llm-provider/routes/llm-provider-public.routes.js';
 import syncRoutes from '@/modules/sync/routes/sync.routes.js';
-import projectRoutes from '@/modules/projects/routes/projects.routes.js';
+import knowledgeBaseRoutes from '@/modules/knowledge-base/routes/knowledge-base.routes.js';
 import feedbackRoutes from '@/modules/feedback/routes/feedback.routes.js';
 import apiKeyRoutes from '@/modules/external/routes/api-key.routes.js';
 import externalApiRoutes from '@/modules/external/routes/external-api.routes.js';
@@ -188,8 +188,8 @@ function registerRoutes(apiRouter: Router): void {
     // Answer feedback (chat and search quality tracking)
     apiRouter.use('/feedback', feedbackRoutes);
 
-    // Projects (multi-category document management)
-    apiRouter.use('/projects', projectRoutes);
+    // Knowledge Base (multi-category document management)
+    apiRouter.use('/knowledge-base', knowledgeBaseRoutes);
 
     // Agent webhook (unauthenticated, rate-limited — must be before authenticated agent routes)
     apiRouter.use('/agents/webhook', agentWebhookRoutes);
