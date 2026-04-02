@@ -218,7 +218,7 @@ const DocumentsTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingM
   const handleDeleteCategory = async (categoryId: string) => {
     const confirmed = await confirm({
       title: t('common.delete'),
-      message: t('projectManagement.categories.deleteConfirm'),
+      message: t('knowledgeBase.categories.deleteConfirm'),
       variant: 'danger',
       confirmText: t('common.delete'),
     })
@@ -246,7 +246,7 @@ const DocumentsTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingM
         (v) => v.version_label.toLowerCase() === version_label.toLowerCase()
       )
       if (duplicate) {
-        globalMessage.error(t('projectManagement.versions.duplicateError'))
+        globalMessage.error(t('knowledgeBase.versions.duplicateError'))
         return
       }
 
@@ -262,7 +262,7 @@ const DocumentsTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingM
       })
       setVersionModalOpen(false)
       await refreshVersions()
-      globalMessage.success(t('projectManagement.versions.syncSuccess'))
+      globalMessage.success(t('knowledgeBase.versions.syncSuccess'))
     } catch (err) {
       globalMessage.error(String(err))
     } finally {
@@ -275,7 +275,7 @@ const DocumentsTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingM
     if (!selectedCategory) return
     const confirmed = await confirm({
       title: t('common.delete'),
-      message: t('projectManagement.versions.deleteConfirm'),
+      message: t('knowledgeBase.versions.deleteConfirm'),
       variant: 'danger',
       confirmText: t('common.delete'),
     })
@@ -294,16 +294,16 @@ const DocumentsTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingM
   const handleArchiveVersion = async (versionId: string) => {
     if (!selectedCategory) return
     const confirmed = await confirm({
-      title: t('projectManagement.versions.deactivate'),
-      message: t('projectManagement.versions.deactivateConfirm'),
+      title: t('knowledgeBase.versions.deactivate'),
+      message: t('knowledgeBase.versions.deactivateConfirm'),
       variant: 'warning',
-      confirmText: t('projectManagement.versions.deactivate'),
+      confirmText: t('knowledgeBase.versions.deactivate'),
     })
     if (!confirmed) return
 
     try {
       await archiveCategoryVersion(knowledgeBaseId, selectedCategory.id, versionId)
-      globalMessage.success(t('projectManagement.versions.deactivateSuccess'))
+      globalMessage.success(t('knowledgeBase.versions.deactivateSuccess'))
       if (selectedVersion?.id === versionId) setSelectedVersion(null)
       await refreshVersions()
     } catch (err) {
@@ -329,7 +329,7 @@ const DocumentsTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingM
           {/* Header with title + [+] button */}
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              {t('projectManagement.categories.title')}
+              {t('knowledgeBase.categories.title')}
             </h3>
             <TooltipProvider>
               <Tooltip>
@@ -343,7 +343,7 @@ const DocumentsTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingM
                     <Plus size={14} />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>{t('projects.newCategory', 'New Category')}</TooltipContent>
+                <TooltipContent>{t('knowledgeBase.newCategory', 'New Category')}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
@@ -354,7 +354,7 @@ const DocumentsTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingM
               <div className="px-4 py-12 text-center">
                 <FolderOpen size={28} className="mx-auto text-muted-foreground/40 mb-2" />
                 <p className="text-xs text-muted-foreground">
-                  {t('projects.emptyCategoryDescription', 'Create a category to start adding files.')}
+                  {t('knowledgeBase.emptyCategoryDescription', 'Create a category to start adding files.')}
                 </p>
               </div>
             ) : (
@@ -390,11 +390,11 @@ const DocumentsTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingM
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={(e: React.MouseEvent) => { e.stopPropagation(); setPermCategoryId(cat.id); setPermCategoryName(cat.name) }}>
                             <Lock size={14} className="mr-2" />
-                            {t('projectManagement.entityPermissions.title', 'Permissions')}
+                            {t('knowledgeBase.entityPermissions.title', 'Permissions')}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={(e: React.MouseEvent) => { e.stopPropagation(); setEditingCategory(cat); setCategoryModalOpen(true) }}>
                             <Pencil size={14} className="mr-2" />
-                            {t('projectManagement.categories.edit')}
+                            {t('knowledgeBase.categories.edit')}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-destructive focus:text-destructive"
@@ -420,7 +420,7 @@ const DocumentsTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingM
           {/* Header with title + [+] button */}
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              {t('projectManagement.versions.title')}
+              {t('knowledgeBase.versions.title')}
             </h3>
             {selectedCategory && (
               <TooltipProvider>
@@ -435,7 +435,7 @@ const DocumentsTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingM
                       <Plus size={14} />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>{t('projects.newVersion', 'New Version')}</TooltipContent>
+                  <TooltipContent>{t('knowledgeBase.newVersion', 'New Version')}</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             )}
@@ -447,7 +447,7 @@ const DocumentsTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingM
               <div className="px-4 py-12 text-center">
                 <GitBranch size={28} className="mx-auto text-muted-foreground/40 mb-2" />
                 <p className="text-xs text-muted-foreground">
-                  {t('projects.selectCategoryForVersions', 'Select a category to see versions')}
+                  {t('knowledgeBase.selectCategoryForVersions', 'Select a category to see versions')}
                 </p>
               </div>
             ) : loadingVersions ? (
@@ -460,7 +460,7 @@ const DocumentsTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingM
               <div className="px-4 py-12 text-center">
                 <GitBranch size={28} className="mx-auto text-muted-foreground/40 mb-2" />
                 <p className="text-xs text-muted-foreground">
-                  {t('projectManagement.versions.noVersionsHint')}
+                  {t('knowledgeBase.versions.noVersionsHint')}
                 </p>
               </div>
             ) : (
@@ -498,7 +498,7 @@ const DocumentsTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingM
                                 <Pencil size={10} />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>{t('projectManagement.versions.editLabel')}</TooltipContent>
+                            <TooltipContent>{t('knowledgeBase.versions.editLabel')}</TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
 
@@ -515,7 +515,7 @@ const DocumentsTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingM
                                   <Archive size={10} />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>{t('projectManagement.versions.deactivate')}</TooltipContent>
+                              <TooltipContent>{t('knowledgeBase.versions.deactivate')}</TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                         )}
@@ -551,7 +551,7 @@ const DocumentsTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingM
           {/* Header with title */}
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              {t('projectManagement.documents.title')}
+              {t('knowledgeBase.documents.title')}
             </h3>
           </div>
 
@@ -571,8 +571,8 @@ const DocumentsTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingM
               <FileText size={32} className="text-muted-foreground/40" />
               <p className="text-sm">
                 {!selectedCategory
-                  ? t('projects.selectCategory', 'Select a category to view its contents')
-                  : t('projects.selectVersionForDocs', 'Select a version to see documents')
+                  ? t('knowledgeBase.selectCategory', 'Select a category to view its contents')
+                  : t('knowledgeBase.selectVersionForDocs', 'Select a version to see documents')
                 }
               </p>
             </div>

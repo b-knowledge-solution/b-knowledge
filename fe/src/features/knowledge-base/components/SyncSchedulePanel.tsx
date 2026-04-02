@@ -64,7 +64,7 @@ const SyncSchedulePanel = ({ schedule, onSave, saving }: SyncSchedulePanelProps)
     const value = selectedPreset === 'custom' ? customCron : (selectedPreset || '0 0 * * *')
     try {
       await onSave(value)
-      globalMessage.success(t('projectManagement.sync.scheduleUpdated'))
+      globalMessage.success(t('knowledgeBase.sync.scheduleUpdated'))
     } catch (err) {
       globalMessage.error(String(err))
     }
@@ -91,12 +91,12 @@ const SyncSchedulePanel = ({ schedule, onSave, saving }: SyncSchedulePanelProps)
       {selectedPreset === 'custom' && (
         <div>
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-            {t('projectManagement.sync.schedule.cronExpression')}
+            {t('knowledgeBase.sync.schedule.cronExpression')}
           </label>
           <Input
             value={customCron}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomCron(e.target.value)}
-            placeholder={t('projectManagement.sync.schedule.cronPlaceholder')}
+            placeholder={t('knowledgeBase.sync.schedule.cronPlaceholder')}
             className="font-mono"
           />
         </div>

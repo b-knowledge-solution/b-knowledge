@@ -126,7 +126,7 @@ const KnowledgeBaseDetailPage = () => {
   if (!knowledgeBase) {
     return (
       <div className="w-full h-full flex items-center justify-center">
-        <p className="text-muted-foreground">{t('projects.loadError', 'Failed to load project. Check your connection and try again.')}</p>
+        <p className="text-muted-foreground">{t('knowledgeBase.loadError', 'Failed to load project. Check your connection and try again.')}</p>
       </div>
     )
   }
@@ -142,7 +142,7 @@ const KnowledgeBaseDetailPage = () => {
             className="mb-2"
           >
             <ArrowLeft size={16} className="mr-2" />
-            {t('projectManagement.title')}
+            {t('knowledgeBase.title')}
           </Button>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -173,21 +173,21 @@ const KnowledgeBaseDetailPage = () => {
           <TabsList>
             <TabsTrigger value="documents">
               <FolderOpen className="h-4 w-4 mr-1.5" />
-              {t('projects.documentsTab', 'Documents')}
+              {t('knowledgeBase.documentsTab', 'Documents')}
               <Badge variant="secondary" className="ml-1.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
                 {documentCategories.length}
               </Badge>
             </TabsTrigger>
             <TabsTrigger value="standard">
               <FileText className="h-4 w-4 mr-1.5" />
-              {t('projects.standardTab', 'Standard')}
+              {t('knowledgeBase.standardTab', 'Standard')}
               <Badge variant="secondary" className="ml-1.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                 {standardCategories.length}
               </Badge>
             </TabsTrigger>
             <TabsTrigger value="code">
               <Code2 className="h-4 w-4 mr-1.5" />
-              {t('projects.codeTab', 'Code')}
+              {t('knowledgeBase.codeTab', 'Code')}
               <Badge variant="secondary" className="ml-1.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
                 {codeCategories.length}
               </Badge>

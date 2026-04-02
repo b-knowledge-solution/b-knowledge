@@ -113,7 +113,7 @@ const SyncTab = ({ knowledgeBaseId }: SyncTabProps) => {
     setTriggering(true)
     try {
       await triggerSync(knowledgeBaseId, activeConfig.id)
-      globalMessage.success(t('projectManagement.sync.triggerSuccess'))
+      globalMessage.success(t('knowledgeBase.sync.triggerSuccess'))
       await fetchConfigs()
     } catch (err) {
       globalMessage.error(String(err))
@@ -136,15 +136,15 @@ const SyncTab = ({ knowledgeBaseId }: SyncTabProps) => {
       <TabsList>
         <TabsTrigger value="connection" className="flex items-center gap-2">
           <Settings size={16} />
-          {t('projectManagement.sync.connection')}
+          {t('knowledgeBase.sync.connection')}
         </TabsTrigger>
         <TabsTrigger value="schedule" className="flex items-center gap-2">
           <Clock size={16} />
-          {t('projectManagement.sync.schedule.title')}
+          {t('knowledgeBase.sync.schedule.title')}
         </TabsTrigger>
         <TabsTrigger value="status" className="flex items-center gap-2">
           <Activity size={16} />
-          {t('projectManagement.sync.status')}
+          {t('knowledgeBase.sync.status')}
         </TabsTrigger>
       </TabsList>
 

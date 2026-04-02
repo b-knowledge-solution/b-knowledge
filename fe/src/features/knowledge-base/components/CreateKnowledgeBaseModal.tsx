@@ -94,7 +94,7 @@ const CreateKnowledgeBaseModal = ({
   const handleSubmit = () => {
     // Validate required name field
     if (!formData.name.trim()) {
-      setNameError(`${t('projectManagement.name')} is required`)
+      setNameError(`${t('knowledgeBase.name')} is required`)
       return
     }
     setNameError('')
@@ -120,17 +120,17 @@ const CreateKnowledgeBaseModal = ({
     <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) handleCancel() }}>
       <DialogContent className="max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>{t('projectManagement.createProject')}</DialogTitle>
+          <DialogTitle>{t('knowledgeBase.createProject')}</DialogTitle>
         </DialogHeader>
 
         <div className="mt-2 space-y-4">
           {/* Knowledge base name (required) */}
           <div>
             <label className="block text-sm font-medium mb-1">
-              {t('projectManagement.name')} <span className="text-red-500">*</span>
+              {t('knowledgeBase.name')} <span className="text-red-500">*</span>
             </label>
             <Input
-              placeholder={t('projectManagement.namePlaceholder')}
+              placeholder={t('knowledgeBase.namePlaceholder')}
               value={formData.name}
               onChange={(e) => {
                 updateField('name', e.target.value)
@@ -144,11 +144,11 @@ const CreateKnowledgeBaseModal = ({
           {/* Description */}
           <div>
             <label className="block text-sm font-medium mb-1">
-              {t('projectManagement.descriptionLabel')}
+              {t('knowledgeBase.descriptionLabel')}
             </label>
             <Textarea
               rows={2}
-              placeholder={t('projectManagement.descriptionPlaceholder')}
+              placeholder={t('knowledgeBase.descriptionPlaceholder')}
               value={formData.description}
               onChange={(e) => updateField('description', e.target.value)}
             />
@@ -160,10 +160,10 @@ const CreateKnowledgeBaseModal = ({
           <div className="flex items-center justify-between">
             <div>
               <Label htmlFor="private-toggle" className="text-sm font-medium">
-                {t('projectManagement.privateProject', 'Private project')}
+                {t('knowledgeBase.privateProject', 'Private project')}
               </Label>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {t('projectManagement.privateProjectHint', 'Only members can access this project')}
+                {t('knowledgeBase.privateProjectHint', 'Only members can access this project')}
               </p>
             </div>
             <Switch

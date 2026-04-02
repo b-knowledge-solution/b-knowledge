@@ -61,7 +61,7 @@ const SettingsTab = ({ knowledgeBaseId, permissions, onPermissionRemoved }: Sett
     // Show confirmation dialog before deleting
     const confirmed = await confirm({
       title: t('common.delete'),
-      message: t('projectManagement.permissions.deleteConfirm'),
+      message: t('knowledgeBase.permissions.deleteConfirm'),
       variant: 'danger',
       confirmText: t('common.delete'),
     })
@@ -77,22 +77,22 @@ const SettingsTab = ({ knowledgeBaseId, permissions, onPermissionRemoved }: Sett
     <div className="space-y-6">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">{t('projectManagement.permissions.title')}</CardTitle>
+          <CardTitle className="text-base">{t('knowledgeBase.permissions.title')}</CardTitle>
         </CardHeader>
         <CardContent>
           {permissions.length === 0 ? (
             <div className="text-center text-sm text-muted-foreground py-6">
-              {t('projectManagement.permissions.noPermissions')}
+              {t('knowledgeBase.permissions.noPermissions')}
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t('projectManagement.permissions.granteeType')}</TableHead>
-                  <TableHead>{t('projectManagement.permissions.grantee')}</TableHead>
-                  <TableHead>{t('projectManagement.permissions.tabDocuments')}</TableHead>
-                  <TableHead>{t('projectManagement.permissions.tabChat')}</TableHead>
-                  <TableHead>{t('projectManagement.permissions.tabSettings')}</TableHead>
+                  <TableHead>{t('knowledgeBase.permissions.granteeType')}</TableHead>
+                  <TableHead>{t('knowledgeBase.permissions.grantee')}</TableHead>
+                  <TableHead>{t('knowledgeBase.permissions.tabDocuments')}</TableHead>
+                  <TableHead>{t('knowledgeBase.permissions.tabChat')}</TableHead>
+                  <TableHead>{t('knowledgeBase.permissions.tabSettings')}</TableHead>
                   <TableHead className="w-[60px]" />
                 </TableRow>
               </TableHeader>

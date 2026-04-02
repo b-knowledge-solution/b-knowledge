@@ -94,12 +94,12 @@ const CodeGraphPanel = ({ datasetId }: { datasetId: string }) => {
         <div className="flex items-center gap-2">
           <Code2 className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-medium text-muted-foreground">
-            {t('projects.codeGraphTitle', 'Code Graph')}
+            {t('knowledgeBase.codeGraphTitle', 'Code Graph')}
           </span>
           {/* Node count badge */}
           {totalNodes > 0 && (
             <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-              {totalNodes} {t('projects.codeGraphNodes', 'nodes')}
+              {totalNodes} {t('knowledgeBase.codeGraphNodes', 'nodes')}
             </Badge>
           )}
         </div>
@@ -111,7 +111,7 @@ const CodeGraphPanel = ({ datasetId }: { datasetId: string }) => {
           onClick={() => navigate(`/code-graph/${datasetId}`)}
         >
           <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-          {t('projects.viewFullGraph', 'View Full Graph')}
+          {t('knowledgeBase.viewFullGraph', 'View Full Graph')}
         </Button>
       </div>
 
@@ -141,7 +141,7 @@ const CodeGraphPanel = ({ datasetId }: { datasetId: string }) => {
           <div className="text-center py-4">
             <Code2 size={20} className="mx-auto text-muted-foreground/30 mb-1" />
             <p className="text-xs text-muted-foreground/60">
-              {t('projects.codeGraphEmpty', 'No code graph data available. Upload and parse code files to generate the graph.')}
+              {t('knowledgeBase.codeGraphEmpty', 'No code graph data available. Upload and parse code files to generate the graph.')}
             </p>
           </div>
         )}
@@ -252,7 +252,7 @@ const CodeTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingModels
   const handleDeleteCategory = async (categoryId: string) => {
     const confirmed = await confirm({
       title: t('common.delete'),
-      message: t('projectManagement.categories.deleteConfirm'),
+      message: t('knowledgeBase.categories.deleteConfirm'),
       variant: 'danger',
       confirmText: t('common.delete'),
     })
@@ -288,7 +288,7 @@ const CodeTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingModels
           {/* Sidebar header with title + [+] button */}
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-800">
             <h3 className="text-xs font-mono font-semibold text-slate-400 uppercase tracking-wide">
-              {t('projectManagement.categories.title')}
+              {t('knowledgeBase.categories.title')}
             </h3>
             <TooltipProvider>
               <Tooltip>
@@ -302,7 +302,7 @@ const CodeTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingModels
                     <Plus size={14} />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>{t('projects.newCategory', 'New Category')}</TooltipContent>
+                <TooltipContent>{t('knowledgeBase.newCategory', 'New Category')}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
@@ -313,7 +313,7 @@ const CodeTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingModels
               <div className="px-4 py-12 text-center">
                 <FolderOpen size={28} className="mx-auto text-slate-600 mb-2" />
                 <p className="text-xs text-slate-500 font-mono">
-                  {t('projects.emptyCategoryDescription', 'Create a category to start adding files.')}
+                  {t('knowledgeBase.emptyCategoryDescription', 'Create a category to start adding files.')}
                 </p>
               </div>
             ) : (
@@ -351,11 +351,11 @@ const CodeTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingModels
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={(e: React.MouseEvent) => { e.stopPropagation(); setPermCategoryId(cat.id); setPermCategoryName(cat.name) }}>
                             <Lock size={14} className="mr-2" />
-                            {t('projectManagement.entityPermissions.title', 'Permissions')}
+                            {t('knowledgeBase.entityPermissions.title', 'Permissions')}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={(e: React.MouseEvent) => { e.stopPropagation(); setEditingCategory(cat); setCategoryModalOpen(true) }}>
                             <Pencil size={14} className="mr-2" />
-                            {t('projectManagement.categories.edit')}
+                            {t('knowledgeBase.categories.edit')}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-destructive focus:text-destructive"
@@ -382,13 +382,13 @@ const CodeTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingModels
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
             <div className="flex items-center gap-2">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                {t('projectManagement.documents.title')}
+                {t('knowledgeBase.documents.title')}
               </h3>
               {/* Code badge when a category is selected */}
               {selectedCategory && (
                 <Badge variant="outline" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 text-[10px]">
                   <Code2 className="h-3 w-3 mr-1" />
-                  {t('projects.codeTab', 'Code')}
+                  {t('knowledgeBase.codeTab', 'Code')}
                 </Badge>
               )}
             </div>
@@ -400,7 +400,7 @@ const CodeTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingModels
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-2 px-4">
               <FileText size={32} className="text-muted-foreground/40" />
               <p className="text-sm">
-                {t('projects.selectCategory', 'Select a category to view its contents')}
+                {t('knowledgeBase.selectCategory', 'Select a category to view its contents')}
               </p>
             </div>
           ) : !selectedCategory.dataset_id ? (
@@ -408,7 +408,7 @@ const CodeTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingModels
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-2 px-4">
               <AlertCircle size={32} className="text-destructive/60" />
               <p className="text-sm text-destructive">
-                {t('projects.datasetNotAvailable', 'Dataset not available')}
+                {t('knowledgeBase.datasetNotAvailable', 'Dataset not available')}
               </p>
             </div>
           ) : (

@@ -42,7 +42,7 @@ const SyncStatusPanel = ({
   if (!config) {
     return (
       <div className="text-center text-slate-500 dark:text-slate-400 py-8">
-        {t('projectManagement.sync.noConfig')}
+        {t('knowledgeBase.sync.noConfig')}
       </div>
     )
   }
@@ -67,7 +67,7 @@ const SyncStatusPanel = ({
       {/* Descriptions-style definition list */}
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-sm border rounded-md p-4 dark:border-slate-700">
         <dt className="font-medium text-slate-600 dark:text-slate-400">
-          {t('projectManagement.sync.sourceType')}
+          {t('knowledgeBase.sync.sourceType')}
         </dt>
         <dd>
           <Badge variant="secondary">{config.source_type}</Badge>
@@ -81,19 +81,19 @@ const SyncStatusPanel = ({
         </dd>
 
         <dt className="font-medium text-slate-600 dark:text-slate-400">
-          {t('projectManagement.sync.lastSynced')}
+          {t('knowledgeBase.sync.lastSynced')}
         </dt>
         <dd>
           <span className="flex items-center gap-1">
             <Clock size={14} className="text-slate-400" />
             {config.last_synced_at
               ? new Date(config.last_synced_at).toLocaleString()
-              : t('projectManagement.sync.neverSynced')}
+              : t('knowledgeBase.sync.neverSynced')}
           </span>
         </dd>
 
         <dt className="font-medium text-slate-600 dark:text-slate-400">
-          {t('projectManagement.sync.schedule.title')}
+          {t('knowledgeBase.sync.schedule.title')}
         </dt>
         <dd>
           <code className="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">
@@ -110,7 +110,7 @@ const SyncStatusPanel = ({
           ) : (
             <Play size={16} className="mr-2" />
           )}
-          {t('projectManagement.sync.triggerNow')}
+          {t('knowledgeBase.sync.triggerNow')}
         </Button>
       </div>
     </div>

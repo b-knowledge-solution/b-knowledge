@@ -75,7 +75,7 @@ const KnowledgeBaseListPage = () => {
     setCreateSaving(true)
     try {
       await createKnowledgeBase(data)
-      globalMessage.success(t('projectManagement.createSuccess'))
+      globalMessage.success(t('knowledgeBase.createSuccess'))
       setCreateModalOpen(false)
       fetchData()
     } catch (err) {
@@ -116,11 +116,11 @@ const KnowledgeBaseListPage = () => {
         {/* Header: page title + create button */}
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-foreground">
-            {t('projectManagement.title', 'Projects')}
+            {t('knowledgeBase.title', 'Projects')}
           </h1>
           <Button onClick={() => setCreateModalOpen(true)}>
             <Plus size={16} className="mr-2" />
-            {t('projectManagement.addProject')}
+            {t('knowledgeBase.addProject')}
           </Button>
         </div>
 
@@ -129,10 +129,10 @@ const KnowledgeBaseListPage = () => {
           <div className="flex flex-col items-center justify-center min-h-[300px] border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
             <div className="text-center">
               <h3 className="text-lg font-medium text-foreground mb-1">
-                {t('projectManagement.noProjects')}
+                {t('knowledgeBase.noProjects')}
               </h3>
               <p className="text-muted-foreground text-sm">
-                {t('projectManagement.noProjectsHint')}
+                {t('knowledgeBase.noProjectsHint')}
               </p>
             </div>
           </div>
@@ -160,13 +160,13 @@ const KnowledgeBaseListPage = () => {
                 <CardContent>
                   {/* Description with 2-line clamp */}
                   <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                    {kb.description || t('projectManagement.noDescription', { defaultValue: '\u2014' })}
+                    {kb.description || t('knowledgeBase.noDescription', { defaultValue: '\u2014' })}
                   </p>
                   {/* Category count summary */}
                   <div className="flex items-center gap-2">
                     {typeof kb.dataset_count === 'number' && (
                       <Badge variant="outline">
-                        {kb.dataset_count} {t('projectManagement.datasetCount')}
+                        {kb.dataset_count} {t('knowledgeBase.datasetCount')}
                       </Badge>
                     )}
                     <Badge variant="secondary">{kb.status}</Badge>

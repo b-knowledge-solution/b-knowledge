@@ -134,7 +134,7 @@ export const KnowledgeBasePermissionModal: React.FC<KnowledgeBasePermissionModal
         for (const perm of permissions.filter((p) => p.grantee_type === 'team')) {
           await removeKnowledgeBasePermission(knowledgeBase.id, perm.id)
         }
-        globalMessage.success(t('projectManagement.permissionsSaved', 'Permissions saved'))
+        globalMessage.success(t('knowledgeBase.permissionsSaved', 'Permissions saved'))
         onSaved?.()
         onClose()
         return
@@ -168,12 +168,12 @@ export const KnowledgeBasePermissionModal: React.FC<KnowledgeBasePermissionModal
         })
       }
 
-      globalMessage.success(t('projectManagement.permissionsSaved', 'Permissions saved'))
+      globalMessage.success(t('knowledgeBase.permissionsSaved', 'Permissions saved'))
       onSaved?.()
       onClose()
     } catch (err) {
       console.error('[KnowledgeBasePermissionModal] Failed to save:', err)
-      globalMessage.error(t('projectManagement.permissionsSaveError', 'Failed to save permissions'))
+      globalMessage.error(t('knowledgeBase.permissionsSaveError', 'Failed to save permissions'))
     } finally {
       setSaving(false)
     }
@@ -183,7 +183,7 @@ export const KnowledgeBasePermissionModal: React.FC<KnowledgeBasePermissionModal
     <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) onClose() }}>
       <DialogContent className="max-w-[580px]">
         <DialogHeader>
-          <DialogTitle>{t('projectManagement.editPermissions', 'Edit Permissions')}</DialogTitle>
+          <DialogTitle>{t('knowledgeBase.editPermissions', 'Edit Permissions')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
@@ -215,14 +215,14 @@ export const KnowledgeBasePermissionModal: React.FC<KnowledgeBasePermissionModal
               <div>
                 <p className="font-medium text-gray-900 dark:text-gray-100">
                   {!isPrivate
-                    ? (t('projectManagement.publicAccess', 'Public Access'))
-                    : (t('projectManagement.privateAccess', 'Private Access'))
+                    ? (t('knowledgeBase.publicAccess', 'Public Access'))
+                    : (t('knowledgeBase.privateAccess', 'Private Access'))
                   }
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   {!isPrivate
-                    ? (t('projectManagement.publicAccessDesc', 'All authenticated users can access this project'))
-                    : (t('projectManagement.privateAccessDesc', 'Only selected teams can access this project'))
+                    ? (t('knowledgeBase.publicAccessDesc', 'All authenticated users can access this project'))
+                    : (t('knowledgeBase.privateAccessDesc', 'Only selected teams can access this project'))
                   }
                 </p>
               </div>
@@ -240,7 +240,7 @@ export const KnowledgeBasePermissionModal: React.FC<KnowledgeBasePermissionModal
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
                   <Users size={14} />
-                  {t('projectManagement.selectTeams', 'Select Teams')}
+                  {t('knowledgeBase.selectTeams', 'Select Teams')}
                 </label>
                 <div className="border rounded-md max-h-48 overflow-auto p-2 space-y-1 dark:border-slate-700">
                   {teams.map((team) => (

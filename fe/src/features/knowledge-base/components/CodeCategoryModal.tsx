@@ -364,7 +364,7 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
   const handleOk = () => {
     // Validate required name field
     if (!formData.name.trim()) {
-      setNameError(t('projects.codeCategoryNameRequired', 'Category name is required'))
+      setNameError(t('knowledgeBase.codeCategoryNameRequired', 'Category name is required'))
       return
     }
     setNameError('')
@@ -381,8 +381,8 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
           <DialogTitle className="flex items-center gap-2">
             <Code2 className="h-5 w-5 text-emerald-600" />
             {editMode
-              ? t('projects.editCodeCategory', 'Edit Code Category')
-              : t('projects.createCodeCategory', 'Create Code Category')
+              ? t('knowledgeBase.editCodeCategory', 'Edit Code Category')
+              : t('knowledgeBase.createCodeCategory', 'Create Code Category')
             }
           </DialogTitle>
         </DialogHeader>
@@ -393,10 +393,10 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
             {/* ── Category Name ── */}
             <div>
               <Label className="mb-1">
-                {t('projectManagement.categories.name')} <span className="text-red-500">*</span>
+                {t('knowledgeBase.categories.name')} <span className="text-red-500">*</span>
               </Label>
               <Input
-                placeholder={t('projects.codeCategoryPlaceholder', 'e.g. Backend API, Frontend App')}
+                placeholder={t('knowledgeBase.codeCategoryPlaceholder', 'e.g. Backend API, Frontend App')}
                 value={formData.name}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   setFormData((prev) => ({ ...prev, name: e.target.value }))
@@ -412,7 +412,7 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
               <Separator className="flex-1" />
               <span className="text-xs text-muted-foreground font-medium flex items-center gap-1">
                 <FolderGit2 className="h-3.5 w-3.5" />
-                {t('projects.codeSourceSection', 'Code Source')}
+                {t('knowledgeBase.codeSourceSection', 'Code Source')}
               </span>
               <Separator className="flex-1" />
             </div>
@@ -429,7 +429,7 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
                 }`}
               >
                 <GitBranch className="h-4 w-4" />
-                {t('projects.codeSourceGitTab', 'Git Clone')}
+                {t('knowledgeBase.codeSourceGitTab', 'Git Clone')}
               </button>
               <button
                 type="button"
@@ -441,7 +441,7 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
                 }`}
               >
                 <Archive className="h-4 w-4" />
-                {t('projects.codeSourceZipTab', 'ZIP Upload')}
+                {t('knowledgeBase.codeSourceZipTab', 'ZIP Upload')}
               </button>
             </div>
 
@@ -451,7 +451,7 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
                 {/* Git provider selector */}
                 <div className="grid grid-cols-[140px_1fr] items-center gap-3">
                   <div className="flex items-center gap-1">
-                    <Label className="text-sm">{t('projects.codeSourceGitProvider', 'Provider')}</Label>
+                    <Label className="text-sm">{t('knowledgeBase.codeSourceGitProvider', 'Provider')}</Label>
                   </div>
                   <Select
                     value={sc.git_provider}
@@ -471,7 +471,7 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
                       <SelectItem value="custom">
                         <span className="flex items-center gap-1.5">
                           <Globe className="h-3 w-3" />
-                          {t('projects.codeSourceGitCustom', 'Custom')}
+                          {t('knowledgeBase.codeSourceGitCustom', 'Custom')}
                         </span>
                       </SelectItem>
                     </SelectContent>
@@ -481,7 +481,7 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
                 {/* Repository URL */}
                 <div>
                   <Label className="text-sm mb-1">
-                    {t('projects.codeSourceGitUrl', 'Repository URL')} <span className="text-red-500">*</span>
+                    {t('knowledgeBase.codeSourceGitUrl', 'Repository URL')} <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     placeholder={GIT_PROVIDER_PLACEHOLDERS[sc.git_provider]}
@@ -494,7 +494,7 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
                 {/* Branch and Path on one row */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-sm mb-1">{t('projects.codeSourceGitBranch', 'Branch')}</Label>
+                    <Label className="text-sm mb-1">{t('knowledgeBase.codeSourceGitBranch', 'Branch')}</Label>
                     <Input
                       placeholder="main"
                       value={sc.git_branch}
@@ -503,7 +503,7 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
                     />
                   </div>
                   <div>
-                    <Label className="text-sm mb-1">{t('projects.codeSourceGitPath', 'Subdirectory (optional)')}</Label>
+                    <Label className="text-sm mb-1">{t('knowledgeBase.codeSourceGitPath', 'Subdirectory (optional)')}</Label>
                     <Input
                       placeholder="/src"
                       value={sc.git_path}
@@ -518,7 +518,7 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
                   <div className="flex items-center gap-1.5 mb-2">
                     <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
                     <span className="text-xs font-medium text-muted-foreground">
-                      {t('projects.codeSourceCredentials', 'Authentication')}
+                      {t('knowledgeBase.codeSourceCredentials', 'Authentication')}
                     </span>
                   </div>
 
@@ -533,7 +533,7 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
                           : 'text-muted-foreground hover:bg-muted'
                       }`}
                     >
-                      {t('projects.codeSourceAuthPublic', 'Public')}
+                      {t('knowledgeBase.codeSourceAuthPublic', 'Public')}
                     </button>
                     <button
                       type="button"
@@ -544,7 +544,7 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
                           : 'text-muted-foreground hover:bg-muted'
                       }`}
                     >
-                      {t('projects.codeSourceAuthToken', 'Token')}
+                      {t('knowledgeBase.codeSourceAuthToken', 'Token')}
                     </button>
                     <button
                       type="button"
@@ -555,7 +555,7 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
                           : 'text-muted-foreground hover:bg-muted'
                       }`}
                     >
-                      {t('projects.codeSourceAuthUserPass', 'Username & Password')}
+                      {t('knowledgeBase.codeSourceAuthUserPass', 'Username & Password')}
                     </button>
                   </div>
 
@@ -595,7 +595,7 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
                   {sc.credentials.auth_method === 'username_password' && (
                     <div className="space-y-2">
                       <div>
-                        <Label className="text-xs mb-1">{t('projects.codeSourceAuthUsername', 'Username')}</Label>
+                        <Label className="text-xs mb-1">{t('knowledgeBase.codeSourceAuthUsername', 'Username')}</Label>
                         <Input
                           placeholder={sc.git_provider === 'bitbucket' ? 'your-bitbucket-username' : 'username'}
                           value={sc.credentials.username}
@@ -634,7 +634,7 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
 
                 {/* Info text */}
                 <p className="text-[11px] text-muted-foreground">
-                  {t('projects.codeSourceGitDescription', 'Clone a Git repository and import code files for parsing, graph extraction, and embedding.')}
+                  {t('knowledgeBase.codeSourceGitDescription', 'Clone a Git repository and import code files for parsing, graph extraction, and embedding.')}
                 </p>
               </div>
             )}
@@ -644,10 +644,10 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
               <div className="rounded-lg border border-dashed border-border bg-slate-50 dark:bg-slate-900/50 p-4 text-center">
                 <Archive className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
                 <p className="text-sm text-muted-foreground">
-                  {t('projects.codeSourceZipDescription', 'Upload a ZIP archive containing code files for parsing, graph extraction, and embedding.')}
+                  {t('knowledgeBase.codeSourceZipDescription', 'Upload a ZIP archive containing code files for parsing, graph extraction, and embedding.')}
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  {t('projects.codeSourceZipHint', 'You can upload ZIP files after creating the category from the Code tab.')}
+                  {t('knowledgeBase.codeSourceZipHint', 'You can upload ZIP files after creating the category from the Code tab.')}
                 </p>
               </div>
             )}
@@ -798,7 +798,7 @@ const CodeCategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel
             {pc.enable_code_graph && (
               <div className="ml-4 border-l-2 border-emerald-500/30 pl-3 space-y-2">
                 <p className="text-xs text-muted-foreground">
-                  {t('projects.codeGraphDescription', 'Code files will be parsed using Tree-sitter AST to extract functions, classes, methods, and their call relationships. The graph is stored in Memgraph and can be explored visually.')}
+                  {t('knowledgeBase.codeGraphDescription', 'Code files will be parsed using Tree-sitter AST to extract functions, classes, methods, and their call relationships. The graph is stored in Memgraph and can be explored visually.')}
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {['Functions', 'Classes', 'Methods', 'Calls', 'Imports'].map((label) => (

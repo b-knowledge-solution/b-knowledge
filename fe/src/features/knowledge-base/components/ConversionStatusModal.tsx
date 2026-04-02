@@ -199,7 +199,7 @@ const ConversionStatusModal = ({ open, onClose, knowledgeBaseId }: ConversionSta
       // Refresh after a short delay to show updated status
       setTimeout(() => fetchData(true), 1500)
     } catch {
-      setError(t('projectManagement.documents.forceConvertError'))
+      setError(t('knowledgeBase.documents.forceConvertError'))
     } finally {
       setForceConverting(false)
     }
@@ -243,10 +243,10 @@ const ConversionStatusModal = ({ open, onClose, knowledgeBaseId }: ConversionSta
               onClick={handleForceConvert}
               disabled={forceConverting}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50"
-              title={t('projectManagement.documents.forceConvert')}
+              title={t('knowledgeBase.documents.forceConvert')}
             >
               {forceConverting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-              {t('projectManagement.documents.forceConvert')}
+              {t('knowledgeBase.documents.forceConvert')}
             </button>
             <button
               onClick={() => fetchData(false)}

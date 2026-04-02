@@ -300,12 +300,12 @@ const EditVersionModal = ({
 
     // Inline validation
     if (!formData.version_label.trim()) {
-      setLabelError(t('projectManagement.versions.labelPlaceholder'))
+      setLabelError(t('knowledgeBase.versions.labelPlaceholder'))
       return
     }
 
     if (parseMode === 'pipeline' && !formData.pipeline_id?.trim()) {
-      globalMessage.error(t('projectManagement.versions.pipelineId') + ' is required')
+      globalMessage.error(t('knowledgeBase.versions.pipelineId') + ' is required')
       return
     }
 
@@ -326,7 +326,7 @@ const EditVersionModal = ({
         payload.parser_config = formData.parser_config
       }
       await updateCategoryVersion(knowledgeBaseId, categoryId, version.id, payload)
-      globalMessage.success(t('projectManagement.versions.updateSuccess'))
+      globalMessage.success(t('knowledgeBase.versions.updateSuccess'))
       onSaved()
     } catch (err) {
       globalMessage.error(String(err))
@@ -347,7 +347,7 @@ const EditVersionModal = ({
     <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) onCancel() }}>
       <DialogContent className="max-w-[75vw] max-h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>{t('projectManagement.versions.editLabel')}</DialogTitle>
+          <DialogTitle>{t('knowledgeBase.versions.editLabel')}</DialogTitle>
         </DialogHeader>
 
         <div className="flex gap-6 flex-1 overflow-hidden mt-2">
@@ -356,10 +356,10 @@ const EditVersionModal = ({
             {/* ── Version Label ── */}
             <div>
               <Label className="mb-1">
-                {t('projectManagement.versions.label')} <span className="text-red-500">*</span>
+                {t('knowledgeBase.versions.label')} <span className="text-red-500">*</span>
               </Label>
               <Input
-                placeholder={t('projectManagement.versions.labelPlaceholder')}
+                placeholder={t('knowledgeBase.versions.labelPlaceholder')}
                 value={formData.version_label}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   updateField('version_label', e.target.value)
@@ -372,7 +372,7 @@ const EditVersionModal = ({
 
             {/* ── Language ── */}
             <div className="grid grid-cols-[140px_1fr] items-center gap-3">
-              <Label className="text-sm">{t('projectManagement.categories.datasetConfig.language')}</Label>
+              <Label className="text-sm">{t('knowledgeBase.categories.datasetConfig.language')}</Label>
               <Select
                 value={formData.language}
                 onValueChange={(v: string) => updateField('language', v)}
@@ -388,26 +388,26 @@ const EditVersionModal = ({
 
             {/* ── Page Rank ── */}
             <SliderField
-              label={t('projectManagement.versions.pageRank')}
+              label={t('knowledgeBase.versions.pageRank')}
               value={formData.pagerank}
               onChange={(v) => updateField('pagerank', v)}
               min={0}
               max={100}
-              tooltip={t('projectManagement.versions.pageRankTip') || ''}
+              tooltip={t('knowledgeBase.versions.pageRankTip') || ''}
             />
 
             {/* ── SECTION: Ingestion Pipeline ── */}
             <div className="flex items-center gap-2">
               <Separator className="flex-1" />
               <span className="text-xs text-muted-foreground font-medium">
-                {t('projectManagement.versions.pipelineSection')}
+                {t('knowledgeBase.versions.pipelineSection')}
               </span>
               <Separator className="flex-1" />
             </div>
 
             {/* Parse type radio */}
             <div className="grid grid-cols-[140px_1fr] items-center gap-3">
-              <Label className="text-sm">{t('projectManagement.versions.parseType')}</Label>
+              <Label className="text-sm">{t('knowledgeBase.versions.parseType')}</Label>
               <RadioGroup
                 value={parseMode}
                 onValueChange={(value: string) => {
@@ -421,11 +421,11 @@ const EditVersionModal = ({
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="builtin" id="edit-ver-builtin" />
-                  <Label htmlFor="edit-ver-builtin" className="font-normal text-sm">{t('projectManagement.versions.parseTypeBuiltIn')}</Label>
+                  <Label htmlFor="edit-ver-builtin" className="font-normal text-sm">{t('knowledgeBase.versions.parseTypeBuiltIn')}</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="pipeline" id="edit-ver-pipeline" />
-                  <Label htmlFor="edit-ver-pipeline" className="font-normal text-sm">{t('projectManagement.versions.parseTypeChoosePipeline')}</Label>
+                  <Label htmlFor="edit-ver-pipeline" className="font-normal text-sm">{t('knowledgeBase.versions.parseTypeChoosePipeline')}</Label>
                 </div>
               </RadioGroup>
             </div>
@@ -595,27 +595,27 @@ const EditVersionModal = ({
             {parseMode === 'pipeline' && (
               <>
                 <p className="text-xs text-muted-foreground mb-4">
-                  {t('projectManagement.versions.pipelineSectionTip')}
+                  {t('knowledgeBase.versions.pipelineSectionTip')}
                 </p>
                 <div className="mb-4">
                   <label className="block text-sm font-medium mb-1">
-                    {t('projectManagement.versions.pipelineId')} <span className="text-red-500">*</span>
+                    {t('knowledgeBase.versions.pipelineId')} <span className="text-red-500">*</span>
                   </label>
                   <Input
-                    placeholder={t('projectManagement.versions.pipelineIdPlaceholder')}
+                    placeholder={t('knowledgeBase.versions.pipelineIdPlaceholder')}
                     value={formData.pipeline_id}
                     onChange={(e) => updateField('pipeline_id', e.target.value)}
                   />
                 </div>
                 <div className="mb-4">
                   <label className="block text-sm font-medium mb-1">
-                    {t('projectManagement.versions.parseTypeNum')}
+                    {t('knowledgeBase.versions.parseTypeNum')}
                   </label>
                   <Input
                     type="number"
                     min={1}
                     className="w-full"
-                    placeholder={t('projectManagement.versions.parseTypePlaceholder') || ''}
+                    placeholder={t('knowledgeBase.versions.parseTypePlaceholder') || ''}
                     value={formData.parse_type ?? ''}
                     onChange={(e) => updateField('parse_type', e.target.value ? Number(e.target.value) : undefined)}
                   />

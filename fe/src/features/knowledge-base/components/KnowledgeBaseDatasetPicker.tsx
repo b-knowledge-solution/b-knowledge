@@ -104,8 +104,8 @@ export default function KnowledgeBaseDatasetPicker({ knowledgeBaseId }: Knowledg
    */
   const handleUnbind = async (datasetId: string) => {
     const confirmed = await confirm({
-      title: t('projectManagement.unbindConfirmTitle'),
-      message: t('projectManagement.unbindConfirm'),
+      title: t('knowledgeBase.unbindConfirmTitle'),
+      message: t('knowledgeBase.unbindConfirm'),
       variant: 'danger',
       confirmText: t('common.delete'),
     })
@@ -137,11 +137,11 @@ export default function KnowledgeBaseDatasetPicker({ knowledgeBaseId }: Knowledg
       {/* Header with bind button */}
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-foreground">
-          {t('projectManagement.tabs.datasets')}
+          {t('knowledgeBase.tabs.datasets')}
         </h3>
         <Button size="sm" onClick={handleOpenBind}>
           <Link2 size={16} className="mr-2" />
-          {t('projectManagement.bindDatasets')}
+          {t('knowledgeBase.bindDatasets')}
         </Button>
       </div>
 
@@ -149,8 +149,8 @@ export default function KnowledgeBaseDatasetPicker({ knowledgeBaseId }: Knowledg
       {boundDatasets.length === 0 ? (
         <EmptyState
           icon={<Database className="h-12 w-12 mx-auto" strokeWidth={1} />}
-          title={t('projectManagement.datasets.empty')}
-          description={t('projectManagement.datasets.emptyDescription')}
+          title={t('knowledgeBase.datasets.empty')}
+          description={t('knowledgeBase.datasets.emptyDescription')}
         />
       ) : (
         <div className="rounded-md border">
@@ -158,7 +158,7 @@ export default function KnowledgeBaseDatasetPicker({ knowledgeBaseId }: Knowledg
             <TableHeader>
               <TableRow>
                 <TableHead>{t('common.name')}</TableHead>
-                <TableHead>{t('projectManagement.docCount')}</TableHead>
+                <TableHead>{t('knowledgeBase.docCount')}</TableHead>
                 <TableHead className="w-[80px]">{t('common.actions')}</TableHead>
               </TableRow>
             </TableHeader>
@@ -192,7 +192,7 @@ export default function KnowledgeBaseDatasetPicker({ knowledgeBaseId }: Knowledg
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
-            <DialogTitle>{t('projectManagement.bindDatasets')}</DialogTitle>
+            <DialogTitle>{t('knowledgeBase.bindDatasets')}</DialogTitle>
           </DialogHeader>
 
           {/* Checkbox list of available datasets */}
@@ -218,7 +218,7 @@ export default function KnowledgeBaseDatasetPicker({ knowledgeBaseId }: Knowledg
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{ds.name}</div>
                     <div className="text-xs text-muted-foreground">
-                      {ds.doc_count ?? 0} {t('projectManagement.datasetCount')}
+                      {ds.doc_count ?? 0} {t('knowledgeBase.datasetCount')}
                     </div>
                   </div>
                 </label>
@@ -235,7 +235,7 @@ export default function KnowledgeBaseDatasetPicker({ knowledgeBaseId }: Knowledg
               disabled={selectedIds.length === 0 || bindDatasets.isPending}
             >
               {bindDatasets.isPending && <Spinner size={16} className="mr-2" />}
-              {t('projectManagement.bindDatasets')} ({selectedIds.length})
+              {t('knowledgeBase.bindDatasets')} ({selectedIds.length})
             </Button>
           </DialogFooter>
         </DialogContent>

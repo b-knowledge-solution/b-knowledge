@@ -49,7 +49,7 @@ const StandardCategoryView = ({ knowledgeBaseId, category }: StandardCategoryVie
       <div className="flex-1 flex items-center justify-center h-full">
         <EmptyState
           icon={<FileText className="h-10 w-10 text-muted-foreground" />}
-          title={t('projects.datasetNotAvailable', 'Dataset not available for this category')}
+          title={t('knowledgeBase.datasetNotAvailable', 'Dataset not available for this category')}
         />
       </div>
     )
@@ -68,7 +68,7 @@ const StandardCategoryView = ({ knowledgeBaseId, category }: StandardCategoryVie
           </h2>
           <Badge variant="outline" className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
             <Settings className="h-3 w-3 mr-1" />
-            {t('projects.parserConfig', 'Parser Config')}: {parserSummary}
+            {t('knowledgeBase.parserConfig', 'Parser Config')}: {parserSummary}
           </Badge>
         </div>
       </div>

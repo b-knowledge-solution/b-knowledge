@@ -210,7 +210,7 @@ const DocumentsTab = ({ knowledgeBaseId, initialCategories, embeddingModels }: D
     // Prompt confirmation before deleting the category
     const confirmed = await confirm({
       title: t('common.delete'),
-      message: t('projectManagement.categories.deleteConfirm'),
+      message: t('knowledgeBase.categories.deleteConfirm'),
       variant: 'danger',
       confirmText: t('common.delete'),
     })
@@ -235,7 +235,7 @@ const DocumentsTab = ({ knowledgeBaseId, initialCategories, embeddingModels }: D
     // Prompt confirmation before deleting the version
     const confirmed = await confirm({
       title: t('common.delete'),
-      message: t('projectManagement.versions.deleteConfirm'),
+      message: t('knowledgeBase.versions.deleteConfirm'),
       variant: 'danger',
       confirmText: t('common.delete'),
     })
@@ -256,16 +256,16 @@ const DocumentsTab = ({ knowledgeBaseId, initialCategories, embeddingModels }: D
 
     // Prompt confirmation before archiving the version
     const confirmed = await confirm({
-      title: t('projectManagement.versions.deactivate'),
-      message: t('projectManagement.versions.deactivateConfirm'),
+      title: t('knowledgeBase.versions.deactivate'),
+      message: t('knowledgeBase.versions.deactivateConfirm'),
       variant: 'warning',
-      confirmText: t('projectManagement.versions.deactivate'),
+      confirmText: t('knowledgeBase.versions.deactivate'),
     })
     if (!confirmed) return
 
     try {
       await archiveCategoryVersion(knowledgeBaseId, selectedCategory.id, versionId)
-      globalMessage.success(t('projectManagement.versions.deactivateSuccess'))
+      globalMessage.success(t('knowledgeBase.versions.deactivateSuccess'))
       if (selectedVersion?.id === versionId) setSelectedVersion(null)
       await refreshVersions()
     } catch (err) {
@@ -297,7 +297,7 @@ const DocumentsTab = ({ knowledgeBaseId, initialCategories, embeddingModels }: D
         (v) => v.version_label.toLowerCase() === version_label.toLowerCase()
       )
       if (duplicate) {
-        globalMessage.error(t('projectManagement.versions.duplicateError'))
+        globalMessage.error(t('knowledgeBase.versions.duplicateError'))
         return
       }
 
@@ -312,7 +312,7 @@ const DocumentsTab = ({ knowledgeBaseId, initialCategories, embeddingModels }: D
       })
       setVersionModalOpen(false)
       await refreshVersions()
-      globalMessage.success(t('projectManagement.versions.syncSuccess'))
+      globalMessage.success(t('knowledgeBase.versions.syncSuccess'))
     } catch (err) {
       globalMessage.error(String(err))
     } finally {
@@ -339,7 +339,7 @@ const DocumentsTab = ({ knowledgeBaseId, initialCategories, embeddingModels }: D
         <div className="w-56 shrink-0 border-r border-gray-200 dark:border-gray-700 pr-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              {t('projectManagement.categories.title')}
+              {t('knowledgeBase.categories.title')}
             </h3>
             <Button
               variant="ghost"
@@ -353,7 +353,7 @@ const DocumentsTab = ({ knowledgeBaseId, initialCategories, embeddingModels }: D
           {categories.length === 0 ? (
             <div className="text-center py-8">
               <FolderOpen size={32} className="text-gray-300 mx-auto mb-2" />
-              <p className="text-xs text-gray-400">{t('projectManagement.categories.noCategoriesHint')}</p>
+              <p className="text-xs text-gray-400">{t('knowledgeBase.categories.noCategoriesHint')}</p>
             </div>
           ) : (
             <div className="flex flex-col gap-1">
@@ -381,7 +381,7 @@ const DocumentsTab = ({ knowledgeBaseId, initialCategories, embeddingModels }: D
                             <Lock size={12} />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>{t('projectManagement.entityPermissions.title', 'Permissions')}</TooltipContent>
+                        <TooltipContent>{t('knowledgeBase.entityPermissions.title', 'Permissions')}</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
 
@@ -397,7 +397,7 @@ const DocumentsTab = ({ knowledgeBaseId, initialCategories, embeddingModels }: D
                             <Pencil size={12} />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>{t('projectManagement.categories.edit')}</TooltipContent>
+                        <TooltipContent>{t('knowledgeBase.categories.edit')}</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
 
@@ -430,11 +430,11 @@ const DocumentsTab = ({ knowledgeBaseId, initialCategories, embeddingModels }: D
               {/* Version header + add button */}
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  {t('projectManagement.versions.title')} — {selectedCategory.name}
+                  {t('knowledgeBase.versions.title')} — {selectedCategory.name}
                 </h3>
                 <Button size="sm" onClick={handleCreateVersion}>
                   <Plus size={14} className="mr-1" />
-                  {t('projectManagement.versions.add')}
+                  {t('knowledgeBase.versions.add')}
                 </Button>
               </div>
 
@@ -447,7 +447,7 @@ const DocumentsTab = ({ knowledgeBaseId, initialCategories, embeddingModels }: D
                 </div>
               ) : versions.length === 0 ? (
                 <div className="text-center py-8 text-gray-400 text-sm">
-                  {t('projectManagement.versions.noVersionsHint')}
+                  {t('knowledgeBase.versions.noVersionsHint')}
                 </div>
               ) : (
                 <div className="flex gap-2 flex-wrap">
@@ -485,7 +485,7 @@ const DocumentsTab = ({ knowledgeBaseId, initialCategories, embeddingModels }: D
                                 <Pencil size={12} />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>{t('projectManagement.versions.editLabel')}</TooltipContent>
+                            <TooltipContent>{t('knowledgeBase.versions.editLabel')}</TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
 
@@ -502,7 +502,7 @@ const DocumentsTab = ({ knowledgeBaseId, initialCategories, embeddingModels }: D
                                   <Archive size={12} />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>{t('projectManagement.versions.deactivate')}</TooltipContent>
+                              <TooltipContent>{t('knowledgeBase.versions.deactivate')}</TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                         )}
@@ -545,7 +545,7 @@ const DocumentsTab = ({ knowledgeBaseId, initialCategories, embeddingModels }: D
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-gray-400 dark:text-gray-500 gap-2">
               <FolderOpen size={40} className="text-gray-300" />
-              <p className="text-sm">{t('projectManagement.categories.noCategoriesHint')}</p>
+              <p className="text-sm">{t('knowledgeBase.categories.noCategoriesHint')}</p>
             </div>
           )}
         </div>

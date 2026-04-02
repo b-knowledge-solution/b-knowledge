@@ -159,14 +159,14 @@ const BuiltInParserFields = ({
       {/* Chunk method */}
       <div className="mb-4">
         <Label className="mb-1">
-          {t('projectManagement.categories.datasetConfig.chunkMethod')}
+          {t('knowledgeBase.categories.datasetConfig.chunkMethod')}
         </Label>
         <Select
           value={chunkMethod || ''}
           onValueChange={onChunkMethodChange}
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder={t('projectManagement.categories.datasetConfig.inheritFromCategory')} />
+            <SelectValue placeholder={t('knowledgeBase.categories.datasetConfig.inheritFromCategory')} />
           </SelectTrigger>
           <SelectContent>
             {chunkMethodOptions.map((opt) => (
@@ -179,14 +179,14 @@ const BuiltInParserFields = ({
       {/* Layout Recognize (PDF Parser) */}
       <div className="mb-4">
         <Label className="mb-1">
-          {t('projectManagement.categories.datasetConfig.pdfParser')}
+          {t('knowledgeBase.categories.datasetConfig.pdfParser')}
         </Label>
         <Select
           value={parserConfig.layout_recognize || ''}
           onValueChange={(v: string) => updateField('layout_recognize', v)}
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder={t('projectManagement.categories.datasetConfig.inheritFromCategory')} />
+            <SelectValue placeholder={t('knowledgeBase.categories.datasetConfig.inheritFromCategory')} />
           </SelectTrigger>
           <SelectContent>
             {pdfParserOptions.map((opt) => (
@@ -199,14 +199,14 @@ const BuiltInParserFields = ({
       {/* Chunk token number */}
       <div className="mb-4">
         <Label className="mb-1">
-          {t('projectManagement.categories.datasetConfig.chunkTokenNum')}
+          {t('knowledgeBase.categories.datasetConfig.chunkTokenNum')}
         </Label>
         <Input
           type="number"
           min={1}
           max={2048}
           className="w-full"
-          placeholder={t('projectManagement.categories.datasetConfig.inheritFromCategory')}
+          placeholder={t('knowledgeBase.categories.datasetConfig.inheritFromCategory')}
           value={parserConfig.chunk_token_num ?? ''}
           onChange={(e) => updateField('chunk_token_num', e.target.value ? Number(e.target.value) : undefined)}
         />
@@ -215,7 +215,7 @@ const BuiltInParserFields = ({
       {/* Delimiter */}
       <div className="mb-4">
         <Label className="mb-1">
-          {t('projectManagement.categories.datasetConfig.delimiter')}
+          {t('knowledgeBase.categories.datasetConfig.delimiter')}
         </Label>
         <Input
           placeholder="\n"
@@ -227,7 +227,7 @@ const BuiltInParserFields = ({
       {/* Child chunk for retrieval */}
       <div className="mb-4">
         <Label className="mb-1">
-          {t('projectManagement.categories.datasetConfig.childChunk')}
+          {t('knowledgeBase.categories.datasetConfig.childChunk')}
         </Label>
         <div>
           <Switch
@@ -241,7 +241,7 @@ const BuiltInParserFields = ({
       {parserConfig.child_chunk && (
         <div className="mb-4">
           <Label className="mb-1">
-            {t('projectManagement.categories.datasetConfig.childChunkDelimiter')}
+            {t('knowledgeBase.categories.datasetConfig.childChunkDelimiter')}
           </Label>
           <Input
             placeholder="\n"
@@ -254,8 +254,8 @@ const BuiltInParserFields = ({
       {/* PageIndex */}
       <div className="mb-4">
         <Label className="mb-1">
-          {t('projectManagement.categories.datasetConfig.pageIndex')}
-          {renderInfoTip(t('projectManagement.categories.datasetConfig.pageIndexTip'))}
+          {t('knowledgeBase.categories.datasetConfig.pageIndex')}
+          {renderInfoTip(t('knowledgeBase.categories.datasetConfig.pageIndexTip'))}
         </Label>
         <div>
           <Switch
@@ -268,8 +268,8 @@ const BuiltInParserFields = ({
       {/* Image & table context window */}
       <div className="mb-4">
         <Label className="mb-1">
-          {t('projectManagement.categories.datasetConfig.imageContextSize')}
-          {renderInfoTip(t('projectManagement.categories.datasetConfig.imageContextSizeTip'))}
+          {t('knowledgeBase.categories.datasetConfig.imageContextSize')}
+          {renderInfoTip(t('knowledgeBase.categories.datasetConfig.imageContextSizeTip'))}
         </Label>
         {renderSliderRow(0, 256, parserConfig.image_context_size ?? 128, (v) => updateField('image_context_size', v))}
       </div>
@@ -277,8 +277,8 @@ const BuiltInParserFields = ({
       {/* Auto metadata */}
       <div className="mb-4">
         <Label className="mb-1">
-          {t('projectManagement.categories.datasetConfig.autoMetadata')}
-          {renderInfoTip(t('projectManagement.categories.datasetConfig.autoMetadataTip'))}
+          {t('knowledgeBase.categories.datasetConfig.autoMetadata')}
+          {renderInfoTip(t('knowledgeBase.categories.datasetConfig.autoMetadataTip'))}
         </Label>
         <div>
           <Switch
@@ -291,7 +291,7 @@ const BuiltInParserFields = ({
       {/* Overlapped percent */}
       <div className="mb-4">
         <Label className="mb-1">
-          {t('projectManagement.categories.datasetConfig.overlappedPercent')}
+          {t('knowledgeBase.categories.datasetConfig.overlappedPercent')}
         </Label>
         {renderSliderRow(0, 100, parserConfig.overlapped_percent ?? 4, (v) => updateField('overlapped_percent', v))}
       </div>
@@ -299,8 +299,8 @@ const BuiltInParserFields = ({
       {/* Auto-keywords */}
       <div className="mb-4">
         <Label className="mb-1">
-          {t('projectManagement.categories.datasetConfig.autoKeyword')}
-          {renderInfoTip(t('projectManagement.categories.datasetConfig.autoKeywordTip'))}
+          {t('knowledgeBase.categories.datasetConfig.autoKeyword')}
+          {renderInfoTip(t('knowledgeBase.categories.datasetConfig.autoKeywordTip'))}
         </Label>
         {renderSliderRow(0, 32, parserConfig.auto_keywords ?? 0, (v) => updateField('auto_keywords', v))}
       </div>
@@ -308,8 +308,8 @@ const BuiltInParserFields = ({
       {/* Auto-questions */}
       <div className="mb-4">
         <Label className="mb-1">
-          {t('projectManagement.categories.datasetConfig.autoQuestion')}
-          {renderInfoTip(t('projectManagement.categories.datasetConfig.autoQuestionTip'))}
+          {t('knowledgeBase.categories.datasetConfig.autoQuestion')}
+          {renderInfoTip(t('knowledgeBase.categories.datasetConfig.autoQuestionTip'))}
         </Label>
         {renderSliderRow(0, 10, parserConfig.auto_questions ?? 0, (v) => updateField('auto_questions', v))}
       </div>
@@ -317,8 +317,8 @@ const BuiltInParserFields = ({
       {/* HTML for Excel */}
       <div className="mb-4">
         <Label className="mb-1">
-          {t('projectManagement.categories.datasetConfig.html4excel')}
-          {renderInfoTip(t('projectManagement.categories.datasetConfig.html4excelTip'))}
+          {t('knowledgeBase.categories.datasetConfig.html4excel')}
+          {renderInfoTip(t('knowledgeBase.categories.datasetConfig.html4excelTip'))}
         </Label>
         <div>
           <Switch

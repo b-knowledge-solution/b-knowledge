@@ -131,10 +131,10 @@ const UploadFolderModal = ({
     }
 
     if (failed === 0) {
-      globalMessage.success(t('projectManagement.documents.uploadSuccess'))
+      globalMessage.success(t('knowledgeBase.documents.uploadSuccess'))
     } else {
       globalMessage.warning(
-        `${succeeded}/${files.length} ${t('projectManagement.documents.uploadSuccess')}. ${failed} ${t('projectManagement.documents.uploadError')}`
+        `${succeeded}/${files.length} ${t('knowledgeBase.documents.uploadSuccess')}. ${failed} ${t('knowledgeBase.documents.uploadError')}`
       )
     }
 
@@ -158,7 +158,7 @@ const UploadFolderModal = ({
     })
 
     if (files.length === 0) {
-      globalMessage.warning(t('projectManagement.documents.acceptedTypes'))
+      globalMessage.warning(t('knowledgeBase.documents.acceptedTypes'))
       return
     }
 
@@ -182,24 +182,24 @@ const UploadFolderModal = ({
     <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) handleClose() }}>
       <DialogContent className="sm:max-w-[560px]">
         <DialogHeader>
-          <DialogTitle>{t('projectManagement.documents.uploadFolderTitle')}</DialogTitle>
+          <DialogTitle>{t('knowledgeBase.documents.uploadFolderTitle')}</DialogTitle>
         </DialogHeader>
 
         {/* Folder select area */}
         <div className="flex flex-col items-center gap-3 py-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
           <FolderUp size={36} className="text-gray-400" />
           <p className="text-sm text-gray-600 dark:text-gray-400 m-0">
-            {t('projectManagement.documents.folderUploadHint')}
+            {t('knowledgeBase.documents.folderUploadHint')}
           </p>
           <p className="text-xs text-gray-400 m-0">
-            {t('projectManagement.documents.acceptedTypes')}
+            {t('knowledgeBase.documents.acceptedTypes')}
           </p>
           <Button
             disabled={uploading}
             onClick={() => folderInputRef.current?.click()}
           >
             <FolderUp size={14} className="mr-1" />
-            {t('projectManagement.documents.selectFolder')}
+            {t('knowledgeBase.documents.selectFolder')}
           </Button>
         </div>
 
@@ -208,7 +208,7 @@ const UploadFolderModal = ({
           <div className="mt-4 bg-gray-50 dark:bg-slate-800/50 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                {t('projectManagement.documents.uploading')} {completedCount}/{fileList.length}
+                {t('knowledgeBase.documents.uploading')} {completedCount}/{fileList.length}
               </span>
               <Progress
                 value={overallPercent}
@@ -232,8 +232,8 @@ const UploadFolderModal = ({
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-xs text-gray-400">{formatFileSize(item.size)}</span>
-                    {item.status === 'uploading' && <Badge variant="info" className="text-xs">{t('projectManagement.documents.uploading')}</Badge>}
-                    {item.status === 'failed' && <Badge variant="destructive" className="text-xs">{t('projectManagement.documents.uploadError')}</Badge>}
+                    {item.status === 'uploading' && <Badge variant="info" className="text-xs">{t('knowledgeBase.documents.uploading')}</Badge>}
+                    {item.status === 'failed' && <Badge variant="destructive" className="text-xs">{t('knowledgeBase.documents.uploadError')}</Badge>}
                   </div>
                 </li>
               ))}

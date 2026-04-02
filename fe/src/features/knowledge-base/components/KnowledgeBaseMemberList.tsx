@@ -80,7 +80,7 @@ export default function KnowledgeBaseMemberList({ knowledgeBaseId }: KnowledgeBa
       const users = await userApi.getUsers()
       setOrgUsers(users)
     } catch {
-      globalMessage.error(t('projects.error.removeMember'))
+      globalMessage.error(t('knowledgeBase.error.removeMember'))
     } finally {
       setUsersLoading(false)
     }
@@ -105,7 +105,7 @@ export default function KnowledgeBaseMemberList({ knowledgeBaseId }: KnowledgeBa
   const handleRemoveMember = async (userId: string, name: string) => {
     const confirmed = await confirm({
       title: t('common.delete'),
-      message: t('projectManagement.removeMemberConfirm', { name }),
+      message: t('knowledgeBase.removeMemberConfirm', { name }),
       variant: 'danger',
       confirmText: t('common.delete'),
     })
@@ -160,19 +160,19 @@ export default function KnowledgeBaseMemberList({ knowledgeBaseId }: KnowledgeBa
       {/* Header with add button */}
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-foreground">
-          {t('projectManagement.tabs.members')}
+          {t('knowledgeBase.tabs.members')}
         </h3>
         <Button size="sm" onClick={handleOpenDialog}>
           <UserPlus size={16} className="mr-2" />
-          {t('projectManagement.addMember')}
+          {t('knowledgeBase.addMember')}
         </Button>
       </div>
 
       {/* Member table or empty state */}
       {members.length === 0 ? (
         <EmptyState
-          title={t('projectManagement.members.empty')}
-          description={t('projectManagement.members.emptyDescription')}
+          title={t('knowledgeBase.members.empty')}
+          description={t('knowledgeBase.members.emptyDescription')}
         />
       ) : (
         <div className="rounded-md border">
@@ -181,7 +181,7 @@ export default function KnowledgeBaseMemberList({ knowledgeBaseId }: KnowledgeBa
               <TableRow>
                 <TableHead>{t('common.name')}</TableHead>
                 <TableHead>{t('common.email')}</TableHead>
-                <TableHead>{t('projectManagement.role')}</TableHead>
+                <TableHead>{t('knowledgeBase.role')}</TableHead>
                 <TableHead className="w-[80px]">{t('common.actions')}</TableHead>
               </TableRow>
             </TableHeader>
@@ -216,7 +216,7 @@ export default function KnowledgeBaseMemberList({ knowledgeBaseId }: KnowledgeBa
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle>{t('projectManagement.addMember')}</DialogTitle>
+            <DialogTitle>{t('knowledgeBase.addMember')}</DialogTitle>
           </DialogHeader>
 
           {/* Search input to filter org users */}
