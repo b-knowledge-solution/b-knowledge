@@ -149,7 +149,7 @@ function buildAgent(overrides: Record<string, unknown> = {}) {
     dsl_version: 1,
     policy_rules: null,
     tenant_id: 't-1',
-    project_id: null,
+    knowledge_base_id: null,
     parent_id: null,
     version_number: 1,
     version_label: null,
