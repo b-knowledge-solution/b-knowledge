@@ -24,7 +24,7 @@ import { UserRole } from '@/shared/constants/index.js'
 type Actions = 'manage' | 'create' | 'read' | 'update' | 'delete'
 
 /** @description CASL subject types corresponding to application resources */
-type Subjects = 'Dataset' | 'Document' | 'ChatAssistant' | 'SearchApp' | 'User' | 'AuditLog' | 'Policy' | 'Org' | 'Project' | 'Agent' | 'Memory' | 'all'
+type Subjects = 'Dataset' | 'Document' | 'ChatAssistant' | 'SearchApp' | 'User' | 'AuditLog' | 'Policy' | 'Org' | 'KnowledgeBase' | 'Agent' | 'Memory' | 'all'
 
 /** @description Application-wide CASL ability type combining actions and subjects */
 export type AppAbility = MongoAbility<[Actions, Subjects]>
@@ -118,7 +118,7 @@ export function buildAbilityFor(user: AbilityUserContext, policies: AbacPolicyRu
     can('manage', 'User', tenantCondition)
     can('manage', 'Dataset', tenantCondition)
     can('manage', 'Document', tenantCondition)
-    can('manage', 'Project', tenantCondition)
+    can('manage', 'KnowledgeBase', tenantCondition)
     can('read', 'AuditLog', tenantCondition)
     can('manage', 'ChatAssistant', tenantCondition)
     can('manage', 'SearchApp', tenantCondition)
@@ -132,7 +132,7 @@ export function buildAbilityFor(user: AbilityUserContext, policies: AbacPolicyRu
     can('update', 'Dataset', tenantCondition)
     can('delete', 'Dataset', tenantCondition)
     can('manage', 'Document', tenantCondition)
-    can('manage', 'Project', tenantCondition)
+    can('manage', 'KnowledgeBase', tenantCondition)
     can('manage', 'ChatAssistant', tenantCondition)
     can('manage', 'SearchApp', tenantCondition)
     can('manage', 'Agent', tenantCondition)
