@@ -101,7 +101,8 @@ export class ExternalApiController {
   async retrieval(req: Request, res: Response): Promise<void> {
     try {
       const { query, dataset_ids, options } = req.body
-      const result = await externalApiService.retrieval(query, dataset_ids, options)
+      const userId = req.apiKey!.user_id
+      const result = await externalApiService.retrieval(query, dataset_ids, userId, options)
       res.json(result)
     } catch (error) {
       const message = (error as Error).message

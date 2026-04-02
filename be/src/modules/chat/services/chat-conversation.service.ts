@@ -357,14 +357,13 @@ function buildContextPrompt(
   if (!chunks.length) return systemPrompt
 
   // Format each chunk with source metadata and index for citation.
-  // Convert HTML chunks to Markdown to reduce token usage while preserving content quality.
+  // Chunks are already converted from HTML to Markdown in Step 9b of the pipeline,
+  // so no htmlToMarkdown call is needed here.
   const context = chunks
     .map((c, i) => {
       const source = c.doc_name ? ` [${c.doc_name}]` : ''
       const page = c.page_num?.length ? ` (p.${c.page_num.join(',')})` : ''
-      // Convert HTML (e.g. tables from Excel parser) to compact Markdown
-      const text = htmlToMarkdown(c.text)
-      return `[ID:${i}]${source}${page}\n${text}`
+      return `[ID:${i}]${source}${page}\n${c.text}`
     })
     .join('\n\n')
 
