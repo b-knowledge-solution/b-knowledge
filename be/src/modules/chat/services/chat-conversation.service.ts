@@ -1175,10 +1175,12 @@ export class ChatConversationService {
           // Merge deep research chunks with existing chunks, deduplicating by chunk_id.
           // When budget is exhausted mid-recursion, research() returns partial results
           // from completed sub-queries (not an empty array).
+          // Use Set for O(1) lookups instead of O(n) .some() per iteration
+          const existingChunkIds = new Set(allChunks.map(c => c.chunk_id))
           for (const chunk of deepChunks) {
-            const exists = allChunks.some(c => c.chunk_id === chunk.chunk_id)
-            if (!exists) {
+            if (!existingChunkIds.has(chunk.chunk_id)) {
               allChunks.push(chunk)
+              existingChunkIds.add(chunk.chunk_id)
             }
           }
         } catch (err) {

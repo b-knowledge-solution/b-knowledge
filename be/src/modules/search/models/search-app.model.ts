@@ -23,19 +23,14 @@ export class SearchAppModel extends BaseModel<SearchApp> {
    * @returns {Promise<number>} Number of search apps updated
    */
   async removeDatasetReference(datasetId: string): Promise<number> {
-    // Find all search apps whose dataset_ids array contains the dataset ID
+    // Remove dataset ID from dataset_ids JSONB array in a single query using PG array subtraction.
+    // The - operator on a JSONB array removes the matching string element.
     const affected = await this.knex(this.tableName)
       .whereRaw('dataset_ids @> ?::jsonb', [JSON.stringify([datasetId])])
-      .select('id', 'dataset_ids')
+      .update({
+        dataset_ids: this.knex.raw('dataset_ids - ?', [datasetId]),
+      })
 
-    // Update each row, filtering out the deleted dataset ID
-    for (const row of affected) {
-      const updatedIds = (row.dataset_ids as string[]).filter((dsId: string) => dsId !== datasetId)
-      await this.knex(this.tableName)
-        .where('id', row.id)
-        .update({ dataset_ids: JSON.stringify(updatedIds) })
-    }
-
-    return affected.length
+    return affected
   }
 }

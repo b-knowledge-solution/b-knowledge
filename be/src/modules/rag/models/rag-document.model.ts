@@ -166,6 +166,27 @@ export class RagDocumentModel {
     }
 
     /**
+     * @description Hard-delete multiple document rows by their IDs in a single query
+     * @param {string[]} docIds - Array of document UUIDs
+     * @returns {Promise<number>} Number of rows deleted
+     */
+    async bulkDelete(docIds: string[]): Promise<number> {
+        if (docIds.length === 0) return 0
+        return db(this.tableName).whereIn('id', docIds).del()
+    }
+
+    /**
+     * @description Update the status column for multiple documents in a single query
+     * @param {string[]} docIds - Array of document UUIDs
+     * @param {string} status - New status value ('0' disabled, '1' enabled)
+     * @returns {Promise<number>} Number of rows updated
+     */
+    async bulkUpdateStatus(docIds: string[], status: string): Promise<number> {
+        if (docIds.length === 0) return 0
+        return db(this.tableName).whereIn('id', docIds).update({ status })
+    }
+
+    /**
      * @description Delete all document rows belonging to a dataset
      * @param {string} datasetId - Dataset/knowledgebase UUID (32-char hex, no hyphens)
      * @returns {Promise<number>} Number of rows deleted

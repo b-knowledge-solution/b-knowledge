@@ -24,19 +24,14 @@ export class ChatAssistantModel extends BaseModel<ChatAssistant> {
    * @returns {Promise<number>} Number of assistants updated
    */
   async removeDatasetReference(datasetId: string): Promise<number> {
-    // Find all assistants whose kb_ids array contains the dataset ID
+    // Remove dataset ID from kb_ids JSONB array in a single query using PG array subtraction.
+    // jsonb_build_array wraps the ID so the - operator removes it from the array.
     const affected = await this.knex(this.tableName)
       .whereRaw('kb_ids @> ?::jsonb', [JSON.stringify([datasetId])])
-      .select('id', 'kb_ids')
+      .update({
+        kb_ids: this.knex.raw('kb_ids - ?', [datasetId]),
+      })
 
-    // Update each row, filtering out the deleted dataset ID
-    for (const row of affected) {
-      const updatedKbIds = (row.kb_ids as string[]).filter((kbId: string) => kbId !== datasetId)
-      await this.knex(this.tableName)
-        .where('id', row.id)
-        .update({ kb_ids: JSON.stringify(updatedKbIds) })
-    }
-
-    return affected.length
+    return affected
   }
 }

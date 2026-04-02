@@ -53,9 +53,9 @@ export default function PipelineStatusBar({ datasetId, knowledgeBaseId, category
 
   // Track pipeline stage statuses
   const [stages, setStages] = useState<PipelineStage[]>([
-    { key: 'parsing', labelKey: 'projects.pipelineParsing', icon: FileCode2, status: 'pending' },
-    { key: 'graph', labelKey: 'projects.pipelineGraphExtraction', icon: Network, status: 'pending' },
-    { key: 'embedding', labelKey: 'projects.pipelineEmbedding', icon: Cpu, status: 'pending' },
+    { key: 'parsing', labelKey: 'knowledgeBase.pipelineParsing', icon: FileCode2, status: 'pending' },
+    { key: 'graph', labelKey: 'knowledgeBase.pipelineGraphExtraction', icon: Network, status: 'pending' },
+    { key: 'embedding', labelKey: 'knowledgeBase.pipelineEmbedding', icon: Cpu, status: 'pending' },
   ])
 
   // Poll parser status to derive pipeline stage statuses

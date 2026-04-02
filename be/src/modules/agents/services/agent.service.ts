@@ -56,10 +56,17 @@ class AgentService {
     }
 
     // Run count and paginated data queries in parallel for efficiency
+    // Exclude large JSONB 'dsl' column from list queries to reduce I/O bandwidth
+    const listColumns = [
+      'id', 'name', 'description', 'avatar', 'mode', 'status',
+      'dsl_version', 'tenant_id', 'knowledge_base_id',
+      'parent_id', 'version_number', 'version_label',
+      'created_by', 'created_at', 'updated_at',
+    ]
     const [countResult, data] = await Promise.all([
       query.clone().count('* as cnt').first(),
       query.clone()
-        .select('*')
+        .select(listColumns)
         .orderBy('updated_at', 'desc')
         .limit(page_size)
         .offset((page - 1) * page_size),
@@ -368,18 +375,21 @@ class AgentService {
    * @returns {Promise<void>}
    */
   async releaseVersion(canvasId: string, versionId: string, tenantId: string): Promise<void> {
-    // Clear any existing release flag for this canvas (only one active release)
-    await db('user_canvas_version')
-      .where('canvas_id', canvasId)
-      .where('tenant_id', tenantId)
-      .update({ release: false })
+    // Use transaction to atomically swap the release flag and prevent race conditions
+    await db.transaction(async (trx) => {
+      // Clear any existing release flag for this canvas (only one active release)
+      await trx('user_canvas_version')
+        .where('canvas_id', canvasId)
+        .where('tenant_id', tenantId)
+        .update({ release: false })
 
-    // Set the release flag on the specified version
-    await db('user_canvas_version')
-      .where('id', versionId)
-      .where('canvas_id', canvasId)
-      .where('tenant_id', tenantId)
-      .update({ release: true })
+      // Set the release flag on the specified version
+      await trx('user_canvas_version')
+        .where('id', versionId)
+        .where('canvas_id', canvasId)
+        .where('tenant_id', tenantId)
+        .update({ release: true })
+    })
 
     log.info('Canvas version released', { canvasId, versionId, tenantId })
   }
