@@ -480,7 +480,7 @@ const DocumentsTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingM
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-foreground truncate">{ver.version_label}</span>
                         <Badge variant={statusVariant(ver.status)} className="text-[10px] px-1.5 py-0">
-                          {t(`projectManagement.versions.status.${ver.status}`)}
+                          {t(`knowledgeBase.versions.status.${ver.status}`)}
                         </Badge>
                       </div>
 

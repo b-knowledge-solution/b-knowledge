@@ -103,17 +103,17 @@ const SettingsTab = ({ knowledgeBaseId, permissions, onPermissionRemoved }: Sett
                     <TableCell className="max-w-[200px] truncate">{perm.grantee_id}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">
-                        {t(`projectManagement.permissions.levels.${perm.tab_documents}`)}
+                        {t(`knowledgeBase.permissions.levels.${perm.tab_documents}`)}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">
-                        {t(`projectManagement.permissions.levels.${perm.tab_chat}`)}
+                        {t(`knowledgeBase.permissions.levels.${perm.tab_chat}`)}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">
-                        {t(`projectManagement.permissions.levels.${perm.tab_settings}`)}
+                        {t(`knowledgeBase.permissions.levels.${perm.tab_settings}`)}
                       </Badge>
                     </TableCell>
                     <TableCell>

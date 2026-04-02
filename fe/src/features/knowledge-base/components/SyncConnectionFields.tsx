@@ -41,32 +41,32 @@ interface FieldDef {
 /** Field definitions for each sync source type. */
 const SOURCE_FIELDS: Record<SyncSourceType, FieldDef[]> = {
   sharepoint: [
-    { key: 'site_url', labelKey: 'projectManagement.sync.fields.siteUrl', type: 'url', required: true },
-    { key: 'tenant_id', labelKey: 'projectManagement.sync.fields.tenantId', type: 'text', required: true },
-    { key: 'client_id', labelKey: 'projectManagement.sync.fields.clientId', type: 'text', required: true },
-    { key: 'client_secret', labelKey: 'projectManagement.sync.fields.clientSecret', type: 'password', required: true },
+    { key: 'site_url', labelKey: 'knowledgeBase.sync.fields.siteUrl', type: 'url', required: true },
+    { key: 'tenant_id', labelKey: 'knowledgeBase.sync.fields.tenantId', type: 'text', required: true },
+    { key: 'client_id', labelKey: 'knowledgeBase.sync.fields.clientId', type: 'text', required: true },
+    { key: 'client_secret', labelKey: 'knowledgeBase.sync.fields.clientSecret', type: 'password', required: true },
   ],
   jira: [
-    { key: 'base_url', labelKey: 'projectManagement.sync.fields.baseUrl', type: 'url', required: true },
-    { key: 'email', labelKey: 'projectManagement.sync.fields.email', type: 'text', required: true },
-    { key: 'api_token', labelKey: 'projectManagement.sync.fields.apiToken', type: 'password', required: true },
-    { key: 'project_key', labelKey: 'projectManagement.sync.fields.projectKey', type: 'text' },
+    { key: 'base_url', labelKey: 'knowledgeBase.sync.fields.baseUrl', type: 'url', required: true },
+    { key: 'email', labelKey: 'knowledgeBase.sync.fields.email', type: 'text', required: true },
+    { key: 'api_token', labelKey: 'knowledgeBase.sync.fields.apiToken', type: 'password', required: true },
+    { key: 'project_key', labelKey: 'knowledgeBase.sync.fields.projectKey', type: 'text' },
   ],
   confluence: [
-    { key: 'base_url', labelKey: 'projectManagement.sync.fields.baseUrl', type: 'url', required: true },
-    { key: 'email', labelKey: 'projectManagement.sync.fields.email', type: 'text', required: true },
-    { key: 'api_token', labelKey: 'projectManagement.sync.fields.apiToken', type: 'password', required: true },
-    { key: 'space_key', labelKey: 'projectManagement.sync.fields.spaceKey', type: 'text' },
+    { key: 'base_url', labelKey: 'knowledgeBase.sync.fields.baseUrl', type: 'url', required: true },
+    { key: 'email', labelKey: 'knowledgeBase.sync.fields.email', type: 'text', required: true },
+    { key: 'api_token', labelKey: 'knowledgeBase.sync.fields.apiToken', type: 'password', required: true },
+    { key: 'space_key', labelKey: 'knowledgeBase.sync.fields.spaceKey', type: 'text' },
   ],
   gitlab: [
-    { key: 'base_url', labelKey: 'projectManagement.sync.fields.baseUrl', type: 'url', required: true },
-    { key: 'access_token', labelKey: 'projectManagement.sync.fields.accessToken', type: 'password', required: true },
-    { key: 'project_id', labelKey: 'projectManagement.sync.fields.knowledgeBaseId', type: 'text' },
+    { key: 'base_url', labelKey: 'knowledgeBase.sync.fields.baseUrl', type: 'url', required: true },
+    { key: 'access_token', labelKey: 'knowledgeBase.sync.fields.accessToken', type: 'password', required: true },
+    { key: 'project_id', labelKey: 'knowledgeBase.sync.fields.knowledgeBaseId', type: 'text' },
   ],
   github: [
-    { key: 'access_token', labelKey: 'projectManagement.sync.fields.accessToken', type: 'password', required: true },
-    { key: 'owner', labelKey: 'projectManagement.sync.fields.owner', type: 'text', required: true },
-    { key: 'repo', labelKey: 'projectManagement.sync.fields.repo', type: 'text' },
+    { key: 'access_token', labelKey: 'knowledgeBase.sync.fields.accessToken', type: 'password', required: true },
+    { key: 'owner', labelKey: 'knowledgeBase.sync.fields.owner', type: 'text', required: true },
+    { key: 'repo', labelKey: 'knowledgeBase.sync.fields.repo', type: 'text' },
   ],
 }
 

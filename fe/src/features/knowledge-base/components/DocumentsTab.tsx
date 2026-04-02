@@ -467,7 +467,7 @@ const DocumentsTab = ({ knowledgeBaseId, initialCategories, embeddingModels }: D
                           {ver.version_label}
                         </span>
                         <Badge variant={statusVariant(ver.status)} className="text-xs">
-                          {t(`projectManagement.versions.status.${ver.status}`)}
+                          {t(`knowledgeBase.versions.status.${ver.status}`)}
                         </Badge>
                       </div>
 
