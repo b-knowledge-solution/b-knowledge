@@ -36,8 +36,8 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
   ),
 }))
 
-import VersionCard from '@/features/projects/components/VersionCard'
-import type { DocumentCategoryVersion } from '@/features/projects/api/projectApi'
+import VersionCard from '@/features/knowledge-base/components/VersionCard'
+import type { DocumentCategoryVersion } from '@/features/knowledge-base/api/knowledgeBaseApi'
 
 // ---------------------------------------------------------------------------
 // Helpers

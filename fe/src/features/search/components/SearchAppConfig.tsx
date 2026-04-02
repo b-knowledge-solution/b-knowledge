@@ -49,8 +49,8 @@ interface SearchAppConfigProps {
   app?: SearchApp | null
   /** Available datasets for selection */
   datasets?: KnowledgeBaseItem[]
-  /** Available projects for selection */
-  projects?: KnowledgeBaseItem[]
+  /** Available knowledge bases for selection */
+  knowledgeBases?: KnowledgeBaseItem[]
 }
 
 // ============================================================================
@@ -72,7 +72,7 @@ function SearchAppConfig({
   onSave,
   app,
   datasets = [],
-  projects = [],
+  knowledgeBases = [],
 }: SearchAppConfigProps) {
   const { t } = useTranslation()
 
@@ -298,14 +298,14 @@ function SearchAppConfig({
             <Switch checked={isPublic} onCheckedChange={setIsPublic} />
           </div>
 
-          {/* Knowledge bases multi-select (datasets + projects) */}
+          {/* Knowledge bases multi-select (datasets + knowledge bases) */}
           <div className="space-y-1.5">
             <Label>{t('chat.knowledgeBases')}</Label>
             <KnowledgeBasePicker
               value={selectedDatasets}
               onChange={setSelectedDatasets}
               datasets={datasets}
-              projects={projects}
+              knowledgeBases={knowledgeBases}
             />
           </div>
 

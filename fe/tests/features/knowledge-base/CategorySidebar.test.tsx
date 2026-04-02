@@ -39,8 +39,8 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
   ),
 }))
 
-import CategorySidebar from '@/features/projects/components/CategorySidebar'
-import type { DocumentCategory, DocumentCategoryType } from '@/features/projects/api/projectApi'
+import CategorySidebar from '@/features/knowledge-base/components/CategorySidebar'
+import type { DocumentCategory, DocumentCategoryType } from '@/features/knowledge-base/api/knowledgeBaseApi'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -52,7 +52,7 @@ import type { DocumentCategory, DocumentCategoryType } from '@/features/projects
 function buildCategory(overrides: Partial<DocumentCategory> = {}): DocumentCategory {
   return {
     id: 'cat-1',
-    project_id: 'proj-1',
+    knowledge_base_id: 'kb-1',
     name: 'Test Category',
     description: null,
     sort_order: 0,

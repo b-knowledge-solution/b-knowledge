@@ -26,16 +26,16 @@ vi.mock('@/components/ui/empty-state', () => ({
   ),
 }))
 
-vi.mock('@/features/projects/components/DocumentListPanel', () => ({
-  default: ({ projectId, categoryId, versionId }: any) => (
-    <div data-testid="document-list-panel" data-project-id={projectId} data-category-id={categoryId} data-version-id={versionId}>
+vi.mock('@/features/knowledge-base/components/DocumentListPanel', () => ({
+  default: ({ knowledgeBaseId, categoryId, versionId }: any) => (
+    <div data-testid="document-list-panel" data-knowledge-base-id={knowledgeBaseId} data-category-id={categoryId} data-version-id={versionId}>
       DocumentListPanel
     </div>
   ),
 }))
 
-import StandardCategoryView from '@/features/projects/components/StandardCategoryView'
-import type { DocumentCategory, DocumentCategoryType } from '@/features/projects/api/projectApi'
+import StandardCategoryView from '@/features/knowledge-base/components/StandardCategoryView'
+import type { DocumentCategory, DocumentCategoryType } from '@/features/knowledge-base/api/knowledgeBaseApi'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -47,7 +47,7 @@ import type { DocumentCategory, DocumentCategoryType } from '@/features/projects
 function buildCategory(overrides: Partial<DocumentCategory> = {}): DocumentCategory {
   return {
     id: 'cat-1',
-    project_id: 'proj-1',
+    knowledge_base_id: 'kb-1',
     name: 'Standard Docs',
     description: null,
     sort_order: 0,
@@ -73,7 +73,7 @@ describe('StandardCategoryView', () => {
   /** @description Should render header with category name */
   it('renders header with category name', () => {
     const category = buildCategory({ name: 'Research Papers' })
-    render(<StandardCategoryView projectId="proj-1" category={category} />)
+    render(<StandardCategoryView knowledgeBaseId="kb-1" category={category} />)
 
     expect(screen.getByText('Research Papers')).toBeInTheDocument()
   })
@@ -81,7 +81,7 @@ describe('StandardCategoryView', () => {
   /** @description Should show parser config badge with chunk method */
   it('renders parser config badge', () => {
     const category = buildCategory({ dataset_config: { chunk_method: 'semantic' } })
-    render(<StandardCategoryView projectId="proj-1" category={category} />)
+    render(<StandardCategoryView knowledgeBaseId="kb-1" category={category} />)
 
     // Badge text includes "projects.parserConfig" key and the chunk method
     expect(screen.getByText(/semantic/)).toBeInTheDocument()
@@ -90,7 +90,7 @@ describe('StandardCategoryView', () => {
   /** @description Should show error state when dataset_id is missing */
   it('shows error state when dataset_id is missing', () => {
     const category = buildCategory({ dataset_id: null })
-    render(<StandardCategoryView projectId="proj-1" category={category} />)
+    render(<StandardCategoryView knowledgeBaseId="kb-1" category={category} />)
 
     expect(screen.getByTestId('empty-state')).toBeInTheDocument()
   })
@@ -98,11 +98,11 @@ describe('StandardCategoryView', () => {
   /** @description Should render DocumentListPanel when dataset_id is present */
   it('renders DocumentListPanel when dataset_id is present', () => {
     const category = buildCategory({ dataset_id: 'ds-42' })
-    render(<StandardCategoryView projectId="proj-1" category={category} />)
+    render(<StandardCategoryView knowledgeBaseId="kb-1" category={category} />)
 
     const panel = screen.getByTestId('document-list-panel')
     expect(panel).toBeInTheDocument()
-    expect(panel.getAttribute('data-project-id')).toBe('proj-1')
+    expect(panel.getAttribute('data-knowledge-base-id')).toBe('kb-1')
     expect(panel.getAttribute('data-category-id')).toBe('cat-1')
     expect(panel.getAttribute('data-version-id')).toBe('ds-42')
   })
@@ -110,7 +110,7 @@ describe('StandardCategoryView', () => {
   /** @description Should default parser summary to 'naive' when dataset_config has no chunk_method */
   it('defaults parser summary to naive when chunk_method is absent', () => {
     const category = buildCategory({ dataset_config: null })
-    render(<StandardCategoryView projectId="proj-1" category={category} />)
+    render(<StandardCategoryView knowledgeBaseId="kb-1" category={category} />)
 
     expect(screen.getByText(/naive/)).toBeInTheDocument()
   })
@@ -118,7 +118,7 @@ describe('StandardCategoryView', () => {
   /** @description Should not render DocumentListPanel when dataset_id is null */
   it('does not render DocumentListPanel when dataset_id is null', () => {
     const category = buildCategory({ dataset_id: null })
-    render(<StandardCategoryView projectId="proj-1" category={category} />)
+    render(<StandardCategoryView knowledgeBaseId="kb-1" category={category} />)
 
     expect(screen.queryByTestId('document-list-panel')).not.toBeInTheDocument()
   })

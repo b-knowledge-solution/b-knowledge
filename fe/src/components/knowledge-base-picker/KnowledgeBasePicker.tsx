@@ -1,5 +1,5 @@
 /**
- * @fileoverview Reusable multi-select picker for knowledge bases (datasets + projects).
+ * @fileoverview Reusable multi-select picker for knowledge bases (datasets + knowledge bases).
  * Renders a Popover with searchable, grouped checkbox list and selected chips.
  * @module components/knowledge-base-picker/KnowledgeBasePicker
  */
@@ -24,8 +24,8 @@ export interface KnowledgeBaseItem {
   id: string
   /** Display name */
   name: string
-  /** Source type: dataset or project */
-  type: 'dataset' | 'project'
+  /** Source type: dataset or knowledgeBase */
+  type: 'dataset' | 'knowledgeBase'
   /** Optional document count for context */
   docCount?: number | undefined
 }
@@ -40,8 +40,8 @@ interface KnowledgeBasePickerProps {
   onChange: (ids: string[]) => void
   /** Dataset items to display */
   datasets: KnowledgeBaseItem[]
-  /** Project items to display */
-  projects: KnowledgeBaseItem[]
+  /** Knowledge base items to display */
+  knowledgeBases: KnowledgeBaseItem[]
 }
 
 // ============================================================================
@@ -50,7 +50,7 @@ interface KnowledgeBasePickerProps {
 
 /**
  * @description Multi-select knowledge base picker with Popover dropdown.
- * Groups items into "Datasets" and "Projects" sections, each with type badges.
+ * Groups items into "Datasets" and "Knowledge Bases" sections, each with type badges.
  * Shows selected items as removable chips below the trigger.
  *
  * @param {KnowledgeBasePickerProps} props - Component properties
@@ -60,25 +60,25 @@ export function KnowledgeBasePicker({
   value,
   onChange,
   datasets,
-  projects,
+  knowledgeBases,
 }: KnowledgeBasePickerProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
 
   // All items combined for lookup
-  const allItems = [...datasets, ...projects]
+  const allItems = [...datasets, ...knowledgeBases]
 
   // Filter items by search query
   const query = search.toLowerCase().trim()
   const filteredDatasets = query
     ? datasets.filter((d) => d.name.toLowerCase().includes(query))
     : datasets
-  const filteredProjects = query
-    ? projects.filter((p) => p.name.toLowerCase().includes(query))
-    : projects
+  const filteredKnowledgeBases = query
+    ? knowledgeBases.filter((kb) => kb.name.toLowerCase().includes(query))
+    : knowledgeBases
 
-  const hasResults = filteredDatasets.length > 0 || filteredProjects.length > 0
+  const hasResults = filteredDatasets.length > 0 || filteredKnowledgeBases.length > 0
 
   /**
    * @description Toggle an item in the selection list.
@@ -165,17 +165,17 @@ export function KnowledgeBasePicker({
                   </div>
                 )}
 
-                {/* Projects group */}
-                {filteredProjects.length > 0 && (
+                {/* Knowledge Bases group */}
+                {filteredKnowledgeBases.length > 0 && (
                   <div>
                     {/* Separator if both groups present */}
                     {filteredDatasets.length > 0 && (
                       <div className="my-1 border-t dark:border-gray-700" />
                     )}
                     <div className="px-3 py-1.5 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
-                      {t('kbPicker.projects')}
+                      {t('kbPicker.knowledgeBases')}
                     </div>
-                    {filteredProjects.map((item) => (
+                    {filteredKnowledgeBases.map((item) => (
                       <KbItemRow
                         key={item.id}
                         item={item}
