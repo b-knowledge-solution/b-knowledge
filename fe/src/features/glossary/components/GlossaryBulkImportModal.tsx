@@ -6,13 +6,18 @@
  * Previews data in a table, then sends to the bulk-import API.
  */
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Upload, FileSpreadsheet, AlertCircle, Download } from 'lucide-react'
-import {
-    Modal, Button, Table, Alert, Space
-} from 'antd'
+import { Upload, FileSpreadsheet, AlertCircle, Download, X } from 'lucide-react'
 import * as XLSX from 'xlsx'
+import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog'
+import {
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table'
 import { glossaryApi, type BulkImportRow, type BulkImportResult } from '../api/glossaryApi'
 import { globalMessage } from '@/app/App'
 
@@ -20,9 +25,13 @@ import { globalMessage } from '@/app/App'
 // Props
 // ============================================================================
 
+/** @description Props for the GlossaryBulkImportModal component */
 interface GlossaryBulkImportModalProps {
+    /** Whether the modal is visible */
     open: boolean
+    /** Callback to close the modal */
     onClose: () => void
+    /** Callback invoked after a successful import */
     onSuccess: () => void
 }
 
@@ -30,6 +39,12 @@ interface GlossaryBulkImportModalProps {
 // Component
 // ============================================================================
 
+/**
+ * @description Modal for bulk importing glossary tasks via Excel file.
+ * Supports drag-and-drop upload, preview table, and template download.
+ * @param {GlossaryBulkImportModalProps} props - Component props.
+ * @returns {JSX.Element} Rendered bulk import modal.
+ */
 export const GlossaryBulkImportModal = ({ open, onClose, onSuccess }: GlossaryBulkImportModalProps) => {
     const { t } = useTranslation()
 
@@ -44,7 +59,7 @@ export const GlossaryBulkImportModal = ({ open, onClose, onSuccess }: GlossaryBu
     // ========================================================================
 
     /** Parse an Excel file and extract bulk import rows. */
-    const processFile = useCallback((file: File) => {
+    const processFile = (file: File) => {
         setParseError(null)
         setImportResult(null)
         setParsedRows([])
@@ -96,15 +111,15 @@ export const GlossaryBulkImportModal = ({ open, onClose, onSuccess }: GlossaryBu
             }
         }
         reader.readAsArrayBuffer(file)
-    }, [t])
+    }
 
     /** Handle file input change. */
-    const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
         processFile(file)
         e.target.value = ''
-    }, [processFile])
+    }
 
     // ========================================================================
     // Drag & Drop
@@ -114,29 +129,29 @@ export const GlossaryBulkImportModal = ({ open, onClose, onSuccess }: GlossaryBu
     const dragCounter = useRef(0)
 
     /** Prevent default to allow drop. */
-    const handleDragOver = useCallback((e: React.DragEvent) => {
+    const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault()
         e.stopPropagation()
-    }, [])
+    }
 
     /** Increment counter and show highlight. */
-    const handleDragEnter = useCallback((e: React.DragEvent) => {
+    const handleDragEnter = (e: React.DragEvent) => {
         e.preventDefault()
         e.stopPropagation()
         dragCounter.current++
         if (dragCounter.current === 1) setIsDragging(true)
-    }, [])
+    }
 
     /** Decrement counter and hide highlight when fully left. */
-    const handleDragLeave = useCallback((e: React.DragEvent) => {
+    const handleDragLeave = (e: React.DragEvent) => {
         e.preventDefault()
         e.stopPropagation()
         dragCounter.current--
         if (dragCounter.current === 0) setIsDragging(false)
-    }, [])
+    }
 
     /** Process dropped file and reset counter. */
-    const handleDrop = useCallback((e: React.DragEvent) => {
+    const handleDrop = (e: React.DragEvent) => {
         e.preventDefault()
         e.stopPropagation()
         dragCounter.current = 0
@@ -147,14 +162,14 @@ export const GlossaryBulkImportModal = ({ open, onClose, onSuccess }: GlossaryBu
         } else {
             setParseError(t('glossary.bulkImport.parseError'))
         }
-    }, [processFile, t])
+    }
 
     // ========================================================================
     // Download Template
     // ========================================================================
 
     /** Generate and download a sample Excel template with example rows. */
-    const downloadTemplate = useCallback(() => {
+    const downloadTemplate = () => {
         const sampleRows = [
             { task_name: 'Document Search', task_instruction_en: 'Use these terms to improve document search accuracy', task_instruction_ja: 'これらのキーワードを使って文書検索の精度を向上させてください', task_instruction_vi: 'Sử dụng các từ khóa này để cải thiện độ chính xác tìm kiếm tài liệu' },
             { task_name: 'FAQ Generation', task_instruction_en: 'Generate FAQ pairs for common questions', task_instruction_ja: 'よくある質問に対するFAQペアを生成してください', task_instruction_vi: 'Tạo các cặp FAQ cho những câu hỏi phổ biến' },
@@ -164,7 +179,7 @@ export const GlossaryBulkImportModal = ({ open, onClose, onSuccess }: GlossaryBu
         const wb = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(wb, ws, 'Glossary Import')
         XLSX.writeFile(wb, 'glossary_task_import_template.xlsx')
-    }, [])
+    }
 
     // ========================================================================
     // Import
@@ -201,111 +216,75 @@ export const GlossaryBulkImportModal = ({ open, onClose, onSuccess }: GlossaryBu
     }
 
     // ========================================================================
-    // Preview Columns
-    // ========================================================================
-
-    const previewColumns = [
-        { title: t('glossary.bulkImport.colTaskName'), dataIndex: 'task_name', key: 'task_name', width: 150 },
-        { title: t('glossary.bulkImport.colTaskInstructionEn'), dataIndex: 'task_instruction_en', key: 'task_instruction_en', ellipsis: true },
-        { title: t('glossary.bulkImport.colTaskInstructionJa'), dataIndex: 'task_instruction_ja', key: 'task_instruction_ja', ellipsis: true },
-        { title: t('glossary.bulkImport.colTaskInstructionVi'), dataIndex: 'task_instruction_vi', key: 'task_instruction_vi', ellipsis: true },
-    ]
-
-    // ========================================================================
     // Render
     // ========================================================================
 
     return (
-        <Modal
-            title={
-                <div className="flex items-center gap-2">
-                    <FileSpreadsheet size={20} />
-                    <span>{t('glossary.bulkImport.title')}</span>
-                </div>
-            }
-            open={open}
-            onCancel={handleClose}
-            width="70%"
-            style={{ top: '10%' }}
-            footer={
-                <div className="flex justify-between items-center">
-                    <span className="text-sm text-slate-500">
-                        {parsedRows.length > 0
-                            ? t('glossary.bulkImport.rowCount', { count: parsedRows.length })
-                            : ''}
-                    </span>
-                    <Space>
-                        <Button onClick={handleClose}>{t('common.cancel')}</Button>
-                        <Button
-                            type="primary"
-                            onClick={handleImport}
-                            loading={importing}
-                            disabled={parsedRows.length === 0 || importing}
-                        >
-                            {t('glossary.bulkImport.import')}
-                        </Button>
-                    </Space>
-                </div>
-            }
-            destroyOnClose
-        >
-            <div className="space-y-4">
-                {/* File Upload Area — supports click and drag & drop */}
-                <div
-                    className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                        isDragging
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                            : 'border-slate-300 dark:border-slate-600'
-                    }`}
-                    onDragOver={handleDragOver}
-                    onDragEnter={handleDragEnter}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                >
-                    <label className="cursor-pointer flex flex-col items-center gap-2">
-                        <Upload size={32} className="text-slate-400" />
-                        <span className="text-sm text-slate-600 dark:text-slate-400">
-                            {t('glossary.bulkImport.selectFile')}
-                        </span>
-                        <span className="text-xs text-slate-400">
-                            {t('glossary.bulkImport.fileFormat')}
-                        </span>
-                        <input
-                            type="file"
-                            accept=".xlsx,.xls"
-                            onChange={handleFileSelect}
-                            className="hidden"
-                        />
-                    </label>
-                    <Button
-                        type="link"
-                        icon={<Download size={14} />}
-                        onClick={downloadTemplate}
-                        className="mt-2"
-                        size="small"
+        <Dialog open={open} onOpenChange={(v: boolean) => !v && handleClose()}>
+            <DialogContent className="sm:max-w-[70vw] max-h-[80vh] flex flex-col">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <FileSpreadsheet size={20} />
+                        <span>{t('glossary.bulkImport.title')}</span>
+                    </DialogTitle>
+                </DialogHeader>
+
+                <div className="space-y-4 flex-1 overflow-auto">
+                    {/* File Upload Area — supports click and drag & drop */}
+                    <div
+                        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                            isDragging
+                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                : 'border-slate-300 dark:border-slate-600'
+                        }`}
+                        onDragOver={handleDragOver}
+                        onDragEnter={handleDragEnter}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
                     >
-                        {t('glossary.bulkImport.downloadTemplate')}
-                    </Button>
-                </div>
+                        <label className="cursor-pointer flex flex-col items-center gap-2">
+                            <Upload size={32} className="text-slate-400" />
+                            <span className="text-sm text-slate-600 dark:text-slate-400">
+                                {t('glossary.bulkImport.selectFile')}
+                            </span>
+                            <span className="text-xs text-slate-400">
+                                {t('glossary.bulkImport.fileFormat')}
+                            </span>
+                            <input
+                                type="file"
+                                accept=".xlsx,.xls"
+                                onChange={handleFileSelect}
+                                className="hidden"
+                            />
+                        </label>
+                        <Button
+                            variant="link"
+                            size="sm"
+                            onClick={downloadTemplate}
+                            className="mt-2"
+                        >
+                            <Download size={14} className="mr-1" />
+                            {t('glossary.bulkImport.downloadTemplate')}
+                        </Button>
+                    </div>
 
-                {/* Parse Error */}
-                {parseError && (
-                    <Alert
-                        type="error"
-                        message={parseError}
-                        icon={<AlertCircle size={16} />}
-                        showIcon
-                        closable
-                        onClose={() => setParseError(null)}
-                    />
-                )}
+                    {/* Parse Error */}
+                    {parseError && (
+                        <Alert variant="destructive">
+                            <AlertCircle size={16} />
+                            <AlertDescription className="flex items-center justify-between">
+                                <span>{parseError}</span>
+                                <button onClick={() => setParseError(null)} className="ml-2">
+                                    <X size={14} />
+                                </button>
+                            </AlertDescription>
+                        </Alert>
+                    )}
 
-                {/* Import Result */}
-                {importResult && (
-                    <Alert
-                        type={importResult.success ? 'success' : 'warning'}
-                        message={
-                            <div>
+                    {/* Import Result */}
+                    {importResult && (
+                        <Alert variant={importResult.success ? 'success' : 'warning'}>
+                            <AlertDescription>
                                 <p>{t('glossary.bulkImport.resultSummary', {
                                     tasks: importResult.tasksCreated,
                                     skipped: importResult.skipped,
@@ -317,25 +296,54 @@ export const GlossaryBulkImportModal = ({ open, onClose, onSuccess }: GlossaryBu
                                         ))}
                                     </ul>
                                 )}
-                            </div>
-                        }
-                        showIcon
-                    />
-                )}
+                            </AlertDescription>
+                        </Alert>
+                    )}
 
-                {/* Preview Table */}
-                {parsedRows.length > 0 && (
-                    <div className="max-h-[400px] overflow-auto">
-                        <Table
-                            columns={previewColumns}
-                            dataSource={parsedRows.map((row, i) => ({ ...row, key: i }))}
-                            pagination={false}
-                            size="small"
-                            scroll={{ x: true }}
-                        />
+                    {/* Preview Table */}
+                    {parsedRows.length > 0 && (
+                        <div className="max-h-[400px] overflow-auto border rounded">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[150px]">{t('glossary.bulkImport.colTaskName')}</TableHead>
+                                        <TableHead>{t('glossary.bulkImport.colTaskInstructionEn')}</TableHead>
+                                        <TableHead>{t('glossary.bulkImport.colTaskInstructionJa')}</TableHead>
+                                        <TableHead>{t('glossary.bulkImport.colTaskInstructionVi')}</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {parsedRows.map((row, i) => (
+                                        <TableRow key={i}>
+                                            <TableCell>{row.task_name}</TableCell>
+                                            <TableCell className="truncate max-w-[200px]">{row.task_instruction_en}</TableCell>
+                                            <TableCell className="truncate max-w-[200px]">{row.task_instruction_ja}</TableCell>
+                                            <TableCell className="truncate max-w-[200px]">{row.task_instruction_vi}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
+                </div>
+
+                <DialogFooter className="flex justify-between items-center sm:justify-between">
+                    <span className="text-sm text-slate-500">
+                        {parsedRows.length > 0
+                            ? t('glossary.bulkImport.rowCount', { count: parsedRows.length })
+                            : ''}
+                    </span>
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={handleClose}>{t('common.cancel')}</Button>
+                        <Button
+                            onClick={handleImport}
+                            disabled={parsedRows.length === 0 || importing}
+                        >
+                            {importing ? '...' : t('glossary.bulkImport.import')}
+                        </Button>
                     </div>
-                )}
-            </div>
-        </Modal>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     )
 }

@@ -5,7 +5,7 @@
 import { Knex } from 'knex';
 
 /**
- * FindAllOptions interface for query customization.
+ * @description FindAllOptions interface for query customization.
  * Allows specifying sorting, pagination, and limiting query results.
  */
 export interface FindAllOptions {
@@ -18,7 +18,7 @@ export interface FindAllOptions {
 }
 
 /**
- * IBaseModel interface defining standard CRUD operations.
+ * @description IBaseModel interface defining standard CRUD operations.
  * All model classes should implement this interface.
  */
 export interface IBaseModel<T> {
@@ -35,7 +35,7 @@ export interface IBaseModel<T> {
 }
 
 /**
- * BaseModel abstract class providing thin CRUD wrapper around Knex.
+ * @description BaseModel abstract class providing thin CRUD wrapper around Knex.
  * Concrete models extend this class and supply table name and knex instance.
  * Implements the Factory Pattern for consistent data access layer.
  * @template T - The entity type this model manages
@@ -47,9 +47,10 @@ export abstract class BaseModel<T> implements IBaseModel<T> {
   protected abstract knex: Knex;
 
   /**
-   * Create a new record in the database.
-   * @param data - Partial entity data to insert
-   * @returns The created entity with all fields populated
+   * @description Create a new record in the database
+   * @param {Partial<T>} data - Partial entity data to insert
+   * @param {Knex.Transaction} [trx] - Optional transaction for atomic operations
+   * @returns {Promise<T>} The created entity with all fields populated
    */
   async create(data: Partial<T>, trx?: Knex.Transaction): Promise<T> {
     // Insert data and return the created record with all columns
@@ -61,9 +62,9 @@ export abstract class BaseModel<T> implements IBaseModel<T> {
   }
 
   /**
-   * Find a single record by its primary key ID.
-   * @param id - Record ID to look up
-   * @returns The entity if found, undefined otherwise
+   * @description Find a single record by its primary key ID
+   * @param {string | number} id - Record ID to look up
+   * @returns {Promise<T | undefined>} The entity if found, undefined otherwise
    */
   async findById(id: string | number): Promise<T | undefined> {
     // Query by ID and return first (should be only) result
@@ -71,11 +72,11 @@ export abstract class BaseModel<T> implements IBaseModel<T> {
   }
 
   /**
-   * Find all records matching optional filter with query options.
+   * @description Find all records matching optional filter with query options.
    * Supports sorting, pagination via limit/offset.
-   * @param filter - Optional WHERE clause conditions
-   * @param options - Optional query options (orderBy, limit, offset)
-   * @returns Array of matching entities
+   * @param {any} [filter] - Optional WHERE clause conditions
+   * @param {FindAllOptions} [options] - Optional query options (orderBy, limit, offset)
+   * @returns {Promise<T[]>} Array of matching entities
    */
   async findAll(filter?: any, options?: FindAllOptions): Promise<T[]> {
     // Build base query for the table
@@ -115,11 +116,12 @@ export abstract class BaseModel<T> implements IBaseModel<T> {
   }
 
   /**
-   * Update a record by ID or filter conditions.
+   * @description Update a record by ID or filter conditions.
    * Supports both primary key lookup and object-based WHERE clause.
-   * @param id - Record ID or object with filter conditions
-   * @param data - Partial entity data to update
-   * @returns Updated entity if found, undefined otherwise
+   * @param {string | number | Partial<T>} id - Record ID or object with filter conditions
+   * @param {Partial<T>} data - Partial entity data to update
+   * @param {Knex.Transaction} [trx] - Optional transaction for atomic operations
+   * @returns {Promise<T | undefined>} Updated entity if found, undefined otherwise
    */
   async update(id: string | number | Partial<T>, data: Partial<T>, trx?: Knex.Transaction): Promise<T | undefined> {
     // Build base query for the table
@@ -142,9 +144,10 @@ export abstract class BaseModel<T> implements IBaseModel<T> {
   }
 
   /**
-   * Delete a record by ID or filter conditions.
+   * @description Delete a record by ID or filter conditions.
    * Supports both primary key lookup and object-based WHERE clause.
-   * @param id - Record ID or object with filter conditions
+   * @param {string | number | Partial<T>} id - Record ID or object with filter conditions
+   * @param {Knex.Transaction} [trx] - Optional transaction for atomic operations
    */
   async delete(id: string | number | Partial<T>, trx?: Knex.Transaction): Promise<void> {
     // Build base query for the table
@@ -166,9 +169,9 @@ export abstract class BaseModel<T> implements IBaseModel<T> {
   }
 
   /**
-   * Expose underlying Knex query builder for custom queries.
+   * @description Expose underlying Knex query builder for custom queries.
    * Use sparingly - prefer defined methods for standard operations.
-   * @returns Knex QueryBuilder instance scoped to this table
+   * @returns {Knex.QueryBuilder} Knex QueryBuilder instance scoped to this table
    */
   getKnex(): Knex.QueryBuilder {
     return this.knex(this.tableName);

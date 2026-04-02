@@ -3,10 +3,21 @@
  * @module features/teams/components/TeamMembersDialog
  */
 import { useTranslation } from 'react-i18next'
-import { Table, Tag, Button, Avatar } from 'antd'
 import { Plus } from 'lucide-react'
-import { Dialog } from '@/components/Dialog'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import UserMultiSelect from '@/features/users/components/UserMultiSelect'
+import { UserRole } from '@/constants'
 import type { Team, TeamMember } from '../types/team.types'
 import type { User } from '@/features/auth'
 
@@ -52,56 +63,12 @@ export function TeamMembersDialog({
 }: TeamMembersDialogProps) {
     const { t } = useTranslation()
 
-    /** Table columns for member list */
-    const memberColumns = [
-        {
-            title: t('userManagement.user'),
-            key: 'user',
-            render: (_: any, record: TeamMember) => (
-                <div className="flex items-center gap-3">
-                    <Avatar className="bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400">
-                        {(record.display_name || record.email || '?').charAt(0).toUpperCase()}
-                    </Avatar>
-                    <div>
-                        <div className="font-medium text-slate-900 dark:text-white">{record.display_name}</div>
-                        <div className="text-xs text-slate-500">{record.email}</div>
-                    </div>
-                </div>
-            ),
-        },
-        {
-            title: t('iam.teams.role'),
-            dataIndex: 'role',
-            key: 'role',
-            render: (role: string) => (
-                <Tag color={role === 'leader' ? 'purple' : 'default'} className="capitalize">
-                    {t(`iam.teams.${role}`)}
-                </Tag>
-            ),
-        },
-        {
-            title: t('common.actions'),
-            key: 'actions',
-            align: 'right' as const,
-            render: (_: any, record: TeamMember) => (
-                <Button
-                    type="text"
-                    danger
-                    onClick={() => onRemoveMember(record.id)}
-                >
-                    {t('common.delete')}
-                </Button>
-            ),
-        },
-    ]
-
     return (
-        <Dialog
-            open={open && !!team}
-            onClose={onClose}
-            title={`${t('iam.teams.members')} - ${team?.name}`}
-            maxWidth="3xl"
-        >
+        <Dialog open={open && !!team} onOpenChange={(v: boolean) => { if (!v) onClose() }}>
+            <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                    <DialogTitle>{`${t('iam.teams.members')} - ${team?.name}`}</DialogTitle>
+                </DialogHeader>
             <div className="h-full flex flex-col min-h-[400px]">
                 {/* Add member controls */}
                 <div className="mb-6 flex gap-2 items-start shrink-0">
@@ -114,12 +81,11 @@ export function TeamMembersDialog({
                         />
                     </div>
                     <Button
-                        type="primary"
                         onClick={onAddMembers}
                         disabled={selectedUserIds.length === 0}
-                        icon={<Plus size={18} />}
                         className="h-[42px] mt-1"
                     >
+                        <Plus size={18} className="mr-1" />
                         {t('common.add')}
                     </Button>
                 </div>
@@ -133,17 +99,61 @@ export function TeamMembersDialog({
 
                 {/* Members table */}
                 <div className="flex-1 overflow-auto">
-                    <Table
-                        columns={memberColumns}
-                        dataSource={members}
-                        rowKey="id"
-                        size="small"
-                        pagination={false}
-                        scroll={{ y: 350 }}
-                        locale={{ emptyText: t('common.noData') }}
-                    />
+                    {members.length === 0 ? (
+                        <div className="text-center text-slate-500 dark:text-slate-400 py-8">
+                            {t('common.noData')}
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>{t('userManagement.user')}</TableHead>
+                                    <TableHead>{t('iam.teams.role')}</TableHead>
+                                    <TableHead className="text-right">{t('common.actions')}</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {members.map((member) => (
+                                    <TableRow key={member.id}>
+                                        <TableCell>
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="h-8 w-8">
+                                                    <AvatarFallback className="bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400 text-sm">
+                                                        {(member.display_name || member.email || '?').charAt(0).toUpperCase()}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div>
+                                                    <div className="font-medium text-slate-900 dark:text-white">{member.display_name}</div>
+                                                    <div className="text-xs text-slate-500">{member.email}</div>
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge
+                                                variant={member.role === UserRole.LEADER ? 'default' : 'secondary'}
+                                                className={`capitalize ${member.role === UserRole.LEADER ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : ''}`}
+                                            >
+                                                {t(`iam.teams.${member.role}`)}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                                                onClick={() => onRemoveMember(member.id)}
+                                            >
+                                                {t('common.delete')}
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    )}
                 </div>
             </div>
+            </DialogContent>
         </Dialog>
     )
 }

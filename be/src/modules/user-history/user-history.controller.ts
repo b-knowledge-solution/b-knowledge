@@ -10,17 +10,15 @@ import { Request, Response, NextFunction } from 'express';
 import { userHistoryService } from '@/modules/user-history/user-history.service.js';
 
 /**
- * Controller class for user history endpoints.
- * All methods extract the user's email from the authenticated request.
+ * @description Controller for user-specific history endpoints that extracts the user's email from the authenticated session
  */
 export class UserHistoryController {
     /**
-     * Get paginated chat history for the authenticated user.
-     * 
-     * @route GET /api/user/history/chat
+     * @description Get paginated chat history for the authenticated user
      * @param {Request} req - Express request with query params: q, startDate, endDate, page, limit
      * @param {Response} res - Express response
      * @param {NextFunction} next - Express next middleware
+     * @returns {Promise<any>}
      */
     async getChatHistory(req: Request, res: Response, next: NextFunction) {
         try {
@@ -58,12 +56,11 @@ export class UserHistoryController {
     }
 
     /**
-     * Get details for a specific chat session.
-     * 
-     * @route GET /api/user/history/chat/:sessionId
+     * @description Get details for a specific chat session, verifying user ownership
      * @param {Request} req - Express request with sessionId param
      * @param {Response} res - Express response
      * @param {NextFunction} next - Express next middleware
+     * @returns {Promise<any>}
      */
     async getChatSessionDetails(req: Request, res: Response, next: NextFunction) {
         try {
@@ -95,12 +92,11 @@ export class UserHistoryController {
     }
 
     /**
-     * Get paginated search history for the authenticated user.
-     * 
-     * @route GET /api/user/history/search
+     * @description Get paginated search history for the authenticated user
      * @param {Request} req - Express request with query params: q, startDate, endDate, page, limit
      * @param {Response} res - Express response
      * @param {NextFunction} next - Express next middleware
+     * @returns {Promise<any>}
      */
     async getSearchHistory(req: Request, res: Response, next: NextFunction) {
         try {
@@ -138,12 +134,11 @@ export class UserHistoryController {
     }
 
     /**
-     * Get details for a specific search session.
-     * 
-     * @route GET /api/user/history/search/:sessionId
+     * @description Get details for a specific search session, verifying user ownership
      * @param {Request} req - Express request with sessionId param
      * @param {Response} res - Express response
      * @param {NextFunction} next - Express next middleware
+     * @returns {Promise<any>}
      */
     async getSearchSessionDetails(req: Request, res: Response, next: NextFunction) {
         try {

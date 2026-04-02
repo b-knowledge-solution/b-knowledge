@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GlossaryTaskModel } from '../../src/modules/glossary/glossary-task.model.js'
+import { GlossaryTaskModel } from '../../src/modules/glossary/models/glossary-task.model.js'
 import { db } from '../../src/shared/db/knex.js'
 
 vi.mock('../../src/shared/db/knex.js', () => ({

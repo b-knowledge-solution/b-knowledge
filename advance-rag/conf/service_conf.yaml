@@ -1,0 +1,38 @@
+ragflow:
+  host: 0.0.0.0
+  http_port: 9380
+admin:
+  host: 0.0.0.0
+  http_port: 9381
+postgres:
+  name: 'knowledge_base'
+  user: 'postgres'
+  password: 'test123'
+  host: 'localhost'
+  port: 5432
+  max_connections: 100
+  stale_timeout: 30
+minio:
+  user: 'rustfsadmin'
+  password: 'rustfsadmin'
+  host: 'localhost:9000'
+  bucket: 'knowledge'
+  prefix_path: ''
+os:
+  hosts: 'http://localhost:9201'
+  username: 'admin'
+  password: 'OpenSearch@123'
+redis:
+  db: 1
+  username: ''
+  password: ''
+  host: 'localhost:6379'
+task_executor:
+  message_queue_type: 'redis'
+user_default_llm:
+  default_models:
+    embedding_model:
+      name: 'bge-m3'
+      factory: 'xxxx'
+      api_key: 'xxx'
+      base_url: 'http://localhost:6380'

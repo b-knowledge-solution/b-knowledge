@@ -1,5 +1,27 @@
 /**
- * @fileoverview Histories feature exports.
- * Exposes the HistoriesPage component for viewing system-wide or user-specific chat histories.
+ * @fileoverview Barrel file for the Histories feature.
+ * Exposes pages, query hooks, and UI hooks for external consumption.
+ * @module features/histories
  */
-export { default as HistoriesPage } from './pages/HistoriesPage';
+
+// Pages
+export { default as HistoriesPage } from './pages/HistoriesPage'
+
+// Query hooks (TanStack Query)
+export { useHistoriesData } from './api/historiesQueries'
+export type { UseHistoriesDataReturn } from './api/historiesQueries'
+
+// UI hooks
+export { useHistoriesFilters } from './hooks/useHistoriesFilters'
+
+// Types
+export type {
+    FilterState,
+    ChatSessionSummary,
+    SearchSessionSummary,
+    AgentRunSessionSummary,
+    ExternalAgentRunDetail,
+    ExternalChatHistory,
+    ExternalSearchHistory,
+    HistoriesTab,
+} from './types/histories.types'

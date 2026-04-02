@@ -1,3 +1,5 @@
+import { EnvBoolString } from '@/constants'
+
 /**
  * @fileoverview Application configuration module.
  * 
@@ -17,16 +19,16 @@
 // ============================================================================
 
 /**
- * Parses a boolean environment variable.
- * 
- * @param key - Environment variable key (VITE_* prefix)
- * @param defaultValue - Default value if not set or invalid
- * @returns Parsed boolean value
+ * @description Parses a boolean environment variable, returning the default if the value is not explicitly 'true' or 'false'
+ * @param {string} key - Environment variable key (VITE_* prefix)
+ * @param {boolean} defaultValue - Default value if not set or invalid
+ * @returns {boolean} Parsed boolean value
  */
 const getBoolEnv = (key: string, defaultValue: boolean): boolean => {
     const value = import.meta.env[key];
-    if (value === 'true') return true;
-    if (value === 'false') return false;
+    // Only accept explicit string booleans
+    if (value === EnvBoolString.TRUE) return true;
+    if (value === EnvBoolString.FALSE) return false;
     return defaultValue;
 };
 

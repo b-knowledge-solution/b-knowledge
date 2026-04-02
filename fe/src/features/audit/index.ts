@@ -1,6 +1,6 @@
 /**
  * @fileoverview Barrel file for the audit feature.
- * Exports page component and types for external consumption.
+ * Exports page component, types, API, and query hooks for external consumption.
  * @module features/audit
  */
 
@@ -17,3 +17,11 @@ export type {
 
 // API (for potential reuse in other features)
 export { auditApi } from './api/auditApi'
+
+// Query hooks
+export {
+    useAuditLogsQuery,
+    useAuditActionsQuery,
+    useAuditResourceTypesQuery,
+    useAuditInvalidation,
+} from './api/auditQueries'

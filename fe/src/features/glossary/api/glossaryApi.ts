@@ -49,6 +49,7 @@ export interface CreateTaskDto {
   task_instruction_en: string;
   task_instruction_ja?: string;
   task_instruction_vi?: string;
+  context_template?: string;
 }
 
 /** DTO for creating/updating a keyword */
@@ -110,6 +111,9 @@ export interface KeywordSearchResult {
 // API Service
 // ============================================================================
 
+/**
+ * @description Glossary API service object providing CRUD, search, prompt generation, and bulk import operations.
+ */
 export const glossaryApi = {
   // ========================================================================
   // Task CRUD

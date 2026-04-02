@@ -52,14 +52,21 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ file, url, o
     const { t } = useTranslation();
     const [extension, setExtension] = useState<string>('');
 
+    // Extract file extension on mount or when file changes
     useEffect(() => {
         const ext = file.name.split('.').pop()?.toLowerCase() || '';
         console.log('[FilePreviewModal] Opening file:', { name: file.name, ext, url });
         setExtension(ext);
     }, [file, url]);
 
+    /**
+     * @description Route to the appropriate preview component based on file extension
+     * @returns {JSX.Element} File-type-specific preview or unsupported fallback
+     */
     const renderPreview = () => {
+        // Match extension to the correct preview component
         switch (extension) {
+            // Image formats
             case 'jpg':
             case 'jpeg':
             case 'png':
@@ -69,9 +76,11 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ file, url, o
             case 'bmp':
                 return <ImagePreview url={url} alt={file.name} />;
 
+            // PDF documents
             case 'pdf':
                 return <PdfPreview url={url} title={file.name} />;
 
+            // Text and code files
             case 'txt':
             case 'md':
             case 'json':
@@ -86,6 +95,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ file, url, o
             case 'yaml':
                 return <TextPreview url={url} extension={extension} />;
 
+            // Office documents
             case 'doc':
             case 'docx':
             case 'xls':
@@ -94,6 +104,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ file, url, o
             case 'pptx':
                 return <OfficePreview url={url} />;
 
+            // Unsupported format fallback with download option
             default:
                 return (
                     <div className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400 p-8 text-center">

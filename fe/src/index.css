@@ -1,35 +1,120 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+ * shadcn/ui CSS Custom Properties (Light theme)
+ * ============================================================================ */
 :root {
-  --primary-color: #0D26CF;
-  --primary-hover: #0A1FA3;
+  /* Existing brand tokens */
+  --primary-color: #0d26cf;
+  --primary-hover: #0a1fa3;
   --bg-color: #ffffff;
-  --sidebar-bg: #08107B;
+  --sidebar-bg: #08107b;
   --sidebar-text: #ffffff;
   --text-color: #1e293b;
   --border-color: #e2e8f0;
   --card-bg: #ffffff;
+
+  /* shadcn/ui tokens (HSL without hsl() wrapper) */
+  --background: 0 0% 100%;
+  --foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 47.4% 11.2%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 47.4% 11.2%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 100% 50%;
+  --destructive-foreground: 210 40% 98%;
+  --ring: 228 79% 43%;
+  --radius: 0.5rem;
+
+  /* Dashboard stat-card gradients (light) */
+  --dashboard-gradient-1-from: #3b82f6;
+  --dashboard-gradient-1-to: #1d4ed8;
+  --dashboard-gradient-2-from: #10b981;
+  --dashboard-gradient-2-to: #059669;
+  --dashboard-gradient-3-from: #f59e0b;
+  --dashboard-gradient-3-to: #d97706;
+  --dashboard-gradient-4-from: #8b5cf6;
+  --dashboard-gradient-4-to: #7c3aed;
+
+  /* Dashboard chart tokens (light) */
+  --chart-primary: #3b82f6;
+  --chart-secondary: #10b981;
+  --chart-grid: #e2e8f0;
+  --chart-tooltip-bg: #1e293b;
+  --chart-tooltip-text: #f8fafc;
 }
 
+/* ============================================================================
+ * shadcn/ui CSS Custom Properties (Dark theme)
+ * ============================================================================ */
 .dark {
-  --primary-color: #3D54E6;
-  --primary-hover: #0D26CF;
-  --bg-color: #020617;
-  --sidebar-bg: #050a44;
-  --sidebar-text: #e2e8f0;
-  --text-color: #f1f5f9;
-  --border-color: #1e293b;
-  --card-bg: #0f172a;
+  /* Existing brand tokens — lifted from near-black for better readability */
+  --primary-color: #6380f0;
+  --primary-hover: #4d6ae8;
+  --bg-color: #0f172a;
+  --sidebar-bg: #070e52;
+  --sidebar-text: #f1f5f9;
+  --text-color: #f8fafc;
+  --border-color: #334155;
+  --card-bg: #1e293b;
+
+  /* shadcn/ui tokens — raised luminance for readable text & visible borders */
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+  --muted: 217 33% 17%;
+  --muted-foreground: 215 20% 65%;
+  --popover: 222 47% 11%;
+  --popover-foreground: 210 40% 98%;
+  --card: 217 33% 17%;
+  --card-foreground: 210 40% 98%;
+  --border: 215 25% 27%;
+  --input: 215 25% 27%;
+  --secondary: 217 33% 17%;
+  --secondary-foreground: 210 40% 98%;
+  --accent: 215 25% 27%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 63% 45%;
+  --destructive-foreground: 210 40% 98%;
+  --ring: 228 79% 63%;
+
+  /* Dashboard stat-card gradients (dark — slightly muted) */
+  --dashboard-gradient-1-from: #2563eb;
+  --dashboard-gradient-1-to: #1e40af;
+  --dashboard-gradient-2-from: #059669;
+  --dashboard-gradient-2-to: #047857;
+  --dashboard-gradient-3-from: #d97706;
+  --dashboard-gradient-3-to: #b45309;
+  --dashboard-gradient-4-from: #7c3aed;
+  --dashboard-gradient-4-to: #6d28d9;
+
+  /* Dashboard chart tokens (dark) — brighter for readability */
+  --chart-primary: #93bbfd;
+  --chart-secondary: #6ee7b7;
+  --chart-grid: #334155;
+  --chart-tooltip-bg: #1e293b;
+  --chart-tooltip-text: #f8fafc;
 }
 
 @layer base {
+  * {
+    @apply border-border;
+  }
+
   body {
-    @apply bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 font-sans;
-    font-family: 'Inter', sans-serif;
+    @apply bg-background text-foreground font-sans;
+    font-family: "Inter", sans-serif;
   }
 
   /* Global Custom Scrollbar */
@@ -55,15 +140,19 @@
 
 @layer components {
   .sidebar-link {
-    @apply flex items-center gap-3 px-4 py-2.5 text-slate-200 rounded-md transition-colors border border-transparent hover:border-slate-500;
+    @apply flex items-center gap-3 px-3 py-2.5 text-slate-300 rounded-xl transition-all duration-200 border border-transparent hover:bg-white/10 hover:text-white hover:border-white/10;
   }
 
   .sidebar-link.active {
-    @apply bg-yellow-400 text-slate-900 border-yellow-400 font-medium;
+    @apply bg-blue-600 text-white border-blue-600/50 font-medium shadow-md shadow-blue-600/25;
+  }
+
+  .dark .sidebar-link.active {
+    @apply bg-blue-600/30 text-blue-200 border-blue-400/40 shadow-blue-500/15;
   }
 
   .btn {
-    @apply px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer;
+    @apply px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer;
   }
 
   .btn-primary {
@@ -71,35 +160,37 @@
   }
 
   .btn-secondary {
-    @apply bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600;
+    @apply bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600;
   }
 
   /* Card component */
   .card {
-    @apply bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700;
+    @apply bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-600 transition-all duration-300 hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-500/40;
   }
 
   /* Input styles */
   .input {
-    @apply w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent;
+    @apply w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent;
   }
 
-
+  /* Layout glassmorphism utility */
+  .layout-glass {
+    @apply bg-white/80 backdrop-blur-xl border-b border-slate-200/50 shadow-sm;
+  }
+  .dark .layout-glass {
+    @apply bg-slate-800/90 backdrop-blur-xl border-b border-slate-600/50;
+  }
 }
 
 @layer utilities {
-
   /* Hide scrollbar while maintaining scroll functionality */
   .scrollbar-hide {
     -ms-overflow-style: none !important;
-    /* IE and Edge */
     scrollbar-width: none !important;
-    /* Firefox */
   }
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none !important;
-    /* Chrome, Safari and Opera */
     width: 0 !important;
     height: 0 !important;
   }
@@ -111,6 +202,96 @@
   .scrollbar-hide::-webkit-scrollbar-thumb {
     display: none !important;
   }
+
+  /* ── Chat UI utilities ─────────────────────────────────────── */
+
+  /* Subtle blue glow on assistant message bubbles (dark mode only) */
+  .chat-bubble-glow {
+    box-shadow: none;
+  }
+  .dark .chat-bubble-glow {
+    box-shadow: 0 0 20px -4px hsl(228 79% 53% / 0.15),
+                0 0 8px -2px hsl(228 79% 53% / 0.10);
+  }
+
+  /* Glassmorphism panel background */
+  .chat-glass {
+    @apply bg-background/80 backdrop-blur-md;
+  }
+  .dark .chat-glass {
+    @apply bg-background/60 backdrop-blur-lg;
+  }
+
+  /* Floating elevated input bar */
+  .chat-input-elevated {
+    @apply shadow-lg border rounded-2xl;
+    box-shadow: 0 -4px 24px -6px hsl(0 0% 0% / 0.06),
+                0 -2px 8px -2px hsl(0 0% 0% / 0.04);
+  }
+  .dark .chat-input-elevated {
+    box-shadow: 0 -4px 24px -6px hsl(228 79% 53% / 0.08),
+                0 -2px 8px -2px hsl(0 0% 0% / 0.20);
+  }
+
+  /* Smooth fade + slide-up for new messages */
+  .chat-fade-in {
+    animation: chatFadeIn 0.35s ease-out both;
+  }
+
+  @keyframes chatFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Sidebar conversation item hover micro-interaction */
+  .chat-sidebar-item {
+    transition: transform 0.15s ease, box-shadow 0.2s ease;
+  }
+  .chat-sidebar-item:hover {
+    transform: translateX(2px);
+  }
+  .chat-sidebar-item:active {
+    transform: translateX(1px);
+  }
+
+  /* Skeleton shimmer gradient */
+  .chat-shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--muted-foreground) / 0.06) 50%,
+      hsl(var(--muted)) 75%
+    );
+    background-size: 200% 100%;
+    animation: chatShimmer 1.5s ease-in-out infinite;
+  }
+
+  @keyframes chatShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Streaming pulse ring for stop button */
+  .chat-pulse-ring {
+    animation: chatPulseRing 1.5s ease-in-out infinite;
+  }
+
+  @keyframes chatPulseRing {
+    0%, 100% { box-shadow: 0 0 0 0 hsl(0 100% 50% / 0.3); }
+    50% { box-shadow: 0 0 0 6px hsl(0 100% 50% / 0); }
+  }
+
+  /* Streaming cursor blink for assistant message typing indicator */
+  @keyframes cursor-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
 }
 
 /* Document Manager Table - Force fill container height */
@@ -119,45 +300,4 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
-}
-
-.document-table-container .ant-table-wrapper {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.document-table-container .ant-spin-nested-loading {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.document-table-container .ant-spin-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.document-table-container .ant-table {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.document-table-container .ant-table-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.document-table-container .ant-table-body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto !important;
 }

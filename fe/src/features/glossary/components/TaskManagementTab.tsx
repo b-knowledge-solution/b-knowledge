@@ -7,11 +7,21 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Edit2, Trash2, Search, Upload } from 'lucide-react'
-import { Card, Input, Button, Space, Modal, Form, Table, Tooltip } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
-import type { GlossaryTask } from '../api/glossaryApi'
+import { useConfirm } from '@/components/ConfirmDialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent } from '@/components/ui/card'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import {
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table'
+import { Pagination } from '@/components/ui/pagination'
+import { Spinner } from '@/components/ui/spinner'
+
 import { glossaryApi } from '../api/glossaryApi'
-import type { UseGlossaryTasksReturn } from '../hooks/useGlossaryTasks'
+import type { UseGlossaryTasksReturn } from '../api/glossaryQueries'
 import { globalMessage } from '@/app/App'
 
 /**
@@ -38,11 +48,13 @@ export const TaskManagementTab: React.FC<TaskManagementTabProps> = ({
     onOpenBulkImport,
 }) => {
     const { t } = useTranslation()
+    const confirm = useConfirm()
 
     // Row selection state for bulk delete
-    const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
+    const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([])
     const [bulkDeleting, setBulkDeleting] = useState(false)
-    const [pageSize, setPageSize] = useState(20)
+    const [pageSize] = useState(20)
+    const [currentPage, setCurrentPage] = useState(1)
 
     const {
         filteredTasks,
@@ -52,7 +64,8 @@ export const TaskManagementTab: React.FC<TaskManagementTabProps> = ({
         isModalOpen,
         editingTask,
         submitting,
-        form,
+        formData,
+        setFormField,
         openModal,
         closeModal,
         handleSubmit,
@@ -63,97 +76,54 @@ export const TaskManagementTab: React.FC<TaskManagementTabProps> = ({
     // Bulk Delete Handler
     // ========================================================================
 
-    /**
-     * Delete all selected tasks by looping individual API calls.
-     * @description Shows a confirmation modal, then deletes each selected task sequentially.
-     */
-    const handleBulkDelete = () => {
-        Modal.confirm({
-            title: t('glossary.task.bulkDeleteTitle'),
-            content: t('glossary.task.bulkDeleteMessage', { count: selectedRowKeys.length }),
-            okText: t('common.delete'),
-            okButtonProps: { danger: true },
-            onOk: async () => {
-                setBulkDeleting(true)
-                try {
-                    // Delete each selected task sequentially
-                    for (const id of selectedRowKeys) {
-                        await glossaryApi.deleteTask(id as string)
-                    }
-                    globalMessage.success(t('glossary.task.bulkDeleteSuccess', { count: selectedRowKeys.length }))
-                    setSelectedRowKeys([])
-                    taskHook.refresh()
-                } catch (error: any) {
-                    globalMessage.error(error?.message || t('common.error'))
-                } finally {
-                    setBulkDeleting(false)
-                }
-            },
+    const handleBulkDelete = async () => {
+        // Show styled confirmation dialog before bulk deleting tasks
+        const confirmed = await confirm({
+            title: t('common.delete'),
+            message: t('glossary.task.bulkDeleteMessage', { count: selectedRowKeys.length }),
+            variant: 'danger',
+            confirmText: t('common.delete'),
         })
+        if (!confirmed) return
+        setBulkDeleting(true)
+        try {
+            for (const id of selectedRowKeys) {
+                await glossaryApi.deleteTask(id)
+            }
+            globalMessage.success(t('glossary.task.bulkDeleteSuccess', { count: selectedRowKeys.length }))
+            setSelectedRowKeys([])
+            taskHook.refresh()
+        } catch (error: any) {
+            globalMessage.error(error?.message || t('common.error'))
+        } finally {
+            setBulkDeleting(false)
+        }
     }
 
     // ========================================================================
-    // Table Columns & Row Selection
+    // Row Selection
     // ========================================================================
 
-    /** Row selection config for Ant Design Table — only enabled for admin users. */
-    const rowSelection = isAdmin ? {
-        selectedRowKeys,
-        onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
-    } : undefined
+    const toggleRow = (id: string) => {
+        setSelectedRowKeys(prev =>
+            prev.includes(id) ? prev.filter(k => k !== id) : [...prev, id]
+        )
+    }
 
-    /** Shared style for columns that should wrap long text. */
-    const wrapCellStyle = { whiteSpace: 'normal' as const, wordBreak: 'break-word' as const }
+    const toggleAll = () => {
+        if (selectedRowKeys.length === filteredTasks.length) {
+            setSelectedRowKeys([])
+        } else {
+            setSelectedRowKeys(filteredTasks.map(t => t.id))
+        }
+    }
 
-    /** Column definitions for the task table. */
-    const columns: ColumnsType<GlossaryTask> = [
-        {
-            title: t('glossary.task.name'),
-            dataIndex: 'name',
-            key: 'name',
-            width: 120,
-            render: (name: string) => (
-                <span className="font-medium" style={wrapCellStyle}>{name}</span>
-            ),
-        },
+    // ========================================================================
+    // Pagination
+    // ========================================================================
 
-        {
-            title: t('glossary.task.taskInstructionEn'),
-            dataIndex: 'task_instruction_en',
-            key: 'task_instruction_en',
-            width: 160,
-            onCell: () => ({ style: wrapCellStyle }),
-        },
-        {
-            title: t('glossary.task.taskInstructionJa'),
-            dataIndex: 'task_instruction_ja',
-            key: 'task_instruction_ja',
-            width: 160,
-            onCell: () => ({ style: wrapCellStyle }),
-        },
-        {
-            title: t('glossary.task.taskInstructionVi'),
-            dataIndex: 'task_instruction_vi',
-            key: 'task_instruction_vi',
-            width: 160,
-            onCell: () => ({ style: wrapCellStyle }),
-        },
-
-        // Conditionally add actions column for admin users
-        ...(isAdmin
-            ? [{
-                title: t('common.actions'),
-                key: 'actions',
-                width: 20,
-                render: (_: unknown, record: GlossaryTask) => (
-                    <span style={{ display: 'inline-flex', gap: 0 }}>
-                        <Button type="text" size="small" icon={<Edit2 size={12} />} onClick={() => openModal(record)} style={{ padding: '0 2px' }} />
-                        <Button type="text" size="small" danger icon={<Trash2 size={12} />} onClick={() => handleDelete(record)} style={{ padding: '0 2px' }} />
-                    </span>
-                ),
-            }]
-            : []),
-    ]
+    const totalPages = Math.ceil(filteredTasks.length / pageSize)
+    const paginatedTasks = filteredTasks.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
     // ========================================================================
     // Render
@@ -163,129 +133,205 @@ export const TaskManagementTab: React.FC<TaskManagementTabProps> = ({
         <div className="flex flex-col gap-3 h-full">
             {/* Search & Actions toolbar */}
             <div className="flex items-center gap-2">
-                <Input
-                    placeholder={t('glossary.task.searchPlaceholder')}
-                    allowClear
-                    value={search}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-                    prefix={<Search size={16} className="text-slate-400" />}
-                    className="max-w-md"
-                />
+                <div className="relative max-w-md">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Input
+                        placeholder={t('glossary.task.searchPlaceholder')}
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="pl-9"
+                    />
+                </div>
                 {/* Bulk delete button — visible when items are selected */}
                 {isAdmin && selectedRowKeys.length > 0 && (
                     <Button
-                        danger
-                        icon={<Trash2 size={16} />}
-                        loading={bulkDeleting}
+                        variant="destructive"
+                        size="sm"
+                        disabled={bulkDeleting}
                         onClick={handleBulkDelete}
                     >
-                        {t('glossary.task.deleteSelected', { count: selectedRowKeys.length })}
+                        <Trash2 size={16} className="mr-1" />
+                        {bulkDeleting ? '...' : t('glossary.task.deleteSelected', { count: selectedRowKeys.length })}
                     </Button>
                 )}
                 {isAdmin && (
-                    <Space>
-                        <Tooltip title={t('glossary.bulkImport.button')}>
-                            <Button
-                                icon={<Upload size={16} />}
-                                onClick={onOpenBulkImport}
-                            />
-                        </Tooltip>
-                        <Button
-                            type="primary"
-                            icon={<Plus size={16} />}
-                            onClick={() => openModal()}
-                        >
+                    <div className="flex items-center gap-2 ml-auto">
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" size="icon" onClick={onOpenBulkImport}>
+                                        <Upload size={16} />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>{t('glossary.bulkImport.button')}</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                        <Button onClick={() => openModal()}>
+                            <Plus size={16} className="mr-1" />
                             {t('glossary.task.add')}
                         </Button>
-                    </Space>
+                    </div>
                 )}
             </div>
 
             {/* Tasks Table */}
-            <Card
-                className="dark:bg-slate-800 dark:border-slate-700 flex-1 min-h-0"
-                styles={{ body: { padding: 0, height: '100%', display: 'flex', flexDirection: 'column' } }}
-            >
-                <div className="flex-1 overflow-auto">
-                    <Table
-                        columns={columns}
-                        dataSource={filteredTasks}
-                        rowKey="id"
-                        loading={loading}
-                        rowSelection={rowSelection}
-                        pagination={{
-                            pageSize,
-                            showSizeChanger: true,
-                            onShowSizeChange: (_current: number, size: number) => setPageSize(size),
-                            showTotal: (total: number) => `${total} items`,
-                        }}
-                        scroll={{ x: true, y: 'calc(100vh - 320px)' }}
-                        locale={{ emptyText: t('common.noData') }}
-                    />
-                </div>
+            <Card className="dark:bg-slate-800 dark:border-slate-700 flex-1 min-h-0">
+                <CardContent className="p-0 h-full flex flex-col">
+                    {loading ? (
+                        <div className="flex-1 flex items-center justify-center">
+                            <Spinner size={48} />
+                        </div>
+                    ) : (
+                        <>
+                            <div className="flex-1 overflow-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            {isAdmin && (
+                                                <TableHead className="w-10">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedRowKeys.length === filteredTasks.length && filteredTasks.length > 0}
+                                                        onChange={toggleAll}
+                                                        className="rounded"
+                                                    />
+                                                </TableHead>
+                                            )}
+                                            <TableHead className="w-[120px]">{t('glossary.task.name')}</TableHead>
+                                            <TableHead className="w-[160px]">{t('glossary.task.taskInstructionEn')}</TableHead>
+                                            <TableHead className="w-[160px]">{t('glossary.task.taskInstructionJa')}</TableHead>
+                                            <TableHead className="w-[160px]">{t('glossary.task.taskInstructionVi')}</TableHead>
+                                            {isAdmin && <TableHead className="w-[60px]">{t('common.actions')}</TableHead>}
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {paginatedTasks.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={isAdmin ? 6 : 4} className="text-center py-8 text-slate-500">
+                                                    {t('common.noData')}
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : paginatedTasks.map((task) => (
+                                            <TableRow key={task.id}>
+                                                {isAdmin && (
+                                                    <TableCell>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedRowKeys.includes(task.id)}
+                                                            onChange={() => toggleRow(task.id)}
+                                                            className="rounded"
+                                                        />
+                                                    </TableCell>
+                                                )}
+                                                <TableCell className="font-medium break-words">{task.name}</TableCell>
+                                                <TableCell className="break-words whitespace-normal">{task.task_instruction_en}</TableCell>
+                                                <TableCell className="break-words whitespace-normal">{task.task_instruction_ja}</TableCell>
+                                                <TableCell className="break-words whitespace-normal">{task.task_instruction_vi}</TableCell>
+                                                {isAdmin && (
+                                                    <TableCell>
+                                                        <span className="inline-flex gap-0">
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openModal(task)}>
+                                                                <Edit2 size={12} />
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(task)}>
+                                                                <Trash2 size={12} />
+                                                            </Button>
+                                                        </span>
+                                                    </TableCell>
+                                                )}
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                            {totalPages > 1 && (
+                                <div className="p-3 border-t flex items-center justify-between">
+                                    <span className="text-sm text-slate-500">{filteredTasks.length} items</span>
+                                    <Pagination
+                                        currentPage={currentPage}
+                                        totalPages={totalPages}
+                                        onPageChange={setCurrentPage}
+                                    />
+                                </div>
+                            )}
+                        </>
+                    )}
+                </CardContent>
             </Card>
 
             {/* Task Create/Edit Modal */}
-            <Modal
-                title={editingTask ? t('glossary.task.editTitle') : t('glossary.task.createTitle')}
-                open={isModalOpen}
-                onCancel={closeModal}
-                footer={null}
-                width={700}
-                destroyOnHidden
-            >
-                <Form
-                    form={form}
-                    layout="vertical"
-                    onFinish={handleSubmit}
-                    preserve={false}
-                >
-                    <Form.Item
-                        name="name"
-                        label={t('glossary.task.name')}
-                        rules={[{ required: true, message: t('glossary.task.nameRequired') }]}
-                    >
-                        <Input placeholder={t('glossary.task.namePlaceholder')} />
-                    </Form.Item>
+            <Dialog open={isModalOpen} onOpenChange={(open: boolean) => !open && closeModal()}>
+                <DialogContent className="sm:max-w-[700px]">
+                    <DialogHeader>
+                        <DialogTitle>
+                            {editingTask ? t('glossary.task.editTitle') : t('glossary.task.createTitle')}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={(e) => { e.preventDefault(); handleSubmit() }} className="flex flex-col gap-4">
+                        <div>
+                            <Label>{t('glossary.task.name')} *</Label>
+                            <Input
+                                placeholder={t('glossary.task.namePlaceholder')}
+                                value={formData.name}
+                                onChange={(e) => setFormField('name', e.target.value)}
+                                required
+                            />
+                        </div>
 
-                    <Form.Item name="description" label={t('glossary.task.description')}>
-                        <Input.TextArea rows={2} placeholder={t('glossary.task.descriptionPlaceholder')} />
-                    </Form.Item>
+                        <div>
+                            <Label>{t('glossary.task.description')}</Label>
+                            <textarea
+                                rows={2}
+                                placeholder={t('glossary.task.descriptionPlaceholder')}
+                                value={formData.description}
+                                onChange={(e) => setFormField('description', e.target.value)}
+                                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            />
+                        </div>
 
-                    {/* Multi-language task instructions */}
-                    <Form.Item
-                        name="task_instruction_en"
-                        label={t('glossary.task.taskInstructionEn')}
-                        rules={[{ required: true, message: t('glossary.task.taskInstructionRequired') }]}
-                        tooltip={t('glossary.task.taskInstructionTooltip')}
-                    >
-                        <Input.TextArea rows={2} placeholder={t('glossary.task.taskInstructionPlaceholderEn')} />
-                    </Form.Item>
+                        <div>
+                            <Label>{t('glossary.task.taskInstructionEn')} *</Label>
+                            <textarea
+                                rows={2}
+                                placeholder={t('glossary.task.taskInstructionPlaceholderEn')}
+                                value={formData.task_instruction_en}
+                                onChange={(e) => setFormField('task_instruction_en', e.target.value)}
+                                required
+                                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            />
+                        </div>
 
-                    <Form.Item
-                        name="task_instruction_ja"
-                        label={t('glossary.task.taskInstructionJa')}
-                    >
-                        <Input.TextArea rows={2} placeholder={t('glossary.task.taskInstructionPlaceholderJa')} />
-                    </Form.Item>
+                        <div>
+                            <Label>{t('glossary.task.taskInstructionJa')}</Label>
+                            <textarea
+                                rows={2}
+                                placeholder={t('glossary.task.taskInstructionPlaceholderJa')}
+                                value={formData.task_instruction_ja}
+                                onChange={(e) => setFormField('task_instruction_ja', e.target.value)}
+                                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            />
+                        </div>
 
-                    <Form.Item
-                        name="task_instruction_vi"
-                        label={t('glossary.task.taskInstructionVi')}
-                    >
-                        <Input.TextArea rows={2} placeholder={t('glossary.task.taskInstructionPlaceholderVi')} />
-                    </Form.Item>
+                        <div>
+                            <Label>{t('glossary.task.taskInstructionVi')}</Label>
+                            <textarea
+                                rows={2}
+                                placeholder={t('glossary.task.taskInstructionPlaceholderVi')}
+                                value={formData.task_instruction_vi}
+                                onChange={(e) => setFormField('task_instruction_vi', e.target.value)}
+                                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            />
+                        </div>
 
-
-
-                    <div className="flex justify-end gap-2">
-                        <Button onClick={closeModal}>{t('common.cancel')}</Button>
-                        <Button type="primary" htmlType="submit" loading={submitting}>
-                            {t('common.save')}
-                        </Button>
-                    </div>
-                </Form>
-            </Modal>
+                        <div className="flex justify-end gap-2">
+                            <Button type="button" variant="outline" onClick={closeModal}>{t('common.cancel')}</Button>
+                            <Button type="submit" disabled={submitting}>
+                                {submitting ? '...' : t('common.save')}
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

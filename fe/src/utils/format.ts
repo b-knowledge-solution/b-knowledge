@@ -6,13 +6,11 @@
  */
 
 /**
- * Formats a file size in bytes to a human-readable string with units.
- * Uses binary prefixes (base 1024) according to IEC standard.
- * 
- * @param {number} bytes - The size in bytes to format.
- * @param {number} [decimals=1] - Number of decimal places to include.
- * @returns {string} Formatted string (e.g., "1.5 MiB", "102.4 KiB").
- * 
+ * @description Formats a file size in bytes to a human-readable string using IEC binary prefixes (base 1024)
+ * @param {number} bytes - The size in bytes to format
+ * @param {number} [decimals=1] - Number of decimal places to include
+ * @returns {string} Formatted string (e.g., "1.5 MiB", "102.4 KiB")
+ *
  * @example
  * ```ts
  * formatFileSize(1572864) // returns "1.5 MiB"

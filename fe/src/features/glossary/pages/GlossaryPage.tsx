@@ -11,10 +11,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BookOpen, Tag } from 'lucide-react'
-import { Tabs } from 'antd'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useAuth } from '@/features/auth'
-import { useGlossaryTasks } from '../hooks/useGlossaryTasks'
-import { useGlossaryKeywords } from '../hooks/useGlossaryKeywords'
+import { UserRole } from '@/constants'
+import { useGlossaryTasks } from '../api/glossaryQueries'
+import { useGlossaryKeywords } from '../api/glossaryQueries'
 import { TaskManagementTab } from '../components/TaskManagementTab'
 import { KeywordManagementTab } from '../components/KeywordManagementTab'
 import { GlossaryBulkImportModal } from '../components/GlossaryBulkImportModal'
@@ -33,7 +34,7 @@ export const GlossaryPage = () => {
     const { user } = useAuth()
 
     // Determine admin/leader privileges
-    const isAdmin = user?.role === 'admin' || user?.role === 'leader'
+    const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.LEADER
 
     // Active tab and bulk import modal state
     const [activeTab, setActiveTab] = useState('tasks')
@@ -49,44 +50,33 @@ export const GlossaryPage = () => {
 
     return (
         <div className="h-full flex flex-col">
-            <Tabs
-                activeKey={activeTab}
-                onChange={setActiveTab}
-                className="h-full glossary-tabs"
-                items={[
-                    {
-                        key: 'tasks',
-                        label: (
-                            <span className="flex items-center gap-2">
-                                <BookOpen size={16} />
-                                {t('glossary.tabs.tasks')}
-                            </span>
-                        ),
-                        children: (
-                            <TaskManagementTab
-                                taskHook={taskHook}
-                                isAdmin={isAdmin}
-                                onOpenBulkImport={() => setIsBulkImportOpen(true)}
-                            />
-                        ),
-                    },
-                    {
-                        key: 'keywords',
-                        label: (
-                            <span className="flex items-center gap-2">
-                                <Tag size={16} />
-                                {t('glossary.tabs.keywords')}
-                            </span>
-                        ),
-                        children: (
-                            <KeywordManagementTab
-                                keywordHook={keywordHook}
-                                isAdmin={isAdmin}
-                            />
-                        ),
-                    },
-                ]}
-            />
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+                <TabsList className="w-fit">
+                    <TabsTrigger value="tasks" className="flex items-center gap-2">
+                        <BookOpen size={16} />
+                        {t('glossary.tabs.tasks')}
+                    </TabsTrigger>
+                    <TabsTrigger value="keywords" className="flex items-center gap-2">
+                        <Tag size={16} />
+                        {t('glossary.tabs.keywords')}
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="tasks" className="flex-1 mt-0">
+                    <TaskManagementTab
+                        taskHook={taskHook}
+                        isAdmin={isAdmin}
+                        onOpenBulkImport={() => setIsBulkImportOpen(true)}
+                    />
+                </TabsContent>
+
+                <TabsContent value="keywords" className="flex-1 mt-0">
+                    <KeywordManagementTab
+                        keywordHook={keywordHook}
+                        isAdmin={isAdmin}
+                    />
+                </TabsContent>
+            </Tabs>
 
             {/* Bulk Import Modal — shared across tabs */}
             <GlossaryBulkImportModal

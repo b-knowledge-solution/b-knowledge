@@ -82,4 +82,25 @@ router.get('/token-status', requireAuth, controller.getTokenStatus.bind(controll
 // Authenticate using local root credentials config
 router.post('/login/root', controller.loginRoot.bind(controller));
 
+/**
+ * @route GET /api/auth/abilities
+ * @description Returns serialized CASL rules for the current session (used by frontend AbilityProvider).
+ * @access Private
+ */
+router.get('/abilities', requireAuth, controller.getAbilities.bind(controller));
+
+/**
+ * @route GET /api/auth/orgs
+ * @description Returns the user's organization memberships with roles.
+ * @access Private
+ */
+router.get('/orgs', requireAuth, controller.getOrgs.bind(controller));
+
+/**
+ * @route POST /api/auth/switch-org
+ * @description Switches the user's active organization and recomputes CASL abilities.
+ * @access Private
+ */
+router.post('/switch-org', requireAuth, controller.switchOrg.bind(controller));
+
 export default router;

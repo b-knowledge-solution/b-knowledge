@@ -45,7 +45,7 @@ describe('Select', () => {
 
   it('shows placeholder when no selected option', () => {
     render(<Select value={'x'} onChange={() => {}} options={options} />)
-    expect(screen.getByText('Select...')).toBeInTheDocument()
+    expect(screen.getByText('common.selectPlaceholder')).toBeInTheDocument()
   })
 
   it('applies disabled styles', () => {

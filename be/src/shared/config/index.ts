@@ -54,12 +54,13 @@ const isProduction = nodeEnv === 'production';
 // ============================================================================
 
 /**
- * Safely retrieves an environment variable with production validation.
- * 
- * @param key - The environment variable name to retrieve
- * @param defaultValue - Optional default value if not set
- * @returns The environment variable value, default value, or empty string
- * @throws Error in production if required variable is missing (no default provided)
+ * @description Safely retrieves an environment variable with production validation.
+ * In production, throws if a required variable (no default) is missing.
+ * In development, returns empty string for missing required variables.
+ * @param {string} key - The environment variable name to retrieve
+ * @param {string} defaultValue - Optional default value if not set
+ * @returns {string} The environment variable value, default value, or empty string
+ * @throws {Error} In production if required variable is missing (no default provided)
  * 
  * @example
  * // Required in production, optional in development
@@ -87,9 +88,9 @@ const getEnv = (key: string, defaultValue?: string): string => {
 // ============================================================================
 
 /**
- * Application configuration object.
+ * @description Application configuration object.
  * Provides centralized, type-safe access to all configuration values.
- * 
+ *
  * @remarks
  * This object is frozen with `as const` to ensure immutability.
  * Access environment variables through this object instead of process.env directly.
@@ -166,8 +167,8 @@ export const config = {
   // Feature Flags
   // --------------------------------------------------------------------------
 
-  /** Enable root user login (username/password auth) */
-  enableRootLogin: process.env['ENABLE_ROOT_LOGIN'] === 'true',
+  /** Enable local user login (username/password auth) */
+  enableLocalLogin: process.env['ENABLE_LOCAL_LOGIN'] === 'true',
 
   // --------------------------------------------------------------------------
   // Session Store Configuration
@@ -366,6 +367,13 @@ export const config = {
    */
   tempFileCleanupSchedule: process.env['TEMP_FILE_CLEANUP_SCHEDULE'] ?? '0 0 * * *',
 
+  /**
+   * Centralized log directory.
+   * When set, all log files are written to this directory with a 'backend-' prefix.
+   * When empty, falls back to '<cwd>/logs'.
+   */
+  logDir: process.env['LOG_DIR'] ?? '',
+
   // --------------------------------------------------------------------------
   // System Tools Configuration
   // --------------------------------------------------------------------------
@@ -404,6 +412,59 @@ export const config = {
    * WebSocket (Socket.IO) configuration.
    * Enables real-time notifications for Python clients and web browsers.
    */
+  // --------------------------------------------------------------------------
+  // S3-Compatible Storage Configuration
+  // --------------------------------------------------------------------------
+
+  /**
+   * S3-compatible object storage configuration (RustFS / MinIO / etc.).
+   * Bucket name must match advance-rag/conf/service_conf.yaml s3.bucket.
+   */
+  s3: {
+    /** S3-compatible endpoint hostname */
+    endpoint: process.env['S3_ENDPOINT'] ?? 'localhost',
+    /** S3-compatible endpoint port */
+    port: parseInt(process.env['S3_PORT'] ?? '9000', 10),
+    /** S3 access key */
+    accessKey: process.env['S3_ACCESS_KEY'] ?? '',
+    /** S3 secret key */
+    secretKey: process.env['S3_SECRET_KEY'] ?? '',
+    /** Whether to use SSL for S3 connections */
+    useSSL: process.env['S3_USE_SSL'] === 'true',
+    /** S3 bucket name for document storage (must match RAG worker config) */
+    bucket: process.env['S3_BUCKET'] ?? 'knowledge',
+    /** Optional prefix path within the bucket (must match RAG worker config) */
+    prefixPath: process.env['S3_PREFIX_PATH'] ?? '',
+  },
+
+  // --------------------------------------------------------------------------
+  // OpenSearch / VectorDB Configuration
+  // --------------------------------------------------------------------------
+
+  /** OpenSearch / VectorDB configuration */
+  opensearch: {
+    host: process.env['VECTORDB_HOST'] || process.env['ES_HOST'] || 'http://localhost:9200',
+    password: process.env['VECTORDB_PASSWORD'] || process.env['ES_PASSWORD'] || '',
+    systemTenantId: (process.env['SYSTEM_TENANT_ID'] || '00000000000000000000000000000001').replace(/-/g, ''),
+  },
+
+  // --------------------------------------------------------------------------
+  // Memgraph Configuration (Code Knowledge Graph)
+  // --------------------------------------------------------------------------
+
+  /**
+   * Memgraph graph database configuration.
+   * Used for storing and querying code knowledge graphs via Bolt protocol.
+   */
+  memgraph: {
+    /** Bolt protocol URL for Memgraph connection */
+    boltUrl: process.env['MEMGRAPH_BOLT_URL'] ?? 'bolt://localhost:7687',
+  },
+
+  // --------------------------------------------------------------------------
+  // WebSocket Configuration
+  // --------------------------------------------------------------------------
+
   websocket: {
     /** Enable/disable WebSocket server */
     enabled: process.env['WEBSOCKET_ENABLED'] !== 'false',
@@ -419,7 +480,7 @@ export const config = {
 } as const;
 
 /**
- * Type definition for the configuration object.
+ * @description Type definition derived from the configuration object.
  * Useful for function parameters that need config type hints.
  */
 export type Config = typeof config;

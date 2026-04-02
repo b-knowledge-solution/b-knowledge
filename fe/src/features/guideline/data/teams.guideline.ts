@@ -1,5 +1,11 @@
+/**
+ * @fileoverview Teams feature guideline data.
+ * @description Defines the step-by-step user guide for Team Management.
+ * @module features/guideline/data/teams.guideline
+ */
 import { IFeatureGuideline } from './types';
 
+/** @description Guideline configuration for the Teams feature */
 export const teamsGuideline: IFeatureGuideline = {
     featureId: 'teams',
     roleRequired: 'admin',

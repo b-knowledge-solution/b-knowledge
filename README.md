@@ -1,125 +1,262 @@
-# RAGFlow Simple UI
+# B-Knowledge
 
-A high-performance, enterprise-ready Management UI for RAGFlow, designed to bridge the gap between raw AI engines and business workflows. It provides a secure, localized, and feature-rich portal with Azure Entra ID authentication, advanced RBAC, and integrated observability.
+B-Knowledge is an open-source monorepo for enterprise AI search, chat, and knowledge management. The current codebase combines a React SPA, an Express API, a Python RAG worker, and a LibreOffice-based converter, backed by PostgreSQL, Valkey, OpenSearch, RustFS, and Memgraph.
 
-## 🚀 Key Features
+## What the current source code includes
 
-| Feature | Description |
-| :--- | :--- |
-| 🤖 **AI Chat & Search** | Refined interfaces for RAGFlow, with session history and full-text search. |
-| 📁 **Unified Storage Manager** | Enterprise document management with Multi-Cloud support (MinIO, S3, Azure). |
-| 🔐 **Azure Entra AD SSO** | Seamless Microsoft enterprise authentication with avatar synchronization. |
-| 👥 **Enterprise RBAC** | Granular multi-tier permissions: Admin, Manager, and User roles. |
-| 🏢 **Team Management** | Multi-tenant team structures for isolated document and flow access. |
-| 📢 **Broadcast System** | Real-time system-wide announcements for all active users. |
-| 🕵️ **Comprehensive Auditing** | Localized audit logs tracking every user action for compliance. |
-| 🖥️ **System Monitoring** | Real-time health metrics, resource usage, and diagnostics. |
-| 🌍 **Global Localization** | Full support for English, Vietnamese, and Japanese (i18n). |
-| 🎨 **Dynamic Theming** | Elegant Light, Dark, and System theme synchronization. |
-| 🔢 **AI Tokenizer** | Built-in tool for estimating token counts for various LLM models. |
-| 📊 **Observability** | Native Langfuse integration for tracing AI interactions. |
+- AI chat, AI search, datasets, and document ingestion
+- Agent workflows and agent widgets
+- Memory, glossary, projects, teams, and API key management
+- Audit logs, broadcast messages, admin/system tooling, and feedback flows
+- Code graph support with Memgraph-backed infrastructure
+- RAG processing and document conversion workers
 
-## 🏗️ Architecture
+## Architecture
 
 ```mermaid
 graph TD
-    Client[Frontend: React + Vite]
-    BE[Backend: Express + TS]
-    DB[(PostgreSQL)]
-    Redis[(Redis)]
-    MinIO[(MinIO Object Storage)]
-    RAGFlow[[RAGFlow AI Engine]]
-    Langfuse[[Langfuse Observability]]
+    FE[Frontend: React + Vite]
+    BE[Backend: Express + TypeScript]
+    RAG[advance-rag: Python task executor]
+    CONV[converter: Python LibreOffice worker]
+    PG[(PostgreSQL)]
+    VK[(Valkey)]
+    OS[(OpenSearch)]
+    S3[(RustFS)]
+    MG[(Memgraph)]
 
-    Client <--> BE
-    BE <--> DB
-    BE <--> Redis
-    BE <--> MinIO
-    BE <--> RAGFlow
-    BE -.-> Langfuse
+    FE <--> BE
+    BE <--> PG
+    BE <--> VK
+    BE <--> OS
+    BE <--> S3
+    BE <--> MG
+    RAG <--> PG
+    RAG <--> VK
+    RAG <--> OS
+    RAG <--> S3
+    CONV <--> VK
+    CONV <--> S3
 ```
 
-**Tech Stack:**
-- **Frontend**: React 19, Vite, Ant Design, Tailwind CSS, React Query, i18next
-- **Backend**: Express.js, TypeScript, Winston (Daily Rotate), Node-cron
-- **Database**: PostgreSQL (Knex.js migrations & query builder)
-- **Session**: Redis (Session persistence & rate limiting)
-- **Storage**: Multi-Cloud Provider (MinIO, S3, Azure, GCP ready)
-- **Auth**: Azure Entra ID (OAuth2/OpenID Connect)
-- **Monitoring**: Langfuse API integration
+## Tech stack
 
-## 📂 Project Structure
+| Layer | Current stack |
+| --- | --- |
+| Frontend | React 19, TypeScript, Vite 7.3, TanStack Query 5, Tailwind CSS, shadcn/ui |
+| Backend | Node.js, Express 4.21, TypeScript, Knex, Zod, Socket.IO |
+| RAG worker | Python, Peewee, OpenSearch, Langfuse, RAGFlow-derived pipeline |
+| Converter | Python, LibreOffice, Redis/Valkey queue, pypdf, pdfminer |
+| Infra | PostgreSQL 17, Valkey 8, OpenSearch 3.5, RustFS, Memgraph |
 
-```bash
-├── be/                 # Backend Workspace (Express + TypeScript)
-│   ├── src/
-│   │   ├── config/     # App configuration
-│   │   ├── controllers/# Request handlers (MVC pattern)
-│   │   ├── db/         # Knex migrations and seeds
-│   │   ├── middleware/ # Auth, rate-limit, and audit interceptors
-│   │   ├── models/     # Data access layer (BaseModel & Factory)
-│   │   ├── routes/     # API route definitions
-│   │   ├── services/   # Business logic (Storage Providers, RAGFlow, Audit)
-│   │   ├── scripts/    # Database maintenance scripts
-│   │   └── utils/      # Helper utilities
-├── fe/                 # Frontend Workspace (React + Vite)
-│   ├── src/
-│   │   ├── assets/     # Static assets
-│   │   ├── components/ # Reusable UI components
-│   │   ├── context/    # React Context providers
-│   │   ├── hooks/      # Custom React hooks
-│   │   ├── i18n/       # Localization files (en, vi, ja)
-│   │   ├── layouts/    # Page layouts
-│   │   ├── lib/        # Core libraries (API client)
-│   │   ├── pages/      # Application views
-│   │   ├── services/   # API service calls
-│   │   └── types/      # TypeScript definitions
-├── docker/             # Dockerization & deployment configs
-└── docs/               # Detailed technical documentation
+## Repository layout
+
+```text
+b-knowledge/
+├── be/                 # Express backend API
+├── fe/                 # React frontend SPA
+├── advance-rag/        # Python RAG task executor and parsing pipeline
+├── converter/          # Python Office/PDF conversion worker
+├── docker/             # Compose files, nginx, config, infra helpers
+├── docs/               # VitePress documentation and design docs
+├── design-system/      # UI and design-system references
+├── scripts/            # Setup and local development scripts
+├── patches/            # npm patch-package patches
+├── ragflow/            # Upstream reference snapshot used for parity work
+├── benchmarks/         # Benchmarks and profiling artifacts
+├── samples/            # Sample assets
+├── tasks/              # Task planning/support files
+├── test-data/          # Local test fixtures
+└── package.json        # Root workspace scripts
 ```
 
-## 🛠️ Developer Guide
+## Main application modules
 
-### Prerequisites
-- **Node.js**: 22+ (LTS)
-- **npm**: 10+
-- **PostgreSQL**: 15+
-- **MinIO**: High-performance object storage setup
-- **Redis**: Required for production session management
+Current backend modules under `be/src/modules/` include:
 
-### Local Development
+`admin`, `agents`, `audit`, `auth`, `broadcast`, `chat`, `code-graph`, `dashboard`, `external`, `feedback`, `glossary`, `llm-provider`, `memory`, `preview`, `projects`, `rag`, `search`, `sync`, `system-tools`, `teams`, `user-history`, `users`
+
+Current frontend features under `fe/src/features/` include:
+
+`agent-widget`, `agents`, `ai`, `api-keys`, `audit`, `auth`, `broadcast`, `chat`, `chat-widget`, `code-graph`, `dashboard`, `datasets`, `glossary`, `guideline`, `histories`, `landing`, `llm-provider`, `memory`, `projects`, `search`, `search-widget`, `system`, `teams`, `users`
+
+## Prerequisites
+
+- Node.js 22+ recommended for local development
+- npm 10+
+- Python 3.11 recommended
+- Docker Desktop or Docker Engine
+- LibreOffice only if you run `converter/` outside Docker
+
+Notes:
+
+- Root `package.json` currently declares `node >=18`, but the backend and project docs target Node.js 22+.
+- `advance-rag` and `converter` `pyproject.toml` files allow Python 3.10+, but 3.11 is the project baseline.
+- Some Python packages in `advance-rag` compile native extensions, so local build tools may be required.
+
+## Setup
+
+### Quick start
 
 ```bash
-# 1. Install dependencies for all workspaces
-npm install
+# 1. Install/copy local software dependencies
+npm run setup
 
-# 2. Setup Environment Variables
-# Copy be/.env.example to be/.env and fill in Azure/MinIO/RAGFlow credentials
+# 2. Start infrastructure
+npm run setup:infra
 
-# 3. Run Database Migrations
-npm run db:migrate -w be
+# 3. Run database migrations and seed sample users
+npm run db:setup
 
-# 4. Start Development Servers
+# 4. Start the full dev stack
 npm run dev
 ```
 
-| Command | Action |
-| :--- | :--- |
-| `npm run dev` | Spins up both FE (5173) and BE (3001) |
-| `npm run build` | Production build for both tiers |
-| `npm run build:prod` | Optimized production build without source maps |
-| `npm run lint` | Run project-wide ESLint checks |
-| `npm run test` | Run tests with Vitest |
+### What `npm run setup` actually does
 
-## 📖 Documentation
+`npm run setup` is a software setup script. It:
 
-Explore our detailed guides in the `docs/` folder:
-- [Configuration Guide](docs/configuration.md)
-- [Deployment Strategy](docs/deployment.md)
-- [API Reference](docs/api-reference.md)
-- [Architecture & RBAC](docs/architecture.md)
-- [External Integration](docs/external-trace-integration.md)
+1. Checks for `node`, `npm`, and `python`
+2. Copies `.env.example` to `.env` where the script manages it
+3. Runs `npm install`
+4. Creates/updates the shared root `.venv` for Python services
 
-## 📄 License
+It does not start Docker automatically. Use `npm run setup:infra` or `npm run docker:base` for infrastructure.
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+### Manual setup
+
+```bash
+# Copy env files
+cp docker/.env.example docker/.env
+cp be/.env.example be/.env
+cp fe/.env.example fe/.env
+cp advance-rag/.env.example advance-rag/.env
+cp converter/.env.example converter/.env
+
+# Install JS dependencies
+npm install
+
+# Set up shared Python environment
+npm run setup:python
+
+# Start infrastructure
+npm run docker:base
+
+# Migrate and seed database
+npm run db:setup
+```
+
+## Development commands
+
+### Root scripts
+
+```bash
+npm run dev
+npm run dev:be
+npm run dev:fe
+npm run dev:worker
+npm run dev:converter
+npm run dev:https
+```
+
+### Build, lint, test
+
+```bash
+npm run build
+npm run build:prod
+npm run build:be
+npm run build:fe
+npm run lint
+npm run test
+```
+
+### Database
+
+```bash
+npm run db:migrate
+npm run db:migrate:make <name>
+npm run db:migrate:rollback
+npm run db:seed
+npm run db:setup
+```
+
+### Docker
+
+```bash
+npm run docker:base
+npm run docker:down
+npm run docker:up
+npm run docker:litellm
+npm run docker:litellm:down
+```
+
+### Docs
+
+```bash
+npm run docs:dev
+npm run docs:build
+npm run docs:preview
+```
+
+### HTTPS
+
+```bash
+npm run generate:cert
+```
+
+## Infrastructure services
+
+The current `docker/docker-compose-base.yml` starts:
+
+| Service | Port(s) | Purpose |
+| --- | --- | --- |
+| PostgreSQL | `5432` | Primary relational database |
+| Valkey | `6379` | Cache, queue, pub/sub, sessions |
+| OpenSearch | `9201` | Full-text and vector search |
+| RustFS | `9000`, `9001` | S3-compatible object storage |
+| Memgraph | `7687`, `7444` | Code graph / graph database support |
+
+The main `docker/docker-compose.yml` adds:
+
+- `backend`
+- `task-executor`
+- `converter`
+
+Additional compose variants:
+
+- `docker/docker-compose-dev.yml`: OpenSearch Dashboards, pgweb, Redis Insight
+- `docker/docker-compose-litellm.yml`: LiteLLM proxy for OpenAI-compatible local model access
+
+## Environment files
+
+Local environment files currently used by the repo:
+
+| File | Status |
+| --- | --- |
+| `docker/.env` | present in repo setup |
+| `be/.env` | present in repo setup |
+| `fe/.env` | optional locally, `.env.example` exists |
+| `advance-rag/.env` | present in repo setup |
+| `converter/.env` | present in repo setup |
+
+If you want seeded local-login accounts for browser testing, keep `ENABLE_LOCAL_LOGIN=true` in `be/.env` and run `npm run db:seed`.
+
+Default seeded accounts:
+
+- `admin1@baoda.vn` / `password123`
+- `leader1@baoda.vn` / `password123`
+- `user1@baoda.vn` / `password123`
+
+## Documentation
+
+Project documentation lives in [`docs/`](docs/) and is served with VitePress. The repo also includes architecture and workflow guidance in:
+
+- [`CLAUDE.md`](CLAUDE.md)
+- [`be/CLAUDE.md`](be/CLAUDE.md)
+- [`fe/CLAUDE.md`](fe/CLAUDE.md)
+- [`advance-rag/CLAUDE.md`](advance-rag/CLAUDE.md)
+- [`converter/CLAUDE.md`](converter/CLAUDE.md)
+
+## License
+
+This project is licensed under the MIT License. See [`LICENSE`](LICENSE).

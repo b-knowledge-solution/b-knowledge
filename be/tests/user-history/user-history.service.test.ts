@@ -15,12 +15,26 @@ const { mockChatSession, mockChatMessage, mockSearchSession, mockSearchRecord } 
 
 vi.mock('@/shared/models/factory.js', () => ({
   ModelFactory: {
-    externalChatSession: mockChatSession,
-    externalChatMessage: mockChatMessage,
-    externalSearchSession: mockSearchSession,
-    externalSearchRecord: mockSearchRecord,
+    historyChatSession: mockChatSession,
+    historyChatMessage: mockChatMessage,
+    historySearchSession: mockSearchSession,
+    historySearchRecord: mockSearchRecord,
   },
 }))
+
+// Mock db for internal chat history queries (getInternalChatHistory, getInternalChatSessionDetails)
+vi.mock('@/shared/db/knex.js', () => {
+  const createChain = (): any => new Proxy({}, {
+    get(_t, prop) {
+      if (prop === 'then') return (resolve: any) => Promise.resolve(resolve([]))
+      if (prop === 'first') return () => Promise.resolve(undefined)
+      return () => createChain()
+    },
+  })
+  const dbFn: any = () => createChain()
+  dbFn.raw = vi.fn((...args: any[]) => args[0])
+  return { db: dbFn }
+})
 
 import { userHistoryService } from '../../src/modules/user-history/user-history.service.js'
 

@@ -26,8 +26,14 @@ const mockMgmt = {
   setUsers: vi.fn(),
 }
 
-vi.mock('../../../src/features/users/hooks/useUserManagement', () => ({
-  useUserManagement: () => mockMgmt
+vi.mock('../../../src/features/users/api/userQueries', () => ({
+  useUserManagement: () => mockMgmt,
+  useCreateUser: () => ({ mutate: vi.fn(), isPending: false }),
+  useUpdateUser: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteUser: () => ({ mutate: vi.fn(), isPending: false }),
+  useUpdateUserRole: () => ({ mutate: vi.fn(), isPending: false }),
+  useUserIpHistory: () => ({ data: [], isLoading: false }),
+  useUserSessions: () => ({ data: [], isLoading: false }),
 }))
 
 vi.mock('@/features/auth', () => ({
@@ -35,6 +41,13 @@ vi.mock('@/features/auth', () => ({
     user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
     isAuthenticated: true,
   })
+}))
+
+vi.mock('@/lib/ability', () => ({
+  useAppAbility: () => ({ can: () => true }),
+}))
+vi.mock('@/components/ConfirmDialog', () => ({
+  useConfirm: () => vi.fn(() => Promise.resolve(true)),
 }))
 
 vi.mock('@/features/guideline', () => ({
@@ -47,16 +60,15 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('lucide-react', () => ({
-  Mail: () => <div />,
-  Edit2: () => <div data-testid="edit" />,
-  Globe: () => <div data-testid="globe" />,
-  Search: () => <div />,
-  Filter: () => <div />,
-  X: () => <div />,
-  ArrowUp: () => <div />,
-  ArrowDown: () => <div />,
-  AlertCircle: () => <div />,
-  Users: () => <div />,
+  Mail: () => <div />, Edit2: () => <div data-testid="edit" />,
+  Globe: () => <div data-testid="globe" />, Search: () => <div />,
+  Filter: () => <div />, X: () => <div />, ArrowUp: () => <div />,
+  ArrowDown: () => <div />, AlertCircle: () => <div />, Users: () => <div />,
+  UserPlus: () => <div />, Loader2: () => <div />, Eye: () => <div />,
+  EyeOff: () => <div />, ChevronLeft: () => <div />, ChevronRight: () => <div />,
+  MoreHorizontal: () => <div />, Check: () => <div />,
+  ChevronDown: () => <div />, ChevronUp: () => <div />, Cloud: () => <div />,
+  Monitor: () => <div />, Wifi: () => <div />, WifiOff: () => <div />,
 }))
 
 vi.mock('@tanstack/react-query', () => ({
@@ -69,28 +81,6 @@ vi.mock('@tanstack/react-query', () => ({
   QueryClientProvider: ({ children }: any) => <div>{children}</div>
 }))
 
-// Mock Ant Design components as needed
-vi.mock('antd', async (importOriginal) => {
-  const actual = await importOriginal<any>()
-  return {
-    ...actual,
-    Table: ({ dataSource, columns }: any) => (
-      <table role="table">
-        <tbody>
-          {dataSource.map((item: any) => (
-            <tr key={item.id}>
-              {columns.map((col: any) => (
-                <td key={col.key || col.dataIndex}>
-                  {col.render ? col.render(item[col.dataIndex], item) : (col.dataIndex ? item[col.dataIndex] : null)}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    ),
-  }
-})
 
 describe('UserManagementPage', () => {
   beforeEach(() => {
@@ -107,7 +97,8 @@ describe('UserManagementPage', () => {
 
   it('renders user management page', () => {
     render(<UserManagementPage />)
-    expect(screen.getByRole('table')).toBeInTheDocument()
+    // The page should render the user management content (toolbar area)
+    expect(screen.getByPlaceholderText(/search/i) || document.querySelector('[class*="card"]')).toBeTruthy()
   })
 
   it('shows loading state', () => {

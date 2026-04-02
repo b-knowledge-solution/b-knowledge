@@ -14,7 +14,7 @@
 import { useTranslation } from 'react-i18next';
 import { useSettings, SUPPORTED_LANGUAGES, Theme } from '@/app/contexts/SettingsContext';
 import { LanguageCode } from '../i18n';
-import { Dialog } from './Dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { RadioGroup } from './RadioGroup';
 
 // ============================================================================
@@ -22,16 +22,15 @@ import { RadioGroup } from './RadioGroup';
 // ============================================================================
 
 /**
- * Settings dialog for configuring language and theme.
- * 
- * Displays when isSettingsOpen is true in SettingsContext.
- * Changes are applied immediately and persisted.
+ * @description Settings dialog for configuring language and theme preferences.
+ * Displays when isSettingsOpen is true in SettingsContext. Changes are applied immediately.
+ * @returns {JSX.Element} Dialog with language and theme radio group selectors
  */
 function SettingsDialog() {
   const { t } = useTranslation();
   const { theme, setTheme, language, setLanguage, isSettingsOpen, closeSettings } = useSettings();
 
-  // Build language options from supported languages config (native names and flags)
+  // Build radio options from supported language config with native names and flag emojis
   const languageOptions = SUPPORTED_LANGUAGES.map(lang => ({
     value: lang.code,
     label: lang.nativeName,
@@ -46,17 +45,11 @@ function SettingsDialog() {
   ];
 
   return (
-    <Dialog
-      open={isSettingsOpen}
-      onClose={closeSettings}
-      title={t('settings.title')}
-      maxWidth="xl"
-      footer={
-        <button onClick={closeSettings} className="btn btn-primary px-6">
-          {t('common.close')}
-        </button>
-      }
-    >
+    <Dialog open={isSettingsOpen} onOpenChange={(v: boolean) => { if (!v) closeSettings() }}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+            <DialogTitle>{t('settings.title')}</DialogTitle>
+        </DialogHeader>
       {/* Language Selection */}
       <div className="mb-6">
         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -82,6 +75,12 @@ function SettingsDialog() {
           columns={3}
         />
       </div>
+      <DialogFooter>
+        <button onClick={closeSettings} className="btn btn-primary px-6">
+          {t('common.close')}
+        </button>
+      </DialogFooter>
+      </DialogContent>
     </Dialog>
   );
 }

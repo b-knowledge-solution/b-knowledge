@@ -5,7 +5,8 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertCircle } from 'lucide-react'
-import { Dialog } from '@/components/Dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { UserRole } from '@/constants'
 import type { User } from '@/features/auth'
 
 interface EditRoleDialogProps {
@@ -28,7 +29,7 @@ interface EditRoleDialogProps {
  */
 export function EditRoleDialog({ open, onClose, user, onSave, saveError }: EditRoleDialogProps) {
     const { t } = useTranslation()
-    const [newRole, setNewRole] = useState<'admin' | 'leader' | 'user'>('user')
+    const [newRole, setNewRole] = useState<'admin' | 'leader' | 'user'>(UserRole.USER)
 
     // Pre-fill with current role when dialog opens
     useEffect(() => {
@@ -42,27 +43,11 @@ export function EditRoleDialog({ open, onClose, user, onSave, saveError }: EditR
     }
 
     return (
-        <Dialog
-            open={open}
-            onClose={onClose}
-            title={t('userManagement.editUserRole')}
-            footer={
-                <>
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                    >
-                        {t('common.cancel')}
-                    </button>
-                    <button
-                        onClick={handleSave}
-                        className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"
-                    >
-                        {t('userManagement.saveChanges')}
-                    </button>
-                </>
-            }
-        >
+        <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) onClose() }}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{t('userManagement.editUserRole')}</DialogTitle>
+                </DialogHeader>
             <div className="space-y-4 py-4">
                 {/* User info */}
                 {user && (
@@ -92,7 +77,7 @@ export function EditRoleDialog({ open, onClose, user, onSave, saveError }: EditR
                         {t('userManagement.role')}
                     </label>
                     <div className="grid grid-cols-1 gap-2">
-                        {(['admin', 'leader', 'user'] as const).map((role) => (
+                        {([UserRole.ADMIN, UserRole.LEADER, UserRole.USER] as const).map((role) => (
                             <label
                                 key={role}
                                 className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all
@@ -110,13 +95,13 @@ export function EditRoleDialog({ open, onClose, user, onSave, saveError }: EditR
                                 />
                                 <div className="flex-1">
                                     <div className="font-medium text-slate-900 dark:text-white capitalize">
-                                        {role === 'admin' ? t('userManagement.admin') :
-                                            role === 'leader' ? t('userManagement.leader') :
+                                        {role === UserRole.ADMIN ? t('userManagement.admin') :
+                                            role === UserRole.LEADER ? t('userManagement.leader') :
                                                 t('userManagement.userRole')}
                                     </div>
                                     <div className="text-xs text-slate-500 dark:text-slate-400">
-                                        {role === 'admin' ? t('userManagement.adminDescription') :
-                                            role === 'leader' ? t('userManagement.leaderDescription') :
+                                        {role === UserRole.ADMIN ? t('userManagement.adminDescription') :
+                                            role === UserRole.LEADER ? t('userManagement.leaderDescription') :
                                                 t('userManagement.userDescription')}
                                     </div>
                                 </div>
@@ -136,6 +121,21 @@ export function EditRoleDialog({ open, onClose, user, onSave, saveError }: EditR
                     )}
                 </div>
             </div>
+                <DialogFooter>
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                    >
+                        {t('common.cancel')}
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"
+                    >
+                        {t('userManagement.saveChanges')}
+                    </button>
+                </DialogFooter>
+            </DialogContent>
         </Dialog>
     )
 }

@@ -182,7 +182,7 @@ docker compose up -d
 For production deployment:
 
 1. **Change all default passwords** in `.env`
-2. Set `ENABLE_ROOT_LOGIN=false`
+2. Set `ENABLE_LOCAL_LOGIN=false`
 3. Configure proper `SESSION_SECRET` (use a long random string)
 4. Set up SSL/TLS certificates (see HTTPS Configuration below)
 5. Configure proper `SHARED_STORAGE_DOMAIN` for cookie sharing

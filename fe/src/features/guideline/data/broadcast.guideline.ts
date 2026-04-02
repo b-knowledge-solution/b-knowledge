@@ -1,5 +1,11 @@
+/**
+ * @fileoverview Broadcast feature guideline data.
+ * @description Defines the step-by-step user guide for the Broadcast feature.
+ * @module features/guideline/data/broadcast.guideline
+ */
 import { IFeatureGuideline } from './types';
 
+/** @description Guideline configuration for the Broadcast feature */
 export const broadcastGuideline: IFeatureGuideline = {
     featureId: 'broadcast',
     roleRequired: 'admin',

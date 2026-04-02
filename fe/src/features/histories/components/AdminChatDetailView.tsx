@@ -5,10 +5,10 @@
  * @module features/histories/components/AdminChatDetailView
  */
 import { useTranslation } from 'react-i18next'
-import { MessageSquare, Clock, Sparkles, PanelLeft } from 'lucide-react'
+import { MessageSquare, Clock, Sparkles, PanelLeft, ThumbsUp, ThumbsDown, ChevronDown } from 'lucide-react'
 
 import { MarkdownRenderer } from '@/components/MarkdownRenderer'
-import { useKnowledgeBase } from '@/features/knowledge-base/context/KnowledgeBaseContext'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import type { ChatSessionSummary, ExternalChatHistory } from '../types/histories.types'
 
 /**
@@ -43,7 +43,6 @@ export const AdminChatDetailView = ({
     onOpenSidebar,
 }: AdminChatDetailViewProps) => {
     const { t } = useTranslation()
-    const { config } = useKnowledgeBase()
 
     return (
         <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 pb-12 px-0">
@@ -125,28 +124,44 @@ export const AdminChatDetailView = ({
                                         {item.citations?.length > 0 && (
                                             <div className="pt-2">
                                                 <div className="inline-flex flex-wrap gap-2">
-                                                    {item.citations.map((citation: any, idx: number) => {
+                                                    {item.citations.map((citation: { document_name?: string; document_id?: string } | string, idx: number) => {
                                                         const isObject = typeof citation === 'object' && citation !== null
                                                         const content = isObject ? citation.document_name : citation
-                                                        const documentId = isObject ? citation.document_id : null
-                                                        const link = documentId && config?.kbBaseUrl
-                                                            ? `${config.kbBaseUrl}/document/${documentId}?ext=pdf&prefix=document`
-                                                            : null
 
                                                         return (
                                                             <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100/80 dark:bg-slate-800/80 text-[11px] font-medium text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50 hover:border-primary/30 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-default select-none">
                                                                 <span className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[9px] font-bold text-slate-500 dark:text-slate-300">{idx + 1}</span>
-                                                                {link ? (
-                                                                    <a href={link} target="_blank" rel="noopener noreferrer" className="truncate max-w-[200px] hover:text-primary hover:underline" title={content}>
-                                                                        {content}
-                                                                    </a>
-                                                                ) : (
-                                                                    <span className="truncate max-w-[200px]" title={content}>{content}</span>
-                                                                )}
+                                                                <span className="truncate max-w-[200px]" title={content as string}>{content}</span>
                                                             </span>
                                                         )
                                                     })}
                                                 </div>
+                                            </div>
+                                        )}
+
+                                        {/* Feedback indicator -- read-only display of existing feedback */}
+                                        {(item as any).feedback_thumbup != null && (
+                                            <div className="pt-2 space-y-1">
+                                                <span className="inline-flex items-center gap-1">
+                                                    {(item as any).feedback_thumbup
+                                                        ? <ThumbsUp className="h-3 w-3 text-green-500" />
+                                                        : <ThumbsDown className="h-3 w-3 text-red-500" />
+                                                    }
+                                                </span>
+                                                {/* Collapsible comment if feedback has a comment */}
+                                                {(item as any).feedback_comment && (
+                                                    <Collapsible>
+                                                        <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                                                            <ChevronDown className="h-3 w-3" />
+                                                            {t('histories.viewFeedbackComment')}
+                                                        </CollapsibleTrigger>
+                                                        <CollapsibleContent>
+                                                            <p className="text-sm text-muted-foreground border-l-2 border-primary pl-3 mt-1">
+                                                                {(item as any).feedback_comment}
+                                                            </p>
+                                                        </CollapsibleContent>
+                                                    </Collapsible>
+                                                )}
                                             </div>
                                         )}
                                     </div>

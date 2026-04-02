@@ -1,5 +1,11 @@
+/**
+ * @fileoverview Knowledge Base Configuration feature guideline data.
+ * @description Defines the step-by-step user guide for configuring AI sources.
+ * @module features/guideline/data/kb-config.guideline
+ */
 import { IFeatureGuideline } from './types';
 
+/** @description Guideline configuration for the Knowledge Base Configuration feature */
 export const kbConfigGuideline: IFeatureGuideline = {
     featureId: 'kb-config',
     roleRequired: 'leader',

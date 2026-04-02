@@ -14,6 +14,29 @@ vi.mock('../../src/shared/services/logger.service.js', () => ({
   },
 }))
 
+vi.mock('@/shared/middleware/auth.middleware.js', () => ({
+  requirePermission: vi.fn(() => (_req: any, _res: any, next: any) => next()),
+}))
+
+vi.mock('@/shared/middleware/validate.middleware.js', () => ({
+  validate: vi.fn(() => (_req: any, _res: any, next: any) => next()),
+}))
+
+vi.mock('@/modules/broadcast/services/broadcast-message.service.js', () => ({
+  broadcastMessageService: {
+    getActiveMessages: vi.fn(),
+    dismissMessage: vi.fn(),
+    getAllMessages: vi.fn(),
+    createMessage: vi.fn(),
+    updateMessage: vi.fn(),
+    deleteMessage: vi.fn(),
+  },
+}))
+
+vi.mock('@/shared/utils/ip.js', () => ({
+  getClientIp: vi.fn().mockReturnValue('127.0.0.1'),
+}))
+
 describe('Broadcast Message Routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -21,7 +44,7 @@ describe('Broadcast Message Routes', () => {
 
   describe('Module exports', () => {
     it('should export a router', async () => {
-      const routes = await import('../../src/modules/broadcast/broadcast-message.routes.js')
+      const routes = await import('../../src/modules/broadcast/routes/broadcast-message.routes.js')
       expect(routes.default).toBeDefined()
     })
   })

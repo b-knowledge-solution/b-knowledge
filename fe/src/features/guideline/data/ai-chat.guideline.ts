@@ -1,5 +1,11 @@
+/**
+ * @fileoverview AI Chat feature guideline data.
+ * @description Defines the step-by-step user guide for the AI Chat feature.
+ * @module features/guideline/data/ai-chat.guideline
+ */
 import { IFeatureGuideline } from './types';
 
+/** @description Guideline configuration for the AI Chat feature */
 export const aiChatGuideline: IFeatureGuideline = {
     featureId: 'ai-chat',
     roleRequired: 'user',

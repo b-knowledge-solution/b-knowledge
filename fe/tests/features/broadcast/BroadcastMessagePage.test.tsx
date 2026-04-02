@@ -7,7 +7,7 @@ const vi_mockBroadcastService = vi.hoisted(() => ({
   updateMessage: vi.fn(),
   deleteMessage: vi.fn()
 }))
-vi.mock('../../../src/features/broadcast/api/broadcastMessageService', () => ({ broadcastMessageService: vi_mockBroadcastService }))
+vi.mock('../../../src/features/broadcast/api/broadcastApi', () => ({ broadcastMessageService: vi_mockBroadcastService }))
 vi.mock('react-i18next', () => ({ 
   useTranslation: () => ({ t: (k: string) => k }),
   initReactI18next: { type: '3rdParty', init: () => {} }
@@ -34,10 +34,29 @@ vi.mock('lucide-react', () => ({
   Edit2: () => <div data-testid="edit-icon" />,
   Trash2: () => <div data-testid="trash-icon" />,
   CheckCircle: () => <div data-testid="check-icon" />,
-  XCircle: () => <div data-testid="x-circle-icon" />
+  XCircle: () => <div data-testid="x-circle-icon" />,
+  X: () => null, ChevronLeft: () => null, ChevronRight: () => null,
+  MoreHorizontal: () => null, Loader2: () => null,
 }))
-vi.mock('@/components/Dialog', () => ({
-  Dialog: ({ open, children }: any) => open ? <div data-testid="dialog">{children}</div> : null
+vi.mock('@/components/ui/dialog', () => ({
+  Dialog: ({ open, children }: any) => open ? <div data-testid="dialog">{children}</div> : null,
+  DialogContent: ({ children }: any) => <div>{children}</div>,
+  DialogHeader: ({ children }: any) => <div>{children}</div>,
+  DialogTitle: ({ children }: any) => <div>{children}</div>,
+  DialogFooter: ({ children }: any) => <div>{children}</div>,
+}))
+vi.mock('@/components/ConfirmDialog', () => ({
+  useConfirm: () => vi.fn(() => Promise.resolve(true))
+}))
+vi.mock('@/features/guideline', () => ({
+  useFirstVisit: () => ({ isFirstVisit: false }),
+  GuidelineDialog: () => null
+}))
+vi.mock('@/components/HeaderActions', () => ({
+  HeaderActions: ({ children }: any) => <div data-testid="header-actions">{children}</div>,
+  useHeaderActions: () => vi.fn(),
+  HeaderActionsProvider: ({ children }: any) => <div>{children}</div>,
+  HeaderActionsPortal: () => null,
 }))
 
 import BroadcastMessagePage from '../../../src/features/broadcast/pages/BroadcastMessagePage'
@@ -69,12 +88,12 @@ describe('BroadcastMessagePage', () => {
     vi_mockBroadcastService.getAllMessages.mockResolvedValue([])
     render(<BroadcastMessagePage />)
     // There may be multiple 'No data' nodes (title and empty description); assert at least one exists
-    await waitFor(() => expect(screen.getAllByText('No data').length).toBeGreaterThan(0))
+    await waitFor(() => expect(screen.getAllByText('common.noData').length).toBeGreaterThan(0))
   })
 
   it('renders messages table', async () => {
     const msg = { id: '1', message: 'Test', starts_at: '2025-01-01T00:00:00', ends_at: '2025-01-02T00:00:00', color: '#FF0000', font_color: '#FFFFFF', is_active: true, is_dismissible: true }
-    __mockQueryData['broadcastMessages'] = [msg]
+    __mockQueryData['broadcast'] = [msg]
     render(<BroadcastMessagePage />)
     await waitFor(() => expect(screen.getByText('Test')).toBeInTheDocument())
   })
@@ -88,21 +107,21 @@ describe('BroadcastMessagePage', () => {
 
   it('displays active badge for active messages', async () => {
     const msg = { id: '1', message: 'Test', starts_at: '2025-01-01T00:00:00', ends_at: '2025-01-02T00:00:00', color: '#FF0000', font_color: '#FFFFFF', is_active: true, is_dismissible: false }
-    __mockQueryData['broadcastMessages'] = [msg]
+    __mockQueryData['broadcast'] = [msg]
     render(<BroadcastMessagePage />)
     await waitFor(() => expect(screen.getByTestId('check-icon')).toBeInTheDocument())
   })
 
   it('displays inactive badge for inactive messages', async () => {
     const msg = { id: '1', message: 'Test', starts_at: '2025-01-01T00:00:00', ends_at: '2025-01-02T00:00:00', color: '#FF0000', font_color: '#FFFFFF', is_active: false, is_dismissible: false }
-    __mockQueryData['broadcastMessages'] = [msg]
+    __mockQueryData['broadcast'] = [msg]
     render(<BroadcastMessagePage />)
     await waitFor(() => expect(screen.getByTestId('x-circle-icon')).toBeInTheDocument())
   })
 
   it('opens edit dialog on edit click', async () => {
     const msg = { id: '1', message: 'Test', starts_at: '2025-01-01T00:00:00', ends_at: '2025-01-02T00:00:00', color: '#FF0000', font_color: '#FFFFFF', is_active: true, is_dismissible: false }
-    __mockQueryData['broadcastMessages'] = [msg]
+    __mockQueryData['broadcast'] = [msg]
     render(<BroadcastMessagePage />)
     await waitFor(() => {
       const editBtn = screen.getByTestId('edit-icon')
@@ -113,7 +132,7 @@ describe('BroadcastMessagePage', () => {
 
   it('calls delete on trash click', async () => {
     const msg = { id: '1', message: 'Test', starts_at: '2025-01-01T00:00:00', ends_at: '2025-01-02T00:00:00', color: '#FF0000', font_color: '#FFFFFF', is_active: true, is_dismissible: false }
-    __mockQueryData['broadcastMessages'] = [msg]
+    __mockQueryData['broadcast'] = [msg]
     vi_mockBroadcastService.deleteMessage.mockResolvedValue(undefined)
     render(<BroadcastMessagePage />)
     await waitFor(() => {

@@ -11,6 +11,7 @@ import { AlertTriangle, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-re
 import * as mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
+import { useTranslation } from 'react-i18next';
 
 /**
  * @description Props for OfficePreview component.
@@ -93,11 +94,15 @@ export const OfficePreview: React.FC<OfficePreviewProps> = ({ url }) => {
             }
         };
 
+        /** Route the file content to the appropriate renderer based on extension */
         const processFile = async (arrayBuffer: ArrayBuffer, extension: string | undefined) => {
+            // Route to DOCX renderer
             if (extension === 'docx') {
                 await renderDocx(arrayBuffer);
+            // Route to Excel/CSV renderer
             } else if (extension === 'xlsx' || extension === 'xls' || extension === 'csv') {
                 renderExcel(arrayBuffer);
+            // Route to PowerPoint renderer
             } else if (extension === 'pptx' || extension === 'ppt') {
                 await renderPptx(arrayBuffer);
             } else {
@@ -315,29 +320,38 @@ export const OfficePreview: React.FC<OfficePreviewProps> = ({ url }) => {
     );
 };
 
-// PowerPoint Viewer Component (Private Sub-component)
+/**
+ * @description Internal slide viewer component with navigation controls for PPTX presentations
+ * @param {{ slides: SlideData[] }} props - Array of parsed slide data
+ * @returns {JSX.Element} Slide viewer with prev/next navigation and thumbnail dots
+ */
 const PptxViewer: React.FC<{ slides: SlideData[] }> = ({ slides }) => {
+    const { t } = useTranslation();
     const [currentSlide, setCurrentSlide] = useState(0);
 
+    /** Advance to the next slide, clamped to the last index */
     const nextSlide = () => {
         setCurrentSlide((prev) => Math.min(prev + 1, slides.length - 1));
     };
 
+    /** Go to the previous slide, clamped to index 0 */
     const previousSlide = () => {
         setCurrentSlide((prev) => Math.max(prev - 1, 0));
     };
 
+    /** Jump to a specific slide by index */
     const goToSlide = (index: number) => {
         setCurrentSlide(index);
     };
 
     const slide = slides[currentSlide];
 
+    // Guard against invalid slide index
     if (!slide) {
         return (
             <div className="flex items-center justify-center h-full text-red-500">
                 <AlertCircle className="w-12 h-12 mb-2" />
-                <p>Invalid slide index</p>
+                <p>{t('preview.invalidSlideIndex')}</p>
             </div>
         );
     }
@@ -397,7 +411,7 @@ const PptxViewer: React.FC<{ slides: SlideData[] }> = ({ slides }) => {
                     {!slide.imageUrls && !slide.formattedTexts && !slide.textContent && (
                         <div className="flex items-center justify-center h-64 text-gray-400">
                             <AlertTriangle className="w-12 h-12 mr-2" />
-                            <p>No content extracted for this slide</p>
+                            <p>{t('preview.noSlideContent')}</p>
                         </div>
                     )}
                 </div>
@@ -412,12 +426,12 @@ const PptxViewer: React.FC<{ slides: SlideData[] }> = ({ slides }) => {
                         className="flex items-center gap-2 px-4 py-2 rounded bg-primary-600 text-white disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-primary-700 transition-colors"
                     >
                         <ChevronLeft className="w-5 h-5" />
-                        Previous
+                        {t('common.previous')}
                     </button>
 
                     <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Slide {currentSlide + 1} of {slides.length}
+                            {t('preview.slideOf', { current: currentSlide + 1, total: slides.length })}
                         </span>
 
                         {/* Slide thumbnails */}

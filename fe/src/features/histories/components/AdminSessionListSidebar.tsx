@@ -1,6 +1,6 @@
 /**
- * @fileoverview Admin sidebar with chat/search tab switcher, search, filter, and session list.
- * Shows user email badges on each item — admin-specific.
+ * @fileoverview Admin sidebar with chat/search/agent runs tab switcher, search, filter, and session list.
+ * Shows user email badges and feedback count indicators on each item -- admin-specific.
  *
  * @module features/histories/components/AdminSessionListSidebar
  */
@@ -14,14 +14,21 @@ import {
     PanelLeftClose,
     RefreshCw,
     User,
+    Bot,
+    ThumbsUp,
+    ThumbsDown,
 } from 'lucide-react'
 
-import { HighlightMatch } from '@/features/history/components/HighlightMatch'
+import { HighlightMatch } from '@/features/histories/components/HighlightMatch'
 import type {
     ChatSessionSummary,
     SearchSessionSummary,
+    AgentRunSessionSummary,
     HistoriesTab,
 } from '../types/histories.types'
+
+/** Union type for any selectable session/run item. */
+type SelectableItem = ChatSessionSummary | SearchSessionSummary | AgentRunSessionSummary
 
 /**
  * Props for the AdminSessionListSidebar component.
@@ -54,11 +61,11 @@ interface AdminSessionListSidebarProps {
     /** Whether the list is loading. */
     isLoading: boolean
     /** The data items to render. */
-    items: (ChatSessionSummary | SearchSessionSummary)[]
+    items: SelectableItem[]
     /** Currently selected session. */
-    selectedSession: ChatSessionSummary | SearchSessionSummary | null
+    selectedSession: SelectableItem | null
     /** Handle item click. */
-    onItemClick: (item: ChatSessionSummary | SearchSessionSummary) => void
+    onItemClick: (item: SelectableItem) => void
     /** Ref for infinite scroll sentinel. */
     loadMoreRef: RefObject<HTMLDivElement | null>
     /** Reset search state on tab switch. */
@@ -66,10 +73,10 @@ interface AdminSessionListSidebarProps {
 }
 
 /**
- * Admin sidebar with tab switcher, search bar, filter button, and session list items
- * showing user email badges.
- * @param props - Component props.
- * @returns Rendered admin sidebar.
+ * @description Admin sidebar with tab switcher (chat/search/agent runs), search bar,
+ * filter button, and session list items showing user email badges and feedback indicators.
+ * @param {AdminSessionListSidebarProps} props - Component props.
+ * @returns {JSX.Element} Rendered admin sidebar.
  */
 export const AdminSessionListSidebar = ({
     isOpen,
@@ -94,23 +101,124 @@ export const AdminSessionListSidebar = ({
     const { t } = useTranslation()
 
     /**
-     * Get display text from an item based on active tab.
-     * @param item - Session item.
-     * @returns Display text.
+     * @description Get display text from an item based on active tab.
+     * @param {SelectableItem} item - Session or run item.
+     * @returns {string} Display text.
      */
-    const getItemText = (item: ChatSessionSummary | SearchSessionSummary): string => {
+    const getItemText = (item: SelectableItem): string => {
+        if (activeTab === 'agentRuns') return (item as AgentRunSessionSummary).agent_name || ''
         return activeTab === 'chat'
             ? (item as ChatSessionSummary).user_prompt
             : (item as SearchSessionSummary).search_input
     }
 
     /**
-     * Handle tab switch with search reset.
-     * @param tab - Target tab.
+     * @description Get the unique ID for an item based on active tab.
+     * @param {SelectableItem} item - Session or run item.
+     * @returns {string} Unique identifier.
+     */
+    const getItemId = (item: SelectableItem): string => {
+        if ('run_id' in item) return item.run_id
+        return item.session_id
+    }
+
+    /**
+     * @description Check if a given item is currently selected.
+     * @param {SelectableItem} item - Item to check.
+     * @returns {boolean} Whether the item is selected.
+     */
+    const isItemSelected = (item: SelectableItem): boolean => {
+        if (!selectedSession) return false
+        return getItemId(item) === getItemId(selectedSession)
+    }
+
+    /**
+     * @description Handle tab switch with search reset.
+     * @param {HistoriesTab} tab - Target tab.
      */
     const handleTabSwitch = (tab: HistoriesTab) => {
         onSwitchTab(tab)
         onResetSearch()
+    }
+
+    /**
+     * @description Render feedback count badges for a session/run item.
+     * Only displays if there are any positive or negative feedback counts.
+     * @param {SelectableItem} item - Session or run item.
+     * @returns {JSX.Element | null} Feedback badge or null.
+     */
+    const renderFeedbackBadge = (item: SelectableItem) => {
+        const pos = (item as any).positive_count || 0
+        const neg = (item as any).negative_count || 0
+        // Only show badge if there is any feedback
+        if (pos === 0 && neg === 0) return null
+
+        return (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                {pos > 0 && (
+                    <span className="flex items-center gap-0.5">
+                        <ThumbsUp className="h-3 w-3 text-green-500" />
+                        <span>{pos}</span>
+                    </span>
+                )}
+                {neg > 0 && (
+                    <span className="flex items-center gap-0.5">
+                        <ThumbsDown className="h-3 w-3 text-red-500" />
+                        <span>{neg}</span>
+                    </span>
+                )}
+            </span>
+        )
+    }
+
+    /**
+     * @description Render an agent run item card with status badge and duration.
+     * @param {AgentRunSessionSummary} item - Agent run item.
+     * @param {boolean} isSelected - Whether this item is selected.
+     * @returns {JSX.Element} Rendered agent run card content.
+     */
+    const renderAgentRunItem = (item: AgentRunSessionSummary, isSelected: boolean) => {
+        // Format duration in human-readable form
+        const durationSec = item.duration_ms ? Math.round(item.duration_ms / 1000) : null
+
+        // Map status to color
+        const statusColors: Record<string, string> = {
+            completed: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+            failed: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+            running: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+            pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+            cancelled: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+        }
+
+        return (
+            <div className="pl-2 space-y-2">
+                <div className="flex justify-between items-start gap-2">
+                    <h3 className={`font-semibold text-sm leading-snug line-clamp-2 transition-colors ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
+                        <HighlightMatch text={item.agent_name || 'Unknown Agent'} query={executedSearchQuery} />
+                    </h3>
+                    <span className="text-[10px] font-mono whitespace-nowrap text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                        {item.started_at ? new Date(item.started_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''}
+                    </span>
+                </div>
+
+                <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-300">
+                        {/* Status badge */}
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${statusColors[item.status] || statusColors.pending}`}>
+                            {item.status}
+                        </span>
+                        {/* Duration */}
+                        {durationSec !== null && (
+                            <span className="text-slate-400 font-medium">{durationSec}s</span>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-300">
+                        {renderFeedbackBadge(item)}
+                        <ChevronRight size={12} className={`transition-transform duration-300 ${isSelected ? 'translate-x-1 text-primary' : 'opacity-0 group-hover:opacity-100'}`} />
+                    </div>
+                </div>
+            </div>
+        )
     }
 
     return (
@@ -128,7 +236,7 @@ export const AdminSessionListSidebar = ({
                     <PanelLeftClose size={18} />
                 </button>
 
-                {/* Tab Switcher */}
+                {/* Tab Switcher -- 3 tabs: Chat, Search, Agent Runs */}
                 <div className="bg-slate-100/50 dark:bg-slate-900/50 p-1 rounded-xl flex shadow-inner mt-4">
                     <button
                         className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === 'chat'
@@ -149,6 +257,16 @@ export const AdminSessionListSidebar = ({
                     >
                         <Search size={16} className={activeTab === 'search' ? 'text-blue-500' : ''} />
                         {t('histories.searchTab')}
+                    </button>
+                    <button
+                        className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === 'agentRuns'
+                            ? 'bg-white dark:bg-slate-800 text-violet-500 dark:text-violet-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5'
+                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white'
+                            }`}
+                        onClick={() => handleTabSwitch('agentRuns')}
+                    >
+                        <Bot size={16} className={activeTab === 'agentRuns' ? 'text-violet-500' : ''} />
+                        {t('histories.tabs.agentRuns')}
                     </button>
                 </div>
 
@@ -196,17 +314,20 @@ export const AdminSessionListSidebar = ({
                     <div className="flex flex-col items-center justify-center h-64 text-slate-400 gap-2">
                         {activeTab === 'chat'
                             ? <MessageSquare size={48} className="opacity-30" />
-                            : <Search size={48} className="opacity-30" />
+                            : activeTab === 'search'
+                                ? <Search size={48} className="opacity-30" />
+                                : <Bot size={48} className="opacity-30" />
                         }
                         <span className="text-sm font-medium">{t('histories.noSessions', 'No sessions found')}</span>
                     </div>
                 ) : (
                     <div className="p-3 space-y-2">
                         {items.map((item) => {
-                            const isSelected = selectedSession && item.session_id === selectedSession.session_id
+                            const isSelected = isItemSelected(item)
+                            const itemId = getItemId(item)
                             return (
                                 <div
-                                    key={item.session_id || Math.random().toString()}
+                                    key={itemId || Math.random().toString()}
                                     onClick={() => onItemClick(item)}
                                     className={`group relative p-4 rounded-xl cursor-pointer transition-all duration-300 border ${isSelected
                                         ? 'bg-white dark:bg-slate-800 shadow-lg shadow-primary/5 border-primary/20 dark:border-primary/20 translate-x-1'
@@ -217,40 +338,47 @@ export const AdminSessionListSidebar = ({
                                         <div className="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full" />
                                     )}
 
-                                    <div className="pl-2 space-y-2">
-                                        <div className="flex justify-between items-start gap-2">
-                                            <h3 className={`font-semibold text-sm leading-snug line-clamp-2 transition-colors ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
-                                                <HighlightMatch text={getItemText(item)} query={executedSearchQuery} />
-                                            </h3>
-                                            <span className="text-[10px] font-mono whitespace-nowrap text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
-                                                {new Date(item.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                            </span>
-                                        </div>
-
-                                        <div className="flex items-center justify-between text-xs">
-                                            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-300">
-                                                {item.source_name && (
-                                                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-violet-50/50 dark:bg-violet-900/10 border border-violet-100 dark:border-violet-900/30">
-                                                        <span className="truncate max-w-[100px] font-bold text-[10px] text-violet-600 dark:text-violet-400 uppercase tracking-wide">{item.source_name}</span>
-                                                    </div>
-                                                )}
-                                                {item.user_email ? (
-                                                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30">
-                                                        <User size={10} className="text-blue-500" />
-                                                        <span className="truncate max-w-[100px] font-medium text-blue-600 dark:text-blue-400">{item.user_email}</span>
-                                                    </div>
-                                                ) : (
-                                                    <span className="italic text-slate-400">{t('histories.anonymous', 'Anonymous')}</span>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-300">
-                                                <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full font-medium text-[10px]">
-                                                    {item.message_count} msgs
+                                    {/* Render agent run items with their own layout */}
+                                    {activeTab === 'agentRuns' ? (
+                                        renderAgentRunItem(item as AgentRunSessionSummary, isSelected)
+                                    ) : (
+                                        <div className="pl-2 space-y-2">
+                                            <div className="flex justify-between items-start gap-2">
+                                                <h3 className={`font-semibold text-sm leading-snug line-clamp-2 transition-colors ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
+                                                    <HighlightMatch text={getItemText(item)} query={executedSearchQuery} />
+                                                </h3>
+                                                <span className="text-[10px] font-mono whitespace-nowrap text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                                    {new Date((item as ChatSessionSummary | SearchSessionSummary).created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                                                 </span>
-                                                <ChevronRight size={12} className={`transition-transform duration-300 ${isSelected ? 'translate-x-1 text-primary' : 'opacity-0 group-hover:opacity-100'}`} />
+                                            </div>
+
+                                            <div className="flex items-center justify-between text-xs">
+                                                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-300">
+                                                    {(item as ChatSessionSummary | SearchSessionSummary).source_name && (
+                                                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-violet-50/50 dark:bg-violet-900/10 border border-violet-100 dark:border-violet-900/30">
+                                                            <span className="truncate max-w-[100px] font-bold text-[10px] text-violet-600 dark:text-violet-400 uppercase tracking-wide">{(item as ChatSessionSummary | SearchSessionSummary).source_name}</span>
+                                                        </div>
+                                                    )}
+                                                    {item.user_email ? (
+                                                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30">
+                                                            <User size={10} className="text-blue-500" />
+                                                            <span className="truncate max-w-[100px] font-medium text-blue-600 dark:text-blue-400">{item.user_email}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="italic text-slate-400">{t('histories.anonymous', 'Anonymous')}</span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-300">
+                                                    {/* Feedback count badges */}
+                                                    {renderFeedbackBadge(item)}
+                                                    <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full font-medium text-[10px]">
+                                                        {(item as ChatSessionSummary | SearchSessionSummary).message_count} msgs
+                                                    </span>
+                                                    <ChevronRight size={12} className={`transition-transform duration-300 ${isSelected ? 'translate-x-1 text-primary' : 'opacity-0 group-hover:opacity-100'}`} />
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
                             )
                         })}

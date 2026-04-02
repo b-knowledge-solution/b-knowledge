@@ -27,6 +27,7 @@ export const TextPreview: React.FC<TextPreviewProps> = ({ url }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Fetch raw text content when URL changes
     useEffect(() => {
         const fetchContent = async () => {
             try {
@@ -45,6 +46,7 @@ export const TextPreview: React.FC<TextPreviewProps> = ({ url }) => {
         fetchContent();
     }, [url]);
 
+    // Show spinner while fetching text content
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full">
@@ -53,6 +55,7 @@ export const TextPreview: React.FC<TextPreviewProps> = ({ url }) => {
         );
     }
 
+    // Show error state if fetch failed
     if (error) {
         return (
             <div className="flex flex-col items-center justify-center h-full text-red-500">

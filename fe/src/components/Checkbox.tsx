@@ -32,19 +32,9 @@ interface CheckboxProps {
 // ============================================================================
 
 /**
- * Accessible checkbox component with custom styling.
- * 
- * Features:
- * - Accessible via Headless UI Switch
- * - Check icon when selected
- * - Primary color accent when checked
- * - Optional clickable label
- * - Dark mode support
- * 
- * @param checked - Whether checkbox is checked
- * @param onChange - Change callback
- * @param label - Optional label text
- * @param className - Additional CSS classes
+ * @description Accessible checkbox component with custom styling using Headless UI Switch
+ * @param {CheckboxProps} props - Checkbox configuration including checked state, change handler, and optional label
+ * @returns {JSX.Element} Rendered checkbox with optional label
  */
 export function Checkbox({ checked, onChange, label, className = '' }: CheckboxProps) {
     return (
@@ -53,13 +43,16 @@ export function Checkbox({ checked, onChange, label, className = '' }: CheckboxP
                 <Switch
                     checked={checked}
                     onChange={onChange}
+                    // Apply primary color when checked, neutral border when unchecked
                     className={`relative inline-flex h-4 w-4 items-center justify-center rounded border-2 transition-colors ${checked
                             ? 'bg-primary border-primary'
                             : 'bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600'
                         }`}
                 >
+                        {/* Show check icon only when selected */}
                     {checked && <Check size={12} className="text-white" strokeWidth={3} />}
                 </Switch>
+                {/* Render optional clickable label beside checkbox */}
                 {label && (
                     <Switch.Label className="text-sm text-slate-600 dark:text-slate-400 cursor-pointer">
                         {label}

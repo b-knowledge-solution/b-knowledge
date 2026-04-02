@@ -1,7 +1,15 @@
 
 /**
- * Application entrypoint: configures middleware, routes, background jobs, and graceful shutdown.
+ * @fileoverview Application entrypoint: configures middleware, routes, background jobs,
+ * and graceful shutdown.
+ *
+ * This module is the main Express server bootstrap. It initializes Redis,
+ * sets up security middleware (Helmet, CORS, sessions), registers API routes,
+ * runs database migrations on boot, and wires up graceful shutdown handlers.
+ *
  * Keep all environment access through `config` to preserve centralized validation.
+ *
+ * @module app/index
  */
 import express from 'express';
 import session from 'express-session';
@@ -20,15 +28,20 @@ import { db, getAdapter, checkConnection, closePool } from '@/shared/db/index.js
 import knex from 'knex';
 import dbConfig from '@/shared/db/knexfile.js';
 import { cronService } from '@/shared/services/cron.service.js';
-import { knowledgeBaseService } from '@/modules/knowledge-base/knowledge-base.service.js';
+
 import { systemToolsService } from '@/modules/system-tools/system-tools.service.js';
-import { userService } from '@/modules/users/user.service.js';
+import { userService } from '@/modules/users/index.js';
 import { shutdownLangfuse } from '@/shared/services/langfuse.service.js';
-import { externalTraceService } from '@/modules/external/trace.service.js';
+
 import { socketService } from '@/shared/services/socket.service.js';
 
 import { setupApiRoutes } from '@/app/routes.js';
+import { syncSchedulerService } from '@/modules/sync/index.js';
 
+/**
+ * @description Express application instance shared across the module.
+ * Exported for test access and route registration.
+ */
 const app = express();
 
 // Initialize Redis before any middleware that relies on it (sessions, rate limiting storage)
@@ -46,7 +59,7 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", config.frontendUrl],
+      connectSrc: ["'self'", config.frontendUrl, "wss:", "ws:"],
     },
   },
   crossOriginResourcePolicy: { policy: "cross-origin" },
@@ -87,11 +100,20 @@ app.use(session(sessionConfig));
 // Setup all API routes and middleware
 setupApiRoutes(app);
 
-// Bootstraps HTTP/HTTPS server and initializes background services that require the listener
+// Initialize sync scheduler for connectors with cron schedules (runs after DB is ready)
+// Deferred to after migrations complete in startServer()
+
+
+/**
+ * @description Bootstraps the HTTP/HTTPS server and initializes background services
+ * (Socket.IO, cron, migrations, root user) that require the listener to be active.
+ * @returns {Promise<http.Server | https.Server>} The started server instance
+ */
 const startServer = async (): Promise<http.Server | https.Server> => {
   let server: http.Server | https.Server;
   const protocol = config.https.enabled ? 'https' : 'http';
 
+  // Create HTTPS server if enabled and certs available, otherwise fall back to HTTP
   if (config.https.enabled) {
     const credentials = config.https.getCredentials();
     if (credentials) {
@@ -111,6 +133,7 @@ const startServer = async (): Promise<http.Server | https.Server> => {
   }
 
   server.listen(config.port, async () => {
+    // Allow long-running requests (e.g. file uploads, RAG processing) up to 30 minutes
     server.setTimeout(30 * 60 * 1000);
 
     log.info(`Backend server started`, {
@@ -124,7 +147,12 @@ const startServer = async (): Promise<http.Server | https.Server> => {
     // Schedule recurring maintenance (temp file cleanup, etc.)
     cronService.startCleanupJob();
 
-    await knowledgeBaseService.initialize();
+    // Initialize parsing scheduler from system config (if enabled)
+    await cronService.initParsingSchedulerFromConfig();
+
+    // Initialize sync scheduler for connectors with cron schedules
+    await syncSchedulerService.init();
+
     await systemToolsService.initialize();
 
     if (await checkConnection()) {
@@ -173,6 +201,7 @@ process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) =>
   });
 });
 
+// Skip server startup in test environments to allow Vitest to control the lifecycle
 const isTest = process.env.NODE_ENV === 'test' || !!process.env.VITEST;
 if (!isTest) {
   startServer().then((server) => {
@@ -184,7 +213,7 @@ if (!isTest) {
       await shutdownRedis();
       await closePool();
       await shutdownLangfuse();
-      await externalTraceService.shutdown();
+
       await socketService.shutdown();
       process.exit(0);
     };

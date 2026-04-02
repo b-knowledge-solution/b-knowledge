@@ -36,17 +36,9 @@ interface ErrorPageProps {
 // ============================================================================
 
 /**
- * Generic error page for displaying HTTP error status codes.
- * 
- * Features:
- * - Icon and styling based on error type
- * - Default titles and messages for each error code
- * - Optional custom title and message overrides
- * - Navigation buttons (back and home)
- * 
- * @param code - HTTP status code (403, 404, 500, 503)
- * @param title - Optional custom title
- * @param message - Optional custom message
+ * @description Generic error page for displaying HTTP error status codes with navigation options
+ * @param {ErrorPageProps} props - HTTP status code and optional title/message overrides
+ * @returns {JSX.Element} Styled error page with icon, message, and back/home buttons
  */
 const ErrorPage = ({ code, title, message }: ErrorPageProps) => {
     const navigate = useNavigate();

@@ -20,13 +20,16 @@ interface AuditLogApiResponse {
 // API Service
 // ============================================================================
 
+/**
+ * @description Centralized audit API service with methods for fetching logs and filter options.
+ */
 export const auditApi = {
     /**
-     * Fetch audit logs with pagination and filters.
-     * @param page - Page number (1-indexed).
-     * @param limit - Items per page.
-     * @param filters - Active filter state.
-     * @returns Paginated audit log entries.
+     * @description Fetch audit logs with pagination and filters.
+     * @param {number} page - Page number (1-indexed).
+     * @param {number} limit - Items per page.
+     * @param {AuditFilters} filters - Active filter state.
+     * @returns {Promise<AuditLogApiResponse>} Paginated audit log entries.
      */
     fetchLogs: async (
         page: number,
@@ -38,6 +41,7 @@ export const auditApi = {
             limit: String(limit),
         })
 
+        // Append only non-empty filter values to avoid sending blank params
         if (filters.search) params.append('search', filters.search)
         if (filters.action) params.append('action', filters.action)
         if (filters.resourceType) params.append('resourceType', filters.resourceType)
@@ -48,16 +52,16 @@ export const auditApi = {
     },
 
     /**
-     * Fetch all available action types for filter dropdown.
-     * @returns Array of action type strings.
+     * @description Fetch all available action types for filter dropdown.
+     * @returns {Promise<string[]>} Array of action type strings.
      */
     fetchActions: async (): Promise<string[]> => {
         return apiFetch<string[]>('/api/audit/actions')
     },
 
     /**
-     * Fetch all available resource types for filter dropdown.
-     * @returns Array of resource type strings.
+     * @description Fetch all available resource types for filter dropdown.
+     * @returns {Promise<string[]>} Array of resource type strings.
      */
     fetchResourceTypes: async (): Promise<string[]> => {
         return apiFetch<string[]>('/api/audit/resource-types')

@@ -7,8 +7,7 @@ import { db } from '@/shared/db/knex.js'
 import { SystemConfig } from '@/shared/models/types.js'
 
 /**
- * SystemConfigModel
- * Key/value storage for system configuration.
+ * @description SystemConfigModel - Key/value storage for system configuration.
  * Overrides base methods to use 'key' column instead of numeric 'id'.
  */
 export class SystemConfigModel extends BaseModel<SystemConfig> {

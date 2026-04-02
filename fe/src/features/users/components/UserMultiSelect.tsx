@@ -2,7 +2,7 @@
  * @fileoverview Multi-select component for users.
  * Uses Headless UI Combobox for search and selection.
  */
-import { useState, useMemo, Fragment } from 'react';
+import { useState, Fragment } from 'react';
 import { Combobox, Transition } from '@headlessui/react';
 import { Check, ChevronsUpDown, X } from 'lucide-react';
 import { User } from '@/features/auth';
@@ -21,26 +21,24 @@ interface UserMultiSelectProps {
 }
 
 /**
- * UserMultiSelect Component
- * Allows selecting multiple users from a list with search filtering.
+ * @description Multi-select combobox for choosing multiple users with search filtering.
+ * Uses Headless UI Combobox for accessible, searchable selection.
+ * @param {UserMultiSelectProps} props - Available users, selection state, and change handler.
+ * @returns {JSX.Element} Rendered multi-select component.
  */
 export default function UserMultiSelect({ users, selectedUserIds, onChange, placeholder }: UserMultiSelectProps) {
     const { t } = useTranslation();
     const [query, setQuery] = useState('');
 
-    const filteredUsers = useMemo(() => {
-        return query === ''
-            ? users
-            : users.filter((user) =>
-                user.displayName.toLowerCase().includes(query.toLowerCase()) ||
-                user.email.toLowerCase().includes(query.toLowerCase()) ||
-                user.id.toLowerCase().includes(query.toLowerCase())
-            )
-    }, [users, query]);
+    const filteredUsers = query === ''
+        ? users
+        : users.filter((user) =>
+            user.displayName.toLowerCase().includes(query.toLowerCase()) ||
+            user.email.toLowerCase().includes(query.toLowerCase()) ||
+            user.id.toLowerCase().includes(query.toLowerCase())
+        )
 
-    const selectedUsers = useMemo(() => {
-        return users.filter(u => selectedUserIds.includes(u.id));
-    }, [users, selectedUserIds]);
+    const selectedUsers = users.filter(u => selectedUserIds.includes(u.id))
 
     /**
      * Handle selection change from Combobox.

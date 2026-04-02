@@ -24,7 +24,7 @@ vi.mock('../../src/shared/services/logger.service.js', () => ({
   log: mockLog,
 }));
 
-vi.mock('../../src/modules/audit/audit.service.js', () => ({
+vi.mock('../../src/modules/audit/index.js', () => ({
   auditService: {
     log: mockAuditLog,
   },
@@ -51,7 +51,7 @@ describe('BroadcastMessageService - Comprehensive', () => {
 
     beforeEach(async () => {
         vi.clearAllMocks();
-        const module = await import('../../src/modules/broadcast/broadcast-message.service.js');
+        const module = await import('../../src/modules/broadcast/services/broadcast-message.service.js');
         service = module.broadcastMessageService;
     });
 

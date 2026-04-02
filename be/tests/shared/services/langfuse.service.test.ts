@@ -270,4 +270,171 @@ describe('LangfuseService', () => {
             expect(log.warn).toHaveBeenCalledWith('Langfuse health check failed', expect.any(Object));
         });
     });
+
+    describe('LangfuseTraceService', () => {
+        it('should return singleton instance', async () => {
+            const { LangfuseTraceService } = await import('../../../src/shared/services/langfuse.service.js');
+            const a = LangfuseTraceService.getInstance();
+            const b = LangfuseTraceService.getInstance();
+            expect(a).toBe(b);
+        });
+
+        it('createTrace passes correct params to langfuse client', async () => {
+            vi.resetModules();
+            vi.clearAllMocks();
+
+            const mockTrace = { id: 'trace-1', span: vi.fn(), generation: vi.fn(), update: vi.fn() };
+            const mockClient = {
+                trace: vi.fn().mockReturnValue(mockTrace),
+                shutdownAsync: vi.fn(),
+                flushAsync: vi.fn(),
+            };
+
+            vi.doMock('langfuse', () => ({
+                Langfuse: vi.fn().mockImplementation(() => mockClient),
+            }));
+            vi.doMock('../../../src/shared/config/index.js', () => ({
+                config: {
+                    langfuse: {
+                        secretKey: 'sk',
+                        publicKey: 'pk',
+                        baseUrl: 'https://example.com',
+                    },
+                },
+            }));
+
+            const { LangfuseTraceService } = await import('../../../src/shared/services/langfuse.service.js');
+            const service = LangfuseTraceService.getInstance();
+
+            const trace = service.createTrace({
+                name: 'test-trace',
+                userId: 'user@test.com',
+                sessionId: 'sess-1',
+                input: 'hello',
+                tags: ['tag1'],
+            });
+
+            expect(mockClient.trace).toHaveBeenCalledWith(expect.objectContaining({
+                name: 'test-trace',
+                userId: 'user@test.com',
+                sessionId: 'sess-1',
+                input: 'hello',
+                tags: ['tag1'],
+            }));
+            expect(trace).toBe(mockTrace);
+        });
+
+        it('createSpan delegates to parent.span', async () => {
+            vi.resetModules();
+            vi.clearAllMocks();
+
+            const mockSpan = { id: 'span-1', end: vi.fn() };
+            const mockParent = { span: vi.fn().mockReturnValue(mockSpan), generation: vi.fn() };
+            const mockClient = {
+                trace: vi.fn(),
+                shutdownAsync: vi.fn(),
+                flushAsync: vi.fn(),
+            };
+
+            vi.doMock('langfuse', () => ({
+                Langfuse: vi.fn().mockImplementation(() => mockClient),
+            }));
+            vi.doMock('../../../src/shared/config/index.js', () => ({
+                config: { langfuse: { secretKey: 'sk', publicKey: 'pk', baseUrl: 'https://example.com' } },
+            }));
+
+            const { LangfuseTraceService } = await import('../../../src/shared/services/langfuse.service.js');
+            const service = LangfuseTraceService.getInstance();
+
+            const span = service.createSpan(mockParent as any, { name: 'retrieval', input: 'q' });
+
+            expect(mockParent.span).toHaveBeenCalledWith({
+                name: 'retrieval',
+                input: 'q',
+                output: undefined,
+                metadata: undefined,
+            });
+            expect(span).toBe(mockSpan);
+        });
+
+        it('createGeneration includes usage with TOKENS unit', async () => {
+            vi.resetModules();
+            vi.clearAllMocks();
+
+            const mockGen = { id: 'gen-1', end: vi.fn() };
+            const mockParent = { span: vi.fn(), generation: vi.fn().mockReturnValue(mockGen) };
+            const mockClient = { trace: vi.fn(), shutdownAsync: vi.fn(), flushAsync: vi.fn() };
+
+            vi.doMock('langfuse', () => ({
+                Langfuse: vi.fn().mockImplementation(() => mockClient),
+            }));
+            vi.doMock('../../../src/shared/config/index.js', () => ({
+                config: { langfuse: { secretKey: 'sk', publicKey: 'pk', baseUrl: 'https://example.com' } },
+            }));
+
+            const { LangfuseTraceService } = await import('../../../src/shared/services/langfuse.service.js');
+            const service = LangfuseTraceService.getInstance();
+
+            service.createGeneration(mockParent as any, {
+                name: 'gpt-4',
+                input: [{ role: 'user', content: 'hi' }],
+                output: 'hello',
+                model: 'gpt-4',
+                usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
+            });
+
+            expect(mockParent.generation).toHaveBeenCalledWith(expect.objectContaining({
+                name: 'gpt-4',
+                model: 'gpt-4',
+                usage: { input: 10, output: 20, total: 30, unit: 'TOKENS' },
+            }));
+        });
+
+        it('updateTrace calls trace.update with output and metadata', async () => {
+            vi.resetModules();
+            vi.clearAllMocks();
+
+            const mockClient = { trace: vi.fn(), shutdownAsync: vi.fn(), flushAsync: vi.fn() };
+
+            vi.doMock('langfuse', () => ({
+                Langfuse: vi.fn().mockImplementation(() => mockClient),
+            }));
+            vi.doMock('../../../src/shared/config/index.js', () => ({
+                config: { langfuse: { secretKey: 'sk', publicKey: 'pk', baseUrl: 'https://example.com' } },
+            }));
+
+            const { LangfuseTraceService } = await import('../../../src/shared/services/langfuse.service.js');
+            const service = LangfuseTraceService.getInstance();
+
+            const mockTrace = { update: vi.fn() };
+            service.updateTrace(mockTrace as any, { output: 'answer', metadata: { key: 'val' } });
+
+            expect(mockTrace.update).toHaveBeenCalledWith({
+                output: 'answer',
+                metadata: { key: 'val' },
+            });
+        });
+
+        it('flush calls flushAsync on the client', async () => {
+            vi.resetModules();
+            vi.clearAllMocks();
+
+            const mockClient = { trace: vi.fn(), shutdownAsync: vi.fn(), flushAsync: vi.fn().mockResolvedValue(undefined) };
+
+            vi.doMock('langfuse', () => ({
+                Langfuse: vi.fn().mockImplementation(() => mockClient),
+            }));
+            vi.doMock('../../../src/shared/config/index.js', () => ({
+                config: { langfuse: { secretKey: 'sk', publicKey: 'pk', baseUrl: 'https://example.com' } },
+            }));
+
+            const { LangfuseTraceService, getLangfuseClient } = await import('../../../src/shared/services/langfuse.service.js');
+            // Initialize client so flush has something to call
+            getLangfuseClient();
+            const service = LangfuseTraceService.getInstance();
+
+            await service.flush();
+            expect(mockClient.flushAsync).toHaveBeenCalled();
+        });
+    });
 });

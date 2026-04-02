@@ -1,0 +1,66 @@
+Protocol XYZ-001: Phase III Randomized Controlled Trial
+
+A Multicenter, Double-Blind, Placebo-Controlled Phase III Study to Evaluate
+the Efficacy and Safety of Compound BKN-4521 in Patients with Moderate to
+Severe Chronic Obstructive Pulmonary Disease (COPD)
+
+1. STUDY DESIGN
+
+This is a Phase III, multicenter, randomized, double-blind, placebo-controlled,
+parallel-group study designed to evaluate the efficacy and safety of BKN-4521
+administered orally once daily for 52 weeks in patients with moderate to severe
+COPD as defined by GOLD criteria (FEV1 30-79% predicted).
+
+Approximately 1,200 patients will be randomized in a 1:1 ratio to receive either
+BKN-4521 200mg or matching placebo. Randomization will be stratified by baseline
+FEV1 severity (moderate vs. severe) and smoking status (current vs. former).
+
+2. PRIMARY ENDPOINTS
+
+The co-primary efficacy endpoints are:
+- Change from baseline in pre-bronchodilator FEV1 at Week 24
+- Rate of moderate or severe COPD exacerbations over 52 weeks
+
+3. KEY SECONDARY ENDPOINTS
+
+- Change from baseline in St. George's Respiratory Questionnaire (SGRQ) total
+  score at Week 24
+- Time to first moderate or severe COPD exacerbation
+- Change from baseline in 6-minute walk distance (6MWD) at Week 24
+- Proportion of SGRQ responders (decrease of >= 4 units) at Week 24
+
+4. INCLUSION CRITERIA
+
+Patients must meet ALL of the following criteria:
+- Age >= 40 years at screening
+- Current or former smoker with >= 10 pack-year history
+- Documented diagnosis of COPD (GOLD criteria) for >= 12 months
+- Post-bronchodilator FEV1/FVC ratio < 0.70
+- Post-bronchodilator FEV1 >= 30% and < 80% of predicted normal
+- >= 1 documented COPD exacerbation requiring systemic corticosteroids or
+  antibiotics or hospitalization in the 12 months prior to screening
+
+5. SAMPLE SIZE JUSTIFICATION
+
+The sample size of 600 patients per arm was determined based on the following
+assumptions: a clinically meaningful difference in FEV1 of 100 mL between
+groups, standard deviation of 250 mL, two-sided significance level of 0.025
+(adjusted for co-primary endpoints), 90% power, and an anticipated dropout
+rate of 20% over 52 weeks. The exacerbation rate endpoint assumes a baseline
+rate of 1.2 events per year, a 25% rate reduction, and uses a negative
+binomial regression model with an over-dispersion parameter of 0.5.
+
+6. SAFETY MONITORING
+
+An independent Data Safety Monitoring Board (DSMB) will review unblinded
+safety data at pre-specified intervals. Stopping rules are based on the
+Lan-DeMets alpha-spending function with O'Brien-Fleming boundaries for
+efficacy and Haybittle-Peto rule for safety.
+
+7. STATISTICAL ANALYSIS
+
+The primary analysis will use the modified intent-to-treat (mITT) population.
+Missing FEV1 data will be handled using a mixed model for repeated measures
+(MMRM) approach. The exacerbation rate will be analyzed using a negative
+binomial regression model with treatment, baseline FEV1, smoking status,
+and region as covariates.

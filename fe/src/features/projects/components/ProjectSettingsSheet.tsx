@@ -1,0 +1,232 @@
+/**
+ * @fileoverview Sheet-based settings sidebar for project management.
+ *
+ * Slides in from the right (320px) and contains:
+ * - Project name/description edit form
+ * - Visibility toggle (is_private)
+ * - Member management (reuses ProjectMemberList)
+ * - Danger zone with delete project (name confirmation)
+ *
+ * @module features/projects/components/ProjectSettingsSheet
+ */
+
+import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Trash2 } from 'lucide-react'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Separator } from '@/components/ui/separator'
+import { Spinner } from '@/components/ui/spinner'
+import { globalMessage } from '@/app/App'
+import {
+  updateProject,
+  deleteProject,
+  type Project,
+} from '../api/projectApi'
+import ProjectMemberList from './ProjectMemberList'
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface ProjectSettingsSheetProps {
+  /** The project being configured */
+  project: Project
+  /** Whether the sheet is open */
+  open: boolean
+  /** Callback to control open state */
+  onOpenChange: (open: boolean) => void
+  /** Callback after the project is successfully updated */
+  onProjectUpdated: () => void
+  /** Callback after the project is deleted (navigate away) */
+  onProjectDeleted: () => void
+}
+
+// ============================================================================
+// Component
+// ============================================================================
+
+/**
+ * @description Sheet sidebar for project settings: edit name/description, toggle visibility, manage members, delete project
+ * @param {ProjectSettingsSheetProps} props - Settings sheet configuration
+ * @returns {JSX.Element} Rendered Sheet component with settings sections
+ */
+const ProjectSettingsSheet = ({
+  project,
+  open,
+  onOpenChange,
+  onProjectUpdated,
+  onProjectDeleted,
+}: ProjectSettingsSheetProps) => {
+  const { t } = useTranslation()
+
+  // Edit form state
+  const [name, setName] = useState(project.name)
+  const [description, setDescription] = useState(project.description || '')
+  const [isPrivate, setIsPrivate] = useState(project.is_private)
+  const [saving, setSaving] = useState(false)
+
+  // Delete confirmation state
+  const [deleteConfirmName, setDeleteConfirmName] = useState('')
+  const [deleting, setDeleting] = useState(false)
+
+  // Reset form state when sheet opens or project changes
+  useEffect(() => {
+    if (open) {
+      setName(project.name)
+      setDescription(project.description || '')
+      setIsPrivate(project.is_private)
+      setDeleteConfirmName('')
+    }
+  }, [open, project])
+
+  /**
+   * @description Save project name, description, and visibility changes
+   */
+  const handleSave = async () => {
+    // Validate name is not empty
+    if (!name.trim()) {
+      globalMessage.error(t('projectManagement.name') + ' is required')
+      return
+    }
+
+    setSaving(true)
+    try {
+      await updateProject(project.id, {
+        name: name.trim(),
+        description: description.trim() || null,
+        is_private: isPrivate,
+      })
+      globalMessage.success(t('projectManagement.updateSuccess'))
+      onProjectUpdated()
+    } catch (err) {
+      globalMessage.error(String(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  /**
+   * @description Delete the project after verifying name confirmation
+   */
+  const handleDelete = async () => {
+    // Block deletion unless typed name matches project name exactly
+    if (deleteConfirmName !== project.name) return
+
+    setDeleting(true)
+    try {
+      await deleteProject(project.id)
+      globalMessage.success(t('projectManagement.deleteSuccess'))
+      onProjectDeleted()
+    } catch (err) {
+      globalMessage.error(String(err))
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-[320px] sm:max-w-[320px] overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>{t('projectManagement.tabs.settings', 'Settings')}</SheetTitle>
+          <SheetDescription>
+            {t('projectManagement.settingsDescription', 'Manage project settings and members.')}
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="mt-6 space-y-6">
+          {/* Project name */}
+          <div className="space-y-2">
+            <Label htmlFor="project-name">{t('projectManagement.name')}</Label>
+            <Input
+              id="project-name"
+              value={name}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+              placeholder={t('projectManagement.namePlaceholder')}
+            />
+          </div>
+
+          {/* Project description */}
+          <div className="space-y-2">
+            <Label htmlFor="project-description">{t('projectManagement.descriptionLabel')}</Label>
+            <Input
+              id="project-description"
+              value={description}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDescription(e.target.value)}
+              placeholder={t('projectManagement.descriptionPlaceholder')}
+            />
+          </div>
+
+          {/* Visibility toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>{t('projectManagement.privateAccess')}</Label>
+              <p className="text-xs text-muted-foreground">
+                {isPrivate
+                  ? t('projectManagement.privateAccessDesc')
+                  : t('projectManagement.publicAccessDesc')}
+              </p>
+            </div>
+            <Switch
+              checked={isPrivate}
+              onCheckedChange={setIsPrivate}
+            />
+          </div>
+
+          {/* Save button */}
+          <Button onClick={handleSave} disabled={saving} className="w-full">
+            {saving && <Spinner size={16} className="mr-2" />}
+            {t('common.save', 'Save')}
+          </Button>
+
+          <Separator />
+
+          {/* Member management section */}
+          <div>
+            <h4 className="text-sm font-semibold mb-3">{t('projectManagement.tabs.members', 'Members')}</h4>
+            <ProjectMemberList projectId={project.id} />
+          </div>
+
+          <Separator />
+
+          {/* Danger zone: delete project */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-destructive">
+              {t('projects.dangerZone', 'Danger Zone')}
+            </h4>
+            <p className="text-xs text-muted-foreground">
+              {t('projects.deleteConfirm', 'This will permanently delete the project and all its categories, versions, and files. Type the project name to confirm.')}
+            </p>
+            <Input
+              placeholder={project.name}
+              value={deleteConfirmName}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDeleteConfirmName(e.target.value)}
+            />
+            <Button
+              variant="destructive"
+              className="w-full"
+              onClick={handleDelete}
+              disabled={deleteConfirmName !== project.name || deleting}
+            >
+              {deleting && <Spinner size={16} className="mr-2" />}
+              <Trash2 size={14} className="mr-1.5" />
+              {t('common.delete')}
+            </Button>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+export default ProjectSettingsSheet

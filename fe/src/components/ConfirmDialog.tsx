@@ -20,7 +20,7 @@
  */
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Dialog } from './Dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 /**
  * Options for configuring the confirmation dialog.
@@ -50,11 +50,9 @@ interface ConfirmContextType {
 const ConfirmContext = createContext<ConfirmContextType | null>(null);
 
 /**
- * Hook to access the confirmation service.
- * Returns the `confirm` function which prompts the user and awaits their decision.
- * 
- * @returns {Function} confirm function
- * @throws {Error} if used outside a ConfirmProvider
+ * @description Hook to access the global confirmation service
+ * @returns {(options: ConfirmOptions) => Promise<boolean>} Confirm function that triggers the dialog and resolves to user choice
+ * @throws {Error} If used outside a ConfirmProvider
  */
 export const useConfirm = () => {
     const context = useContext(ConfirmContext);
@@ -71,8 +69,9 @@ interface ConfirmProviderProps {
 }
 
 /**
- * Context provider for the global confirmation dialog.
- * Manages the shared state of the single confirmation modal instance.
+ * @description Context provider for the global confirmation dialog, managing shared modal state
+ * @param {ConfirmProviderProps} props - Application children to wrap
+ * @returns {JSX.Element} Context provider with confirmation dialog overlay
  */
 export const ConfirmProvider: React.FC<ConfirmProviderProps> = ({ children }) => {
     const { t } = useTranslation();
@@ -131,9 +130,9 @@ export const ConfirmProvider: React.FC<ConfirmProviderProps> = ({ children }) =>
             case 'warning':
                 return 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500';
             case 'info':
-                return 'bg-primary-600 hover:bg-primary-700 focus:ring-primary-500';
+                return 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500';
             default:
-                return 'bg-primary-600 hover:bg-primary-700 focus:ring-primary-500';
+                return 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500';
         }
     };
 
@@ -143,14 +142,15 @@ export const ConfirmProvider: React.FC<ConfirmProviderProps> = ({ children }) =>
 
             {/* Global confirmation modal instance */}
             {isOpen && options && (
-                <Dialog
-                    open={isOpen}
-                    onClose={handleCancel}
-                    title={options.title || t('dialog.confirmTitle')}
-                    maxWidth="sm"
-                    className="z-[100]"
-                    footer={
-                        <>
+                <Dialog open={isOpen} onOpenChange={(v: boolean) => { if (!v) handleCancel() }}>
+                    <DialogContent className="max-w-sm z-[100]">
+                        <DialogHeader>
+                            <DialogTitle>{options.title || t('dialog.confirmTitle')}</DialogTitle>
+                        </DialogHeader>
+                        <div className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap py-4">
+                            {options.message}
+                        </div>
+                        <div className="flex flex-row justify-end gap-2 pt-2">
                             {/* Cancel Button */}
                             <button
                                 onClick={handleCancel}
@@ -166,12 +166,8 @@ export const ConfirmProvider: React.FC<ConfirmProviderProps> = ({ children }) =>
                             >
                                 {options.confirmText || t('dialog.confirm')}
                             </button>
-                        </>
-                    }
-                >
-                    <div className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                        {options.message}
-                    </div>
+                        </div>
+                    </DialogContent>
                 </Dialog>
             )}
         </ConfirmContext>

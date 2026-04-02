@@ -7,7 +7,10 @@ const enc = { encode: vi.fn((t: string) => t.split('').map((_, i) => i)), decode
 vi.mock('js-tiktoken', () => ({ encodingForModel: vi.fn(() => enc), getEncoding: vi.fn(() => enc) }))
 vi.mock('lucide-react', () => ({ Eraser: () => null, Copy: () => null, Check: () => null, FileCode: () => null }))
 
-Object.assign(navigator, { clipboard: { writeText: vi.fn(() => Promise.resolve()) } })
+Object.defineProperty(globalThis.navigator, 'clipboard', {
+  value: { writeText: vi.fn(() => Promise.resolve()) },
+  configurable: true,
+})
 
 import TokenizerPage from '../../../src/features/ai/pages/TokenizerPage'
 

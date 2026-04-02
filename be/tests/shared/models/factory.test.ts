@@ -2,7 +2,28 @@
  * @fileoverview Unit tests for ModelFactory singleton pattern.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Mock the knex DB layer so models can instantiate without a real database connection
+vi.mock('../../../src/shared/db/knex.js', () => ({
+  db: vi.fn(),
+}))
+
+// Mock Redis service used by ability.service (transitive dependency from some models)
+vi.mock('../../../src/shared/services/redis.service.js', () => ({
+  getRedisClient: vi.fn(() => null),
+  initRedis: vi.fn(),
+}))
+
+// Mock config used at module scope by various services and models
+vi.mock('../../../src/shared/config/index.js', () => ({
+  config: {
+    session: { ttlSeconds: 604800 },
+    sessionStore: { type: 'memory' },
+    redis: { host: 'localhost', port: 6379 },
+    opensearch: { systemTenantId: 'test-tenant-id' },
+  },
+}))
 
 describe('ModelFactory', () => {
   let ModelFactory: any;
@@ -61,13 +82,6 @@ describe('ModelFactory', () => {
       expect(model.constructor.name).toBe('SystemConfigModel');
     });
 
-    it('should instantiate knowledgeBaseSource model', () => {
-      const model = ModelFactory.knowledgeBaseSource;
-
-      expect(model).toBeDefined();
-      expect(model.constructor.name).toBe('KnowledgeBaseSourceModel');
-    });
-
     it('should instantiate auditLog model', () => {
       const model = ModelFactory.auditLog;
 
@@ -96,18 +110,18 @@ describe('ModelFactory', () => {
       expect(model.constructor.name).toBe('UserDismissedBroadcastModel');
     });
 
-    it('should instantiate external models', () => {
-      const ecs = ModelFactory.externalChatSession;
-      const ecm = ModelFactory.externalChatMessage;
-      const ess = ModelFactory.externalSearchSession;
-      const esr = ModelFactory.externalSearchRecord;
+    it('should instantiate history models', () => {
+      const ecs = ModelFactory.historyChatSession;
+      const ecm = ModelFactory.historyChatMessage;
+      const ess = ModelFactory.historySearchSession;
+      const esr = ModelFactory.historySearchRecord;
 
       expect(ecs).toBeDefined();
       expect(ecm).toBeDefined();
       expect(ess).toBeDefined();
       expect(esr).toBeDefined();
 
-      expect(ecs.constructor.name).toBe('ExternalChatSessionModel');
+      expect(ecs.constructor.name).toBe('HistoryChatSessionModel');
     });
 
     it('should instantiate glossary models', () => {
@@ -130,15 +144,14 @@ describe('ModelFactory', () => {
       expect(ModelFactory.chatSession).toBeDefined();
       expect(ModelFactory.chatMessage).toBeDefined();
       expect(ModelFactory.systemConfig).toBeDefined();
-      expect(ModelFactory.knowledgeBaseSource).toBeDefined();
       expect(ModelFactory.auditLog).toBeDefined();
       expect(ModelFactory.userIpHistory).toBeDefined();
       expect(ModelFactory.broadcastMessage).toBeDefined();
       expect(ModelFactory.userDismissedBroadcast).toBeDefined();
-      expect(ModelFactory.externalChatSession).toBeDefined();
-      expect(ModelFactory.externalChatMessage).toBeDefined();
-      expect(ModelFactory.externalSearchSession).toBeDefined();
-      expect(ModelFactory.externalSearchRecord).toBeDefined();
+      expect(ModelFactory.historyChatSession).toBeDefined();
+      expect(ModelFactory.historyChatMessage).toBeDefined();
+      expect(ModelFactory.historySearchSession).toBeDefined();
+      expect(ModelFactory.historySearchRecord).toBeDefined();
       expect(ModelFactory.glossaryTask).toBeDefined();
       expect(ModelFactory.glossaryKeyword).toBeDefined();
     });
@@ -152,7 +165,7 @@ describe('ModelFactory', () => {
         ModelFactory.chatSession,
         ModelFactory.chatMessage,
         ModelFactory.systemConfig,
-        ModelFactory.knowledgeBaseSource,
+
         ModelFactory.auditLog,
         ModelFactory.userIpHistory,
         ModelFactory.broadcastMessage,
@@ -167,7 +180,7 @@ describe('ModelFactory', () => {
         ModelFactory.chatSession,
         ModelFactory.chatMessage,
         ModelFactory.systemConfig,
-        ModelFactory.knowledgeBaseSource,
+
         ModelFactory.auditLog,
         ModelFactory.userIpHistory,
         ModelFactory.broadcastMessage,

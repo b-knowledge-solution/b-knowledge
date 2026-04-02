@@ -4,7 +4,7 @@
  */
 
 import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import { getUuid } from '@/shared/utils/uuid.js';
 import {
     MAX_FILENAME_LENGTH,
     MAX_PATH_LENGTH,
@@ -18,12 +18,14 @@ import {
 // Type Definitions
 // ============================================================================
 
+/** @description Result of a file validation check */
 export interface ValidationResult {
     isValid: boolean;
     error?: string | undefined;
     warning?: string | undefined;
 }
 
+/** @description Result of a filename sanitization operation */
 export interface SanitizeResult {
     sanitized: string | null;
     error?: string | undefined;
@@ -204,7 +206,7 @@ export function sanitizeFilename(filename: string): SanitizeResult {
  */
 export function generateSafeFilename(originalFilename: string): string {
     const ext = path.extname(originalFilename).toLowerCase();
-    const uuid = uuidv4();
+    const uuid = getUuid();
     return `${uuid}${ext}`;
 }
 

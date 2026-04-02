@@ -9,12 +9,15 @@
  * @module pages/SystemToolsPage
  */
 
-import { useEffect, useState } from 'react';
 import { AlertCircle, RefreshCw, Server } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { getSystemTools, SystemTool } from '../api/systemToolsService';
+import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryKeys';
+import { getSystemTools } from '../api/systemToolsApi';
 import SystemToolCard from '../components/SystemToolCard';
+import CronSchedulerSettings from '../components/CronSchedulerSettings';
 import { useAuth } from '@/features/auth';
+import { UserRole } from '@/constants';
 
 // ============================================================================
 // Component
@@ -33,36 +36,22 @@ import { useAuth } from '@/features/auth';
 const SystemToolsPage = () => {
     const { t } = useTranslation();
     const { user } = useAuth();
-    
-    // State management
-    const [tools, setTools] = useState<SystemTool[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
 
     /**
-     * Fetch system tools from API.
-     * Handles loading state and error capture.
+     * Fetch system tools via TanStack Query (deduplicated, cached).
      */
-    const fetchTools = async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            const data = await getSystemTools();
-            setTools(data);
-        } catch (err) {
-            console.error('Failed to fetch system tools:', err);
-            setError(err instanceof Error ? err.message : t('systemTools.error'));
-        } finally {
-            setLoading(false);
-        }
-    };
+    const {
+        data: tools = [],
+        isLoading: loading,
+        error: queryError,
+        refetch: fetchTools,
+    } = useQuery({
+        queryKey: queryKeys.systemTools.list(),
+        queryFn: getSystemTools,
+    });
 
-    /**
-     * Effect: Load tools on component mount.
-     */
-    useEffect(() => {
-        fetchTools();
-    }, []);
+    // Derive error message from query error
+    const error = queryError ? (queryError instanceof Error ? queryError.message : t('systemTools.error')) : null;
 
     if (loading) {
         return (
@@ -86,7 +75,7 @@ const SystemToolsPage = () => {
                         </h3>
                         <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
                         <button
-                            onClick={fetchTools}
+                            onClick={() => fetchTools()}
                             className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
                         >
                             <RefreshCw className="w-4 h-4" />
@@ -135,12 +124,17 @@ const SystemToolsPage = () => {
                         </div>
                     )}
 
+                    {/* Parsing Scheduler Section */}
+                    <div className="mt-8">
+                        <CronSchedulerSettings />
+                    </div>
+
                     {/* Footer info */}
                     {tools.length > 0 && (
                         <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                             <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
                                 {t('systemTools.toolsAvailable', { count: tools.length })}
-                                {user?.role === 'admin' && (
+                                {user?.role === UserRole.ADMIN && (
                                     <span className="ml-2">
                                         · {t('systemTools.configInfo')} <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs">system-tools.config.json</code>
                                     </span>
