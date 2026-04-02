@@ -259,4 +259,4 @@ Project documentation lives in [`docs/`](docs/) and is served with VitePress. Th
 
 ## License
 
-This project is licensed under the MIT License. See [`LICENSE`](LICENSE).
+This project is licensed under the Apache License. See [`LICENSE`](LICENSE).
