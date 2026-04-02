@@ -14,7 +14,7 @@ Requirements for v0.2 milestone: Knowledge Base Refactor & Quality.
 - [x] **REN-03**: All BE module files, routes, models renamed (`/api/projects/*` → `/api/knowledge-base/*`, module directory `modules/knowledge-base/`, barrel exports)
 - [x] **REN-04**: All FE feature files, routes, components renamed (`/projects/:id` → `/knowledge-bases/:id`, feature directory, API layer)
 - [x] **REN-05**: Python worker `ragflow_doc_meta_` prefix renamed to `knowledge_doc_meta_` in all connector files
-- [ ] **REN-06**: All test files updated to use new naming, full test suite passes after rename
+- [x] **REN-06**: All test files updated to use new naming, full test suite passes after rename
 
 ### Chunk Quality
 
@@ -78,7 +78,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REN-03 | Phase 7 | Complete |
 | REN-04 | Phase 8 | Complete |
 | REN-05 | Phase 7 | Complete |
-| REN-06 | Phase 8 | Pending |
+| REN-06 | Phase 8 | Complete |
 | CHUNK-01 | Phase 10 | Pending |
 | CHUNK-02 | Phase 10 | Pending |
 | CHUNK-03 | Phase 10 | Pending |
