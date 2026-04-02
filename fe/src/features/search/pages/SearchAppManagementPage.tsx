@@ -70,7 +70,7 @@ export default function SearchAppManagementPage() {
   })
 
   // Fetch available knowledge bases for the config dialog.
-  const { data: rawProjects = [] } = useQuery({
+  const { data: rawKnowledgeBases = [] } = useQuery({
     queryKey: queryKeys.knowledgeBase.all,
     queryFn: () => api.get<{ id: string; name: string; dataset_count?: number }[]>('/api/knowledge-base'),
   })
@@ -79,8 +79,8 @@ export default function SearchAppManagementPage() {
   const datasetItems = rawDatasets.map((d) => ({
     id: d.id, name: d.name, type: 'dataset' as const, docCount: d.doc_count,
   }))
-  const projectItems = rawProjects.map((p) => ({
-    id: p.id, name: p.name, type: 'project' as const, docCount: p.dataset_count,
+  const knowledgeBaseItems = rawKnowledgeBases.map((kb) => ({
+    id: kb.id, name: kb.name, type: 'knowledgeBase' as const, docCount: kb.dataset_count,
   }))
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
@@ -378,7 +378,7 @@ export default function SearchAppManagementPage() {
         onSave={handleSave}
         app={editingApp}
         datasets={datasetItems}
-        projects={projectItems}
+        knowledgeBases={knowledgeBaseItems}
       />
 
       {/* Access control dialog */}

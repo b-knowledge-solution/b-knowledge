@@ -1,8 +1,8 @@
 /**
- * @fileoverview Unit tests for the ProjectSettingsSheet component.
+ * @fileoverview Unit tests for the KnowledgeBaseSettingsSheet component.
  *
  * Tests form rendering with name/description fields, save button calling
- * updateProject, delete button disabled until name confirmation, and
+ * updateKnowledgeBase, delete button disabled until name confirmation, and
  * form state reset when sheet opens.
  */
 
@@ -51,12 +51,12 @@ vi.mock('@/components/ui/spinner', () => ({
   Spinner: () => <span data-testid="spinner" />,
 }))
 
-const mockUpdateProject = vi.fn()
-const mockDeleteProject = vi.fn()
+const mockUpdateKnowledgeBase = vi.fn()
+const mockDeleteKnowledgeBase = vi.fn()
 
-vi.mock('@/features/projects/api/projectApi', () => ({
-  updateProject: (...args: any[]) => mockUpdateProject(...args),
-  deleteProject: (...args: any[]) => mockDeleteProject(...args),
+vi.mock('@/features/knowledge-base/api/knowledgeBaseApi', () => ({
+  updateKnowledgeBase: (...args: any[]) => mockUpdateKnowledgeBase(...args),
+  deleteKnowledgeBase: (...args: any[]) => mockDeleteKnowledgeBase(...args),
 }))
 
 vi.mock('@/app/App', () => ({
@@ -66,25 +66,25 @@ vi.mock('@/app/App', () => ({
   },
 }))
 
-vi.mock('@/features/projects/components/ProjectMemberList', () => ({
+vi.mock('@/features/knowledge-base/components/KnowledgeBaseMemberList', () => ({
   default: () => <div data-testid="member-list">Members</div>,
 }))
 
-import ProjectSettingsSheet from '@/features/projects/components/ProjectSettingsSheet'
-import type { Project } from '@/features/projects/api/projectApi'
+import KnowledgeBaseSettingsSheet from '@/features/knowledge-base/components/KnowledgeBaseSettingsSheet'
+import type { KnowledgeBase } from '@/features/knowledge-base/api/knowledgeBaseApi'
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 /**
- * @description Build a mock Project for settings sheet rendering
+ * @description Build a mock KnowledgeBase for settings sheet rendering
  */
-function buildProject(overrides: Partial<Project> = {}): Project {
+function buildKnowledgeBase(overrides: Partial<KnowledgeBase> = {}): KnowledgeBase {
   return {
-    id: 'proj-1',
-    name: 'My Project',
-    description: 'A test project',
+    id: 'kb-1',
+    name: 'My Knowledge Base',
+    description: 'A test knowledge base',
     avatar: null,
     default_embedding_model: null,
     default_chunk_method: 'naive',
@@ -103,50 +103,51 @@ function buildProject(overrides: Partial<Project> = {}): Project {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('ProjectSettingsSheet', () => {
+describe('KnowledgeBaseSettingsSheet', () => {
   const defaultProps = {
-    project: buildProject(),
+    knowledgeBase: buildKnowledgeBase(),
     open: true,
     onOpenChange: vi.fn(),
-    onProjectUpdated: vi.fn(),
-    onProjectDeleted: vi.fn(),
+    onKnowledgeBaseUpdated: vi.fn(),
+    onKnowledgeBaseDeleted: vi.fn(),
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUpdateProject.mockResolvedValue({})
-    mockDeleteProject.mockResolvedValue({})
+    mockUpdateKnowledgeBase.mockResolvedValue({})
+    mockDeleteKnowledgeBase.mockResolvedValue({})
   })
 
-  /** @description Should render sheet with project name and description fields */
-  it('renders sheet with project name and description fields', () => {
-    render(<ProjectSettingsSheet {...defaultProps} />)
+  /** @description Should render sheet with knowledge base name and description fields */
+  it('renders sheet with knowledge base name and description fields', () => {
+    render(<KnowledgeBaseSettingsSheet {...defaultProps} />)
 
     expect(screen.getByTestId('sheet')).toBeInTheDocument()
+    // Component still uses project-name / project-description test IDs internally
     const nameInput = screen.getByTestId('project-name') as HTMLInputElement
-    expect(nameInput.value).toBe('My Project')
+    expect(nameInput.value).toBe('My Knowledge Base')
     const descInput = screen.getByTestId('project-description') as HTMLInputElement
-    expect(descInput.value).toBe('A test project')
+    expect(descInput.value).toBe('A test knowledge base')
   })
 
   /** @description Should not render sheet content when open is false */
   it('does not render when closed', () => {
-    render(<ProjectSettingsSheet {...defaultProps} open={false} />)
+    render(<KnowledgeBaseSettingsSheet {...defaultProps} open={false} />)
 
     expect(screen.queryByTestId('sheet')).not.toBeInTheDocument()
   })
 
-  /** @description Save button should call updateProject API with form values */
-  it('save button calls updateProject API', async () => {
-    render(<ProjectSettingsSheet {...defaultProps} />)
+  /** @description Save button should call updateKnowledgeBase API with form values */
+  it('save button calls updateKnowledgeBase API', async () => {
+    render(<KnowledgeBaseSettingsSheet {...defaultProps} />)
 
     // Click save — text is the i18n key
     fireEvent.click(screen.getByText('common.save'))
 
     await waitFor(() => {
-      expect(mockUpdateProject).toHaveBeenCalledWith('proj-1', {
-        name: 'My Project',
-        description: 'A test project',
+      expect(mockUpdateKnowledgeBase).toHaveBeenCalledWith('kb-1', {
+        name: 'My Knowledge Base',
+        description: 'A test knowledge base',
         is_private: false,
       })
     })
@@ -154,49 +155,49 @@ describe('ProjectSettingsSheet', () => {
 
   /** @description Delete button should be disabled until name confirmation matches */
   it('delete button is disabled until name confirmation matches', () => {
-    render(<ProjectSettingsSheet {...defaultProps} />)
+    render(<KnowledgeBaseSettingsSheet {...defaultProps} />)
 
     // Find the destructive delete button — there are two "common.delete" texts
     const deleteButtons = screen.getAllByText('common.delete')
     const deleteBtn = deleteButtons[deleteButtons.length - 1]!.closest('button')!
     expect(deleteBtn.disabled).toBe(true)
 
-    // Type the project name in the confirmation input
-    const confirmInput = screen.getByPlaceholderText('My Project')
-    fireEvent.change(confirmInput, { target: { value: 'My Project' } })
+    // Type the knowledge base name in the confirmation input
+    const confirmInput = screen.getByPlaceholderText('My Knowledge Base')
+    fireEvent.change(confirmInput, { target: { value: 'My Knowledge Base' } })
 
     expect(deleteBtn.disabled).toBe(false)
   })
 
-  /** @description Form state should reset to project values when sheet opens */
+  /** @description Form state should reset to knowledge base values when sheet opens */
   it('resets form state when opened', () => {
     const { rerender } = render(
-      <ProjectSettingsSheet {...defaultProps} open={false} />
+      <KnowledgeBaseSettingsSheet {...defaultProps} open={false} />
     )
 
-    rerender(<ProjectSettingsSheet {...defaultProps} open={true} />)
+    rerender(<KnowledgeBaseSettingsSheet {...defaultProps} open={true} />)
 
     const nameInput = screen.getByTestId('project-name') as HTMLInputElement
-    expect(nameInput.value).toBe('My Project')
+    expect(nameInput.value).toBe('My Knowledge Base')
   })
 
   /** @description Should render the settings title (i18n key) */
   it('renders settings title', () => {
-    render(<ProjectSettingsSheet {...defaultProps} />)
+    render(<KnowledgeBaseSettingsSheet {...defaultProps} />)
 
     expect(screen.getByText('projectManagement.tabs.settings')).toBeInTheDocument()
   })
 
   /** @description Should render danger zone section */
   it('renders danger zone section', () => {
-    render(<ProjectSettingsSheet {...defaultProps} />)
+    render(<KnowledgeBaseSettingsSheet {...defaultProps} />)
 
     expect(screen.getByText('projects.dangerZone')).toBeInTheDocument()
   })
 
-  /** @description Should render project member list */
-  it('renders project member list', () => {
-    render(<ProjectSettingsSheet {...defaultProps} />)
+  /** @description Should render knowledge base member list */
+  it('renders knowledge base member list', () => {
+    render(<KnowledgeBaseSettingsSheet {...defaultProps} />)
 
     expect(screen.getByTestId('member-list')).toBeInTheDocument()
   })

@@ -41,7 +41,7 @@ describe('queryKeys', () => {
         queryKeys.histories.all,
         queryKeys.chat.all,
         queryKeys.sharedUser.all,
-        queryKeys.projects.all,
+        queryKeys.knowledgeBase.all,
         queryKeys.llmProvider.all,
         queryKeys.parsingScheduler.all,
       ]
@@ -218,28 +218,94 @@ describe('queryKeys', () => {
   })
 
   // --------------------------------------------------------------------------
-  // Projects keys
+  // Knowledge Base keys
   // --------------------------------------------------------------------------
 
-  describe('projects', () => {
-    /** @description projects.members should include project ID */
-    it('members() includes project ID', () => {
-      expect(queryKeys.projects.members('proj-1')).toEqual([
-        'projects', 'proj-1', 'members',
+  describe('knowledgeBase', () => {
+    /** @description knowledgeBase.all should be ["knowledge-base"] */
+    it('has correct base key', () => {
+      expect(queryKeys.knowledgeBase.all).toEqual(['knowledge-base'])
+    })
+
+    /** @description knowledgeBase.list should extend base key */
+    it('list() extends the base key', () => {
+      expect(queryKeys.knowledgeBase.list()).toEqual(['knowledge-base', 'list'])
+    })
+
+    /** @description knowledgeBase.detail should include knowledge base ID */
+    it('detail() includes knowledge base ID', () => {
+      expect(queryKeys.knowledgeBase.detail('kb-1')).toEqual([
+        'knowledge-base', 'detail', 'kb-1',
       ])
     })
 
-    /** @description projects.datasets should include project ID */
-    it('datasets() includes project ID', () => {
-      expect(queryKeys.projects.datasets('proj-1')).toEqual([
-        'projects', 'proj-1', 'datasets',
+    /** @description knowledgeBase.categories should include knowledge base ID */
+    it('categories() includes knowledge base ID', () => {
+      expect(queryKeys.knowledgeBase.categories('kb-1')).toEqual([
+        'knowledge-base', 'kb-1', 'categories',
       ])
     })
 
-    /** @description projects.activity should include project ID */
-    it('activity() includes project ID', () => {
-      expect(queryKeys.projects.activity('proj-1')).toEqual([
-        'projects', 'proj-1', 'activity',
+    /** @description knowledgeBase.versions should include knowledge base and category IDs */
+    it('versions() includes knowledge base and category IDs', () => {
+      expect(queryKeys.knowledgeBase.versions('kb-1', 'cat-1')).toEqual([
+        'knowledge-base', 'kb-1', 'categories', 'cat-1', 'versions',
+      ])
+    })
+
+    /** @description knowledgeBase.documents should include all three IDs */
+    it('documents() includes knowledge base, category, and version IDs', () => {
+      expect(queryKeys.knowledgeBase.documents('kb-1', 'cat-1', 'ver-1')).toEqual([
+        'knowledge-base', 'kb-1', 'categories', 'cat-1', 'versions', 'ver-1', 'documents',
+      ])
+    })
+
+    /** @description knowledgeBase.chats should include knowledge base ID */
+    it('chats() includes knowledge base ID', () => {
+      expect(queryKeys.knowledgeBase.chats('kb-1')).toEqual([
+        'knowledge-base', 'kb-1', 'chats',
+      ])
+    })
+
+    /** @description knowledgeBase.searches should include knowledge base ID */
+    it('searches() includes knowledge base ID', () => {
+      expect(queryKeys.knowledgeBase.searches('kb-1')).toEqual([
+        'knowledge-base', 'kb-1', 'searches',
+      ])
+    })
+
+    /** @description knowledgeBase.permissions should include knowledge base ID */
+    it('permissions() includes knowledge base ID', () => {
+      expect(queryKeys.knowledgeBase.permissions('kb-1')).toEqual([
+        'knowledge-base', 'kb-1', 'permissions',
+      ])
+    })
+
+    /** @description knowledgeBase.members should include knowledge base ID */
+    it('members() includes knowledge base ID', () => {
+      expect(queryKeys.knowledgeBase.members('kb-1')).toEqual([
+        'knowledge-base', 'kb-1', 'members',
+      ])
+    })
+
+    /** @description knowledgeBase.datasets should include knowledge base ID */
+    it('datasets() includes knowledge base ID', () => {
+      expect(queryKeys.knowledgeBase.datasets('kb-1')).toEqual([
+        'knowledge-base', 'kb-1', 'datasets',
+      ])
+    })
+
+    /** @description knowledgeBase.activity should include knowledge base ID */
+    it('activity() includes knowledge base ID', () => {
+      expect(queryKeys.knowledgeBase.activity('kb-1')).toEqual([
+        'knowledge-base', 'kb-1', 'activity',
+      ])
+    })
+
+    /** @description knowledgeBase.syncConfigs should include knowledge base ID */
+    it('syncConfigs() includes knowledge base ID', () => {
+      expect(queryKeys.knowledgeBase.syncConfigs('kb-1')).toEqual([
+        'knowledge-base', 'kb-1', 'sync-configs',
       ])
     })
   })

@@ -77,8 +77,8 @@ interface ChatAssistantConfigProps {
   dialog?: ChatAssistant | null
   /** Available datasets for selection */
   datasets?: KnowledgeBaseItem[]
-  /** Available projects for selection */
-  projects?: KnowledgeBaseItem[]
+  /** Available knowledge bases for selection */
+  knowledgeBases?: KnowledgeBaseItem[]
 }
 
 // ============================================================================
@@ -101,7 +101,7 @@ function ChatAssistantConfig({
   onSave,
   dialog,
   datasets = [],
-  projects = [],
+  knowledgeBases = [],
 }: ChatAssistantConfigProps) {
   const { t } = useTranslation()
 
@@ -360,14 +360,14 @@ function ChatAssistantConfig({
             <Switch checked={isPublic} onCheckedChange={setIsPublic} />
           </div>
 
-          {/* Knowledge bases multi-select (datasets + projects) */}
+          {/* Knowledge bases multi-select (datasets + knowledge bases) */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium">{t('chat.knowledgeBases')}</label>
             <KnowledgeBasePicker
               value={selectedKbs}
               onChange={setSelectedKbs}
               datasets={datasets}
-              projects={projects}
+              knowledgeBases={knowledgeBases}
             />
           </div>
 

@@ -44,16 +44,16 @@ vi.mock('@/components/ui/collapsible', () => ({
   ),
 }))
 
-vi.mock('@/features/projects/components/DocumentListPanel', () => ({
-  default: ({ projectId, categoryId, versionId }: any) => (
-    <div data-testid="document-list-panel" data-project-id={projectId} data-category-id={categoryId} data-version-id={versionId}>
+vi.mock('@/features/knowledge-base/components/DocumentListPanel', () => ({
+  default: ({ knowledgeBaseId, categoryId, versionId }: any) => (
+    <div data-testid="document-list-panel" data-knowledge-base-id={knowledgeBaseId} data-category-id={categoryId} data-version-id={versionId}>
       DocumentListPanel
     </div>
   ),
 }))
 
-import CodeCategoryView from '@/features/projects/components/CodeCategoryView'
-import type { DocumentCategory, DocumentCategoryType } from '@/features/projects/api/projectApi'
+import CodeCategoryView from '@/features/knowledge-base/components/CodeCategoryView'
+import type { DocumentCategory, DocumentCategoryType } from '@/features/knowledge-base/api/knowledgeBaseApi'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -65,7 +65,7 @@ import type { DocumentCategory, DocumentCategoryType } from '@/features/projects
 function buildCategory(overrides: Partial<DocumentCategory> = {}): DocumentCategory {
   return {
     id: 'cat-code-1',
-    project_id: 'proj-1',
+    knowledge_base_id: 'kb-1',
     name: 'Backend Code',
     description: null,
     sort_order: 0,
@@ -91,7 +91,7 @@ describe('CodeCategoryView', () => {
   /** @description Should render header with category name */
   it('renders header with category name', () => {
     const category = buildCategory({ name: 'API Source' })
-    render(<CodeCategoryView projectId="proj-1" category={category} />)
+    render(<CodeCategoryView knowledgeBaseId="kb-1" category={category} />)
 
     expect(screen.getByText('API Source')).toBeInTheDocument()
   })
@@ -99,7 +99,7 @@ describe('CodeCategoryView', () => {
   /** @description Should show error state when dataset_id is missing */
   it('shows error state when dataset_id is missing', () => {
     const category = buildCategory({ dataset_id: null })
-    render(<CodeCategoryView projectId="proj-1" category={category} />)
+    render(<CodeCategoryView knowledgeBaseId="kb-1" category={category} />)
 
     expect(screen.getByTestId('empty-state')).toBeInTheDocument()
   })
@@ -107,7 +107,7 @@ describe('CodeCategoryView', () => {
   /** @description Should not render DocumentListPanel or git sync when dataset_id is null */
   it('does not render DocumentListPanel when dataset_id is null', () => {
     const category = buildCategory({ dataset_id: null })
-    render(<CodeCategoryView projectId="proj-1" category={category} />)
+    render(<CodeCategoryView knowledgeBaseId="kb-1" category={category} />)
 
     expect(screen.queryByTestId('document-list-panel')).not.toBeInTheDocument()
     expect(screen.queryByTestId('collapsible')).not.toBeInTheDocument()
@@ -116,7 +116,7 @@ describe('CodeCategoryView', () => {
   /** @description Should render git sync collapsible panel when dataset_id is present */
   it('renders git sync collapsible panel', () => {
     const category = buildCategory()
-    render(<CodeCategoryView projectId="proj-1" category={category} />)
+    render(<CodeCategoryView knowledgeBaseId="kb-1" category={category} />)
 
     expect(screen.getByTestId('collapsible')).toBeInTheDocument()
     // i18n key for git sync title
@@ -126,7 +126,7 @@ describe('CodeCategoryView', () => {
   /** @description Git sync "Connect Repository" button should be disabled */
   it('connect repository button is disabled', () => {
     const category = buildCategory()
-    render(<CodeCategoryView projectId="proj-1" category={category} />)
+    render(<CodeCategoryView knowledgeBaseId="kb-1" category={category} />)
 
     const connectBtn = screen.getByText('projects.connectRepository').closest('button')!
     expect(connectBtn.disabled).toBe(true)
@@ -135,11 +135,11 @@ describe('CodeCategoryView', () => {
   /** @description Should render DocumentListPanel with correct props when dataset_id is present */
   it('renders DocumentListPanel when dataset_id is present', () => {
     const category = buildCategory({ dataset_id: 'ds-99' })
-    render(<CodeCategoryView projectId="proj-1" category={category} />)
+    render(<CodeCategoryView knowledgeBaseId="kb-1" category={category} />)
 
     const panel = screen.getByTestId('document-list-panel')
     expect(panel).toBeInTheDocument()
-    expect(panel.getAttribute('data-project-id')).toBe('proj-1')
+    expect(panel.getAttribute('data-knowledge-base-id')).toBe('kb-1')
     expect(panel.getAttribute('data-category-id')).toBe('cat-code-1')
     expect(panel.getAttribute('data-version-id')).toBe('ds-99')
   })
@@ -147,7 +147,7 @@ describe('CodeCategoryView', () => {
   /** @description Should show "coming soon" badge in git sync trigger */
   it('shows coming soon badge in git sync panel', () => {
     const category = buildCategory()
-    render(<CodeCategoryView projectId="proj-1" category={category} />)
+    render(<CodeCategoryView knowledgeBaseId="kb-1" category={category} />)
 
     // The i18n key for coming soon appears in both trigger badge and content
     expect(screen.getAllByText('projects.gitSyncComingSoon').length).toBeGreaterThanOrEqual(1)
