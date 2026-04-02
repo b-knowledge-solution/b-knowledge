@@ -10,7 +10,7 @@ Unified AI knowledge management — one platform for document ingestion, RAG-pow
 
 ## Current State
 
-Shipped v0.1 with document upload-to-parse pipeline, converter job queue, and full dataset-parity version document management. Completed v1.0 with RAGFlow upstream merge, mem0 evaluation, project refactor (3-category tabs), Code-Graph-RAG (12-language parser + Memgraph), response evaluation, and prompt builder.
+Shipped v0.1 with document upload-to-parse pipeline, converter job queue, and full dataset-parity version document management. Completed v1.0 with RAGFlow upstream merge, mem0 evaluation, project refactor (3-category tabs), Code-Graph-RAG (12-language parser + Memgraph), response evaluation, and prompt builder. Phase 7 complete — DB schema, BE module, and Python worker prefixes renamed from "Project" to "Knowledge Base".
 
 **Tech stack:** Node.js 22 / Express 4 / React 19 / Vite 7 / Python 3.11 / FastAPI / PostgreSQL / OpenSearch / Redis / RustFS / Memgraph
 
@@ -92,4 +92,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-02 after v0.2 milestone started*
+*Last updated: 2026-04-02 after Phase 7 (DB + BE + Python Rename) complete*
