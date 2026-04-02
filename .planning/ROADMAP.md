@@ -85,7 +85,7 @@ Plans:
 **Milestone Goal:** Rename "Project" to "Knowledge Base" across the entire app, enhance chunk data quality with advanced strategies and scoring, add a 3-tier permission system, and prepare extensibility for future KB features.
 
 - [ ] **Phase 7: DB + BE + Python Rename** - Rename database schema, backend module, Python worker prefixes from "Project" to "Knowledge Base"
-- [ ] **Phase 8: Frontend Rename** - Rename all FE files, routes, components, i18n from "Project" to "Knowledge Base"; verify full test suite
+- [x] **Phase 8: Frontend Rename** - Rename all FE files, routes, components, i18n from "Project" to "Knowledge Base"; verify full test suite (completed 2026-04-02)
 - [ ] **Phase 9: Permission System** - 3-tier KB-level and category-level permissions with permission-aware retrieval
 - [ ] **Phase 10: Chunk Quality Pipeline** - Advanced chunking strategies, heuristic quality scoring, quality UI indicators
 
@@ -121,7 +121,7 @@ Plans:
 Plans:
 - [x] 08-01-PLAN.md -- Core feature directory rename + types + API + query keys + routes
 - [x] 08-02-PLAN.md -- i18n key rename (3 locales) + cross-feature reference updates
-- [ ] 08-03-PLAN.md -- Test file rename + full suite verification + stale reference audit
+- [x] 08-03-PLAN.md -- Test file rename + full suite verification + stale reference audit
 
 ### Phase 9: Permission System
 **Goal**: Admins can control who accesses each Knowledge Base and at what level, with permissions enforced across UI, API, and search retrieval
@@ -163,6 +163,6 @@ Note: Phases 8, 9, and 10 all depend on Phase 7 but are independent of each othe
 | 5. Response Evaluation | v0.1 | 5/5 | Complete | - |
 | 6. Prompt Builder | v0.1 | 2/2 | Complete | - |
 | 7. DB + BE + Python Rename | v0.2 | 0/3 | Not started | - |
-| 8. Frontend Rename | v0.2 | 2/3 | In Progress|  |
+| 8. Frontend Rename | v0.2 | 3/3 | Complete   | 2026-04-02 |
 | 9. Permission System | v0.2 | 0/? | Not started | - |
 | 10. Chunk Quality Pipeline | v0.2 | 0/? | Not started | - |
