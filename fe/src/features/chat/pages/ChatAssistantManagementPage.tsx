@@ -97,10 +97,10 @@ export default function ChatAssistantManagementPage() {
     return names.size > 0 ? Array.from(names).join(', ') : '-'
   }
 
-  // Fetch available projects for the assistant config dialog.
+  // Fetch available knowledge bases for the assistant config dialog.
   const { data: rawProjects = [] } = useQuery({
-    queryKey: queryKeys.projects.all,
-    queryFn: () => api.get<{ id: string; name: string; dataset_count?: number }[]>('/api/projects'),
+    queryKey: queryKeys.knowledgeBase.all,
+    queryFn: () => api.get<{ id: string; name: string; dataset_count?: number }[]>('/api/knowledge-base'),
   })
 
   // Map to KnowledgeBaseItem format for the picker

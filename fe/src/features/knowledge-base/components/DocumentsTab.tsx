@@ -94,7 +94,7 @@ const DocumentsTab = ({ knowledgeBaseId, initialCategories, embeddingModels }: D
     const fetchActiveCount = async () => {
       try {
         const result = await getConverterJobs({
-          knowledgeBaseId,
+          projectId: knowledgeBaseId,
           categoryId: selectedCategory.id,
           versionId: selectedVersion.id,
           page: 1,

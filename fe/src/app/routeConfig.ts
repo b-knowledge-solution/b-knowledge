@@ -80,9 +80,9 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     titleKey: 'datasets.title',
     fullBleed: true,
   },
-  '/data-studio/projects': {
-    titleKey: 'projectManagement.title',
-    guidelineFeatureId: 'projects',
+  '/data-studio/knowledge-base': {
+    titleKey: 'knowledgeBase.title',
+    guidelineFeatureId: 'knowledge-base',
     fullBleed: true,
   },
   '/iam/users': {
@@ -191,8 +191,8 @@ export function getRouteMetadata(pathname: string): RouteMetadata {
   if (pathname.startsWith('/data-studio/datasets/')) {
     return ROUTE_CONFIG['/data-studio/datasets']!;
   }
-  if (pathname.startsWith('/data-studio/projects/')) {
-    return ROUTE_CONFIG['/data-studio/projects']!;
+  if (pathname.startsWith('/data-studio/knowledge-base/')) {
+    return ROUTE_CONFIG['/data-studio/knowledge-base']!;
   }
 
   // Default fallback

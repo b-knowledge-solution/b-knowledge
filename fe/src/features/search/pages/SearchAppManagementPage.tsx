@@ -69,10 +69,10 @@ export default function SearchAppManagementPage() {
     queryFn: () => api.get<{ id: string; name: string; doc_count?: number }[]>('/api/rag/datasets'),
   })
 
-  // Fetch available projects for the config dialog.
+  // Fetch available knowledge bases for the config dialog.
   const { data: rawProjects = [] } = useQuery({
-    queryKey: queryKeys.projects.all,
-    queryFn: () => api.get<{ id: string; name: string; dataset_count?: number }[]>('/api/projects'),
+    queryKey: queryKeys.knowledgeBase.all,
+    queryFn: () => api.get<{ id: string; name: string; dataset_count?: number }[]>('/api/knowledge-base'),
   })
 
   // Map to KnowledgeBaseItem format for the picker

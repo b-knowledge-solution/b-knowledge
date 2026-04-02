@@ -20,10 +20,10 @@ import { useConfirm } from '@/components/ConfirmDialog'
 import { globalMessage } from '@/app/App'
 import {
   getKnowledgeBaseSearches,
-  createProjectSearch,
-  updateProjectSearch,
-  deleteProjectSearch,
-  syncProjectSearch,
+  createKnowledgeBaseSearch,
+  updateKnowledgeBaseSearch,
+  deleteKnowledgeBaseSearch,
+  syncKnowledgeBaseSearch,
   type KnowledgeBaseSearch,
   type DocumentCategory,
   type DocumentCategoryVersion,
@@ -39,7 +39,7 @@ interface SearchTabProps {
   /** Current project ID */
   knowledgeBaseId: string
   /** Initial search list fetched by the parent */
-  initialSearches: ProjectSearch[]
+  initialSearches: KnowledgeBaseSearch[]
   /** Knowledge base document categories */
   categories: DocumentCategory[]
   /** Map of category ID -> its versions (pre-fetched by parent) */
@@ -69,13 +69,13 @@ const SearchTab = ({
   const confirm = useConfirm()
 
   // List state
-  const [searches, setSearches] = useState<ProjectSearch[]>(initialSearches)
+  const [searches, setSearches] = useState<KnowledgeBaseSearch[]>(initialSearches)
   const [loading, setLoading] = useState(false)
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  const [editingSearch, setEditingSearch] = useState<ProjectSearch | null>(null)
+  const [editingSearch, setEditingSearch] = useState<KnowledgeBaseSearch | null>(null)
   const [saving, setSaving] = useState(false)
   const [permSearchId, setPermSearchId] = useState<string | null>(null)
   const [permSearchName, setPermSearchName] = useState('')
@@ -131,7 +131,7 @@ const SearchTab = ({
    * Open edit modal.
    * @param record - Search record to edit
    */
-  const handleEdit = (record: ProjectSearch) => {
+  const handleEdit = (record: KnowledgeBaseSearch) => {
     setIsEditing(true)
     setEditingSearch(record)
     setModalOpen(true)
@@ -152,7 +152,7 @@ const SearchTab = ({
     if (!confirmed) return
 
     try {
-      await deleteProjectSearch(knowledgeBaseId, id)
+      await deleteKnowledgeBaseSearch(knowledgeBaseId, id)
       globalMessage.success(t('projectManagement.searches.deleteSuccess', 'Search app deleted'))
       refreshSearches()
     } catch {
@@ -166,7 +166,7 @@ const SearchTab = ({
    */
   const handleSync = async (id: string) => {
     try {
-      await syncProjectSearch(knowledgeBaseId, id)
+      await syncKnowledgeBaseSearch(knowledgeBaseId, id)
       globalMessage.success(t('projectManagement.searches.syncSuccess', 'Search app synced'))
       refreshSearches()
     } catch {
@@ -193,10 +193,10 @@ const SearchTab = ({
       }
 
       if (isEditing && editingSearch) {
-        await updateProjectSearch(knowledgeBaseId, editingSearch.id, payload)
+        await updateKnowledgeBaseSearch(knowledgeBaseId, editingSearch.id, payload)
         globalMessage.success(t('projectManagement.searches.updateSuccess', 'Search app updated'))
       } else {
-        await createProjectSearch(knowledgeBaseId, payload)
+        await createKnowledgeBaseSearch(knowledgeBaseId, payload)
         globalMessage.success(t('projectManagement.searches.createSuccess', 'Search app created'))
       }
 

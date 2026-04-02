@@ -18,7 +18,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Save, Loader2 } from 'lucide-react'
 import { globalMessage } from '@/app/App'
-import type { ProjectSyncConfig, SyncSourceType } from '../api/knowledgeBaseApi'
+import type { KnowledgeBaseSyncConfig, SyncSourceType } from '../api/knowledgeBaseApi'
 import SyncConnectionFields from './SyncConnectionFields'
 
 // ============================================================================
@@ -27,7 +27,7 @@ import SyncConnectionFields from './SyncConnectionFields'
 
 interface SyncConfigPanelProps {
   /** Existing sync config (null for new) */
-  config: ProjectSyncConfig | null
+  config: KnowledgeBaseSyncConfig | null
   /** Save handler */
   onSave: (data: {
     source_type: SyncSourceType

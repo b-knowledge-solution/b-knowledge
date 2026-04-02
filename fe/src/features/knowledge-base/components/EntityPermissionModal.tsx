@@ -69,7 +69,7 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
   const { t } = useTranslation()
 
   // Data state
-  const [permissions, setPermissions] = useState<ProjectEntityPermission[]>([])
+  const [permissions, setPermissions] = useState<KnowledgeBaseEntityPermission[]>([])
   const [teams, setTeams] = useState<Team[]>([])
   const [users, setUsers] = useState<UserType[]>([])
   const [, setLoading] = useState(false)

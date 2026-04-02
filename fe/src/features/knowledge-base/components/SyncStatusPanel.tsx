@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Play, Clock, Loader2 } from 'lucide-react'
-import type { ProjectSyncConfig } from '../api/knowledgeBaseApi'
+import type { KnowledgeBaseSyncConfig } from '../api/knowledgeBaseApi'
 
 // ============================================================================
 // Types
@@ -16,7 +16,7 @@ import type { ProjectSyncConfig } from '../api/knowledgeBaseApi'
 
 interface SyncStatusPanelProps {
   /** The sync config */
-  config: ProjectSyncConfig | null
+  config: KnowledgeBaseSyncConfig | null
   /** Handler to trigger manual sync */
   onTriggerSync: () => Promise<void>
   /** Whether a sync is being triggered */

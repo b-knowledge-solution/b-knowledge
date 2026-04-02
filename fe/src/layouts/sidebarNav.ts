@@ -126,8 +126,8 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
     roles: ['super-admin', 'admin', 'leader'],
     children: [
       {
-        path: '/data-studio/projects',
-        labelKey: 'nav.projects',
+        path: '/data-studio/knowledge-base',
+        labelKey: 'nav.knowledgeBase',
         icon: FolderOpen,
       },
       {

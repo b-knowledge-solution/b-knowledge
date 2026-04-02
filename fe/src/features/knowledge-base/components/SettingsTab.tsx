@@ -57,7 +57,7 @@ const SettingsTab = ({ knowledgeBaseId, permissions, onPermissionRemoved }: Sett
    *
    * @param record - The permission to delete
    */
-  const handleDelete = async (record: ProjectPermission) => {
+  const handleDelete = async (record: KnowledgeBasePermission) => {
     // Show confirmation dialog before deleting
     const confirmed = await confirm({
       title: t('common.delete'),

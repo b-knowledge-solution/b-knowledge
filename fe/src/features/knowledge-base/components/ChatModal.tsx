@@ -34,7 +34,7 @@ import { ChevronDown, AlertTriangle } from 'lucide-react'
 import type {
   DocumentCategory,
   DocumentCategoryVersion,
-  ProjectChat,
+  KnowledgeBaseChat,
 } from '../api/knowledgeBaseApi'
 
 // ============================================================================
@@ -311,7 +311,7 @@ interface ChatModalProps {
   /** Available chat models from the RAGFlow server config */
   chatModels: string[]
   /** Existing chat data for edit mode (null = create mode) */
-  editingChat: ProjectChat | null
+  editingChat: KnowledgeBaseChat | null
 }
 
 // ============================================================================
