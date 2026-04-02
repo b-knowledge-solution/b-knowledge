@@ -73,7 +73,7 @@ const SyncConfigPanel = ({ config, onSave, saving }: SyncConfigPanelProps) => {
   const handleSave = async () => {
     try {
       await onSave({ source_type: sourceType, connection_config: connectionConfig })
-      globalMessage.success(t('projectManagement.sync.saveSuccess'))
+      globalMessage.success(t('knowledgeBase.sync.saveSuccess'))
     } catch (err) {
       globalMessage.error(String(err))
     }
@@ -84,7 +84,7 @@ const SyncConfigPanel = ({ config, onSave, saving }: SyncConfigPanelProps) => {
       {/* Source type selector */}
       <div>
         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-          {t('projectManagement.sync.sourceType')}
+          {t('knowledgeBase.sync.sourceType')}
         </label>
         <Select
           value={sourceType}

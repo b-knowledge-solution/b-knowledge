@@ -140,12 +140,12 @@ export default function PipelineStatusBar({ datasetId, knowledgeBaseId, category
       <div className="flex items-center gap-4 font-mono text-xs">
         {/* Pipeline label */}
         <span className="text-slate-600 text-[10px] uppercase tracking-wide">
-          {t('projects.pipelineStatus')}
+          {t('knowledgeBase.pipelineStatus')}
         </span>
 
         {/* Show "Ready" when no active pipeline */}
         {!isActive && (
-          <span className="text-slate-600">{t('projects.pipelineReady')}</span>
+          <span className="text-slate-600">{t('knowledgeBase.pipelineReady')}</span>
         )}
 
         {/* Pipeline stage indicators */}

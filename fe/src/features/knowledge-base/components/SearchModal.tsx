@@ -110,8 +110,8 @@ const VectorWeightControl = ({
   return (
     <div>
       <div className="flex justify-between mb-1">
-        <span className="text-xs text-muted-foreground">{t('projectManagement.common.vector')} {value.toFixed(2)}</span>
-        <span className="text-xs text-muted-foreground">{t('projectManagement.common.fullText')} {(1 - value).toFixed(2)}</span>
+        <span className="text-xs text-muted-foreground">{t('knowledgeBase.common.vector')} {value.toFixed(2)}</span>
+        <span className="text-xs text-muted-foreground">{t('knowledgeBase.common.fullText')} {(1 - value).toFixed(2)}</span>
       </div>
       <div className="flex items-center gap-3">
         <input
@@ -337,7 +337,7 @@ const SearchModal = ({
    */
   const handleOk = () => {
     if (!formData.name.trim()) {
-      setNameError(t('projectManagement.searches.nameRequired', 'Name is required'))
+      setNameError(t('knowledgeBase.searches.nameRequired', 'Name is required'))
       return
     }
     setNameError('')
@@ -350,8 +350,8 @@ const SearchModal = ({
         <DialogHeader>
           <DialogTitle>
             {isEditing
-              ? t('projectManagement.searches.editSearch', 'Edit Search')
-              : t('projectManagement.searches.createSearch', 'Create Search')
+              ? t('knowledgeBase.searches.editSearch', 'Edit Search')
+              : t('knowledgeBase.searches.createSearch', 'Create Search')
             }
           </DialogTitle>
         </DialogHeader>
@@ -360,10 +360,10 @@ const SearchModal = ({
           {/* Section 1: Basic Info */}
           <div>
             <label className="block text-sm font-medium mb-1">
-              {t('projectManagement.searches.name', 'Name')} <span className="text-red-500">*</span>
+              {t('knowledgeBase.searches.name', 'Name')} <span className="text-red-500">*</span>
             </label>
             <Input
-              placeholder={t('projectManagement.searches.namePlaceholder', 'Enter search app name')}
+              placeholder={t('knowledgeBase.searches.namePlaceholder', 'Enter search app name')}
               value={formData.name}
               onChange={(e) => {
                 updateField('name', e.target.value)
@@ -376,11 +376,11 @@ const SearchModal = ({
 
           <div>
             <label className="block text-sm font-medium mb-1">
-              {t('projectManagement.searches.description', 'Description')}
+              {t('knowledgeBase.searches.description', 'Description')}
             </label>
             <Textarea
               rows={2}
-              placeholder={t('projectManagement.searches.descriptionPlaceholder', 'Enter description')}
+              placeholder={t('knowledgeBase.searches.descriptionPlaceholder', 'Enter description')}
               value={formData.description}
               onChange={(e) => updateField('description', e.target.value)}
             />
@@ -391,7 +391,7 @@ const SearchModal = ({
           {/* Section 2: Datasets */}
           <div>
             <label className="block text-sm font-medium mb-1">
-              {t('projectManagement.searches.datasets', 'Datasets')}
+              {t('knowledgeBase.searches.datasets', 'Datasets')}
             </label>
             <div className="flex flex-col gap-2">
               {categoryOptions.map((opt) => (
@@ -416,11 +416,11 @@ const SearchModal = ({
           <Separator />
 
           {/* Section 3: Retrieval Config */}
-          <CollapsibleSection title={t('projectManagement.searches.retrievalConfig', 'Retrieval Configuration')} defaultOpen>
+          <CollapsibleSection title={t('knowledgeBase.searches.retrievalConfig', 'Retrieval Configuration')} defaultOpen>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  {t('projectManagement.searches.similarityThreshold', 'Similarity Threshold')}
+                  {t('knowledgeBase.searches.similarityThreshold', 'Similarity Threshold')}
                 </label>
                 <SliderInput
                   min={0} max={1} step={0.01}
@@ -431,7 +431,7 @@ const SearchModal = ({
 
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  {t('projectManagement.searches.vectorWeight', 'Vector Similarity Weight')}
+                  {t('knowledgeBase.searches.vectorWeight', 'Vector Similarity Weight')}
                 </label>
                 <VectorWeightControl
                   value={formData.search_config.vector_similarity_weight}
@@ -446,7 +446,7 @@ const SearchModal = ({
                   onCheckedChange={(v: boolean) => updateConfig('rerank_enabled', v)}
                 />
                 <Label htmlFor="rerank-enabled" className="text-sm">
-                  {t('projectManagement.searches.rerankModel', 'Rerank Model')}
+                  {t('knowledgeBase.searches.rerankModel', 'Rerank Model')}
                 </Label>
               </div>
 
@@ -457,7 +457,7 @@ const SearchModal = ({
                   onCheckedChange={(v: boolean) => updateConfig('ai_summary', v)}
                 />
                 <Label htmlFor="ai-summary" className="text-sm">
-                  {t('projectManagement.searches.aiSummary', 'AI Summary')}
+                  {t('knowledgeBase.searches.aiSummary', 'AI Summary')}
                 </Label>
               </div>
             </div>
@@ -465,11 +465,11 @@ const SearchModal = ({
 
           {/* Section 4: LLM Config (shown when AI Summary is on) */}
           {formData.search_config.ai_summary && (
-            <CollapsibleSection title={t('projectManagement.searches.llmConfig', 'LLM Configuration')} defaultOpen>
+            <CollapsibleSection title={t('knowledgeBase.searches.llmConfig', 'LLM Configuration')} defaultOpen>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    {t('projectManagement.searches.model', 'Model')}
+                    {t('knowledgeBase.searches.model', 'Model')}
                   </label>
                   {chatModels.length > 0 ? (
                     <Select
@@ -477,7 +477,7 @@ const SearchModal = ({
                       onValueChange={(v: string) => updateConfig('model', v || '')}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder={t('projectManagement.searches.selectModel', 'Select model')} />
+                        <SelectValue placeholder={t('knowledgeBase.searches.selectModel', 'Select model')} />
                       </SelectTrigger>
                       <SelectContent>
                         {chatModels.map((m) => (
@@ -487,7 +487,7 @@ const SearchModal = ({
                     </Select>
                   ) : (
                     <Input
-                      placeholder={t('projectManagement.searches.modelPlaceholder', 'Enter model name')}
+                      placeholder={t('knowledgeBase.searches.modelPlaceholder', 'Enter model name')}
                       value={formData.search_config.model}
                       onChange={(e) => updateConfig('model', e.target.value)}
                     />
@@ -496,24 +496,24 @@ const SearchModal = ({
 
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    {t('projectManagement.searches.creativity', 'Creativity')}
+                    {t('knowledgeBase.searches.creativity', 'Creativity')}
                   </label>
                   <Select defaultValue="custom" onValueChange={handleCreativityChange}>
                     <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="improvise">{t('projectManagement.searches.improvise', 'Improvise')}</SelectItem>
-                      <SelectItem value="precise">{t('projectManagement.searches.precise', 'Precise')}</SelectItem>
-                      <SelectItem value="balance">{t('projectManagement.searches.balance', 'Balance')}</SelectItem>
-                      <SelectItem value="custom">{t('projectManagement.searches.custom', 'Custom')}</SelectItem>
+                      <SelectItem value="improvise">{t('knowledgeBase.searches.improvise', 'Improvise')}</SelectItem>
+                      <SelectItem value="precise">{t('knowledgeBase.searches.precise', 'Precise')}</SelectItem>
+                      <SelectItem value="balance">{t('knowledgeBase.searches.balance', 'Balance')}</SelectItem>
+                      <SelectItem value="custom">{t('knowledgeBase.searches.custom', 'Custom')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    {t('projectManagement.searches.temperature', 'Temperature')}
+                    {t('knowledgeBase.searches.temperature', 'Temperature')}
                   </label>
                   <SliderInput
                     min={0} max={1} step={0.01}
@@ -524,7 +524,7 @@ const SearchModal = ({
 
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    {t('projectManagement.searches.topP', 'Top P')}
+                    {t('knowledgeBase.searches.topP', 'Top P')}
                   </label>
                   <SliderInput
                     min={0} max={1} step={0.01}
@@ -535,7 +535,7 @@ const SearchModal = ({
 
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    {t('projectManagement.searches.presencePenalty', 'Presence Penalty')}
+                    {t('knowledgeBase.searches.presencePenalty', 'Presence Penalty')}
                   </label>
                   <SliderInput
                     min={0} max={1} step={0.01}
@@ -546,7 +546,7 @@ const SearchModal = ({
 
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    {t('projectManagement.searches.frequencyPenalty', 'Frequency Penalty')}
+                    {t('knowledgeBase.searches.frequencyPenalty', 'Frequency Penalty')}
                   </label>
                   <SliderInput
                     min={0} max={1} step={0.01}

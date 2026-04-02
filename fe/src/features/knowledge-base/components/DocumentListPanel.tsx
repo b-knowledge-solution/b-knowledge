@@ -81,26 +81,26 @@ const getFileIcon = (name: string) => {
 const getStatusBadge = (doc: VersionDocument, t: (key: string) => string): { variant: 'secondary' | 'info' | 'destructive' | 'warning' | 'success' | 'default'; label: string } => {
   const run = doc.run
   // RAGFlow run field takes precedence
-  if (run === '1') return { variant: 'info', label: t('projectManagement.documents.statusParsing') }
-  if (run === '2') return { variant: 'warning', label: t('projectManagement.documents.statusCancelled') }
+  if (run === '1') return { variant: 'info', label: t('knowledgeBase.documents.statusParsing') }
+  if (run === '2') return { variant: 'warning', label: t('knowledgeBase.documents.statusCancelled') }
   // Check progress for completed/failed states
-  if (doc.progress === 1) return { variant: 'success', label: t('projectManagement.documents.statusParsed') }
-  if (doc.progress === -1) return { variant: 'destructive', label: t('projectManagement.documents.statusFailed') }
-  if (doc.progress > 0 && doc.progress < 1) return { variant: 'info', label: t('projectManagement.documents.statusParsing') }
+  if (doc.progress === 1) return { variant: 'success', label: t('knowledgeBase.documents.statusParsed') }
+  if (doc.progress === -1) return { variant: 'destructive', label: t('knowledgeBase.documents.statusFailed') }
+  if (doc.progress > 0 && doc.progress < 1) return { variant: 'info', label: t('knowledgeBase.documents.statusParsing') }
 
   // Local pipeline statuses
   const statusMap: Record<string, { variant: 'secondary' | 'info' | 'destructive' | 'warning' | 'success' | 'default'; label: string }> = {
-    local: { variant: 'secondary', label: t('projectManagement.documents.statusLocal') },
-    converted: { variant: 'info', label: t('projectManagement.documents.statusConverted') },
-    imported: { variant: 'info', label: t('projectManagement.documents.statusImported') },
-    failed: { variant: 'destructive', label: t('projectManagement.documents.statusFailed') },
-    UNSTART: { variant: 'secondary', label: t('projectManagement.documents.statusPending') },
-    RUNNING: { variant: 'info', label: t('projectManagement.documents.statusParsing') },
-    CANCEL: { variant: 'warning', label: t('projectManagement.documents.statusCancelled') },
-    DONE: { variant: 'success', label: t('projectManagement.documents.statusParsed') },
-    FAIL: { variant: 'destructive', label: t('projectManagement.documents.statusFailed') },
+    local: { variant: 'secondary', label: t('knowledgeBase.documents.statusLocal') },
+    converted: { variant: 'info', label: t('knowledgeBase.documents.statusConverted') },
+    imported: { variant: 'info', label: t('knowledgeBase.documents.statusImported') },
+    failed: { variant: 'destructive', label: t('knowledgeBase.documents.statusFailed') },
+    UNSTART: { variant: 'secondary', label: t('knowledgeBase.documents.statusPending') },
+    RUNNING: { variant: 'info', label: t('knowledgeBase.documents.statusParsing') },
+    CANCEL: { variant: 'warning', label: t('knowledgeBase.documents.statusCancelled') },
+    DONE: { variant: 'success', label: t('knowledgeBase.documents.statusParsed') },
+    FAIL: { variant: 'destructive', label: t('knowledgeBase.documents.statusFailed') },
   }
-  return statusMap[run] || { variant: 'secondary', label: run || t('projectManagement.documents.statusPending') }
+  return statusMap[run] || { variant: 'secondary', label: run || t('knowledgeBase.documents.statusPending') }
 }
 
 /** @description Format a raw timestamp to localized date string */
@@ -289,8 +289,8 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
     const confirmed = await confirm({
       title: t('common.delete'),
       message: hasImported
-        ? `${t('projectManagement.documents.deleteConfirm', { count: selectedRowKeys.length })}\n${t('projectManagement.documents.deleteConfirmRagflow')}`
-        : t('projectManagement.documents.deleteConfirm', { count: selectedRowKeys.length }),
+        ? `${t('knowledgeBase.documents.deleteConfirm', { count: selectedRowKeys.length })}\n${t('knowledgeBase.documents.deleteConfirmRagflow')}`
+        : t('knowledgeBase.documents.deleteConfirm', { count: selectedRowKeys.length }),
       variant: 'danger',
       confirmText: t('common.delete'),
     })
@@ -301,11 +301,11 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
       // Project delete endpoint expects file names, not doc IDs
       const result = await deleteVersionDocuments(knowledgeBaseId, categoryId, versionId, selectedFileNames())
       const deletedCount = result.deleted?.length ?? selectedRowKeys.length
-      globalMessage.success(t('projectManagement.documents.deleteSuccess', { count: deletedCount }))
+      globalMessage.success(t('knowledgeBase.documents.deleteSuccess', { count: deletedCount }))
       setSelectedRowKeys([])
       setLocalRefreshKey((k) => k + 1)
     } catch {
-      globalMessage.error(t('projectManagement.documents.deleteError'))
+      globalMessage.error(t('knowledgeBase.documents.deleteError'))
     } finally {
       setDeleting(false)
     }
@@ -319,7 +319,7 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
       // Project requeue endpoint expects file names
       const result = await requeueVersionDocuments(knowledgeBaseId, categoryId, versionId, selectedFileNames())
       const queuedCount = result.queued?.length ?? 0
-      globalMessage.success(t('projectManagement.documents.retryParseSuccess', { count: queuedCount }))
+      globalMessage.success(t('knowledgeBase.documents.retryParseSuccess', { count: queuedCount }))
       setSelectedRowKeys([])
       setLocalRefreshKey((k) => k + 1)
     } catch (err) {
@@ -337,7 +337,7 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
       // Project parse endpoint expects file names
       const result = await parseVersionDocuments(knowledgeBaseId, categoryId, versionId, selectedFileNames())
       const parsedCount = result.parsed?.length ?? 0
-      globalMessage.success(t('projectManagement.documents.startParseSuccess', { count: parsedCount }))
+      globalMessage.success(t('knowledgeBase.documents.startParseSuccess', { count: parsedCount }))
       setSelectedRowKeys([])
       setLocalRefreshKey((k) => k + 1)
     } catch (err) {
@@ -352,11 +352,11 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
     if (!datasetId || selectedRowKeys.length === 0) return
     try {
       await bulkParseVersionDocuments(datasetId, selectedRowKeys, 2)
-      globalMessage.success(t('projectManagement.documents.stopParseSuccess'))
+      globalMessage.success(t('knowledgeBase.documents.stopParseSuccess'))
       setSelectedRowKeys([])
       await fetchDocuments()
     } catch {
-      globalMessage.error(t('projectManagement.documents.parseError'))
+      globalMessage.error(t('knowledgeBase.documents.parseError'))
     }
   }
 
@@ -368,10 +368,10 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
     }
     try {
       await parseVersionSingleDocument(datasetId, docId)
-      globalMessage.success(t('projectManagement.documents.parseSuccess'))
+      globalMessage.success(t('knowledgeBase.documents.parseSuccess'))
       await fetchDocuments()
     } catch {
-      globalMessage.error(t('projectManagement.documents.parseError'))
+      globalMessage.error(t('knowledgeBase.documents.parseError'))
     }
   }
 
@@ -380,10 +380,10 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
     if (!datasetId) return
     try {
       await bulkParseVersionDocuments(datasetId, [docId], 2)
-      globalMessage.success(t('projectManagement.documents.stopParseSuccess'))
+      globalMessage.success(t('knowledgeBase.documents.stopParseSuccess'))
       await fetchDocuments()
     } catch {
-      globalMessage.error(t('projectManagement.documents.parseError'))
+      globalMessage.error(t('knowledgeBase.documents.parseError'))
     }
   }
 
@@ -403,17 +403,17 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
     if (!datasetId) return
     const confirmed = await confirm({
       title: t('common.delete'),
-      message: t('projectManagement.documents.deleteConfirm', { count: 1 }),
+      message: t('knowledgeBase.documents.deleteConfirm', { count: 1 }),
       variant: 'danger',
       confirmText: t('common.delete'),
     })
     if (!confirmed) return
     try {
       await deleteVersionSingleDocument(datasetId, docId)
-      globalMessage.success(t('projectManagement.documents.deleteSuccess', { count: 1 }))
+      globalMessage.success(t('knowledgeBase.documents.deleteSuccess', { count: 1 }))
       await fetchDocuments()
     } catch {
-      globalMessage.error(t('projectManagement.documents.deleteError'))
+      globalMessage.error(t('knowledgeBase.documents.deleteError'))
     }
   }
 
@@ -432,7 +432,7 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
       setChangeParserDoc(null)
       await fetchDocuments()
     } catch {
-      globalMessage.error(t('projectManagement.documents.parseError'))
+      globalMessage.error(t('knowledgeBase.documents.parseError'))
     } finally {
       setChangingParser(false)
     }
@@ -450,9 +450,9 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
     try {
       await syncVersionParserStatus(knowledgeBaseId, categoryId, versionId)
       await fetchDocuments()
-      globalMessage.success(t('projectManagement.documents.syncParserSuccess'))
+      globalMessage.success(t('knowledgeBase.documents.syncParserSuccess'))
     } catch {
-      globalMessage.error(t('projectManagement.documents.syncParserError'))
+      globalMessage.error(t('knowledgeBase.documents.syncParserError'))
     } finally {
       setSyncing(false)
     }
@@ -510,13 +510,13 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
       {/* Header: title + actions */}
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-          {t('projectManagement.documents.title')}
+          {t('knowledgeBase.documents.title')}
           {versionLabel && (
             <Badge variant="info" className="text-xs">{versionLabel}</Badge>
           )}
           {!loading && documents.length > 0 && (
             <span className="text-xs font-normal text-gray-400">
-              ({documents.length} {t('projectManagement.documents.totalFiles')})
+              ({documents.length} {t('knowledgeBase.documents.totalFiles')})
             </span>
           )}
         </h4>
@@ -526,25 +526,25 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
             <>
               <Button variant="destructive" size="sm" disabled={deleting} onClick={handleDeleteSelected}>
                 {deleting ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Trash2 size={14} className="mr-1" />}
-                {t('projectManagement.documents.deleteSelected', { count: selectedRowKeys.length })}
+                {t('knowledgeBase.documents.deleteSelected', { count: selectedRowKeys.length })}
               </Button>
               {hasLocalSelected && (
                 <Button size="sm" disabled={requeueing} onClick={handleRetryParse}>
                   {requeueing ? <Loader2 size={14} className="mr-1 animate-spin" /> : <RefreshCw size={14} className="mr-1" />}
-                  {t('projectManagement.documents.retryParse')}
+                  {t('knowledgeBase.documents.retryParse')}
                 </Button>
               )}
               {hasImportedSelected && (
                 <Button size="sm" disabled={parsing} onClick={handleStartParse}>
                   {parsing ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Play size={14} className="mr-1" />}
-                  {t('projectManagement.documents.startParse')}
+                  {t('knowledgeBase.documents.startParse')}
                 </Button>
               )}
               {/* Bulk cancel parsing for selected documents */}
               {datasetId && hasParsableSelected && (
                 <Button variant="outline" size="sm" onClick={handleBulkCancel}>
                   <XCircle size={14} className="mr-1" />
-                  {t('projectManagement.documents.stopParse')}
+                  {t('knowledgeBase.documents.stopParse')}
                 </Button>
               )}
               {/* Edit Tags — opens MetadataManageDialog in bulk mode */}
@@ -560,7 +560,7 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
           {/* Search input */}
           <div className="relative w-[200px]">
             <Input
-              placeholder={t('projectManagement.documents.search')}
+              placeholder={t('knowledgeBase.documents.search')}
               className="h-8 pr-8 text-sm"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
@@ -580,10 +580,10 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
               <TooltipTrigger asChild>
                 <Button size="sm" onClick={() => setUploadFilesOpen(true)}>
                   <UploadCloud size={14} className="mr-1" />
-                  {t('projectManagement.documents.uploadFiles')}
+                  {t('knowledgeBase.documents.uploadFiles')}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>{t('projectManagement.documents.uploadFiles')}</TooltipContent>
+              <TooltipContent>{t('knowledgeBase.documents.uploadFiles')}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
@@ -592,10 +592,10 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
               <TooltipTrigger asChild>
                 <Button size="sm" onClick={() => setUploadFolderOpen(true)}>
                   <FolderUp size={14} className="mr-1" />
-                  {t('projectManagement.documents.folderUpload')}
+                  {t('knowledgeBase.documents.folderUpload')}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>{t('projectManagement.documents.folderUpload')}</TooltipContent>
+              <TooltipContent>{t('knowledgeBase.documents.folderUpload')}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
@@ -626,10 +626,10 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
                 <TooltipTrigger asChild>
                   <Button variant="outline" size="sm" disabled={syncing} onClick={handleSyncParserStatus}>
                     {syncing ? <Loader2 size={14} className="mr-1 animate-spin" /> : <RefreshCw size={14} className="mr-1" />}
-                    {t('projectManagement.documents.syncParserStatus')}
+                    {t('knowledgeBase.documents.syncParserStatus')}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>{t('projectManagement.documents.syncParserStatus')}</TooltipContent>
+                <TooltipContent>{t('knowledgeBase.documents.syncParserStatus')}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
@@ -642,7 +642,7 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
           <Spinner />
         </div>
       ) : documents.length === 0 ? (
-        <EmptyState description={t('projectManagement.documents.noDocumentsHint')} />
+        <EmptyState description={t('knowledgeBase.documents.noDocumentsHint')} />
       ) : (
         <>
           <div className="overflow-auto">
@@ -657,13 +657,13 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
                       onChange={toggleAllRows}
                     />
                   </TableHead>
-                  <TableHead>{t('projectManagement.documents.name')}</TableHead>
-                  <TableHead className="w-[100px]">{t('projectManagement.documents.size')}</TableHead>
-                  <TableHead className="w-[100px]">{t('projectManagement.documents.parser')}</TableHead>
-                  <TableHead className="w-[160px]">{t('projectManagement.documents.status')}</TableHead>
+                  <TableHead>{t('knowledgeBase.documents.name')}</TableHead>
+                  <TableHead className="w-[100px]">{t('knowledgeBase.documents.size')}</TableHead>
+                  <TableHead className="w-[100px]">{t('knowledgeBase.documents.parser')}</TableHead>
+                  <TableHead className="w-[160px]">{t('knowledgeBase.documents.status')}</TableHead>
                   {datasetId && <TableHead className="w-[70px]">{t('datasets.enabled', 'Enabled')}</TableHead>}
-                  <TableHead className="w-[80px] text-right">{t('projectManagement.documents.chunks')}</TableHead>
-                  <TableHead className="w-[110px]">{t('projectManagement.documents.updatedAt')}</TableHead>
+                  <TableHead className="w-[80px] text-right">{t('knowledgeBase.documents.chunks')}</TableHead>
+                  <TableHead className="w-[110px]">{t('knowledgeBase.documents.updatedAt')}</TableHead>
                   {datasetId && <TableHead className="w-[100px]" />}
                 </TableRow>
               </TableHeader>
@@ -799,7 +799,7 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
                                       <Square size={14} />
                                     </Button>
                                   </TooltipTrigger>
-                                  <TooltipContent>{t('projectManagement.documents.stopParse')}</TooltipContent>
+                                  <TooltipContent>{t('knowledgeBase.documents.stopParse')}</TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
                             ) : canParse ? (
@@ -810,7 +810,7 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
                                       <Play size={14} />
                                     </Button>
                                   </TooltipTrigger>
-                                  <TooltipContent>{t('projectManagement.documents.parse')}</TooltipContent>
+                                  <TooltipContent>{t('knowledgeBase.documents.parse')}</TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
                             ) : null}

@@ -162,7 +162,7 @@ const StandardTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingMo
   const handleDeleteCategory = async (categoryId: string) => {
     const confirmed = await confirm({
       title: t('common.delete'),
-      message: t('projectManagement.categories.deleteConfirm'),
+      message: t('knowledgeBase.categories.deleteConfirm'),
       variant: 'danger',
       confirmText: t('common.delete'),
     })
@@ -195,7 +195,7 @@ const StandardTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingMo
           {/* Header with title + [+] button */}
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              {t('projectManagement.categories.title')}
+              {t('knowledgeBase.categories.title')}
             </h3>
             <TooltipProvider>
               <Tooltip>
@@ -209,7 +209,7 @@ const StandardTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingMo
                     <Plus size={14} />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>{t('projects.newCategory', 'New Category')}</TooltipContent>
+                <TooltipContent>{t('knowledgeBase.newCategory', 'New Category')}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
@@ -220,7 +220,7 @@ const StandardTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingMo
               <div className="px-4 py-12 text-center">
                 <FolderOpen size={28} className="mx-auto text-muted-foreground/40 mb-2" />
                 <p className="text-xs text-muted-foreground">
-                  {t('projects.emptyCategoryDescription', 'Create a category to start adding files.')}
+                  {t('knowledgeBase.emptyCategoryDescription', 'Create a category to start adding files.')}
                 </p>
               </div>
             ) : (
@@ -263,11 +263,11 @@ const StandardTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingMo
                           )}
                           <DropdownMenuItem onClick={(e: React.MouseEvent) => { e.stopPropagation(); setPermCategoryId(cat.id); setPermCategoryName(cat.name) }}>
                             <Lock size={14} className="mr-2" />
-                            {t('projectManagement.entityPermissions.title', 'Permissions')}
+                            {t('knowledgeBase.entityPermissions.title', 'Permissions')}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={(e: React.MouseEvent) => { e.stopPropagation(); setEditingCategory(cat); setCategoryModalOpen(true) }}>
                             <Pencil size={14} className="mr-2" />
-                            {t('projectManagement.categories.edit')}
+                            {t('knowledgeBase.categories.edit')}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -295,7 +295,7 @@ const StandardTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingMo
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
             <div className="flex items-center gap-2">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                {t('projectManagement.documents.title')}
+                {t('knowledgeBase.documents.title')}
               </h3>
               {/* Show parser config badge when a category is selected */}
               {selectedCategory && (
@@ -313,7 +313,7 @@ const StandardTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingMo
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-2 px-4">
               <FileText size={32} className="text-muted-foreground/40" />
               <p className="text-sm">
-                {t('projects.selectCategory', 'Select a category to view its contents')}
+                {t('knowledgeBase.selectCategory', 'Select a category to view its contents')}
               </p>
             </div>
           ) : !selectedCategory.dataset_id ? (
@@ -321,7 +321,7 @@ const StandardTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingMo
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-2 px-4">
               <AlertCircle size={32} className="text-destructive/60" />
               <p className="text-sm text-destructive">
-                {t('projects.datasetNotAvailable', 'Dataset not available')}
+                {t('knowledgeBase.datasetNotAvailable', 'Dataset not available')}
               </p>
             </div>
           ) : (

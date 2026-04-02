@@ -59,7 +59,7 @@ const CodeCategoryView = ({ knowledgeBaseId, category }: CodeCategoryViewProps) 
       <div className="flex-1 flex items-center justify-center h-full">
         <EmptyState
           icon={<Code2 className="h-10 w-10 text-muted-foreground" />}
-          title={t('projects.datasetNotAvailable', 'Dataset not available for this category')}
+          title={t('knowledgeBase.datasetNotAvailable', 'Dataset not available for this category')}
         />
       </div>
     )
@@ -76,7 +76,7 @@ const CodeCategoryView = ({ knowledgeBaseId, category }: CodeCategoryViewProps) 
           {/* Static "Code" language badge — language detection from uploaded files will come with actual usage */}
           <Badge variant="outline" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
             <Code2 className="h-3 w-3 mr-1" />
-            {t('projects.codeTab', 'Code')}
+            {t('knowledgeBase.codeTab', 'Code')}
           </Badge>
         </div>
       </div>
@@ -88,21 +88,21 @@ const CodeCategoryView = ({ knowledgeBaseId, category }: CodeCategoryViewProps) 
             {/* Chevron indicator for collapse state */}
             {gitSyncOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             <GitBranch className="h-4 w-4" />
-            <span>{t('projects.gitSyncTitle', 'Git Sync')}</span>
+            <span>{t('knowledgeBase.gitSyncTitle', 'Git Sync')}</span>
             <Badge variant="secondary" className="ml-auto text-xs">
-              {t('projects.gitSyncComingSoon', 'Git repository sync coming soon')}
+              {t('knowledgeBase.gitSyncComingSoon', 'Git repository sync coming soon')}
             </Badge>
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="px-4 py-4 bg-muted/50 dark:bg-muted/20 border-b dark:border-slate-700">
             <p className="text-sm text-muted-foreground mb-3">
-              {t('projects.gitSyncComingSoon', 'Git repository sync coming soon')}
+              {t('knowledgeBase.gitSyncComingSoon', 'Git repository sync coming soon')}
             </p>
             {/* Disabled connect button — git sync deferred per RESEARCH.md Open Question 1 */}
             <Button variant="outline" size="sm" disabled>
               <GitBranch className="h-4 w-4 mr-2" />
-              {t('projects.connectRepository', 'Connect Repository')}
+              {t('knowledgeBase.connectRepository', 'Connect Repository')}
             </Button>
           </div>
         </CollapsibleContent>

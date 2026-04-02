@@ -140,7 +140,7 @@ const VersionList = ({
   const handleDeleteVersion = async (versionId: string) => {
     const confirmed = await confirm({
       title: t('common.delete'),
-      message: t('projects.deleteVersionConfirm', 'This will delete this version and its files. Other versions are not affected.'),
+      message: t('knowledgeBase.deleteVersionConfirm', 'This will delete this version and its files. Other versions are not affected.'),
       variant: 'danger',
       confirmText: t('common.delete'),
     })
@@ -177,7 +177,7 @@ const VersionList = ({
       {/* Header with "New Version" button */}
       <div className="flex items-center justify-between px-4 py-3 border-b dark:border-slate-700">
         <h3 className="text-sm font-semibold text-foreground">
-          {t('projects.versionCount', '{{count}} version(s)', { count: versions.length })}
+          {t('knowledgeBase.versionCount', '{{count}} version(s)', { count: versions.length })}
         </h3>
         <Button
           variant="secondary"
@@ -185,7 +185,7 @@ const VersionList = ({
           onClick={() => setVersionModalOpen(true)}
         >
           <Plus className="h-4 w-4 mr-1" />
-          {t('projects.newVersion', 'New Version')}
+          {t('knowledgeBase.newVersion', 'New Version')}
         </Button>
       </div>
 
@@ -195,8 +195,8 @@ const VersionList = ({
           // Empty state per copywriting contract
           <EmptyState
             icon={<FolderOpen className="h-10 w-10 text-muted-foreground" />}
-            title={t('projects.emptyVersionTitle', 'No versions')}
-            description={t('projects.emptyVersionDescription', 'Create the first version to upload documents.')}
+            title={t('knowledgeBase.emptyVersionTitle', 'No versions')}
+            description={t('knowledgeBase.emptyVersionDescription', 'Create the first version to upload documents.')}
           />
         ) : (
           <div className="space-y-3">

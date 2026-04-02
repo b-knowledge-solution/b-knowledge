@@ -152,10 +152,10 @@ const VersionUploadArea = ({ knowledgeBaseId, categoryId, versionId, onUploadCom
 
     // Show result summary
     if (failed === 0) {
-      globalMessage.success(t('projectManagement.documents.uploadSuccess'))
+      globalMessage.success(t('knowledgeBase.documents.uploadSuccess'))
     } else {
       globalMessage.warning(
-        `${succeeded}/${files.length} ${t('projectManagement.documents.uploadSuccess')}. ${failed} ${t('projectManagement.documents.uploadError')}`
+        `${succeeded}/${files.length} ${t('knowledgeBase.documents.uploadSuccess')}. ${failed} ${t('knowledgeBase.documents.uploadError')}`
       )
     }
 
@@ -200,7 +200,7 @@ const VersionUploadArea = ({ knowledgeBaseId, categoryId, versionId, onUploadCom
     })
 
     if (files.length === 0) {
-      globalMessage.warning(t('projectManagement.documents.acceptedTypes'))
+      globalMessage.warning(t('knowledgeBase.documents.acceptedTypes'))
       return
     }
 
@@ -246,10 +246,10 @@ const VersionUploadArea = ({ knowledgeBaseId, categoryId, versionId, onUploadCom
             <UploadCloud size={24} className="text-gray-400 shrink-0" />
             <div className="text-left">
               <p className="text-sm text-gray-600 dark:text-gray-400 m-0">
-                {t('projectManagement.documents.uploadHint')}
+                {t('knowledgeBase.documents.uploadHint')}
               </p>
               <p className="text-xs text-gray-400 m-0">
-                {t('projectManagement.documents.acceptedTypes')}
+                {t('knowledgeBase.documents.acceptedTypes')}
               </p>
             </div>
           </div>
@@ -263,7 +263,7 @@ const VersionUploadArea = ({ knowledgeBaseId, categoryId, versionId, onUploadCom
           className="h-auto flex flex-col items-center justify-center px-4 gap-1"
         >
           <FolderUp size={16} />
-          <span className="text-xs">{t('projectManagement.documents.folderUpload')}</span>
+          <span className="text-xs">{t('knowledgeBase.documents.folderUpload')}</span>
         </Button>
       </div>
 
@@ -273,7 +273,7 @@ const VersionUploadArea = ({ knowledgeBaseId, categoryId, versionId, onUploadCom
           {/* Overall progress header */}
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-              {t('projectManagement.documents.uploading')} {completedCount}/{fileList.length}
+              {t('knowledgeBase.documents.uploading')} {completedCount}/{fileList.length}
             </span>
             <Progress
               value={overallPercent}
@@ -300,8 +300,8 @@ const VersionUploadArea = ({ knowledgeBaseId, categoryId, versionId, onUploadCom
                 {/* File size + status tag */}
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-xs text-gray-400">{formatFileSize(item.size)}</span>
-                  {item.status === 'uploading' && <Badge variant="info" className="text-xs">{t('projectManagement.documents.uploading')}</Badge>}
-                  {item.status === 'failed' && <Badge variant="destructive" className="text-xs">{t('projectManagement.documents.uploadError')}</Badge>}
+                  {item.status === 'uploading' && <Badge variant="info" className="text-xs">{t('knowledgeBase.documents.uploading')}</Badge>}
+                  {item.status === 'failed' && <Badge variant="destructive" className="text-xs">{t('knowledgeBase.documents.uploadError')}</Badge>}
                 </div>
               </li>
             ))}

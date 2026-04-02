@@ -214,7 +214,7 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
         for (const perm of permissions) {
           await removeEntityPermission(knowledgeBaseId, perm.id)
         }
-        globalMessage.success(t('projectManagement.entityPermissions.saved', 'Permissions saved'))
+        globalMessage.success(t('knowledgeBase.entityPermissions.saved', 'Permissions saved'))
         onClose()
         return
       }
@@ -265,11 +265,11 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
         })
       }
 
-      globalMessage.success(t('projectManagement.entityPermissions.saved', 'Permissions saved'))
+      globalMessage.success(t('knowledgeBase.entityPermissions.saved', 'Permissions saved'))
       onClose()
     } catch (err) {
       console.error('[EntityPermissionModal] Failed to save:', err)
-      globalMessage.error(t('projectManagement.entityPermissions.saveError', 'Failed to save'))
+      globalMessage.error(t('knowledgeBase.entityPermissions.saveError', 'Failed to save'))
     } finally {
       setSaving(false)
     }
@@ -285,7 +285,7 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
     <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) onClose() }}>
       <DialogContent className="max-w-[640px]">
         <DialogHeader>
-          <DialogTitle>{t('projectManagement.entityPermissions.editTitle', 'Edit Permissions')}</DialogTitle>
+          <DialogTitle>{t('knowledgeBase.entityPermissions.editTitle', 'Edit Permissions')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5 py-2">
@@ -300,7 +300,7 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
           {/* Permissions section */}
           <div>
             <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-              {t('projectManagement.entityPermissions.permissions', 'Permissions')}
+              {t('knowledgeBase.entityPermissions.permissions', 'Permissions')}
             </h4>
 
             {/* Private Access toggle */}
@@ -309,7 +309,7 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
                 <Lock size={18} className="text-amber-500" />
                 <div>
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {t('projectManagement.entityPermissions.privateAccess', 'Private Access')}
+                    {t('knowledgeBase.entityPermissions.privateAccess', 'Private Access')}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {t(
@@ -336,7 +336,7 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   <Users size={14} />
-                  {t('projectManagement.entityPermissions.selectTeams', 'Select Teams')}
+                  {t('knowledgeBase.entityPermissions.selectTeams', 'Select Teams')}
                 </label>
                 <div className="border rounded-md max-h-48 overflow-auto p-2 space-y-1 dark:border-slate-700">
                   {teams.map((team) => (
@@ -357,7 +357,7 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   <User size={14} />
-                  {t('projectManagement.entityPermissions.selectUsers', 'Select Users')}
+                  {t('knowledgeBase.entityPermissions.selectUsers', 'Select Users')}
                 </label>
                 <div className="border rounded-md max-h-48 overflow-auto p-2 space-y-1 dark:border-slate-700">
                   {users.map((user) => (
@@ -380,8 +380,8 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>{t('projectManagement.entityPermissions.name', 'Name')}</TableHead>
-                        <TableHead>{t('projectManagement.entityPermissions.email', 'Email')}</TableHead>
+                        <TableHead>{t('knowledgeBase.entityPermissions.name', 'Name')}</TableHead>
+                        <TableHead>{t('knowledgeBase.entityPermissions.email', 'Email')}</TableHead>
                         <TableHead className="w-[50px]" />
                       </TableRow>
                     </TableHeader>

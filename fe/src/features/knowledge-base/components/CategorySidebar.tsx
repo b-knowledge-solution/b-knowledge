@@ -66,7 +66,7 @@ const CategorySidebar = ({
       {/* Header with title */}
       <div className="px-4 py-3 border-b border-border">
         <h3 className="text-sm font-semibold text-foreground">
-          {t('projectManagement.categories.title')}
+          {t('knowledgeBase.categories.title')}
         </h3>
       </div>
 
@@ -76,10 +76,10 @@ const CategorySidebar = ({
           // Empty state per UI-SPEC copywriting contract
           <div className="px-4 py-8 text-center">
             <p className="text-sm font-medium text-muted-foreground">
-              {t('projects.emptyCategoryTitle', 'No categories')}
+              {t('knowledgeBase.emptyCategoryTitle', 'No categories')}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {t('projects.emptyCategoryDescription', 'Create a category to start adding files.')}
+              {t('knowledgeBase.emptyCategoryDescription', 'Create a category to start adding files.')}
             </p>
           </div>
         ) : (
@@ -129,7 +129,7 @@ const CategorySidebar = ({
                         }}
                       >
                         <Pencil size={14} className="mr-2" />
-                        {t('projectManagement.categories.edit')}
+                        {t('knowledgeBase.categories.edit')}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive"
@@ -159,7 +159,7 @@ const CategorySidebar = ({
           onClick={onCreateCategory}
         >
           <Plus size={14} className="mr-1.5" />
-          {t('projects.newCategory', 'New Category')}
+          {t('knowledgeBase.newCategory', 'New Category')}
         </Button>
       </div>
     </div>

@@ -181,11 +181,11 @@ const ChatTab = ({
       if (editingChat) {
         // Update existing chat
         await updateKnowledgeBaseChat(knowledgeBaseId, editingChat.id, payload)
-        globalMessage.success(t('projectManagement.chats.updateSuccess'))
+        globalMessage.success(t('knowledgeBase.chats.updateSuccess'))
       } else {
         // Create new chat
         await createKnowledgeBaseChat(knowledgeBaseId, payload)
-        globalMessage.success(t('projectManagement.chats.createSuccess'))
+        globalMessage.success(t('knowledgeBase.chats.createSuccess'))
       }
 
       setChatModalOpen(false)
@@ -208,7 +208,7 @@ const ChatTab = ({
     // Prompt confirmation before deleting
     const confirmed = await confirm({
       title: t('common.delete'),
-      message: t('projectManagement.chats.deleteConfirm'),
+      message: t('knowledgeBase.chats.deleteConfirm'),
       variant: 'danger',
       confirmText: t('common.delete'),
     })
@@ -234,7 +234,7 @@ const ChatTab = ({
       await syncKnowledgeBaseChat(knowledgeBaseId, chatId)
       const chatData = await getKnowledgeBaseChats(knowledgeBaseId)
       setChats(chatData)
-      globalMessage.success(t('projectManagement.chats.syncSuccess'))
+      globalMessage.success(t('knowledgeBase.chats.syncSuccess'))
     } catch (err) {
       globalMessage.error(String(err))
     } finally {
@@ -249,23 +249,23 @@ const ChatTab = ({
       <div>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-            {t('projectManagement.chats.title')}
+            {t('knowledgeBase.chats.title')}
           </h3>
           <Button variant="outline" size="sm" onClick={handleOpenCreate}>
             <Plus size={14} className="mr-1" />
-            {t('projectManagement.chats.add')}
+            {t('knowledgeBase.chats.add')}
           </Button>
         </div>
 
         {/* Chat assistant table */}
         {chats.length === 0 ? (
-          <EmptyState description={t('projectManagement.chats.noChatsHint')} />
+          <EmptyState description={t('knowledgeBase.chats.noChatsHint')} />
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t('projectManagement.chats.name')}</TableHead>
-                <TableHead>{t('projectManagement.chats.datasets')}</TableHead>
+                <TableHead>{t('knowledgeBase.chats.name')}</TableHead>
+                <TableHead>{t('knowledgeBase.chats.datasets')}</TableHead>
                 <TableHead>RAGFlow ID</TableHead>
                 <TableHead className="w-[150px]" />
               </TableRow>
@@ -311,7 +311,7 @@ const ChatTab = ({
                                 <Lock size={14} />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>{t('projectManagement.entityPermissions.title', 'Permissions')}</TooltipContent>
+                            <TooltipContent>{t('knowledgeBase.entityPermissions.title', 'Permissions')}</TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
 
@@ -327,7 +327,7 @@ const ChatTab = ({
                                 <Pencil size={14} />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>{t('projectManagement.chats.edit')}</TooltipContent>
+                            <TooltipContent>{t('knowledgeBase.chats.edit')}</TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
 
@@ -348,7 +348,7 @@ const ChatTab = ({
                                 )}
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>{t('projectManagement.chats.sync')}</TooltipContent>
+                            <TooltipContent>{t('knowledgeBase.chats.sync')}</TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
 

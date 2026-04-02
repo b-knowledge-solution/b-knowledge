@@ -312,7 +312,7 @@ const CategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel }: 
   /** Validate and submit the form */
   const handleOk = () => {
     if (!formData.name.trim()) {
-      setNameError(`${t('projectManagement.categories.name')} is required`)
+      setNameError(`${t('knowledgeBase.categories.name')} is required`)
       return
     }
     setNameError('')
@@ -332,7 +332,7 @@ const CategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel }: 
       <DialogContent className="max-w-[75vw] max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>
-            {editMode ? t('projectManagement.categories.edit') : t('projectManagement.categories.add')}
+            {editMode ? t('knowledgeBase.categories.edit') : t('knowledgeBase.categories.add')}
           </DialogTitle>
         </DialogHeader>
 
@@ -342,10 +342,10 @@ const CategoryModal = ({ open, saving, editMode, initialData, onOk, onCancel }: 
             {/* ── Category Name ── */}
             <div>
               <Label className="mb-1">
-                {t('projectManagement.categories.name')} <span className="text-red-500">*</span>
+                {t('knowledgeBase.categories.name')} <span className="text-red-500">*</span>
               </Label>
               <Input
-                placeholder={t('projectManagement.categories.namePlaceholder')}
+                placeholder={t('knowledgeBase.categories.namePlaceholder')}
                 value={formData.name}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   updateField('name', e.target.value)

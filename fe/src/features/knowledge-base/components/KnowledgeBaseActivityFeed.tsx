@@ -126,8 +126,8 @@ export default function KnowledgeBaseActivityFeed({ knowledgeBaseId }: Knowledge
     return (
       <EmptyState
         icon={<Activity className="h-12 w-12 mx-auto" strokeWidth={1} />}
-        title={t('projectManagement.activity.empty')}
-        description={t('projectManagement.activity.emptyDescription')}
+        title={t('knowledgeBase.activity.empty')}
+        description={t('knowledgeBase.activity.emptyDescription')}
       />
     )
   }
@@ -135,7 +135,7 @@ export default function KnowledgeBaseActivityFeed({ knowledgeBaseId }: Knowledge
   return (
     <div className="space-y-4">
       <h3 className="text-base font-semibold text-foreground">
-        {t('projectManagement.tabs.activity')}
+        {t('knowledgeBase.tabs.activity')}
       </h3>
 
       {/* Activity list */}
@@ -173,7 +173,7 @@ export default function KnowledgeBaseActivityFeed({ knowledgeBaseId }: Knowledge
             disabled={isLoading}
           >
             {isLoading && <Spinner size={14} className="mr-2" />}
-            {t('projectManagement.loadMore')}
+            {t('knowledgeBase.loadMore')}
           </Button>
         </div>
       )}

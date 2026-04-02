@@ -94,7 +94,7 @@ const SearchTab = ({
       const data = await getKnowledgeBaseSearches(knowledgeBaseId)
       setSearches(data)
     } catch {
-      globalMessage.error(t('projectManagement.searches.fetchError', 'Failed to fetch search apps'))
+      globalMessage.error(t('knowledgeBase.searches.fetchError', 'Failed to fetch search apps'))
     } finally {
       setLoading(false)
     }
@@ -145,7 +145,7 @@ const SearchTab = ({
     // Prompt user for confirmation before deleting
     const confirmed = await confirm({
       title: t('common.delete'),
-      message: t('projectManagement.searches.deleteConfirm', 'Delete this search app?'),
+      message: t('knowledgeBase.searches.deleteConfirm', 'Delete this search app?'),
       variant: 'danger',
       confirmText: t('common.delete'),
     })
@@ -153,10 +153,10 @@ const SearchTab = ({
 
     try {
       await deleteKnowledgeBaseSearch(knowledgeBaseId, id)
-      globalMessage.success(t('projectManagement.searches.deleteSuccess', 'Search app deleted'))
+      globalMessage.success(t('knowledgeBase.searches.deleteSuccess', 'Search app deleted'))
       refreshSearches()
     } catch {
-      globalMessage.error(t('projectManagement.searches.deleteError', 'Failed to delete search app'))
+      globalMessage.error(t('knowledgeBase.searches.deleteError', 'Failed to delete search app'))
     }
   }
 
@@ -167,10 +167,10 @@ const SearchTab = ({
   const handleSync = async (id: string) => {
     try {
       await syncKnowledgeBaseSearch(knowledgeBaseId, id)
-      globalMessage.success(t('projectManagement.searches.syncSuccess', 'Search app synced'))
+      globalMessage.success(t('knowledgeBase.searches.syncSuccess', 'Search app synced'))
       refreshSearches()
     } catch {
-      globalMessage.error(t('projectManagement.searches.syncError', 'Failed to sync search app'))
+      globalMessage.error(t('knowledgeBase.searches.syncError', 'Failed to sync search app'))
     }
   }
 
@@ -194,16 +194,16 @@ const SearchTab = ({
 
       if (isEditing && editingSearch) {
         await updateKnowledgeBaseSearch(knowledgeBaseId, editingSearch.id, payload)
-        globalMessage.success(t('projectManagement.searches.updateSuccess', 'Search app updated'))
+        globalMessage.success(t('knowledgeBase.searches.updateSuccess', 'Search app updated'))
       } else {
         await createKnowledgeBaseSearch(knowledgeBaseId, payload)
-        globalMessage.success(t('projectManagement.searches.createSuccess', 'Search app created'))
+        globalMessage.success(t('knowledgeBase.searches.createSuccess', 'Search app created'))
       }
 
       setModalOpen(false)
       refreshSearches()
     } catch (err: any) {
-      globalMessage.error(err.message || t('projectManagement.searches.saveError', 'Failed to save search app'))
+      globalMessage.error(err.message || t('knowledgeBase.searches.saveError', 'Failed to save search app'))
     } finally {
       setSaving(false)
     }
@@ -223,7 +223,7 @@ const SearchTab = ({
       <div className="flex justify-end mb-4">
         <Button size="sm" onClick={handleAdd}>
           <Plus size={16} className="mr-1" />
-          {t('projectManagement.searches.addSearch', 'Add Search')}
+          {t('knowledgeBase.searches.addSearch', 'Add Search')}
         </Button>
       </div>
 
@@ -234,17 +234,17 @@ const SearchTab = ({
         </div>
       ) : searches.length === 0 ? (
         <EmptyState
-          description={t('projectManagement.searches.noSearches', 'No search apps yet. Click "Add Search" to create one.')}
+          description={t('knowledgeBase.searches.noSearches', 'No search apps yet. Click "Add Search" to create one.')}
         />
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[25%]">{t('projectManagement.searches.name', 'Name')}</TableHead>
-              <TableHead className="w-[25%]">{t('projectManagement.searches.description', 'Description')}</TableHead>
-              <TableHead className="w-[25%]">{t('projectManagement.searches.datasets', 'Datasets')}</TableHead>
-              <TableHead className="w-[10%]">{t('projectManagement.searches.ragflowId', 'RAGFlow ID')}</TableHead>
-              <TableHead className="w-[15%]">{t('projectManagement.searches.actions', 'Actions')}</TableHead>
+              <TableHead className="w-[25%]">{t('knowledgeBase.searches.name', 'Name')}</TableHead>
+              <TableHead className="w-[25%]">{t('knowledgeBase.searches.description', 'Description')}</TableHead>
+              <TableHead className="w-[25%]">{t('knowledgeBase.searches.datasets', 'Datasets')}</TableHead>
+              <TableHead className="w-[10%]">{t('knowledgeBase.searches.ragflowId', 'RAGFlow ID')}</TableHead>
+              <TableHead className="w-[15%]">{t('knowledgeBase.searches.actions', 'Actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -297,7 +297,7 @@ const SearchTab = ({
                             <Lock size={14} />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>{t('projectManagement.entityPermissions.title', 'Permissions')}</TooltipContent>
+                        <TooltipContent>{t('knowledgeBase.entityPermissions.title', 'Permissions')}</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
 
@@ -313,7 +313,7 @@ const SearchTab = ({
                             <Pencil size={14} />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>{t('projectManagement.searches.edit', 'Edit')}</TooltipContent>
+                        <TooltipContent>{t('knowledgeBase.searches.edit', 'Edit')}</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
 
@@ -330,7 +330,7 @@ const SearchTab = ({
                             <RefreshCw size={14} />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>{t('projectManagement.searches.sync', 'Sync')}</TooltipContent>
+                        <TooltipContent>{t('knowledgeBase.searches.sync', 'Sync')}</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
 
@@ -346,7 +346,7 @@ const SearchTab = ({
                             <Trash2 size={14} />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>{t('projectManagement.searches.delete', 'Delete')}</TooltipContent>
+                        <TooltipContent>{t('knowledgeBase.searches.delete', 'Delete')}</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   </div>

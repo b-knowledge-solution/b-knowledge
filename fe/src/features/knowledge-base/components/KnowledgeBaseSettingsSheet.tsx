@@ -95,7 +95,7 @@ const KnowledgeBaseSettingsSheet = ({
   const handleSave = async () => {
     // Validate name is not empty
     if (!name.trim()) {
-      globalMessage.error(t('projectManagement.name') + ' is required')
+      globalMessage.error(t('knowledgeBase.name') + ' is required')
       return
     }
 
@@ -106,7 +106,7 @@ const KnowledgeBaseSettingsSheet = ({
         description: description.trim() || null,
         is_private: isPrivate,
       })
-      globalMessage.success(t('projectManagement.updateSuccess'))
+      globalMessage.success(t('knowledgeBase.updateSuccess'))
       onKnowledgeBaseUpdated()
     } catch (err) {
       globalMessage.error(String(err))
@@ -125,7 +125,7 @@ const KnowledgeBaseSettingsSheet = ({
     setDeleting(true)
     try {
       await deleteKnowledgeBase(knowledgeBase.id)
-      globalMessage.success(t('projectManagement.deleteSuccess'))
+      globalMessage.success(t('knowledgeBase.deleteSuccess'))
       onKnowledgeBaseDeleted()
     } catch (err) {
       globalMessage.error(String(err))
@@ -138,43 +138,43 @@ const KnowledgeBaseSettingsSheet = ({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-[320px] sm:max-w-[320px] overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>{t('projectManagement.tabs.settings', 'Settings')}</SheetTitle>
+          <SheetTitle>{t('knowledgeBase.tabs.settings', 'Settings')}</SheetTitle>
           <SheetDescription>
-            {t('projectManagement.settingsDescription', 'Manage project settings and members.')}
+            {t('knowledgeBase.settingsDescription', 'Manage project settings and members.')}
           </SheetDescription>
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
           {/* Project name */}
           <div className="space-y-2">
-            <Label htmlFor="project-name">{t('projectManagement.name')}</Label>
+            <Label htmlFor="project-name">{t('knowledgeBase.name')}</Label>
             <Input
               id="project-name"
               value={name}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
-              placeholder={t('projectManagement.namePlaceholder')}
+              placeholder={t('knowledgeBase.namePlaceholder')}
             />
           </div>
 
           {/* Knowledge base description */}
           <div className="space-y-2">
-            <Label htmlFor="project-description">{t('projectManagement.descriptionLabel')}</Label>
+            <Label htmlFor="project-description">{t('knowledgeBase.descriptionLabel')}</Label>
             <Input
               id="project-description"
               value={description}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDescription(e.target.value)}
-              placeholder={t('projectManagement.descriptionPlaceholder')}
+              placeholder={t('knowledgeBase.descriptionPlaceholder')}
             />
           </div>
 
           {/* Visibility toggle */}
           <div className="flex items-center justify-between">
             <div>
-              <Label>{t('projectManagement.privateAccess')}</Label>
+              <Label>{t('knowledgeBase.privateAccess')}</Label>
               <p className="text-xs text-muted-foreground">
                 {isPrivate
-                  ? t('projectManagement.privateAccessDesc')
-                  : t('projectManagement.publicAccessDesc')}
+                  ? t('knowledgeBase.privateAccessDesc')
+                  : t('knowledgeBase.publicAccessDesc')}
               </p>
             </div>
             <Switch
@@ -193,7 +193,7 @@ const KnowledgeBaseSettingsSheet = ({
 
           {/* Member management section */}
           <div>
-            <h4 className="text-sm font-semibold mb-3">{t('projectManagement.tabs.members', 'Members')}</h4>
+            <h4 className="text-sm font-semibold mb-3">{t('knowledgeBase.tabs.members', 'Members')}</h4>
             <KnowledgeBaseMemberList knowledgeBaseId={knowledgeBase.id} />
           </div>
 
@@ -202,10 +202,10 @@ const KnowledgeBaseSettingsSheet = ({
           {/* Danger zone: delete project */}
           <div className="space-y-3">
             <h4 className="text-sm font-semibold text-destructive">
-              {t('projects.dangerZone', 'Danger Zone')}
+              {t('knowledgeBase.dangerZone', 'Danger Zone')}
             </h4>
             <p className="text-xs text-muted-foreground">
-              {t('projects.deleteConfirm', 'This will permanently delete the project and all its categories, versions, and files. Type the project name to confirm.')}
+              {t('knowledgeBase.deleteConfirm', 'This will permanently delete the project and all its categories, versions, and files. Type the project name to confirm.')}
             </p>
             <Input
               placeholder={knowledgeBase.name}

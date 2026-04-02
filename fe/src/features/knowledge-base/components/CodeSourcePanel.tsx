@@ -77,14 +77,14 @@ export default function CodeSourcePanel({ knowledgeBaseId, categoryId, datasetId
         branch: gitBranch.trim() || 'main',
         path: gitPath.trim() || '/',
       })
-      globalMessage.success(t('projects.codeSourceImportSuccess', { count: result.fileCount }))
+      globalMessage.success(t('knowledgeBase.codeSourceImportSuccess', { count: result.fileCount }))
       // Reset form after successful import
       setGitUrl('')
       setGitBranch('main')
       setGitPath('/')
       onImportComplete()
     } catch (err) {
-      globalMessage.error(t('projects.codeSourceImportError') + ': ' + String(err))
+      globalMessage.error(t('knowledgeBase.codeSourceImportError') + ': ' + String(err))
     } finally {
       setImporting(false)
     }
@@ -100,12 +100,12 @@ export default function CodeSourcePanel({ knowledgeBaseId, categoryId, datasetId
     try {
       setImporting(true)
       const result = await importZipFile(knowledgeBaseId, categoryId, zipFile)
-      globalMessage.success(t('projects.codeSourceImportSuccess', { count: result.fileCount }))
+      globalMessage.success(t('knowledgeBase.codeSourceImportSuccess', { count: result.fileCount }))
       // Reset file state after successful import
       setZipFile(null)
       onImportComplete()
     } catch (err) {
-      globalMessage.error(t('projects.codeSourceImportError') + ': ' + String(err))
+      globalMessage.error(t('knowledgeBase.codeSourceImportError') + ': ' + String(err))
     } finally {
       setImporting(false)
     }
@@ -141,7 +141,7 @@ export default function CodeSourcePanel({ knowledgeBaseId, categoryId, datasetId
       {/* Panel header with title and tab switcher */}
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-          {t('projects.codeSourceTitle')}
+          {t('knowledgeBase.codeSourceTitle')}
         </h4>
 
         {/* Pill-style tab switcher */}
@@ -155,7 +155,7 @@ export default function CodeSourcePanel({ knowledgeBaseId, categoryId, datasetId
             }`}
           >
             <GitBranch className="h-3 w-3" />
-            {t('projects.codeSourceGitTab')}
+            {t('knowledgeBase.codeSourceGitTab')}
           </button>
           <button
             onClick={() => setActiveTab('zip')}
@@ -166,7 +166,7 @@ export default function CodeSourcePanel({ knowledgeBaseId, categoryId, datasetId
             }`}
           >
             <Archive className="h-3 w-3" />
-            {t('projects.codeSourceZipTab')}
+            {t('knowledgeBase.codeSourceZipTab')}
           </button>
         </div>
       </div>
@@ -175,18 +175,18 @@ export default function CodeSourcePanel({ knowledgeBaseId, categoryId, datasetId
       {activeTab === 'git' && (
         <div className="space-y-2">
           <p className="text-xs text-slate-500 mb-2">
-            {t('projects.codeSourceGitDescription')}
+            {t('knowledgeBase.codeSourceGitDescription')}
           </p>
 
           {/* Repository URL input */}
           <div>
             <label className="text-[10px] text-slate-500 uppercase tracking-wide block mb-1">
-              {t('projects.codeSourceGitUrl')}
+              {t('knowledgeBase.codeSourceGitUrl')}
             </label>
             <Input
               value={gitUrl}
               onChange={(e) => setGitUrl(e.target.value)}
-              placeholder={t('projects.codeSourceGitUrlPlaceholder')}
+              placeholder={t('knowledgeBase.codeSourceGitUrlPlaceholder')}
               className="font-mono text-xs bg-slate-900 border-slate-700 text-slate-200 placeholder:text-slate-600 focus-visible:ring-emerald-500"
               disabled={importing}
             />
@@ -197,12 +197,12 @@ export default function CodeSourcePanel({ knowledgeBaseId, categoryId, datasetId
             <div className="flex-1">
               <label className="text-[10px] text-slate-500 uppercase tracking-wide block mb-1">
                 <GitBranch className="h-3 w-3 inline mr-1" />
-                {t('projects.codeSourceGitBranch')}
+                {t('knowledgeBase.codeSourceGitBranch')}
               </label>
               <Input
                 value={gitBranch}
                 onChange={(e) => setGitBranch(e.target.value)}
-                placeholder={t('projects.codeSourceGitBranchPlaceholder')}
+                placeholder={t('knowledgeBase.codeSourceGitBranchPlaceholder')}
                 className="font-mono text-xs bg-slate-900 border-slate-700 text-slate-200 placeholder:text-slate-600 focus-visible:ring-emerald-500"
                 disabled={importing}
               />
@@ -210,12 +210,12 @@ export default function CodeSourcePanel({ knowledgeBaseId, categoryId, datasetId
             <div className="flex-1">
               <label className="text-[10px] text-slate-500 uppercase tracking-wide block mb-1">
                 <FolderGit2 className="h-3 w-3 inline mr-1" />
-                {t('projects.codeSourceGitPath')}
+                {t('knowledgeBase.codeSourceGitPath')}
               </label>
               <Input
                 value={gitPath}
                 onChange={(e) => setGitPath(e.target.value)}
-                placeholder={t('projects.codeSourceGitPathPlaceholder')}
+                placeholder={t('knowledgeBase.codeSourceGitPathPlaceholder')}
                 className="font-mono text-xs bg-slate-900 border-slate-700 text-slate-200 placeholder:text-slate-600 focus-visible:ring-emerald-500"
                 disabled={importing}
               />
@@ -232,12 +232,12 @@ export default function CodeSourcePanel({ knowledgeBaseId, categoryId, datasetId
             {importing ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                {t('projects.codeSourceImporting')}
+                {t('knowledgeBase.codeSourceImporting')}
               </>
             ) : (
               <>
                 <GitBranch className="h-3.5 w-3.5 mr-1.5" />
-                {t('projects.codeSourceGitClone')}
+                {t('knowledgeBase.codeSourceGitClone')}
               </>
             )}
           </Button>
@@ -248,7 +248,7 @@ export default function CodeSourcePanel({ knowledgeBaseId, categoryId, datasetId
       {activeTab === 'zip' && (
         <div className="space-y-2">
           <p className="text-xs text-slate-500 mb-2">
-            {t('projects.codeSourceZipDescription')}
+            {t('knowledgeBase.codeSourceZipDescription')}
           </p>
 
           {/* Drop zone */}
@@ -264,8 +264,8 @@ export default function CodeSourcePanel({ knowledgeBaseId, categoryId, datasetId
               <p className="text-xs text-slate-300 font-mono">{zipFile.name}</p>
             ) : (
               <>
-                <p className="text-xs text-slate-400">{t('projects.codeSourceZipDrop')}</p>
-                <p className="text-[10px] text-slate-600 mt-0.5">{t('projects.codeSourceZipAccept')}</p>
+                <p className="text-xs text-slate-400">{t('knowledgeBase.codeSourceZipDrop')}</p>
+                <p className="text-[10px] text-slate-600 mt-0.5">{t('knowledgeBase.codeSourceZipAccept')}</p>
               </>
             )}
             {/* Hidden file input */}
@@ -288,12 +288,12 @@ export default function CodeSourcePanel({ knowledgeBaseId, categoryId, datasetId
             {importing ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                {t('projects.codeSourceImporting')}
+                {t('knowledgeBase.codeSourceImporting')}
               </>
             ) : (
               <>
                 <Archive className="h-3.5 w-3.5 mr-1.5" />
-                {t('projects.codeSourceZipUpload')}
+                {t('knowledgeBase.codeSourceZipUpload')}
               </>
             )}
           </Button>

@@ -96,8 +96,8 @@ const VectorWeightControl = ({
   return (
     <div>
       <div className="flex justify-between text-xs text-muted-foreground mb-1">
-        <span>{t('projectManagement.common.vector')} <strong>{vectorVal}</strong></span>
-        <span>{t('projectManagement.common.fullText')} <strong>{fulltextVal}</strong></span>
+        <span>{t('knowledgeBase.common.vector')} <strong>{vectorVal}</strong></span>
+        <span>{t('knowledgeBase.common.fullText')} <strong>{fulltextVal}</strong></span>
       </div>
       <div className="flex items-center gap-3">
         <input
@@ -477,7 +477,7 @@ const ChatModal = ({
    */
   const handleOk = () => {
     if (!formData.name.trim()) {
-      setNameError(`${t('projectManagement.chats.name')} is required`)
+      setNameError(`${t('knowledgeBase.chats.name')} is required`)
       return
     }
     if (formData.category_ids.length === 0) {
@@ -492,7 +492,7 @@ const ChatModal = ({
       <DialogContent className="max-w-[640px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? t('projectManagement.chats.edit') : t('projectManagement.chats.add')}
+            {isEditing ? t('knowledgeBase.chats.edit') : t('knowledgeBase.chats.add')}
           </DialogTitle>
         </DialogHeader>
 
@@ -502,10 +502,10 @@ const ChatModal = ({
           {/* Name */}
           <div>
             <label className="block text-sm font-medium mb-1">
-              {t('projectManagement.chats.name')} <span className="text-red-500">*</span>
+              {t('knowledgeBase.chats.name')} <span className="text-red-500">*</span>
             </label>
             <Input
-              placeholder={t('projectManagement.chats.namePlaceholder')}
+              placeholder={t('knowledgeBase.chats.namePlaceholder')}
               value={formData.name}
               onChange={(e) => {
                 updateField('name', e.target.value)
@@ -519,10 +519,10 @@ const ChatModal = ({
           {/* Description */}
           <div>
             <label className="block text-sm font-medium mb-1">
-              {t('projectManagement.chats.description')}
+              {t('knowledgeBase.chats.description')}
             </label>
             <Input
-              placeholder={t('projectManagement.chats.descriptionPlaceholder')}
+              placeholder={t('knowledgeBase.chats.descriptionPlaceholder')}
               value={formData.description}
               onChange={(e) => updateField('description', e.target.value)}
             />
@@ -531,7 +531,7 @@ const ChatModal = ({
           {/* Empty Response */}
           <div>
             <label className="block text-sm font-medium mb-1">
-              {t('projectManagement.chats.emptyResponse')}
+              {t('knowledgeBase.chats.emptyResponse')}
             </label>
             <Textarea rows={2} value={formData.prompt_config.empty_response}
               onChange={(e) => updatePrompt('empty_response', e.target.value)} />
@@ -540,7 +540,7 @@ const ChatModal = ({
           {/* Opener */}
           <div>
             <label className="block text-sm font-medium mb-1">
-              {t('projectManagement.chats.opener')}
+              {t('knowledgeBase.chats.opener')}
             </label>
             <Textarea rows={3} value={formData.prompt_config.opener}
               onChange={(e) => updatePrompt('opener', e.target.value)} />
@@ -554,7 +554,7 @@ const ChatModal = ({
                 checked={formData.prompt_config.show_quote}
                 onCheckedChange={(v: boolean) => updatePrompt('show_quote', v)}
               />
-              <Label htmlFor="show-quote" className="text-sm">{t('projectManagement.chats.showQuote')}</Label>
+              <Label htmlFor="show-quote" className="text-sm">{t('knowledgeBase.chats.showQuote')}</Label>
             </div>
             <div className="flex items-center gap-2">
               <Switch
@@ -562,7 +562,7 @@ const ChatModal = ({
                 checked={formData.prompt_config.keyword}
                 onCheckedChange={(v: boolean) => updatePrompt('keyword', v)}
               />
-              <Label htmlFor="keyword-analysis" className="text-sm">{t('projectManagement.chats.keywordAnalysis')}</Label>
+              <Label htmlFor="keyword-analysis" className="text-sm">{t('knowledgeBase.chats.keywordAnalysis')}</Label>
             </div>
             <div className="flex items-center gap-2">
               <Switch
@@ -570,7 +570,7 @@ const ChatModal = ({
                 checked={formData.prompt_config.tts}
                 onCheckedChange={(v: boolean) => updatePrompt('tts', v)}
               />
-              <Label htmlFor="tts" className="text-sm">{t('projectManagement.chats.tts')}</Label>
+              <Label htmlFor="tts" className="text-sm">{t('knowledgeBase.chats.tts')}</Label>
             </div>
             <div className="flex items-center gap-2">
               <Switch
@@ -578,7 +578,7 @@ const ChatModal = ({
                 checked={formData.prompt_config.refine_multiturn}
                 onCheckedChange={(v: boolean) => updatePrompt('refine_multiturn', v)}
               />
-              <Label htmlFor="refine-multiturn" className="text-sm">{t('projectManagement.chats.refineMultiturn')}</Label>
+              <Label htmlFor="refine-multiturn" className="text-sm">{t('knowledgeBase.chats.refineMultiturn')}</Label>
             </div>
           </div>
 
@@ -587,7 +587,7 @@ const ChatModal = ({
           {/* SECTION 2: Datasets (category selection) */}
           <div>
             <label className="block text-sm font-medium mb-1">
-              {t('projectManagement.chats.selectCategories')} <span className="text-red-500">*</span>
+              {t('knowledgeBase.chats.selectCategories')} <span className="text-red-500">*</span>
             </label>
             {hasAnyDatasets ? (
               <div className="flex flex-col gap-2">
@@ -617,7 +617,7 @@ const ChatModal = ({
             ) : (
               <Alert variant="warning">
                 <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>{t('projectManagement.chats.noActiveDatasets')}</AlertDescription>
+                <AlertDescription>{t('knowledgeBase.chats.noActiveDatasets')}</AlertDescription>
               </Alert>
             )}
           </div>
@@ -625,18 +625,18 @@ const ChatModal = ({
           <Separator />
 
           {/* SECTION 3: Prompt / Retrieval Configuration */}
-          <CollapsibleSection title={t('projectManagement.chats.promptSection')}>
+          <CollapsibleSection title={t('knowledgeBase.chats.promptSection')}>
             <div className="space-y-4">
               {/* System Prompt */}
               <div>
-                <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.systemPrompt')}</label>
+                <label className="block text-sm font-medium mb-1">{t('knowledgeBase.chats.systemPrompt')}</label>
                 <Textarea rows={6} value={formData.prompt_config.prompt}
                   onChange={(e) => updatePrompt('prompt', e.target.value)} />
               </div>
 
               {/* Similarity Threshold */}
               <div>
-                <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.similarityThreshold')}</label>
+                <label className="block text-sm font-medium mb-1">{t('knowledgeBase.chats.similarityThreshold')}</label>
                 <SliderInput min={0} max={1} step={0.01}
                   value={formData.prompt_config.similarity_threshold}
                   onChange={(v) => updatePrompt('similarity_threshold', v)} />
@@ -644,7 +644,7 @@ const ChatModal = ({
 
               {/* Vector Similarity Weight */}
               <div>
-                <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.vectorSimilarityWeight')}</label>
+                <label className="block text-sm font-medium mb-1">{t('knowledgeBase.chats.vectorSimilarityWeight')}</label>
                 <VectorWeightControl
                   value={formData.prompt_config.keywords_similarity_weight}
                   onChange={(v) => updatePrompt('keywords_similarity_weight', v)} />
@@ -652,7 +652,7 @@ const ChatModal = ({
 
               {/* Top N */}
               <div>
-                <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.topN')}</label>
+                <label className="block text-sm font-medium mb-1">{t('knowledgeBase.chats.topN')}</label>
                 <SliderInput min={1} max={100} step={1}
                   value={formData.prompt_config.top_n}
                   onChange={(v) => updatePrompt('top_n', v)} />
@@ -660,15 +660,15 @@ const ChatModal = ({
 
               {/* Rerank Model */}
               <div>
-                <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.rerankModel')}</label>
-                <Input placeholder={t('projectManagement.chats.rerankModelPlaceholder')}
+                <label className="block text-sm font-medium mb-1">{t('knowledgeBase.chats.rerankModel')}</label>
+                <Input placeholder={t('knowledgeBase.chats.rerankModelPlaceholder')}
                   value={formData.prompt_config.rerank_model}
                   onChange={(e) => updatePrompt('rerank_model', e.target.value)} />
               </div>
 
               {/* Cross-language Search */}
               <div>
-                <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.crossLanguages')}</label>
+                <label className="block text-sm font-medium mb-1">{t('knowledgeBase.chats.crossLanguages')}</label>
                 <div className="flex flex-wrap gap-2">
                   {CROSS_LANGUAGE_OPTIONS.map((lang) => (
                     <button
@@ -689,17 +689,17 @@ const ChatModal = ({
 
               {/* Variables */}
               <div>
-                <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.variables')}</label>
+                <label className="block text-sm font-medium mb-1">{t('knowledgeBase.chats.variables')}</label>
                 {formData.prompt_config.variables.map((variable, index) => (
                   <div key={index} className="flex items-center gap-2 mb-2">
                     <Input
-                      placeholder={t('projectManagement.chats.variableKey')}
+                      placeholder={t('knowledgeBase.chats.variableKey')}
                       className="w-[160px]"
                       value={variable.key}
                       onChange={(e) => updateVariable(index, 'key', e.target.value)}
                     />
                     <span className="text-xs text-muted-foreground">
-                      {t('projectManagement.chats.variableOptional')}
+                      {t('knowledgeBase.chats.variableOptional')}
                     </span>
                     <Switch
                       checked={variable.optional}
@@ -711,7 +711,7 @@ const ChatModal = ({
                   </div>
                 ))}
                 <Button variant="outline" size="sm" onClick={addVariable}>
-                  + {t('projectManagement.chats.addVariable')}
+                  + {t('knowledgeBase.chats.addVariable')}
                 </Button>
               </div>
             </div>
@@ -720,17 +720,17 @@ const ChatModal = ({
           <Separator />
 
           {/* SECTION 4: LLM Configuration */}
-          <CollapsibleSection title={t('projectManagement.chats.llmSection')}>
+          <CollapsibleSection title={t('knowledgeBase.chats.llmSection')}>
             <div className="space-y-4">
               {/* Model */}
               <div>
-                <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.modelName')}</label>
+                <label className="block text-sm font-medium mb-1">{t('knowledgeBase.chats.modelName')}</label>
                 <Select
                   value={formData.llm_config.model_name || undefined}
                   onValueChange={(v: string) => updateLlm('model_name', v || '')}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder={t('projectManagement.chats.selectModel')} />
+                    <SelectValue placeholder={t('knowledgeBase.chats.selectModel')} />
                   </SelectTrigger>
                   <SelectContent>
                     {chatModels.length > 0 ? (
@@ -738,7 +738,7 @@ const ChatModal = ({
                         <SelectItem key={m} value={m}>{m}</SelectItem>
                       ))
                     ) : (
-                      <div className="px-2 py-1.5 text-sm text-muted-foreground">{t('projectManagement.chats.noModels')}</div>
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">{t('knowledgeBase.chats.noModels')}</div>
                     )}
                   </SelectContent>
                 </Select>
@@ -746,7 +746,7 @@ const ChatModal = ({
 
               {/* Creativity */}
               <div>
-                <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.creativity')}</label>
+                <label className="block text-sm font-medium mb-1">{t('knowledgeBase.chats.creativity')}</label>
                 <Select
                   onValueChange={(val: string) => {
                     if (val && val !== 'custom' && CREATIVITY_PRESETS[val]) {
@@ -759,20 +759,20 @@ const ChatModal = ({
                   }}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder={t('projectManagement.chats.selectCreativity')} />
+                    <SelectValue placeholder={t('knowledgeBase.chats.selectCreativity')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="improvise">{t('projectManagement.chats.creativityImprovise')}</SelectItem>
-                    <SelectItem value="precise">{t('projectManagement.chats.creativityPrecise')}</SelectItem>
-                    <SelectItem value="balance">{t('projectManagement.chats.creativityBalance')}</SelectItem>
-                    <SelectItem value="custom">{t('projectManagement.chats.creativityCustom')}</SelectItem>
+                    <SelectItem value="improvise">{t('knowledgeBase.chats.creativityImprovise')}</SelectItem>
+                    <SelectItem value="precise">{t('knowledgeBase.chats.creativityPrecise')}</SelectItem>
+                    <SelectItem value="balance">{t('knowledgeBase.chats.creativityBalance')}</SelectItem>
+                    <SelectItem value="custom">{t('knowledgeBase.chats.creativityCustom')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               {/* Temperature */}
               <div>
-                <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.temperature')}</label>
+                <label className="block text-sm font-medium mb-1">{t('knowledgeBase.chats.temperature')}</label>
                 <SliderInput min={0} max={1} step={0.01}
                   value={formData.llm_config.temperature}
                   onChange={(v) => updateLlm('temperature', v)} />
@@ -780,7 +780,7 @@ const ChatModal = ({
 
               {/* Top P */}
               <div>
-                <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.topP')}</label>
+                <label className="block text-sm font-medium mb-1">{t('knowledgeBase.chats.topP')}</label>
                 <SliderInput min={0} max={1} step={0.01}
                   value={formData.llm_config.top_p}
                   onChange={(v) => updateLlm('top_p', v)} />
@@ -788,7 +788,7 @@ const ChatModal = ({
 
               {/* Presence Penalty */}
               <div>
-                <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.presencePenalty')}</label>
+                <label className="block text-sm font-medium mb-1">{t('knowledgeBase.chats.presencePenalty')}</label>
                 <SliderInput min={0} max={1} step={0.01}
                   value={formData.llm_config.presence_penalty}
                   onChange={(v) => updateLlm('presence_penalty', v)} />
@@ -796,7 +796,7 @@ const ChatModal = ({
 
               {/* Frequency Penalty */}
               <div>
-                <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.frequencyPenalty')}</label>
+                <label className="block text-sm font-medium mb-1">{t('knowledgeBase.chats.frequencyPenalty')}</label>
                 <SliderInput min={0} max={1} step={0.01}
                   value={formData.llm_config.frequency_penalty}
                   onChange={(v) => updateLlm('frequency_penalty', v)} />
@@ -804,7 +804,7 @@ const ChatModal = ({
 
               {/* Max Tokens */}
               <div>
-                <label className="block text-sm font-medium mb-1">{t('projectManagement.chats.maxTokens')}</label>
+                <label className="block text-sm font-medium mb-1">{t('knowledgeBase.chats.maxTokens')}</label>
                 <MaxTokensControl
                   value={formData.llm_config.max_tokens}
                   onChange={(v) => updateLlm('max_tokens', v)} />
