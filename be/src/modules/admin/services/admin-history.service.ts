@@ -16,6 +16,28 @@ export type FeedbackFilter = 'positive' | 'negative' | 'any' | 'none'
  */
 export class AdminHistoryService {
     /**
+     * @description Build a reusable feedback aggregation subquery for source/session-level counts.
+     * @param {'chat' | 'search' | 'agent'} source - Feedback source discriminator
+     * @param {string} [tenantId] - Optional tenant scope
+     * @returns {import('knex').Knex.QueryBuilder} Grouped feedback aggregate query by source_id
+     */
+    private buildFeedbackAggregate(source: 'chat' | 'search' | 'agent', tenantId?: string) {
+        const feedbackAgg = db('answer_feedback as af')
+            .select('af.source_id')
+            .select(
+                db.raw('COUNT(*) FILTER (WHERE af.thumbup = true)::int as positive_count'),
+                db.raw('COUNT(*) FILTER (WHERE af.thumbup = false)::int as negative_count')
+            )
+            .where('af.source', source)
+            .groupBy('af.source_id')
+
+        if (tenantId) {
+            feedbackAgg.where('af.tenant_id', tenantId)
+        }
+
+        return feedbackAgg
+    }
+    /**
      * @description Apply feedback filter EXISTS/NOT EXISTS clause to a query builder.
      * @param {any} query - Knex query builder
      * @param {string} source - Feedback source type ('chat' | 'search' | 'agent')
@@ -90,41 +112,33 @@ export class AdminHistoryService {
         const offset = (page - 1) * limit;
 
         // ── External history_chat_sessions ────────────────────────────────
+        const extMessageCount = db('history_chat_messages as hcm_count')
+            .select('hcm_count.session_id')
+            .count('* as message_count')
+            .groupBy('hcm_count.session_id')
+
+        const extFirstPrompt = db('history_chat_messages as hcm_first')
+            .distinctOn('hcm_first.session_id')
+            .select('hcm_first.session_id', 'hcm_first.user_prompt')
+            .orderBy('hcm_first.session_id')
+            .orderBy('hcm_first.created_at', 'asc')
+
+        const extFeedbackAgg = this.buildFeedbackAggregate('chat', tenantId)
+
         let extQuery = ModelFactory.historyChatSession.getKnex()
             .select(
                 'history_chat_sessions.session_id',
                 'history_chat_sessions.updated_at as created_at',
                 'history_chat_sessions.user_email',
-
-                // Subquery for first prompt
-                db.raw(`(
-                    SELECT user_prompt FROM history_chat_messages
-                    WHERE session_id = history_chat_sessions.session_id
-                    ORDER BY created_at ASC LIMIT 1
-                ) as user_prompt`),
-                // Subquery for message count
-                db.raw(`(
-                    SELECT COUNT(*) FROM history_chat_messages
-                    WHERE session_id = history_chat_sessions.session_id
-                ) as message_count`),
-                // Subquery for positive feedback count (tenant-scoped)
-                db.raw(`(
-                    SELECT COUNT(*) FROM answer_feedback af
-                    WHERE af.source = 'chat'
-                    AND af.source_id = history_chat_sessions.session_id
-                    AND af.thumbup = true
-                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
-                )::int as positive_count`),
-                // Subquery for negative feedback count (tenant-scoped)
-                db.raw(`(
-                    SELECT COUNT(*) FROM answer_feedback af
-                    WHERE af.source = 'chat'
-                    AND af.source_id = history_chat_sessions.session_id
-                    AND af.thumbup = false
-                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
-                )::int as negative_count`)
+                db.raw('COALESCE(hcm_first.user_prompt, \'\') as user_prompt'),
+                db.raw('COALESCE(hcm_count.message_count, 0)::int as message_count'),
+                db.raw('COALESCE(chat_fb.positive_count, 0)::int as positive_count'),
+                db.raw('COALESCE(chat_fb.negative_count, 0)::int as negative_count')
             )
             .from('history_chat_sessions')
+            .leftJoin(extFirstPrompt.as('hcm_first'), 'hcm_first.session_id', 'history_chat_sessions.session_id')
+            .leftJoin(extMessageCount.as('hcm_count'), 'hcm_count.session_id', 'history_chat_sessions.session_id')
+            .leftJoin(extFeedbackAgg.as('chat_fb'), 'chat_fb.source_id', 'history_chat_sessions.session_id')
             .orderBy('history_chat_sessions.updated_at', 'desc')
             .limit(limit)
             .offset(offset);
@@ -183,39 +197,33 @@ export class AdminHistoryService {
         const externalResults = await extQuery;
 
         // ── Internal chat_sessions ────────────────────────────────────────
+        const intFirstPrompt = db('chat_messages as cm_first')
+            .distinctOn('cm_first.session_id')
+            .select('cm_first.session_id', 'cm_first.content as user_prompt')
+            .where('cm_first.role', MessageRole.USER)
+            .orderBy('cm_first.session_id')
+            .orderBy('cm_first.timestamp', 'asc')
+
+        const intMessageCount = db('chat_messages as cm_count')
+            .select('cm_count.session_id')
+            .count('* as message_count')
+            .groupBy('cm_count.session_id')
+
+        const intFeedbackAgg = this.buildFeedbackAggregate('chat', tenantId)
+
         let intQuery = db('chat_sessions')
             .leftJoin('users', 'chat_sessions.user_id', 'users.id')
+            .leftJoin(intFirstPrompt.as('cm_first'), 'cm_first.session_id', 'chat_sessions.id')
+            .leftJoin(intMessageCount.as('cm_count'), 'cm_count.session_id', 'chat_sessions.id')
+            .joinRaw('LEFT JOIN (?) as chat_fb ON chat_fb.source_id = chat_sessions.id::text', [intFeedbackAgg])
             .select(
                 'chat_sessions.id as session_id',
                 'chat_sessions.created_at',
                 'users.email as user_email',
-                // Subquery for first user message content
-                db.raw(`(
-                    SELECT content FROM chat_messages
-                    WHERE session_id = chat_sessions.id AND role = 'user'
-                    ORDER BY timestamp ASC LIMIT 1
-                ) as user_prompt`),
-                // Subquery for message count
-                db.raw(`(
-                    SELECT COUNT(*) FROM chat_messages
-                    WHERE session_id = chat_sessions.id
-                )::int as message_count`),
-                // Subquery for positive feedback count (tenant-scoped)
-                db.raw(`(
-                    SELECT COUNT(*) FROM answer_feedback af
-                    WHERE af.source = 'chat'
-                    AND af.source_id = chat_sessions.id::text
-                    AND af.thumbup = true
-                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
-                )::int as positive_count`),
-                // Subquery for negative feedback count (tenant-scoped)
-                db.raw(`(
-                    SELECT COUNT(*) FROM answer_feedback af
-                    WHERE af.source = 'chat'
-                    AND af.source_id = chat_sessions.id::text
-                    AND af.thumbup = false
-                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
-                )::int as negative_count`),
+                db.raw('COALESCE(cm_first.user_prompt, \'\') as user_prompt'),
+                db.raw('COALESCE(cm_count.message_count, 0)::int as message_count'),
+                db.raw('COALESCE(chat_fb.positive_count, 0)::int as positive_count'),
+                db.raw('COALESCE(chat_fb.negative_count, 0)::int as negative_count'),
                 'chat_sessions.title'
             )
             .orderBy('chat_sessions.created_at', 'desc')
@@ -361,41 +369,33 @@ export class AdminHistoryService {
         const offset = (page - 1) * limit;
 
         // Base query on sessions
+        const searchFirstInput = db('history_search_records as hsr_first')
+            .distinctOn('hsr_first.session_id')
+            .select('hsr_first.session_id', 'hsr_first.search_input')
+            .orderBy('hsr_first.session_id')
+            .orderBy('hsr_first.created_at', 'asc')
+
+        const searchMessageCount = db('history_search_records as hsr_count')
+            .select('hsr_count.session_id')
+            .count('* as message_count')
+            .groupBy('hsr_count.session_id')
+
+        const searchFeedbackAgg = this.buildFeedbackAggregate('search', tenantId)
+
         let query = ModelFactory.historySearchSession.getKnex()
             .select(
                 'history_search_sessions.session_id',
                 'history_search_sessions.updated_at as created_at',
                 'history_search_sessions.user_email',
-
-                // Subquery for first search input
-                db.raw(`(
-                    SELECT search_input FROM history_search_records
-                    WHERE session_id = history_search_sessions.session_id
-                    ORDER BY created_at ASC LIMIT 1
-                ) as search_input`),
-                // Subquery for count
-                db.raw(`(
-                    SELECT COUNT(*) FROM history_search_records
-                    WHERE session_id = history_search_sessions.session_id
-                ) as message_count`),
-                // Subquery for positive feedback count (tenant-scoped)
-                db.raw(`(
-                    SELECT COUNT(*) FROM answer_feedback af
-                    WHERE af.source = 'search'
-                    AND af.source_id = history_search_sessions.session_id
-                    AND af.thumbup = true
-                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
-                )::int as positive_count`),
-                // Subquery for negative feedback count (tenant-scoped)
-                db.raw(`(
-                    SELECT COUNT(*) FROM answer_feedback af
-                    WHERE af.source = 'search'
-                    AND af.source_id = history_search_sessions.session_id
-                    AND af.thumbup = false
-                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
-                )::int as negative_count`)
+                db.raw('COALESCE(hsr_first.search_input, \'\') as search_input'),
+                db.raw('COALESCE(hsr_count.message_count, 0)::int as message_count'),
+                db.raw('COALESCE(search_fb.positive_count, 0)::int as positive_count'),
+                db.raw('COALESCE(search_fb.negative_count, 0)::int as negative_count')
             )
             .from('history_search_sessions')
+            .leftJoin(searchFirstInput.as('hsr_first'), 'hsr_first.session_id', 'history_search_sessions.session_id')
+            .leftJoin(searchMessageCount.as('hsr_count'), 'hsr_count.session_id', 'history_search_sessions.session_id')
+            .leftJoin(searchFeedbackAgg.as('search_fb'), 'search_fb.source_id', 'history_search_sessions.session_id')
 
             .orderBy('history_search_sessions.updated_at', 'desc')
             .limit(limit)
@@ -528,22 +528,6 @@ export class AdminHistoryService {
                 'agent_runs.completed_at',
                 'agent_runs.duration_ms',
                 'users.email as user_email',
-                // Subquery for positive feedback count (tenant-scoped)
-                db.raw(`(
-                    SELECT COUNT(*) FROM answer_feedback af
-                    WHERE af.source = 'agent'
-                    AND af.source_id = agent_runs.id::text
-                    AND af.thumbup = true
-                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
-                )::int as positive_count`),
-                // Subquery for negative feedback count (tenant-scoped)
-                db.raw(`(
-                    SELECT COUNT(*) FROM answer_feedback af
-                    WHERE af.source = 'agent'
-                    AND af.source_id = agent_runs.id::text
-                    AND af.thumbup = false
-                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
-                )::int as negative_count`)
             )
             .orderBy('agent_runs.created_at', 'desc')
             .limit(limit)
@@ -575,10 +559,24 @@ export class AdminHistoryService {
             query = query.where('agent_runs.started_at', '<=', `${endDate} 23:59:59`)
         }
 
-        // Apply feedback filter
+        // Apply feedback filter before pagination
         query = this.applyFeedbackFilter(query, 'agent', 'agent_runs.id::text', feedbackFilter)
+        const runs = await query
+        if (runs.length === 0) return []
 
-        return await query
+        const runIds = runs.map((r: any) => r.run_id)
+        const feedbackAgg = this.buildFeedbackAggregate('agent', tenantId)
+            .whereIn('af.source_id', runIds as string[])
+
+        const feedbackRows = await feedbackAgg
+        const feedbackMap = new Map(
+            feedbackRows.map((row: any) => [row.source_id, { positive_count: Number(row.positive_count ?? 0), negative_count: Number(row.negative_count ?? 0) }])
+        )
+
+        return runs.map((run: any) => {
+            const feedback = feedbackMap.get(run.run_id) ?? { positive_count: 0, negative_count: 0 }
+            return { ...run, ...feedback }
+        })
     }
 
     /**

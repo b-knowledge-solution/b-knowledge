@@ -42,11 +42,14 @@ export class ProjectsService {
     const userPerms = await ModelFactory.projectPermission.findByGrantee('user', user.id)
     const userPermProjectIds = new Set(userPerms.map(p => p.project_id))
 
-    // Get team permissions
+    // Get team permissions in a single query to avoid N+1 DB round-trips
     const teamPermProjectIds = new Set<string>()
-    for (const teamId of teamIds) {
-      const teamPerms = await ModelFactory.projectPermission.findByGrantee('team', teamId)
-      teamPerms.forEach(p => teamPermProjectIds.add(p.project_id))
+    if (teamIds.length > 0) {
+      const teamPerms = await ModelFactory.projectPermission.getKnex()
+        .where('grantee_type', 'team')
+        .whereIn('grantee_id', teamIds)
+        .select('project_id')
+      teamPerms.forEach((p: any) => teamPermProjectIds.add(p.project_id))
     }
 
     // Filter: show public projects, projects created by user, or those with permissions

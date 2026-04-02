@@ -335,16 +335,17 @@ class DashboardService {
       return q
     }
 
-    // Run all 6 analytics queries in parallel
-    const [totalResult, avgTimeResult, failedResult, lowConfResult, topQueriesRows, trendRows] = await Promise.all([
-      // Total query count
-      baseQuery().count('* as count').first(),
-      // Average response time
-      baseQuery().avg('response_time_ms as avg').first(),
-      // Failed retrieval count
-      baseQuery().where('failed_retrieval', true).count('* as count').first(),
-      // Low confidence count (score below 0.5 threshold)
-      baseQuery().whereNotNull('confidence_score').where('confidence_score', '<', 0.5).count('* as count').first(),
+    // Run all 3 analytics query groups in parallel
+    const [aggregateResult, topQueriesRows, trendRows] = await Promise.all([
+      // Single aggregate pass for totals/rates to reduce repeated table scans
+      baseQuery()
+        .select(
+          db.raw('COUNT(*)::int as total_queries'),
+          db.raw('COALESCE(AVG(response_time_ms), 0)::numeric as avg_response_time'),
+          db.raw('COUNT(*) FILTER (WHERE failed_retrieval = true)::int as failed_queries'),
+          db.raw('COUNT(*) FILTER (WHERE confidence_score IS NOT NULL AND confidence_score < 0.5)::int as low_conf_queries')
+        )
+        .first(),
       // Top 10 most frequent queries with average confidence
       baseQuery()
         .select('query')
@@ -361,14 +362,14 @@ class DashboardService {
         .orderBy('date', 'asc'),
     ])
 
-    const totalQueries = parseInt(totalResult?.count as string || '0', 10)
-    const avgResponseTime = Math.round(parseFloat(avgTimeResult?.avg as string || '0') * 100) / 100
+    const totalQueries = parseInt((aggregateResult as any)?.total_queries as string || '0', 10)
+    const avgResponseTime = Math.round(parseFloat((aggregateResult as any)?.avg_response_time as string || '0') * 100) / 100
 
     // Calculate failed and low-confidence rates as percentages (avoid division by zero)
-    const failedCount = parseInt(failedResult?.count as string || '0', 10)
+    const failedCount = parseInt((aggregateResult as any)?.failed_queries as string || '0', 10)
     const failedRate = totalQueries > 0 ? Math.round((failedCount / totalQueries) * 10000) / 100 : 0
 
-    const lowConfCount = parseInt(lowConfResult?.count as string || '0', 10)
+    const lowConfCount = parseInt((aggregateResult as any)?.low_conf_queries as string || '0', 10)
     const lowConfRate = totalQueries > 0 ? Math.round((lowConfCount / totalQueries) * 10000) / 100 : 0
 
     // Map top queries result rows
@@ -404,21 +405,46 @@ class DashboardService {
       return q
     }
 
+    // Build reusable bound date conditions for raw SQL fragments to avoid interpolation
+    const afDateConditions: string[] = []
+    const afDateParams: string[] = []
+    if (startDate) {
+      afDateConditions.push('AND af.created_at >= ?')
+      afDateParams.push(startDate)
+    }
+    if (endDate) {
+      afDateConditions.push('AND af.created_at <= ?')
+      afDateParams.push(`${endDate} 23:59:59`)
+    }
+
+    const feedbackDateConditions: string[] = []
+    const feedbackDateParams: string[] = []
+    if (startDate) {
+      feedbackDateConditions.push('AND created_at >= ?')
+      feedbackDateParams.push(startDate)
+    }
+    if (endDate) {
+      feedbackDateConditions.push('AND created_at <= ?')
+      feedbackDateParams.push(`${endDate} 23:59:59`)
+    }
+
     // Run all analytics queries in parallel
-    const [totalResult, positiveResult, zeroResultCount, worstRows, trendRows, negativeRows] = await Promise.all([
-      // Total feedback count
-      baseQuery().count('* as count').first(),
-      // Positive feedback count for satisfaction rate
-      baseQuery().where('thumbup', true).count('* as count').first(),
+    const [aggregateResult, zeroResultCount, worstRows, trendRows, negativeRows] = await Promise.all([
+      // Single aggregate pass for total + positive counts
+      baseQuery()
+        .select(
+          db.raw('COUNT(*)::int as total_feedback'),
+          db.raw('COUNT(*) FILTER (WHERE thumbup = true)::int as positive_feedback')
+        )
+        .first(),
       // Zero-result rate: feedback entries linked to failed queries via query text + tenant
       db.raw(`
         SELECT COUNT(DISTINCT af.id)::int as count
         FROM answer_feedback af
         INNER JOIN query_log ql ON af.query = ql.query AND af.tenant_id = ql.tenant_id
         WHERE af.tenant_id = ? AND ql.failed_retrieval = true
-        ${startDate ? `AND af.created_at >= '${startDate}'` : ''}
-        ${endDate ? `AND af.created_at <= '${endDate} 23:59:59'` : ''}
-      `, [tenantId]),
+        ${afDateConditions.join('\n        ')}
+      `, [tenantId, ...afDateParams]),
       // Worst datasets: bottom 5 by satisfaction ratio (search feedback only)
       db.raw(`
         SELECT af.source_id as dataset_id,
@@ -428,12 +454,11 @@ class DashboardService {
         FROM answer_feedback af
         LEFT JOIN knowledgebase kb ON af.source_id = kb.id
         WHERE af.tenant_id = ? AND af.source = 'search'
-        ${startDate ? `AND af.created_at >= '${startDate}'` : ''}
-        ${endDate ? `AND af.created_at <= '${endDate} 23:59:59'` : ''}
+        ${afDateConditions.join('\n        ')}
         GROUP BY af.source_id, kb.name
         ORDER BY satisfaction_rate ASC
         LIMIT 5
-      `, [tenantId]),
+      `, [tenantId, ...afDateParams]),
       // Daily feedback trend with per-day satisfaction rate
       db.raw(`
         SELECT date_trunc('day', created_at)::date as date,
@@ -441,11 +466,10 @@ class DashboardService {
                ROUND(COUNT(*) FILTER (WHERE thumbup = true)::numeric / NULLIF(COUNT(*), 0) * 100, 1) as satisfaction_rate
         FROM answer_feedback
         WHERE tenant_id = ?
-        ${startDate ? `AND created_at >= '${startDate}'` : ''}
-        ${endDate ? `AND created_at <= '${endDate} 23:59:59'` : ''}
+        ${feedbackDateConditions.join('\n        ')}
         GROUP BY date_trunc('day', created_at)::date
         ORDER BY date ASC
-      `, [tenantId]),
+      `, [tenantId, ...feedbackDateParams]),
       // Recent negative feedback entries (last 20) including source for column display
       baseQuery()
         .where('thumbup', false)
@@ -454,8 +478,8 @@ class DashboardService {
         .limit(20),
     ])
 
-    const totalFeedback = parseInt(totalResult?.count as string || '0', 10)
-    const positiveCount = parseInt(positiveResult?.count as string || '0', 10)
+    const totalFeedback = parseInt((aggregateResult as any)?.total_feedback as string || '0', 10)
+    const positiveCount = parseInt((aggregateResult as any)?.positive_feedback as string || '0', 10)
     // Satisfaction rate as percentage (avoid division by zero)
     const satisfactionRate = totalFeedback > 0 ? Math.round((positiveCount / totalFeedback) * 10000) / 100 : 0
 
