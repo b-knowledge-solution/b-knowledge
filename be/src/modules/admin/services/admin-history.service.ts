@@ -16,6 +16,28 @@ export type FeedbackFilter = 'positive' | 'negative' | 'any' | 'none'
  */
 export class AdminHistoryService {
     /**
+     * @description Build a reusable feedback aggregation subquery for source/session-level counts.
+     * @param {'chat' | 'search' | 'agent'} source - Feedback source discriminator
+     * @param {string} [tenantId] - Optional tenant scope
+     * @returns {import('knex').Knex.QueryBuilder} Grouped feedback aggregate query by source_id
+     */
+    private buildFeedbackAggregate(source: 'chat' | 'search' | 'agent', tenantId?: string) {
+        const feedbackAgg = db('answer_feedback as af')
+            .select('af.source_id')
+            .select(
+                db.raw('COUNT(*) FILTER (WHERE af.thumbup = true)::int as positive_count'),
+                db.raw('COUNT(*) FILTER (WHERE af.thumbup = false)::int as negative_count')
+            )
+            .where('af.source', source)
+            .groupBy('af.source_id')
+
+        if (tenantId) {
+            feedbackAgg.where('af.tenant_id', tenantId)
+        }
+
+        return feedbackAgg
+    }
+    /**
      * @description Apply feedback filter EXISTS/NOT EXISTS clause to a query builder.
      * @param {any} query - Knex query builder
      * @param {string} source - Feedback source type ('chat' | 'search' | 'agent')
@@ -87,47 +109,19 @@ export class AdminHistoryService {
         tenantId?: string
     ) {
         // Calculate offset for pagination
-        const offset = (page - 1) * limit;
+        const offset = (page - 1) * limit
 
-        // ── External history_chat_sessions ────────────────────────────────
+        // ── External history_chat_sessions (page first, then enrich) ─────
         let extQuery = ModelFactory.historyChatSession.getKnex()
             .select(
                 'history_chat_sessions.session_id',
                 'history_chat_sessions.updated_at as created_at',
-                'history_chat_sessions.user_email',
-
-                // Subquery for first prompt
-                db.raw(`(
-                    SELECT user_prompt FROM history_chat_messages
-                    WHERE session_id = history_chat_sessions.session_id
-                    ORDER BY created_at ASC LIMIT 1
-                ) as user_prompt`),
-                // Subquery for message count
-                db.raw(`(
-                    SELECT COUNT(*) FROM history_chat_messages
-                    WHERE session_id = history_chat_sessions.session_id
-                ) as message_count`),
-                // Subquery for positive feedback count (tenant-scoped)
-                db.raw(`(
-                    SELECT COUNT(*) FROM answer_feedback af
-                    WHERE af.source = 'chat'
-                    AND af.source_id = history_chat_sessions.session_id
-                    AND af.thumbup = true
-                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
-                )::int as positive_count`),
-                // Subquery for negative feedback count (tenant-scoped)
-                db.raw(`(
-                    SELECT COUNT(*) FROM answer_feedback af
-                    WHERE af.source = 'chat'
-                    AND af.source_id = history_chat_sessions.session_id
-                    AND af.thumbup = false
-                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
-                )::int as negative_count`)
+                'history_chat_sessions.user_email'
             )
             .from('history_chat_sessions')
             .orderBy('history_chat_sessions.updated_at', 'desc')
             .limit(limit)
-            .offset(offset);
+            .offset(offset)
 
         // Apply full-text search filter across email and message content
         if (search) {
@@ -180,47 +174,54 @@ export class AdminHistoryService {
         // Apply feedback filter to external query
         extQuery = this.applyFeedbackFilter(extQuery, 'chat', 'history_chat_sessions.session_id', feedbackFilter);
 
-        const externalResults = await extQuery;
+        const externalBase = await extQuery
+        const externalIds = externalBase.map((row: any) => row.session_id)
+        let externalResults = externalBase.map((row: any) => ({ ...row, user_prompt: '', message_count: 0, positive_count: 0, negative_count: 0 }))
 
-        // ── Internal chat_sessions ────────────────────────────────────────
+        if (externalIds.length > 0) {
+            const [firstPrompts, messageCounts, feedbackRows] = await Promise.all([
+                db('history_chat_messages as hcm_first')
+                    .distinctOn('hcm_first.session_id')
+                    .select('hcm_first.session_id', 'hcm_first.user_prompt')
+                    .whereIn('hcm_first.session_id', externalIds)
+                    .orderBy('hcm_first.session_id')
+                    .orderBy('hcm_first.created_at', 'asc'),
+                db('history_chat_messages as hcm_count')
+                    .select('hcm_count.session_id')
+                    .count('* as message_count')
+                    .whereIn('hcm_count.session_id', externalIds)
+                    .groupBy('hcm_count.session_id'),
+                this.buildFeedbackAggregate('chat', tenantId).whereIn('af.source_id', externalIds),
+            ])
+
+            const promptMap = new Map(firstPrompts.map((row: any) => [row.session_id, row.user_prompt]))
+            const countMap = new Map(messageCounts.map((row: any) => [row.session_id, Number(row.message_count ?? 0)]))
+            const feedbackMap = new Map(feedbackRows.map((row: any) => [row.source_id, row]))
+
+            externalResults = externalBase.map((row: any) => {
+                const feedback = feedbackMap.get(row.session_id)
+                return {
+                    ...row,
+                    user_prompt: promptMap.get(row.session_id) ?? '',
+                    message_count: countMap.get(row.session_id) ?? 0,
+                    positive_count: Number(feedback?.positive_count ?? 0),
+                    negative_count: Number(feedback?.negative_count ?? 0),
+                }
+            })
+        }
+
+        // ── Internal chat_sessions (page first, then enrich) ──────────────
         let intQuery = db('chat_sessions')
             .leftJoin('users', 'chat_sessions.user_id', 'users.id')
             .select(
                 'chat_sessions.id as session_id',
                 'chat_sessions.created_at',
                 'users.email as user_email',
-                // Subquery for first user message content
-                db.raw(`(
-                    SELECT content FROM chat_messages
-                    WHERE session_id = chat_sessions.id AND role = 'user'
-                    ORDER BY timestamp ASC LIMIT 1
-                ) as user_prompt`),
-                // Subquery for message count
-                db.raw(`(
-                    SELECT COUNT(*) FROM chat_messages
-                    WHERE session_id = chat_sessions.id
-                )::int as message_count`),
-                // Subquery for positive feedback count (tenant-scoped)
-                db.raw(`(
-                    SELECT COUNT(*) FROM answer_feedback af
-                    WHERE af.source = 'chat'
-                    AND af.source_id = chat_sessions.id::text
-                    AND af.thumbup = true
-                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
-                )::int as positive_count`),
-                // Subquery for negative feedback count (tenant-scoped)
-                db.raw(`(
-                    SELECT COUNT(*) FROM answer_feedback af
-                    WHERE af.source = 'chat'
-                    AND af.source_id = chat_sessions.id::text
-                    AND af.thumbup = false
-                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
-                )::int as negative_count`),
                 'chat_sessions.title'
             )
             .orderBy('chat_sessions.created_at', 'desc')
             .limit(limit)
-            .offset(offset);
+            .offset(offset)
 
         // Apply search filter
         if (search) {
@@ -251,10 +252,46 @@ export class AdminHistoryService {
         // Apply feedback filter to internal query
         intQuery = this.applyFeedbackFilter(intQuery, 'chat', 'chat_sessions.id::text', feedbackFilter);
 
-        const internalResults = (await intQuery).map((r: any) => ({ ...r, source: 'internal' }));
+        const internalBase = await intQuery
+        const internalIds = internalBase.map((row: any) => row.session_id)
+        let internalResults = internalBase.map((r: any) => ({ ...r, user_prompt: '', message_count: 0, positive_count: 0, negative_count: 0, source: 'internal' }))
+
+        if (internalIds.length > 0) {
+            const [firstPrompts, messageCounts, feedbackRows] = await Promise.all([
+                db('chat_messages as cm_first')
+                    .distinctOn('cm_first.session_id')
+                    .select('cm_first.session_id', 'cm_first.content as user_prompt')
+                    .where('cm_first.role', MessageRole.USER)
+                    .whereIn('cm_first.session_id', internalIds)
+                    .orderBy('cm_first.session_id')
+                    .orderBy('cm_first.timestamp', 'asc'),
+                db('chat_messages as cm_count')
+                    .select('cm_count.session_id')
+                    .count('* as message_count')
+                    .whereIn('cm_count.session_id', internalIds)
+                    .groupBy('cm_count.session_id'),
+                this.buildFeedbackAggregate('chat', tenantId).whereIn('af.source_id', internalIds),
+            ])
+
+            const promptMap = new Map(firstPrompts.map((row: any) => [row.session_id, row.user_prompt]))
+            const countMap = new Map(messageCounts.map((row: any) => [row.session_id, Number(row.message_count ?? 0)]))
+            const feedbackMap = new Map(feedbackRows.map((row: any) => [row.source_id, row]))
+
+            internalResults = internalBase.map((row: any) => {
+                const feedback = feedbackMap.get(row.session_id)
+                return {
+                    ...row,
+                    user_prompt: promptMap.get(row.session_id) ?? '',
+                    message_count: countMap.get(row.session_id) ?? 0,
+                    positive_count: Number(feedback?.positive_count ?? 0),
+                    negative_count: Number(feedback?.negative_count ?? 0),
+                    source: 'internal',
+                }
+            })
+        }
 
         // ── Merge & sort by date descending ───────────────────────────────
-        const merged = [...externalResults, ...internalResults];
+        const merged = [...externalResults, ...internalResults]
         merged.sort((a: any, b: any) => {
             const dateA = new Date(a.created_at).getTime();
             const dateB = new Date(b.created_at).getTime();
@@ -358,48 +395,20 @@ export class AdminHistoryService {
         tenantId?: string
     ) {
         // Calculate pagination offset
-        const offset = (page - 1) * limit;
+        const offset = (page - 1) * limit
 
-        // Base query on sessions
+        // Base query on sessions (page first), then enrich only paged session IDs
         let query = ModelFactory.historySearchSession.getKnex()
             .select(
                 'history_search_sessions.session_id',
                 'history_search_sessions.updated_at as created_at',
                 'history_search_sessions.user_email',
-
-                // Subquery for first search input
-                db.raw(`(
-                    SELECT search_input FROM history_search_records
-                    WHERE session_id = history_search_sessions.session_id
-                    ORDER BY created_at ASC LIMIT 1
-                ) as search_input`),
-                // Subquery for count
-                db.raw(`(
-                    SELECT COUNT(*) FROM history_search_records
-                    WHERE session_id = history_search_sessions.session_id
-                ) as message_count`),
-                // Subquery for positive feedback count (tenant-scoped)
-                db.raw(`(
-                    SELECT COUNT(*) FROM answer_feedback af
-                    WHERE af.source = 'search'
-                    AND af.source_id = history_search_sessions.session_id
-                    AND af.thumbup = true
-                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
-                )::int as positive_count`),
-                // Subquery for negative feedback count (tenant-scoped)
-                db.raw(`(
-                    SELECT COUNT(*) FROM answer_feedback af
-                    WHERE af.source = 'search'
-                    AND af.source_id = history_search_sessions.session_id
-                    AND af.thumbup = false
-                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
-                )::int as negative_count`)
             )
             .from('history_search_sessions')
 
             .orderBy('history_search_sessions.updated_at', 'desc')
             .limit(limit)
-            .offset(offset);
+            .offset(offset)
 
         // Apply full-text search filter across email and search record content
         if (search) {
@@ -447,10 +456,41 @@ export class AdminHistoryService {
             query = query.where('history_search_sessions.updated_at', '<=', `${endDate} 23:59:59`);
         }
 
-        // Apply feedback filter
+        // Apply feedback filter before pagination
         query = this.applyFeedbackFilter(query, 'search', 'history_search_sessions.session_id', feedbackFilter);
+        const baseSessions = await query
+        if (baseSessions.length === 0) return []
 
-        return await query;
+        const sessionIds = baseSessions.map((row: any) => row.session_id)
+        const [firstInputs, messageCounts, feedbackRows] = await Promise.all([
+            db('history_search_records as hsr_first')
+                .distinctOn('hsr_first.session_id')
+                .select('hsr_first.session_id', 'hsr_first.search_input')
+                .whereIn('hsr_first.session_id', sessionIds)
+                .orderBy('hsr_first.session_id')
+                .orderBy('hsr_first.created_at', 'asc'),
+            db('history_search_records as hsr_count')
+                .select('hsr_count.session_id')
+                .count('* as message_count')
+                .whereIn('hsr_count.session_id', sessionIds)
+                .groupBy('hsr_count.session_id'),
+            this.buildFeedbackAggregate('search', tenantId).whereIn('af.source_id', sessionIds),
+        ])
+
+        const inputMap = new Map(firstInputs.map((row: any) => [row.session_id, row.search_input]))
+        const countMap = new Map(messageCounts.map((row: any) => [row.session_id, Number(row.message_count ?? 0)]))
+        const feedbackMap = new Map(feedbackRows.map((row: any) => [row.source_id, row]))
+
+        return baseSessions.map((row: any) => {
+            const feedback = feedbackMap.get(row.session_id)
+            return {
+                ...row,
+                search_input: inputMap.get(row.session_id) ?? '',
+                message_count: countMap.get(row.session_id) ?? 0,
+                positive_count: Number(feedback?.positive_count ?? 0),
+                negative_count: Number(feedback?.negative_count ?? 0),
+            }
+        })
     }
 
     /**
@@ -528,22 +568,6 @@ export class AdminHistoryService {
                 'agent_runs.completed_at',
                 'agent_runs.duration_ms',
                 'users.email as user_email',
-                // Subquery for positive feedback count (tenant-scoped)
-                db.raw(`(
-                    SELECT COUNT(*) FROM answer_feedback af
-                    WHERE af.source = 'agent'
-                    AND af.source_id = agent_runs.id::text
-                    AND af.thumbup = true
-                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
-                )::int as positive_count`),
-                // Subquery for negative feedback count (tenant-scoped)
-                db.raw(`(
-                    SELECT COUNT(*) FROM answer_feedback af
-                    WHERE af.source = 'agent'
-                    AND af.source_id = agent_runs.id::text
-                    AND af.thumbup = false
-                    ${tenantId ? `AND af.tenant_id = '${tenantId}'` : ''}
-                )::int as negative_count`)
             )
             .orderBy('agent_runs.created_at', 'desc')
             .limit(limit)
@@ -575,10 +599,24 @@ export class AdminHistoryService {
             query = query.where('agent_runs.started_at', '<=', `${endDate} 23:59:59`)
         }
 
-        // Apply feedback filter
+        // Apply feedback filter before pagination
         query = this.applyFeedbackFilter(query, 'agent', 'agent_runs.id::text', feedbackFilter)
+        const runs = await query
+        if (runs.length === 0) return []
 
-        return await query
+        const runIds = runs.map((r: any) => r.run_id)
+        const feedbackAgg = this.buildFeedbackAggregate('agent', tenantId)
+            .whereIn('af.source_id', runIds as string[])
+
+        const feedbackRows = await feedbackAgg
+        const feedbackMap = new Map(
+            feedbackRows.map((row: any) => [row.source_id, { positive_count: Number(row.positive_count ?? 0), negative_count: Number(row.negative_count ?? 0) }])
+        )
+
+        return runs.map((run: any) => {
+            const feedback = feedbackMap.get(run.run_id) ?? { positive_count: 0, negative_count: 0 }
+            return { ...run, ...feedback }
+        })
     }
 
     /**

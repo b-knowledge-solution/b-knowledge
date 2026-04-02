@@ -59,27 +59,13 @@ export class HistoryChatSessionModel extends BaseModel<HistoryChatSession> {
         startDate?: string,
         endDate?: string
     ) {
-        // Base query to select chat sessions
-        let query = this.knex
+        // Base query to select matching sessions first, then enrich only for paged session IDs
+        let query = this.knex(this.tableName)
             .select(
                 'history_chat_sessions.session_id',
                 'history_chat_sessions.updated_at as created_at',
-                'history_chat_sessions.user_email',
-
-                // Subquery for first prompt
-                this.knex.raw(`(
-                    SELECT user_prompt FROM history_chat_messages
-                    WHERE session_id = history_chat_sessions.session_id
-                    ORDER BY created_at ASC LIMIT 1
-                ) as user_prompt`),
-                // Subquery for message count
-                this.knex.raw(`(
-                    SELECT COUNT(*) FROM history_chat_messages
-                    WHERE session_id = history_chat_sessions.session_id
-                ) as message_count`)
+                'history_chat_sessions.user_email'
             )
-            .from(this.tableName)
-
             .where('history_chat_sessions.user_email', userEmail)
             .orderBy('history_chat_sessions.updated_at', 'desc')
             .limit(limit)
@@ -124,6 +110,33 @@ export class HistoryChatSessionModel extends BaseModel<HistoryChatSession> {
             query = query.where('history_chat_sessions.updated_at', '<=', `${endDate} 23:59:59`)
         }
 
-        return await query
+        const sessions = await query
+        if (sessions.length === 0) return []
+
+        const sessionIds = sessions.map((s: any) => s.session_id)
+
+        // Fetch first prompts only for the paged session IDs to avoid global scans
+        const firstPrompts = await this.knex('history_chat_messages as hcm_first')
+            .distinctOn('hcm_first.session_id')
+            .select('hcm_first.session_id', 'hcm_first.user_prompt')
+            .whereIn('hcm_first.session_id', sessionIds)
+            .orderBy('hcm_first.session_id')
+            .orderBy('hcm_first.created_at', 'asc')
+
+        // Fetch message counts only for the paged session IDs to avoid global scans
+        const messageCounts = await this.knex('history_chat_messages as hcm_count')
+            .select('hcm_count.session_id')
+            .count('* as message_count')
+            .whereIn('hcm_count.session_id', sessionIds)
+            .groupBy('hcm_count.session_id')
+
+        const firstPromptMap = new Map(firstPrompts.map((row: any) => [row.session_id, row.user_prompt]))
+        const messageCountMap = new Map(messageCounts.map((row: any) => [row.session_id, Number(row.message_count ?? 0)]))
+
+        return sessions.map((session: any) => ({
+            ...session,
+            user_prompt: firstPromptMap.get(session.session_id) ?? '',
+            message_count: messageCountMap.get(session.session_id) ?? 0,
+        }))
     }
 }

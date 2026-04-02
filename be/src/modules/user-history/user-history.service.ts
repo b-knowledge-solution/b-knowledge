@@ -149,23 +149,12 @@ export class UserHistoryService {
         const user = await db('users').where('email', userEmail).first();
         if (!user) return [];
 
-        // Build query for internal chat sessions
+        // Build base query for internal chat sessions, then enrich only paged session IDs
         let query = db('chat_sessions')
             .select(
                 'chat_sessions.id as session_id',
                 'chat_sessions.created_at',
                 db.raw('? as user_email', [userEmail]),
-                // Subquery for first user message content
-                db.raw(`(
-                    SELECT content FROM chat_messages
-                    WHERE session_id = chat_sessions.id AND role = 'user'
-                    ORDER BY timestamp ASC LIMIT 1
-                ) as user_prompt`),
-                // Subquery for message count
-                db.raw(`(
-                    SELECT COUNT(*) FROM chat_messages
-                    WHERE session_id = chat_sessions.id
-                )::int as message_count`),
                 // Include title for display
                 'chat_sessions.title'
             )
@@ -194,12 +183,36 @@ export class UserHistoryService {
             query = query.where('chat_sessions.created_at', '<=', `${endDate} 23:59:59`);
         }
 
-        // Mark results as internal source for potential differentiation
-        const results = await query;
-        return results.map((r: any) => ({
+        const sessions = await query
+        if (sessions.length === 0) return []
+
+        const sessionIds = sessions.map((s: any) => s.session_id)
+
+        // Fetch first prompts only for paged sessions
+        const firstPrompts = await db('chat_messages as cm_first')
+            .distinctOn('cm_first.session_id')
+            .select('cm_first.session_id', 'cm_first.content as user_prompt')
+            .where('cm_first.role', 'user')
+            .whereIn('cm_first.session_id', sessionIds)
+            .orderBy('cm_first.session_id')
+            .orderBy('cm_first.timestamp', 'asc')
+
+        // Fetch counts only for paged sessions
+        const messageCounts = await db('chat_messages as cm_count')
+            .select('cm_count.session_id')
+            .count('* as message_count')
+            .whereIn('cm_count.session_id', sessionIds)
+            .groupBy('cm_count.session_id')
+
+        const firstPromptMap = new Map(firstPrompts.map((row: any) => [row.session_id, row.user_prompt]))
+        const messageCountMap = new Map(messageCounts.map((row: any) => [row.session_id, Number(row.message_count ?? 0)]))
+
+        return sessions.map((r: any) => ({
             ...r,
+            user_prompt: firstPromptMap.get(r.session_id) ?? '',
+            message_count: messageCountMap.get(r.session_id) ?? 0,
             source: 'internal',
-        }));
+        }))
     }
 
     /**
@@ -254,4 +267,3 @@ export class UserHistoryService {
 
 /** Singleton instance of the user history service */
 export const userHistoryService = new UserHistoryService();
-

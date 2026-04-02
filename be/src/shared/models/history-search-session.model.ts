@@ -59,27 +59,13 @@ export class HistorySearchSessionModel extends BaseModel<HistorySearchSession> {
         startDate?: string,
         endDate?: string
     ) {
-        // Base query to select search sessions
-        let query = this.knex
+        // Base query to select matching sessions first, then enrich only paged session IDs
+        let query = this.knex(this.tableName)
             .select(
                 'history_search_sessions.session_id',
                 'history_search_sessions.updated_at as created_at',
-                'history_search_sessions.user_email',
-
-                // Subquery for first search input
-                this.knex.raw(`(
-                    SELECT search_input FROM history_search_records
-                    WHERE session_id = history_search_sessions.session_id
-                    ORDER BY created_at ASC LIMIT 1
-                ) as search_input`),
-                // Subquery for count
-                this.knex.raw(`(
-                    SELECT COUNT(*) FROM history_search_records
-                    WHERE session_id = history_search_sessions.session_id
-                ) as message_count`)
+                'history_search_sessions.user_email'
             )
-            .from(this.tableName)
-
             .where('history_search_sessions.user_email', userEmail)
             .orderBy('history_search_sessions.updated_at', 'desc')
             .limit(limit)
@@ -124,6 +110,33 @@ export class HistorySearchSessionModel extends BaseModel<HistorySearchSession> {
             query = query.where('history_search_sessions.updated_at', '<=', `${endDate} 23:59:59`)
         }
 
-        return await query
+        const sessions = await query
+        if (sessions.length === 0) return []
+
+        const sessionIds = sessions.map((s: any) => s.session_id)
+
+        // Fetch first search input only for the paged session IDs to avoid global scans
+        const firstInputs = await this.knex('history_search_records as hsr_first')
+            .distinctOn('hsr_first.session_id')
+            .select('hsr_first.session_id', 'hsr_first.search_input')
+            .whereIn('hsr_first.session_id', sessionIds)
+            .orderBy('hsr_first.session_id')
+            .orderBy('hsr_first.created_at', 'asc')
+
+        // Fetch message counts only for the paged session IDs to avoid global scans
+        const messageCounts = await this.knex('history_search_records as hsr_count')
+            .select('hsr_count.session_id')
+            .count('* as message_count')
+            .whereIn('hsr_count.session_id', sessionIds)
+            .groupBy('hsr_count.session_id')
+
+        const firstInputMap = new Map(firstInputs.map((row: any) => [row.session_id, row.search_input]))
+        const messageCountMap = new Map(messageCounts.map((row: any) => [row.session_id, Number(row.message_count ?? 0)]))
+
+        return sessions.map((session: any) => ({
+            ...session,
+            search_input: firstInputMap.get(session.session_id) ?? '',
+            message_count: messageCountMap.get(session.session_id) ?? 0,
+        }))
     }
 }
