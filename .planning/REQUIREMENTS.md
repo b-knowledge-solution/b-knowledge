@@ -1,50 +1,102 @@
-# Requirements — v0.1 Document Upload Pipeline
+# Requirements: B-Knowledge
 
-## Functional Requirements
+**Defined:** 2026-04-02
+**Core Value:** Unified AI knowledge management — one platform for document ingestion, RAG-powered search, and conversational AI with full control over parsing, chunking, and embedding.
 
-- [x] **REQ-01**: Upload documents with optional parser_id selection
-- [x] **REQ-02**: Office files (doc/xls/ppt) create converter job in Redis
-- [x] **REQ-03**: Non-Office files auto-parse immediately after upload
-- [x] **REQ-04**: Converter worker picks up jobs via Redis polling
-- [x] **REQ-05**: Manual trigger bypasses converter schedule window
-- [x] **REQ-06**: Converter job status endpoint for progress monitoring
-- [x] **REQ-07**: Version document list has parity with dataset detail page
-- [x] **REQ-08**: Per-document parse/stop buttons in version list
-- [x] **REQ-09**: Inline progress bar during parsing
-- [x] **REQ-10**: Process log dialog on status click
-- [x] **REQ-11**: Enable/disable toggle per document
-- [x] **REQ-12**: Change parser dialog per document
-- [x] **REQ-13**: Chunk navigation (clickable document name)
-- [x] **REQ-14**: Force Convert Now button in conversion modal
-- [x] **REQ-15**: Bulk metadata tag editing
-- [x] **REQ-16**: Inline delete per document
-- [x] **REQ-17**: Parser badge column showing parser_id
-- [x] **REQ-18**: Update date column
+## v0.2 Requirements
+
+Requirements for v0.2 milestone: Knowledge Base Refactor & Quality.
+
+### Rename (Project → Knowledge Base)
+
+- [ ] **REN-01**: User sees "Knowledge Base" instead of "Project" across all UI pages, navigation, and labels (3 locales: en, vi, ja)
+- [ ] **REN-02**: All DB tables renamed (`projects` → `knowledge_bases`, `project_categories` → `kb_categories`, `project_permissions` → `kb_permissions`, all `project_id` FK columns → `kb_id`)
+- [ ] **REN-03**: All BE module files, routes, models renamed (`/api/projects/*` → `/api/knowledge-bases/*`, module directory, barrel exports)
+- [ ] **REN-04**: All FE feature files, routes, components renamed (`/projects/:id` → `/knowledge-bases/:id`, feature directory, API layer)
+- [ ] **REN-05**: Python worker `ragflow_doc_meta_` prefix renamed to `knowledge_doc_meta_` in all connector files
+- [ ] **REN-06**: All test files updated to use new naming, full test suite passes after rename
+
+### Chunk Quality
+
+- [ ] **CHUNK-01**: User can select table-aware chunking strategy for documents containing tables (adaptive row batching)
+- [ ] **CHUNK-02**: User can select semantic chunking strategy that splits at topic boundaries using embedding similarity
+- [ ] **CHUNK-03**: User can select recursive chunking strategy (hierarchy of separators: paragraph → line → sentence → word)
+- [ ] **CHUNK-04**: System computes heuristic quality scores per chunk at ingestion (token count, TTR, dedup detection, truncation flag, language coherence)
+- [ ] **CHUNK-05**: User can view chunk quality indicators on the chunk list UI (flagged chunks highlighted)
+- [ ] **CHUNK-06**: Quality scores stored as OpenSearch metadata fields for future query-time filtering
+
+### Permissions
+
+- [ ] **PERM-01**: Admin can grant KB-level access to users/teams with Read/Write/Admin tier (first gate)
+- [ ] **PERM-02**: Admin can grant category-level permissions (Documents, Code, Standard) with independent Read/Write/Admin per category
+- [ ] **PERM-03**: KB creator has implicit Admin access; system super-admin/admin bypasses KB permissions
+- [ ] **PERM-04**: Permission-aware retrieval filters OpenSearch search/chat results based on user's KB + category access
+- [ ] **PERM-05**: User can view and manage permission grants in KB settings UI
+
+### New KB Features
+
+- [ ] **KB-01**: Placeholder for future Knowledge Base features (plans to be defined later)
+
+## Future Requirements
+
+Deferred to v0.3+. Tracked but not in current roadmap.
+
+### Chunk Quality (Advanced)
+
+- **CHUNK-F01**: LLM-based chunk quality scoring (coherence/completeness/density via LLM judge, opt-in per KB)
+- **CHUNK-F02**: Parent-child (small-to-big) chunking strategy with hierarchical retrieval
+- **CHUNK-F03**: Adaptive chunking (content-density aware, dynamic chunk sizing)
+- **CHUNK-F04**: Chunk quality dashboard with admin UI for browsing, filtering, and re-chunking
+- **CHUNK-F05**: Corrective RAG quality gate (filter low-quality chunks at retrieval time)
+
+### Permissions (Advanced)
+
+- **PERM-F01**: Document-level permission grants within a KB (per-document access control)
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Mobile app | Web-first approach |
+| Self-hosted model training | Use external providers |
+| API versioning for rename | No external API consumers, clean big-bang rename is sufficient |
+| Expand-migrate-contract rename | Overkill for internal app with no published SDK |
+| Per-chunk embedding model selection | Different models per chunk makes vector search incoherent; model set at KB level |
+| Fine-grained field-level permissions | Over-engineering; if user can access a doc, they see all of it |
+| Custom permission DSL/policy engine | Overkill for 3-tier RBAC; simple role-permission mapping via CASL |
+| Real-time chunk quality scoring at query time | Too slow; score at ingestion, filter by threshold at query time |
+| Automatic re-chunking without user approval | Silently re-chunking breaks existing references; provide manual trigger instead |
 
 ## Traceability
 
-| REQ | Component | Status | Notes |
-|-----|-----------|--------|-------|
-| REQ-01 | BE rag.controller.ts | Complete | Reads parser_id from FormData body |
-| REQ-02 | BE converter-queue.service.ts | Complete | Creates Redis hash/set keys |
-| REQ-03 | BE rag.controller.ts | Complete | Calls beginParse + queueParseInit |
-| REQ-04 | converter/src/worker.py | Complete | Pre-existing, no changes needed |
-| REQ-05 | BE converter-queue.service.ts | Complete | Sets converter:manual_trigger=1 |
-| REQ-06 | BE rag.controller.ts + routes | Complete | GET /converter-jobs/:jobId/status |
-| REQ-07 | FE DocumentListPanel.tsx | Complete | Full rewrite with all columns/actions |
-| REQ-08 | FE DocumentListPanel.tsx | Complete | Play/Square icons per row |
-| REQ-09 | FE DocumentListPanel.tsx | Complete | Progress component from shadcn/ui |
-| REQ-10 | FE DocumentListPanel.tsx | Complete | Reuses ProcessLogDialog from datasets |
-| REQ-11 | FE DocumentListPanel.tsx | Complete | Switch component, calls RAG toggle API |
-| REQ-12 | FE DocumentListPanel.tsx | Complete | Reuses ChangeParserDialog from datasets |
-| REQ-13 | FE DocumentListPanel.tsx | Complete | Navigates to /datasets/{id}/documents/{docId}/chunks |
-| REQ-14 | FE ConversionStatusModal.tsx | Complete | Zap icon, calls triggerManualConversion |
-| REQ-15 | FE DocumentListPanel.tsx | Complete | Reuses MetadataManageDialog from datasets |
-| REQ-16 | FE DocumentListPanel.tsx | Complete | Trash2 icon per row with confirmation |
-| REQ-17 | FE DocumentListPanel.tsx | Complete | Badge variant="outline" showing parser_id |
-| REQ-18 | FE DocumentListPanel.tsx | Complete | formatDocUpdateDate helper |
+Which phases cover which requirements. Updated during roadmap creation.
 
-## Test Coverage
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| REN-01 | — | Pending |
+| REN-02 | — | Pending |
+| REN-03 | — | Pending |
+| REN-04 | — | Pending |
+| REN-05 | — | Pending |
+| REN-06 | — | Pending |
+| CHUNK-01 | — | Pending |
+| CHUNK-02 | — | Pending |
+| CHUNK-03 | — | Pending |
+| CHUNK-04 | — | Pending |
+| CHUNK-05 | — | Pending |
+| CHUNK-06 | — | Pending |
+| PERM-01 | — | Pending |
+| PERM-02 | — | Pending |
+| PERM-03 | — | Pending |
+| PERM-04 | — | Pending |
+| PERM-05 | — | Pending |
+| KB-01 | — | Pending |
 
-- 57 backend tests (converter-queue.service.test.ts + document-upload-pipeline.test.ts)
-- 0 new TypeScript errors introduced (5 pre-existing)
+**Coverage:**
+- v0.2 requirements: 18 total
+- Mapped to phases: 0
+- Unmapped: 18
+
+---
+*Requirements defined: 2026-04-02*
+*Last updated: 2026-04-02 after initial definition*
