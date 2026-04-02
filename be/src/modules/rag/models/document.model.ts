@@ -23,4 +23,17 @@ export class DocumentModel extends BaseModel<Document> {
       .where('dataset_id', datasetId)
       .orderBy('created_at', 'desc')
   }
+
+  /**
+   * @description Delete all externally-synced documents for a knowledge base.
+   *   Only deletes documents with a non-null source_doc_id, preserving manually uploaded documents.
+   * @param {string} kbId - Knowledge base UUID to scope the deletion
+   * @returns {Promise<number>} Number of deleted document records
+   */
+  async deleteSyncedByKbId(kbId: string): Promise<number> {
+    return this.knex(this.tableName)
+      .where('kb_id', kbId)
+      .whereNotNull('source_doc_id')
+      .del()
+  }
 }

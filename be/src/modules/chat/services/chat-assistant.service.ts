@@ -40,9 +40,7 @@ export class ChatAssistantService {
     userId: string
   ): Promise<ChatAssistant> {
     // Check name uniqueness (case-insensitive)
-    const existing = await ModelFactory.chatAssistant.getKnex()
-      .whereRaw('LOWER(name) = LOWER(?)', [data.name])
-      .first()
+    const existing = await ModelFactory.chatAssistant.findByNameCaseInsensitive(data.name)
     if (existing) {
       throw new Error('An assistant with this name already exists')
     }
@@ -113,45 +111,30 @@ export class ChatAssistantService {
     const sortBy = options.sortBy ?? 'created_at'
     const sortOrder = options.sortOrder ?? 'desc'
 
-    // Start building the base query with RBAC filtering
-    let query = ModelFactory.chatAssistant.getKnex()
-
-    // Apply RBAC filtering (admins see all)
+    // Apply RBAC filtering (admins see all, others see owned + public + shared)
     if (userRole !== UserRole.ADMIN && userRole !== UserRole.SUPERADMIN) {
       // Get assistant IDs the user has been explicitly granted access to
       const accessibleIds = await ModelFactory.chatAssistantAccess.findAccessibleAssistantIds(userId, teamIds)
 
-      query = query.where(function () {
-        // User's own assistants
-        this.where('created_by', userId)
-        // Public assistants
-        this.orWhere('is_public', true)
-        // Assistants shared via access control entries
-        if (accessibleIds.length > 0) {
-          this.orWhereIn('id', accessibleIds)
-        }
+      return ModelFactory.chatAssistant.findAccessiblePaginated({
+        userId,
+        accessibleIds,
+        search: options.search,
+        sortBy,
+        sortOrder,
+        limit: pageSize,
+        offset: (page - 1) * pageSize,
       })
     }
 
-    // Apply search filter (case-insensitive on name and description)
-    if (options.search) {
-      query = query.where(function () {
-        this.whereILike('name', `%${options.search}%`)
-          .orWhereILike('description', `%${options.search}%`)
-      })
-    }
-
-    // Count total before pagination
-    const countResult = await query.clone().count('* as count').first()
-    const total = Number(countResult?.count ?? 0)
-
-    // Apply sort and pagination
-    const data = await query
-      .orderBy(sortBy, sortOrder)
-      .limit(pageSize)
-      .offset((page - 1) * pageSize)
-
-    return { data, total }
+    // Admin path: no RBAC filtering, just search + pagination
+    return ModelFactory.chatAssistant.findAllPaginated({
+      search: options.search,
+      sortBy,
+      sortOrder,
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
+    })
   }
 
   /**
@@ -167,28 +150,14 @@ export class ChatAssistantService {
     const sortBy = options?.sort_by || 'created_at'
     const sortOrder = options?.sort_order || 'desc'
 
-    // Only return public assistants
-    let query = ModelFactory.chatAssistant.getKnex().where('is_public', true)
-
-    // Apply search filter
-    if (options?.search) {
-      query = query.andWhere(function () {
-        this.whereILike('name', `%${options!.search}%`)
-          .orWhereILike('description', `%${options!.search}%`)
-      })
-    }
-
-    // Count total before pagination
-    const countResult = await query.clone().count('* as count').first()
-    const total = Number(countResult?.count ?? 0)
-
-    // Apply sort and pagination
-    const data = await query
-      .orderBy(sortBy, sortOrder)
-      .limit(pageSize)
-      .offset((page - 1) * pageSize)
-
-    return { data, total }
+    // Delegate to model for public-only paginated query
+    return ModelFactory.chatAssistant.findPublicPaginated({
+      search: options?.search,
+      sortBy,
+      sortOrder,
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
+    })
   }
 
   /**
@@ -211,21 +180,17 @@ export class ChatAssistantService {
     const userMap = new Map<string, string>()
     const teamMap = new Map<string, string>()
 
-    // Batch fetch user display names
+    // Batch fetch user display names via model method
     if (userIds.length > 0) {
-      const users = await ModelFactory.user.getKnex()
-        .select('id', 'display_name')
-        .whereIn('id', userIds)
+      const users = await ModelFactory.user.findDisplayNamesByIds(userIds)
       for (const u of users) {
         userMap.set(u.id, u.display_name)
       }
     }
 
-    // Batch fetch team names
+    // Batch fetch team names via model method
     if (teamIds.length > 0) {
-      const teams = await ModelFactory.team.getKnex()
-        .select('id', 'name')
-        .whereIn('id', teamIds)
+      const teams = await ModelFactory.team.findNamesByIds(teamIds)
       for (const t of teams) {
         teamMap.set(t.id, t.name)
       }

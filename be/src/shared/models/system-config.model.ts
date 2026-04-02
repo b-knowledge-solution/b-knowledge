@@ -77,4 +77,17 @@ export class SystemConfigModel extends BaseModel<SystemConfig> {
     // Execute deletion
     await query.delete()
   }
+
+  /**
+   * @description Execute a simple SELECT 1 query to verify database connectivity
+   * @returns {Promise<boolean>} True if database is reachable
+   */
+  async healthCheck(): Promise<boolean> {
+    try {
+      await this.knex.raw('SELECT 1')
+      return true
+    } catch {
+      return false
+    }
+  }
 }

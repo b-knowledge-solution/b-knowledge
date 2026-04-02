@@ -3,7 +3,6 @@
  * @module services/knowledge-base
  */
 import { ModelFactory } from '@/shared/models/factory.js'
-import { db } from '@/shared/db/knex.js'
 import { log } from '@/shared/services/logger.service.js'
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js'
 import { teamService } from '@/modules/teams/services/team.service.js'
@@ -45,11 +44,8 @@ export class KnowledgeBaseService {
     // Get team permissions in a single query to avoid N+1 DB round-trips
     const teamPermKnowledgeBaseIds = new Set<string>()
     if (teamIds.length > 0) {
-      const teamPerms = await ModelFactory.knowledgeBasePermission.getKnex()
-        .where('grantee_type', 'team')
-        .whereIn('grantee_id', teamIds)
-        .select('knowledge_base_id')
-      teamPerms.forEach((p: any) => teamPermKnowledgeBaseIds.add(p.knowledge_base_id))
+      const teamKbIds = await ModelFactory.knowledgeBasePermission.findKnowledgeBaseIdsByTeams(teamIds)
+      teamKbIds.forEach((id: string) => teamPermKnowledgeBaseIds.add(id))
     }
 
     // Filter: show public knowledge bases, knowledge bases created by user, or those with permissions
@@ -83,12 +79,7 @@ export class KnowledgeBaseService {
   async createKnowledgeBase(data: any, user: UserContext, tenantId?: string): Promise<KnowledgeBase> {
     try {
       // Check for duplicate knowledge base name within the same tenant
-      const query = ModelFactory.knowledgeBase.getKnex()
-        .where('name', data.name)
-        .whereNot('status', 'deleted')
-      // Scope duplicate check to tenant if provided
-      if (tenantId) query.andWhere('tenant_id', tenantId)
-      const existingKnowledgeBase = await query.first()
+      const existingKnowledgeBase = await ModelFactory.knowledgeBase.findByNameExcludingDeleted(data.name, tenantId)
 
       if (existingKnowledgeBase) {
         throw new Error('Knowledge base with this name already exists')
@@ -254,13 +245,9 @@ export class KnowledgeBaseService {
    */
   async setPermission(knowledgeBaseId: string, data: any, user: UserContext): Promise<KnowledgeBasePermission> {
     // Check if permission already exists
-    const existing = await ModelFactory.knowledgeBasePermission.getKnex()
-      .where({
-        knowledge_base_id: knowledgeBaseId,
-        grantee_type: data.grantee_type,
-        grantee_id: data.grantee_id,
-      })
-      .first()
+    const existing = await ModelFactory.knowledgeBasePermission.findByKnowledgeBaseAndGrantee(
+      knowledgeBaseId, data.grantee_type, data.grantee_id
+    )
 
     if (existing) {
       // Update existing permission
@@ -407,20 +394,8 @@ export class KnowledgeBaseService {
   async getKnowledgeBaseMembers(knowledgeBaseId: string): Promise<Array<{
     id: string; user_id: string; email: string; name: string; role: string; created_at: Date
   }>> {
-    // JOIN knowledge_base_permissions with users to get member profile details in a single query
-    return db('knowledge_base_permissions as kbp')
-      .select(
-        'kbp.id',
-        'kbp.grantee_id as user_id',
-        'u.email',
-        db.raw("COALESCE(u.nickname, u.email) as name"),
-        'u.role',
-        'kbp.created_at',
-      )
-      .innerJoin('users as u', 'u.id', 'kbp.grantee_id')
-      .where('kbp.knowledge_base_id', knowledgeBaseId)
-      .andWhere('kbp.grantee_type', 'user')
-      .orderBy('kbp.created_at', 'desc')
+    // Delegate to model which JOINs with users table for member profile details
+    return ModelFactory.knowledgeBasePermission.findMembersWithUserDetails(knowledgeBaseId)
   }
 
   /**
@@ -435,11 +410,7 @@ export class KnowledgeBaseService {
    */
   async addMember(knowledgeBaseId: string, userId: string, addedBy: string, tenantId: string): Promise<KnowledgeBasePermission> {
     // Verify user exists within the same tenant for multi-tenant isolation
-    const user = await db('users as u')
-      .innerJoin('user_tenant as ut', 'ut.user_id', 'u.id')
-      .where('u.id', userId)
-      .andWhere('ut.tenant_id', tenantId)
-      .first()
+    const user = await ModelFactory.user.findByIdAndTenant(userId, tenantId)
 
     if (!user) {
       throw new Error('User not found in this organization')
@@ -528,10 +499,7 @@ export class KnowledgeBaseService {
     }))
 
     // Single INSERT with ON CONFLICT DO NOTHING to skip duplicates (no N+1)
-    await db('knowledge_base_datasets')
-      .insert(rows)
-      .onConflict(['knowledge_base_id', 'dataset_id'])
-      .ignore()
+    await ModelFactory.knowledgeBaseDataset.bulkInsertIgnoreConflict(rows)
 
     // Audit log the binding action
     await auditService.log({
@@ -584,19 +552,8 @@ export class KnowledgeBaseService {
    * @returns {Promise<string[]>} Deduplicated array of dataset UUIDs the user can access
    */
   async resolveKnowledgeBaseDatasets(userId: string, tenantId: string): Promise<string[]> {
-    // Single query with JOIN to resolve all datasets from user's knowledge bases (no N+1)
-    const rows = await db('knowledge_base_datasets as kbd')
-      .select('kbd.dataset_id')
-      .distinct()
-      .innerJoin('knowledge_base_permissions as kbp', 'kbd.knowledge_base_id', 'kbp.knowledge_base_id')
-      .where('kbp.grantee_type', 'user')
-      .andWhere('kbp.grantee_id', userId)
-      .whereIn('kbd.knowledge_base_id', function () {
-        // Sub-select: only knowledge bases within the user's tenant
-        this.select('id').from('knowledge_base').where('tenant_id', tenantId)
-      })
-
-    return rows.map((r: any) => r.dataset_id)
+    // Delegate to model which uses a single JOIN query for efficient resolution
+    return ModelFactory.knowledgeBaseDataset.resolveDatasetIdsByUserPermissions(userId, tenantId)
   }
 
   // -------------------------------------------------------------------------
@@ -613,33 +570,12 @@ export class KnowledgeBaseService {
    * @returns {Promise<{ data: any[]; total: number }>} Paginated audit entries with total count
    */
   async getKnowledgeBaseActivity(knowledgeBaseId: string, tenantId: string, limit: number, offset: number): Promise<{ data: any[]; total: number }> {
-    // Build sub-query for dataset IDs linked to this knowledge base
-    const datasetIdsSub = db('knowledge_base_datasets')
-      .select('dataset_id')
-      .where('knowledge_base_id', knowledgeBaseId)
+    // Gather resource IDs: the knowledge base itself + its linked datasets
+    const datasetLinks = await ModelFactory.knowledgeBaseDataset.findByKnowledgeBaseId(knowledgeBaseId)
+    const resourceIds = [knowledgeBaseId, ...datasetLinks.map((l: any) => l.dataset_id)]
 
-    // Base query: audit logs for the knowledge base itself or its linked datasets
-    const baseQuery = db('audit_logs')
-      .where('tenant_id', tenantId)
-      .andWhere(function () {
-        // Include direct knowledge base actions and actions on bound datasets
-        this.where('resource_id', knowledgeBaseId)
-          .orWhereIn('resource_id', datasetIdsSub)
-      })
-
-    // Run data fetch and count in parallel for efficiency
-    const [data, countResult] = await Promise.all([
-      baseQuery.clone()
-        .select('*')
-        .orderBy('created_at', 'desc')
-        .limit(limit)
-        .offset(offset),
-      baseQuery.clone()
-        .count('* as cnt')
-        .first(),
-    ])
-
-    const total = Number((countResult as any)?.cnt ?? 0)
+    // Query audit logs for all relevant resource IDs within the tenant
+    const { data, total } = await ModelFactory.auditLog.findByResourceIdsInTenant(tenantId, resourceIds, limit, offset)
 
     // Parse details JSON string back to object for each entry
     const parsedData = data.map((entry: any) => ({

@@ -62,16 +62,8 @@ class MemoryService {
    * @returns {Promise<Memory[]>} Array of accessible memory pools, newest first
    */
   async listPools(tenantId: string, userId: string): Promise<Memory[]> {
-    // Query pools where user has access: team-visible OR user's own private pools
-    return ModelFactory.memory.getKnex()
-      .where('tenant_id', tenantId)
-      .andWhere(function () {
-        this.where('permission', 'team')
-          .orWhere(function () {
-            this.where('permission', 'me').andWhere('created_by', userId)
-          })
-      })
-      .orderBy('created_at', 'desc')
+    // Delegate access-filtered query to the model layer
+    return ModelFactory.memory.findAccessibleByUser(tenantId, userId)
   }
 
   /**

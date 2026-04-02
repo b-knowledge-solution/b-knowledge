@@ -5,6 +5,7 @@
 import { BaseModel } from '@/shared/models/base.model.js'
 import { db } from '@/shared/db/knex.js'
 import { ModelProvider } from '@/shared/models/types.js'
+import { ProviderStatus } from '@/shared/constants/index.js'
 
 /**
  * @description Provides data access for the model_providers table, which stores
@@ -21,7 +22,7 @@ export class ModelProviderModel extends BaseModel<ModelProvider> {
   async findDefaults(): Promise<ModelProvider[]> {
     return this.knex(this.tableName)
       .where('is_default', true)
-      .where('status', 'active')
+      .where('status', ProviderStatus.ACTIVE)
   }
 
   /**
@@ -33,5 +34,42 @@ export class ModelProviderModel extends BaseModel<ModelProvider> {
     return this.knex(this.tableName)
       .where('model_name', modelName)
       .first()
+  }
+
+  /**
+   * @description Clear the is_default flag for all active providers of a given model type,
+   * excluding the specified provider. Used when marking a new provider as default.
+   * @param {string} modelType - The model type to clear defaults for (e.g. 'chat', 'embedding')
+   * @param {string} excludeId - Provider UUID to exclude from the update
+   * @returns {Promise<void>}
+   */
+  async clearDefaultsByModelType(modelType: string, excludeId: string): Promise<void> {
+    await this.knex(this.tableName)
+      .where('model_type', modelType)
+      .where('status', ProviderStatus.ACTIVE)
+      .whereNot('id', excludeId)
+      .update({ is_default: false })
+  }
+
+  /**
+   * @description List active providers with safe fields only (no API keys), optionally filtered by model_type.
+   * Used by config dialogs that do not require admin permission.
+   * @param {string} [modelType] - Optional model type filter (e.g. 'chat', 'embedding', 'rerank')
+   * @returns {Promise<Pick<ModelProvider, 'id' | 'factory_name' | 'model_type' | 'model_name' | 'max_tokens' | 'is_default' | 'vision'>[]>} Safe provider records without sensitive fields
+   */
+  async findPublicList(modelType?: string): Promise<Pick<ModelProvider, 'id' | 'factory_name' | 'model_type' | 'model_name' | 'max_tokens' | 'is_default' | 'vision'>[]> {
+    // Only expose safe columns — never return api_key or api_base
+    let query = this.knex(this.tableName)
+      .select('id', 'factory_name', 'model_type', 'model_name', 'max_tokens', 'is_default', 'vision')
+      .where('status', ProviderStatus.ACTIVE)
+      .orderBy('factory_name')
+      .orderBy('model_name')
+
+    // Filter by model_type if provided
+    if (modelType) {
+      query = query.where('model_type', modelType)
+    }
+
+    return query
   }
 }

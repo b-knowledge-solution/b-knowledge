@@ -30,4 +30,42 @@ export class AuditLogModel extends BaseModel<AuditLog> {
     const [result] = await query
     return result ? Number(result.count) : 0
   }
+
+  /**
+   * @description Get paginated audit log entries scoped to a set of resource IDs within a tenant.
+   *   Used for knowledge base activity feeds covering both the KB and its bound datasets.
+   * @param {string} tenantId - Tenant ID for org-scoped filtering
+   * @param {string[]} resourceIds - Array of resource IDs to include (knowledge base ID + dataset IDs)
+   * @param {number} limit - Maximum number of entries to return
+   * @param {number} offset - Pagination offset
+   * @returns {Promise<{ data: AuditLog[]; total: number }>} Paginated audit entries with total count
+   */
+  async findByResourceIdsInTenant(
+    tenantId: string,
+    resourceIds: string[],
+    limit: number,
+    offset: number
+  ): Promise<{ data: AuditLog[]; total: number }> {
+    // Base query: audit logs for the specified resource IDs within tenant
+    const baseQuery = this.knex(this.tableName)
+      .where('tenant_id', tenantId)
+      .andWhere(function () {
+        this.whereIn('resource_id', resourceIds)
+      })
+
+    // Run data fetch and count in parallel for efficiency
+    const [data, countResult] = await Promise.all([
+      baseQuery.clone()
+        .select('*')
+        .orderBy('created_at', 'desc')
+        .limit(limit)
+        .offset(offset),
+      baseQuery.clone()
+        .count('* as cnt')
+        .first(),
+    ])
+
+    const total = Number((countResult as any)?.cnt ?? 0)
+    return { data, total }
+  }
 }

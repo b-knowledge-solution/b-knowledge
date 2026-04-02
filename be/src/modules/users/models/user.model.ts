@@ -39,4 +39,18 @@ export class UserModel extends BaseModel<User> {
       .select('id', 'display_name')
       .whereIn('id', ids)
   }
+
+  /**
+   * @description Find a user by ID verifying tenant membership via user_tenant join table
+   * @param {string} userId - UUID of the user
+   * @param {string} tenantId - UUID of the tenant for multi-tenant isolation
+   * @returns {Promise<User | undefined>} User record if found and belongs to tenant
+   */
+  async findByIdAndTenant(userId: string, tenantId: string): Promise<User | undefined> {
+    return this.knex(this.tableName + ' as u')
+      .innerJoin('user_tenant as ut', 'ut.user_id', 'u.id')
+      .where('u.id', userId)
+      .andWhere('ut.tenant_id', tenantId)
+      .first()
+  }
 }

@@ -183,6 +183,52 @@ export class AnswerFeedbackModel extends BaseModel<AnswerFeedback> {
    * @param {string} [endDate] - Optional ISO date string for range end
    * @returns {Promise<TopFlaggedSession[]>} Array of top flagged sessions
    */
+  /**
+   * @description Export feedback records with user email enrichment and optional filters.
+   *   Joins with users table to include user_email. Capped at 10,000 records.
+   * @param {object} filters - Export filter options
+   * @param {string} filters.tenantId - Tenant ID for multi-tenancy isolation
+   * @param {('chat' | 'search' | 'agent')} [filters.source] - Optional source type filter
+   * @param {boolean} [filters.thumbup] - Optional thumbup value filter
+   * @param {string} [filters.startDate] - Optional ISO date string for range start
+   * @param {string} [filters.endDate] - Optional ISO date string for range end
+   * @returns {Promise<any[]>} Array of feedback records with user_email, newest first, max 10,000
+   */
+  async findForExport(filters: {
+    tenantId: string
+    source?: 'chat' | 'search' | 'agent'
+    thumbup?: boolean
+    startDate?: string
+    endDate?: string
+  }): Promise<any[]> {
+    // Build query with users join for user_email, tenant-scoped
+    let query = this.knex(this.tableName)
+      .leftJoin('users', `${this.tableName}.user_id`, 'users.id')
+      .select(`${this.tableName}.*`, 'users.email as user_email')
+      .where(`${this.tableName}.tenant_id`, filters.tenantId)
+
+    // Apply optional source filter
+    if (filters.source) {
+      query = query.where(`${this.tableName}.source`, filters.source)
+    }
+
+    // Apply optional thumbup filter
+    if (filters.thumbup !== undefined) {
+      query = query.where(`${this.tableName}.thumbup`, filters.thumbup)
+    }
+
+    // Apply optional date range filters
+    if (filters.startDate) {
+      query = query.where(`${this.tableName}.created_at`, '>=', filters.startDate)
+    }
+    if (filters.endDate) {
+      query = query.where(`${this.tableName}.created_at`, '<=', `${filters.endDate} 23:59:59`)
+    }
+
+    // Cap exports at 10000 records, ordered newest first
+    return query.orderBy(`${this.tableName}.created_at`, 'desc').limit(10000)
+  }
+
   async getTopFlaggedSessions(
     tenantId: string,
     limit: number,

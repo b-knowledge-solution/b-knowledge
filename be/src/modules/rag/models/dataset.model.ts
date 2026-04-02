@@ -99,6 +99,19 @@ export class DatasetModel extends BaseModel<Dataset> {
    * @param {Record<string, unknown>} fieldMap - Field map object to store
    * @returns {Promise<void>}
    */
+  /**
+   * @description Find datasets by IDs and return only id and parser_config columns.
+   *   Used for lightweight config lookups (e.g., checking tag_kb_ids).
+   * @param {string[]} datasetIds - Array of dataset UUIDs to look up
+   * @returns {Promise<Array<{ id: string; parser_config: unknown }>>} Matching datasets with id and parser_config
+   */
+  async findConfigByIds(datasetIds: string[]): Promise<Array<{ id: string; parser_config: unknown }>> {
+    if (datasetIds.length === 0) return []
+    return this.knex(this.tableName)
+      .select('id', 'parser_config')
+      .whereIn('id', datasetIds)
+  }
+
   async updateFieldMap(
     datasetId: string,
     fieldMap: Record<string, unknown>,
@@ -112,5 +125,16 @@ export class DatasetModel extends BaseModel<Dataset> {
           [fieldMapJson],
         ),
       })
+  }
+
+  /**
+   * @description Find all datasets for a tenant, returning only id, name, and tenant_id columns
+   * @param {string} tenantId - The tenant ID to filter by
+   * @returns {Promise<Pick<Dataset, 'id' | 'name' | 'tenant_id'>[]>} Array of dataset summary records
+   */
+  async findByTenantId(tenantId: string): Promise<Pick<Dataset, 'id' | 'name' | 'tenant_id'>[]> {
+    return this.knex(this.tableName)
+      .where('tenant_id', tenantId)
+      .select('id', 'name', 'tenant_id')
   }
 }
