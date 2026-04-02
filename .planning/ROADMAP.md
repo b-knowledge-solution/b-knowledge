@@ -119,7 +119,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 08-01-PLAN.md -- Core feature directory rename + types + API + query keys + routes
+- [x] 08-01-PLAN.md -- Core feature directory rename + types + API + query keys + routes
 - [ ] 08-02-PLAN.md -- i18n key rename (3 locales) + cross-feature reference updates
 - [ ] 08-03-PLAN.md -- Test file rename + full suite verification + stale reference audit
 
