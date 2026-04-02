@@ -277,7 +277,7 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
 
   /** Localized entity type label. */
   const entityTypeLabel = t(
-    `projectManagement.entityPermissions.entityTypes.${entityType}`,
+    `knowledgeBase.entityPermissions.entityTypes.${entityType}`,
     entityType,
   )
 
@@ -313,7 +313,7 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {t(
-                      'projectManagement.entityPermissions.privateAccessDesc',
+                      'knowledgeBase.entityPermissions.privateAccessDesc',
                       'Only selected teams or users can access this {{type}}',
                       { type: entityTypeLabel },
                     )}

@@ -93,11 +93,11 @@ const BuiltInParserFields = ({
   const { t } = useTranslation()
   const chunkMethodOptions = CHUNK_METHOD_OPTIONS.map((option) => ({
     ...option,
-    label: t(`projectManagement.categories.datasetConfig.chunkMethods.${option.value}`),
+    label: t(`knowledgeBase.categories.datasetConfig.chunkMethods.${option.value}`),
   }))
   const pdfParserOptions = PDF_PARSER_OPTIONS.map((option) => ({
     ...option,
-    label: t(`projectManagement.categories.datasetConfig.pdfParsers.${option.value}`),
+    label: t(`knowledgeBase.categories.datasetConfig.pdfParsers.${option.value}`),
   }))
 
   /**

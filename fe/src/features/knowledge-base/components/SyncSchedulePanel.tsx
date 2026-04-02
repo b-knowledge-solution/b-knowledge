@@ -30,10 +30,10 @@ interface SyncSchedulePanelProps {
 
 /** Preset schedule options. */
 const PRESETS = [
-  { value: '0 */6 * * *', labelKey: 'projectManagement.sync.schedule.every6h' },
-  { value: '0 0 * * *', labelKey: 'projectManagement.sync.schedule.daily' },
-  { value: '0 0 * * 1', labelKey: 'projectManagement.sync.schedule.weekly' },
-  { value: 'custom', labelKey: 'projectManagement.sync.schedule.custom' },
+  { value: '0 */6 * * *', labelKey: 'knowledgeBase.sync.schedule.every6h' },
+  { value: '0 0 * * *', labelKey: 'knowledgeBase.sync.schedule.daily' },
+  { value: '0 0 * * 1', labelKey: 'knowledgeBase.sync.schedule.weekly' },
+  { value: 'custom', labelKey: 'knowledgeBase.sync.schedule.custom' },
 ]
 
 // ============================================================================
