@@ -1,92 +1,159 @@
-# Roadmap — feature/rag-core
+# Roadmap: B-Knowledge
 
-## Current Milestone: RAG Core Features
+## Milestones
 
-> Migrate and stabilize core RAG features from RAGFlow into b-knowledge, including advance-rag pipeline, datasets, chat, and search.
+- ✅ **v0.1 Document Upload Pipeline** - Phases 1-6 (shipped)
+- 🚧 **v0.2 Knowledge Base Refactor & Quality** - Phases 7-10 (in progress)
+
+## Phases
+
+<details>
+<summary>v0.1 Document Upload Pipeline & v1.0 RAG Core (Phases 1-6) - SHIPPED</summary>
 
 ### Phase 1: Migrate latest RAGFlow upstream to b-knowledge
 
-**Goal:** Merge latest RAGFlow upstream (c732a1c → df2cc32f5, 49 commits) into b-knowledge using selective copy (Option A), preserving all b-knowledge integration files.
-**Requirements**: Upstream diff analysis, safe copy of pure RAGFlow dirs, manual merge of modified files, dependency updates, feature porting (EPUB, chunk images, deadlock retry), DB migrations if needed.
-**Depends on:** None (standalone)
-**Plans:** 5 plans
-
-**Upstream:** RAGFlow local folder (nightly-4-gdf2cc32f5), 60 files changed, +2,697/-1,516 lines
+**Goal:** Merge latest RAGFlow upstream (49 commits) into b-knowledge using selective copy, preserving all b-knowledge integration files.
+**Plans**: 5 plans
 
 Plans:
-- [x] **01-01**: Tier 1 — Safe overwrite of pure RAGFlow directories (deepdoc/, rag/llm/, rag/nlp/, rag/prompts/, rag/utils/, rag/flow/, common/)
-- [ ] **01-02**: Tier 2 — Manual merge of ~10-15 b-knowledge-modified RAGFlow files (rag/app/*.py, node_executor.py, task_executor.py, graphrag/*.py)
-- [ ] **01-03**: Tier 3 — Integration layer updates (pyproject.toml deps, new EPUB parser registration, chunk image support)
-- [ ] **01-04**: Tier 4 — Feature porting (aggregated parsing status, deadlock retry, PDF OCR fallback, similarity threshold bypass)
-- [ ] **01-05**: Tier 5 — Validation & patch doc (test pipeline, run tests, create patches/ragflow-port-v<NEW>-df2cc32.md)
+- [x] 01-01: Tier 1 -- Safe overwrite of pure RAGFlow directories
+- [x] 01-02: Tier 2 -- Manual merge of b-knowledge-modified RAGFlow files
+- [x] 01-03: Tier 3 -- Integration layer updates
+- [x] 01-04: Tier 4 -- Feature porting
+- [x] 01-05: Tier 5 -- Validation & patch doc
 
 ### Phase 2: Investigate mem0 for memory feature
 
-**Goal:** Evaluate mem0 as a pluggable backend replacement for b-knowledge's native memory system. Produce a go/no-go Architecture Decision Record with empirical deal-breaker verification, extraction quality comparison, performance benchmarks, full API mapping, and integration plan.
-**Requirements**: D-01 through D-26 (deal-breaker verification, API mapping, extraction quality, performance benchmarks, graph store evaluation, ADR document)
-**Depends on:** Phase 1
-**Plans:** 1/3 plans executed
+**Goal:** Evaluate mem0 as a pluggable backend replacement for b-knowledge's native memory system. Produce a go/no-go ADR.
+**Plans**: 3 plans
 
 Plans:
-- [ ] **02-01**: Environment setup + deal-breaker verification — Install mem0, test OpenSearch/multi-tenant/custom LLM against live infrastructure, check Apache AGE on PG17
-- [ ] **02-02**: Extraction quality + performance benchmarks — Compare extraction pipelines, measure add/search latency, test dedup/versioning/forgetting
-- [ ] **02-03**: Write ADR document — Synthesize findings into Architecture Decision Record with go/no-go recommendation, API mapping, integration plan
+- [x] 02-01: Environment setup + deal-breaker verification
+- [x] 02-02: Extraction quality + performance benchmarks
+- [x] 02-03: Write ADR document
 
-### Phase 3: Refactor project feature - separate project creation, category management (documents/standard/code), and versioned datasets
+### Phase 3: Refactor project feature - 3-category tabs
 
-**Goal:** Refactor the project feature from a 7-tab detail page into a streamlined 3-category-tab layout (Documents, Standard, Code) with settings sidebar. Add category_type discriminator to DB, implement type-aware dataset creation, simplify project list to create+navigate, and add Standard/Code category views with full i18n support.
-**Requirements**: D-01 through D-09 (category type tabs, type-discriminated dataset creation, parser defaults, simplified list page, settings sidebar, version management, code parsing)
-**Depends on:** Phase 2
-**Plans:** 5 plans
+**Goal:** Refactor project feature from 7-tab detail page into streamlined 3-category-tab layout (Documents, Standard, Code).
+**Plans**: 5 plans
 
 Plans:
-- [ ] **03-01**: DB migration + BE types + Zod schemas — Add category_type and dataset_id columns, update DocumentCategory interface, extend validation
-- [ ] **03-02**: BE service logic — Type-discriminated category creation (auto-create dataset for standard/code), dataset cleanup on category deletion
-- [ ] **03-03**: FE types + API + list page — Update FE types for category_type, simplify ProjectListPage to create+navigate only
-- [ ] **03-04**: FE detail page refactor — 3 category tabs, CategorySidebar, ProjectSettingsSheet, updated CategoryModal
-- [ ] **03-05**: FE content views + i18n — StandardCategoryView, CodeCategoryView, VersionList/VersionCard, all i18n keys in 3 locales
+- [x] 03-01: DB migration + BE types + Zod schemas
+- [x] 03-02: BE service logic
+- [x] 03-03: FE types + API + list page
+- [x] 03-04: FE detail page refactor
+- [x] 03-05: FE content views + i18n
 
-### Phase 4: Enhance code parser with Code-Graph-RAG - Tree-sitter Knowledge Graph and Code RAG API
+### Phase 4: Code-Graph-RAG - Tree-sitter Knowledge Graph and Code RAG API
 
-**Goal:** Enhance the code parser with a full Code-Graph-RAG pipeline: add Memgraph graph DB to infrastructure, port all 12-language parsers from code-graph-rag (StructureProcessor, ImportProcessor, DefinitionProcessor, TypeInferenceEngine, CallProcessor), store code knowledge graph in Memgraph with Cypher support, add Node.js API for graph queries via Bolt protocol with AI NL-to-Cypher translation, provide an interactive graph visualization UI, and redesign the Code tab UI with coding-style layout featuring Git clone and ZIP upload source options that feed into the code parsing → code graph → vector embedding pipeline.
-**Requirements**: Memgraph infrastructure, 12-language parser pipeline, code graph extraction from AST, deep cross-file relationship detection, Node.js Bolt API, AI Cypher generation, code snippet retrieval, reference-guided optimization, graph visualization with PNG/SVG/JSON export, Code tab UI redesign with Git/ZIP sources
-**Depends on:** Phase 3
-**Plans:** 6 plans in 5 waves
+**Goal:** Enhance code parser with full Code-Graph-RAG pipeline: Memgraph, 12-language parsers, graph API, visualization UI, Code tab redesign.
+**Plans**: 6 plans
 
 Plans:
-- [ ] **04-01**: Memgraph Infrastructure Setup — Docker service, env vars, neo4j driver
-- [ ] **04-02**: Code Graph Parser Pipeline — Port all code-graph-rag parsers (30+ files, 12 languages), pipeline interface in code.py
-- [ ] **04-03**: Task Executor Integration + Tests — Wire chunk_with_graph() into pipeline, 10+ unit tests
-- [ ] **04-04**: Node.js Code-Graph API — Express module, Memgraph Bolt queries, AI NL-to-Cypher, code snippets
-- [ ] **04-05**: Frontend Graph Visualization — Interactive graph page, node details, PNG/SVG/JSON export
-- [ ] **04-06**: Code Tab UI Redesign — Coding-style layout with Git clone + ZIP upload sources, pipeline status, integrated code graph panel
+- [x] 04-01: Memgraph Infrastructure Setup
+- [x] 04-02: Code Graph Parser Pipeline
+- [x] 04-03: Task Executor Integration + Tests
+- [x] 04-04: Node.js Code-Graph API
+- [x] 04-05: Frontend Graph Visualization
+- [x] 04-06: Code Tab UI Redesign
 
-### Phase 5: Assistant response evaluation with thumb up/down on chat and search, admin histories page in agent studio
+### Phase 5: Assistant response evaluation
 
-**Goal:** Add assistant response evaluation (thumb up/down with optional comment) to chat, search, and agent run results. Enhance the admin Histories page with feedback indicators, filters, Agent Runs tab, and CSV export. Verify Dashboard "Response Quality" section includes agent feedback data.
-**Requirements**: EVAL-01 (thumb-down comment popover), EVAL-02 (agent run feedback), EVAL-03 (histories feedback enhancements), EVAL-04 (dashboard response quality), EVAL-05 (feedback export)
-**Depends on:** Phase 4
-**Plans:** 5/5 plans complete
+**Goal:** Add assistant response evaluation (thumb up/down with comment) to chat, search, and agent runs. Enhance admin Histories page.
+**Plans**: 5 plans
 
 Plans:
-- [ ] **05-01**: DB migration + BE feedback APIs — Extend source constraint for 'agent', add list/stats/export endpoints
-- [ ] **05-02**: FE FeedbackCommentPopover — Shared thumb-down comment popover, integrate into ChatMessage, SearchResultCard, RunHistorySheet
-- [ ] **05-03**: FE Histories enhancements — Feedback indicators, filter, Agent Runs tab, CSV export, BE admin-history enrichment
-- [ ] **05-04**: FE Dashboard verification — Enhance feedback components for agent source visibility
-- [ ] **05-05**: Fix review findings — Align dashboard FE/BE types, enrich detail queries with feedback, add tenant scoping, fix search comment callback, enrich export
+- [x] 05-01: DB migration + BE feedback APIs
+- [x] 05-02: FE FeedbackCommentPopover
+- [x] 05-03: FE Histories enhancements
+- [x] 05-04: FE Dashboard verification
+- [x] 05-05: Fix review findings
 
-### Phase 6: Add Prompt builder to chat for user to build a prompt base on glossary data as task management and keyword management, refer sample prompt builder modal code in samples/PromptBuilderModal.tsx
+### Phase 6: Prompt builder for chat
 
-**Goal:** Integrate the existing glossary-based PromptBuilderModal into the chat interface. Move the component to shared, add forwardRef imperative handle to ChatInput, wire Sparkles trigger button and modal into ChatPage, and update i18n strings for direct-insertion behavior.
-**Requirements**: PB-01 (move component to shared), PB-02 (ChatInput forwardRef handle), PB-03 (glossary barrel re-export), PB-04 (Sparkles trigger button), PB-05 (ChatPage modal wiring), PB-06 (i18n updates), PB-07 (human verification)
-**Depends on:** Phase 5
-**Plans:** 2/2 plans complete
+**Goal:** Integrate glossary-based PromptBuilderModal into chat interface.
+**Plans**: 2 plans
 
 Plans:
-- [x] **06-01**: Move PromptBuilderModal to shared + ChatInput forwardRef — Relocate component, update imports, add useImperativeHandle setValue
-- [x] **06-02**: ChatPage integration + i18n — Wire Sparkles button and modal into ChatPage, update appliedToChat and add empty/error i18n keys
+- [x] 06-01: Move PromptBuilderModal to shared + ChatInput forwardRef
+- [x] 06-02: ChatPage integration + i18n
 
----
+</details>
 
-<!-- phases:start -->
-<!-- phases:end -->
+### v0.2 Knowledge Base Refactor & Quality (In Progress)
+
+**Milestone Goal:** Rename "Project" to "Knowledge Base" across the entire app, enhance chunk data quality with advanced strategies and scoring, add a 3-tier permission system, and prepare extensibility for future KB features.
+
+- [ ] **Phase 7: DB + BE + Python Rename** - Rename database schema, backend module, Python worker prefixes from "Project" to "Knowledge Base"
+- [ ] **Phase 8: Frontend Rename** - Rename all FE files, routes, components, i18n from "Project" to "Knowledge Base"; verify full test suite
+- [ ] **Phase 9: Permission System** - 3-tier KB-level and category-level permissions with permission-aware retrieval
+- [ ] **Phase 10: Chunk Quality Pipeline** - Advanced chunking strategies, heuristic quality scoring, quality UI indicators
+
+## Phase Details
+
+### Phase 7: DB + BE + Python Rename
+**Goal**: All backend layers reference "Knowledge Base" instead of "Project" -- database schema, BE module, API routes, Python worker models and prefixes are fully renamed with zero data loss
+**Depends on**: Nothing (first phase of v0.2)
+**Requirements**: REN-02, REN-03, REN-05
+**Success Criteria** (what must be TRUE):
+  1. Database tables are renamed (`projects` -> `knowledge_bases`, all `project_*` -> `kb_*`, all `project_id` FK columns -> `kb_id`) and the application starts without errors
+  2. Backend API serves routes at `/api/knowledge-bases/*` and the old `/api/projects/*` routes no longer exist
+  3. Python worker models reference renamed tables and all `ragflow_doc_meta_` prefixes are replaced with `knowledge_doc_meta_`
+  4. TypeScript backend build passes with zero `project`-named imports in the knowledge-base module
+**Plans**: TBD
+
+### Phase 8: Frontend Rename
+**Goal**: Users see "Knowledge Base" everywhere in the UI -- all pages, navigation, labels, URLs, and i18n strings reflect the new naming across all 3 locales
+**Depends on**: Phase 7
+**Requirements**: REN-01, REN-04, REN-06
+**Success Criteria** (what must be TRUE):
+  1. User sees "Knowledge Base" (not "Project") on every page, navigation item, breadcrumb, and label in English, Vietnamese, and Japanese
+  2. Browser URL paths use `/knowledge-bases/` instead of `/projects/`
+  3. FE feature directory is renamed and all TanStack Query keys reference new entity names
+  4. Full test suite (BE + FE) passes after rename with zero grep hits for stale `project` references in active code
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 9: Permission System
+**Goal**: Admins can control who accesses each Knowledge Base and at what level, with permissions enforced across UI, API, and search retrieval
+**Depends on**: Phase 7
+**Requirements**: PERM-01, PERM-02, PERM-03, PERM-04, PERM-05
+**Success Criteria** (what must be TRUE):
+  1. Admin can grant a user or team Read, Write, or Admin access to a specific Knowledge Base
+  2. Admin can set independent Read/Write/Admin permissions per category (Documents, Code, Standard) within a KB
+  3. KB creator has implicit Admin access; system super-admin and admin roles bypass KB-level permissions entirely
+  4. Search and chat results are filtered by the requesting user's KB and category permissions -- unauthorized KB content never appears
+  5. User can view and manage permission grants from the KB settings UI
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 10: Chunk Quality Pipeline
+**Goal**: Users have access to advanced chunking strategies and can see quality indicators on their chunks, improving RAG retrieval quality
+**Depends on**: Phase 7
+**Requirements**: CHUNK-01, CHUNK-02, CHUNK-03, CHUNK-04, CHUNK-05, CHUNK-06, KB-01
+**Success Criteria** (what must be TRUE):
+  1. User can select from table-aware, semantic, and recursive chunking strategies when configuring a document's parser
+  2. System computes heuristic quality scores (token count, TTR, dedup, truncation, language coherence) for every chunk at ingestion time
+  3. User can see quality indicators (score badges, flagged chunk highlighting) on the chunk list UI
+  4. Quality scores are stored as OpenSearch metadata fields and available for future query-time filtering
+**Plans**: TBD
+**UI hint**: yes
+
+## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 7 -> 8 -> 9 -> 10
+Note: Phases 8, 9, and 10 all depend on Phase 7 but are independent of each other.
+
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. RAGFlow Merge | v0.1 | 5/5 | Complete | - |
+| 2. mem0 Evaluation | v0.1 | 3/3 | Complete | - |
+| 3. Project Refactor | v0.1 | 5/5 | Complete | - |
+| 4. Code-Graph-RAG | v0.1 | 6/6 | Complete | - |
+| 5. Response Evaluation | v0.1 | 5/5 | Complete | - |
+| 6. Prompt Builder | v0.1 | 2/2 | Complete | - |
+| 7. DB + BE + Python Rename | v0.2 | 0/? | Not started | - |
+| 8. Frontend Rename | v0.2 | 0/? | Not started | - |
+| 9. Permission System | v0.2 | 0/? | Not started | - |
+| 10. Chunk Quality Pipeline | v0.2 | 0/? | Not started | - |
