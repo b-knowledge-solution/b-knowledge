@@ -1,98 +1,98 @@
 /**
- * @fileoverview Core project service handling CRUD, default category/version creation, and RBAC.
- * @module services/projects
+ * @fileoverview Core knowledge base service handling CRUD, default category/version creation, and RBAC.
+ * @module services/knowledge-base
  */
 import { ModelFactory } from '@/shared/models/factory.js'
 import { db } from '@/shared/db/knex.js'
 import { log } from '@/shared/services/logger.service.js'
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js'
 import { teamService } from '@/modules/teams/services/team.service.js'
-import { Project, ProjectPermission, ProjectDataset, UserContext } from '@/shared/models/types.js'
-import { projectCategoryService } from './project-category.service.js'
+import { KnowledgeBase, KnowledgeBasePermission, KnowledgeBaseDataset, UserContext } from '@/shared/models/types.js'
+import { knowledgeBaseCategoryService } from './knowledge-base-category.service.js'
 import { config } from '@/shared/config/index.js'
 import { UserRole } from '@/shared/constants/index.js'
 
 /**
- * @description Core project service handling CRUD operations, auto-dataset creation on project setup,
- *   RBAC-based project listing, permission management, and entity-level access control
+ * @description Core knowledge base service handling CRUD operations, auto-dataset creation on knowledge base setup,
+ *   RBAC-based knowledge base listing, permission management, and entity-level access control
  */
-export class ProjectsService {
+export class KnowledgeBaseService {
   /**
-   * @description Get all projects accessible to the given user based on RBAC rules and tenant isolation.
-   *   Admins see all projects within the tenant. Other users see public projects and those
+   * @description Get all knowledge bases accessible to the given user based on RBAC rules and tenant isolation.
+   *   Admins see all knowledge bases within the tenant. Other users see public knowledge bases and those
    *   they have explicit permissions for (directly or via team membership).
    * @param {UserContext} user - Authenticated user context
    * @param {string} tenantId - Tenant ID for org-scoped filtering (required for multi-tenant isolation)
-   * @returns {Promise<Project[]>} Array of accessible projects
+   * @returns {Promise<KnowledgeBase[]>} Array of accessible knowledge bases
    */
-  async getAccessibleProjects(user: UserContext, tenantId: string): Promise<Project[]> {
-    // Admins see all active projects within the tenant scope
+  async getAccessibleKnowledgeBases(user: UserContext, tenantId: string): Promise<KnowledgeBase[]> {
+    // Admins see all active knowledge bases within the tenant scope
     if (user.role === UserRole.ADMIN || user.role === UserRole.SUPERADMIN) {
-      return ModelFactory.project.findByTenant(tenantId)
+      return ModelFactory.knowledgeBase.findByTenant(tenantId)
     }
 
-    // Fetch all active projects scoped to this tenant
-    const allProjects = await ModelFactory.project.findByTenant(tenantId)
+    // Fetch all active knowledge bases scoped to this tenant
+    const allKnowledgeBases = await ModelFactory.knowledgeBase.findByTenant(tenantId)
 
     // Get user's team IDs for team-based permission checks
     const userTeams = await teamService.getUserTeams(user.id)
     const teamIds = userTeams.map((t: any) => t.id)
 
     // Get all permissions for this user (direct + team)
-    const userPerms = await ModelFactory.projectPermission.findByGrantee('user', user.id)
-    const userPermProjectIds = new Set(userPerms.map(p => p.project_id))
+    const userPerms = await ModelFactory.knowledgeBasePermission.findByGrantee('user', user.id)
+    const userPermKnowledgeBaseIds = new Set(userPerms.map(p => p.knowledge_base_id))
 
     // Get team permissions
-    const teamPermProjectIds = new Set<string>()
+    const teamPermKnowledgeBaseIds = new Set<string>()
     for (const teamId of teamIds) {
-      const teamPerms = await ModelFactory.projectPermission.findByGrantee('team', teamId)
-      teamPerms.forEach(p => teamPermProjectIds.add(p.project_id))
+      const teamPerms = await ModelFactory.knowledgeBasePermission.findByGrantee('team', teamId)
+      teamPerms.forEach(p => teamPermKnowledgeBaseIds.add(p.knowledge_base_id))
     }
 
-    // Filter: show public projects, projects created by user, or those with permissions
-    return allProjects.filter(p => {
-      if (!p.is_private) return true
-      if (p.created_by === user.id) return true
-      if (userPermProjectIds.has(p.id)) return true
-      if (teamPermProjectIds.has(p.id)) return true
+    // Filter: show public knowledge bases, knowledge bases created by user, or those with permissions
+    return allKnowledgeBases.filter(kb => {
+      if (!kb.is_private) return true
+      if (kb.created_by === user.id) return true
+      if (userPermKnowledgeBaseIds.has(kb.id)) return true
+      if (teamPermKnowledgeBaseIds.has(kb.id)) return true
       return false
     })
   }
 
   /**
-   * @description Retrieve a single project by its UUID
-   * @param {string} id - UUID of the project
-   * @returns {Promise<Project | undefined>} Project record or undefined if not found
+   * @description Retrieve a single knowledge base by its UUID
+   * @param {string} id - UUID of the knowledge base
+   * @returns {Promise<KnowledgeBase | undefined>} Knowledge base record or undefined if not found
    */
-  async getProjectById(id: string): Promise<Project | undefined> {
-    return ModelFactory.project.findById(id)
+  async getKnowledgeBaseById(id: string): Promise<KnowledgeBase | undefined> {
+    return ModelFactory.knowledgeBase.findById(id)
   }
 
   /**
-   * @description Create a new project. If first_version_label is provided, also creates
+   * @description Create a new knowledge base. If first_version_label is provided, also creates
    *   a default document category and first version (which triggers auto-dataset creation).
-   * @param {any} data - Project creation data including name, embedding model defaults, optional first_version_label
+   * @param {any} data - Knowledge base creation data including name, embedding model defaults, optional first_version_label
    * @param {UserContext} user - Authenticated user context
    * @param {string} [tenantId] - Tenant ID for org-scoped audit logging
-   * @returns {Promise<Project>} The created project
-   * @throws {Error} If project creation fails
+   * @returns {Promise<KnowledgeBase>} The created knowledge base
+   * @throws {Error} If knowledge base creation fails
    */
-  async createProject(data: any, user: UserContext, tenantId?: string): Promise<Project> {
+  async createKnowledgeBase(data: any, user: UserContext, tenantId?: string): Promise<KnowledgeBase> {
     try {
-      // Check for duplicate project name within the same tenant
-      const query = ModelFactory.project.getKnex()
+      // Check for duplicate knowledge base name within the same tenant
+      const query = ModelFactory.knowledgeBase.getKnex()
         .where('name', data.name)
         .whereNot('status', 'deleted')
       // Scope duplicate check to tenant if provided
       if (tenantId) query.andWhere('tenant_id', tenantId)
-      const existingProject = await query.first()
+      const existingKnowledgeBase = await query.first()
 
-      if (existingProject) {
-        throw new Error('Project with this name already exists')
+      if (existingKnowledgeBase) {
+        throw new Error('Knowledge base with this name already exists')
       }
 
-      // Create the project record with tenant_id for multi-tenant isolation
-      const project = await ModelFactory.project.create({
+      // Create the knowledge base record with tenant_id for multi-tenant isolation
+      const knowledgeBase = await ModelFactory.knowledgeBase.create({
         name: data.name,
         description: data.description || null,
         avatar: data.avatar || null,
@@ -109,54 +109,54 @@ export class ProjectsService {
       // If first_version_label is provided, auto-create a default category + first version
       if (data.first_version_label) {
         try {
-          // Create a default document category for the project
-          const category = await projectCategoryService.createCategory(project.id, {
+          // Create a default document category for the knowledge base
+          const category = await knowledgeBaseCategoryService.createCategory(knowledgeBase.id, {
             name: 'Default',
-            description: `Default document category for project: ${project.name}`,
+            description: `Default document category for knowledge base: ${knowledgeBase.name}`,
           }, user)
 
           // Create the first version (this triggers auto-dataset creation in category service)
-          await projectCategoryService.createVersion(category.id, {
+          await knowledgeBaseCategoryService.createVersion(category.id, {
             version_label: data.first_version_label,
-            project_id: project.id,
+            knowledge_base_id: knowledgeBase.id,
           }, user)
         } catch (versionError) {
-          // Non-blocking: project is still created even if version setup fails
-          log.warn('Failed to auto-create default category/version for project', {
-            error: String(versionError), projectId: project.id,
+          // Non-blocking: knowledge base is still created even if version setup fails
+          log.warn('Failed to auto-create default category/version for knowledge base', {
+            error: String(versionError), knowledgeBaseId: knowledgeBase.id,
           })
         }
       }
 
-      // Audit log the project creation with tenant context
+      // Audit log the knowledge base creation with tenant context
       await auditService.log({
         userId: user.id,
         userEmail: user.email,
         action: AuditAction.CREATE_SOURCE,
         resourceType: AuditResourceType.DATASET,
-        resourceId: project.id,
-        details: { name: project.name, type: 'project' },
+        resourceId: knowledgeBase.id,
+        details: { name: knowledgeBase.name, type: 'knowledge_base' },
         ipAddress: user.ip,
         tenantId,
       })
 
-      return project
+      return knowledgeBase
     } catch (error) {
-      log.error('Failed to create project', { error: String(error) })
+      log.error('Failed to create knowledge base', { error: String(error) })
       throw error
     }
   }
 
   /**
-   * @description Update an existing project with partial data and log the change to audit
-   * @param {string} id - UUID of the project
+   * @description Update an existing knowledge base with partial data and log the change to audit
+   * @param {string} id - UUID of the knowledge base
    * @param {any} data - Partial update data
    * @param {UserContext} user - Authenticated user context
    * @param {string} [tenantId] - Tenant ID for org-scoped audit logging
-   * @returns {Promise<Project | undefined>} Updated project or undefined if not found
+   * @returns {Promise<KnowledgeBase | undefined>} Updated knowledge base or undefined if not found
    * @throws {Error} If update fails
    */
-  async updateProject(id: string, data: any, user: UserContext, tenantId?: string): Promise<Project | undefined> {
+  async updateKnowledgeBase(id: string, data: any, user: UserContext, tenantId?: string): Promise<KnowledgeBase | undefined> {
     try {
       // Build update payload, only including provided fields
       const updateData: any = { updated_by: user.id }
@@ -169,48 +169,48 @@ export class ProjectsService {
       if (data.status !== undefined) updateData.status = data.status
       if (data.is_private !== undefined) updateData.is_private = data.is_private
 
-      const project = await ModelFactory.project.update(id, updateData)
+      const knowledgeBase = await ModelFactory.knowledgeBase.update(id, updateData)
 
       // Audit log with tenant context
-      if (project) {
+      if (knowledgeBase) {
         await auditService.log({
           userId: user.id,
           userEmail: user.email,
           action: AuditAction.UPDATE_SOURCE,
           resourceType: AuditResourceType.DATASET,
           resourceId: id,
-          details: { changes: data, type: 'project' },
+          details: { changes: data, type: 'knowledge_base' },
           ipAddress: user.ip,
           tenantId,
         })
       }
 
-      return project
+      return knowledgeBase
     } catch (error) {
-      log.error('Failed to update project', { error: String(error) })
+      log.error('Failed to update knowledge base', { error: String(error) })
       throw error
     }
   }
 
   /**
-   * @description Delete a project and cascade-delete any auto-created datasets linked to it
-   * @param {string} id - UUID of the project
+   * @description Delete a knowledge base and cascade-delete any auto-created datasets linked to it
+   * @param {string} id - UUID of the knowledge base
    * @param {UserContext} user - Authenticated user context
    * @param {string} [tenantId] - Tenant ID for org-scoped audit logging
    * @returns {Promise<void>}
    * @throws {Error} If deletion fails
    */
-  async deleteProject(id: string, user: UserContext, tenantId?: string): Promise<void> {
+  async deleteKnowledgeBase(id: string, user: UserContext, tenantId?: string): Promise<void> {
     try {
       // Find and delete auto-created datasets
-      const autoLinks = await ModelFactory.projectDataset.findAutoCreated(id)
+      const autoLinks = await ModelFactory.knowledgeBaseDataset.findAutoCreated(id)
       for (const link of autoLinks) {
         // Soft-delete the auto-created dataset
         await ModelFactory.dataset.update(link.dataset_id, { status: 'deleted' })
       }
 
-      // Delete the project (cascades to permissions, categories, chats, searches, etc.)
-      await ModelFactory.project.delete(id)
+      // Delete the knowledge base (cascades to permissions, categories, chats, searches, etc.)
+      await ModelFactory.knowledgeBase.delete(id)
 
       // Audit log with tenant context
       await auditService.log({
@@ -219,12 +219,12 @@ export class ProjectsService {
         action: AuditAction.DELETE_SOURCE,
         resourceType: AuditResourceType.DATASET,
         resourceId: id,
-        details: { type: 'project' },
+        details: { type: 'knowledge_base' },
         ipAddress: user.ip,
         tenantId,
       })
     } catch (error) {
-      log.error('Failed to delete project', { error: String(error) })
+      log.error('Failed to delete knowledge base', { error: String(error) })
       throw error
     }
   }
@@ -234,26 +234,26 @@ export class ProjectsService {
   // -------------------------------------------------------------------------
 
   /**
-   * @description Get all permission entries for a project
-   * @param {string} projectId - UUID of the project
-   * @returns {Promise<ProjectPermission[]>} Array of permission records
+   * @description Get all permission entries for a knowledge base
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
+   * @returns {Promise<KnowledgeBasePermission[]>} Array of permission records
    */
-  async getPermissions(projectId: string): Promise<ProjectPermission[]> {
-    return ModelFactory.projectPermission.findByProjectId(projectId)
+  async getPermissions(knowledgeBaseId: string): Promise<KnowledgeBasePermission[]> {
+    return ModelFactory.knowledgeBasePermission.findByKnowledgeBaseId(knowledgeBaseId)
   }
 
   /**
-   * @description Set (upsert) a permission for a project, updating if one already exists for the grantee
-   * @param {string} projectId - UUID of the project
+   * @description Set (upsert) a permission for a knowledge base, updating if one already exists for the grantee
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
    * @param {any} data - Permission data including grantee_type, grantee_id, tab access levels
    * @param {UserContext} user - Authenticated user context
-   * @returns {Promise<ProjectPermission>} Created or updated permission record
+   * @returns {Promise<KnowledgeBasePermission>} Created or updated permission record
    */
-  async setPermission(projectId: string, data: any, user: UserContext): Promise<ProjectPermission> {
+  async setPermission(knowledgeBaseId: string, data: any, user: UserContext): Promise<KnowledgeBasePermission> {
     // Check if permission already exists
-    const existing = await ModelFactory.projectPermission.getKnex()
+    const existing = await ModelFactory.knowledgeBasePermission.getKnex()
       .where({
-        project_id: projectId,
+        knowledge_base_id: knowledgeBaseId,
         grantee_type: data.grantee_type,
         grantee_id: data.grantee_id,
       })
@@ -261,7 +261,7 @@ export class ProjectsService {
 
     if (existing) {
       // Update existing permission
-      const updated = await ModelFactory.projectPermission.update(existing.id, {
+      const updated = await ModelFactory.knowledgeBasePermission.update(existing.id, {
         tab_documents: data.tab_documents ?? existing.tab_documents,
         tab_chat: data.tab_chat ?? existing.tab_chat,
         tab_settings: data.tab_settings ?? existing.tab_settings,
@@ -271,8 +271,8 @@ export class ProjectsService {
     }
 
     // Create new permission
-    return ModelFactory.projectPermission.create({
-      project_id: projectId,
+    return ModelFactory.knowledgeBasePermission.create({
+      knowledge_base_id: knowledgeBaseId,
       grantee_type: data.grantee_type,
       grantee_id: data.grantee_id,
       tab_documents: data.tab_documents ?? 'none',
@@ -289,37 +289,37 @@ export class ProjectsService {
    * @returns {Promise<void>}
    */
   async deletePermission(permId: string): Promise<void> {
-    await ModelFactory.projectPermission.delete(permId)
+    await ModelFactory.knowledgeBasePermission.delete(permId)
   }
 
   // -------------------------------------------------------------------------
-  // Project Datasets
+  // Knowledge Base Datasets
   // -------------------------------------------------------------------------
 
   /**
-   * @description Get all datasets linked to a project
-   * @param {string} projectId - UUID of the project
-   * @returns {Promise<ProjectDataset[]>} Array of project-dataset link records
+   * @description Get all datasets linked to a knowledge base
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
+   * @returns {Promise<KnowledgeBaseDataset[]>} Array of knowledge-base-dataset link records
    */
-  async getProjectDatasets(projectId: string): Promise<ProjectDataset[]> {
-    return ModelFactory.projectDataset.findByProjectId(projectId)
+  async getKnowledgeBaseDatasets(knowledgeBaseId: string): Promise<KnowledgeBaseDataset[]> {
+    return ModelFactory.knowledgeBaseDataset.findByKnowledgeBaseId(knowledgeBaseId)
   }
 
   /**
-   * @description Link an existing dataset or create a new one and link it to a project
-   * @param {string} projectId - UUID of the project
+   * @description Link an existing dataset or create a new one and link it to a knowledge base
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
    * @param {any} data - Link data with dataset_id, or create_new + dataset_name for new dataset
    * @param {UserContext} user - Authenticated user context
-   * @returns {Promise<ProjectDataset>} Created project-dataset link record
+   * @returns {Promise<KnowledgeBaseDataset>} Created knowledge-base-dataset link record
    */
-  async linkDataset(projectId: string, data: any, user: UserContext): Promise<ProjectDataset> {
+  async linkDataset(knowledgeBaseId: string, data: any, user: UserContext): Promise<KnowledgeBaseDataset> {
     let datasetId = data.dataset_id
 
     // If creating a new dataset
     if (data.create_new && data.dataset_name) {
       const dataset = await ModelFactory.dataset.create({
         name: data.dataset_name,
-        description: `Dataset for project`,
+        description: `Dataset for knowledge base`,
         status: 'active',
         created_by: user.id,
         updated_by: user.id,
@@ -328,22 +328,22 @@ export class ProjectsService {
     }
 
     // Create the link
-    return ModelFactory.projectDataset.create({
-      project_id: projectId,
+    return ModelFactory.knowledgeBaseDataset.create({
+      knowledge_base_id: knowledgeBaseId,
       dataset_id: datasetId,
       auto_created: !!data.create_new,
     })
   }
 
   /**
-   * @description Remove the link between a dataset and a project
-   * @param {string} projectId - UUID of the project
+   * @description Remove the link between a dataset and a knowledge base
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
    * @param {string} datasetId - UUID of the dataset
    * @returns {Promise<void>}
    */
-  async unlinkDataset(projectId: string, datasetId: string): Promise<void> {
-    await ModelFactory.projectDataset.delete({
-      project_id: projectId,
+  async unlinkDataset(knowledgeBaseId: string, datasetId: string): Promise<void> {
+    await ModelFactory.knowledgeBaseDataset.delete({
+      knowledge_base_id: knowledgeBaseId,
       dataset_id: datasetId,
     } as any)
   }
@@ -353,24 +353,24 @@ export class ProjectsService {
   // -------------------------------------------------------------------------
 
   /**
-   * @description Get all entity-level permissions for a project
-   * @param {string} projectId - UUID of the project
+   * @description Get all entity-level permissions for a knowledge base
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
    * @returns {Promise<any[]>} Array of entity permission records
    */
-  async getEntityPermissions(projectId: string): Promise<any[]> {
-    return ModelFactory.projectEntityPermission.findByProjectId(projectId)
+  async getEntityPermissions(knowledgeBaseId: string): Promise<any[]> {
+    return ModelFactory.knowledgeBaseEntityPermission.findByKnowledgeBaseId(knowledgeBaseId)
   }
 
   /**
    * @description Create a fine-grained entity-level permission grant
-   * @param {string} projectId - UUID of the project
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
    * @param {any} data - Entity permission data including entity_type, entity_id, grantee info
    * @param {UserContext} user - Authenticated user context
    * @returns {Promise<any>} Created entity permission record
    */
-  async createEntityPermission(projectId: string, data: any, user: UserContext): Promise<any> {
-    return ModelFactory.projectEntityPermission.create({
-      project_id: projectId,
+  async createEntityPermission(knowledgeBaseId: string, data: any, user: UserContext): Promise<any> {
+    return ModelFactory.knowledgeBaseEntityPermission.create({
+      knowledge_base_id: knowledgeBaseId,
       entity_type: data.entity_type,
       entity_id: data.entity_id,
       grantee_type: data.grantee_type,
@@ -387,50 +387,50 @@ export class ProjectsService {
    * @returns {Promise<void>}
    */
   async deleteEntityPermission(permId: string): Promise<void> {
-    await ModelFactory.projectEntityPermission.delete(permId)
+    await ModelFactory.knowledgeBaseEntityPermission.delete(permId)
   }
 
   // -------------------------------------------------------------------------
-  // Member Management (PROJ-03)
+  // Member Management
   // -------------------------------------------------------------------------
 
   /**
-   * @description Get all user members of a project with their profile details.
-   *   Queries project_permissions for grantee_type='user' and JOINs with users table.
-   * @param {string} projectId - UUID of the project
+   * @description Get all user members of a knowledge base with their profile details.
+   *   Queries knowledge_base_permissions for grantee_type='user' and JOINs with users table.
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
    * @returns {Promise<Array<{ id: string; user_id: string; email: string; name: string; role: string; created_at: Date }>>}
    *   Array of member objects with user profile info
    */
-  async getProjectMembers(projectId: string): Promise<Array<{
+  async getKnowledgeBaseMembers(knowledgeBaseId: string): Promise<Array<{
     id: string; user_id: string; email: string; name: string; role: string; created_at: Date
   }>> {
-    // JOIN project_permissions with users to get member profile details in a single query
-    return db('project_permissions as pp')
+    // JOIN knowledge_base_permissions with users to get member profile details in a single query
+    return db('knowledge_base_permissions as kbp')
       .select(
-        'pp.id',
-        'pp.grantee_id as user_id',
+        'kbp.id',
+        'kbp.grantee_id as user_id',
         'u.email',
         db.raw("COALESCE(u.nickname, u.email) as name"),
         'u.role',
-        'pp.created_at',
+        'kbp.created_at',
       )
-      .innerJoin('users as u', 'u.id', 'pp.grantee_id')
-      .where('pp.project_id', projectId)
-      .andWhere('pp.grantee_type', 'user')
-      .orderBy('pp.created_at', 'desc')
+      .innerJoin('users as u', 'u.id', 'kbp.grantee_id')
+      .where('kbp.knowledge_base_id', knowledgeBaseId)
+      .andWhere('kbp.grantee_type', 'user')
+      .orderBy('kbp.created_at', 'desc')
   }
 
   /**
-   * @description Add a user as a member of a project with default view permissions.
+   * @description Add a user as a member of a knowledge base with default view permissions.
    *   Validates that the user exists within the same tenant before granting access.
-   * @param {string} projectId - UUID of the project
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
    * @param {string} userId - UUID of the user to add
    * @param {string} addedBy - UUID of the user performing the action
    * @param {string} tenantId - Tenant ID for org-scoped validation and audit logging
-   * @returns {Promise<ProjectPermission>} The created permission record
+   * @returns {Promise<KnowledgeBasePermission>} The created permission record
    * @throws {Error} If user not found in the same tenant
    */
-  async addMember(projectId: string, userId: string, addedBy: string, tenantId: string): Promise<ProjectPermission> {
+  async addMember(knowledgeBaseId: string, userId: string, addedBy: string, tenantId: string): Promise<KnowledgeBasePermission> {
     // Verify user exists within the same tenant for multi-tenant isolation
     const user = await db('users as u')
       .innerJoin('user_tenant as ut', 'ut.user_id', 'u.id')
@@ -443,8 +443,8 @@ export class ProjectsService {
     }
 
     // Create permission with default view access on documents and chat tabs
-    const permission = await ModelFactory.projectPermission.create({
-      project_id: projectId,
+    const permission = await ModelFactory.knowledgeBasePermission.create({
+      knowledge_base_id: knowledgeBaseId,
       grantee_type: 'user',
       grantee_id: userId,
       tab_documents: 'view',
@@ -459,7 +459,7 @@ export class ProjectsService {
       userEmail: user.email || '',
       action: AuditAction.SET_PERMISSION,
       resourceType: AuditResourceType.PERMISSION,
-      resourceId: projectId,
+      resourceId: knowledgeBaseId,
       details: { type: 'add_member', member_id: userId },
       tenantId,
     })
@@ -468,25 +468,25 @@ export class ProjectsService {
   }
 
   /**
-   * @description Remove a user from a project by deleting their permission entry.
-   *   Rejects removal of the project creator to prevent orphaned projects.
-   * @param {string} projectId - UUID of the project
+   * @description Remove a user from a knowledge base by deleting their permission entry.
+   *   Rejects removal of the knowledge base creator to prevent orphaned knowledge bases.
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
    * @param {string} userId - UUID of the user to remove
    * @param {string} removedBy - UUID of the user performing the action
    * @param {string} tenantId - Tenant ID for audit logging
    * @returns {Promise<void>}
-   * @throws {Error} If trying to remove the project creator
+   * @throws {Error} If trying to remove the knowledge base creator
    */
-  async removeMember(projectId: string, userId: string, removedBy: string, tenantId: string): Promise<void> {
-    // Prevent removal of the project creator to avoid orphaned projects
-    const project = await ModelFactory.project.findById(projectId)
-    if (project && project.created_by === userId) {
-      throw new Error('Cannot remove the project creator')
+  async removeMember(knowledgeBaseId: string, userId: string, removedBy: string, tenantId: string): Promise<void> {
+    // Prevent removal of the knowledge base creator to avoid orphaned knowledge bases
+    const knowledgeBase = await ModelFactory.knowledgeBase.findById(knowledgeBaseId)
+    if (knowledgeBase && knowledgeBase.created_by === userId) {
+      throw new Error('Cannot remove the knowledge base creator')
     }
 
     // Delete the permission entry for this user
-    await ModelFactory.projectPermission.delete({
-      project_id: projectId,
+    await ModelFactory.knowledgeBasePermission.delete({
+      knowledge_base_id: knowledgeBaseId,
       grantee_type: 'user',
       grantee_id: userId,
     } as any)
@@ -497,37 +497,37 @@ export class ProjectsService {
       userEmail: '',
       action: AuditAction.SET_PERMISSION,
       resourceType: AuditResourceType.PERMISSION,
-      resourceId: projectId,
+      resourceId: knowledgeBaseId,
       details: { type: 'remove_member', member_id: userId },
       tenantId,
     })
   }
 
   // -------------------------------------------------------------------------
-  // Dataset Binding (PROJ-02)
+  // Dataset Binding
   // -------------------------------------------------------------------------
 
   /**
-   * @description Bind one or more datasets to a project using a single INSERT with ON CONFLICT DO NOTHING.
+   * @description Bind one or more datasets to a knowledge base using a single INSERT with ON CONFLICT DO NOTHING.
    *   Avoids N+1 inserts by batching all dataset IDs into one query.
-   * @param {string} projectId - UUID of the project
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
    * @param {string[]} datasetIds - Array of dataset UUIDs to bind
    * @param {string} userId - UUID of the user performing the action
    * @param {string} tenantId - Tenant ID for audit logging
    * @returns {Promise<void>}
    */
-  async bindDatasets(projectId: string, datasetIds: string[], userId: string, tenantId: string): Promise<void> {
+  async bindDatasets(knowledgeBaseId: string, datasetIds: string[], userId: string, tenantId: string): Promise<void> {
     // Build batch rows for a single INSERT with conflict handling
     const rows = datasetIds.map(datasetId => ({
-      project_id: projectId,
+      knowledge_base_id: knowledgeBaseId,
       dataset_id: datasetId,
       auto_created: false,
     }))
 
-    // Single INSERT with ON CONFLICT DO NOTHING to skip duplicates (Pitfall 3: no N+1)
-    await db('project_datasets')
+    // Single INSERT with ON CONFLICT DO NOTHING to skip duplicates (no N+1)
+    await db('knowledge_base_datasets')
       .insert(rows)
-      .onConflict(['project_id', 'dataset_id'])
+      .onConflict(['knowledge_base_id', 'dataset_id'])
       .ignore()
 
     // Audit log the binding action
@@ -536,24 +536,24 @@ export class ProjectsService {
       userEmail: '',
       action: AuditAction.UPDATE_SOURCE,
       resourceType: AuditResourceType.DATASET,
-      resourceId: projectId,
+      resourceId: knowledgeBaseId,
       details: { type: 'bind_datasets', dataset_ids: datasetIds },
       tenantId,
     })
   }
 
   /**
-   * @description Unbind a single dataset from a project. Immediate access revocation.
-   * @param {string} projectId - UUID of the project
+   * @description Unbind a single dataset from a knowledge base. Immediate access revocation.
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
    * @param {string} datasetId - UUID of the dataset to unbind
    * @param {string} userId - UUID of the user performing the action
    * @param {string} tenantId - Tenant ID for audit logging
    * @returns {Promise<void>}
    */
-  async unbindDataset(projectId: string, datasetId: string, userId: string, tenantId: string): Promise<void> {
-    // Delete the project-dataset link for immediate access revocation
-    await ModelFactory.projectDataset.delete({
-      project_id: projectId,
+  async unbindDataset(knowledgeBaseId: string, datasetId: string, userId: string, tenantId: string): Promise<void> {
+    // Delete the knowledge-base-dataset link for immediate access revocation
+    await ModelFactory.knowledgeBaseDataset.delete({
+      knowledge_base_id: knowledgeBaseId,
       dataset_id: datasetId,
     } as any)
 
@@ -563,34 +563,34 @@ export class ProjectsService {
       userEmail: '',
       action: AuditAction.UPDATE_SOURCE,
       resourceType: AuditResourceType.DATASET,
-      resourceId: projectId,
+      resourceId: knowledgeBaseId,
       details: { type: 'unbind_dataset', dataset_id: datasetId },
       tenantId,
     })
   }
 
   // -------------------------------------------------------------------------
-  // Cross-Project Dataset Resolver (PROJ-04)
+  // Cross-Knowledge-Base Dataset Resolver
   // -------------------------------------------------------------------------
 
   /**
-   * @description Resolve all unique dataset IDs accessible to a user across all their projects.
-   *   Uses a single JOIN query to avoid N+1 (Pitfall 3). Returns deduplicated dataset IDs.
+   * @description Resolve all unique dataset IDs accessible to a user across all their knowledge bases.
+   *   Uses a single JOIN query to avoid N+1. Returns deduplicated dataset IDs.
    * @param {string} userId - UUID of the user
    * @param {string} tenantId - Tenant ID for org-scoped filtering
    * @returns {Promise<string[]>} Deduplicated array of dataset UUIDs the user can access
    */
-  async resolveProjectDatasets(userId: string, tenantId: string): Promise<string[]> {
-    // Single query with JOIN to resolve all datasets from user's projects (no N+1)
-    const rows = await db('project_datasets as pd')
-      .select('pd.dataset_id')
+  async resolveKnowledgeBaseDatasets(userId: string, tenantId: string): Promise<string[]> {
+    // Single query with JOIN to resolve all datasets from user's knowledge bases (no N+1)
+    const rows = await db('knowledge_base_datasets as kbd')
+      .select('kbd.dataset_id')
       .distinct()
-      .innerJoin('project_permissions as pp', 'pd.project_id', 'pp.project_id')
-      .where('pp.grantee_type', 'user')
-      .andWhere('pp.grantee_id', userId)
-      .whereIn('pd.project_id', function () {
-        // Sub-select: only projects within the user's tenant
-        this.select('id').from('projects').where('tenant_id', tenantId)
+      .innerJoin('knowledge_base_permissions as kbp', 'kbd.knowledge_base_id', 'kbp.knowledge_base_id')
+      .where('kbp.grantee_type', 'user')
+      .andWhere('kbp.grantee_id', userId)
+      .whereIn('kbd.knowledge_base_id', function () {
+        // Sub-select: only knowledge bases within the user's tenant
+        this.select('id').from('knowledge_base').where('tenant_id', tenantId)
       })
 
     return rows.map((r: any) => r.dataset_id)
@@ -601,26 +601,26 @@ export class ProjectsService {
   // -------------------------------------------------------------------------
 
   /**
-   * @description Get paginated audit log entries scoped to a project and its bound datasets.
-   *   Includes both direct project actions and actions on datasets linked to the project.
-   * @param {string} projectId - UUID of the project
+   * @description Get paginated audit log entries scoped to a knowledge base and its bound datasets.
+   *   Includes both direct knowledge base actions and actions on datasets linked to the knowledge base.
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
    * @param {string} tenantId - Tenant ID for org-scoped filtering
    * @param {number} limit - Maximum number of entries to return
    * @param {number} offset - Pagination offset
    * @returns {Promise<{ data: any[]; total: number }>} Paginated audit entries with total count
    */
-  async getProjectActivity(projectId: string, tenantId: string, limit: number, offset: number): Promise<{ data: any[]; total: number }> {
-    // Build sub-query for dataset IDs linked to this project
-    const datasetIdsSub = db('project_datasets')
+  async getKnowledgeBaseActivity(knowledgeBaseId: string, tenantId: string, limit: number, offset: number): Promise<{ data: any[]; total: number }> {
+    // Build sub-query for dataset IDs linked to this knowledge base
+    const datasetIdsSub = db('knowledge_base_datasets')
       .select('dataset_id')
-      .where('project_id', projectId)
+      .where('knowledge_base_id', knowledgeBaseId)
 
-    // Base query: audit logs for the project itself or its linked datasets
+    // Base query: audit logs for the knowledge base itself or its linked datasets
     const baseQuery = db('audit_logs')
       .where('tenant_id', tenantId)
       .andWhere(function () {
-        // Include direct project actions and actions on bound datasets
-        this.where('resource_id', projectId)
+        // Include direct knowledge base actions and actions on bound datasets
+        this.where('resource_id', knowledgeBaseId)
           .orWhereIn('resource_id', datasetIdsSub)
       })
 
@@ -649,4 +649,4 @@ export class ProjectsService {
 }
 
 /** Singleton instance */
-export const projectsService = new ProjectsService()
+export const knowledgeBaseService = new KnowledgeBaseService()

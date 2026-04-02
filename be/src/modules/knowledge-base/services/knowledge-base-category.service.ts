@@ -1,6 +1,6 @@
 /**
- * @fileoverview Service for document category and version management within projects.
- * @module services/project-category
+ * @fileoverview Service for document category and version management within knowledge bases.
+ * @module services/knowledge-base-category
  */
 import fs from 'fs'
 import os from 'os'
@@ -22,20 +22,20 @@ const CODE_EXTENSIONS = new Set([
 
 /**
  * @description Service handling document category CRUD, version management,
- *   and version file listing within projects
+ *   and version file listing within knowledge bases
  */
-export class ProjectCategoryService {
+export class KnowledgeBaseCategoryService {
   // -------------------------------------------------------------------------
   // Categories
   // -------------------------------------------------------------------------
 
   /**
-   * @description List all document categories for a project
-   * @param {string} projectId - UUID of the project
+   * @description List all document categories for a knowledge base
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
    * @returns {Promise<DocumentCategory[]>} Array of category records
    */
-  async listCategories(projectId: string): Promise<DocumentCategory[]> {
-    return ModelFactory.documentCategory.findByProjectId(projectId)
+  async listCategories(knowledgeBaseId: string): Promise<DocumentCategory[]> {
+    return ModelFactory.documentCategory.findByKnowledgeBaseId(knowledgeBaseId)
   }
 
   /**
@@ -48,20 +48,20 @@ export class ProjectCategoryService {
   }
 
   /**
-   * @description Create a new document category within a project.
+   * @description Create a new document category within a knowledge base.
    *   For 'standard' and 'code' types, auto-creates a linked dataset.
    *   For 'documents' type, dataset creation is deferred to version creation.
-   * @param {string} projectId - UUID of the project
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
    * @param {any} data - Category creation data including name, description, sort_order, dataset_config, category_type
    * @param {UserContext} user - Authenticated user context
    * @returns {Promise<DocumentCategory>} Created category record (with dataset_id if standard/code)
    */
-  async createCategory(projectId: string, data: any, user: UserContext): Promise<DocumentCategory> {
+  async createCategory(knowledgeBaseId: string, data: any, user: UserContext): Promise<DocumentCategory> {
     // Default category_type to 'documents' for backward compatibility
     const categoryType = data.category_type || 'documents'
 
     const category = await ModelFactory.documentCategory.create({
-      project_id: projectId,
+      knowledge_base_id: knowledgeBaseId,
       name: data.name,
       description: data.description || null,
       // Default sort_order to 0 when not specified
@@ -76,40 +76,40 @@ export class ProjectCategoryService {
     // Auto-create a dataset for standard and code category types
     if (categoryType === 'standard' || categoryType === 'code') {
       try {
-        // Look up the project to get default embedding model and parser settings
-        const project = await ModelFactory.project.findById(projectId)
-        if (!project) throw new Error('Project not found')
+        // Look up the knowledge base to get default embedding model and parser settings
+        const knowledgeBase = await ModelFactory.knowledgeBase.findById(knowledgeBaseId)
+        if (!knowledgeBase) throw new Error('Knowledge base not found')
 
-        // Code categories force parser_id='code'; standard uses project default or 'naive'
-        const parserId = categoryType === 'code' ? 'code' : (project.default_chunk_method || 'naive')
-        const tenantId = project.tenant_id || config.opensearch.systemTenantId
+        // Code categories force parser_id='code'; standard uses knowledge base default or 'naive'
+        const parserId = categoryType === 'code' ? 'code' : (knowledgeBase.default_chunk_method || 'naive')
+        const tenantId = knowledgeBase.tenant_id || config.opensearch.systemTenantId
 
         // Generate a unique dataset name with timestamp suffix to avoid unique index violation
         // (datasets_name_active_unique partial index enforces LOWER(name) uniqueness among active datasets)
         const timestamp = Date.now().toString(36)
-        const datasetName = `${project.name}_${data.name}_${timestamp}`
+        const datasetName = `${knowledgeBase.name}_${data.name}_${timestamp}`
 
-        // Use embedding model from category config if provided, else fall back to project default
-        const embeddingModel = data.dataset_config?.embedding_model || project.default_embedding_model || null
+        // Use embedding model from category config if provided, else fall back to knowledge base default
+        const embeddingModel = data.dataset_config?.embedding_model || knowledgeBase.default_embedding_model || null
 
-        // Create a dataset named <projectname>_<categoryname>_<timestamp>
+        // Create a dataset named <knowledgebasename>_<categoryname>_<timestamp>
         const dataset = await ModelFactory.dataset.create({
           name: datasetName,
-          description: `Auto-created dataset for project "${project.name}", category "${data.name}"`,
+          description: `Auto-created dataset for knowledge base "${knowledgeBase.name}", category "${data.name}"`,
           language: data.dataset_config?.language || 'English',
           embedding_model: embeddingModel,
           parser_id: parserId,
           parser_config: JSON.stringify(data.dataset_config?.parser_config || {}),
-          access_control: JSON.stringify({ public: !project.is_private }),
+          access_control: JSON.stringify({ public: !knowledgeBase.is_private }),
           status: 'active',
           tenant_id: tenantId,
           created_by: user.id,
           updated_by: user.id,
         })
 
-        // Link the dataset to the project
-        await ModelFactory.projectDataset.create({
-          project_id: projectId,
+        // Link the dataset to the knowledge base
+        await ModelFactory.knowledgeBaseDataset.create({
+          knowledge_base_id: knowledgeBaseId,
           dataset_id: dataset.id,
           auto_created: true,
         })
@@ -123,7 +123,7 @@ export class ProjectCategoryService {
         // Dataset creation failed — delete the orphan category and re-throw
         // so the frontend knows the operation failed entirely
         log.error('Failed to auto-create dataset for category, rolling back category', {
-          error: String(dsError), projectId, categoryName: data.name, categoryType,
+          error: String(dsError), knowledgeBaseId, categoryName: data.name, categoryType,
         })
         try {
           await ModelFactory.documentCategory.delete(category.id)
@@ -205,47 +205,47 @@ export class ProjectCategoryService {
 
   /**
    * @description Create a new version snapshot for a document category.
-   *   Auto-creates a dataset named `<projectname>_<version_label>` and links it to the project.
+   *   Auto-creates a dataset named `<knowledgebasename>_<version_label>` and links it to the knowledge base.
    * @param {string} categoryId - UUID of the category
-   * @param {any} data - Version creation data including version_label, optional metadata, optional project_id
+   * @param {any} data - Version creation data including version_label, optional metadata, optional knowledge_base_id
    * @param {UserContext} user - Authenticated user context
    * @returns {Promise<DocumentCategoryVersion>} Created version record with linked dataset
-   * @throws {Error} If the parent category or project is not found
+   * @throws {Error} If the parent category or knowledge base is not found
    */
   async createVersion(categoryId: string, data: any, user: UserContext): Promise<DocumentCategoryVersion> {
-    // Look up the parent category to resolve the project_id
+    // Look up the parent category to resolve the knowledge_base_id
     const category = await ModelFactory.documentCategory.findById(categoryId)
     if (!category) throw new Error('Category not found')
 
-    // Use provided project_id or resolve from the category
-    const projectId = data.project_id || category.project_id
+    // Use provided knowledge_base_id or resolve from the category
+    const knowledgeBaseId = data.knowledge_base_id || category.knowledge_base_id
 
-    // Look up the project to build the dataset name
-    const project = await ModelFactory.project.findById(projectId)
-    if (!project) throw new Error('Project not found')
+    // Look up the knowledge base to build the dataset name
+    const knowledgeBase = await ModelFactory.knowledgeBase.findById(knowledgeBaseId)
+    if (!knowledgeBase) throw new Error('Knowledge base not found')
 
-    // Build dataset name as <projectname>_<version_label>
-    const datasetName = `${project.name}_${data.version_label}`
+    // Build dataset name as <knowledgebasename>_<version_label>
+    const datasetName = `${knowledgeBase.name}_${data.version_label}`
 
     // Auto-create a dataset for this version
     let datasetId: string | null = null
     try {
-      // Use version-level overrides if provided, otherwise fall back to project defaults
+      // Use version-level overrides if provided, otherwise fall back to knowledge base defaults
       const language = data.language || 'English'
-      const parserId = data.chunk_method || project.default_chunk_method || 'naive'
+      const parserId = data.chunk_method || knowledgeBase.default_chunk_method || 'naive'
       const parserConfig = data.parser_config ? JSON.stringify(data.parser_config) : JSON.stringify({})
-      const tenantId = project.tenant_id || config.opensearch.systemTenantId
+      const tenantId = knowledgeBase.tenant_id || config.opensearch.systemTenantId
 
       const dataset = await ModelFactory.dataset.create({
         name: datasetName,
-        description: `Auto-created dataset for project "${project.name}", version "${data.version_label}"`,
+        description: `Auto-created dataset for knowledge base "${knowledgeBase.name}", version "${data.version_label}"`,
         language,
-        embedding_model: project.default_embedding_model || null,
+        embedding_model: knowledgeBase.default_embedding_model || null,
         parser_id: parserId,
         parser_config: parserConfig,
         pagerank: data.pagerank ?? 0,
         pipeline_id: data.pipeline_id || null,
-        access_control: JSON.stringify({ public: !project.is_private }),
+        access_control: JSON.stringify({ public: !knowledgeBase.is_private }),
         status: 'active',
         tenant_id: tenantId,
         created_by: user.id,
@@ -253,9 +253,9 @@ export class ProjectCategoryService {
       })
       datasetId = dataset.id
 
-      // Link the dataset to the project
-      await ModelFactory.projectDataset.create({
-        project_id: projectId,
+      // Link the dataset to the knowledge base
+      await ModelFactory.knowledgeBaseDataset.create({
+        knowledge_base_id: knowledgeBaseId,
         dataset_id: dataset.id,
         auto_created: true,
       })
@@ -330,7 +330,7 @@ export class ProjectCategoryService {
    * @description Import code files from a Git repository into a code category's dataset.
    *   Clones the repo (shallow, single branch), filters by code extensions, creates document
    *   entries, and triggers the RAG parse pipeline. Requires `git` CLI on the host.
-   * @param {string} projectId - UUID of the project
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
    * @param {string} categoryId - UUID of the code category
    * @param {string} tenantId - Tenant ID for dataset scoping
    * @param {object} params - Git import parameters
@@ -377,7 +377,7 @@ export class ProjectCategoryService {
   }
 
   async importGitRepo(
-    projectId: string,
+    knowledgeBaseId: string,
     categoryId: string,
     tenantId: string,
     params: { url: string; branch?: string; path?: string; credentials?: { auth_method: string; token?: string; username?: string } },
@@ -440,7 +440,7 @@ export class ProjectCategoryService {
    * @description Import code files from a ZIP archive into a code category's dataset.
    *   Extracts the archive, filters by code extensions, creates document entries,
    *   and triggers the RAG parse pipeline.
-   * @param {string} projectId - UUID of the project
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
    * @param {string} categoryId - UUID of the code category
    * @param {string} tenantId - Tenant ID for dataset scoping
    * @param {Buffer} fileBuffer - ZIP file contents as a Buffer
@@ -449,7 +449,7 @@ export class ProjectCategoryService {
    * @throws {Error} If category not found, not type='code', or extraction fails
    */
   async importZipFile(
-    projectId: string,
+    knowledgeBaseId: string,
     categoryId: string,
     tenantId: string,
     fileBuffer: Buffer,
@@ -589,4 +589,4 @@ export class ProjectCategoryService {
 }
 
 /** Singleton instance */
-export const projectCategoryService = new ProjectCategoryService()
+export const knowledgeBaseCategoryService = new KnowledgeBaseCategoryService()

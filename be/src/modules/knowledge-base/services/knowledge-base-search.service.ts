@@ -1,43 +1,43 @@
 /**
- * @fileoverview Service for project search app configuration management.
- * @module services/project-search
+ * @fileoverview Service for knowledge base search app configuration management.
+ * @module services/knowledge-base-search
  */
 import { ModelFactory } from '@/shared/models/factory.js'
 import { log } from '@/shared/services/logger.service.js'
-import { ProjectSearch, UserContext } from '@/shared/models/types.js'
+import { KnowledgeBaseSearch, UserContext } from '@/shared/models/types.js'
 
 /**
- * @description Service handling CRUD operations for project search app configurations
+ * @description Service handling CRUD operations for knowledge base search app configurations
  */
-export class ProjectSearchService {
+export class KnowledgeBaseSearchService {
   /**
-   * @description List all search app configurations for a project
-   * @param {string} projectId - UUID of the project
-   * @returns {Promise<ProjectSearch[]>} Array of project search records
+   * @description List all search app configurations for a knowledge base
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
+   * @returns {Promise<KnowledgeBaseSearch[]>} Array of knowledge base search records
    */
-  async listSearches(projectId: string): Promise<ProjectSearch[]> {
-    return ModelFactory.projectSearch.findByProjectId(projectId)
+  async listSearches(knowledgeBaseId: string): Promise<KnowledgeBaseSearch[]> {
+    return ModelFactory.knowledgeBaseSearch.findByKnowledgeBaseId(knowledgeBaseId)
   }
 
   /**
    * @description Retrieve a single search app configuration by its UUID
    * @param {string} searchId - UUID of the search app
-   * @returns {Promise<ProjectSearch | undefined>} Search record or undefined if not found
+   * @returns {Promise<KnowledgeBaseSearch | undefined>} Search record or undefined if not found
    */
-  async getSearchById(searchId: string): Promise<ProjectSearch | undefined> {
-    return ModelFactory.projectSearch.findById(searchId)
+  async getSearchById(searchId: string): Promise<KnowledgeBaseSearch | undefined> {
+    return ModelFactory.knowledgeBaseSearch.findById(searchId)
   }
 
   /**
-   * @description Create a new project search app with serialized JSON configurations
-   * @param {string} projectId - UUID of the project
+   * @description Create a new knowledge base search app with serialized JSON configurations
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
    * @param {any} data - Search creation data including name, dataset_ids, search_config
    * @param {UserContext} user - Authenticated user context
-   * @returns {Promise<ProjectSearch>} Created search record
+   * @returns {Promise<KnowledgeBaseSearch>} Created search record
    */
-  async createSearch(projectId: string, data: any, user: UserContext): Promise<ProjectSearch> {
-    return ModelFactory.projectSearch.create({
-      project_id: projectId,
+  async createSearch(knowledgeBaseId: string, data: any, user: UserContext): Promise<KnowledgeBaseSearch> {
+    return ModelFactory.knowledgeBaseSearch.create({
+      knowledge_base_id: knowledgeBaseId,
       name: data.name,
       description: data.description || null,
       // Serialize array and object fields as JSON strings for storage
@@ -51,13 +51,13 @@ export class ProjectSearchService {
   }
 
   /**
-   * @description Update a project search app with partial data
+   * @description Update a knowledge base search app with partial data
    * @param {string} searchId - UUID of the search app
    * @param {any} data - Partial update data
    * @param {UserContext} user - Authenticated user context
-   * @returns {Promise<ProjectSearch | undefined>} Updated search record or undefined if not found
+   * @returns {Promise<KnowledgeBaseSearch | undefined>} Updated search record or undefined if not found
    */
-  async updateSearch(searchId: string, data: any, user: UserContext): Promise<ProjectSearch | undefined> {
+  async updateSearch(searchId: string, data: any, user: UserContext): Promise<KnowledgeBaseSearch | undefined> {
     // Build update payload including only provided fields
     const updateData: any = { updated_by: user.id }
     if (data.name !== undefined) updateData.name = data.name
@@ -68,18 +68,18 @@ export class ProjectSearchService {
     if (data.search_config !== undefined) updateData.search_config = JSON.stringify(data.search_config)
     if (data.status !== undefined) updateData.status = data.status
 
-    return ModelFactory.projectSearch.update(searchId, updateData)
+    return ModelFactory.knowledgeBaseSearch.update(searchId, updateData)
   }
 
   /**
-   * @description Delete a project search app by its UUID
+   * @description Delete a knowledge base search app by its UUID
    * @param {string} searchId - UUID of the search app
    * @returns {Promise<void>}
    */
   async deleteSearch(searchId: string): Promise<void> {
-    await ModelFactory.projectSearch.delete(searchId)
+    await ModelFactory.knowledgeBaseSearch.delete(searchId)
   }
 }
 
 /** Singleton instance */
-export const projectSearchService = new ProjectSearchService()
+export const knowledgeBaseSearchService = new KnowledgeBaseSearchService()

@@ -7,7 +7,7 @@ import { DocumentCategory } from '@/shared/models/types.js'
 
 /**
  * @description Provides CRUD operations for the document_categories table,
- *   which organizes project documents into named groups with ordering
+ *   which organizes knowledge base documents into named groups with ordering
  * @extends BaseModel<DocumentCategory>
  */
 export class DocumentCategoryModel extends BaseModel<DocumentCategory> {
@@ -15,13 +15,13 @@ export class DocumentCategoryModel extends BaseModel<DocumentCategory> {
   protected knex = db
 
   /**
-   * @description Find all categories for a given project, ordered by sort_order ascending
-   * @param {string} projectId - UUID of the project
+   * @description Find all categories for a given knowledge base, ordered by sort_order ascending
+   * @param {string} knowledgeBaseId - UUID of the knowledge base
    * @returns {Promise<DocumentCategory[]>} Array of category records
    */
-  async findByProjectId(projectId: string): Promise<DocumentCategory[]> {
+  async findByKnowledgeBaseId(knowledgeBaseId: string): Promise<DocumentCategory[]> {
     return this.knex(this.tableName)
-      .where('project_id', projectId)
+      .where('knowledge_base_id', knowledgeBaseId)
       .orderBy('sort_order', 'asc')
   }
 }
