@@ -1,222 +1,273 @@
 # Feature Landscape
 
-**Domain:** RAG Knowledge Base Platform (SDLC + Healthcare)
-**Researched:** 2026-03-18
-**Overall confidence:** MEDIUM-HIGH
+**Domain:** Knowledge Management / RAG Platform -- v0.2 Milestone Features
+**Researched:** 2026-04-02
+**Overall confidence:** HIGH
+
+This document focuses exclusively on the four v0.2 milestone features: (1) Rename Project to Knowledge Base, (2) Chunk quality enhancement, (3) 3-tier permission system, (4) New KB features. It does not re-cover v0.1/v1.0 validated features.
 
 ## Table Stakes
 
-Features users expect from an enterprise RAG platform in 2026. Missing any of these and users will look elsewhere.
-
-### Core RAG Pipeline (Already Validated)
-
-These are shipped and confirmed — listed for completeness. They form the foundation everything else builds on.
-
-| Feature | Why Expected | Complexity | Status |
-|---------|--------------|------------|--------|
-| Multi-format document ingestion (PDF, DOCX, XLSX, etc.) | Every RAG platform does this | High (already done) | Validated |
-| Configurable chunking strategies | Users need control over retrieval granularity | Med (already done) | Validated |
-| Hybrid search (BM25 + vector) | Industry standard since 2024; pure vector misses exact matches | Med (already done) | Validated |
-| Reranking support | 20-40% accuracy improvement; expected by 2025 | Med (already done) | Validated |
-| Streaming chat with citations | Users need to verify answers against sources | Med (already done) | Validated |
-| Multi-LLM provider support | Vendor lock-in is a dealbreaker for enterprises | Med (already done) | Validated |
-| Multi-turn conversation | Single-turn chat feels broken | Med (already done) | Validated |
-
-### Access Control and Tenant Isolation (Active — Must Ship)
+Features users expect. Missing = product feels incomplete.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Org-level tenant isolation | Zero-tolerance for data leakage between organizations; every enterprise RAG platform enforces this | Med | Pre-filter at query time + row-level DB isolation. Not negotiable for healthcare or enterprise SDLC. |
-| Role-based access control (RBAC) | Baseline expectation: admin, editor, viewer roles within an org | Med | Foundation layer that ABAC extends. Ship RBAC first, ABAC second. |
-| ABAC (attribute-based access control) | Healthcare: "only doctors see clinical docs." SDLC: "only project members see project specs." Fine-grained rules based on user attributes, document metadata, and context | High | Pre-filter approach (filter before vector search) is more efficient for large corpora with low hit rates. Attach security attributes as metadata to every chunk at index time. At query time, construct metadata filters from user attributes. |
-| Document-level permission inheritance | Documents inherit permissions from dataset/project but allow overrides | Med | Without this, admins manually set permissions on every document — untenable at scale. |
-| Audit logging | Who accessed what, when, and what answer was generated. Regulatory requirement for healthcare (HIPAA). | Med | Log every query, retrieved chunks, and generated response. Essential for compliance. Already have Langfuse tracing — extend to access audit. |
-
-### Document Management (Active — Must Ship)
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Document version history | VersionRAG research shows 90% accuracy on version-sensitive questions vs 58% for naive RAG. Users ask "what changed?" and "what was the policy last quarter?" | High | Store all versions. Re-index each version's chunks. Track version metadata (author, timestamp, change summary). PROJECT.md already specifies "not git-like" — simple linear version chain per document. |
-| Bulk document operations | Upload/delete/re-parse hundreds of docs at once | Low | Already partially implemented (bulk parse/cancel). Extend to bulk permission changes, bulk tagging. |
-| Document metadata and tagging | Filter and organize documents by custom attributes | Med | Feeds into ABAC (tags become filterable attributes). RAGFlow supports auto-generation of metadata during parsing — replicate this. |
-| Dataset (knowledge base) organization | Group documents into datasets with shared settings | Low | Already validated. Extend with project-level scoping. |
-
-### Search and Retrieval Quality (Active — Must Ship)
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Chunk visualization and intervention | Users must see how documents were chunked and fix bad chunks. RAGFlow's key differentiator that B-Knowledge inherits. | Med | Already partially built. Critical for trust — users who can't inspect chunks don't trust answers. |
-| Answer quality feedback (thumbs up/down) | Minimum viable feedback loop. Without it, no signal on whether RAG is working. | Low | Store feedback linked to query + retrieved chunks + response. Use for future retrieval tuning. |
-| Retrieval transparency (show sources) | Users must see which chunks were used and their relevance scores | Low | Already have citations. Ensure chunk-level source display with confidence scores. |
+| Multiple chunking strategies (naive + semantic + table-aware) | Every RAG platform (Dify, RAGFlow, LlamaIndex) ships at least 3 chunking methods. Users expect to choose based on document type. | Medium | Semantic chunking already designed in `todo/03-semantic-chunking.md`. Table-aware designed in `todo/02-table-aware-chunking.md`. |
+| Chunk size + overlap config per KB | Standard in all RAG platforms. Without this, users cannot tune retrieval quality for their domain. | Low | Already partially exists via `parser_config.chunk_token_num` and `overlapped_percent`. Needs UI exposure per KB. |
+| Basic chunk quality indicators | Users need to see which chunks parsed well vs. poorly. Minimum: token count, truncation flag, empty-content detection. | Low | Simple heuristic metrics computed at ingestion time. No LLM needed. Zero cost. |
+| KB-level permission grants (Read/Write/Admin) | Dify has "Only me / All team / Partial team." RAGFlow has owner-based access. Any multi-user KB platform needs this. | Medium | `project_permissions` table already exists with tab-level columns. Needs evolution to simpler 3-tier model. |
+| Permission-aware retrieval | If KB has permissions, search results must respect them. Returning unauthorized chunks is a security failure, not a UX issue. | Medium | Inject access filter into OpenSearch queries at retrieval time. Standard pattern: metadata filter on `kb_id` + user access list. |
+| Entity rename with zero data loss | A rename from "Project" to "Knowledge Base" that breaks URLs, APIs, or loses data is unacceptable. Must be seamless. | High | Requires coordinated migration across DB + BE + FE + i18n + tests. |
+| Table-aware chunking | Tables are ubiquitous in business docs. RAGFlow, Unstructured, and LlamaParse all handle tables specially. Naive chunking destroys table structure. | Medium | Already designed in `todo/02-table-aware-chunking.md`. Adaptive row batching based on column width. |
 
 ## Differentiators
 
-Features that set B-Knowledge apart. Not expected by every user, but create competitive advantage in SDLC and healthcare domains.
-
-### GraphRAG — Knowledge Graph Retrieval (Active — From RAGFlow)
+Features that set product apart. Not expected, but valued.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Entity and relationship extraction | Build knowledge graphs from documents automatically. GraphRAG achieves 80% accuracy vs 50% for traditional RAG on complex multi-hop queries | High | RAGFlow already has this — migration target. Extract entities (people, systems, concepts) and relationships from chunks during indexing. |
-| Community detection and summarization | Group related entities into hierarchical communities with auto-generated summaries. Enables "global sensemaking" queries. | High | Microsoft's GraphRAG pattern. Critical for queries like "what are the main themes across all our project specs?" |
-| Multi-hop question answering | Answer questions requiring reasoning across multiple documents and relationships | High | "Which teams depend on Service X, and what's the impact if it goes down?" — requires traversing entity relationships. |
-| Graph + vector hybrid retrieval | Combine structured graph traversal with semantic vector search | High | Use graph for relationship queries, vector for semantic similarity, fuse results. LazyGraphRAG (2025) reduced indexing cost to 0.1% of full GraphRAG. |
-
-**Complexity note:** GraphRAG indexing costs 10-100x more than vector-only RAG. LazyGraphRAG mitigates this but adds architectural complexity. Budget for significant compute during ingestion.
-
-### Deep Research — Multi-Hop Recursive Retrieval (Active — From RAGFlow)
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Recursive query decomposition | Break complex questions into sub-questions, retrieve for each, synthesize | High | "Compare our authentication approaches across all three microservices" decomposes into 3+ sub-queries. |
-| Iterative retrieval with reasoning | Retrieve, reason about gaps, retrieve more until answer is complete | High | HopRAG pattern: retrieve-reason-prune. Essential for research-style queries in both SDLC and healthcare. |
-| Cross-dataset retrieval | Search across multiple knowledge bases in a single query | Med | SDLC: search across project specs + API docs + runbooks. Healthcare: search across clinical protocols + drug interactions + regulatory docs. Respect ABAC across datasets. |
-| Research report generation | Generate structured reports from multi-hop retrieval with full citation chains | High | Outputs a document, not just a chat message. Valuable for healthcare literature reviews and SDLC impact analysis. |
-
-### SDLC Domain Features
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Project-scoped knowledge bases | Isolate project documentation with team-level access. Map datasets to SDLC projects. | Med | Each project gets its own datasets. Team members see only their projects. Cross-project search for authorized users. |
-| Code-aware document parsing | Parse code files (Python, TypeScript, Java, etc.) with syntax-aware chunking | Med | Chunk by function/class boundaries, not arbitrary character counts. Preserve import context. Extend existing parser infrastructure. |
-| API documentation parser | Understand OpenAPI/Swagger specs, generate structured chunks per endpoint | Med | Parse endpoint, parameters, response schemas as structured chunks. Enable queries like "which endpoints accept user IDs?" |
-| Changelog and release notes tracking | Track document changes as project evolves through SDLC phases | Med | Ties into document versioning. Surface "what changed since last sprint?" queries. |
-| Technical decision records (ADR) parser | Understand ADR format (context, decision, consequences) and enable structured retrieval | Low | Template-aware parsing. Query "what decisions affect the auth module?" |
-
-### Healthcare Domain Features
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Clinical document classification | Auto-classify documents as regulatory, clinical protocol, research, administrative | Med | Use document metadata + content analysis. Feeds into ABAC rules (clinical docs restricted to clinical staff). |
-| Regulatory document tracking | Track document applicability dates, expiry, superseded-by relationships | Med | Healthcare regulations change frequently. Surface "which protocols are outdated?" Flag documents approaching regulatory deadlines. |
-| PHI detection and redaction alerts | Detect Protected Health Information in uploaded documents, warn before indexing | High | Not full PII redaction (that's an anti-feature scope-wise), but alerting admins when PHI-containing docs are uploaded. Critical for HIPAA awareness. |
-| Citation chain verification | Full traceability from answer back through reasoning chain to source documents | Med | HIPAA compliance requires demonstrating which source informed a clinical decision. Extends existing citation system with audit-grade traceability. |
-| Medical terminology awareness | Understand medical abbreviations, drug names, ICD codes in queries and chunks | Med | Enhance retrieval quality for healthcare-specific terminology. Can leverage specialized embedding models or terminology mappings. |
-
-### Observability and Evaluation
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| RAG quality metrics dashboard | Track retrieval precision, answer faithfulness, hallucination rate over time | Med | 60% of new RAG deployments include systematic evaluation from day one (2026). Already have Langfuse — extend with retrieval-specific metrics. |
-| A/B testing for retrieval configs | Compare chunking strategies, embedding models, reranking approaches | Med | Run same queries against different configs, compare answer quality. Essential for tuning. |
-| Query analytics | Most common queries, failed retrievals, low-confidence answers | Low | Surface patterns like "users keep asking about X but we have no docs for it." |
+| LLM-based chunk quality scoring | Score each chunk on coherence/completeness/density using LLM judge. Galileo and Braintrust offer this as a service; rare in open-source. | High | Cost: ~$0.005-0.01 per chunk. For 1000-chunk KB = $5-10. Must be opt-in per KB. Store scores as OpenSearch metadata for query-time filtering. |
+| Parent-child (small-to-big) chunking | Index small chunks (100-200 tokens) for precise retrieval, return parent chunk (500-1000 tokens) for LLM context. LlamaIndex `HierarchicalNodeParser` + `AutoMergingRetriever` pattern. | High | Requires `parent_id` field on chunks, hierarchy storage, retrieval logic to merge children to parents. Significant architecture change. |
+| Adaptive chunking (content-density aware) | Dynamically adjust chunk size by information density. Clinical study showed 87% accuracy vs 13% for fixed-size. | High | Requires content analysis pass before chunking. Sentence-level embedding variance as density proxy. Not in any major open-source RAG UI. |
+| Document-level permission grants | Per-document access within a KB. Critical for enterprise: legal, HR, financial docs coexist but have different audiences. | High | Requires `document_permissions` table + per-doc metadata in OpenSearch + filter injection at query time. |
+| Chunk quality dashboard with filtering | Admin UI to browse all chunks, filter by quality score, flag low-quality chunks for re-chunking, drill down to source. | Medium | Mostly FE work. Needs chunk listing endpoint with quality filters. Powerful for admin iteration. |
+| Corrective RAG with quality gating | Use chunk quality scores at retrieval time to filter low-quality chunks before LLM. Integrates with corrective RAG layer (designed in `todo/01-corrective-rag.md`). | Medium | Depends on chunk scoring. Adds quality threshold gate to retrieval pipeline. |
+| Recursive chunking strategy | Split by hierarchy of separators (`\n\n` -> `\n` -> `.` -> space). Simple to implement, good general-purpose improvement over naive. | Low | Standard in LangChain/LlamaIndex. Easy to add alongside semantic. |
 
 ## Anti-Features
 
-Features to explicitly NOT build. Each has a clear reason.
+Features to explicitly NOT build.
 
 | Anti-Feature | Why Avoid | What to Do Instead |
 |--------------|-----------|-------------------|
-| Full PII/PHI redaction engine | Massive compliance liability. If redaction fails, legal exposure. Not a RAG platform's job. | Detect and alert. Let dedicated compliance tools (Presidio, AWS Macie) handle redaction before upload. Integrate, don't build. |
-| Custom model training/fine-tuning | Out of scope per PROJECT.md. Maintaining training infrastructure is a separate product. | Support configurable external LLM providers. Let users bring fine-tuned models via OpenAI-compatible API. |
-| Real-time collaborative editing | Not a document editor. Scope creep into Google Docs territory. | Accept document uploads. Version history covers "what changed." |
-| Visual workflow builder (drag-and-drop agent canvas) | RAGFlow has this but it adds massive UI complexity. B-Knowledge targets knowledge retrieval, not agent orchestration. | Provide well-configured defaults for retrieval pipelines. Expose config via settings panels, not visual canvases. |
-| Mobile app | Web-first per PROJECT.md. Mobile adds platform-specific maintenance burden. | Ensure responsive web design works on mobile browsers. |
-| Agentic tool integration (MCP, function calling) | Scope creep. Turns RAG platform into an agent framework. | Focus on retrieval quality. If agent integration is needed later, expose as API for external agent frameworks to consume. |
-| Per-query billing/metering | Adds accounting complexity. B-Knowledge is self-hosted, not SaaS. | Track usage metrics for observability, not billing. |
-| Custom embedding model hosting | Operating ML inference infrastructure is a separate concern. | Support external embedding APIs (OpenAI, Cohere, local Ollama). Don't host models. |
+| Real-time chunk quality scoring at query time | Too slow. LLM call per chunk per query = 500ms+ latency per retrieval. | Score at ingestion. Store scores as metadata. Filter by threshold at query time via OpenSearch numeric filter. |
+| Automatic re-chunking without user approval | Silently re-chunking changes the search index and can break existing chat references/citations. | Provide "re-chunk" button per document or bulk action. Show what will change before executing. |
+| Fine-grained field-level permissions | Over-engineering. "Can see title but not content" adds massive complexity with near-zero value for KB platform. | KB-level and document-level granularity only. If user can access a doc, they see all of it. |
+| Custom permission DSL or policy engine | Building Oso/Cerbos/Cedar-like policy languages is multi-year effort. Overkill for 3-tier RBAC. | Simple role-permission mapping (already exists in `rbac.ts`). Extend with resource-level grants via join table. |
+| API versioning for the rename | Adding `/api/v2/` for Project-to-KB rename is unnecessary. No external API consumers depend on "project" routes. | Clean rename in one migration. No parallel old/new routes. |
+| Per-chunk embedding model selection | Different embedding models per chunk within same KB makes vector search incoherent. | Embedding model set at KB level (already the case). Different models = different KBs. |
+| Expand-migrate-contract for rename | Running both "project" and "knowledge-base" names in parallel doubles code for weeks with no benefit for an internal app. | Clean big-bang rename: one migration + one commit. No external consumers to protect. |
 
 ## Feature Dependencies
 
 ```
-Org-level tenant isolation
-  --> RBAC (roles within an org)
-    --> ABAC (attribute-based rules extending RBAC)
-      --> Document-level permission inheritance
-        --> Cross-dataset retrieval (must respect ABAC across datasets)
+Rename Project -> Knowledge Base
+  -> DB migration (rename tables + columns, instant in PostgreSQL)
+    -> BE module rename (projects/ -> knowledge-base/)
+      -> API route rename (/api/projects -> /api/knowledge-bases)
+        -> FE feature rename (features/projects/ -> features/knowledge-bases/)
+          -> i18n string updates (3 locales)
+          -> URL route updates (/projects/:id -> /knowledge-bases/:id)
+          -> Test file updates
 
-Document upload + parsing (validated)
-  --> Document metadata and tagging
-    --> Document version history (versions need metadata tracking)
-    --> Clinical document classification (healthcare-specific metadata)
-    --> Auto-metadata generation during parsing
+Chunk Quality Enhancement
+  -> Table-aware chunking (independent, no deps on other new features)
+  -> Semantic chunking (needs embedding model at chunk time -- already available)
+    -> Parent-child chunking (depends on semantic + chunk hierarchy storage) [DEFER]
+  -> Chunk quality scoring (depends on improved chunking to have meaningful scores)
+    -> Chunk quality dashboard (depends on scoring)
+    -> Corrective RAG quality gate (depends on scoring)
 
-Chunking + embedding (validated)
-  --> Chunk visualization and intervention
-  --> Entity and relationship extraction (GraphRAG)
-    --> Community detection and summarization
-    --> Multi-hop question answering
-    --> Graph + vector hybrid retrieval
-
-Hybrid search (validated)
-  --> Answer quality feedback
-  --> Query analytics
-  --> Retrieval transparency
-  --> RAG quality metrics dashboard
-    --> A/B testing for retrieval configs
-
-Document version history
-  --> Changelog and release notes tracking (SDLC)
-  --> Regulatory document tracking (Healthcare)
-
-Entity extraction (GraphRAG)
-  --> Deep Research (recursive multi-hop retrieval)
-    --> Research report generation
-    --> Cross-dataset retrieval
+Permission System (3-tier)
+  -> Rename must complete first (project_permissions -> kb_permissions)
+    -> KB-level Read/Write/Admin grants (evolve existing table)
+      -> Permission-aware retrieval (inject access filter into OpenSearch)
+        -> Document-level grants (optional extension) [DEFER]
 ```
 
 ## MVP Recommendation
 
-### Phase 1 Priority: Stabilize + Access Control Foundation
+### Phase 1: Rename + Foundation (do first, unblocks everything)
 
-Prioritize (in order):
-1. **Bug fixes and migration stabilization** — nothing else matters if core pipeline is unreliable
-2. **Org-level tenant isolation** — foundational for multi-tenant; everything else layers on top
-3. **RBAC** — baseline access control; unblocks real multi-user deployments
-4. **Audit logging** — required for healthcare compliance; cheap to add early, expensive to retrofit
-5. **Answer quality feedback** — low complexity, immediate value for measuring RAG effectiveness
+Prioritize:
+1. **Rename Project to Knowledge Base** -- Touches every layer. Do before adding new features to avoid building on "project" then renaming. PostgreSQL `ALTER TABLE RENAME` is instant (metadata-only, no data copy). One Knex migration + coordinated file renames.
+2. **KB-level 3-tier permissions (Read/Write/Admin)** -- `project_permissions` already exists with tab-level columns. Simplify to single `permission_level` column. Mostly schema migration + middleware update.
+3. **Permission-aware retrieval** -- Inject KB access filters into OpenSearch. Without this, permissions are cosmetic.
 
-### Phase 2 Priority: Domain Value
+### Phase 2: Chunk Quality (build on renamed foundation)
 
-6. **ABAC** — extends RBAC with attribute-based rules for healthcare and SDLC
-7. **Document version history** — high value for both domains; complex but well-understood
-8. **Document metadata and tagging** — feeds ABAC and improves retrieval filtering
-9. **Project-scoped knowledge bases** — SDLC domain differentiator
+Prioritize:
+4. **Table-aware chunking** -- Highest impact per effort. Fixes worst quality problem (giant table chunks). Already fully designed.
+5. **Semantic chunking** -- Already designed with full implementation plan in `todo/03-semantic-chunking.md`. Second-highest impact.
+6. **Basic chunk quality indicators** -- Heuristic metrics (token count, coherence proxy, emptiness) computed at ingestion. Zero LLM cost.
+7. **Recursive chunking** -- Simple addition, good general improvement.
 
-### Phase 3 Priority: Advanced Retrieval
+### Defer to v0.3+
 
-10. **GraphRAG migration** — entity extraction, community detection, graph-hybrid retrieval
-11. **Deep Research** — multi-hop recursive retrieval
-12. **Cross-dataset retrieval** — search across knowledge bases with ABAC enforcement
+- **Parent-child chunking**: Requires significant architecture change to chunk storage. High complexity, moderate incremental benefit over semantic alone.
+- **LLM-based chunk quality scoring**: Expensive per-chunk LLM calls. Nice-to-have once basic metrics prove the UI workflow value.
+- **Document-level permissions**: Only needed for enterprise multi-tenant. KB-level sufficient for v0.2.
+- **Adaptive chunking**: Research shows fixed-size with good overlap often matches or beats adaptive (Vectara NAACL 2025). Semantic covers most of the win.
 
-### Defer
+## Detailed Feature Analysis
 
-- **Code-aware parsing, API doc parser, ADR parser** — valuable but niche; can add incrementally after core is solid
-- **Healthcare-specific features** (PHI detection, medical terminology, regulatory tracking) — add when healthcare tenant demand materializes
-- **RAG quality metrics dashboard, A/B testing** — important but not blocking; Langfuse covers basic observability now
-- **Research report generation** — high complexity, dependent on Deep Research being solid first
+### 1. Chunk Quality Scoring and Filtering
+
+**What the ecosystem does:**
+
+Chunk quality is measured at two levels: individual chunk quality (ingestion-time) and retrieval quality (query-time). For v0.2, focus on ingestion-time scoring.
+
+**Ingestion-time heuristic metrics (table stakes, zero cost):**
+
+| Metric | How to Compute | Flag Threshold | Cost |
+|--------|---------------|----------------|------|
+| Token count | Tokenizer count | < 50 or > 1024 tokens | Zero |
+| Empty/near-empty | Stripped character length | < 20 characters | Zero |
+| Information density | Type-token ratio (unique tokens / total tokens) | < 0.3 (highly repetitive) | Zero |
+| Duplicate detection | MinHash or exact content hash | > 0.9 similarity to another chunk in same KB | Low |
+| Language coherence | Dictionary word ratio | < 0.5 (garbled text) | Low |
+| Truncation detection | Ends mid-sentence without terminal punctuation | Boolean flag | Zero |
+
+**Ingestion-time LLM metrics (differentiator, opt-in):**
+
+| Metric | How to Compute | Flag Threshold | Cost |
+|--------|---------------|----------------|------|
+| Coherence score (1-5) | LLM judge: "Rate how coherent this text is" | < 3 | ~$0.005/chunk |
+| Completeness score (1-5) | LLM judge: "Does this contain a complete thought?" | < 3 | ~$0.005/chunk |
+| Relevance potential | Embedding cosine similarity to KB description | < 0.3 | One embedding call |
+
+**Aggregation at KB level:**
+- Average quality score across all chunks
+- Percentage of chunks flagged (any metric below threshold)
+- Quality distribution histogram in admin dashboard
+
+**Query-time filtering:** Store all scores as numeric fields on the chunk document in OpenSearch. At retrieval, add `range` filter: `quality_score >= threshold`. Threshold configurable per KB in settings.
+
+**Recommendation:** Ship heuristic metrics in v0.2 (zero cost, computed during ingestion). Defer LLM scoring to v0.3 as opt-in.
+
+**Confidence:** HIGH for heuristics (standard practice). MEDIUM for LLM scoring thresholds (domain-dependent, need per-domain tuning).
+
+### 2. Advanced Chunking Strategies
+
+**What the ecosystem offers:**
+
+| Strategy | How It Works | Best For | Complexity | B-Knowledge Status |
+|----------|-------------|----------|------------|-------------------|
+| Fixed-size (naive) | Split at token count + overlap | General baseline | Low | **Implemented** |
+| Recursive | Hierarchy of separators: `\n\n` -> `\n` -> `. ` -> ` ` | Structured docs with clear formatting | Low | Not implemented (easy add) |
+| Semantic | Embed sentences, split where similarity drops below percentile threshold | Narrative/unstructured docs | Medium | **Designed** (`todo/03`) |
+| Table-aware | Adaptive row batching by column width and token budget | Spreadsheets, tabular data | Medium | **Designed** (`todo/02`) |
+| Hierarchical (heading-based) | Split by heading levels, preserve document structure | Documentation, specs, manuals | Low | **Exists** (hierarchical_merger, underused) |
+| Parent-child (small-to-big) | Index 100-200 token leaf chunks, retrieve 500-1000 token parent for context | Long docs needing precision + context | High | Not implemented |
+| Adaptive (density-aware) | Vary chunk size by content complexity/information density | Mixed-complexity documents | High | Not implemented |
+
+**Key research finding (Vectara NAACL 2025, peer-reviewed):** On realistic document sets, fixed-size chunking with proper overlap (10-20%) consistently matched or outperformed semantic chunking for retrieval. The 2026 benchmark showed fixed-size at 69% accuracy on real documents. Semantic chunking's advantage is primarily on narrative/unstructured content where topic boundaries are clear.
+
+**Practical implication:** Do not oversell semantic chunking. The biggest quality wins come from (a) fixing table chunking and (b) using 10-20% overlap on fixed-size. Semantic chunking is a meaningful addition for narrative docs but not a silver bullet.
+
+**Recommended implementation order (impact/effort ratio):**
+1. **Table-aware** -- Fixes the worst quality problem. Already designed with adaptive batching.
+2. **Semantic** -- Already designed. Meaningful for healthcare narratives, SDLC specs.
+3. **Recursive** -- Simple. Better than naive for structured docs. Can implement in a day.
+4. **Activate hierarchical merger in naive parser path** -- Already exists, just underused.
+5. Defer parent-child and adaptive to v0.3+.
+
+**Confidence:** HIGH (Vectara NAACL 2025 peer-reviewed study, Weaviate/LlamaIndex production data, NVIDIA benchmark guide).
+
+### 3. RBAC with Resource-Level Permissions
+
+**What competitors do:**
+
+| Platform | KB-Level Access | Document-Level Access | Permission Tiers |
+|----------|----------------|----------------------|-----------------|
+| Dify | Only me / All team / Partial team | No | 3-tier dropdown per KB |
+| RAGFlow | Owner-based | No (requested in GitHub issue #7687) | 2-tier (owner/viewer) |
+| Pinecone | Namespace-level | Metadata filter at query time | API key scoped |
+| Elasticsearch | Index-level RBAC | Document-level security (DLS) | Full RBAC + field-level |
+| Supabase | Row-level security (RLS) | Yes via RLS policies | PostgreSQL native |
+
+**B-Knowledge current state:**
+- Global RBAC: `super-admin > admin > leader > user` (in `rbac.ts`, hierarchy 100/75/50/25)
+- Permissions: `view_chat`, `view_search`, `manage_knowledge_base`, `manage_datasets`, etc.
+- `project_permissions` table exists with: `project_id`, `grantee_type` (user/team), `grantee_id`, tab columns (`tab_documents`, `tab_chat`, `tab_settings` with values 'none'/'view'/'manage')
+- Missing: permission enforcement at retrieval time (OpenSearch query filtering)
+
+**Recommended 3-tier model for v0.2:**
+
+| Tier | Capabilities | Maps To (simplified from current) |
+|------|-------------|-----------------------------------|
+| **Read** | View KB metadata, search/chat against KB, view documents and chunks | `tab_documents: 'view'` + `tab_chat: 'view'` |
+| **Write** | All Read + upload/delete documents, edit metadata, manage categories, re-chunk | `tab_documents: 'manage'` |
+| **Admin** | All Write + change KB settings, manage permissions for this KB, delete KB | `tab_settings: 'manage'` |
+
+**Schema evolution:** Replace 3 separate tab columns (`tab_documents`, `tab_chat`, `tab_settings`) with single `permission_level` enum (`read`/`write`/`admin`). Simpler to reason about, fewer edge cases (e.g., what does `tab_chat: 'manage'` + `tab_documents: 'none'` mean?).
+
+**Middleware approach:** Add `requireKBPermission(level: 'read' | 'write' | 'admin')` middleware. For each request to a KB resource:
+1. Extract `kb_id` from route params
+2. Check if user is KB creator (implicit admin)
+3. Check `kb_permissions` table for explicit grant
+4. Fall back to global role check (super-admin/admin bypass)
+
+**Retrieval filter approach:**
+1. Before OpenSearch query, fetch user's accessible KB IDs: `SELECT kb_id FROM kb_permissions WHERE grantee_id = :userId AND permission_level >= 'read'`
+2. Add `terms` filter on `kb_id` field in OpenSearch query
+3. KB creators and global admins get unfiltered access
+
+**Confidence:** HIGH for KB-level (standard pattern per Pinecone, Dify, Elasticsearch docs). MEDIUM for document-level (complex, defer).
+
+### 4. Large-Scale Entity Rename (Project to Knowledge Base)
+
+**What the ecosystem recommends:**
+
+The standard enterprise pattern is **Expand-Migrate-Contract** (Parallel Change per Martin Fowler):
+1. Expand: Add new names alongside old, both work
+2. Migrate: Move code to use new names
+3. Contract: Remove old names
+
+**For B-Knowledge, this is overkill.** Reasons:
+- No external API consumers (internal app)
+- No published SDK or client libraries
+- All code is in the same monorepo
+- Team controls all deployment
+
+**Recommended approach: Clean big-bang rename.**
+
+| Layer | Scope | Approach | Risk |
+|-------|-------|----------|------|
+| **Database** | `projects` -> `knowledge_bases`, `project_permissions` -> `kb_permissions`, all `project_id` -> `kb_id` columns | Single Knex migration using `ALTER TABLE RENAME` (instant, metadata-only in PostgreSQL, no data copy) | Low -- single atomic migration |
+| **BE module** | `be/src/modules/projects/` -> `be/src/modules/knowledge-base/` | File system rename + update imports in `routes.ts` | Low -- IDE refactoring |
+| **BE models** | Class names, factory references (`ModelFactory.projects` -> `ModelFactory.knowledgeBases`) | Find-and-replace within module | Low |
+| **API routes** | `/api/projects/*` -> `/api/knowledge-bases/*` | Update route registration | Low |
+| **FE feature** | `fe/src/features/projects/` -> `fe/src/features/knowledge-bases/` | Rename files + update router, imports, barrel exports | Medium -- many files |
+| **FE API** | `projectApi.ts` -> `knowledgeBaseApi.ts`, queries file similarly | Rename + update function names and endpoints | Medium |
+| **FE routes** | `/projects/:id` -> `/knowledge-bases/:id` | Update router config | Low |
+| **i18n** | 3 locales (en, vi, ja): replace "Project" with "Knowledge Base" | Bulk string replacement in JSON files | Low |
+| **Tests** | All test files referencing "project" | Rename + update assertions | Medium |
+| **Python workers** | Check advance-rag/converter for "project" references | Grep and update (likely minimal, workers use IDs) | Low |
+
+**Risk mitigation:**
+1. Run full test suite after rename
+2. Grep entire repo for straggler "project" references (case-insensitive)
+3. Check all 3 i18n locale files for completeness
+4. Verify OpenSearch index names are unaffected (they use `knowledge_` prefix already)
+
+**Confidence:** HIGH (standard refactoring pattern, well-documented).
 
 ## Sources
 
-### Access Control in RAG
-- [Pinecone: RAG with Access Control](https://www.pinecone.io/learn/rag-access-control/) — HIGH confidence
-- [Oso: Right Approach to Authorization in RAG](https://www.osohq.com/post/right-approach-to-authorization-in-rag) — MEDIUM confidence
-- [Axiomatics: Secure Your RAG](https://axiomatics.com/blog/secure-your-rag-where-to-start) — MEDIUM confidence
-- [Cerbos: Authorization for RAG with LangChain](https://www.cerbos.dev/blog/authorization-for-rag-applications-langchain-chromadb-cerbos) — MEDIUM confidence
+### Chunk Quality and Scoring
+- [Vectara NAACL 2025 Chunking Benchmark](https://blog.premai.io/rag-chunking-strategies-the-2026-benchmark-guide/) -- HIGH confidence (peer-reviewed)
+- [Clinical Decision Support Chunking Study](https://pmc.ncbi.nlm.nih.gov/articles/PMC12649634/) -- HIGH confidence (PMC published)
+- [NVIDIA Chunking Strategy Guide](https://developer.nvidia.com/blog/finding-the-best-chunking-strategy-for-accurate-ai-responses/) -- HIGH confidence
+- [Galileo Chunk Relevance Metrics](https://docs.galileo.ai/galileo/gen-ai-studio-products/galileo-guardrail-metrics/chunk-relevance) -- MEDIUM confidence
+- [Evidently AI RAG Evaluation Guide](https://www.evidentlyai.com/llm-guide/rag-evaluation) -- MEDIUM confidence
+- [Braintrust RAG Evaluation Metrics](https://www.braintrust.dev/articles/rag-evaluation-metrics) -- MEDIUM confidence
 
-### GraphRAG
-- [Microsoft GraphRAG Paper (arXiv)](https://arxiv.org/abs/2404.16130) — HIGH confidence
-- [GraphRAG Survey (ACM)](https://dl.acm.org/doi/10.1145/3777378) — HIGH confidence
-- [ArticSledge: What is GraphRAG 2026](https://www.articsledge.com/post/graphrag-retrieval-augmented-generation) — MEDIUM confidence
+### Chunking Strategies
+- [Weaviate Chunking Strategies](https://weaviate.io/blog/chunking-strategies-for-rag) -- HIGH confidence
+- [Firecrawl Best Chunking Strategies 2025](https://www.firecrawl.dev/blog/best-chunking-strategies-rag) -- MEDIUM confidence
+- [Databricks Chunking Guide](https://community.databricks.com/t5/technical-blog/the-ultimate-guide-to-chunking-strategies-for-rag-applications/ba-p/113089) -- MEDIUM confidence
+- [LlamaIndex Small-to-Big Retrieval](https://medium.com/data-science/advanced-rag-01-small-to-big-retrieval-172181b396d4) -- MEDIUM confidence
+- [DataCamp Chunking Strategies](https://www.datacamp.com/blog/chunking-strategies) -- MEDIUM confidence
 
-### Document Versioning
-- [VersionRAG Paper (arXiv)](https://arxiv.org/abs/2510.08109) — HIGH confidence
-- [Towards AI: RAG Versioning in Practice](https://pub.towardsai.net/rag-in-practice-exploring-versioning-observability-and-evaluation-in-production-systems-85dc28e1d9a8) — MEDIUM confidence
+### Permissions and Access Control
+- [Pinecone RAG with Access Control](https://www.pinecone.io/learn/rag-access-control/) -- HIGH confidence
+- [Elasticsearch RAG + RBAC Integration](https://www.elastic.co/search-labs/blog/rag-and-rbac-integration) -- HIGH confidence
+- [Oso Authorization in RAG](https://www.osohq.com/post/right-approach-to-authorization-in-rag) -- MEDIUM confidence
+- [Cerbos Authorization for RAG](https://www.cerbos.dev/blog/authorization-for-rag-applications-langchain-chromadb-cerbos) -- MEDIUM confidence
+- [RAGFlow Permission Issue #7687](https://github.com/infiniflow/ragflow/issues/7687) -- HIGH confidence (primary source)
+- [Dify v1.1.0 Metadata Filtering](https://dify.ai/blog/dify-v1-1-0-filtering-knowledge-retrieval-with-customized-metadata) -- MEDIUM confidence
 
-### Deep Research / Multi-Hop
-- [HopRAG Paper (arXiv)](https://arxiv.org/abs/2502.12442) — HIGH confidence
-- [MultiHop-RAG Benchmark](https://arxiv.org/abs/2401.15391) — HIGH confidence
-
-### Healthcare RAG
-- [Arkenea: RAG in Healthcare 2025](https://arkenea.com/blog/rag-in-healthcare/) — MEDIUM confidence
-- [SCIMUS: RAG Healthcare Guide](https://thescimus.com/blog/retrieval-augmented-generation-healthcare-guide/) — MEDIUM confidence
-- [Springer: Survey on RAG for Healthcare](https://link.springer.com/article/10.1007/s00521-025-11666-9) — HIGH confidence
-
-### Enterprise RAG Landscape
-- [Firecrawl: Best Enterprise RAG Platforms 2025](https://www.firecrawl.dev/blog/best-enterprise-rag-platforms-2025) — MEDIUM confidence
-- [NStarX: Next Frontier of RAG 2026-2030](https://nstarxinc.com/blog/the-next-frontier-of-rag-how-enterprise-knowledge-systems-will-evolve-2026-2030/) — MEDIUM confidence
-- [RAGFlow GitHub](https://github.com/infiniflow/ragflow) — HIGH confidence
-
-### RAG Evaluation and Observability
-- [Maxim AI: RAG Evaluation Guide 2025](https://www.getmaxim.ai/articles/complete-guide-to-rag-evaluation-metrics-methods-and-best-practices-for-2025/) — MEDIUM confidence
-- [Prem AI: RAG Evaluation Metrics 2026](https://blog.premai.io/rag-evaluation-metrics-frameworks-testing-2026/) — MEDIUM confidence
+### Rename/Refactoring Patterns
+- [Martin Fowler Parallel Change](https://martinfowler.com/bliki/ParallelChange.html) -- HIGH confidence
+- [Martin Fowler Codemods](https://martinfowler.com/articles/codemods-api-refactoring.html) -- HIGH confidence

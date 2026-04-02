@@ -1,339 +1,203 @@
 # Project Research Summary
 
-**Project:** B-Knowledge — RAG Knowledge Base Platform
-**Domain:** Enterprise RAG platform for SDLC and Healthcare verticals
-**Researched:** 2026-03-18
-**Confidence:** HIGH (direct codebase analysis + verified external sources)
+**Project:** B-Knowledge v0.2 — Knowledge Base Refactor & Quality
+**Domain:** Knowledge Base Management / RAG Platform — incremental feature additions on existing production system
+**Researched:** 2026-04-02
+**Confidence:** HIGH
 
 ## Executive Summary
 
-B-Knowledge is an enterprise RAG knowledge base platform already operating with a validated core pipeline (multi-format ingestion, hybrid BM25+vector search, reranking, streaming chat with citations, multi-LLM provider support). The milestone research covered four capability areas: Attribute-Based Access Control (ABAC), Document Versioning, GraphRAG migration, and Deep Research migration. Critically, both GraphRAG and Deep Research are migration tasks — the full Python implementations already exist in `advance-rag/rag/graphrag/` and `advance-rag/rag/advanced_rag/` respectively, with all required Python dependencies already declared in `pyproject.toml`. No new Python packages are needed. The only net-new library additions are `@casl/ability` (backend) and `@casl/react` (frontend) for the ABAC engine.
+B-Knowledge v0.2 is an incremental release layering four tightly coupled features onto an existing, validated production stack: (1) renaming the "Project" entity to "Knowledge Base" across all layers, (2) enhancing chunk quality with advanced chunking strategies and heuristic scoring, (3) upgrading the permission model to a clean 3-tier KB-level RBAC system, and (4) shipping supporting chunk-quality UI. All four features build exclusively on existing infrastructure — no new libraries, services, or infrastructure components are required. The stack (Node.js 22 / Express 4 / React 19 / Python 3.11 / FastAPI / PostgreSQL / OpenSearch / Valkey) is entirely validated and stable.
 
-The recommended approach is a strict phase ordering driven by dependency chains, not feature desirability. ABAC must come before GraphRAG and Deep Research because both introduce new retrieval paths that require access-controlled queries. Multi-tenant isolation cleanup (consolidating `SYSTEM_TENANT_ID` reads) must happen before ABAC to avoid a fragmented refactor mid-feature. Document versioning can be built in parallel with or just after ABAC but must land before Deep Research, which may need to reason across versions. The project schema for multi-tenant project scoping is already complete in the initial migration; the remaining work is backend service completion and frontend wiring.
+The recommended approach is a dependency-ordered four-phase build: DB and BE rename foundation first (unblocks everything), FE rename second, permission system third, and chunk quality pipeline fourth (which is largely independent and can be parallelized). The rename must be executed as a single atomic Knex migration — PostgreSQL `ALTER TABLE RENAME` is instant (metadata-only) and the monorepo has no external API consumers, making a clean big-bang rename the correct strategy with no API versioning overhead. The chunk quality pipeline should insert scoring after parsing but before LLM enrichment, storing scores in OpenSearch as the single source of truth for chunk-level data.
 
-The top risk is not architectural complexity but enforcement gaps: ABAC implemented only at Express middleware does not protect retrieval — OpenSearch queries in `rag-search.service.ts` must receive a user-derived access filter at the data layer, not just at the route layer. A second class of risk is cost and latency spiral in Deep Research, where the existing `maxDepth` guard is insufficient without total token budget caps and per-tenant rate limits. A third risk is schema divergence between Knex migrations and Peewee ORM models — any DB migration touching shared tables must update both in the same PR or silent failures will emerge in production.
-
----
+The critical risk is the dual-ORM architecture: Knex owns all migrations but Peewee (Python worker) must have its model definitions updated in the same PR as any schema rename — mismatches are invisible at build time and only surface as runtime crashes. A second risk is rename surface area volume — 378 occurrences of "project" in FE TypeScript files alone, plus 17 `ragflow_doc_meta_` prefix occurrences in 5 Python connector files that are a known partial cleanup from the upstream RAGFlow fork. The permission system risk is authority-model collision between the existing 4-tier system RBAC and the new KB-level grants; an ADR defining the resolution rule must precede any implementation.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The core stack is fixed and not under evaluation. The only new additions are two JS packages for ABAC. GraphRAG and Deep Research reuse all existing Python dependencies already in `pyproject.toml`. Document versioning is an application-level PostgreSQL schema pattern requiring no new infrastructure or libraries.
+No new libraries are required for any v0.2 feature. `@casl/ability ^6.8.0` is already installed and architected for the 3-tier permission model with Redis caching and OpenSearch filter translation in place. scikit-learn, numpy, and tiktoken (all already in `advance-rag/pyproject.toml`) provide everything needed for heuristic chunk quality scoring. `knex.raw()` handles PostgreSQL `ALTER TABLE RENAME` safely, avoiding the known `.renameColumn()` bug that drops DEFAULT constraints on PostgreSQL. Semantic chunking should be a custom `SemanticSplitter` class extending the existing `ProcessBase` splitter pattern rather than any external library, since the project already has a complete embedding pipeline in `rag/llm/`.
 
-**Core technologies (fixed):**
-- Node.js 22 / Express 4.21 / TypeScript / Knex / Zod — backend API, all mutations validated via Zod middleware
-- React 19 / Vite / TanStack Query / Tailwind / shadcn/ui — frontend SPA
-- Python 3.11 / FastAPI / Peewee ORM — RAG worker (ingestion, GraphRAG, Deep Research)
-- PostgreSQL 17 — all structured metadata and schema authority via Knex migrations
-- OpenSearch 3.5.0 — vector + BM25 hybrid search, per-tenant index pattern
-- Valkey (Redis-compatible) 8 — task queue, pub/sub progress events, session/cache
-- RustFS (S3-compatible) — binary file storage
+**Core technologies (unchanged from v0.1):**
+- Node.js 22 / Express 4.21 / TypeScript / Knex — backend API and migrations
+- React 19 / Vite 7 / TanStack Query / Tailwind / shadcn/ui — frontend SPA
+- Python 3.11 / FastAPI / Peewee ORM — RAG worker
+- PostgreSQL 17 — schema authority via Knex migrations only
+- OpenSearch 3.5.0 — vector + BM25 hybrid search, chunk storage
+- Valkey 8 — task queue, sessions, CASL ability cache
 
-**New additions (minimal):**
-- `@casl/ability` 6.8.0 — isomorphic ABAC engine; ~950K weekly downloads, TypeScript-native, in-process (no external service), rules stored in PostgreSQL JSONB, cached in Valkey per session
-- `@casl/react` 4.x — permission-aware component rendering, compatible with React 19 and React Compiler
+**v0.2 stack decisions (all "use existing"):**
+- `@casl/ability ^6.8.0`: KB-level permissions — already integrated, extend in place
+- `scikit-learn / numpy / tiktoken`: Chunk quality scoring — cosine similarity, token counting, statistical thresholds; all installed
+- `knex.raw()` with `ALTER TABLE RENAME`: Safe atomic DB rename — avoids `.renameColumn()` DEFAULT-dropping bug (Knex issue #933)
+- Custom `SemanticSplitter` extending `ProcessBase`: Semantic chunking — avoids duplicating the embedding pipeline with an external library
 
-**Why not alternatives:**
-- No LangChain/LangGraph — conflicts with existing direct-API-call pattern; TSQDR already implements deep research in ~400 lines
-- No Neo4j — existing OpenSearch + NetworkX covers expected scale; Neo4j adds Java infrastructure only justified above ~10M entities per KB
-- No dedicated graph database — OpenSearch stores graph entities and relationships alongside chunk vectors; avoids a new service to operate
-- No external auth SaaS (Oso, Permit.io, OpenFGA) — CASL runs in-process, sufficient at current scale, avoids vendor lock-in and latency
-
-See `/mnt/d/Project/b-solution/b-knowledge/.planning/research/STACK.md` for full alternatives analysis.
-
----
+**What NOT to use:**
+- `semchunk` / `semantic-chunking` (PyPI) — duplicate the existing embedding pipeline
+- `ragas` / `deepeval` — pipeline-level evaluation tools, not per-chunk quality gates
+- `langchain` for chunking — 100+ MB dependency for 50 lines of cosine similarity math
+- Knex `.renameColumn()` — drops DEFAULT constraints on PostgreSQL (confirmed bug)
 
 ### Expected Features
 
-See `/mnt/d/Project/b-solution/b-knowledge/.planning/research/FEATURES.md` for full feature landscape with complexity estimates and source citations.
+**Must have (table stakes):**
+- Multiple chunking strategies (naive + semantic + table-aware) — expected by every RAG platform; Dify, RAGFlow, LlamaIndex all ship at least 3 methods
+- Chunk size + overlap config per KB with UI exposure — standard; partially exists via `parser_config.chunk_token_num`
+- Basic heuristic chunk quality indicators (token count, truncation flag, emptiness detection) — zero cost, zero LLM needed, computed at ingestion
+- KB-level Read/Write/Admin permission grants — essential for multi-user platform; `project_permissions` table already exists, needs simplification
+- Permission-aware retrieval — injecting KB access filter into OpenSearch at query time is a security requirement, not UX
+- Entity rename with zero data loss and no broken URLs
 
-**Must have (table stakes — active gaps):**
-- Org-level tenant isolation — zero-tolerance for data leakage; foundational for enterprise and healthcare
-- RBAC (role-based access control) — baseline expectation; ships before ABAC
-- ABAC (attribute-based access control) — healthcare: department-restricted docs; SDLC: project-scoped docs
-- Document-level permission inheritance — dataset permissions flow to documents with overrides
-- Audit logging — HIPAA regulatory requirement; cheap to add early, expensive to retrofit
-- Document version history — VersionRAG research shows 90% accuracy on version-sensitive queries vs 58% naive RAG
-- Answer quality feedback (thumbs up/down) — minimum viable retrieval quality signal
-- Chunk visualization and intervention — already partially built; critical for user trust
+**Should have (competitive differentiators):**
+- Recursive chunking strategy — simple add, good general improvement over naive for structured docs
+- Heuristic quality dashboard in FE with quality filtering in chunk list view
+- Corrective RAG quality gate using stored quality scores at retrieval time
 
-**Should have (differentiators):**
-- GraphRAG — entity extraction, community detection, graph+vector hybrid retrieval; 80% accuracy vs 50% traditional RAG on multi-hop queries; already implemented in Python, needs wiring
-- Deep Research — recursive multi-hop retrieval with cross-KB search; TSQDR implementation exists, needs wiring
-- Document metadata and tagging — feeds ABAC attribute matching; auto-generated during parsing
-- Project-scoped knowledge bases — SDLC domain differentiator; schema already complete
-- RAG quality metrics dashboard — extends Langfuse; increasingly expected in 2026
-
-**Defer to v2+:**
-- Code-aware parsing (Python/TypeScript/Java syntax-aware chunking)
-- API documentation parser (OpenAPI/Swagger structured chunks)
-- Healthcare-specific features (PHI detection alerts, medical terminology mapping, regulatory tracking) — add when healthcare tenant demand materializes
-- Research report generation — depends on Deep Research stability first
-- A/B testing for retrieval configs — Langfuse covers basic observability now
-- RAG quality metrics dashboard — important but not blocking launch
-
-**Anti-features (explicitly do not build):**
-- Full PII/PHI redaction — massive compliance liability; detect and alert only
-- Custom model training/fine-tuning — separate product concern
-- Visual workflow builder — scope creep; B-Knowledge is not an agent orchestrator
-- Mobile app — web-first; responsive web covers mobile browsers
-- Agentic tool integration (MCP, function calling) — expose as API for external frameworks instead
-
----
+**Defer to v0.3+:**
+- Parent-child (small-to-big) chunking — requires significant chunk storage architecture change; high complexity, moderate incremental benefit over semantic alone
+- LLM-based chunk quality scoring — opt-in, ~$0.005-0.01 per chunk; only valuable once heuristic UI workflow proves value
+- Document-level permission grants — KB-level sufficient for v0.2; enterprise complexity not yet justified
+- Adaptive (density-aware) chunking — Vectara NAACL 2025 peer-reviewed study shows fixed-size with 10-20% overlap matches adaptive on real documents
 
 ### Architecture Approach
 
-The monorepo structure is established and well-organized. The architecture follows four key patterns: (1) Redis task queue for async ingestion — backend enqueues, Python worker polls, progress flows back via Redis pub/sub → Socket.IO → React; (2) ABAC as middleware-plus-service-filter — coarse role gate in middleware, attribute filter applied in service layer before returning resources; (3) Dual ORM, single database — Knex owns all migrations, Peewee mirrors schema for read/write; (4) Project hierarchy as tenant scope — the schema for `projects`, `project_permissions`, `document_categories`, and `document_category_version_files` is already in the initial migration.
+The codebase is a NX-style modular monorepo with strict module boundaries (no cross-module imports, barrel exports only). All four v0.2 features follow established patterns: BE modules in `be/src/modules/<domain>/`, FE features in `fe/src/features/<domain>/`, Python worker extensions inside `advance-rag/rag/`. Permission logic belongs inside the `knowledge-base` module (not a standalone module) to preserve the mental model that permissions are a KB sub-resource. Chunk quality scoring is a new `advance-rag/rag/quality/` module inserted into `task_executor.py` between parsing and LLM enrichment — scoring BEFORE enrichment allows skipping expensive keyword/question generation for low-quality chunks.
 
-**Major components:**
-1. React SPA (`fe/`) — Data Studio (admin, config-only) vs Chat/Search pages (zero config UI); TanStack Query + Socket.IO
-2. Express Backend (`be/`) — HTTP API, auth/session, ABAC enforcement, RAG query pipeline (10 stages), task dispatch
-3. Python RAG Worker (`advance-rag/`) — document ingestion pipeline; GraphRAG construction; Deep Research execution; polls Redis
-4. Converter Worker (`converter/`) — Office-to-PDF via LibreOffice; Redis queue only
-5. PostgreSQL — schema authority via Knex migrations; Peewee reads same tables
-6. OpenSearch — vector + BM25 per-tenant index (`knowledge_{tenant_id}`); queried by backend at query time, written by Python worker at index time
-7. Valkey/Redis — task queue dispatch; pub/sub progress events; session store; ABAC policy cache
-
-**Build order implications from architecture:**
-- Phase A: ABAC foundation — prerequisite for everything; every retrieval endpoint needs access filter
-- Phase B: Document versioning — can overlap with ABAC; needs `version_id` + `is_current` in OpenSearch chunks
-- Phase C: GraphRAG + Deep Research — backend service stubs exist; work is wiring Python pipeline and UI toggles
-- Phase D: Multi-tenant project scoping — schema complete; work is backend completion and frontend
-
-See `/mnt/d/Project/b-solution/b-knowledge/.planning/research/ARCHITECTURE.md` for full component boundaries, data flow diagrams, and anti-patterns.
-
----
+**Major components and their v0.2 changes:**
+1. **DB Migration (Knex)** — Single atomic migration renames 8+ tables (`projects` -> `knowledge_bases`, all `project_*` -> `kb_*`); second separate migration simplifies `kb_permissions` to single `role` column (allows rollback between steps)
+2. **BE knowledge-base module** — Renamed from `modules/projects/`; adds `kb-auth.middleware.ts` factory and `resolveEffectiveRole()` service method; permission models move to `shared/models/`
+3. **Python quality module** — New `advance-rag/rag/quality/` with `scorer.py`, pluggable strategies (length, coherence, duplication), filters; quality scores stored as `quality_score_flt` and `quality_flags_kwd` in OpenSearch (no PostgreSQL migration needed)
+4. **FE knowledge-base feature** — Renamed from `features/projects/`; adds `QualityConfig.tsx`, `QualityBadge.tsx`, permission-conditional rendering via `useKbPermission()` hook
 
 ### Critical Pitfalls
 
-See `/mnt/d/Project/b-solution/b-knowledge/.planning/research/PITFALLS.md` for full pitfall catalog including recovery strategies, performance traps, and security mistakes.
+1. **Dual-ORM schema drift (CRITICAL)** — Knex migration renames tables but Peewee models in `advance-rag/db/db_models.py` still reference old names; Python worker crashes at runtime with no build-time warning. Prevention: Peewee model changes in the same PR as the Knex migration; add CI smoke test that imports all Peewee models and runs basic SELECT against each table.
 
-1. **SYSTEM_TENANT_ID hardcoded in 5 files** — Consolidate all OpenSearch client construction into `shared/services/opensearch.service.ts` that always accepts `tenantId` as parameter; migrate `process.env['SYSTEM_TENANT_ID']` reads to `config` object. Do this before any multi-tenant feature work begins.
+2. **Incomplete rename leaves ghost references (CRITICAL)** — 378 occurrences of "project" across 14 FE TypeScript files; 6 TypeScript interfaces in `types.ts`, 217 in `projectApi.ts`, 93 in `projectQueries.ts`. Missing any one causes 404 errors, stale TanStack Query cache, or untranslated i18n. Prevention: generate full impact inventory via grep before writing any code; post-rename grep verification pass for `project_id`, `projectId`, `projects`, `/projects`.
 
-2. **ABAC enforcement at wrong layer** — Express middleware cannot protect retrieval. Every OpenSearch query (`fullTextSearch`, `vectorSearch`, `hybridSearch`, `KGSearch`) must receive a user-derived access filter as a required parameter, intersected with the assistant's configured `kb_ids`. Security labels on chunks at index time; mandatory filter at query time.
+3. **`ragflow_doc_meta_` prefix in 5 Python connector files (CRITICAL)** — 17 occurrences across `ob_conn_base.py`, `infinity_conn.py`, `infinity_conn_base.py`, `ob_conn.py`, `es_conn_base.py` still use old prefix while `doc_metadata_service.py` already uses `knowledge_doc_meta_`. Creates split metadata across two index families. Prevention: explicit cleanup subtask in Phase 1; CI check blocking any `ragflow_` in Python source.
 
-3. **OpenSearch index-per-tenant scaling bomb** — Default 1000-index hard limit; each index consumes cluster state memory. Decision needed before multi-tenant work: pool model (single shared index with mandatory `tenant_id` filter — recommended), silo model (per-tenant index for HIPAA-strict tenants), or hybrid. Keep `getIndexName()` as the single abstraction point.
+4. **System role vs KB grant collision** — Existing 4-tier system RBAC (`super-admin/admin/leader/user`) and new KB-level `reader/writer/admin` grants conflict without a defined authority hierarchy. Prevention: write an ADR defining resolution rule (system role is ceiling, KB grant is floor; global admin implicitly has Admin on all KBs) before writing any permission code.
 
-4. **Document version transition creates search gap** — Naive delete+reindex leaves documents invisible. Add `version_id` and `is_current` fields to OpenSearch chunks. New version chunks indexed as `is_current: false`; single `update_by_query` atomically flips old version to false and new to true. Never delete old chunks immediately.
-
-5. **Deep Research token cost and latency spiral** — Existing `maxDepth: 3` parameter is insufficient. A single query at depth 3 with 3 follow-ups per level triggers 10-20 LLM calls at $0.15–$1.50/query. Must add: hard cap on total LLM calls per query (10-15), total token budget per query (configurable, default 50K), wall-clock timeout with graceful truncation, and per-tenant rate limiting separate from regular chat.
-
-6. **GraphRAG entity resolution silent failures** — LLM entity extraction at enterprise scale produces duplicate nodes for the same real-world entity ("Dr. Smith" vs "Smith, J." vs "John Smith MD"). Resolution must be a separate auditable pipeline stage, not inline with graph construction. Track entity count per KB over time — linear growth without new documents signals failures.
-
-7. **Peewee/Knex schema divergence** — Two ORMs model the same PostgreSQL tables. Every Knex migration touching a Peewee-managed table must update `advance-rag/db/db_models.py` in the same PR. Add Python worker startup health check validating Peewee fields against `INFORMATION_SCHEMA`. A CI check should flag migration PRs that lack corresponding Peewee model updates.
-
----
+5. **Chunk dual-store inconsistency** — Quality scores stored in both OpenSearch and PostgreSQL will drift. Prevention: OpenSearch is the single source of truth for chunk-level data; PostgreSQL stores only asynchronously-updated aggregate stats (avg score, % flagged) at the document level; never require real-time cross-store consistency for quality data.
 
 ## Implications for Roadmap
 
-Based on combined research, the dependency chain is clear and non-negotiable:
+Based on combined research, a 4-phase structure is strongly recommended, following the dependency graph confirmed by ARCHITECTURE.md direct codebase analysis.
 
-```
-Multi-tenant cleanup (Pitfall 1)
-  → RBAC foundation
-    → ABAC implementation (Pitfall 2)
-      → GraphRAG migration (Pitfall 5, 6)
-        → Deep Research migration (Pitfall 6)
-          → Cross-dataset retrieval
+### Phase 1: DB + BE Rename (Foundation)
 
-Document versioning (Pitfall 4)
-  → Can run in parallel with ABAC
-  → Must complete before Deep Research (multi-version reasoning)
-```
+**Rationale:** The rename must be first and non-negotiable. Every subsequent feature references renamed entities (`KnowledgeBase`, `kb_id`, `/api/knowledge-bases`). Building any feature on `Project` naming would require a second rename-or-shim pass. PostgreSQL DDL renames are instant so there is no performance reason to delay. The `ragflow_doc_meta_` prefix cleanup belongs here since it is also a naming consistency task.
 
-### Phase 1: Foundation Hardening and Multi-Tenant Cleanup
+**Delivers:** Renamed database schema (8+ tables with FK constraints preserved), renamed BE module (`modules/knowledge-base/`), updated CASL subjects, working API at `/api/knowledge-bases/*`, passing TypeScript build, zero `ragflow_` references in Python source.
 
-**Rationale:** Technical debt in SYSTEM_TENANT_ID scattered across 5 files (Pitfall 1) and `process.env` reads violating config conventions must be resolved before any multi-tenant feature work begins. Also includes audit logging (cheap now, expensive to retrofit for HIPAA) and answer quality feedback (low complexity, immediate retrieval signal).
+**Addresses:** Entity rename (table stakes), `ragflow_doc_meta_` cleanup, foundation for permission system.
 
-**Delivers:** Config-compliant codebase, consolidated OpenSearch service layer with parameterized `tenantId`, basic user feedback loop, audit trail foundation.
+**Avoids:** Pitfall 1 (Peewee drift — same-PR Peewee updates + CI smoke test), Pitfall 3 (`ragflow_doc_meta_` — explicit subtask + CI check), Pitfall 10 (FK CASCADE — multi-step migration: rename then separate drop of old columns).
 
-**Addresses:**
-- Audit logging (FEATURES.md — table stakes, HIPAA requirement)
-- Answer quality feedback (FEATURES.md — low complexity, immediate value)
-- Chunk visualization completion (FEATURES.md — partially built, trust-critical)
+**Must include pre-work:** Full impact inventory grep before writing code; Peewee model audit checklist mapping every renamed table/column; `ragflow_doc_meta_` file list; FK constraint rename plan.
 
-**Avoids:**
-- SYSTEM_TENANT_ID refactor mid-ABAC phase (Pitfall 1)
-- `process.env` convention violations that compound as codebase grows (PITFALLS.md)
+**Research flag:** None needed. PostgreSQL DDL rename is well-documented; Knex raw SQL approach is confirmed; pattern is standard.
 
-**Research flag:** Standard patterns — no additional research needed.
+### Phase 2: FE Rename
 
----
+**Rationale:** Depends on Phase 1 (BE must expose `/api/knowledge-bases` before FE can point to it). FE rename is pure file and string changes with no logic changes — lowest risk phase. TanStack Query cache staleness from old key names must be handled with a cache version bump, not just key renames.
 
-### Phase 2: RBAC and ABAC
+**Delivers:** Renamed FE feature module (`features/knowledge-base/`), updated route paths (`/data-studio/knowledge-bases`), updated i18n all 3 locales (including pluralization and interpolation variants), updated TanStack Query key factory, passing FE build.
 
-**Rationale:** RBAC is the prerequisite for ABAC; ABAC is the prerequisite for project-scoped access, GraphRAG retrieval isolation, and Deep Research cross-KB search. Must be built with dual enforcement: middleware (coarse) and service-layer filter (attribute-based on retrieval results). CASL `@casl/ability` is the recommended engine — 2 new packages only.
+**Addresses:** Complete entity rename at UI layer.
 
-**Delivers:** Per-tenant role management, attribute-based document access for healthcare and SDLC, document-level permission inheritance, admin-only policy CRUD in Data Studio (zero config on user-facing pages).
+**Avoids:** Pitfall 2 (ghost references — post-rename grep for all variants), Pitfall 7 (TanStack Query cache staleness — cache version bump and full mutation `onSuccess` invalidation audit of all 93 occurrences in `projectQueries.ts`), Pitfall 11 (i18n pluralization variants).
 
-**Addresses:**
-- Org-level tenant isolation (FEATURES.md — table stakes)
-- RBAC (FEATURES.md — must ship)
-- ABAC (FEATURES.md — must ship, healthcare + SDLC requirement)
-- Document-level permission inheritance (FEATURES.md — must ship)
+**Research flag:** None needed. Standard rename patterns; established conventions in codebase.
 
-**Avoids:**
-- ABAC at wrong layer — service-layer filter applied to OpenSearch queries, not just middleware (Pitfall 2)
-- N+1 ABAC policy queries — resolved access sets cached in Valkey per session (PITFALLS.md performance traps)
-- ABAC without audit trail — all policy changes logged with before/after snapshot (PITFALLS.md security)
+### Phase 3: Permission System Enhancement
 
-**Research flag:** Well-documented CASL patterns; CASL v6 official docs cover the PostgreSQL + Valkey caching pattern. No additional research needed. Verify `@casl/react` exact minor version before install.
+**Rationale:** Depends on Phase 1 (permission tables are renamed in Phase 1 migration). Can be built in parallel with Phase 2. The existing `project_permissions` table already has the right structure; the v0.2 work is simplifying 3 tab columns to a single `role` column and adding the middleware factory and retrieval filter.
 
----
+**Delivers:** Single `role` column on `kb_permissions` (replacing `tab_documents/tab_chat/tab_settings`), `kb-auth.middleware.ts` factory, `resolveEffectiveRole()` service method (queries both direct user grants and team grants), permission-aware retrieval filter injected into OpenSearch queries, FE `useKbPermission()` hook with conditional rendering of edit/delete buttons.
 
-### Phase 3: Document Versioning
+**Addresses:** 3-tier permissions (table stakes), permission-aware retrieval (security requirement), foundation for future document-level grants.
 
-**Rationale:** VersionRAG research shows 90% accuracy on version-sensitive queries vs 58% for naive RAG — a major retrieval quality gain. Can be built after ABAC (version access inherits dataset-level ABAC rules). Must complete before Deep Research, which needs version-aware context. The `document_versions` table already exists in the schema; work is OpenSearch chunk field additions and the atomic version flip logic.
+**Avoids:** Pitfall 4 (system-role collision — ADR before implementation; two-step auth: CASL global check then KB-level role check), Pitfall 8 (module boundary violation — permission models in `shared/models/`, middleware in `shared/middleware/`, not imported across module boundaries).
 
-**Delivers:** Linear document version chain per document, version-aware OpenSearch chunk indexing with `is_current` filter, historical search as explicit opt-in, version transition UX (progress via existing Socket.IO/Redis pub/sub).
+**Must include pre-work:** ADR defining authority resolution rule. This is a hard prerequisite — no implementation until the ADR is written and agreed.
 
-**Addresses:**
-- Document version history (FEATURES.md — high value for both domains)
-- Changelog and release notes tracking for SDLC (FEATURES.md — depends on versioning)
-- Regulatory document tracking for healthcare (FEATURES.md — depends on versioning)
+**Research flag:** None needed. CASL integration pattern is well-understood from direct codebase analysis. The only design decision is the authority resolution rule (ADR, not a research question).
 
-**Avoids:**
-- Search gap during version transitions — atomic `update_by_query` flip pattern (Pitfall 4)
-- OpenSearch chunk schema missing `version_id` + `is_current` — add before any version uploads (PITFALLS.md "looks done but isn't")
-- Embedding re-generation for all chunks — content hash comparison, reuse embeddings for unchanged chunks (PITFALLS.md performance traps)
+### Phase 4: Chunk Quality Pipeline
 
-**Research flag:** Well-documented. VersionRAG paper (arXiv 2510.08109) covers the patterns directly. PostgreSQL append-only versioning is a standard pattern. No additional research needed.
+**Rationale:** Most independent phase — touches only the Python worker and FE datasets feature, not the renamed KB module. Can begin after Phase 1 completes (uses renamed table references in parser_config). Parallelizable with Phases 2 and 3. Ship heuristic scoring only in v0.2; defer LLM-based scoring to v0.3 as opt-in.
 
----
+**Delivers:** New `advance-rag/rag/quality/` module with pluggable scoring strategies (length, coherence, duplication), integration point in `task_executor.py` after `build_chunks()` before LLM enrichment, quality config in existing `parser_config` JSONB (no new Knex migration needed), quality score fields in OpenSearch chunk documents, quality score display in FE chunk list, quality threshold filter in FE chunk list, quality config UI in FE dataset settings.
 
-### Phase 4: GraphRAG Migration and Wiring
+**Addresses:** Table-aware chunking (highest impact per effort — already designed in `todo/02`), semantic chunking (already designed in `todo/03`), basic heuristic chunk quality indicators, recursive chunking (simple add alongside semantic).
 
-**Rationale:** GraphRAG code already exists in `advance-rag/rag/graphrag/` — this is migration and wiring, not greenfield. Backend service stubs (`rag-graphrag.service.ts`) exist. Work is: verify Python pipeline builds graph on task type `graphrag`, connect backend service stub to chat pipeline toggle, add "Build Knowledge Graph" trigger in dataset UI, implement entity resolution as separate auditable stage.
+**Avoids:** Pitfall 5 (dual-store inconsistency — OpenSearch authoritative for chunk-level data, PostgreSQL for async aggregate stats only), Pitfall 9 (throughput degradation — heuristic scoring only; LLM scoring deferred and when added must be async post-indexing, not blocking parse pipeline).
 
-**Delivers:** Knowledge graph construction per KB, entity extraction and community detection, graph+vector hybrid retrieval at query time, per-assistant GraphRAG toggle in Data Studio.
-
-**Addresses:**
-- GraphRAG (FEATURES.md — major differentiator: 80% vs 50% accuracy on multi-hop queries)
-- Entity and relationship extraction (FEATURES.md — prerequisite for Deep Research)
-- Multi-hop question answering (FEATURES.md — answers questions spanning multiple documents)
-
-**Avoids:**
-- Entity resolution silent failures — separate auditable pipeline stage, confidence threshold for auto-merge, flag below threshold for admin review (Pitfall 6)
-- Community reports going stale — incremental regeneration, report age tracked (PITFALLS.md performance traps)
-- GraphRAG + vector results unlabeled — label context sections ("From knowledge graph:" vs "From document search:") (PITFALLS.md UX pitfalls)
-
-**Research flag:** Needs phase research. GraphRAG indexing costs are 10-100x vector-only RAG; LazyGraphRAG (2025) mitigates this. The integration between the existing Python pipeline and backend stubs needs verification of task payload format and progress event schema.
-
----
-
-### Phase 5: Deep Research Migration and Wiring
-
-**Rationale:** Deep Research (TSQDR) exists in `advance-rag/rag/advanced_rag/`. All dependencies are stdlib or already installed. Backend stub (`rag-deep-research.service.ts`) exists. Depends on ABAC (cross-KB retrieval must respect access controls) and benefits from GraphRAG being wired (graph entities feed into multi-hop retrieval quality). Cost controls are mandatory architectural decisions, not optional tuning.
-
-**Delivers:** Recursive multi-hop query decomposition, cross-KB retrieval respecting ABAC, SSE streaming of intermediate results at each depth level, per-tenant token budget enforcement, Deep Research toggle per assistant in Data Studio.
-
-**Addresses:**
-- Deep Research / recursive query decomposition (FEATURES.md — differentiator)
-- Cross-dataset retrieval (FEATURES.md — search across KBs with ABAC)
-- Research report generation (FEATURES.md — defer until Deep Research is solid)
-
-**Avoids:**
-- Token cost spiral — hard cap on total LLM calls (10-15 per query), token budget per query (configurable, default 50K), wall-clock timeout with graceful truncation (Pitfall 5)
-- No progressive disclosure — stream best answer found at each depth via existing `onProgress` SSE infrastructure (PITFALLS.md UX)
-- Missing per-tenant rate limiting — separate quota from regular chat, not shared (PITFALLS.md)
-
-**Research flag:** Needs phase research. Token budget sizing, semantic similarity caching strategy for repeated Deep Research queries, and SSE streaming integration with the existing frontend chat infrastructure need validation.
-
----
-
-### Phase 6: Multi-Tenant Project Scoping
-
-**Rationale:** The project schema is already complete in the initial migration (`projects`, `project_permissions`, `document_categories`, `document_category_versions`, `document_category_version_files`). The `projects` backend module exists. Work is completing backend CRUD, frontend project pages in Data Studio, and wiring ABAC into project-level checks. Placed last because it depends on ABAC (project member permissions feed into document access) and versioning (document categories have versions).
-
-**Delivers:** Project-level KB isolation, team-based document access, project chats and search apps, cross-project search for authorized users.
-
-**Addresses:**
-- Project-scoped knowledge bases (FEATURES.md — SDLC domain differentiator)
-- Multi-tenant ABAC at project level (FEATURES.md — ABAC extended to project membership)
-- Document categories with versioned datasets (ARCHITECTURE.md — schema already complete)
-
-**Avoids:**
-- Hardcoded tenant isolation assumption — pool vs. silo model decision already made in Phase 1 cleanup (Pitfall 3)
-- OpenSearch index-per-tenant scaling — `getIndexName()` abstraction already consolidated (Pitfall 1 remediation)
-
-**Research flag:** Standard CRUD patterns for the schema that already exists. No additional research needed.
-
----
+**Research flag:** Medium. Quality score thresholds (`coherence_threshold`, `dedup_threshold`, `min_tokens`) are domain-dependent. Implement with configurable defaults; plan a post-release calibration pass. The Vectara NAACL 2025 data provides benchmarks but real-world KB content will vary.
 
 ### Phase Ordering Rationale
 
-- **Cleanup first:** Pitfall 1 (SYSTEM_TENANT_ID in 5 files) creates a cascade refactor risk if deferred. One clean refactor before feature work costs less than 5 piecemeal refactors mid-features.
-- **ABAC before retrieval features:** GraphRAG and Deep Research introduce new retrieval paths. Adding them without ABAC means those paths are unprotected — a security gap that cannot be patched retroactively without re-testing all retrieval paths.
-- **Versioning before Deep Research:** Deep Research needs to reason about document currency. Without `is_current` fields on chunks, multi-hop queries may surface stale version content as current facts.
-- **GraphRAG before Deep Research:** TSQDR's multi-hop retrieval quality depends on graph entities. Building Deep Research before GraphRAG means shipping a feature with missing context sources.
-- **Projects last:** The schema is done; the remaining work is UI and policy wiring — lower risk work that benefits from all earlier security and versioning foundations being solid.
+- **Phase 1 before all others:** Every feature references renamed entities; building on old names creates a second rename obligation; PostgreSQL DDL is instant so no performance reason to delay
+- **Phase 2 after Phase 1, parallel to Phases 3-4:** FE rename requires the new API routes to exist; no other dependencies
+- **Phase 3 after Phase 1:** Permission tables are renamed in Phase 1 migration; the `role` column migration is a follow-on from the rename migration; can proceed immediately after Phase 1 without waiting for Phase 2
+- **Phase 4 largely independent:** Python worker and FE datasets feature have minimal overlap with KB module; confirmed parallelizable with Phases 2 and 3
+- **All defer items confirmed out of scope:** Parent-child chunking (significant architecture change), LLM chunk scoring (cost and workflow maturity), document-level permissions (enterprise complexity), adaptive chunking (Vectara NAACL 2025 shows fixed-size matches it on real documents)
 
 ### Research Flags
 
 Phases likely needing deeper research during planning:
+- **Phase 4 (Chunk Quality):** Quality score threshold calibration is empirically tuned per domain; recommend instrument-first, calibrate-after approach; specific default values need validation against real KB content after initial release
 
-- **Phase 4 (GraphRAG):** LazyGraphRAG vs full GraphRAG cost/accuracy tradeoff for healthcare and SDLC corpus sizes. Task payload format verification between backend and Python worker. Community report incremental regeneration strategy.
-- **Phase 5 (Deep Research):** Token budget sizing benchmarks for realistic SDLC/healthcare query complexity. Semantic similarity caching implementation (Redis hash of normalized query + kb_ids). SSE streaming of intermediate Deep Research results via existing chat frontend infrastructure.
-
-Phases with standard patterns (skip additional research):
-
-- **Phase 1 (Foundation Hardening):** Config consolidation is a mechanical refactor with clear before/after.
-- **Phase 2 (ABAC):** CASL v6 official docs cover PostgreSQL + Valkey caching pattern in full. Well-documented.
-- **Phase 3 (Document Versioning):** PostgreSQL append-only versioning + OpenSearch `update_by_query` flip are established patterns documented in VersionRAG paper and PostgreSQL documentation.
-- **Phase 6 (Project Scoping):** Schema complete; backend module exists; standard CRUD + frontend work.
-
----
+Phases with standard patterns (skip research-phase):
+- **Phase 1 (DB + BE Rename):** PostgreSQL DDL rename well-documented; Knex raw SQL approach confirmed; pattern is standard; the risk is execution discipline (audit completeness), not knowledge gaps
+- **Phase 2 (FE Rename):** Pure file/string rename; established patterns in the codebase; no novel technical decisions
+- **Phase 3 (Permissions):** CASL already integrated; KB-level RBAC pattern confirmed via Elasticsearch and Pinecone production references; only decision is authority resolution model (ADR, not research)
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | CASL version verified via npm (6.8.0, Jan 2026). All Python deps confirmed directly from `advance-rag/pyproject.toml`. GraphRAG/TSQDR code confirmed in codebase via directory inspection. |
-| Features | MEDIUM-HIGH | Table stakes confirmed against enterprise RAG landscape sources (2025-2026). VersionRAG accuracy numbers from arXiv paper (HIGH). GraphRAG accuracy numbers from Microsoft arXiv paper (HIGH). Healthcare-specific feature priority is MEDIUM — depends on actual tenant demand. |
-| Architecture | HIGH | Based on direct codebase analysis of migration schema, service files, and module structure. Component boundaries confirmed from `be/CLAUDE.md`, `fe/CLAUDE.md`, `advance-rag/CLAUDE.md`. |
-| Pitfalls | HIGH | Pitfalls 1-7 all grounded in direct code inspection of specific files and line-level findings. External sources (AWS, VersionRAG, Microsoft GraphRAG) confirm patterns. |
+| Stack | HIGH | All decisions grounded in direct `pyproject.toml`, `ability.service.ts`, and migration file analysis; no new libraries means no version compatibility unknowns |
+| Features | HIGH | Peer-reviewed sources (Vectara NAACL 2025, PMC clinical study); competitor analysis (Dify, RAGFlow, Pinecone, Elasticsearch); existing codebase confirms what is already implemented |
+| Architecture | HIGH | Based primarily on direct code inspection of actual files (`ability.service.ts`, `task_executor.py`, `splitter.py`, `initial_schema.ts`, `db_models.py`); not inferred from external sources |
+| Pitfalls | HIGH | All critical pitfalls grounded in actual grep results (378 FE occurrences confirmed, 17 `ragflow_doc_meta_` occurrences confirmed, specific line numbers in `db_models.py`); not hypothetical |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **CASL React exact minor version:** `@casl/react` v4 major is confirmed current; exact minor version not independently verified. Run `npm info @casl/react` before install to confirm latest v4.x. Ensure `@casl/ability` and `@casl/react` major versions are aligned (v5 ability is NOT compatible with v4 react package).
-- **OpenSearch dynamic templates for domain fields:** Adding `regulation_type`, `sdlc_phase`, and similar fields to live indices via dynamic mapping is standard OpenSearch but should be verified against OpenSearch 3.5 docs before production use to confirm behavior on existing index mappings.
-- **GraphRAG indexing cost benchmarks:** LazyGraphRAG (2025) claims 0.1% of full GraphRAG indexing cost. Validate this against actual SDLC and healthcare document corpus characteristics during Phase 4 planning before committing to full vs. lazy GraphRAG for the default mode.
-- **NetworkX scale threshold:** The ~100K node threshold for NetworkX degradation is consistent across sources but hardware-dependent. Per-KB entity counts for the expected healthcare/SDLC corpus sizes should be estimated during Phase 4 planning to determine whether `igraph` migration is needed.
-- **Pool vs. silo OpenSearch model for healthcare HIPAA:** The pool model (recommended) requires strong application-layer enforcement. For HIPAA-regulated tenants, OpenSearch Document Level Security (DLS) may be required as a defense-in-depth layer. Validate compliance requirements with actual healthcare tenants before committing to architecture.
-
----
+- **Chunk quality thresholds:** Optimal values for `min_tokens`, `coherence_threshold`, and `dedup_threshold` are domain-dependent. Implement configurable thresholds with documented defaults; plan post-release calibration pass against real KB content.
+- **Authority resolution ADR:** The rule for resolving conflicts between system role and KB-level grant is a design decision, not a research finding. This must be written as an ADR before Phase 3 begins; it is the single largest ambiguity across all v0.2 features.
+- **Migration safety on production data:** The Phase 1 FK rename migration is the highest-risk single operation. Architecture research recommends testing on a copy of production data before deploying; this is an operational requirement that needs to be scheduled.
+- **Complete Peewee model audit:** The research identifies the risk of Peewee drift but defers the complete enumeration of which models reference project-related tables to implementation. This audit must be the first task in Phase 1 before any migration code is written.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-
-- Direct codebase — `be/src/modules/rag/services/rag-search.service.ts`, `rag-graphrag.service.ts`, `rag-deep-research.service.ts`, `rag-document.model.ts`, `knowledgebase.model.ts`, `rag-file.model.ts` — multi-tenant gaps, ABAC enforcement gaps
-- Direct codebase — `advance-rag/rag/graphrag/` (full pipeline), `advance-rag/rag/advanced_rag/` (TSQDR) — GraphRAG and Deep Research exist, not yet wired
-- Direct codebase — `be/src/shared/db/migrations/20260312000000_initial_schema.ts` — complete schema including `document_versions`, `projects`, `project_permissions`
-- Direct codebase — `advance-rag/pyproject.toml` — NetworkX, graspologic, scikit-learn confirmed as existing dependencies
-- [VersionRAG Paper (arXiv 2510.08109)](https://arxiv.org/abs/2510.08109) — 90% vs 58% accuracy on version-sensitive queries
-- [Microsoft GraphRAG Paper (arXiv 2404.16130)](https://arxiv.org/abs/2404.16130) — 80% vs 50% accuracy on multi-hop queries; entity resolution and community detection patterns
-- [HopRAG Paper (arXiv 2502.12442)](https://arxiv.org/abs/2502.12442) — multi-hop retrieval state-of-the-art, TSQDR-style pattern confirmed
-- [AWS: Multi-Tenant SaaS with Amazon OpenSearch](https://aws.amazon.com/blogs/apn/storing-multi-tenant-saas-data-with-amazon-opensearch-service/) — pool vs. silo model tradeoffs
+- Direct codebase: `be/src/shared/db/migrations/20260312000000_initial_schema.ts` — full FK structure and CASCADE rules confirming 8+ tables to rename
+- Direct codebase: `be/src/shared/services/ability.service.ts` — CASL implementation, Redis caching, OpenSearch filter translation already in place
+- Direct codebase: `be/src/shared/config/rbac.ts` — 4-tier role system with 13 permissions; existing permission model confirmed
+- Direct codebase: `advance-rag/rag/svr/task_executor.py` — pipeline order: build_chunks -> enrichment -> embedding -> index; quality insertion point confirmed
+- Direct codebase: `advance-rag/db/db_models.py` lines 849-917 — Peewee Knowledgebase and Document models; dual-ORM risk confirmed
+- Direct codebase: `fe/src/lib/queryKeys.ts`, `fe/src/features/projects/` — 378 project occurrences across 14 files confirmed by grep
+- Direct codebase: `advance-rag/` grep for `ragflow_doc_meta_` — 17 occurrences across 5 connector files confirmed
+- [CASL v6 Official Docs](https://casl.js.org/v6/en/api/casl-ability/) — ability API and conditions-based permissions
+- [CASL Roles with Persisted Permissions](https://casl.js.org/v6/en/cookbook/roles-with-persisted-permissions/) — DB-stored permission rules pattern
+- [Knex Issue #933](https://github.com/knex/knex/issues/933) — `.renameColumn()` drops DEFAULT constraints on PostgreSQL confirmed
 
 ### Secondary (MEDIUM confidence)
-
-- [@casl/ability npm](https://www.npmjs.com/package/@casl/ability) — version 6.8.0, ~950K weekly downloads, published Jan 2026
-- [CASL official docs v6](https://casl.js.org/v6/en/cookbook/roles-with-persisted-permissions/) — PostgreSQL + Redis caching pattern
-- [Pinecone: RAG with Access Control](https://www.pinecone.io/learn/rag-access-control/) — pre-filter access control patterns in RAG
-- [BigData Boutique: Multi-Tenancy with OpenSearch](https://bigdataboutique.com/blog/multi-tenancy-with-elasticsearch-and-opensearch-c1047b) — practical index strategy tradeoffs
-- [Firecrawl: Best Enterprise RAG Platforms 2025](https://www.firecrawl.dev/blog/best-enterprise-rag-platforms-2025) — feature landscape validation
-- [Springer: Survey on RAG for Healthcare](https://link.springer.com/article/10.1007/s00521-025-11666-9) — healthcare RAG requirements
-- [NetworkX scale limits](https://memgraph.com/blog/data-persistency-large-scale-data-analytics-and-visualizations-biggest-networkx-challenges) — ~100K node degradation threshold
-
-### Tertiary (LOW confidence, needs validation)
-
-- [Arkenea: RAG in Healthcare 2025](https://arkenea.com/blog/rag-in-healthcare/) — healthcare feature expectations; needs validation against actual tenant requirements
-- [NStarX: Next Frontier of RAG 2026-2030](https://nstarxinc.com/blog/the-next-frontier-of-rag-how-enterprise-knowledge-systems-will-evolve-2026-2030/) — market direction; speculative
+- [Vectara NAACL 2025 Chunking Benchmark](https://blog.premai.io/rag-chunking-strategies-the-2026-benchmark-guide/) — peer-reviewed; fixed-size vs semantic accuracy comparison; basis for deferring adaptive chunking
+- [Clinical Decision Support Chunking Study (PMC)](https://pmc.ncbi.nlm.nih.gov/articles/PMC12649634/) — adaptive chunking 87% vs 50% baseline accuracy
+- [Elasticsearch RAG + RBAC Integration](https://www.elastic.co/search-labs/blog/rag-and-rbac-integration) — permission-aware retrieval filter pattern
+- [Pinecone RAG with Access Control](https://www.pinecone.io/learn/rag-access-control/) — namespace-level permission pattern; basis for KB-level permission recommendation
+- [RAGFlow Permission Issue #7687](https://github.com/infiniflow/ragflow/issues/7687) — upstream owner-based access model; confirms gap in RAGFlow that B-Knowledge should address
+- [Martin Fowler Parallel Change](https://martinfowler.com/bliki/ParallelChange.html) — rationale for big-bang vs expand-migrate-contract; basis for clean rename recommendation
+- [Weaviate Chunking Strategies](https://weaviate.io/blog/chunking-strategies-for-rag) — strategy comparison confirming recommended implementation order
+- [NVIDIA Chunking Strategy Guide](https://developer.nvidia.com/blog/finding-the-best-chunking-strategy-for-accurate-ai-responses/) — production guidance on overlap percentages
 
 ---
-*Research completed: 2026-03-18*
+*Research completed: 2026-04-02*
 *Ready for roadmap: yes*
