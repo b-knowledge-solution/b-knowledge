@@ -166,7 +166,8 @@ class ExternalApiService {
 
   /**
    * @description Post-process citations matching the chat feature's approach.
-   *   Tries embedding-based citation insertion first, falls back to regex-only.
+   *   Tries embedding-based citation insertion first, falls back to regex
+   *   normalization of any citation markers the LLM produced.
    * @param {string} rawAnswer - Raw LLM answer text
    * @param {ChunkResult[]} chunks - Retrieved chunks used for context
    * @returns {Promise<string>} Answer with citation markers inserted
@@ -182,12 +183,15 @@ class ExternalApiService {
         return citationResult.answer
       }
     } catch {
-      // Fall through to direct return on any error
+      // Fall through to regex-based normalization
     }
 
-    // Fall back to ragCitationService which handles regex-based matching internally
-    const { answer } = await ragCitationService.insertCitations(rawAnswer, chunks)
-    return answer
+    // Fall back to regex-based citation normalization matching chat feature's
+    // processCitations() — normalize [ID:n], (ID:n), ref n formats to ##ID:n$$
+    return rawAnswer
+      .replace(/\[ID:\s*(\d+)\]/g, '##ID:$1$$')
+      .replace(/\(ID:\s*(\d+)\)/g, '##ID:$1$$')
+      .replace(/ref\s*(\d+)/gi, '##ID:$1$$')
   }
 
   /**
