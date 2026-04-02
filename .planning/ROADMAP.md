@@ -120,7 +120,7 @@ Plans:
 
 Plans:
 - [x] 08-01-PLAN.md -- Core feature directory rename + types + API + query keys + routes
-- [ ] 08-02-PLAN.md -- i18n key rename (3 locales) + cross-feature reference updates
+- [x] 08-02-PLAN.md -- i18n key rename (3 locales) + cross-feature reference updates
 - [ ] 08-03-PLAN.md -- Test file rename + full suite verification + stale reference audit
 
 ### Phase 9: Permission System
@@ -163,6 +163,6 @@ Note: Phases 8, 9, and 10 all depend on Phase 7 but are independent of each othe
 | 5. Response Evaluation | v0.1 | 5/5 | Complete | - |
 | 6. Prompt Builder | v0.1 | 2/2 | Complete | - |
 | 7. DB + BE + Python Rename | v0.2 | 0/3 | Not started | - |
-| 8. Frontend Rename | v0.2 | 0/3 | Not started | - |
+| 8. Frontend Rename | v0.2 | 2/3 | In Progress|  |
 | 9. Permission System | v0.2 | 0/? | Not started | - |
 | 10. Chunk Quality Pipeline | v0.2 | 0/? | Not started | - |
