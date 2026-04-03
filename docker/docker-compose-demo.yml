@@ -1,0 +1,103 @@
+# ==========================================================================
+# Demo All-in-One — Single container running FE + BE + Worker + Converter
+# ==========================================================================
+# Runs the pre-built kb-demo image alongside infrastructure from
+# docker-compose-base.yml. All application services (nginx, backend,
+# task-executor, converter) run inside a single container.
+#
+# Build the image first:
+#   ./scripts/build-demo.sh
+#
+# Start the demo stack:
+#   docker compose -f docker-compose-demo.yml --env-file .env up -d
+#
+# Access:
+#   Frontend:  http://localhost:${FRONTEND_PORT:-5173}
+#   Backend:   http://localhost:3001
+#
+# Resource limits tuned for a 4-core / 8 GB RAM server.
+# Override via docker-compose.override.yml for larger machines.
+
+include:
+  - path: docker-compose-base.yml
+    env_file: .env
+
+services:
+  # ==========================================================================
+  # All-in-One Demo Container
+  # ==========================================================================
+  kb-demo:
+    image: ${DEMO_IMAGE:-kb-demo}:${DEMO_VERSION:-latest}
+    restart: unless-stopped
+    cpus: 2.00
+    mem_limit: 4g
+    mem_reservation: 2g
+    ports:
+      # nginx serves frontend + proxies /api to backend on localhost:3001
+      - "${FRONTEND_PORT:-5173}:80"
+      # Direct backend access (optional, useful for debugging)
+      - "3001:3001"
+    env_file: .env
+    environment:
+      # Override service hostnames to point to Docker network services
+      - NODE_ENV=production
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-knowledge_base}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-change_me_in_production}
+      - REDIS_HOST=valkey
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DB=${REDIS_DB:-0}
+      - S3_ENDPOINT=rustfs
+      - S3_PORT=9000
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY:-rustfsadmin}
+      - S3_SECRET_KEY=${S3_SECRET_KEY:-rustfsadmin}
+      - S3_BUCKET=${S3_BUCKET:-knowledge}
+      - S3_PREFIX_PATH=${S3_PREFIX_PATH:-}
+      - S3_HOST=rustfs:9000
+      - VECTORDB_HOST=http://opensearch:9201
+      - VECTORDB_PASSWORD=${VECTORDB_PASSWORD:-OpenSearch@123}
+      - LOG_DIR=/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+      rustfs:
+        condition: service_healthy
+    volumes:
+      # Shared log directory for all services
+      - demo_logs:/app/logs
+      # Backend persistent storage
+      - demo_data:/app/be/.data
+      # Converter work directory
+      - converter_data:/app/converter/.data
+      # HuggingFace model cache for warm start
+      - hf_cache:/root/.cache/huggingface
+      # Read-only config files (system-tools, ragflow)
+      - ./config:/app/be/config:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - kb-network
+
+# ==========================================================================
+# Volumes (application-level, infra volumes defined in docker-compose-base.yml)
+# ==========================================================================
+volumes:
+  demo_logs:
+    driver: local
+  demo_data:
+    driver: local
+  converter_data:
+    driver: local
+  hf_cache:
+    driver: local
