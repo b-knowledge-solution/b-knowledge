@@ -116,6 +116,50 @@ def wait_for_database(max_retries=30, retry_delay=3):
                 sys.exit(1)
 
 
+def preload_local_embedding_model():
+    """Eagerly load the local SentenceTransformers embedding model at startup.
+
+    When LOCAL_EMBEDDING_ENABLE=true, instantiates SentenceTransformersEmbed
+    to trigger model download (if needed) and load into memory. This ensures
+    the model is ready before any embedding tasks arrive, and provides clear
+    startup logs confirming the model is operational.
+
+    Skips silently if LOCAL_EMBEDDING_ENABLE is not true.
+    """
+    import config as app_config
+
+    if not getattr(app_config, 'LOCAL_EMBEDDING_ENABLE', False):
+        return
+
+    model_name = getattr(app_config, 'LOCAL_EMBEDDING_MODEL', '')
+    if not model_name:
+        logger.error('LOCAL_EMBEDDING_ENABLE=true but LOCAL_EMBEDDING_MODEL is not set — skipping preload')
+        return
+
+    logger.info('Preloading local embedding model: {} ...', model_name)
+    try:
+        from rag.llm import EmbeddingModel
+
+        if 'SentenceTransformers' not in EmbeddingModel:
+            logger.error('SentenceTransformers factory not registered in EmbeddingModel — check embedding_model.py')
+            return
+
+        # Instantiate the singleton — this triggers model download + load
+        embed_instance = EmbeddingModel['SentenceTransformers'](
+            '__system__', model_name, base_url=''
+        )
+
+        # Verify with a test encode
+        test_vectors, token_count = embed_instance.encode(['startup test'])
+        dim = len(test_vectors[0]) if len(test_vectors) > 0 else 0
+        logger.info(
+            'Local embedding model ready: {} (dim={}, factory=SentenceTransformers)',
+            model_name, dim
+        )
+    except Exception as e:
+        logger.error('Failed to preload local embedding model: {}', e)
+
+
 if __name__ == "__main__":
     os.environ.setdefault("DB_TYPE", "postgres")
 
@@ -136,6 +180,10 @@ if __name__ == "__main__":
     ensure_system_tenant()
 
     install_progress_hook()
+
+    # Eagerly preload local embedding model if LOCAL_EMBEDDING_ENABLE=true
+    # so the model is downloaded/loaded before any tasks arrive (per user request)
+    preload_local_embedding_model()
 
     from rag.svr.task_executor import main
     asyncio.run(main())
