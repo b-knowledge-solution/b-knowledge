@@ -580,6 +580,10 @@ Frontend uses `useSocketEvent()` or `useSocketQueryInvalidation()` to react.
 - Mutates `req.body` with parsed/coerced values
 - Returns 400 with structured error details on failure
 
+## No Hardcoded String Literals (Mandatory)
+
+**NEVER** use bare string literals in comparisons for domain states, statuses, factory names, Redis/Valkey keys, or sentinel values. Always import from `shared/constants/`. See root `CLAUDE.md` for full rules.
+
 ## Key Files Reference
 
 - `be/src/app/index.ts` — Express app bootstrap, middleware setup

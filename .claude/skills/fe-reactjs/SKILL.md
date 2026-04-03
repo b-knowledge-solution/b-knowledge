@@ -440,6 +440,10 @@ export default DomainPage
 4. [ ] Props interface defined and exported
 5. [ ] JSDoc on component and props
 
+## No Hardcoded String Literals (Mandatory)
+
+**NEVER** use bare string literals in comparisons for domain states, statuses, or model types. Always import from `constants/`. See root `CLAUDE.md` for full rules.
+
 ## Key Files Reference
 
 - `fe/src/app/App.tsx` — Route definitions with lazy loading

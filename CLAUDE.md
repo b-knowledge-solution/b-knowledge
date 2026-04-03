@@ -136,6 +136,47 @@ The project has a code knowledge graph (15K+ nodes, 130K+ edges, semantic embedd
 - Functional patterns where possible
 - If changes are extensive, run `npm run build` to verify
 
+### No Hardcoded String Literals in Comparisons (Mandatory)
+
+**NEVER use bare string literals in comparisons, conditionals, switch cases, or return values for domain states, status values, factory names, Redis/Valkey keys, sentinel values, or any string that represents a fixed set of options.**
+
+Always use **constants** or **enums** defined in a shared constants file. This applies across all languages (TypeScript, Python).
+
+```typescript
+// ❌ WRONG — hardcoded string literals
+if (provider.factory_name === 'SentenceTransformers') { ... }
+if (data.status === 'ready') return 'ready'
+await redis.get('embed:worker:status')
+
+// ✅ CORRECT — import from shared constants
+import { SENTENCE_TRANSFORMERS_FACTORY, EmbeddingWorkerStatus, EMBED_WORKER_STATUS_KEY } from '@/shared/constants/embedding.js'
+if (provider.factory_name === SENTENCE_TRANSFORMERS_FACTORY) { ... }
+if (data.status === EmbeddingWorkerStatus.READY) return EmbeddingWorkerStatus.READY
+await redis.get(EMBED_WORKER_STATUS_KEY)
+```
+
+```python
+# ❌ WRONG
+if factory == "SentenceTransformers": ...
+r.set("embed:worker:status", json.dumps({"status": "ready"}))
+
+# ✅ CORRECT
+from embed_constants import SENTENCE_TRANSFORMERS_FACTORY, HEALTH_KEY, WorkerStatus
+if factory == SENTENCE_TRANSFORMERS_FACTORY: ...
+r.set(HEALTH_KEY, json.dumps({"status": WorkerStatus.READY}))
+```
+
+**Where to define constants:**
+| Scope | TypeScript (BE) | TypeScript (FE) | Python |
+|-------|-----------------|-----------------|--------|
+| Domain statuses | `be/src/shared/constants/statuses.ts` | `fe/src/constants/statuses.ts` | Module-level constants or class |
+| Model types | `be/src/shared/constants/model-types.ts` | `fe/src/constants/model-types.ts` | Enum in relevant module |
+| Redis/Valkey keys | `be/src/shared/constants/embedding.ts` | N/A | `advance-rag/embed_constants.py` |
+| Factory names | `be/src/shared/constants/embedding.ts` | N/A | `advance-rag/embed_constants.py` |
+| Sentinel values | `be/src/shared/constants/embedding.ts` | N/A | `advance-rag/embed_constants.py` |
+
+**Cross-language strings** (values shared between Python and TypeScript) MUST have a comment in both constant files pointing to the other: `// Must match advance-rag/embed_constants.py` / `# Must match be/src/shared/constants/embedding.ts`
+
 ### Documentation Comments (Mandatory)
 
 **This is a mandatory convention — all generated code MUST include documentation comments.**

@@ -327,8 +327,13 @@ def publish_progress(redis_client: redis.Redis, task_id: str, progress: float, m
 10. [ ] Update `pyproject.toml` if new dependencies added
 11. [ ] Test with representative data
 
+## No Hardcoded String Literals (Mandatory)
+
+**NEVER** use bare string literals for Valkey keys, factory names, status values, or sentinel values. Always import from `embed_constants.py`. Cross-language strings must match `be/src/shared/constants/embedding.ts`. See root `CLAUDE.md` for full rules.
+
 ## Key Files Reference
 
+- `advance-rag/embed_constants.py` — Shared constants for embedding system (Valkey keys, factory names, statuses)
 - `advance-rag/executor_wrapper.py` — Task execution entry point with progress hooks
 - `advance-rag/config.py` — Runtime configuration (env-driven)
 - `advance-rag/system_tenant.py` — System tenant initialization

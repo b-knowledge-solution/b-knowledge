@@ -90,6 +90,7 @@ Full conventions: `fe/STATE_MANAGEMENT.md`
 
 ## Key Rules
 
+- **No hardcoded string literals:** Never use bare strings in comparisons for statuses, model types, or domain states. Always use constants from `constants/`. See root `CLAUDE.md` "No Hardcoded String Literals" section for full rules.
 - **No manual memoization:** `babel-plugin-react-compiler` handles it. No `React.memo`, `useMemo`, `useCallback` (exception: context provider values)
 - **No `context/` directories:** Contexts live in `hooks/` (e.g., `hooks/useMyContext.tsx`)
 - **No `useQuery` in `hooks/`:** Data-fetching hooks go in `api/<domain>Queries.ts`

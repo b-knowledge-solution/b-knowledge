@@ -216,6 +216,7 @@ export async function createKnowledgeBase(data: CreateKnowledgeBaseDto, userId: 
 
 ## Gotchas
 
+- **No hardcoded string literals:** Never use bare strings in comparisons for statuses, factory names, Redis keys, or sentinel values. Always use constants from `shared/constants/`. See root `CLAUDE.md` "No Hardcoded String Literals" section for full rules.
 - **Config access:** Always use `config` object from `@/shared/config/`, never `process.env` directly
 - **Production env validation:** `DB_PASSWORD`, `KB_ROOT_PASSWORD`, `SESSION_SECRET` are required in production — missing values throw
 - **HTTPS fallback:** If SSL cert files missing, server falls back to HTTP silently
