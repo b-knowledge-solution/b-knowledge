@@ -2091,6 +2091,18 @@
       "autoQuestions": "自動質問",
       "entityTypesPlaceholder": "Entity Types Placeholder"
     },
+    "reembed": {
+      "mismatchTitle": "埋め込みモデルの不一致",
+      "mismatchBody": "このデータセットは{{oldDimension}}次元モデルで埋め込まれました。現在の埋め込みモデルは{{newDimension}}次元ベクトルを使用しています。再埋め込みするまで、既存のチャンクは新しいクエリと一致しません。",
+      "action": "全チャンクを再埋め込み",
+      "queuing": "キュー中...",
+      "queued": "再埋め込みキュー済み",
+      "successToast": "再埋め込みタスクがキューに追加されました。ステータスバーで進捗を確認できます。",
+      "errorToast": "再埋め込みのキュー追加に失敗しました。もう一度お試しください。",
+      "confirmTitle": "全チャンクを再埋め込みしますか？",
+      "confirmBody": "このデータセットの全{{chunkCount}}チャンクの埋め込みを再生成します。バックグラウンドで実行されますが、大規模なデータセットでは数分かかる場合があります。",
+      "confirmAction": "再埋め込みを確認"
+    },
     "chunks": {
       "title": "チャンク管理",
       "empty": "チャンクが見つかりません",

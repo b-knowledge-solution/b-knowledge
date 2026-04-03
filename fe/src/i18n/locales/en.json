@@ -2121,6 +2121,18 @@
       "autoQuestions": "Auto Questions",
       "entityTypesPlaceholder": "Entity Types Placeholder"
     },
+    "reembed": {
+      "mismatchTitle": "Embedding Model Mismatch",
+      "mismatchBody": "This dataset was embedded with a {{oldDimension}}d model. The current embedding model uses {{newDimension}}d vectors. Existing chunks will not match new queries until re-embedded.",
+      "action": "Re-embed All Chunks",
+      "queuing": "Queuing...",
+      "queued": "Re-embed Queued",
+      "successToast": "Re-embedding task queued. Track progress in the status bar.",
+      "errorToast": "Failed to queue re-embedding. Please try again.",
+      "confirmTitle": "Re-embed All Chunks?",
+      "confirmBody": "This will re-generate embeddings for all {{chunkCount}} chunks in this dataset. The process runs in the background but may take several minutes for large datasets.",
+      "confirmAction": "Confirm Re-embed"
+    },
     "chunks": {
       "title": "Chunk Management",
       "empty": "No chunks found",

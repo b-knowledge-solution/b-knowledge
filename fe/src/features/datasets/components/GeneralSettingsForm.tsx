@@ -23,13 +23,30 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { Save, X, Plus, Info } from 'lucide-react'
+import { Save, X, Plus, Info, AlertTriangle, Loader2 } from 'lucide-react'
 import type { DatasetSettings, GraphRAGConfig, RAPTORConfig } from '../types'
 import {
   LANGUAGE_OPTIONS, PARSER_OPTIONS, PDF_PARSER_OPTIONS, PARSER_DESCRIPTIONS,
 } from '../types'
 import { useProviders } from '@/features/llm-provider/api/llmProviderQueries'
+import { useReEmbedDataset } from '../api/datasetQueries'
+import { useConfirm } from '@/components/ConfirmDialog'
 import { ModelType } from '@/constants'
+
+// ============================================================================
+// Known embedding model dimensions for mismatch detection
+// ============================================================================
+
+/** Known vector dimensions per embedding model name */
+const KNOWN_DIMENSIONS: Record<string, number> = {
+  'text-embedding-3-small': 1536,
+  'text-embedding-3-large': 3072,
+  'text-embedding-ada-002': 1536,
+  'BAAI/bge-m3': 1024,
+  'BAAI/bge-large-en-v1.5': 1024,
+  'BAAI/bge-base-en-v1.5': 768,
+  'sentence-transformers/all-MiniLM-L6-v2': 384,
+}
 
 // ============================================================================
 // Pipeline introduction SVG imports
@@ -276,8 +293,46 @@ const GeneralSettingsForm: React.FC<GeneralSettingsFormProps> = ({
   onSave,
 }) => {
   const { t } = useTranslation()
+  const confirm = useConfirm()
   const { data: providers } = useProviders()
   const embeddingModels = providers?.filter((p) => p.model_type === ModelType.EMBEDDING) || []
+
+  // ---- Re-embed mismatch detection ----
+  const reEmbedMutation = useReEmbedDataset(settings.id)
+  const [isReEmbedQueued, setIsReEmbedQueued] = useState(false)
+
+  // Derive current default embedding model dimension from providers list
+  const defaultEmbeddingProvider = providers?.find(
+    (p) => p.model_type === ModelType.EMBEDDING && p.is_default
+  )
+  const currentModelDimension = defaultEmbeddingProvider
+    ? KNOWN_DIMENSIONS[defaultEmbeddingProvider.model_name] ?? null
+    : null
+
+  // Dataset's stored embedding dimension (if present on the settings)
+  const datasetDimension = (settings as unknown as Record<string, unknown>).embedding_dimension as number | null | undefined
+
+  // Show mismatch banner when both dimensions are known and differ
+  const showMismatchBanner = datasetDimension && currentModelDimension && datasetDimension !== currentModelDimension
+
+  /**
+   * Handle re-embed CTA click — shows confirmation dialog then triggers mutation.
+   */
+  const handleReEmbed = async () => {
+    const confirmed = await confirm({
+      title: t('datasetSettings.reembed.confirmTitle'),
+      message: t('datasetSettings.reembed.confirmBody', { chunkCount: (settings as unknown as Record<string, unknown>).chunk_count || '?' }),
+      variant: 'danger',
+      confirmText: t('datasetSettings.reembed.confirmAction'),
+    })
+    if (!confirmed) return
+
+    reEmbedMutation.mutate(undefined, {
+      onSuccess: () => {
+        setIsReEmbedQueued(true)
+      },
+    })
+  }
 
   // ---- Section 1: Basic ----
   const [name, setName] = useState(settings.name)
@@ -382,6 +437,42 @@ const GeneralSettingsForm: React.FC<GeneralSettingsFormProps> = ({
     <div className="flex gap-6">
       {/* ===== LEFT: Settings Form ===== */}
       <div className="flex-1 space-y-8 min-w-0">
+        {/* Show warning when embedding model dimension doesn't match stored chunks (per D-14) */}
+        {showMismatchBanner && (
+          <div
+            role="alert"
+            className="flex flex-col gap-2 rounded-md border border-yellow-200 bg-yellow-50 px-4 py-2 dark:border-yellow-800 dark:bg-yellow-950/30"
+          >
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
+              <span className="text-sm font-semibold text-yellow-800 dark:text-yellow-200">
+                {t('datasetSettings.reembed.mismatchTitle')}
+              </span>
+            </div>
+            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+              {t('datasetSettings.reembed.mismatchBody', {
+                oldDimension: datasetDimension,
+                newDimension: currentModelDimension,
+              })}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleReEmbed}
+              disabled={reEmbedMutation.isPending || isReEmbedQueued}
+              className="self-start"
+            >
+              {reEmbedMutation.isPending ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t('datasetSettings.reembed.queuing')}</>
+              ) : isReEmbedQueued ? (
+                t('datasetSettings.reembed.queued')
+              ) : (
+                t('datasetSettings.reembed.action')
+              )}
+            </Button>
+          </div>
+        )}
+
         {/* --------------------------------------------------------- */}
         {/* SECTION 1: BASIC                                          */}
         {/* --------------------------------------------------------- */}

@@ -2105,6 +2105,18 @@
       "autoQuestions": "Câu hỏi tự động",
       "entityTypesPlaceholder": "Entity Types Placeholder"
     },
+    "reembed": {
+      "mismatchTitle": "Mô hình nhúng không khớp",
+      "mismatchBody": "Tập dữ liệu này đã được nhúng bằng mô hình {{oldDimension}}d. Mô hình nhúng hiện tại sử dụng vector {{newDimension}}d. Các đoạn hiện có sẽ không khớp với truy vấn mới cho đến khi được nhúng lại.",
+      "action": "Nhúng lại tất cả đoạn",
+      "queuing": "Đang xếp hàng...",
+      "queued": "Đã xếp hàng nhúng lại",
+      "successToast": "Tác vụ nhúng lại đã được xếp hàng. Theo dõi tiến trình trên thanh trạng thái.",
+      "errorToast": "Không thể xếp hàng nhúng lại. Vui lòng thử lại.",
+      "confirmTitle": "Nhúng lại tất cả đoạn?",
+      "confirmBody": "Thao tác này sẽ tạo lại vector nhúng cho tất cả {{chunkCount}} đoạn trong tập dữ liệu. Quá trình chạy nền nhưng có thể mất vài phút cho tập dữ liệu lớn.",
+      "confirmAction": "Xác nhận nhúng lại"
+    },
     "chunks": {
       "title": "Quản lý đoạn",
       "empty": "Không tìm thấy đoạn nào",

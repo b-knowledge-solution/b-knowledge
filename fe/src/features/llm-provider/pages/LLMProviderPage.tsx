@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/queryKeys'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, Eye, Plug, Loader2, Copy, Info } from 'lucide-react'
+import { Plus, Pencil, Trash2, Eye, Plug, Loader2, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {

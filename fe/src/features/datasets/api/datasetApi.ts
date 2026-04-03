@@ -631,4 +631,18 @@ export const datasetApi = {
   generateFieldMap: async (datasetId: string): Promise<{ field_map: Record<string, { type: string; column_name: string; description: string }> }> => {
     return api.post<{ field_map: Record<string, { type: string; column_name: string; description: string }> }>(`${BASE_URL}/datasets/${datasetId}/generate-field-map`);
   },
+
+  // ============================================================================
+  // Re-embed
+  // ============================================================================
+
+  /**
+   * @description Queue a re-embed task for all chunks in a dataset.
+   * Used when the embedding model changes and existing vectors become incompatible.
+   * @param {string} datasetId - Dataset UUID
+   * @returns {Promise<{ taskId: string; message: string }>} The created task reference
+   */
+  reEmbedDataset: async (datasetId: string): Promise<{ taskId: string; message: string }> => {
+    return api.post<{ taskId: string; message: string }>(`${BASE_URL}/datasets/${datasetId}/re-embed`);
+  },
 };
