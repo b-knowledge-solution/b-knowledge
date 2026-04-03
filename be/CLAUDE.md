@@ -24,7 +24,7 @@ be/src/
 │   ├── index.ts              # Express init, middleware stack, server startup
 │   └── routes.ts             # Central route registration (all module routes)
 ├── modules/                  # Domain modules (self-contained units)
-│   ├── admin/                ├── audit/
+│   ├── system/               ├── audit/
 │   ├── auth/          (flat) ├── broadcast/
 │   ├── chat/                 ├── dashboard/       (flat)
 │   ├── external/             ├── glossary/

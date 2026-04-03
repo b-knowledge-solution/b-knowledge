@@ -14,14 +14,14 @@ import { HealthStatus } from '@/shared/constants/index.js';
 // Route imports
 import authRoutes from '@/modules/auth/auth.routes.js';
 
-import adminRoutes from '@/modules/admin/routes/admin.routes.js';
+import systemRoutes from '@/modules/system/routes/system.routes.js';
 import userRoutes from '@/modules/users/routes/users.routes.js';
 import teamRoutes from '@/modules/teams/routes/teams.routes.js';
 import systemToolsRoutes from '@/modules/system-tools/system-tools.routes.js';
 import auditRoutes from '@/modules/audit/routes/audit.routes.js';
 
 import broadcastMessageRoutes from '@/modules/broadcast/routes/broadcast-message.routes.js';
-import adminHistoryRoutes from '@/modules/admin/routes/admin-history.routes.js';
+import systemHistoryRoutes from '@/modules/system/routes/system-history.routes.js';
 import chatConversationRoutes from '@/modules/chat/routes/chat-conversation.routes.js';
 import chatAssistantRoutes from '@/modules/chat/routes/chat-assistant.routes.js';
 import chatEmbedRoutes from '@/modules/chat/routes/chat-embed.routes.js';
@@ -130,10 +130,10 @@ function registerRoutes(apiRouter: Router): void {
     // Authentication routes
     apiRouter.use('/auth', authRoutes);
 
-    // Admin routes
-    apiRouter.use('/admin', adminRoutes);
-    apiRouter.use('/admin/history', adminHistoryRoutes);
-    apiRouter.use('/admin/dashboard', dashboardRoutes);
+    // System routes
+    apiRouter.use('/system', systemRoutes);
+    apiRouter.use('/system/history', systemHistoryRoutes);
+    apiRouter.use('/system/dashboard', dashboardRoutes);
 
     // User management
     apiRouter.use('/users', userRoutes);

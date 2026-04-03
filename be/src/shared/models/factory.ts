@@ -72,8 +72,8 @@ import { MemoryModel } from '@/modules/memory/models/memory.model.js';
 // Dashboard Model
 import { DashboardModel } from '@/modules/dashboard/dashboard.model.js';
 
-// Admin Models
-import { AdminHistoryModel } from '@/modules/admin/models/admin-history.model.js';
+// System Models
+import { SystemHistoryModel } from '@/modules/system/models/system-history.model.js';
 
 /**
  * @description ModelFactory class implementing the Factory Pattern.
@@ -218,9 +218,9 @@ export class ModelFactory {
   /** Dashboard analytics model singleton instance */
   private static dashboardModel: DashboardModel;
 
-  // Admin Models
-  /** Admin history analytics model singleton instance */
-  private static adminHistoryModel: AdminHistoryModel;
+  // System Models
+  /** System history analytics model singleton instance */
+  private static systemHistoryModel: SystemHistoryModel;
 
   /**
    * Get the User model singleton.
@@ -817,17 +817,17 @@ export class ModelFactory {
   }
 
   // -------------------------------------------------------------------------
-  // Admin Models
+  // System Models
   // -------------------------------------------------------------------------
 
   /**
-   * @description Get the AdminHistory model singleton.
-   * Provides cross-table analytics queries for admin history (chat, search, agent runs).
-   * @returns {AdminHistoryModel} Instance for admin history analytics operations
+   * @description Get the SystemHistory model singleton.
+   * Provides cross-table analytics queries for system history (chat, search, agent runs).
+   * @returns {SystemHistoryModel} Instance for system history analytics operations
    */
-  static get adminHistory() {
+  static get systemHistory() {
     // Create instance on first access (lazy initialization)
-    if (!this.adminHistoryModel) this.adminHistoryModel = new AdminHistoryModel();
-    return this.adminHistoryModel;
+    if (!this.systemHistoryModel) this.systemHistoryModel = new SystemHistoryModel();
+    return this.systemHistoryModel;
   }
 }
