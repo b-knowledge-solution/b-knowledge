@@ -1,0 +1,75 @@
+# ============================================================
+# Offline Build Variant — routes npm and base images through
+# a local Nexus Repository Manager (no internet required).
+#
+# Build args:
+#   NEXUS_REGISTRY     — Docker registry host:port
+#                        e.g. nexus.example.com:8083
+#   NEXUS_NPM_REGISTRY — Full URL to npm proxy/group repo
+#                        e.g. http://nexus.example.com:8081/repository/npm-group/
+#
+# Prerequisites — push to local registry first:
+#   docker tag node:22-alpine <NEXUS_REGISTRY>/node:22-alpine
+#   docker push <NEXUS_REGISTRY>/node:22-alpine
+#
+# Build example:
+#   docker build \
+#     --build-arg NEXUS_REGISTRY=nexus.example.com:8083 \
+#     --build-arg NEXUS_NPM_REGISTRY=http://nexus.example.com:8081/repository/npm-group/ \
+#     -t kb-backend:latest \
+#     -f be/Dockerfile.offline be/
+# ============================================================
+
+ARG NEXUS_REGISTRY=nexus.example.com:8083
+
+# ── Stage 1: Build ────────────────────────────────────────────────────────────
+FROM ${NEXUS_REGISTRY}/node:22-alpine AS builder
+
+# Re-declare ARG inside the stage so it is available in RUN commands
+ARG NEXUS_NPM_REGISTRY=http://nexus.example.com:8081/repository/npm-group/
+
+WORKDIR /app
+
+# Install all dependencies (including devDeps needed for build) from Nexus
+COPY package.json package-lock.json* ./
+RUN npm install --registry "${NEXUS_NPM_REGISTRY}"
+
+# Copy and compile TypeScript source
+COPY tsconfig.json ./
+COPY src ./src
+RUN npm run build:prod
+
+# ── Stage 2: Production ───────────────────────────────────────────────────────
+FROM ${NEXUS_REGISTRY}/node:22-alpine
+
+# Re-declare ARG inside the stage so it is available in RUN commands
+ARG NEXUS_NPM_REGISTRY=http://nexus.example.com:8081/repository/npm-group/
+
+WORKDIR /app
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Install production-only dependencies from Nexus npm registry
+COPY package.json package-lock.json* ./
+RUN npm install --omit=dev --registry "${NEXUS_NPM_REGISTRY}" && npm cache clean --force
+
+# Copy compiled output from builder stage
+COPY --from=builder /app/dist ./dist
+
+# Copy runtime assets
+COPY public ./public
+
+# Create runtime directories and set ownership
+RUN mkdir -p logs .data config && \
+    chown -R nodejs:nodejs /app
+
+USER nodejs
+
+EXPOSE 3001
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
+
+CMD ["node", "dist/app/index.js"]

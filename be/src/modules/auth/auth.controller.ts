@@ -10,7 +10,6 @@ import { getClientIp } from '@/shared/utils/ip.js'
 import { config } from '@/shared/config/index.js'
 import { updateAuthTimestamp, getCurrentUser } from '@/shared/middleware/auth.middleware.js'
 import { abilityService } from '@/shared/services/ability.service.js'
-import { db } from '@/shared/db/knex.js'
 import { getUuid } from '@/shared/utils/uuid.js'
 
 /**
@@ -31,16 +30,14 @@ export class AuthController {
 
       try {
         // Query user_tenant to get the user's org memberships
-        const memberships = await db('user_tenant')
-          .where({ user_id: user.id })
-          .select('tenant_id', 'role')
+        const memberships = await authService.findMembershipsByUserId(user.id)
 
         // If user has no user_tenant entry, create one with role='user' and system tenant
         if (memberships.length === 0) {
           const systemTenantId = config.opensearch.systemTenantId
           const now = Date.now()
           const nowDate = new Date().toISOString().replace('T', ' ').slice(0, 19)
-          await db('user_tenant').insert({
+          await authService.createMembership({
             id: getUuid(),
             user_id: user.id,
             tenant_id: systemTenantId,
@@ -55,8 +52,8 @@ export class AuthController {
           memberships.push({ tenant_id: systemTenantId, role: user.role || 'user' })
         }
 
-        // Set session org context to the first membership
-        const primaryMembership = memberships[0]
+        // Set session org context to the first membership (guaranteed non-empty after insert above)
+        const primaryMembership = memberships[0]!
         req.session.currentOrgId = primaryMembership.tenant_id
 
         // Update session user role to match the org-level role from user_tenant
@@ -308,8 +305,7 @@ export class AuthController {
 
             if (!testPasswordMatch) {
                 // If test password doesn't match, try bcrypt for local accounts
-                const { ModelFactory } = await import('@/shared/models/factory.js')
-                const dbUser = await ModelFactory.user.findById(user.id).catch(() => null)
+                const dbUser = await authService.findUserById(user.id)
 
                 if (dbUser?.password_hash) {
                     // Verify with bcrypt for local account users
@@ -327,8 +323,7 @@ export class AuthController {
             }
         } else {
             // For local DB users without TEST_PASSWORD, check bcrypt hash
-            const { ModelFactory } = await import('@/shared/models/factory.js')
-            const dbUser = await ModelFactory.user.findById(user.id).catch(() => null)
+            const dbUser = await authService.findUserById(user.id)
 
             if (dbUser?.password_hash) {
                 const isValid = await authService.verifyPassword(password, dbUser.password_hash)
@@ -514,14 +509,7 @@ export class AuthController {
 
         try {
             // Query user_tenant joined with tenant for display names
-            const memberships = await db('user_tenant')
-                .join('tenant', 'user_tenant.tenant_id', 'tenant.id')
-                .where({ 'user_tenant.user_id': user.id })
-                .select(
-                    'user_tenant.tenant_id as id',
-                    db.raw("COALESCE(tenant.display_name, tenant.name, tenant.id) as name"),
-                    'user_tenant.role',
-                )
+            const memberships = await authService.findMembershipsWithOrgNames(user.id)
 
             res.json({
                 orgs: memberships,
@@ -560,9 +548,7 @@ export class AuthController {
 
         try {
             // Verify user has a membership in the requested org
-            const membership = await db('user_tenant')
-                .where({ user_id: user.id, tenant_id: orgId })
-                .first()
+            const membership = await authService.findMembership(user.id, orgId)
 
             if (!membership) {
                 res.status(403).json({ error: 'You are not a member of this organization' })

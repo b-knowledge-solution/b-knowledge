@@ -13,7 +13,8 @@ import OpenAI from 'openai'
 import { ModelFactory } from '@/shared/models/factory.js'
 import { ModelProvider } from '@/shared/models/types.js'
 import { log } from '@/shared/services/logger.service.js'
-import { ProviderStatus, ModelType } from '@/shared/constants/index.js'
+import { SENTENCE_TRANSFORMERS_FACTORY } from '@/shared/constants/embedding.js'
+import { ProviderStatus, ModelType, LOCAL_PROVIDERS_NEEDING_V1 } from '@/shared/constants/index.js'
 import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
 import type { LangfuseParent } from '@/shared/services/langfuse.service.js'
 import { config } from '@/shared/config/index.js'
@@ -146,8 +147,10 @@ export class LlmClientService {
     if (cached) return cached.client
 
     let baseURL = provider.api_base || undefined
-    if (baseURL && provider.factory_name === 'Ollama') {
-      // Ensure Ollama URLs have /v1 for OpenAI compatibility
+    // Local/self-hosted providers often expose the OpenAI-compatible API at /v1
+    // but users configure just the host (e.g. http://localhost:11434).
+    // Append /v1 so the OpenAI SDK hits /v1/chat/completions, not /chat/completions.
+    if (baseURL && LOCAL_PROVIDERS_NEEDING_V1.has(provider.factory_name)) {
       if (!baseURL.endsWith('/v1') && !baseURL.endsWith('/v1/')) {
         baseURL = baseURL.replace(/\/$/, '') + '/v1'
       }
@@ -188,7 +191,15 @@ export class LlmClientService {
       stream: false as const,
     })
 
-    const content = response.choices[0]?.message?.content || ''
+    // Guard against providers returning malformed responses (e.g., Ollama with unloaded model)
+    if (!response.choices?.length) {
+      throw new Error(`LLM returned empty response — no choices in completion (model: ${model})`)
+    }
+    const firstChoice = response.choices[0]
+    if (!firstChoice) {
+      throw new Error(`LLM returned invalid response — first choice missing (model: ${model})`)
+    }
+    const content = firstChoice.message?.content || ''
 
     // Fire-and-forget: create Langfuse generation if parent is provided
     if (parent) {
@@ -262,8 +273,13 @@ export class LlmClientService {
 
     // Yield each delta chunk from the stream
     for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta?.content || ''
-      const done = chunk.choices[0]?.finish_reason !== null && chunk.choices[0]?.finish_reason !== undefined
+      // Skip chunks without choices (e.g., malformed provider responses)
+      if (!chunk.choices?.length) continue
+      const firstChoice = chunk.choices[0]
+      if (!firstChoice) continue
+
+      const delta = firstChoice.delta?.content || ''
+      const done = firstChoice.finish_reason !== null && firstChoice.finish_reason !== undefined
 
       if (delta) {
         fullOutput += delta
@@ -316,6 +332,19 @@ export class LlmClientService {
         throw new Error('No default embedding model provider configured. Please add one via Admin > LLM Providers.')
       }
       provider = embeddingDefault
+    }
+
+    // Route to Valkey Stream bridge when provider is SentenceTransformers (per D-09)
+    // Local models have no HTTP API -- embedding happens in the Python worker process
+    if (provider.factory_name === SENTENCE_TRANSFORMERS_FACTORY) {
+      const { embeddingStreamService } = await import('@/shared/services/embedding-stream.service.js')
+      // Fast-fail if the embedding worker is offline — avoids 30s BRPOP timeout
+      // that blocks citation insertion and degrades chat response times
+      const workerReady = await embeddingStreamService.isWorkerReady()
+      if (!workerReady) {
+        throw new Error('Embedding worker is offline — cannot process SentenceTransformers embedding request')
+      }
+      return embeddingStreamService.embedTexts(texts)
     }
 
     const client = this.getClient(provider)

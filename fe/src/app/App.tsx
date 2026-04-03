@@ -79,8 +79,8 @@ const DatasetsPage = lazy(() => import('@/features/datasets/pages/DatasetsPage')
 const DatasetDetailPage = lazy(() => import('@/features/datasets/pages/DatasetDetailPage'));
 const ChatAssistantManagementPage = lazy(() => import('@/features/chat/pages/ChatAssistantManagementPage'));
 const SearchAppManagementPage = lazy(() => import('@/features/search/pages/SearchAppManagementPage'));
-const ProjectListPage = lazy(() => import('@/features/projects/pages/ProjectListPage'));
-const ProjectDetailPage = lazy(() => import('@/features/projects/pages/ProjectDetailPage'));
+const KnowledgeBaseListPage = lazy(() => import('@/features/knowledge-base/pages/KnowledgeBaseListPage'));
+const KnowledgeBaseDetailPage = lazy(() => import('@/features/knowledge-base/pages/KnowledgeBaseDetailPage'));
 const LLMProviderPage = lazy(() => import('@/features/llm-provider/pages/LLMProviderPage'));
 const DocumentReviewerPage = lazy(() => import('@/features/datasets/pages/DocumentReviewerPage'));
 const ChunkDetailPage = lazy(() => import('@/features/datasets/pages/ChunkDetailPage'));
@@ -189,8 +189,8 @@ function App() {
               <Route path="data-studio/datasets/:id" element={<FeatureErrorBoundary><NavRoleGuard><DatasetDetailPage /></NavRoleGuard></FeatureErrorBoundary>} />
               <Route path="data-studio/datasets/:id/documents/:docId" element={<FeatureErrorBoundary><NavRoleGuard><DocumentReviewerPage /></NavRoleGuard></FeatureErrorBoundary>} />
               <Route path="data-studio/datasets/:id/documents/:docId/chunks" element={<FeatureErrorBoundary><NavRoleGuard><ChunkDetailPage /></NavRoleGuard></FeatureErrorBoundary>} />
-              <Route path="data-studio/projects" element={<FeatureErrorBoundary><NavRoleGuard><ProjectListPage /></NavRoleGuard></FeatureErrorBoundary>} />
-              <Route path="data-studio/projects/:projectId" element={<FeatureErrorBoundary><NavRoleGuard><ProjectDetailPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="data-studio/knowledge-base" element={<FeatureErrorBoundary><NavRoleGuard><KnowledgeBaseListPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="data-studio/knowledge-base/:knowledgeBaseId" element={<FeatureErrorBoundary><NavRoleGuard><KnowledgeBaseDetailPage /></NavRoleGuard></FeatureErrorBoundary>} />
 
               {/* Code Graph */}
               <Route path="code-graph/:kbId" element={<FeatureErrorBoundary><NavRoleGuard><CodeGraphPage /></NavRoleGuard></FeatureErrorBoundary>} />
@@ -200,14 +200,14 @@ function App() {
               <Route path="iam/users" element={<FeatureErrorBoundary><NavRoleGuard><UserManagementPage /></NavRoleGuard></FeatureErrorBoundary>} />
               <Route path="iam/teams" element={<FeatureErrorBoundary><NavRoleGuard><TeamManagementPage /></NavRoleGuard></FeatureErrorBoundary>} />
 
-              {/* Administration */}
-              <Route path="admin/audit-log" element={<FeatureErrorBoundary><NavRoleGuard><AuditLogPage /></NavRoleGuard></FeatureErrorBoundary>} />
-              <Route path="admin/system-tools" element={<FeatureErrorBoundary><NavRoleGuard><SystemToolsPage /></NavRoleGuard></FeatureErrorBoundary>} />
-              <Route path="admin/system-monitor" element={<FeatureErrorBoundary><NavRoleGuard><SystemMonitorPage /></NavRoleGuard></FeatureErrorBoundary>} />
-              <Route path="admin/tokenizer" element={<FeatureErrorBoundary><NavRoleGuard><TokenizerPage /></NavRoleGuard></FeatureErrorBoundary>} />
-              <Route path="admin/broadcast-messages" element={<FeatureErrorBoundary><NavRoleGuard><BroadcastMessagePage /></NavRoleGuard></FeatureErrorBoundary>} />
-              <Route path="admin/llm-providers" element={<FeatureErrorBoundary><NavRoleGuard><LLMProviderPage /></NavRoleGuard></FeatureErrorBoundary>} />
-              <Route path="admin/dashboard" element={<FeatureErrorBoundary><NavRoleGuard><AdminDashboardPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              {/* System */}
+              <Route path="system/audit-log" element={<FeatureErrorBoundary><NavRoleGuard><AuditLogPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="system/system-tools" element={<FeatureErrorBoundary><NavRoleGuard><SystemToolsPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="system/system-monitor" element={<FeatureErrorBoundary><NavRoleGuard><SystemMonitorPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="system/tokenizer" element={<FeatureErrorBoundary><NavRoleGuard><TokenizerPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="system/broadcast-messages" element={<FeatureErrorBoundary><NavRoleGuard><BroadcastMessagePage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="system/llm-providers" element={<FeatureErrorBoundary><NavRoleGuard><LLMProviderPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="system/dashboard" element={<FeatureErrorBoundary><NavRoleGuard><AdminDashboardPage /></NavRoleGuard></FeatureErrorBoundary>} />
 
             </Route>
           </Route>

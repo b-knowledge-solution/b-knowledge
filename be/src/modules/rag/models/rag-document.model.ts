@@ -166,6 +166,27 @@ export class RagDocumentModel {
     }
 
     /**
+     * @description Hard-delete multiple document rows by their IDs in a single query
+     * @param {string[]} docIds - Array of document UUIDs
+     * @returns {Promise<number>} Number of rows deleted
+     */
+    async bulkDelete(docIds: string[]): Promise<number> {
+        if (docIds.length === 0) return 0
+        return db(this.tableName).whereIn('id', docIds).del()
+    }
+
+    /**
+     * @description Update the status column for multiple documents in a single query
+     * @param {string[]} docIds - Array of document UUIDs
+     * @param {string} status - New status value ('0' disabled, '1' enabled)
+     * @returns {Promise<number>} Number of rows updated
+     */
+    async bulkUpdateStatus(docIds: string[], status: string): Promise<number> {
+        if (docIds.length === 0) return 0
+        return db(this.tableName).whereIn('id', docIds).update({ status })
+    }
+
+    /**
      * @description Delete all document rows belonging to a dataset
      * @param {string} datasetId - Dataset/knowledgebase UUID (32-char hex, no hyphens)
      * @returns {Promise<number>} Number of rows deleted
@@ -174,6 +195,22 @@ export class RagDocumentModel {
         return db(this.tableName)
             .where('kb_id', datasetId)
             .del()
+    }
+
+    /**
+     * @description Find documents pending parsing, ordered by dataset then creation time (FIFO)
+     * @returns {Promise<DocumentRow[]>} Array of pending document records with id, kb_id, parser fields
+     */
+    async findPendingForParsing(): Promise<DocumentRow[]> {
+        // progress = 0 and run = '1' indicates documents queued for parsing
+        return db(this.tableName)
+            .select('id', 'kb_id', 'parser_id', 'parser_config', 'name', 'run', 'create_time')
+            .where('run', '1')
+            .where('progress', 0)
+            .orderBy([
+                { column: 'kb_id', order: 'asc' },
+                { column: 'create_time', order: 'asc' },
+            ])
     }
 
     /**

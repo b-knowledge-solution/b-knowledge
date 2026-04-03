@@ -7,8 +7,8 @@
   "scripts": {
     "dev": "tsx watch src/app/index.ts",
     "prebuild": "rimraf dist",
-    "build": "tsc --sourceMap false --declaration false --declarationMap false && tsc-alias",
-    "build:prod": "tsc --sourceMap false --declaration false --declarationMap false && tsc-alias",
+    "build": "tsc --sourceMap false --declaration false --declarationMap false && tsc-alias && node scripts/copy-static-assets.mjs",
+    "build:prod": "tsc --sourceMap false --declaration false --declarationMap false && tsc-alias && node scripts/copy-static-assets.mjs",
     "start": "node dist/app/index.js",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",

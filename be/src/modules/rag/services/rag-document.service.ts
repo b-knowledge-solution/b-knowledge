@@ -501,13 +501,13 @@ export class RagDocumentService {
             const redisClient = getRedisClient();
             if (redisClient) {
                 const tasks = await ModelFactory.ragTask.findByDocId(docId);
-                for (const task of tasks) {
-                    try {
-                        await redisClient.set(`${task.id}-cancel`, 'x');
-                    } catch (redisErr) {
-                        log.warn('Failed to set cancel key in Redis', { taskId: task.id, error: String(redisErr) });
-                    }
-                }
+                // Set all cancel keys in parallel instead of sequentially
+                await Promise.allSettled(
+                    tasks.map(task =>
+                        redisClient.set(`${task.id}-cancel`, 'x')
+                            .catch(redisErr => log.warn('Failed to set cancel key in Redis', { taskId: task.id, error: String(redisErr) }))
+                    )
+                )
             }
         } catch (err) {
             log.error('Failed to cancel parse', { docId, error: String(err) });
@@ -520,9 +520,8 @@ export class RagDocumentService {
      * @param docIds - Array of document IDs
      */
     async bulkSoftDelete(docIds: string[]): Promise<void> {
-        for (const docId of docIds) {
-            await ModelFactory.ragDocument.softDelete(docId);
-        }
+        // Batch delete in a single query instead of N sequential calls
+        await ModelFactory.ragDocument.bulkDelete(docIds)
     }
 
     /**
@@ -531,10 +530,9 @@ export class RagDocumentService {
      * @param enabled - Whether to enable (status '1') or disable (status '0')
      */
     async bulkToggle(docIds: string[], enabled: boolean): Promise<void> {
-        const status = enabled ? '1' : '0';
-        for (const docId of docIds) {
-            await ModelFactory.ragDocument.update(docId, { status });
-        }
+        const status = enabled ? '1' : '0'
+        // Batch update in a single query instead of N sequential calls
+        await ModelFactory.ragDocument.bulkUpdateStatus(docIds, status)
     }
     /**
      * Get all tasks/logs for a specific document.

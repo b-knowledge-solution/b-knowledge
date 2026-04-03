@@ -187,9 +187,9 @@ export function useNavigation(): NavigationContextType {
  * @example
  * const navigate = useNavigateWithLoader()
  * // Simple navigation — overlay hides on route change
- * navigate('/projects')
+ * navigate('/knowledge-base')
  * // Wait for data — overlay hides when page calls stopNavigation()
- * navigate(`/projects/${id}`, { waitForReady: true })
+ * navigate(`/knowledge-base/${id}`, { waitForReady: true })
  *
  * @returns {(to: To, options?: NavigateOptions & { waitForReady?: boolean }) => void} Navigate function with preloader
  */

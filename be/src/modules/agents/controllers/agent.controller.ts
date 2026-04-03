@@ -9,7 +9,6 @@
 import { Request, Response } from 'express'
 import { agentService } from '../services/agent.service.js'
 import { agentExecutorService } from '../services/agent-executor.service.js'
-import { ModelFactory } from '@/shared/models/factory.js'
 import { getTenantId } from '@/shared/middleware/tenant.middleware.js'
 import { log } from '@/shared/services/logger.service.js'
 
@@ -244,8 +243,8 @@ class AgentController {
   async listTemplates(req: Request, res: Response): Promise<void> {
     try {
       const tenantId = getTenantId(req) || ''
-      // Fetch system templates (tenant_id IS NULL) and tenant-specific templates
-      const templates = await ModelFactory.agentTemplate.findByTenant(tenantId)
+      // Delegate template retrieval to the service layer
+      const templates = await agentService.listTemplates(tenantId)
       res.json(templates)
     } catch (error: any) {
       log.error('Failed to list agent templates', { error: String(error) })
@@ -342,7 +341,8 @@ class AgentController {
   async listRuns(req: Request, res: Response): Promise<void> {
     try {
       const agentId = req.params['id']!
-      const runs = await ModelFactory.agentRun.findByAgent(agentId)
+      // Delegate run listing to the service layer
+      const runs = await agentService.listRuns(agentId)
       res.json(runs)
     } catch (error: any) {
       log.error('Failed to list agent runs', { error: String(error) })

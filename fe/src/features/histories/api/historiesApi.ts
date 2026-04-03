@@ -54,7 +54,7 @@ export async function fetchExternalChatHistory(
     page: number,
 ): Promise<ChatSessionSummary[]> {
     const params = buildParams(search, filters, page)
-    return apiFetch<ChatSessionSummary[]>(`/api/admin/history/chat?${params.toString()}`)
+    return apiFetch<ChatSessionSummary[]>(`/api/system/history/chat?${params.toString()}`)
 }
 
 /**
@@ -70,7 +70,7 @@ export async function fetchExternalSearchHistory(
     page: number,
 ): Promise<SearchSessionSummary[]> {
     const params = buildParams(search, filters, page)
-    return apiFetch<SearchSessionSummary[]>(`/api/admin/history/search?${params.toString()}`)
+    return apiFetch<SearchSessionSummary[]>(`/api/system/history/search?${params.toString()}`)
 }
 
 /**
@@ -79,7 +79,7 @@ export async function fetchExternalSearchHistory(
  * @returns {Promise<ExternalChatHistory[]>} List of messages in the session.
  */
 export async function fetchChatSessionDetails(sessionId: string): Promise<ExternalChatHistory[]> {
-    return apiFetch<ExternalChatHistory[]>(`/api/admin/history/chat/${sessionId}`)
+    return apiFetch<ExternalChatHistory[]>(`/api/system/history/chat/${sessionId}`)
 }
 
 /**
@@ -88,7 +88,7 @@ export async function fetchChatSessionDetails(sessionId: string): Promise<Extern
  * @returns {Promise<ExternalSearchHistory[]>} Details of the search session.
  */
 export async function fetchSearchSessionDetails(sessionId: string): Promise<ExternalSearchHistory[]> {
-    return apiFetch<ExternalSearchHistory[]>(`/api/admin/history/search/${sessionId}`)
+    return apiFetch<ExternalSearchHistory[]>(`/api/system/history/search/${sessionId}`)
 }
 
 /**
@@ -104,7 +104,7 @@ export async function fetchAgentRunHistory(
     page: number,
 ): Promise<AgentRunSessionSummary[]> {
     const params = buildParams(search, filters, page)
-    return apiFetch<AgentRunSessionSummary[]>(`/api/admin/history/agent-runs?${params.toString()}`)
+    return apiFetch<AgentRunSessionSummary[]>(`/api/system/history/agent-runs?${params.toString()}`)
 }
 
 /**
@@ -113,7 +113,7 @@ export async function fetchAgentRunHistory(
  * @returns {Promise<ExternalAgentRunDetail>} Run details with steps and feedback records.
  */
 export async function fetchAgentRunDetails(runId: string): Promise<ExternalAgentRunDetail> {
-    return apiFetch<ExternalAgentRunDetail>(`/api/admin/history/agent-runs/${runId}`)
+    return apiFetch<ExternalAgentRunDetail>(`/api/system/history/agent-runs/${runId}`)
 }
 
 /**

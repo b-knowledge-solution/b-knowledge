@@ -173,7 +173,7 @@ export class ChatFileService {
   async getFilesByIds(fileIds: string[]): Promise<ChatFile[]> {
     // Short-circuit for empty input to avoid unnecessary DB query
     if (fileIds.length === 0) return []
-    return ModelFactory.chatFile.getKnex().whereIn('id', fileIds)
+    return ModelFactory.chatFile.findByIds(fileIds)
   }
 
   /**

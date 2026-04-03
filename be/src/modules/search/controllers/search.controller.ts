@@ -11,7 +11,6 @@ import { config } from '@/shared/config/index.js'
 import { log } from '@/shared/services/logger.service.js'
 import { searchService } from '../services/search.service.js'
 import { feedbackService } from '@/modules/feedback/services/feedback.service.js'
-import { ModelFactory } from '@/shared/models/factory.js'
 import { getTenantId } from '@/shared/middleware/tenant.middleware.js'
 import { ComparisonLiteral } from '@/shared/constants/index.js'
 
@@ -75,8 +74,7 @@ export class SearchController {
       const { page, page_size, search, sort_by, sort_order } = req.query as any
 
       // Fetch team IDs the user belongs to for RBAC evaluation
-      const userTeams = await ModelFactory.userTeam.findAll({ user_id: userId })
-      const teamIds = userTeams.map((ut: { team_id: string }) => ut.team_id)
+      const teamIds = await searchService.getUserTeamIds(userId)
 
       // List apps filtered by RBAC rules with pagination
       const result = await searchService.listAccessibleApps(userId, userRole, teamIds, {

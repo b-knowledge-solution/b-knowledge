@@ -5,6 +5,8 @@
 import { BaseModel } from '@/shared/models/base.model.js'
 import { db } from '@/shared/db/knex.js'
 import { ModelProvider } from '@/shared/models/types.js'
+import { ProviderStatus, ModelType } from '@/shared/constants/index.js'
+import { SYSTEM_API_KEY_SENTINEL } from '@/shared/constants/embedding.js'
 
 /**
  * @description Provides data access for the model_providers table, which stores
@@ -21,7 +23,7 @@ export class ModelProviderModel extends BaseModel<ModelProvider> {
   async findDefaults(): Promise<ModelProvider[]> {
     return this.knex(this.tableName)
       .where('is_default', true)
-      .where('status', 'active')
+      .where('status', ProviderStatus.ACTIVE)
   }
 
   /**
@@ -33,5 +35,135 @@ export class ModelProviderModel extends BaseModel<ModelProvider> {
     return this.knex(this.tableName)
       .where('model_name', modelName)
       .first()
+  }
+
+  /**
+   * @description Find an active embedding provider by model name
+   * @param {string} modelName - The embedding model name (e.g., "text-embedding-3-small")
+   * @returns {Promise<ModelProvider | undefined>} The matching active embedding provider or undefined
+   */
+  async findActiveEmbeddingByModelName(modelName: string): Promise<ModelProvider | undefined> {
+    return this.knex(this.tableName)
+      .where('model_name', modelName)
+      .where('model_type', ModelType.EMBEDDING)
+      .where('status', ProviderStatus.ACTIVE)
+      .first()
+  }
+
+  /**
+   * @description Clear the is_default flag for all active providers of a given model type,
+   * excluding the specified provider. Used when marking a new provider as default.
+   * @param {string} modelType - The model type to clear defaults for (e.g. 'chat', 'embedding')
+   * @param {string} excludeId - Provider UUID to exclude from the update
+   * @returns {Promise<void>}
+   */
+  async clearDefaultsByModelType(modelType: string, excludeId: string): Promise<void> {
+    await this.knex(this.tableName)
+      .where('model_type', modelType)
+      .where('status', ProviderStatus.ACTIVE)
+      .whereNot('id', excludeId)
+      .update({ is_default: false })
+  }
+
+  /**
+   * @description List active providers with safe fields only (no API keys), optionally filtered by model_type.
+   * Used by config dialogs that do not require admin permission.
+   * @param {string} [modelType] - Optional model type filter (e.g. 'chat', 'embedding', 'rerank')
+   * @returns {Promise<Pick<ModelProvider, 'id' | 'factory_name' | 'model_type' | 'model_name' | 'max_tokens' | 'is_default' | 'vision' | 'is_system'>[]>} Safe provider records without sensitive fields
+   */
+  async findPublicList(modelType?: string): Promise<Pick<ModelProvider, 'id' | 'factory_name' | 'model_type' | 'model_name' | 'max_tokens' | 'is_default' | 'vision' | 'is_system'>[]> {
+    // Only expose safe columns — never return api_key or api_base
+    let query = this.knex(this.tableName)
+      .select('id', 'factory_name', 'model_type', 'model_name', 'max_tokens', 'is_default', 'vision', 'is_system')
+      .where('status', ProviderStatus.ACTIVE)
+      .orderBy('factory_name')
+      .orderBy('model_name')
+
+    // Filter by model_type if provided
+    if (modelType) {
+      query = query.where('model_type', modelType)
+    }
+
+    return query
+  }
+
+  /**
+   * @description Upsert a system-managed model provider record. Checks for an existing active
+   * record with the same (factory_name, model_type, model_name, tenant_id) composite key.
+   * If found, updates it to ensure is_system=true. Otherwise, creates a new record.
+   * @param {object} data - Provider data with factory_name, model_type, model_name, tenant_id
+   * @returns {Promise<string>} The ID of the upserted record
+   */
+  async upsertSystemProvider(data: {
+    factory_name: string
+    model_type: string
+    model_name: string
+    tenant_id: string
+    max_tokens?: number
+  }): Promise<string> {
+    // Unset is_default on all other providers of the same type+tenant
+    // so the system provider becomes the sole default
+    await this.knex(this.tableName)
+      .where({
+        model_type: data.model_type,
+        tenant_id: data.tenant_id,
+        status: ProviderStatus.ACTIVE,
+        is_default: true,
+      })
+      .whereNot({ factory_name: data.factory_name, model_name: data.model_name })
+      .update({ is_default: false, updated_at: this.knex.fn.now() })
+
+    // Check for existing active record with same factory+model+type+tenant
+    const existing = await this.knex(this.tableName)
+      .where({
+        factory_name: data.factory_name,
+        model_type: data.model_type,
+        model_name: data.model_name,
+        tenant_id: data.tenant_id,
+        status: ProviderStatus.ACTIVE,
+      })
+      .first()
+
+    if (existing) {
+      // Update existing record to ensure is_system, is_default, and max_tokens are set
+      await this.knex(this.tableName)
+        .where({ id: existing.id })
+        .update({
+          is_system: true,
+          is_default: true,
+          api_key: SYSTEM_API_KEY_SENTINEL,
+          ...(data.max_tokens != null && { max_tokens: data.max_tokens }),
+          updated_at: this.knex.fn.now(),
+        })
+      return existing.id
+    }
+
+    // Create new system provider record — set as default so task_executor uses it
+    const [record] = await this.knex(this.tableName)
+      .insert({
+        factory_name: data.factory_name,
+        model_type: data.model_type,
+        model_name: data.model_name,
+        tenant_id: data.tenant_id,
+        api_key: SYSTEM_API_KEY_SENTINEL,
+        is_system: true,
+        is_default: true,
+        status: ProviderStatus.ACTIVE,
+        ...(data.max_tokens != null && { max_tokens: data.max_tokens }),
+      })
+      .returning('id')
+
+    return record.id
+  }
+
+  /**
+   * @description Remove all system-managed provider records (is_system=true).
+   * Called on startup when LOCAL_EMBEDDING_ENABLE is false to clean up stale records.
+   * @returns {Promise<number>} Number of records deleted
+   */
+  async removeSystemProviders(): Promise<number> {
+    return this.knex(this.tableName)
+      .where({ is_system: true })
+      .del()
   }
 }

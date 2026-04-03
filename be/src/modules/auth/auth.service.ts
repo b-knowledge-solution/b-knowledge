@@ -458,6 +458,53 @@ export class AuthService {
   }
 
   /**
+   * @description Find all org memberships for a user by their ID
+   * @param {string} userId - The user's unique identifier
+   * @returns {Promise<any[]>} Array of membership records with tenant_id and role
+   */
+  async findMembershipsByUserId(userId: string): Promise<any[]> {
+    return ModelFactory.userTenant.findMembershipsByUserId(userId)
+  }
+
+  /**
+   * @description Create a new org membership record for a user
+   * @param {Record<string, any>} data - Membership data including user_id, tenant_id, role, and timestamps
+   * @returns {Promise<any>} The created membership record
+   */
+  async createMembership(data: Record<string, any>): Promise<any> {
+    return ModelFactory.userTenant.createMembership(data)
+  }
+
+  /**
+   * @description Find a user by their ID, returning null if not found
+   * @param {string} userId - The user's unique identifier
+   * @returns {Promise<any | null>} The user record or null if not found
+   */
+  async findUserById(userId: string): Promise<any | null> {
+    // Catch errors and return null to gracefully handle missing users
+    return ModelFactory.user.findById(userId).catch(() => null)
+  }
+
+  /**
+   * @description Find all org memberships for a user, including organization display names
+   * @param {string} userId - The user's unique identifier
+   * @returns {Promise<any[]>} Array of memberships joined with tenant names
+   */
+  async findMembershipsWithOrgNames(userId: string): Promise<any[]> {
+    return ModelFactory.userTenant.findMembershipsWithOrgNames(userId)
+  }
+
+  /**
+   * @description Find a specific membership for a user in a given organization
+   * @param {string} userId - The user's unique identifier
+   * @param {string} orgId - The organization's unique identifier
+   * @returns {Promise<any | null>} The membership record or null if not found
+   */
+  async findMembership(userId: string, orgId: string): Promise<any | null> {
+    return ModelFactory.userTenant.findMembership(userId, orgId)
+  }
+
+  /**
    * Hash a plain-text password using bcrypt.
    * @param password - Plain-text password to hash.
    * @returns Promise<string> - The bcrypt hash.

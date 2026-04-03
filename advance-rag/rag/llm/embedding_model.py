@@ -86,6 +86,83 @@ class BuiltinEmbed(Base):
         return self._model.encode_queries(text)
 
 
+class SentenceTransformersEmbed(Base):
+    """Embedding provider using locally-hosted Sentence Transformers models.
+
+    Loads the model in-process with a singleton pattern (per D-01, D-02).
+    Supports dual-mode loading: from LOCAL_EMBEDDING_PATH (offline) or
+    HuggingFace Hub download with cache (per D-06).
+
+    Uses CPU-only inference (per D-03). Model stays loaded for process
+    lifetime -- no idle unload.
+    """
+
+    _FACTORY_NAME = "SentenceTransformers"
+    _model = None
+    _model_name = ""
+    _model_lock = threading.Lock()
+
+    def __init__(self, key, model_name, **kwargs):
+        """Initialize SentenceTransformers embedding model (lazy singleton).
+
+        Args:
+            key: API key (unused for local models, accepted for interface consistency).
+            model_name: HuggingFace model ID (e.g., 'BAAI/bge-m3').
+            **kwargs: Additional keyword arguments (ignored).
+        """
+        if not SentenceTransformersEmbed._model:
+            with SentenceTransformersEmbed._model_lock:
+                if not SentenceTransformersEmbed._model:
+                    # Lazy import to avoid slowing down workers that don't use local embedding
+                    from sentence_transformers import SentenceTransformer
+                    from loguru import logger as _logger
+
+                    # Use local path if provided (offline/air-gapped mode), otherwise download from Hub
+                    # Access via config module, not os.getenv() directly (per advance-rag convention)
+                    import config as app_config
+                    model_path = app_config.LOCAL_EMBEDDING_PATH or model_name
+                    _logger.info(f"Loading SentenceTransformers model: {model_path} (device=cpu)")
+                    SentenceTransformersEmbed._model = SentenceTransformer(
+                        model_path, device="cpu"
+                    )
+                    SentenceTransformersEmbed._model_name = model_name
+                    _logger.info(
+                        f"SentenceTransformers model loaded: dim={SentenceTransformersEmbed._model.get_sentence_embedding_dimension()}"
+                    )
+
+    def encode(self, texts: list):
+        """Encode a batch of texts into embedding vectors.
+
+        Args:
+            texts: List of text strings to embed.
+
+        Returns:
+            Tuple of (np.ndarray of shape [len(texts), dim], int token_count).
+        """
+        # Encode with normalization for cosine similarity compatibility
+        embeddings = SentenceTransformersEmbed._model.encode(
+            texts, normalize_embeddings=True, show_progress_bar=False
+        )
+        # Use tiktoken approximation for token counting (per research recommendation)
+        token_count = sum(num_tokens_from_string(t) for t in texts)
+        return np.array(embeddings), token_count
+
+    def encode_queries(self, text: str):
+        """Encode a single query text into an embedding vector.
+
+        Args:
+            text: Query string to embed.
+
+        Returns:
+            Tuple of (np.ndarray of shape [dim], int token_count).
+        """
+        embedding = SentenceTransformersEmbed._model.encode(
+            [text], normalize_embeddings=True, show_progress_bar=False
+        )
+        token_count = num_tokens_from_string(text)
+        return np.array(embedding[0]), token_count
+
+
 class OpenAIEmbed(Base):
     _FACTORY_NAME = "OpenAI"
 

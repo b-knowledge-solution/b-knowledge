@@ -59,6 +59,17 @@ export class ChatFileModel extends BaseModel<ChatFile> {
   }
 
   /**
+   * @description Find multiple files by their IDs.
+   * @param {string[]} ids - Array of file UUIDs to look up
+   * @returns {Promise<ChatFile[]>} Array of matching chat files
+   */
+  async findByIds(ids: string[]): Promise<ChatFile[]> {
+    // Short-circuit for empty input to avoid unnecessary DB query
+    if (ids.length === 0) return []
+    return this.knex(this.tableName).whereIn('id', ids)
+  }
+
+  /**
    * @description Find all files that have expired (expires_at < now).
    * Used by the cleanup job to remove stale files from S3 and the database.
    * @returns {Promise<ChatFile[]>} Array of expired chat files

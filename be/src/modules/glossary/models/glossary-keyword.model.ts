@@ -56,36 +56,42 @@ export class GlossaryKeywordModel extends BaseModel<GlossaryKeyword> {
     userId?: string,
     trx?: Knex.Transaction,
   ): Promise<GlossaryKeyword[]> {
-    const results: GlossaryKeyword[] = [];
-    const queryBuilder = trx || this.knex;
+    // Wrap in a transaction to guarantee all-or-nothing semantics
+    const execute = async (queryBuilder: Knex | Knex.Transaction) => {
+      const results: GlossaryKeyword[] = [];
 
-    for (const kw of keywords) {
-      // Check for existing keyword by name
-      const existing = await queryBuilder(this.tableName)
-        .whereRaw("LOWER(name) = ?", [kw.name.toLowerCase().trim()])
-        .first();
+      for (const kw of keywords) {
+        // Check for existing keyword by name
+        const existing = await queryBuilder(this.tableName)
+          .whereRaw("LOWER(name) = ?", [kw.name.toLowerCase().trim()])
+          .first();
 
-      if (existing) {
-        // Skip duplicate
-        results.push(existing);
-        continue;
+        if (existing) {
+          // Skip duplicate
+          results.push(existing);
+          continue;
+        }
+
+        // Insert new keyword
+        const [created] = await queryBuilder(this.tableName)
+          .insert({
+            name: kw.name.trim(),
+            en_keyword: kw.en_keyword || null,
+            description: kw.description || null,
+            created_by: userId || null,
+            updated_by: userId || null,
+          })
+          .returning("*");
+
+        results.push(created);
       }
 
-      // Insert new keyword
-      const [created] = await queryBuilder(this.tableName)
-        .insert({
-          name: kw.name.trim(),
-          en_keyword: kw.en_keyword || null,
-          description: kw.description || null,
-          created_by: userId || null,
-          updated_by: userId || null,
-        })
-        .returning("*");
+      return results;
+    };
 
-      results.push(created);
-    }
-
-    return results;
+    // Use provided transaction or create a new one for atomicity
+    if (trx) return execute(trx);
+    return this.knex.transaction((newTrx) => execute(newTrx));
   }
 
   /**

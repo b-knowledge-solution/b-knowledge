@@ -14,6 +14,24 @@ export const ComparisonLiteral = {
   CONNECTOR_NOT_FOUND: 'Connector not found',
 } as const
 
+/**
+ * @description Providers whose base URL does NOT include /v1 by default.
+ * When users configure these with a raw host (e.g. http://localhost:11434),
+ * the OpenAI SDK needs /v1 appended to reach the OpenAI-compatible endpoint.
+ * Must match advance-rag/rag/llm/chat_model.py local provider classes.
+ */
+export const LOCAL_PROVIDERS_NEEDING_V1: ReadonlySet<string> = new Set([
+  'Ollama',
+  'Xinference',
+  'LocalAI',
+  'LM-Studio',
+  'GPUStack',
+  'VLLM',
+  'OpenAI-API-Compatible',
+  'HuggingFace',
+  'ModelScope',
+])
+
 export const ParseRunAction = {
   PARSE: 1,
   CANCEL: 2,

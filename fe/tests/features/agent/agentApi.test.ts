@@ -76,13 +76,13 @@ describe('agentApi', () => {
       expect(url).not.toContain('search')
     })
 
-    it('includes project_id when provided', async () => {
+    it('includes knowledge_base_id when provided', async () => {
       mockGet.mockResolvedValue({ data: [] })
 
-      await agentApi.list({ project_id: 'proj-1' })
+      await agentApi.list({ knowledge_base_id: 'kb-1' })
 
       const url = mockGet.mock.calls[0]![0] as string
-      expect(url).toContain('project_id=proj-1')
+      expect(url).toContain('knowledge_base_id=kb-1')
     })
   })
 

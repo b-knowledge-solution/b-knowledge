@@ -1,0 +1,40 @@
+# Python virtual environments — never copy into the image
+.venv
+venv
+env
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Build artifacts
+*.egg-info
+dist/
+build/
+
+# Dev / test artifacts
+.pytest_cache
+.mypy_cache
+.ruff_cache
+htmlcov/
+.coverage
+coverage.xml
+tests/
+
+# Logs and runtime data
+logs/
+*.log
+
+# Local config / secrets
+.env
+.env.*
+!.env.example
+# Generated at container startup by entrypoint.sh — never bake into the image
+conf/local.service_conf.yaml
+
+# Editor / OS noise
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

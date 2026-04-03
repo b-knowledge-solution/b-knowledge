@@ -188,10 +188,8 @@ export class SyncService {
         const connector = await this.getConnector(id)
         if (connector) {
           try {
-            const deleted = await ModelFactory.document.getKnex()
-              .where('kb_id', connector.kb_id)
-              .whereNotNull('source_doc_id')
-              .del()
+            // Delete externally-synced documents via model method
+            const deleted = await ModelFactory.document.deleteSyncedByKbId(connector.kb_id)
             log.info('Cascade-deleted synced documents', { connectorId: id, kbId: connector.kb_id, count: deleted })
           } catch (docErr) {
             log.warn('Failed to cascade-delete documents', { connectorId: id, error: String(docErr) })

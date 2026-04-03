@@ -1729,9 +1729,10 @@ class LiteLLMBase(ABC):
                     "tool_choice": "auto",
                 }
             )
-        if self.provider in FACTORY_DEFAULT_BASE_URL:
-            completion_args.update({"api_base": self.base_url})
-        elif self.provider == SupportedLiteLLMProvider.Bedrock:
+        # Pass api_base to LiteLLM for any provider that has a base_url configured,
+        # not just those in FACTORY_DEFAULT_BASE_URL. This ensures user-configured
+        # endpoints (e.g. custom Groq/DeepSeek/xAI URLs) are respected.
+        if self.provider == SupportedLiteLLMProvider.Bedrock:
             import boto3
 
             completion_args.pop("api_key", None)
@@ -1796,6 +1797,10 @@ class LiteLLMBase(ABC):
                     "api_version": self.api_version,
                 }
             )
+        elif self.base_url:
+            # Default: pass user-configured api_base to LiteLLM so it reaches
+            # the correct endpoint for any provider (Groq, DeepSeek, xAI, etc.)
+            completion_args.update({"api_base": self.base_url})
 
         # Ollama deployments commonly sit behind a reverse proxy that enforces
         # Bearer auth. Ensure the Authorization header is set when an API key

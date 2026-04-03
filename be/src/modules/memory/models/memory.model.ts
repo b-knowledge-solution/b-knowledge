@@ -97,6 +97,27 @@ export class MemoryModel extends BaseModel<Memory> {
    * @param {string} tenantId - Tenant/organization identifier for isolation
    * @returns {Promise<Memory[]>} Array of memory pools created by the user
    */
+  /**
+   * @description Find memory pools visible to the current user within a tenant.
+   *   Returns pools where permission is 'team' (visible to all) or
+   *   permission is 'me' and the user is the creator.
+   * @param {string} tenantId - Tenant/organization identifier
+   * @param {string} userId - UUID of the requesting user for 'me' permission filtering
+   * @returns {Promise<Memory[]>} Array of accessible memory pools, newest first
+   */
+  async findAccessibleByUser(tenantId: string, userId: string): Promise<Memory[]> {
+    // Query pools where user has access: team-visible OR user's own private pools
+    return this.knex(this.tableName)
+      .where('tenant_id', tenantId)
+      .andWhere(function () {
+        this.where('permission', 'team')
+          .orWhere(function () {
+            this.where('permission', 'me').andWhere('created_by', userId)
+          })
+      })
+      .orderBy('created_at', 'desc')
+  }
+
   async findByCreator(userId: string, tenantId: string): Promise<Memory[]> {
     return this.knex(this.tableName)
       .where({ created_by: userId, tenant_id: tenantId })

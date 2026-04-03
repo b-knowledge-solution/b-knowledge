@@ -228,13 +228,22 @@ export const queryKeys = {
   },
 
   // --------------------------------------------------------------------------
-  // Projects (sub-resources)
+  // Knowledge Base
   // --------------------------------------------------------------------------
-  projects: {
-    all: ['projects'] as const,
-    members: (projectId: string) => [...queryKeys.projects.all, projectId, 'members'] as const,
-    datasets: (projectId: string) => [...queryKeys.projects.all, projectId, 'datasets'] as const,
-    activity: (projectId: string) => [...queryKeys.projects.all, projectId, 'activity'] as const,
+  knowledgeBase: {
+    all: ['knowledge-base'] as const,
+    list: () => [...queryKeys.knowledgeBase.all, 'list'] as const,
+    detail: (id: string) => [...queryKeys.knowledgeBase.all, 'detail', id] as const,
+    categories: (knowledgeBaseId: string) => [...queryKeys.knowledgeBase.all, knowledgeBaseId, 'categories'] as const,
+    versions: (knowledgeBaseId: string, categoryId: string) => [...queryKeys.knowledgeBase.all, knowledgeBaseId, 'categories', categoryId, 'versions'] as const,
+    documents: (knowledgeBaseId: string, categoryId: string, versionId: string) => [...queryKeys.knowledgeBase.all, knowledgeBaseId, 'categories', categoryId, 'versions', versionId, 'documents'] as const,
+    chats: (knowledgeBaseId: string) => [...queryKeys.knowledgeBase.all, knowledgeBaseId, 'chats'] as const,
+    searches: (knowledgeBaseId: string) => [...queryKeys.knowledgeBase.all, knowledgeBaseId, 'searches'] as const,
+    permissions: (knowledgeBaseId: string) => [...queryKeys.knowledgeBase.all, knowledgeBaseId, 'permissions'] as const,
+    members: (knowledgeBaseId: string) => [...queryKeys.knowledgeBase.all, knowledgeBaseId, 'members'] as const,
+    datasets: (knowledgeBaseId: string) => [...queryKeys.knowledgeBase.all, knowledgeBaseId, 'datasets'] as const,
+    activity: (knowledgeBaseId: string) => [...queryKeys.knowledgeBase.all, knowledgeBaseId, 'activity'] as const,
+    syncConfigs: (knowledgeBaseId: string) => [...queryKeys.knowledgeBase.all, knowledgeBaseId, 'sync-configs'] as const,
   },
 
   // --------------------------------------------------------------------------

@@ -13,6 +13,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/queryKeys'
+import { EmbeddingWorkerStatus } from '@/constants/embedding'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, Eye, Plug, Loader2, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -25,6 +26,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { HeaderActions } from '@/components/HeaderActions'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { DefaultModelsPanel } from '../components/DefaultModelsPanel'
@@ -331,8 +338,40 @@ export function LLMProviderPage() {
                         ))}
                       </div>
                     </TableCell>
-                    {/* Model name */}
-                    <TableCell>{row.primary.model_name}</TableCell>
+                    {/* Model name with optional system badge */}
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {row.primary.model_name}
+                        {/* Show info badge for system-managed providers (per D-08) */}
+                        {row.primary.is_system && (
+                          <Badge
+                            className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                            role="status"
+                          >
+                            {t('llmProviders.systemBadge')}
+                          </Badge>
+                        )}
+                        {/* Show model readiness status for system providers */}
+                        {row.primary.is_system && row.primary.model_status && (
+                          <Badge
+                            className={
+                              row.primary.model_status === EmbeddingWorkerStatus.READY
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                : row.primary.model_status === EmbeddingWorkerStatus.LOADING
+                                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                  : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                            }
+                            role="status"
+                          >
+                            {row.primary.model_status === EmbeddingWorkerStatus.READY
+                              ? t('llmProviders.modelReady')
+                              : row.primary.model_status === EmbeddingWorkerStatus.LOADING
+                                ? t('llmProviders.modelLoading')
+                                : t('llmProviders.modelOffline')}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     {/* API base URL */}
                     <TableCell className="max-w-[200px] truncate text-gray-500 dark:text-gray-400">
                       {row.primary.api_base || '\u2014'}
@@ -361,22 +400,52 @@ export function LLMProviderPage() {
                         >
                           <Copy size={14} />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(row.primary)}
-                          title={t('llmProviders.editProvider')}
-                        >
-                          <Pencil size={14} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(row.primary)}
-                          title={t('common.delete')}
-                        >
-                          <Trash2 size={14} className="text-red-500" />
-                        </Button>
+                        {/* Edit button — disabled for system-managed providers */}
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEdit(row.primary)}
+                                  disabled={row.primary.is_system}
+                                  aria-disabled={row.primary.is_system || undefined}
+                                  className={row.primary.is_system ? 'opacity-50 cursor-not-allowed' : ''}
+                                  title={row.primary.is_system ? undefined : t('llmProviders.editProvider')}
+                                >
+                                  <Pencil size={14} />
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            {row.primary.is_system && (
+                              <TooltipContent>{t('llmProviders.systemManagedTooltip')}</TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
+                        {/* Delete button — disabled for system-managed providers */}
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDelete(row.primary)}
+                                  disabled={row.primary.is_system}
+                                  aria-disabled={row.primary.is_system || undefined}
+                                  className={row.primary.is_system ? 'opacity-50 cursor-not-allowed' : ''}
+                                  title={row.primary.is_system ? undefined : t('common.delete')}
+                                >
+                                  <Trash2 size={14} className="text-red-500" />
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            {row.primary.is_system && (
+                              <TooltipContent>{t('llmProviders.systemManagedTooltip')}</TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </TableCell>
                   </TableRow>

@@ -1,0 +1,30 @@
+# Python caches and virtual envs
+__pycache__
+*.pyc
+*.pyo
+.venv
+venv
+
+# Build / test artifacts
+*.egg-info
+dist/
+build/
+.pytest_cache
+.coverage
+tests/
+
+# Logs and runtime data
+logs/
+*.log
+.data/
+
+# Local config / secrets
+.env
+.env.*
+!.env.example
+
+# Editor / OS noise
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

@@ -304,13 +304,10 @@ class MemoryExtractionService {
     tenantId: string,
   ): Promise<{ imported: number }> {
     // Load all messages from the chat session ordered chronologically
-    const messages = await ModelFactory.chatMessage.getKnex()
-      .where('session_id', sessionId)
-      .orderBy('timestamp', 'asc')
+    const messages = await ModelFactory.chatMessage.findBySessionIdOrdered(sessionId)
 
-    let imported = 0
-
-    // Group messages into user+assistant conversation pairs
+    // Collect user+assistant conversation pairs first
+    const pairs: Array<{ userContent: string; assistantResponse: string }> = []
     for (let i = 0; i < messages.length; i++) {
       const msg = messages[i]!
 
@@ -323,19 +320,29 @@ class MemoryExtractionService {
       // Skip pairs where user message is empty
       if (!msg.content) continue
 
-      await this.extractFromConversation(
-        memoryId,
-        msg.content,
-        assistantResponse,
-        sessionId,
-        userId,
-        tenantId,
-      )
-      imported++
+      pairs.push({ userContent: msg.content, assistantResponse })
     }
 
-    log.info('Chat history import completed', { memoryId, sessionId, imported })
-    return { imported }
+    // Process in batches of 5 to parallelize LLM + embedding calls
+    const BATCH_SIZE = 5
+    for (let i = 0; i < pairs.length; i += BATCH_SIZE) {
+      const batch = pairs.slice(i, i + BATCH_SIZE)
+      await Promise.all(
+        batch.map(pair =>
+          this.extractFromConversation(
+            memoryId,
+            pair.userContent,
+            pair.assistantResponse,
+            sessionId,
+            userId,
+            tenantId,
+          )
+        )
+      )
+    }
+
+    log.info('Chat history import completed', { memoryId, sessionId, imported: pairs.length })
+    return { imported: pairs.length }
   }
 }
 

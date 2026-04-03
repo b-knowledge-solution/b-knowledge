@@ -22,7 +22,7 @@ export async function fetchDashboardStats(
     if (endDate) params.set('endDate', endDate)
 
     const queryString = params.toString()
-    const url = `/api/admin/dashboard/stats${queryString ? `?${queryString}` : ''}`
+    const url = `/api/system/dashboard/stats${queryString ? `?${queryString}` : ''}`
 
     return apiFetch<DashboardStats>(url)
 }
@@ -44,7 +44,7 @@ export async function fetchQueryAnalytics(
     if (endDate) params.set('endDate', endDate)
 
     const queryString = params.toString()
-    const url = `/api/admin/dashboard/analytics/queries${queryString ? `?${queryString}` : ''}`
+    const url = `/api/system/dashboard/analytics/queries${queryString ? `?${queryString}` : ''}`
 
     return apiFetch<QueryAnalytics>(url)
 }
@@ -66,7 +66,7 @@ export async function fetchFeedbackAnalytics(
     if (endDate) params.set('endDate', endDate)
 
     const queryString = params.toString()
-    const url = `/api/admin/dashboard/analytics/feedback${queryString ? `?${queryString}` : ''}`
+    const url = `/api/system/dashboard/analytics/feedback${queryString ? `?${queryString}` : ''}`
 
     return apiFetch<FeedbackAnalytics>(url)
 }

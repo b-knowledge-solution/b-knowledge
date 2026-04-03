@@ -6,8 +6,8 @@
  * Also provides query analytics and feedback aggregation for observability.
  * @module services/dashboard
  */
-import { db } from '@/shared/db/knex.js'
 import { config } from '@/shared/config/index.js'
+import { ModelFactory } from '@/shared/models/factory.js'
 
 /**
  * @description Shape of daily activity data point for trend charts
@@ -105,6 +105,8 @@ class DashboardService {
    * @returns {Promise<DashboardStats>} All dashboard data in a single payload
    */
   async getStats(startDate?: string, endDate?: string): Promise<DashboardStats> {
+    const dashboardModel = ModelFactory.dashboard
+
     // Run all queries in parallel for performance
     // Queries cover BOTH external history tables AND internal chat tables
     const [
@@ -123,27 +125,27 @@ class DashboardService {
       topUsers
     ] = await Promise.all([
       // External session counts
-      this.countRows('history_chat_sessions', 'updated_at', startDate, endDate),
-      this.countRows('history_search_sessions', 'updated_at', startDate, endDate),
+      dashboardModel.countRows('history_chat_sessions', 'updated_at', startDate, endDate),
+      dashboardModel.countRows('history_search_sessions', 'updated_at', startDate, endDate),
       // External message counts
-      this.countRows('history_chat_messages', 'created_at', startDate, endDate),
-      this.countRows('history_search_records', 'created_at', startDate, endDate),
+      dashboardModel.countRows('history_chat_messages', 'created_at', startDate, endDate),
+      dashboardModel.countRows('history_search_records', 'created_at', startDate, endDate),
       // External unique users
-      this.getDistinctEmails('history_chat_sessions', 'user_email', 'updated_at', startDate, endDate),
-      this.getDistinctEmails('history_search_sessions', 'user_email', 'updated_at', startDate, endDate),
+      dashboardModel.getDistinctEmails('history_chat_sessions', 'user_email', 'updated_at', startDate, endDate),
+      dashboardModel.getDistinctEmails('history_search_sessions', 'user_email', 'updated_at', startDate, endDate),
       // External daily trends
-      this.getDailyCount('history_chat_messages', 'created_at', startDate, endDate),
-      this.getDailyCount('history_search_records', 'created_at', startDate, endDate),
+      dashboardModel.getDailyCount('history_chat_messages', 'created_at', startDate, endDate),
+      dashboardModel.getDailyCount('history_search_records', 'created_at', startDate, endDate),
       // Internal chat_sessions count
-      this.countRows('chat_sessions', 'created_at', startDate, endDate),
+      dashboardModel.countRows('chat_sessions', 'created_at', startDate, endDate),
       // Internal chat_messages count (uses 'timestamp' column)
-      this.countRows('chat_messages', 'timestamp', startDate, endDate),
+      dashboardModel.countRows('chat_messages', 'timestamp', startDate, endDate),
       // Internal unique user emails (resolved via users table join)
-      this.getInternalChatUserEmails(startDate, endDate),
+      dashboardModel.getInternalChatUserEmails(startDate, endDate),
       // Internal daily chat trend (uses 'timestamp' column)
-      this.getDailyCount('chat_messages', 'timestamp', startDate, endDate),
+      dashboardModel.getDailyCount('chat_messages', 'timestamp', startDate, endDate),
       // Top users (now includes internal data)
-      this.getTopUsers(startDate, endDate)
+      dashboardModel.getTopUsers(startDate, endDate)
     ])
 
     // Merge external + internal counts
@@ -181,75 +183,6 @@ class DashboardService {
         searchSessions: searchSessionCount
       }
     }
-  }
-
-  /**
-   * @description Count rows in a table with optional date range filter
-   * @param {string} table - Table name
-   * @param {string} dateCol - Date column for filtering
-   * @param {string} startDate - Optional start date
-   * @param {string} endDate - Optional end date
-   * @returns {Promise<number>} Row count
-   */
-  private async countRows(table: string, dateCol: string, startDate?: string, endDate?: string): Promise<number> {
-    // Build query with optional date range
-    let query = db(table).count('* as count')
-    if (startDate) query = query.where(dateCol, '>=', startDate)
-    if (endDate) query = query.where(dateCol, '<=', `${endDate} 23:59:59`)
-    const result = await query.first()
-    return parseInt(result?.count as string || '0', 10)
-  }
-
-  /**
-   * @description Get distinct emails from an external session table
-   * @param {string} table - Table name
-   * @param {string} emailCol - Column containing email
-   * @param {string} dateCol - Date column for filtering
-   * @param {string} startDate - Optional start date
-   * @param {string} endDate - Optional end date
-   * @returns {Promise<string[]>} Array of unique email strings
-   */
-  private async getDistinctEmails(
-    table: string, emailCol: string, dateCol: string,
-    startDate?: string, endDate?: string
-  ): Promise<string[]> {
-    // Query distinct non-null, non-empty emails
-    let query = db(table).distinct(emailCol).whereNotNull(emailCol).where(emailCol, '!=', '')
-    if (startDate) query = query.where(dateCol, '>=', startDate)
-    if (endDate) query = query.where(dateCol, '<=', `${endDate} 23:59:59`)
-    const rows = await query
-    return rows.map((r: any) => r[emailCol] as string)
-  }
-
-  /**
-   * @description Get daily message/record counts grouped by day from a table
-   * @param {string} table - Table name
-   * @param {string} dateCol - Timestamp column
-   * @param {string} startDate - Optional start date
-   * @param {string} endDate - Optional end date
-   * @returns {Promise<Map<string, number>>} Map of date string to count
-   */
-  private async getDailyCount(
-    table: string, dateCol: string,
-    startDate?: string, endDate?: string
-  ): Promise<Map<string, number>> {
-    // Group by day, count records per day
-    let query = db(table)
-      .select(db.raw(`date_trunc('day', ${dateCol})::date as date`))
-      .count('* as count')
-      .groupByRaw(`date_trunc('day', ${dateCol})::date`)
-      .orderBy('date', 'asc')
-    if (startDate) query = query.where(dateCol, '>=', startDate)
-    if (endDate) query = query.where(dateCol, '<=', `${endDate} 23:59:59`)
-
-    const rows = await query
-    const map = new Map<string, number>()
-    rows.forEach((r: any) => {
-      // Normalize date to YYYY-MM-DD string
-      const dateStr = r.date instanceof Date ? r.date.toISOString().split('T')[0] : String(r.date)
-      map.set(dateStr, parseInt(r.count as string || '0', 10))
-    })
-    return map
   }
 
   /**
@@ -298,27 +231,6 @@ class DashboardService {
   }
 
   /**
-   * @description Get distinct user emails from internal chat_sessions via users table join.
-   * Internal sessions store user_id, not email, so we join with users to get emails.
-   * @param {string} startDate - Optional start date
-   * @param {string} endDate - Optional end date
-   * @returns {Promise<string[]>} Array of unique email strings
-   */
-  private async getInternalChatUserEmails(
-    startDate?: string, endDate?: string
-  ): Promise<string[]> {
-    let query = db('chat_sessions')
-      .distinct('users.email')
-      .join('users', 'chat_sessions.user_id', 'users.id')
-      .whereNotNull('users.email')
-      .where('users.email', '!=', '')
-    if (startDate) query = query.where('chat_sessions.created_at', '>=', startDate)
-    if (endDate) query = query.where('chat_sessions.created_at', '<=', `${endDate} 23:59:59`)
-    const rows = await query
-    return rows.map((r: any) => r.email as string)
-  }
-
-  /**
    * @description Get query analytics metrics scoped to a tenant with optional date range filtering.
    *   Runs all aggregation queries in parallel for performance.
    * @param {string} tenantId - Tenant ID for org isolation
@@ -327,40 +239,8 @@ class DashboardService {
    * @returns {Promise<QueryAnalytics>} Query analytics payload
    */
   async getQueryAnalytics(tenantId: string, startDate?: string, endDate?: string): Promise<QueryAnalytics> {
-    // Helper to build tenant-scoped, date-filtered base query on query_log
-    const baseQuery = () => {
-      let q = db('query_log').where('tenant_id', tenantId)
-      if (startDate) q = q.where('created_at', '>=', startDate)
-      if (endDate) q = q.where('created_at', '<=', `${endDate} 23:59:59`)
-      return q
-    }
-
-    // Run all 3 analytics query groups in parallel
-    const [aggregateResult, topQueriesRows, trendRows] = await Promise.all([
-      // Single aggregate pass for totals/rates to reduce repeated table scans
-      baseQuery()
-        .select(
-          db.raw('COUNT(*)::int as total_queries'),
-          db.raw('COALESCE(AVG(response_time_ms), 0)::numeric as avg_response_time'),
-          db.raw('COUNT(*) FILTER (WHERE failed_retrieval = true)::int as failed_queries'),
-          db.raw('COUNT(*) FILTER (WHERE confidence_score IS NOT NULL AND confidence_score < 0.5)::int as low_conf_queries')
-        )
-        .first(),
-      // Top 10 most frequent queries with average confidence
-      baseQuery()
-        .select('query')
-        .count('* as count')
-        .avg('confidence_score as avg_confidence')
-        .groupBy('query')
-        .orderBy('count', 'desc')
-        .limit(10),
-      // Daily query volume trend
-      baseQuery()
-        .select(db.raw(`date_trunc('day', created_at)::date as date`))
-        .count('* as count')
-        .groupByRaw(`date_trunc('day', created_at)::date`)
-        .orderBy('date', 'asc'),
-    ])
+    // Delegate all DB queries to the dashboard model
+    const { aggregateResult, topQueriesRows, trendRows } = await ModelFactory.dashboard.getQueryAnalyticsData(tenantId, startDate, endDate)
 
     const totalQueries = parseInt((aggregateResult as any)?.total_queries as string || '0', 10)
     const avgResponseTime = Math.round(parseFloat((aggregateResult as any)?.avg_response_time as string || '0') * 100) / 100
@@ -397,86 +277,8 @@ class DashboardService {
    * @returns {Promise<FeedbackAnalytics>} Feedback analytics payload
    */
   async getFeedbackAnalytics(tenantId: string, startDate?: string, endDate?: string): Promise<FeedbackAnalytics> {
-    // Helper to build tenant-scoped, date-filtered base query on answer_feedback
-    const baseQuery = () => {
-      let q = db('answer_feedback').where('answer_feedback.tenant_id', tenantId)
-      if (startDate) q = q.where('answer_feedback.created_at', '>=', startDate)
-      if (endDate) q = q.where('answer_feedback.created_at', '<=', `${endDate} 23:59:59`)
-      return q
-    }
-
-    // Build reusable bound date conditions for raw SQL fragments to avoid interpolation
-    const afDateConditions: string[] = []
-    const afDateParams: string[] = []
-    if (startDate) {
-      afDateConditions.push('AND af.created_at >= ?')
-      afDateParams.push(startDate)
-    }
-    if (endDate) {
-      afDateConditions.push('AND af.created_at <= ?')
-      afDateParams.push(`${endDate} 23:59:59`)
-    }
-
-    const feedbackDateConditions: string[] = []
-    const feedbackDateParams: string[] = []
-    if (startDate) {
-      feedbackDateConditions.push('AND created_at >= ?')
-      feedbackDateParams.push(startDate)
-    }
-    if (endDate) {
-      feedbackDateConditions.push('AND created_at <= ?')
-      feedbackDateParams.push(`${endDate} 23:59:59`)
-    }
-
-    // Run all analytics queries in parallel
-    const [aggregateResult, zeroResultCount, worstRows, trendRows, negativeRows] = await Promise.all([
-      // Single aggregate pass for total + positive counts
-      baseQuery()
-        .select(
-          db.raw('COUNT(*)::int as total_feedback'),
-          db.raw('COUNT(*) FILTER (WHERE thumbup = true)::int as positive_feedback')
-        )
-        .first(),
-      // Zero-result rate: feedback entries linked to failed queries via query text + tenant
-      db.raw(`
-        SELECT COUNT(DISTINCT af.id)::int as count
-        FROM answer_feedback af
-        INNER JOIN query_log ql ON af.query = ql.query AND af.tenant_id = ql.tenant_id
-        WHERE af.tenant_id = ? AND ql.failed_retrieval = true
-        ${afDateConditions.join('\n        ')}
-      `, [tenantId, ...afDateParams]),
-      // Worst datasets: bottom 5 by satisfaction ratio (search feedback only)
-      db.raw(`
-        SELECT af.source_id as dataset_id,
-               COALESCE(kb.name, af.source_id) as name,
-               COUNT(*) as feedback_count,
-               ROUND(COUNT(*) FILTER (WHERE af.thumbup = true)::numeric / NULLIF(COUNT(*), 0) * 100, 1) as satisfaction_rate
-        FROM answer_feedback af
-        LEFT JOIN knowledgebase kb ON af.source_id = kb.id
-        WHERE af.tenant_id = ? AND af.source = 'search'
-        ${afDateConditions.join('\n        ')}
-        GROUP BY af.source_id, kb.name
-        ORDER BY satisfaction_rate ASC
-        LIMIT 5
-      `, [tenantId, ...afDateParams]),
-      // Daily feedback trend with per-day satisfaction rate
-      db.raw(`
-        SELECT date_trunc('day', created_at)::date as date,
-               COUNT(*) as count,
-               ROUND(COUNT(*) FILTER (WHERE thumbup = true)::numeric / NULLIF(COUNT(*), 0) * 100, 1) as satisfaction_rate
-        FROM answer_feedback
-        WHERE tenant_id = ?
-        ${feedbackDateConditions.join('\n        ')}
-        GROUP BY date_trunc('day', created_at)::date
-        ORDER BY date ASC
-      `, [tenantId, ...feedbackDateParams]),
-      // Recent negative feedback entries (last 20) including source for column display
-      baseQuery()
-        .where('thumbup', false)
-        .select('id', 'query', 'answer', 'source', 'trace_id', 'created_at')
-        .orderBy('created_at', 'desc')
-        .limit(20),
-    ])
+    // Delegate all DB queries to the dashboard model
+    const { aggregateResult, zeroResultCount, worstRows, trendRows, negativeRows } = await ModelFactory.dashboard.getFeedbackAnalyticsData(tenantId, startDate, endDate)
 
     const totalFeedback = parseInt((aggregateResult as any)?.total_feedback as string || '0', 10)
     const positiveCount = parseInt((aggregateResult as any)?.positive_feedback as string || '0', 10)
@@ -528,72 +330,6 @@ class DashboardService {
   }
 
   /**
-   * @description Get the top 50 most active users by session count across all sources using UNION ALL
-   * @param {string} startDate - Optional start date
-   * @param {string} endDate - Optional end date
-   * @returns {Promise<TopUser[]>} Array of top user objects sorted descending by session count
-   */
-  private async getTopUsers(startDate?: string, endDate?: string): Promise<TopUser[]> {
-    // Build separate queries for each source, then combine with raw SQL
-    // External chat sessions
-    const chatQ = db('history_chat_sessions')
-      .select('user_email as email')
-      .count('* as cnt')
-      .whereNotNull('user_email')
-      .where('user_email', '!=', '')
-      .modify(qb => {
-        if (startDate) qb.where('updated_at', '>=', startDate)
-        if (endDate) qb.where('updated_at', '<=', `${endDate} 23:59:59`)
-      })
-      .groupBy('user_email')
-
-    // External search sessions
-    const searchQ = db('history_search_sessions')
-      .select('user_email as email')
-      .count('* as cnt')
-      .whereNotNull('user_email')
-      .where('user_email', '!=', '')
-      .modify(qb => {
-        if (startDate) qb.where('updated_at', '>=', startDate)
-        if (endDate) qb.where('updated_at', '<=', `${endDate} 23:59:59`)
-      })
-      .groupBy('user_email')
-
-    // Internal chat sessions (join users for email resolution)
-    const internalChatQ = db('chat_sessions')
-      .select('users.email as email')
-      .count('* as cnt')
-      .join('users', 'chat_sessions.user_id', 'users.id')
-      .whereNotNull('users.email')
-      .where('users.email', '!=', '')
-      .modify(qb => {
-        if (startDate) qb.where('chat_sessions.created_at', '>=', startDate)
-        if (endDate) qb.where('chat_sessions.created_at', '<=', `${endDate} 23:59:59`)
-      })
-      .groupBy('users.email')
-
-    // Use UNION ALL to combine all sources, then aggregate by email
-    const result = await db.raw(`
-      SELECT email, SUM(cnt)::int as "sessionCount"
-      FROM (
-        (${chatQ.toQuery()})
-        UNION ALL
-        (${searchQ.toQuery()})
-        UNION ALL
-        (${internalChatQ.toQuery()})
-      ) combined
-      GROUP BY email
-      ORDER BY "sessionCount" DESC
-      LIMIT 50
-    `)
-
-    return result.rows.map((row: any) => ({
-      email: row.email,
-      sessionCount: row.sessionCount || 0
-    }))
-  }
-
-  /**
    * @description Get feedback count breakdown by source type (chat, search, agent).
    * Queries the answer_feedback table grouped by source column.
    * @param {string} tenantId - Tenant ID for multi-tenancy isolation
@@ -606,19 +342,8 @@ class DashboardService {
     startDate?: string,
     endDate?: string
   ): Promise<{ chat: number; search: number; agent: number }> {
-    // Query answer_feedback grouped by source with tenant isolation
-    const query = db('answer_feedback')
-      .select('source')
-      .count('* as count')
-      .where('tenant_id', tenantId)
-      .modify((qb: any) => {
-        // Apply optional date range filters
-        if (startDate) qb.where('created_at', '>=', startDate)
-        if (endDate) qb.where('created_at', '<=', `${endDate} 23:59:59`)
-      })
-      .groupBy('source')
-
-    const rows = await query
+    // Delegate DB query to the dashboard model
+    const rows = await ModelFactory.dashboard.getFeedbackSourceBreakdownData(tenantId, startDate, endDate)
 
     // Initialize all sources to zero, then populate from query results
     const result = { chat: 0, search: 0, agent: 0 }

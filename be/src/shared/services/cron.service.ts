@@ -8,7 +8,6 @@ import path from 'path';
 import { config } from '@/shared/config/index.js';
 import { log } from '@/shared/services/logger.service.js';
 import { ModelFactory } from '@/shared/models/factory.js';
-import { db } from '@/shared/db/knex.js';
 
 /**
  * @description Singleton service that schedules and runs recurring maintenance tasks.
@@ -141,15 +140,7 @@ export class CronService {
             const { ragDocumentService } = await import('@/modules/rag/services/rag-document.service.js')
 
             // Query pending documents ordered by dataset, then by creation time (FIFO)
-            // progress = 0 and run = '1' indicates documents queued for parsing
-            const pendingDocs = await db('document')
-                .select('id', 'kb_id', 'parser_id', 'parser_config', 'name', 'run', 'create_time')
-                .where('run', '1')
-                .where('progress', 0)
-                .orderBy([
-                    { column: 'kb_id', order: 'asc' },
-                    { column: 'create_time', order: 'asc' },
-                ])
+            const pendingDocs = await ModelFactory.ragDocument.findPendingForParsing()
 
             if (pendingDocs.length === 0) {
                 log.debug('No pending documents found for scheduled parsing')

@@ -33,7 +33,7 @@ from common.doc_store.doc_store_base import DocStoreConnection, MatchExpr, Order
 
 
 class InfinityConnectionBase(DocStoreConnection):
-    def __init__(self, mapping_file_name: str = "infinity_mapping.json", logger_name: str = "ragflow.infinity_conn", table_name_prefix: str="ragflow_"):
+    def __init__(self, mapping_file_name: str = "infinity_mapping.json", logger_name: str = "ragflow.infinity_conn", table_name_prefix: str="knowledge_"):
         from common.doc_store.infinity_conn_pool import INFINITY_CONN
 
         self.dbName = settings.INFINITY.get("db_name", "default_db")
@@ -345,7 +345,7 @@ class InfinityConnectionBase(DocStoreConnection):
         """
         Create a document metadata table.
 
-        Table name pattern: ragflow_doc_meta_{tenant_id}
+        Table name pattern: knowledge_doc_meta_{tenant_id}
         - Per-tenant metadata table for storing document metadata fields
         """
         table_name = index_name
@@ -397,7 +397,7 @@ class InfinityConnectionBase(DocStoreConnection):
             return False
 
     def delete_idx(self, index_name: str, dataset_id: str):
-        if index_name.startswith("ragflow_doc_meta_"):
+        if index_name.startswith("knowledge_doc_meta_"):
             table_name = index_name
         else:
             table_name = f"{index_name}_{dataset_id}"
@@ -410,7 +410,7 @@ class InfinityConnectionBase(DocStoreConnection):
             self.connPool.release_conn(inf_conn)
 
     def index_exist(self, index_name: str, dataset_id: str) -> bool:
-        if index_name.startswith("ragflow_doc_meta_"):
+        if index_name.startswith("knowledge_doc_meta_"):
             table_name = index_name
         else:
             table_name = f"{index_name}_{dataset_id}"
@@ -462,7 +462,7 @@ class InfinityConnectionBase(DocStoreConnection):
         inf_conn = self.connPool.get_conn()
         try:
             db_instance = inf_conn.get_database(self.dbName)
-            if index_name.startswith("ragflow_doc_meta_"):
+            if index_name.startswith("knowledge_doc_meta_"):
                 table_name = index_name
             else:
                 table_name = f"{index_name}_{dataset_id}"

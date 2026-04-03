@@ -3,12 +3,20 @@
  * @module modules/llm-provider/services/llm-provider
  */
 import { ModelFactory } from '@/shared/models/factory.js';
-import { db } from '@/shared/db/knex.js';
 import { log } from '@/shared/services/logger.service.js';
+import { config } from '@/shared/config/index.js';
 import { cryptoService } from '@/shared/services/crypto.service.js';
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js';
 import { ModelProvider } from '@/shared/models/types.js';
 import { ProviderStatus, ModelType, ComparisonLiteral } from '@/shared/constants/index.js';
+import {
+    EMBED_WORKER_STATUS_KEY,
+    SENTENCE_TRANSFORMERS_FACTORY,
+    SENTENCE_TRANSFORMERS_MAX_TOKENS,
+    SYSTEM_API_KEY_SENTINEL,
+    EmbeddingWorkerStatus,
+    type EmbeddingWorkerStatusType,
+} from '@/shared/constants/embedding.js';
 
 /**
  * @description User context for audit logging on provider operations
@@ -40,11 +48,22 @@ export class LlmProviderService {
      * @description List all active model providers ordered by factory name
      * @returns {Promise<ModelProvider[]>} Array of active providers
      */
-    async list(): Promise<ModelProvider[]> {
-        return ModelFactory.modelProvider.findAll(
+    async list(): Promise<(ModelProvider & { model_status?: string })[]> {
+        const providers = await ModelFactory.modelProvider.findAll(
             { status: ProviderStatus.ACTIVE },
             { orderBy: { factory_name: 'asc' } }
-        );
+        )
+
+        // Enrich system providers with live model readiness status from Valkey
+        const hasSystem = providers.some((p: ModelProvider) => p.is_system)
+        if (hasSystem) {
+            const status = await this.getEmbeddingWorkerStatus()
+            return providers.map((p: ModelProvider) =>
+                p.is_system ? { ...p, model_status: status } : p
+            )
+        }
+
+        return providers
     }
 
     /**
@@ -163,11 +182,7 @@ export class LlmProviderService {
         if (data.is_default === true) {
             const existing = await ModelFactory.modelProvider.findById(id);
             if (existing) {
-                await db('model_providers')
-                    .where('model_type', existing.model_type)
-                    .where('status', ProviderStatus.ACTIVE)
-                    .whereNot('id', id)
-                    .update({ is_default: false });
+                await ModelFactory.modelProvider.clearDefaultsByModelType(existing.model_type, id);
             }
         }
 
@@ -430,19 +445,123 @@ export class LlmProviderService {
      * @returns {Promise<Array<Pick<ModelProvider, 'id' | 'factory_name' | 'model_type' | 'model_name' | 'max_tokens' | 'is_default' | 'vision'>>>} Safe provider records
      */
     async listPublic(modelType?: string) {
-        // Only expose safe columns — never return api_key or api_base
-        let query = db('model_providers')
-            .select('id', 'factory_name', 'model_type', 'model_name', 'max_tokens', 'is_default', 'vision')
-            .where('status', ProviderStatus.ACTIVE)
-            .orderBy('factory_name')
-            .orderBy('model_name');
+        const providers = await ModelFactory.modelProvider.findPublicList(modelType)
 
-        // Filter by model_type if provided
-        if (modelType) {
-            query = query.where('model_type', modelType);
+        // Enrich system providers with live model readiness status from Valkey
+        const hasSystem = providers.some((p) => p.is_system)
+        if (hasSystem) {
+            const status = await this.getEmbeddingWorkerStatus()
+            return providers.map((p) =>
+                p.is_system ? { ...p, model_status: status } : p
+            )
         }
 
-        return query;
+        return providers
+    }
+
+    /**
+     * @description Read embedding worker health status from Valkey.
+     * The Python embedding worker publishes a TTL-based heartbeat key.
+     * If the key exists, the worker is alive. If absent, it's offline.
+     * @returns {Promise<'ready' | 'loading' | 'offline'>} Worker readiness status
+     */
+    /** Dedicated Redis client for health checks — avoids dependency on session Redis init */
+    private healthRedisClient: import('redis').RedisClientType | null = null
+    private healthRedisInitializing = false
+
+    /**
+     * @description Get or create a dedicated Redis client for health status reads.
+     * Separate from the session Redis client to avoid the SESSION_STORE gate.
+     * @returns {Promise<import('redis').RedisClientType | null>} Connected client or null
+     */
+    private async getHealthRedisClient() {
+        if (this.healthRedisClient) return this.healthRedisClient
+        if (this.healthRedisInitializing) return null
+
+        this.healthRedisInitializing = true
+        try {
+            const { createClient } = await import('redis')
+            const redisUrl = config.redis.url
+            const client = createClient({ url: redisUrl })
+            client.on('error', (err: Error) => {
+                log.debug('Health Redis client error', { error: err.message })
+            })
+            await client.connect()
+            this.healthRedisClient = client as import('redis').RedisClientType
+            return this.healthRedisClient
+        } catch (err) {
+            log.debug('Failed to connect health Redis client', {
+                error: err instanceof Error ? err.message : String(err),
+            })
+            this.healthRedisInitializing = false
+            return null
+        }
+    }
+
+    /**
+     * @description Read embedding worker health status from Valkey.
+     * Uses a dedicated Redis client (not the session client) to avoid
+     * SESSION_STORE gate issues in development mode.
+     * @returns {Promise<EmbeddingWorkerStatusType>} Worker readiness status
+     */
+    private async getEmbeddingWorkerStatus(): Promise<EmbeddingWorkerStatusType> {
+        try {
+            const redis = await this.getHealthRedisClient()
+            if (!redis) {
+                return EmbeddingWorkerStatus.OFFLINE
+            }
+
+            const raw = await redis.get(EMBED_WORKER_STATUS_KEY)
+            if (!raw) {
+                return EmbeddingWorkerStatus.OFFLINE
+            }
+
+            const data = JSON.parse(raw) as { status: string }
+            if (data.status === EmbeddingWorkerStatus.READY) return EmbeddingWorkerStatus.READY
+            if (data.status === EmbeddingWorkerStatus.LOADING) return EmbeddingWorkerStatus.LOADING
+            return EmbeddingWorkerStatus.OFFLINE
+        } catch (err) {
+            log.error('getEmbeddingWorkerStatus: error reading Valkey', { error: err instanceof Error ? err.message : String(err) })
+            return EmbeddingWorkerStatus.OFFLINE
+        }
+    }
+
+    // =========================================================================
+    // System embedding provider auto-seed
+    // =========================================================================
+
+    /**
+     * @description Auto-seed or remove system-managed embedding provider based on
+     * LOCAL_EMBEDDING_ENABLE env var. Called on every backend startup (idempotent).
+     * Per D-07: upserts when enabled, removes when disabled.
+     * Per D-11: auto-discovery wires SentenceTransformersEmbed into task_executor --
+     * document embedding reuses existing embed_limiter + EMBEDDING_BATCH_SIZE.
+     * @returns {Promise<void>}
+     */
+    async seedSystemEmbeddingProvider(): Promise<void> {
+        if (config.localEmbedding.enabled) {
+            // Fail fast if model name not specified (per D-04)
+            if (!config.localEmbedding.model) {
+                log.error('LOCAL_EMBEDDING_ENABLE=true but LOCAL_EMBEDDING_MODEL is not set. Skipping system provider seed.')
+                return
+            }
+
+            // Upsert the SentenceTransformers provider for the system tenant
+            const providerId = await ModelFactory.modelProvider.upsertSystemProvider({
+                factory_name: SENTENCE_TRANSFORMERS_FACTORY,
+                model_type: 'embedding',
+                model_name: config.localEmbedding.model,
+                tenant_id: config.opensearch.systemTenantId,
+                max_tokens: SENTENCE_TRANSFORMERS_MAX_TOKENS,
+            })
+            log.info(`System embedding provider seeded: SentenceTransformers/${config.localEmbedding.model} (id=${providerId})`)
+        } else {
+            // Remove any stale system-managed providers when feature is disabled
+            const removed = await ModelFactory.modelProvider.removeSystemProviders()
+            if (removed > 0) {
+                log.info(`Removed ${removed} system-managed provider(s) (LOCAL_EMBEDDING_ENABLE=false)`)
+            }
+        }
     }
 
     // =========================================================================

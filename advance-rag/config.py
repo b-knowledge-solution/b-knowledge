@@ -21,6 +21,7 @@ DB_PASSWORD = os.getenv("DB_PASSWORD", "")
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
+REDIS_DB = int(os.getenv("REDIS_DB", "0"))
 
 # Elasticsearch
 ES_HOST = os.getenv("ES_HOST", "http://localhost:9200")
@@ -43,6 +44,11 @@ DEFAULT_RERANK_MODEL = os.getenv("DEFAULT_RERANK_MODEL", "")
 DEFAULT_ASR_MODEL = os.getenv("DEFAULT_ASR_MODEL", "")
 DEFAULT_IMAGE2TEXT_MODEL = os.getenv("DEFAULT_IMAGE2TEXT_MODEL", "")
 DEFAULT_TTS_MODEL = os.getenv("DEFAULT_TTS_MODEL", "")
+
+# Local embedding (Sentence Transformers)
+LOCAL_EMBEDDING_ENABLE = os.getenv("LOCAL_EMBEDDING_ENABLE", "false").lower() in ("true", "1", "yes")
+LOCAL_EMBEDDING_MODEL = os.getenv("LOCAL_EMBEDDING_MODEL", "")
+LOCAL_EMBEDDING_PATH = os.getenv("LOCAL_EMBEDDING_PATH", "")
 
 # FastAPI
 API_HOST = os.getenv("API_HOST", "0.0.0.0")

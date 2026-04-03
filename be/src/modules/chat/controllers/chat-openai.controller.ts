@@ -19,7 +19,6 @@ import {
   buildOaiStreamChunk,
   extractLastUserMessage,
 } from '@/shared/services/openai-format.service.js'
-import { ModelFactory } from '@/shared/models/factory.js'
 import { ComparisonLiteral } from '@/shared/constants/index.js'
 
 /** @description Default model identifier returned by the API. */
@@ -85,12 +84,12 @@ export class ChatOpenaiController {
         res.flushHeaders()
 
         // Create a temporary session for this API call
-        const session = await ModelFactory.chatSession.create({
+        const session = await chatConversationService.createSession({
           user_id: tokenRecord.created_by || 'api',
           title: userMessage.slice(0, 100),
           dialog_id: dialogId,
           created_by: tokenRecord.created_by || 'api',
-        } as any)
+        })
 
         // Collect the full answer by intercepting the SSE stream
         let fullAnswer = ''
@@ -111,12 +110,12 @@ export class ChatOpenaiController {
       } else {
         // ── Non-streaming mode: single JSON response ─────────────────────
         // Create a temporary session
-        const session = await ModelFactory.chatSession.create({
+        const session = await chatConversationService.createSession({
           user_id: tokenRecord.created_by || 'api',
           title: userMessage.slice(0, 100),
           dialog_id: dialogId,
           created_by: tokenRecord.created_by || 'api',
-        } as any)
+        })
 
         // Collect the full answer via stream interception (buffer mode)
         let fullAnswer = ''

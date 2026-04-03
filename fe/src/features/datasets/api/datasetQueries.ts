@@ -1001,3 +1001,25 @@ export function useUpdateDatasetPolicy(datasetId: string) {
   })
 }
 
+// ============================================================================
+// Re-embed
+// ============================================================================
+
+/**
+ * @description Mutation hook to trigger re-embedding of all chunks in a dataset.
+ * Shows success toast on completion and error toast on failure.
+ * @param {string} datasetId - Dataset UUID
+ * @returns Mutation hook for re-embed operation
+ */
+export function useReEmbedDataset(datasetId: string) {
+  const { t } = useTranslation()
+
+  return useMutation({
+    mutationFn: () => datasetApi.reEmbedDataset(datasetId),
+    meta: { successMessage: t('datasetSettings.reembed.successToast') },
+    onError: () => {
+      globalMessage.error(t('datasetSettings.reembed.errorToast'))
+    },
+  })
+}
+

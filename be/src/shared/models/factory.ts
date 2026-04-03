@@ -3,6 +3,7 @@
  * Lazy-loaded singletons for all data models to keep connection sharing consistent.
  */
 import { UserModel } from '@/modules/users/models/user.model.js';
+import { UserTenantModel } from '@/modules/users/models/user-tenant.model.js';
 import { TeamModel } from '@/modules/teams/models/team.model.js';
 import { UserTeamModel } from '@/modules/teams/models/user-team.model.js';
 import { ChatSessionModel } from '@/modules/chat/models/chat-session.model.js';
@@ -36,23 +37,24 @@ import { ChatFileModel } from '@/modules/chat/models/chat-file.model.js';
 import { ChatEmbedTokenModel } from '@/modules/chat/models/chat-embed-token.model.js';
 import { SearchAppModel } from '@/modules/search/models/search-app.model.js'
 import { SearchAppAccessModel } from '@/modules/search/models/search-app-access.model.js';
+import { SearchEmbedTokenModel } from '@/modules/search/models/search-embed-token.model.js';
 import { DocumentVersionModel } from '@/modules/rag/models/document-version.model.js';
 import { DocumentVersionFileModel } from '@/modules/rag/models/document-version-file.model.js';
 import { ConverterJobModel } from '@/modules/rag/models/converter-job.model.js';
 import { AnswerFeedbackModel } from '@/modules/feedback/models/answer-feedback.model.js';
 import { QueryLogModel } from '@/modules/rag/models/query-log.model.js';
 
-// Project Models
-import { ProjectModel } from '@/modules/projects/models/project.model.js';
-import { ProjectPermissionModel } from '@/modules/projects/models/project-permission.model.js';
-import { ProjectDatasetModel } from '@/modules/projects/models/project-dataset.model.js';
-import { ProjectSyncConfigModel } from '@/modules/projects/models/project-sync-config.model.js';
-import { DocumentCategoryModel } from '@/modules/projects/models/document-category.model.js';
-import { DocumentCategoryVersionModel } from '@/modules/projects/models/document-category-version.model.js';
-import { DocumentCategoryVersionFileModel } from '@/modules/projects/models/document-category-version-file.model.js';
-import { ProjectChatModel } from '@/modules/projects/models/project-chat.model.js';
-import { ProjectSearchModel } from '@/modules/projects/models/project-search.model.js';
-import { ProjectEntityPermissionModel } from '@/modules/projects/models/project-entity-permission.model.js';
+// Knowledge Base Models
+import { KnowledgeBaseModel } from '@/modules/knowledge-base/models/knowledge-base.model.js';
+import { KnowledgeBasePermissionModel } from '@/modules/knowledge-base/models/knowledge-base-permission.model.js';
+import { KnowledgeBaseDatasetModel } from '@/modules/knowledge-base/models/knowledge-base-dataset.model.js';
+import { KnowledgeBaseSyncConfigModel } from '@/modules/knowledge-base/models/knowledge-base-sync-config.model.js';
+import { DocumentCategoryModel } from '@/modules/knowledge-base/models/document-category.model.js';
+import { DocumentCategoryVersionModel } from '@/modules/knowledge-base/models/document-category-version.model.js';
+import { DocumentCategoryVersionFileModel } from '@/modules/knowledge-base/models/document-category-version-file.model.js';
+import { KnowledgeBaseChatModel } from '@/modules/knowledge-base/models/knowledge-base-chat.model.js';
+import { KnowledgeBaseSearchModel } from '@/modules/knowledge-base/models/knowledge-base-search.model.js';
+import { KnowledgeBaseEntityPermissionModel } from '@/modules/knowledge-base/models/knowledge-base-entity-permission.model.js';
 import { ApiKeyModel } from '@/modules/external/models/api-key.model.js';
 
 // Agent Models
@@ -61,9 +63,17 @@ import { AgentRunModel } from '@/modules/agents/models/agent-run.model.js';
 import { AgentRunStepModel } from '@/modules/agents/models/agent-run-step.model.js';
 import { AgentTemplateModel } from '@/modules/agents/models/agent-template.model.js';
 import { AgentToolCredentialModel } from '@/modules/agents/models/agent-tool-credential.model.js';
+import { CanvasVersionModel } from '@/modules/agents/models/canvas-version.model.js';
+import { AgentEmbedTokenModel } from '@/modules/agents/models/agent-embed-token.model.js';
 
 // Memory Models
 import { MemoryModel } from '@/modules/memory/models/memory.model.js';
+
+// Dashboard Model
+import { DashboardModel } from '@/modules/dashboard/dashboard.model.js';
+
+// System Models
+import { SystemHistoryModel } from '@/modules/system/models/system-history.model.js';
 
 /**
  * @description ModelFactory class implementing the Factory Pattern.
@@ -75,6 +85,8 @@ export class ModelFactory {
   // Private static fields to hold singleton instances
   /** User model singleton instance */
   private static userModel: UserModel;
+  /** User-Tenant membership model singleton instance */
+  private static userTenantModel: UserTenantModel;
   /** Team model singleton instance */
   private static teamModel: TeamModel;
   /** User-Team relationship model singleton instance */
@@ -145,6 +157,8 @@ export class ModelFactory {
   private static searchAppModel: SearchAppModel;
   /** SearchAppAccess model singleton instance */
   private static searchAppAccessModel: SearchAppAccessModel;
+  /** SearchEmbedToken model singleton instance */
+  private static searchEmbedTokenModel: SearchEmbedTokenModel;
   /** DocumentVersion model singleton instance */
   private static documentVersionModel: DocumentVersionModel;
   /** DocumentVersionFile model singleton instance */
@@ -156,27 +170,27 @@ export class ModelFactory {
   /** QueryLog model singleton instance */
   private static queryLogModel: QueryLogModel;
 
-  // Project Models
-  /** Project model singleton instance */
-  private static projectModel: ProjectModel;
-  /** ProjectPermission model singleton instance */
-  private static projectPermissionModel: ProjectPermissionModel;
-  /** ProjectDataset model singleton instance */
-  private static projectDatasetModel: ProjectDatasetModel;
-  /** ProjectSyncConfig model singleton instance */
-  private static projectSyncConfigModel: ProjectSyncConfigModel;
+  // Knowledge Base Models
+  /** KnowledgeBase model singleton instance */
+  private static knowledgeBaseModel: KnowledgeBaseModel;
+  /** KnowledgeBasePermission model singleton instance */
+  private static knowledgeBasePermissionModel: KnowledgeBasePermissionModel;
+  /** KnowledgeBaseDataset model singleton instance */
+  private static knowledgeBaseDatasetModel: KnowledgeBaseDatasetModel;
+  /** KnowledgeBaseSyncConfig model singleton instance */
+  private static knowledgeBaseSyncConfigModel: KnowledgeBaseSyncConfigModel;
   /** DocumentCategory model singleton instance */
   private static documentCategoryModel: DocumentCategoryModel;
   /** DocumentCategoryVersion model singleton instance */
   private static documentCategoryVersionModel: DocumentCategoryVersionModel;
   /** DocumentCategoryVersionFile model singleton instance */
   private static documentCategoryVersionFileModel: DocumentCategoryVersionFileModel;
-  /** ProjectChat model singleton instance */
-  private static projectChatModel: ProjectChatModel;
-  /** ProjectSearch model singleton instance */
-  private static projectSearchModel: ProjectSearchModel;
-  /** ProjectEntityPermission model singleton instance */
-  private static projectEntityPermissionModel: ProjectEntityPermissionModel;
+  /** KnowledgeBaseChat model singleton instance */
+  private static knowledgeBaseChatModel: KnowledgeBaseChatModel;
+  /** KnowledgeBaseSearch model singleton instance */
+  private static knowledgeBaseSearchModel: KnowledgeBaseSearchModel;
+  /** KnowledgeBaseEntityPermission model singleton instance */
+  private static knowledgeBaseEntityPermissionModel: KnowledgeBaseEntityPermissionModel;
   /** ApiKey model singleton instance */
   private static apiKeyModel: ApiKeyModel;
 
@@ -191,10 +205,22 @@ export class ModelFactory {
   private static agentTemplateModel: AgentTemplateModel;
   /** AgentToolCredential model singleton instance */
   private static agentToolCredentialModel: AgentToolCredentialModel;
+  /** CanvasVersion model singleton instance */
+  private static canvasVersionModel: CanvasVersionModel;
+  /** AgentEmbedToken model singleton instance */
+  private static agentEmbedTokenModel: AgentEmbedTokenModel;
 
   // Memory Models
   /** Memory model singleton instance */
   private static memoryModel: MemoryModel;
+
+  // Dashboard Model
+  /** Dashboard analytics model singleton instance */
+  private static dashboardModel: DashboardModel;
+
+  // System Models
+  /** System history analytics model singleton instance */
+  private static systemHistoryModel: SystemHistoryModel;
 
   /**
    * Get the User model singleton.
@@ -205,6 +231,17 @@ export class ModelFactory {
     // Create instance on first access (lazy initialization)
     if (!this.userModel) this.userModel = new UserModel();
     return this.userModel;
+  }
+
+  /**
+   * @description Get the UserTenant model singleton.
+   * Manages user-to-tenant (organization) membership relationships.
+   * @returns {UserTenantModel} Instance for user-tenant membership operations
+   */
+  static get userTenant() {
+    // Create instance on first access (lazy initialization)
+    if (!this.userTenantModel) this.userTenantModel = new UserTenantModel();
+    return this.userTenantModel;
   }
 
   /**
@@ -520,6 +557,17 @@ export class ModelFactory {
   }
 
   /**
+   * Get the SearchEmbedToken model singleton.
+   * Manages embed tokens for external search widget access.
+   * @returns SearchEmbedTokenModel instance for embed token operations
+   */
+  static get searchEmbedToken() {
+    // Create instance on first access (lazy initialization)
+    if (!this.searchEmbedTokenModel) this.searchEmbedTokenModel = new SearchEmbedTokenModel();
+    return this.searchEmbedTokenModel;
+  }
+
+  /**
    * Get the DocumentVersion model singleton.
    * Manages document version records for datasets.
    * @returns DocumentVersionModel instance for version CRUD operations
@@ -570,43 +618,43 @@ export class ModelFactory {
   }
 
   // -------------------------------------------------------------------------
-  // Project Models
+  // Knowledge Base Models
   // -------------------------------------------------------------------------
 
   /**
-   * Get the Project model singleton.
-   * @returns ProjectModel instance for project CRUD operations
+   * Get the KnowledgeBase model singleton.
+   * @returns KnowledgeBaseModel instance for knowledge base CRUD operations
    */
-  static get project() {
-    if (!this.projectModel) this.projectModel = new ProjectModel();
-    return this.projectModel;
+  static get knowledgeBase() {
+    if (!this.knowledgeBaseModel) this.knowledgeBaseModel = new KnowledgeBaseModel();
+    return this.knowledgeBaseModel;
   }
 
   /**
-   * Get the ProjectPermission model singleton.
-   * @returns ProjectPermissionModel instance for permission operations
+   * Get the KnowledgeBasePermission model singleton.
+   * @returns KnowledgeBasePermissionModel instance for permission operations
    */
-  static get projectPermission() {
-    if (!this.projectPermissionModel) this.projectPermissionModel = new ProjectPermissionModel();
-    return this.projectPermissionModel;
+  static get knowledgeBasePermission() {
+    if (!this.knowledgeBasePermissionModel) this.knowledgeBasePermissionModel = new KnowledgeBasePermissionModel();
+    return this.knowledgeBasePermissionModel;
   }
 
   /**
-   * Get the ProjectDataset model singleton.
-   * @returns ProjectDatasetModel instance for project-dataset junction operations
+   * Get the KnowledgeBaseDataset model singleton.
+   * @returns KnowledgeBaseDatasetModel instance for knowledge-base-dataset junction operations
    */
-  static get projectDataset() {
-    if (!this.projectDatasetModel) this.projectDatasetModel = new ProjectDatasetModel();
-    return this.projectDatasetModel;
+  static get knowledgeBaseDataset() {
+    if (!this.knowledgeBaseDatasetModel) this.knowledgeBaseDatasetModel = new KnowledgeBaseDatasetModel();
+    return this.knowledgeBaseDatasetModel;
   }
 
   /**
-   * Get the ProjectSyncConfig model singleton.
-   * @returns ProjectSyncConfigModel instance for sync config operations
+   * Get the KnowledgeBaseSyncConfig model singleton.
+   * @returns KnowledgeBaseSyncConfigModel instance for sync config operations
    */
-  static get projectSyncConfig() {
-    if (!this.projectSyncConfigModel) this.projectSyncConfigModel = new ProjectSyncConfigModel();
-    return this.projectSyncConfigModel;
+  static get knowledgeBaseSyncConfig() {
+    if (!this.knowledgeBaseSyncConfigModel) this.knowledgeBaseSyncConfigModel = new KnowledgeBaseSyncConfigModel();
+    return this.knowledgeBaseSyncConfigModel;
   }
 
   /**
@@ -637,30 +685,30 @@ export class ModelFactory {
   }
 
   /**
-   * Get the ProjectChat model singleton.
-   * @returns ProjectChatModel instance for project chat CRUD operations
+   * Get the KnowledgeBaseChat model singleton.
+   * @returns KnowledgeBaseChatModel instance for knowledge base chat CRUD operations
    */
-  static get projectChat() {
-    if (!this.projectChatModel) this.projectChatModel = new ProjectChatModel();
-    return this.projectChatModel;
+  static get knowledgeBaseChat() {
+    if (!this.knowledgeBaseChatModel) this.knowledgeBaseChatModel = new KnowledgeBaseChatModel();
+    return this.knowledgeBaseChatModel;
   }
 
   /**
-   * Get the ProjectSearch model singleton.
-   * @returns ProjectSearchModel instance for project search CRUD operations
+   * Get the KnowledgeBaseSearch model singleton.
+   * @returns KnowledgeBaseSearchModel instance for knowledge base search CRUD operations
    */
-  static get projectSearch() {
-    if (!this.projectSearchModel) this.projectSearchModel = new ProjectSearchModel();
-    return this.projectSearchModel;
+  static get knowledgeBaseSearch() {
+    if (!this.knowledgeBaseSearchModel) this.knowledgeBaseSearchModel = new KnowledgeBaseSearchModel();
+    return this.knowledgeBaseSearchModel;
   }
 
   /**
-   * Get the ProjectEntityPermission model singleton.
-   * @returns ProjectEntityPermissionModel instance for entity permission operations
+   * Get the KnowledgeBaseEntityPermission model singleton.
+   * @returns KnowledgeBaseEntityPermissionModel instance for entity permission operations
    */
-  static get projectEntityPermission() {
-    if (!this.projectEntityPermissionModel) this.projectEntityPermissionModel = new ProjectEntityPermissionModel();
-    return this.projectEntityPermissionModel;
+  static get knowledgeBaseEntityPermission() {
+    if (!this.knowledgeBaseEntityPermissionModel) this.knowledgeBaseEntityPermissionModel = new KnowledgeBaseEntityPermissionModel();
+    return this.knowledgeBaseEntityPermissionModel;
   }
 
   /**
@@ -721,6 +769,25 @@ export class ModelFactory {
     return this.agentToolCredentialModel;
   }
 
+  /**
+   * Get the CanvasVersion model singleton.
+   * Manages canvas/agent version release state.
+   * @returns CanvasVersionModel instance for canvas version operations
+   */
+  static get canvasVersion() {
+    if (!this.canvasVersionModel) this.canvasVersionModel = new CanvasVersionModel();
+    return this.canvasVersionModel;
+  }
+
+  /**
+   * Get the AgentEmbedToken model singleton.
+   * @returns AgentEmbedTokenModel instance for agent embed token operations
+   */
+  static get agentEmbedToken() {
+    if (!this.agentEmbedTokenModel) this.agentEmbedTokenModel = new AgentEmbedTokenModel();
+    return this.agentEmbedTokenModel;
+  }
+
   // -------------------------------------------------------------------------
   // Memory Models
   // -------------------------------------------------------------------------
@@ -732,5 +799,35 @@ export class ModelFactory {
   static get memory() {
     if (!this.memoryModel) this.memoryModel = new MemoryModel();
     return this.memoryModel;
+  }
+
+  // -------------------------------------------------------------------------
+  // Dashboard Model
+  // -------------------------------------------------------------------------
+
+  /**
+   * @description Get the Dashboard model singleton.
+   * Provides cross-table analytics queries for the dashboard module.
+   * @returns {DashboardModel} Instance for dashboard analytics operations
+   */
+  static get dashboard() {
+    // Create instance on first access (lazy initialization)
+    if (!this.dashboardModel) this.dashboardModel = new DashboardModel();
+    return this.dashboardModel;
+  }
+
+  // -------------------------------------------------------------------------
+  // System Models
+  // -------------------------------------------------------------------------
+
+  /**
+   * @description Get the SystemHistory model singleton.
+   * Provides cross-table analytics queries for system history (chat, search, agent runs).
+   * @returns {SystemHistoryModel} Instance for system history analytics operations
+   */
+  static get systemHistory() {
+    // Create instance on first access (lazy initialization)
+    if (!this.systemHistoryModel) this.systemHistoryModel = new SystemHistoryModel();
+    return this.systemHistoryModel;
   }
 }

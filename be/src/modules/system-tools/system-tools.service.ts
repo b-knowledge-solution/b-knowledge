@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import { log } from '@/shared/services/logger.service.js';
 import { config } from '@/shared/config/index.js';
 import { HealthStatus } from '@/shared/constants/index.js';
+import { ModelFactory } from '@/shared/models/factory.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -277,13 +278,8 @@ class SystemToolsService {
      * @returns {Promise<boolean>} True if database is reachable
      */
     private async checkDatabase(): Promise<boolean> {
-        const { db } = await import('@/shared/db/knex.js');
-        try {
-            await db.raw('SELECT 1');
-            return true;
-        } catch {
-            return false;
-        }
+        // Delegate to SystemConfigModel's healthCheck to avoid direct db import
+        return ModelFactory.systemConfig.healthCheck()
     }
 
     /**

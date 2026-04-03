@@ -14,10 +14,7 @@ services:
   # Knowledge Base Backend
   # ==========================================================================
   backend:
-    build:
-      context: ../be
-      dockerfile: Dockerfile
-    image: ${BACKEND_IMAGE:-knowledge-base-backend}:${BACKEND_VERSION:-latest}
+    image: ${BACKEND_IMAGE:-kb-backend}:${BACKEND_VERSION:-latest}
     restart: unless-stopped
     cpus: 0.50
     mem_limit: 512m
@@ -33,18 +30,6 @@ services:
         condition: service_healthy
     env_file:
       - .env
-    environment:
-      DB_HOST: postgres
-      REDIS_HOST: valkey
-      REDIS_PORT: "6379"
-      VECTORDB_HOST: http://opensearch:9201
-      VECTORDB_PASSWORD: ${VECTORDB_PASSWORD:-OpenSearch@123}
-      S3_HOST: rustfs:9000
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-rustfsadmin}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:-rustfsadmin}
-      S3_BUCKET: ${S3_BUCKET:-knowledge}
-      S3_PREFIX_PATH: ${S3_PREFIX_PATH:-}
-      LOG_DIR: ${LOG_DIR:-/app/logs}
     ports:
       - "${PORT:-3001}:3001"
     expose:
@@ -67,15 +52,11 @@ services:
   # RAG Task Executor (background worker for document parsing)
   # ==========================================================================
   task-executor:
-    build:
-      context: ../advance-rag
-      dockerfile: Dockerfile
-    image: ${RAG_IMAGE:-b-knowledge-rag}:${RAG_VERSION:-latest}
+    image: ${RAG_IMAGE:-kb-worker}:${RAG_VERSION:-latest}
     restart: unless-stopped
     cpus: 0.75
     mem_limit: 2g
     mem_reservation: 1g
-    command: ["python", "-m", "executor_wrapper"]
     depends_on:
       backend:
         condition: service_healthy
@@ -88,42 +69,13 @@ services:
     env_file:
       - .env
     environment:
-      DB_TYPE: postgres
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      DB_NAME: ${DB_NAME:-knowledge_base}
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-change_me_in_production}
-      REDIS_HOST: valkey
-      REDIS_PORT: "6379"
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      DOC_ENGINE: opensearch
-      VECTORDB_HOST: http://opensearch:9201
-      VECTORDB_PASSWORD: ${VECTORDB_PASSWORD:-OpenSearch@123}
-      S3_HOST: rustfs:9000
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-rustfsadmin}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:-rustfsadmin}
-      S3_BUCKET: ${S3_BUCKET:-knowledge}
-      S3_PREFIX_PATH: ${S3_PREFIX_PATH:-}
-      RAG_PROJECT_BASE: /app
-      PYTHONPATH: /app
-      # Worker scaling: tune per-instance concurrency via .env
-      MAX_CONCURRENT_TASKS: ${MAX_CONCURRENT_TASKS:-5}
-      MAX_CONCURRENT_CHUNK_BUILDERS: ${MAX_CONCURRENT_CHUNK_BUILDERS:-1}
-      MAX_CONCURRENT_MINIO: ${MAX_CONCURRENT_MINIO:-10}
-      MAX_CONCURRENT_CHATS: ${MAX_CONCURRENT_CHATS:-10}
-      TASK_MAX_RETRIES: ${TASK_MAX_RETRIES:-3}
-      OPENSEARCH_POOL_MAXSIZE: ${OPENSEARCH_POOL_MAXSIZE:-10}
-      EMBEDDING_BATCH_SIZE: ${EMBEDDING_BATCH_SIZE:-16}
-      DOC_BULK_SIZE: ${DOC_BULK_SIZE:-4}
-      WORKER_HEARTBEAT_TIMEOUT: ${WORKER_HEARTBEAT_TIMEOUT:-120}
+      # Per-service identity — all other vars come from .env
+      WORKER_MODE: task-executor
       LOG_PREFIX: task-executor
-      LOG_ROTATION: ${LOG_ROTATION:-50 MB}
-      LOG_RETENTION: ${LOG_RETENTION:-30 days}
-      LOG_COMPRESSION: ${LOG_COMPRESSION:-zip}
-      LOG_DIR: ${LOG_DIR:-/app/logs}
     volumes:
       - app_logs:/app/logs
+      # Share HuggingFace model cache to warm up sentence-transformers at startup
+      - hf-cache:/root/.cache/huggingface
     networks:
       - kb-network
 
@@ -131,15 +83,11 @@ services:
   # Connector Sync Worker (syncs external sources via Python connectors)
   # ==========================================================================
   connector-sync-worker:
-    build:
-      context: ../advance-rag
-      dockerfile: Dockerfile
-    image: ${RAG_IMAGE:-b-knowledge-rag}:${RAG_VERSION:-latest}
+    image: ${RAG_IMAGE:-kb-worker}:${RAG_VERSION:-latest}
     restart: unless-stopped
     cpus: 0.5
     mem_limit: 1g
     mem_reservation: 512m
-    command: ["python", "connector_sync_worker.py"]
     depends_on:
       backend:
         condition: service_healthy
@@ -150,30 +98,9 @@ services:
     env_file:
       - .env
     environment:
-      DB_TYPE: postgres
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      DB_NAME: ${DB_NAME:-knowledge_base}
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-change_me_in_production}
-      REDIS_HOST: valkey
-      REDIS_PORT: "6379"
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      DOC_ENGINE: opensearch
-      VECTORDB_HOST: http://opensearch:9201
-      VECTORDB_PASSWORD: ${VECTORDB_PASSWORD:-OpenSearch@123}
-      S3_HOST: rustfs:9000
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-rustfsadmin}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:-rustfsadmin}
-      S3_BUCKET: ${S3_BUCKET:-knowledge}
-      S3_PREFIX_PATH: ${S3_PREFIX_PATH:-}
-      RAG_PROJECT_BASE: /app
-      PYTHONPATH: /app
+      # Per-service identity — all other vars come from .env
+      WORKER_MODE: connector-sync
       LOG_PREFIX: connector-sync-worker
-      LOG_ROTATION: ${LOG_ROTATION:-50 MB}
-      LOG_RETENTION: ${LOG_RETENTION:-30 days}
-      LOG_COMPRESSION: ${LOG_COMPRESSION:-zip}
-      LOG_DIR: ${LOG_DIR:-/app/logs}
     volumes:
       - app_logs:/app/logs
     networks:
@@ -183,10 +110,7 @@ services:
   # Document Converter Worker (Office -> PDF conversion via LibreOffice)
   # ==========================================================================
   converter:
-    build:
-      context: ../converter
-      dockerfile: Dockerfile
-    image: ${CONVERTER_IMAGE:-b-knowledge-converter}:${CONVERTER_VERSION:-latest}
+    image: ${CONVERTER_IMAGE:-kb-converter}:${CONVERTER_VERSION:-latest}
     restart: unless-stopped
     cpus: 0.50
     mem_limit: 768m
@@ -199,17 +123,9 @@ services:
     env_file:
       - .env
     environment:
-      REDIS_HOST: valkey
-      REDIS_PORT: "6379"
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      # POLL_INTERVAL re-maps CONVERTER_POLL_INTERVAL — internal var name differs from .env key
       POLL_INTERVAL: ${CONVERTER_POLL_INTERVAL:-30}
       LOG_PREFIX: converter
-      S3_HOST: rustfs:9000
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-rustfsadmin}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:-rustfsadmin}
-      S3_BUCKET: ${S3_BUCKET:-knowledge}
-      S3_PREFIX_PATH: ${S3_PREFIX_PATH:-}
-      LOG_DIR: ${LOG_DIR:-/app/logs}
     volumes:
       - converter_data:/app/.data
       - app_logs:/app/logs
@@ -225,4 +141,6 @@ volumes:
   backend_data:
     driver: local
   converter_data:
+    driver: local
+  hf-cache:
     driver: local

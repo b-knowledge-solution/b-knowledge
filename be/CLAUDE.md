@@ -24,7 +24,7 @@ be/src/
 │   ├── index.ts              # Express init, middleware stack, server startup
 │   └── routes.ts             # Central route registration (all module routes)
 ├── modules/                  # Domain modules (self-contained units)
-│   ├── admin/                ├── audit/
+│   ├── system/               ├── audit/
 │   ├── auth/          (flat) ├── broadcast/
 │   ├── chat/                 ├── dashboard/       (flat)
 │   ├── external/             ├── glossary/
@@ -82,10 +82,67 @@ modules/<domain>/
 
 ### Models (Factory + Singleton)
 - All models extend `BaseModel<T>` with standard CRUD
-- Access via `ModelFactory.users`, `ModelFactory.chatSessions`, etc.
+- Access via `ModelFactory.user`, `ModelFactory.chatSession`, etc.
 - Always use Knex ORM; raw SQL only when Knex cannot support the query
 - Transaction support via optional `trx` parameter
-- **No direct DB in services:** Services must **never** import `db` from `@/shared/db/knex.js` or call `db('table')` directly. All database access from service files must go through `ModelFactory.<model>.<method>()`. If a model lacks the needed query, add a new method to the model class — do not bypass via raw `db()` in the service.
+- Register all new models in `ModelFactory` with lazy getter pattern
+
+### Layering Rules (STRICT — Controller → Service → Model)
+
+The backend enforces a strict 3-layer architecture. Each layer has clear responsibilities and boundaries.
+
+#### Controller Rules
+Controllers handle HTTP request/response ONLY. Controllers must **NEVER**:
+- Import `ModelFactory` or any model class
+- Call `ModelFactory.*` methods directly
+- Import `db` from `@/shared/db/knex.js`
+- Contain business logic beyond request parsing and response formatting
+
+Controllers must **ONLY** call services:
+```typescript
+// ✅ CORRECT — Controller calls service:
+const user = await userService.getUserById(id)
+const templates = await agentService.listTemplates(tenantId)
+const app = await searchService.getSearchApp(appId)
+
+// ❌ WRONG — Controller calls model directly:
+const user = await ModelFactory.user.findById(id)
+const templates = await ModelFactory.agentTemplate.findByTenant(tenantId)
+const app = await ModelFactory.searchApp.findById(appId)
+```
+
+**When a service lacks the needed method:** Add a new method to the service — never import ModelFactory in the controller.
+
+#### Service Rules (Database Access)
+Services contain business logic and call `ModelFactory` for data access. Services must **NEVER**:
+- Import `db` from `@/shared/db/knex.js`
+- Call `db('table')`, `db.raw()`, or `db.transaction()` directly
+- Use `.getKnex()` on models to build inline queries
+- Use raw Knex builder methods (`.whereRaw()`, `.selectRaw()`) outside models
+
+```typescript
+// ✅ CORRECT — Service calls model:
+const user = await ModelFactory.user.findByEmail(email)
+const stats = await ModelFactory.dashboard.countRows('chat_sessions', 'created_at')
+
+// ❌ WRONG — Direct DB in service:
+import { db } from '@/shared/db/knex.js'
+const user = await db('users').where({ email }).first()
+```
+
+#### Model Rules
+**ALL database queries MUST live in model files.** Only models may access the database directly. If a model lacks the needed query, add a new method to the model — never bypass via raw `db()` in the caller.
+
+**Model query best practices:**
+| Practice | Why |
+|----------|-----|
+| Single responsibility per method | Easy to test, reuse, and maintain |
+| `whereIn()` for batch lookups | Avoid N+1 round-trips |
+| `{ data, total }` for paginated queries | Consistent API for list endpoints |
+| Models own transactions (`this.knex.transaction()`) | Atomic operations stay in the data layer |
+| `.select(columns)` on list queries | Avoid transferring unused JSONB/text columns |
+| Use indexed columns in WHERE/ORDER BY | Prevent full table scans |
+| Dedicated analytics models for cross-table queries | `DashboardModel`, `AdminHistoryModel` pattern |
 
 ### RESTful API Route Conventions
 
@@ -159,6 +216,7 @@ export async function createKnowledgeBase(data: CreateKnowledgeBaseDto, userId: 
 
 ## Gotchas
 
+- **No hardcoded string literals:** Never use bare strings in comparisons for statuses, factory names, Redis keys, or sentinel values. Always use constants from `shared/constants/`. See root `CLAUDE.md` "No Hardcoded String Literals" section for full rules.
 - **Config access:** Always use `config` object from `@/shared/config/`, never `process.env` directly
 - **Production env validation:** `DB_PASSWORD`, `KB_ROOT_PASSWORD`, `SESSION_SECRET` are required in production — missing values throw
 - **HTTPS fallback:** If SSL cert files missing, server falls back to HTTP silently

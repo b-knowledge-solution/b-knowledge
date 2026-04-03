@@ -122,6 +122,7 @@ def search_vectors(self, query_embedding: list[float], index: str, top_k: int = 
 
 ## Gotchas
 
+- **No hardcoded string literals:** Never use bare strings for Valkey keys, factory names, status values, or sentinel values. Always use constants from `embed_constants.py`. Cross-language strings must match `be/src/shared/constants/embedding.ts`. See root `CLAUDE.md` "No Hardcoded String Literals" section.
 - **Derived from RAGFlow:** This is an extracted/modified version of RAGFlow's core — patterns follow RAGFlow conventions, not the Node.js backend
 - **Peewee ORM (not Knex):** Database models use Peewee, separate from the Node.js Knex models
 - **Pre-cached models:** Docker image copies deepdoc, NLTK, Tika, tiktoken models during build — do not assume network access at runtime

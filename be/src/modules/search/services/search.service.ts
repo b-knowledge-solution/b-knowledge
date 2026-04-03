@@ -146,6 +146,17 @@ export class SearchService {
   }
 
   /**
+   * @description Retrieve the team IDs a user belongs to for RBAC evaluation
+   * @param {string} userId - UUID of the user
+   * @returns {Promise<string[]>} Array of team UUIDs the user is a member of
+   */
+  async getUserTeamIds(userId: string): Promise<string[]> {
+    // Fetch all team memberships for the user and extract team IDs
+    const userTeams = await ModelFactory.userTeam.findAll({ user_id: userId })
+    return userTeams.map((ut: { team_id: string }) => ut.team_id)
+  }
+
+  /**
    * @description Delete a search app by its UUID
    * @param {string} searchId - UUID of the search app to delete
    * @returns {Promise<void>}
@@ -176,40 +187,25 @@ export class SearchService {
     const sortBy = options?.sortBy || 'created_at'
     const sortOrder = options?.sortOrder || 'desc'
 
-    // Build base query
-    let baseQuery = ModelFactory.searchApp.getKnex()
+    // Determine if user has admin-level access (sees all apps)
+    const isAdmin = userRole === UserRole.ADMIN || userRole === UserRole.SUPERADMIN
 
-    // RBAC filter: admins see all, others see own + public + shared
-    if (userRole !== UserRole.ADMIN && userRole !== UserRole.SUPERADMIN) {
-      const accessibleIds = await ModelFactory.searchAppAccess.findAccessibleAppIds(userId, teamIds)
-      baseQuery = baseQuery.where(function (this: any) {
-        this.where('created_by', userId)
-        this.orWhere('is_public', true)
-        if (accessibleIds.length > 0) {
-          this.orWhereIn('id', accessibleIds)
-        }
-      })
+    // For non-admins, resolve accessible app IDs from search_app_access table
+    let accessibleIds: string[] = []
+    if (!isAdmin) {
+      accessibleIds = await ModelFactory.searchAppAccess.findAccessibleAppIds(userId, teamIds)
     }
 
-    // Apply search filter
-    if (options?.search) {
-      baseQuery = baseQuery.andWhere(function (this: any) {
-        this.where('name', 'ilike', `%${options!.search}%`)
-          .orWhere('description', 'ilike', `%${options!.search}%`)
-      })
-    }
-
-    // Count total before pagination
-    const countResult = await baseQuery.clone().clearSelect().clearOrder().count('* as count').first()
-    const total = Number((countResult as any)?.count || 0)
-
-    // Apply sort and pagination
-    const data = await baseQuery
-      .orderBy(sortBy, sortOrder)
-      .limit(pageSize)
-      .offset((page - 1) * pageSize)
-
-    return { data, total }
+    // Delegate paginated query to the model layer
+    return ModelFactory.searchApp.findAccessiblePaginated({
+      ...(isAdmin ? {} : { userId, accessibleIds }),
+      adminAccess: isAdmin,
+      ...(options?.search ? { search: options.search } : {}),
+      sortBy,
+      sortOrder,
+      page,
+      pageSize,
+    })
   }
 
   /**
@@ -225,28 +221,14 @@ export class SearchService {
     const sortBy = options?.sort_by || 'created_at'
     const sortOrder = options?.sort_order || 'desc'
 
-    // Only return public apps
-    let baseQuery = ModelFactory.searchApp.getKnex().where('is_public', true)
-
-    // Apply search filter
-    if (options?.search) {
-      baseQuery = baseQuery.andWhere(function (this: any) {
-        this.where('name', 'ilike', `%${options!.search}%`)
-          .orWhere('description', 'ilike', `%${options!.search}%`)
-      })
-    }
-
-    // Count total before pagination
-    const countResult = await baseQuery.clone().clearSelect().clearOrder().count('* as count').first()
-    const total = Number((countResult as any)?.count || 0)
-
-    // Apply sort and pagination
-    const data = await baseQuery
-      .orderBy(sortBy, sortOrder)
-      .limit(pageSize)
-      .offset((page - 1) * pageSize)
-
-    return { data, total }
+    // Delegate paginated public apps query to the model layer
+    return ModelFactory.searchApp.findPublicPaginated({
+      ...(options?.search ? { search: options.search } : {}),
+      sortBy,
+      sortOrder,
+      page,
+      pageSize,
+    })
   }
 
   /**
@@ -269,21 +251,17 @@ export class SearchService {
     const userMap = new Map<string, string>()
     const teamMap = new Map<string, string>()
 
-    // Batch fetch user display names
+    // Batch fetch user display names via model method
     if (userIds.length > 0) {
-      const users = await ModelFactory.user.getKnex()
-        .select('id', 'display_name')
-        .whereIn('id', userIds)
+      const users = await ModelFactory.user.findDisplayNamesByIds(userIds)
       for (const u of users) {
         userMap.set(u.id, u.display_name)
       }
     }
 
-    // Batch fetch team names
+    // Batch fetch team names via model method
     if (teamIds.length > 0) {
-      const teams = await ModelFactory.team.getKnex()
-        .select('id', 'name')
-        .whereIn('id', teamIds)
+      const teams = await ModelFactory.team.findNamesByIds(teamIds)
       for (const t of teams) {
         teamMap.set(t.id, t.name)
       }
@@ -667,10 +645,8 @@ export class SearchService {
   private async datasetsHaveTagConfig(datasetIds: string[]): Promise<boolean> {
     if (datasetIds.length === 0) return false
 
-    // Query datasets in a single batch using whereIn
-    const datasets = await ModelFactory.dataset.getKnex()
-      .select('id', 'parser_config')
-      .whereIn('id', datasetIds)
+    // Query datasets in a single batch using model method
+    const datasets = await ModelFactory.dataset.findConfigByIds(datasetIds)
 
     // Check if any dataset has a non-empty tag_kb_ids in parser_config
     return datasets.some((ds: { parser_config: unknown }) => {

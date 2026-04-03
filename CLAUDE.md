@@ -136,6 +136,47 @@ The project has a code knowledge graph (15K+ nodes, 130K+ edges, semantic embedd
 - Functional patterns where possible
 - If changes are extensive, run `npm run build` to verify
 
+### No Hardcoded String Literals in Comparisons (Mandatory)
+
+**NEVER use bare string literals in comparisons, conditionals, switch cases, or return values for domain states, status values, factory names, Redis/Valkey keys, sentinel values, or any string that represents a fixed set of options.**
+
+Always use **constants** or **enums** defined in a shared constants file. This applies across all languages (TypeScript, Python).
+
+```typescript
+// ❌ WRONG — hardcoded string literals
+if (provider.factory_name === 'SentenceTransformers') { ... }
+if (data.status === 'ready') return 'ready'
+await redis.get('embed:worker:status')
+
+// ✅ CORRECT — import from shared constants
+import { SENTENCE_TRANSFORMERS_FACTORY, EmbeddingWorkerStatus, EMBED_WORKER_STATUS_KEY } from '@/shared/constants/embedding.js'
+if (provider.factory_name === SENTENCE_TRANSFORMERS_FACTORY) { ... }
+if (data.status === EmbeddingWorkerStatus.READY) return EmbeddingWorkerStatus.READY
+await redis.get(EMBED_WORKER_STATUS_KEY)
+```
+
+```python
+# ❌ WRONG
+if factory == "SentenceTransformers": ...
+r.set("embed:worker:status", json.dumps({"status": "ready"}))
+
+# ✅ CORRECT
+from embed_constants import SENTENCE_TRANSFORMERS_FACTORY, HEALTH_KEY, WorkerStatus
+if factory == SENTENCE_TRANSFORMERS_FACTORY: ...
+r.set(HEALTH_KEY, json.dumps({"status": WorkerStatus.READY}))
+```
+
+**Where to define constants:**
+| Scope | TypeScript (BE) | TypeScript (FE) | Python |
+|-------|-----------------|-----------------|--------|
+| Domain statuses | `be/src/shared/constants/statuses.ts` | `fe/src/constants/statuses.ts` | Module-level constants or class |
+| Model types | `be/src/shared/constants/model-types.ts` | `fe/src/constants/model-types.ts` | Enum in relevant module |
+| Redis/Valkey keys | `be/src/shared/constants/embedding.ts` | N/A | `advance-rag/embed_constants.py` |
+| Factory names | `be/src/shared/constants/embedding.ts` | N/A | `advance-rag/embed_constants.py` |
+| Sentinel values | `be/src/shared/constants/embedding.ts` | N/A | `advance-rag/embed_constants.py` |
+
+**Cross-language strings** (values shared between Python and TypeScript) MUST have a comment in both constant files pointing to the other: `// Must match advance-rag/embed_constants.py` / `# Must match be/src/shared/constants/embedding.ts`
+
 ### Documentation Comments (Mandatory)
 
 **This is a mandatory convention — all generated code MUST include documentation comments.**
@@ -264,6 +305,50 @@ These apply to **both** `be/src/modules/` and `fe/src/features/`:
 - Knex ORM for all models; raw SQL only when Knex cannot support the query
 - Migration naming: `YYYYMMDDhhmmss_<name>.ts`
 - **All DB migrations through Knex** — including schema changes to Peewee-managed tables (`document`, `knowledgebase`, `task`, `file`, `tenant_llm`, etc.). Never use Peewee migrators. The backend owns the migration lifecycle; Python workers only read/write data via their ORM.
+
+#### Layering Rules (STRICT — No Exceptions)
+
+**The backend follows a strict 3-layer architecture: Controller → Service → Model**
+
+##### Controller Layer Rules
+Controllers handle HTTP request/response only. Controllers must **NEVER**:
+- Import `ModelFactory` or any model class
+- Call `ModelFactory.*` methods directly
+- Import `db` from `@/shared/db/knex.js`
+
+Controllers must **ONLY** call services. If a controller needs data, it calls a service method — never the model layer directly.
+
+```typescript
+// ✅ CORRECT — Controller calls service:
+const user = await userService.getUserById(id)
+const templates = await agentService.listTemplates(tenantId)
+
+// ❌ WRONG — Controller calls model directly:
+const user = await ModelFactory.user.findById(id)
+const templates = await ModelFactory.agentTemplate.findByTenant(tenantId)
+```
+
+**When a service lacks the needed method:** Add a new method to the service class that wraps the model call — NEVER import ModelFactory in the controller.
+
+##### Service Layer Rules
+Services contain business logic and may call `ModelFactory` for data access. Services must **NEVER**:
+- Import `db` from `@/shared/db/knex.js`
+- Call `db('table')`, `db.raw()`, `db.transaction()` directly
+- Use `.getKnex()` on models to build inline queries
+
+##### Model Layer Rules
+**All database queries MUST live in model files.** Only models may access the database directly.
+
+**When a model lacks the needed query:** Add a new method to the model class — NEVER bypass via raw `db()` in the caller.
+
+**Model query best practices:**
+- **Single responsibility:** Each model method does ONE query or one transaction
+- **Batch operations:** Use `whereIn()` for multi-ID lookups, avoid N+1 patterns
+- **Pagination:** Accept `limit`/`offset` params, return `{ data, total }` for paginated queries
+- **Transactions:** Models own transaction boundaries via `this.knex.transaction()`
+- **Index-aware queries:** Use indexed columns in WHERE/JOIN/ORDER BY clauses
+- **Select only needed columns:** Use `.select(columns)` for large tables, avoid `SELECT *` in list queries
+- **Cross-table analytics:** Create dedicated module-level models (e.g. `DashboardModel`, `AdminHistoryModel`)
 
 ### Frontend Conventions (details in `fe/CLAUDE.md`)
 
