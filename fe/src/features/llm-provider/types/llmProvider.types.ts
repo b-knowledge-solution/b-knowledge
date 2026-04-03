@@ -32,6 +32,8 @@ export interface ModelProvider {
   status: string
   /** Whether this is the default provider for its model type */
   is_default: boolean
+  /** Whether this provider is system-managed (via LOCAL_EMBEDDING_MODEL env var) */
+  is_system?: boolean
   /** User who created this record */
   created_by?: string | null
   /** User who last updated this record */

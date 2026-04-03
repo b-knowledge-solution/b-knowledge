@@ -2211,7 +2211,9 @@
     "maxTokensPlaceholder": "Enter max tokens",
     "testConnection": "Test Connection",
     "connectionSuccess": "Connection successful ({{latency}}ms)",
-    "connectionFailed": "Connection failed: {{error}}"
+    "connectionFailed": "Connection failed: {{error}}",
+    "systemBadge": "System",
+    "systemManagedTooltip": "Managed by LOCAL_EMBEDDING_MODEL environment variable"
   },
   "chatAdmin": {
     "title": "Chat Assistants",

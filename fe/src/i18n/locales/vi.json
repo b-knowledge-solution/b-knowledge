@@ -2195,7 +2195,9 @@
     "maxTokensPlaceholder": "Nhập số token tối đa",
     "testConnection": "Kiểm tra kết nối",
     "connectionSuccess": "Kết nối thành công ({{latency}}ms)",
-    "connectionFailed": "Kết nối thất bại: {{error}}"
+    "connectionFailed": "Kết nối thất bại: {{error}}",
+    "systemBadge": "Hệ thống",
+    "systemManagedTooltip": "Được quản lý bởi biến môi trường LOCAL_EMBEDDING_MODEL"
   },
   "chatAdmin": {
     "title": "Trợ lý chat",
