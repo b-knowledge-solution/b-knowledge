@@ -19,6 +19,8 @@ import { log } from '@/shared/services/logger.service.js'
 import {
   EMBED_REQUEST_STREAM,
   EMBED_RESPONSE_PREFIX,
+  EMBED_WORKER_STATUS_KEY,
+  EmbeddingWorkerStatus,
   BRPOP_TIMEOUT_SECONDS,
 } from '@/shared/constants/embedding.js'
 import crypto from 'crypto'
@@ -42,9 +44,8 @@ class EmbeddingStreamService {
   async initialize(): Promise<void> {
     if (this.initialized) return
 
-    const redisUrl = config.redis.password
-      ? `redis://:${config.redis.password}@${config.redis.host}:${config.redis.port}`
-      : `redis://${config.redis.host}:${config.redis.port}`
+    // Use centralized Redis URL which includes the DB number
+    const redisUrl = config.redis.url
 
     // Publish client for XADD (non-blocking)
     this.publishClient = createClient({ url: redisUrl }) as RedisClientType
@@ -99,6 +100,27 @@ class EmbeddingStreamService {
     // Parse the JSON vector from the response
     const vector = JSON.parse(result.element) as number[]
     return vector
+  }
+
+  /**
+   * @description Check if the Python embedding worker is online and ready.
+   * Reads the health heartbeat key from Valkey. Uses the publishClient
+   * (non-blocking) to avoid interfering with the BRPOP client.
+   * @returns {Promise<boolean>} True if worker status is 'ready'
+   */
+  async isWorkerReady(): Promise<boolean> {
+    // Lazy-initialize on first call
+    if (!this.initialized || !this.publishClient) {
+      await this.initialize()
+    }
+    try {
+      const raw = await this.publishClient!.get(EMBED_WORKER_STATUS_KEY)
+      if (!raw) return false
+      const data = JSON.parse(raw) as { status: string }
+      return data.status === EmbeddingWorkerStatus.READY
+    } catch {
+      return false
+    }
   }
 
   /**

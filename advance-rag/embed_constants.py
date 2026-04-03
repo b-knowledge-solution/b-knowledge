@@ -21,6 +21,10 @@ GROUP_NAME = "embed-workers"
 SENTENCE_TRANSFORMERS_FACTORY = "SentenceTransformers"
 SYSTEM_API_KEY = "__system__"
 
+# Default max token context length for SentenceTransformers embedding models
+# Must match be/src/shared/constants/embedding.ts SENTENCE_TRANSFORMERS_MAX_TOKENS
+SENTENCE_TRANSFORMERS_MAX_TOKENS = 2048
+
 # ── Embedding batch config ─────────────────────────────────────────
 RESPONSE_TTL_SECONDS = 60
 HEALTH_TTL_SECONDS = 30

@@ -99,6 +99,7 @@ export class ModelProviderModel extends BaseModel<ModelProvider> {
     model_type: string
     model_name: string
     tenant_id: string
+    max_tokens?: number
   }): Promise<string> {
     // Unset is_default on all other providers of the same type+tenant
     // so the system provider becomes the sole default
@@ -124,13 +125,14 @@ export class ModelProviderModel extends BaseModel<ModelProvider> {
       .first()
 
     if (existing) {
-      // Update existing record to ensure is_system and is_default flags are set
+      // Update existing record to ensure is_system, is_default, and max_tokens are set
       await this.knex(this.tableName)
         .where({ id: existing.id })
         .update({
           is_system: true,
           is_default: true,
           api_key: SYSTEM_API_KEY_SENTINEL,
+          ...(data.max_tokens != null && { max_tokens: data.max_tokens }),
           updated_at: this.knex.fn.now(),
         })
       return existing.id
@@ -147,6 +149,7 @@ export class ModelProviderModel extends BaseModel<ModelProvider> {
         is_system: true,
         is_default: true,
         status: ProviderStatus.ACTIVE,
+        ...(data.max_tokens != null && { max_tokens: data.max_tokens }),
       })
       .returning('id')
 

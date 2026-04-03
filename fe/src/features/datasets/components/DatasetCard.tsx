@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigateWithLoader } from '@/components/NavigationLoader';
 import { Database, FileText, Hash, Edit2, Trash2, Globe, Lock, Shield } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -33,11 +33,11 @@ interface DatasetCardProps {
  */
 const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onEdit, onDelete, onManageAccess, isAdmin }) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const navigate = useNavigateWithLoader();
 
-  /** Navigate to dataset detail page on card click */
+  /** Navigate to dataset detail page on card click, showing overlay until detail page data loads */
   const handleClick = () => {
-    navigate(`/data-studio/datasets/${dataset.id}`);
+    navigate(`/data-studio/datasets/${dataset.id}`, { waitForReady: true });
   };
 
   // Map dataset status to Tailwind color classes for the status badge

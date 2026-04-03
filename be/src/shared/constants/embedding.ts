@@ -26,6 +26,9 @@ export const SENTENCE_TRANSFORMERS_FACTORY = 'SentenceTransformers'
 /** Sentinel API key value used for system-managed providers (not a real key) */
 export const SYSTEM_API_KEY_SENTINEL = '__system__'
 
+/** Default max token context length for SentenceTransformers embedding models */
+export const SENTENCE_TRANSFORMERS_MAX_TOKENS = 2048
+
 // ── Embedding worker status values ─────────────────────────────────
 
 /** Status values published to embed:worker:status Valkey key */

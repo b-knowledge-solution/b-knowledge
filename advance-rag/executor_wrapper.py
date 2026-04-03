@@ -118,6 +118,12 @@ def wait_for_database(max_retries=30, retry_delay=3):
                 sys.exit(1)
 
 
+
+# Module-level reference to the loaded SentenceTransformer model.
+# Set by preload_local_embedding_model(), consumed by the stream consumer thread.
+_loaded_st_model = None
+
+
 def preload_local_embedding_model():
     """Eagerly load the local SentenceTransformers embedding model at startup.
 
@@ -126,8 +132,13 @@ def preload_local_embedding_model():
     the model is ready before any embedding tasks arrive, and provides clear
     startup logs confirming the model is operational.
 
+    Also stores the raw SentenceTransformer model in _loaded_st_model so
+    the embedding stream consumer thread can reuse it without loading a
+    second copy.
+
     Skips silently if LOCAL_EMBEDDING_ENABLE is not true.
     """
+    global _loaded_st_model
     import config as app_config
 
     if not getattr(app_config, 'LOCAL_EMBEDDING_ENABLE', False):
@@ -166,6 +177,11 @@ def preload_local_embedding_model():
             model_name, dim, SENTENCE_TRANSFORMERS_FACTORY
         )
 
+        # Store the raw SentenceTransformer model for the stream consumer thread.
+        # SentenceTransformersEmbed uses a class-level singleton (_model).
+        from rag.llm.embedding_model import SentenceTransformersEmbed
+        _loaded_st_model = SentenceTransformersEmbed._model
+
         # Publish health status to Valkey so the LLM Config page shows "Ready"
         try:
             import json
@@ -186,6 +202,108 @@ def preload_local_embedding_model():
 
     except Exception as e:
         logger.error('Failed to preload local embedding model: {}', e)
+
+
+def start_embedding_stream_consumer():
+    """Start the embedding stream consumer as a background daemon thread.
+
+    When LOCAL_EMBEDDING_ENABLE=true, launches the XREADGROUP consumer loop
+    from embedding_worker.py in a daemon thread. This allows the task executor
+    and embedding stream consumer to run in the same process.
+
+    Reuses the SentenceTransformer model already loaded by
+    preload_local_embedding_model() to avoid doubling memory usage.
+
+    The consumer reads embedding requests from the ``embed:requests`` Valkey
+    Stream (published by the Node.js backend) and responds via LPUSH.
+
+    Skips silently if LOCAL_EMBEDDING_ENABLE is not true or model not loaded.
+    """
+    import config as app_config
+    import threading
+
+    if not getattr(app_config, 'LOCAL_EMBEDDING_ENABLE', False):
+        return
+
+    if _loaded_st_model is None:
+        logger.warning('Embedding stream consumer skipped — model not preloaded')
+        return
+
+    try:
+        from embedding_worker import (
+            create_redis_client,
+            ensure_consumer_group,
+            process_message,
+            publish_health,
+        )
+        from embed_constants import (
+            BLOCK_MS,
+            GROUP_NAME,
+            HEARTBEAT_INTERVAL,
+            STREAM_KEY,
+            TRIM_INTERVAL,
+            TRIM_MAXLEN,
+            WorkerStatus,
+        )
+        import socket
+        import time
+
+        # Capture the already-loaded model for the thread closure
+        model = _loaded_st_model
+
+        def _consumer_loop():
+            """XREADGROUP consumer loop running in a daemon thread."""
+            r = create_redis_client()
+            ensure_consumer_group(r)
+            publish_health(r, model, status=WorkerStatus.READY)
+
+            worker_id = f"stream-consumer-{socket.gethostname()}-{os.getpid()}"
+            logger.info("Embedding stream consumer started: {}", worker_id)
+
+            processed_count = 0
+            last_heartbeat = time.time()
+
+            while True:
+                try:
+                    messages = r.xreadgroup(
+                        GROUP_NAME,
+                        worker_id,
+                        {STREAM_KEY: ">"},
+                        count=1,
+                        block=BLOCK_MS,
+                    )
+
+                    # Refresh heartbeat periodically to signal liveness
+                    now = time.time()
+                    if now - last_heartbeat >= HEARTBEAT_INTERVAL:
+                        publish_health(r, model, status=WorkerStatus.READY)
+                        last_heartbeat = now
+
+                    if not messages:
+                        continue
+
+                    for stream_name, entries in messages:
+                        for msg_id, data in entries:
+                            process_message(r, model, msg_id, data)
+                            processed_count += 1
+
+                            # Periodically trim the stream to bound memory usage
+                            if processed_count % TRIM_INTERVAL == 0:
+                                r.xtrim(STREAM_KEY, maxlen=TRIM_MAXLEN, approximate=True)
+
+                except redis.exceptions.ConnectionError:
+                    logger.error("Embedding stream consumer: Redis connection lost, retrying in 3s...")
+                    time.sleep(3)
+                except Exception as e:
+                    logger.exception("Embedding stream consumer error: {}", e)
+
+        # Start as daemon thread so it exits when the main process exits
+        thread = threading.Thread(target=_consumer_loop, name="embedding-stream-consumer", daemon=True)
+        thread.start()
+        logger.info("Embedding stream consumer thread started (daemon)")
+
+    except Exception as e:
+        logger.error("Failed to start embedding stream consumer: {}", e)
 
 
 if __name__ == "__main__":
@@ -212,6 +330,10 @@ if __name__ == "__main__":
     # Eagerly preload local embedding model if LOCAL_EMBEDDING_ENABLE=true
     # so the model is downloaded/loaded before any tasks arrive (per user request)
     preload_local_embedding_model()
+
+    # Start embedding stream consumer in a background thread so the Node.js
+    # backend can request real-time embeddings via the Valkey Stream bridge
+    start_embedding_stream_consumer()
 
     from rag.svr.task_executor import main
     asyncio.run(main())

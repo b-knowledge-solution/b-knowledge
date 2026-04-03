@@ -12,6 +12,7 @@ import { ProviderStatus, ModelType, ComparisonLiteral } from '@/shared/constants
 import {
     EMBED_WORKER_STATUS_KEY,
     SENTENCE_TRANSFORMERS_FACTORY,
+    SENTENCE_TRANSFORMERS_MAX_TOKENS,
     SYSTEM_API_KEY_SENTINEL,
     EmbeddingWorkerStatus,
     type EmbeddingWorkerStatusType,
@@ -549,6 +550,7 @@ export class LlmProviderService {
                 model_type: 'embedding',
                 model_name: config.localEmbedding.model,
                 tenant_id: config.opensearch.systemTenantId,
+                max_tokens: SENTENCE_TRANSFORMERS_MAX_TOKENS,
             })
             log.info(`System embedding provider seeded: SentenceTransformers/${config.localEmbedding.model} (id=${providerId})`)
         } else {
