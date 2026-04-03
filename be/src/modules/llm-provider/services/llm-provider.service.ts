@@ -461,16 +461,23 @@ export class LlmProviderService {
         try {
             const { getRedisClient } = await import('@/shared/services/redis.service.js')
             const redis = getRedisClient()
-            if (!redis) return 'offline'
+            if (!redis) {
+                log.debug('getEmbeddingWorkerStatus: Redis client is null (not initialized)')
+                return 'offline'
+            }
 
             const raw = await redis.get('embed:worker:status')
-            if (!raw) return 'offline'
+            if (!raw) {
+                log.debug('getEmbeddingWorkerStatus: embed:worker:status key not found in Valkey')
+                return 'offline'
+            }
 
             const data = JSON.parse(raw) as { status: string }
             if (data.status === 'ready') return 'ready'
             if (data.status === 'loading') return 'loading'
             return 'offline'
-        } catch {
+        } catch (err) {
+            log.error('getEmbeddingWorkerStatus: error reading Valkey', { error: err instanceof Error ? err.message : String(err) })
             return 'offline'
         }
     }
