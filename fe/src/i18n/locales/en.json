@@ -123,7 +123,7 @@
     "dashboard": "Dashboard",
     "llmProviders": "LLM Providers",
     "expandMenu": "Expand menu",
-    "administrators": "Administrators",
+    "system": "System",
     "collapseMenu": "Collapse menu",
     "glossary": "Glossary",
     "apiKeys": "API Keys",
@@ -221,7 +221,7 @@
     "noSlideContent": "No content extracted for this slide",
     "slideOf": "Slide {{current}} of {{total}}"
   },
-  "admin": {
+  "system": {
     "broadcastMessages": "Broadcast Messages",
     "broadcast": {
       "saveSuccess": "Broadcast message saved successfully",

@@ -72,7 +72,7 @@ const BroadcastMessagePage: React.FC = () => {
             setIsDialogOpen(false);
             queryClient.invalidateQueries({ queryKey: queryKeys.broadcast.list() });
         },
-        meta: { successMessage: t('admin.broadcast.saveSuccess') }
+        meta: { successMessage: t('system.broadcast.saveSuccess') }
     });
 
     // Delete Mutation
@@ -82,7 +82,7 @@ const BroadcastMessagePage: React.FC = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.broadcast.list() });
         },
-        meta: { successMessage: t('admin.broadcast.deleteSuccess') }
+        meta: { successMessage: t('system.broadcast.deleteSuccess') }
     });
 
     /**

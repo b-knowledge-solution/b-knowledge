@@ -193,44 +193,44 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
     ],
   },
 
-  // ── Administration (super-admin / admin) ────────────────────────
+  // ── System (super-admin / admin) ─────────────────────────────────
   {
-    labelKey: 'nav.administrators',
+    labelKey: 'nav.system',
     icon: Shield,
     roles: ['super-admin', 'admin'],
     children: [
       {
-        path: '/admin/dashboard',
+        path: '/system/dashboard',
         labelKey: 'nav.dashboard',
         icon: BarChart3,
       },
       {
-        path: '/admin/audit-log',
+        path: '/system/audit-log',
         labelKey: 'nav.auditLog',
         icon: ClipboardList,
       },
       {
-        path: '/admin/system-tools',
+        path: '/system/system-tools',
         labelKey: 'nav.systemTools',
         icon: Server,
       },
       {
-        path: '/admin/system-monitor',
+        path: '/system/system-monitor',
         labelKey: 'nav.systemMonitor',
         icon: Activity,
       },
       {
-        path: '/admin/tokenizer',
+        path: '/system/tokenizer',
         labelKey: 'nav.tokenizer',
         icon: FileCode,
       },
       {
-        path: '/admin/broadcast-messages',
+        path: '/system/broadcast-messages',
         labelKey: 'nav.broadcastMessages',
         icon: Megaphone,
       },
       {
-        path: '/admin/llm-providers',
+        path: '/system/llm-providers',
         labelKey: 'nav.llmProviders',
         icon: BrainCircuit,
       },

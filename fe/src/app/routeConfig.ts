@@ -102,30 +102,30 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     titleKey: 'searchAdmin.title',
     fullBleed: true,
   },
-  '/admin/dashboard': {
+  '/system/dashboard': {
     titleKey: 'dashboard.title',
   },
-  '/admin/audit-log': {
+  '/system/audit-log': {
     titleKey: 'pages.auditLog.title',
     guidelineFeatureId: 'audit',
   },
-  '/admin/system-tools': {
+  '/system/system-tools': {
     titleKey: 'pages.systemMonitor.title',
     hideHeader: true,
     fullBleed: true,
   },
-  '/admin/system-monitor': {
+  '/system/system-monitor': {
     titleKey: 'pages.systemMonitor.title',
     hideHeader: true,
     fullBleed: true,
   },
-  '/admin/tokenizer': {
+  '/system/tokenizer': {
     titleKey: 'pages.tokenizer.title',
     hideHeader: true,
     fullBleed: true,
   },
-  '/admin/broadcast-messages': {
-    titleKey: 'admin.broadcastMessages',
+  '/system/broadcast-messages': {
+    titleKey: 'system.broadcastMessages',
     guidelineFeatureId: 'broadcast',
   },
   '/agent-studio/histories': {
@@ -133,7 +133,7 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     guidelineFeatureId: 'global-histories',
     fullBleed: true,
   },
-  '/admin/llm-providers': {
+  '/system/llm-providers': {
     titleKey: 'llmProviders.title',
     fullBleed: true,
   },

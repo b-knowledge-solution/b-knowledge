@@ -124,7 +124,7 @@
     "dashboard": "ダッシュボード",
     "llmProviders": "LLMプロバイダー",
     "expandMenu": "メニューを展開",
-    "administrators": "管理者",
+    "system": "システム",
     "collapseMenu": "メニューを折りたたむ",
     "glossary": "用語集",
     "apiKeys": "APIキー",
@@ -222,7 +222,7 @@
     "noSlideContent": "このスライドから内容を抽出できませんでした",
     "slideOf": "スライド {{current}} / {{total}}"
   },
-  "admin": {
+  "system": {
     "broadcastMessages": "一斉通知管理",
     "broadcast": {
       "saveSuccess": "一斉通知が正常に保存されました",

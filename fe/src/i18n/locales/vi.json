@@ -124,7 +124,7 @@
     "dashboard": "Bảng thống kê",
     "llmProviders": "Nhà cung cấp LLM",
     "expandMenu": "Mở rộng menu",
-    "administrators": "Quản trị",
+    "system": "Hệ thống",
     "collapseMenu": "Thu gọn menu",
     "glossary": "Từ điển",
     "apiKeys": "Khóa API",
@@ -222,7 +222,7 @@
     "noSlideContent": "Không trích xuất được nội dung cho trang chiếu này",
     "slideOf": "Trang chiếu {{current}} / {{total}}"
   },
-  "admin": {
+  "system": {
     "broadcastMessages": "Thông báo hệ thống",
     "broadcast": {
       "saveSuccess": "Đã lưu thông báo thành công",
