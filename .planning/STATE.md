@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Knowledge Base Refactor & Quality
 status: Ready to plan
-stopped_at: Completed 08-03-PLAN.md
-last_updated: "2026-04-02T10:41:24.689Z"
+stopped_at: Phase 11 context gathered
+last_updated: "2026-04-03T07:54:15.402Z"
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 2
   total_plans: 6
   completed_plans: 6
@@ -72,6 +72,10 @@ Recent decisions affecting current work:
 - [Phase 08-02]: Preserved external service project terminology in connector fields
 - [Phase 08-frontend-rename]: 08-02 agent completed bulk test rename; 08-03 only fixed remaining agent test project_id references
 
+### Roadmap Evolution
+
+- Phase 11 added: Internal Embedding System (self-hosted Sentence Transformers for document/chat embedding)
+
 ### Pending Todos
 
 - 1 pending todo(s) in `.planning/todos/pending/`
@@ -84,6 +88,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-02T10:40:20.828Z
-Stopped at: Completed 08-03-PLAN.md
-Resume file: None
+Last session: 2026-04-03T07:54:15.387Z
+Stopped at: Phase 11 context gathered
+Resume file: .planning/phases/11-internal-embedding-system/11-CONTEXT.md
