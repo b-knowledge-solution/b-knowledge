@@ -318,6 +318,13 @@ export class LlmClientService {
       provider = embeddingDefault
     }
 
+    // Route to Valkey Stream bridge when provider is SentenceTransformers (per D-09)
+    // Local models have no HTTP API -- embedding happens in the Python worker process
+    if (provider.factory_name === 'SentenceTransformers') {
+      const { embeddingStreamService } = await import('@/shared/services/embedding-stream.service.js')
+      return embeddingStreamService.embedTexts(texts)
+    }
+
     const client = this.getClient(provider)
     const model = provider.model_name
 
