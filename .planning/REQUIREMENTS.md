@@ -38,7 +38,7 @@ Requirements for v0.2 milestone: Knowledge Base Refactor & Quality.
 - [x] **EMB-01**: SentenceTransformersEmbed class implements Base.encode()/encode_queries() and auto-registers via _FACTORY_NAME in EmbeddingModel dict
 - [x] **EMB-02**: Environment configuration (LOCAL_EMBEDDING_ENABLE, LOCAL_EMBEDDING_MODEL, LOCAL_EMBEDDING_PATH) in advance-rag, backend, and docker
 - [x] **EMB-03**: DB migration adds is_system boolean column to model_providers table with default false
-- [ ] **EMB-04**: Backend startup auto-seeds SentenceTransformers model_providers record when LOCAL_EMBEDDING_ENABLE=true; removes when false (idempotent)
+- [x] **EMB-04**: Backend startup auto-seeds SentenceTransformers model_providers record when LOCAL_EMBEDDING_ENABLE=true; removes when false (idempotent)
 - [ ] **EMB-05**: Valkey Stream bridge connects Node.js search to Python embedding workers for query-time embedding (XADD/XREADGROUP/BRPOP)
 - [ ] **EMB-06**: LLM Config page shows system info badge for system-managed providers with disabled edit/delete and tooltip
 - [ ] **EMB-07**: Dataset Settings shows re-embed warning banner on dimension mismatch with "Re-embed All Chunks" CTA button and confirmation dialog
@@ -107,7 +107,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EMB-01 | Phase 11 | Complete |
 | EMB-02 | Phase 11 | Complete |
 | EMB-03 | Phase 11 | Complete |
-| EMB-04 | Phase 11 | Pending |
+| EMB-04 | Phase 11 | Complete |
 | EMB-05 | Phase 11 | Pending |
 | EMB-06 | Phase 11 | Pending |
 | EMB-07 | Phase 11 | Pending |
