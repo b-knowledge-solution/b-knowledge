@@ -48,9 +48,11 @@ Exceptions: none
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Body | 14px | 400 (regular) | 1.5 |
-| Label | 14px | 500 (medium) | 1.4 |
+| Label | 14px | 600 (semibold) | 1.4 |
 | Heading | 16px | 600 (semibold) | 1.2 |
 | Caption | 12px | 400 (regular) | 1.4 |
+
+Weights used: 400 (regular), 600 (semibold). Label uses semibold to differentiate from body text at the same size.
 
 Source: Existing project uses Inter with text-sm (14px) as body default and text-xs (12px) for captions throughout LLM provider and dataset components.
 
@@ -79,6 +81,8 @@ This phase adds 3 UI elements to 2 existing pages. No new pages or routes.
 
 **Location:** Provider row on `/admin/llm-providers` page, inline with provider name.
 
+**Focal point:** The `[System]` info badge is the primary visual indicator on this page, drawing attention to the auto-managed provider row and signaling that edit/delete controls are intentionally disabled.
+
 | Property | Value |
 |----------|-------|
 | Component | `<Badge variant="info">` (existing `badge.tsx`) |
@@ -104,7 +108,7 @@ This phase adds 3 UI elements to 2 existing pages. No new pages or routes.
 | Border | `border border-yellow-200 dark:border-yellow-800` |
 | Icon | `AlertTriangle` from Lucide, 16px, `text-yellow-600 dark:text-yellow-400` |
 | Border radius | `rounded-md` (calc(var(--radius) - 2px)) |
-| Padding | 12px (py-3 px-4) |
+| Padding | 8px 16px (py-2 px-4) |
 | Condition | Render when `dataset.embedding_dimension !== currentModel.dimension` |
 | Layout | Icon left-aligned, text block right of icon (flex row, 8px gap), button below text |
 
@@ -152,7 +156,7 @@ This phase adds 3 UI elements to 2 existing pages. No new pages or routes.
 | Error toast | "Failed to queue re-embedding. Please try again." | `datasetSettings.reembed.errorToast` |
 | Destructive confirmation title | "Re-embed All Chunks?" | `datasetSettings.reembed.confirmTitle` |
 | Destructive confirmation body | "This will re-generate embeddings for all {chunkCount} chunks in this dataset. The process runs in the background but may take several minutes for large datasets." | `datasetSettings.reembed.confirmBody` |
-| Destructive confirmation action | "Re-embed" | `datasetSettings.reembed.confirmAction` |
+| Destructive confirmation action | "Confirm Re-embed" | `datasetSettings.reembed.confirmAction` |
 | Empty state | N/A — no new list views or empty states in this phase | — |
 
 **i18n locales required:** en, vi, ja (per project convention)
