@@ -28,6 +28,7 @@ import {
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { HeaderActions } from '@/components/HeaderActions'
@@ -380,47 +381,51 @@ export function LLMProviderPage() {
                           <Copy size={14} />
                         </Button>
                         {/* Edit button — disabled for system-managed providers */}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEdit(row.primary)}
-                                disabled={row.primary.is_system}
-                                aria-disabled={row.primary.is_system || undefined}
-                                className={row.primary.is_system ? 'opacity-50 cursor-not-allowed' : ''}
-                                title={row.primary.is_system ? undefined : t('llmProviders.editProvider')}
-                              >
-                                <Pencil size={14} />
-                              </Button>
-                            </span>
-                          </TooltipTrigger>
-                          {row.primary.is_system && (
-                            <TooltipContent>{t('llmProviders.systemManagedTooltip')}</TooltipContent>
-                          )}
-                        </Tooltip>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEdit(row.primary)}
+                                  disabled={row.primary.is_system}
+                                  aria-disabled={row.primary.is_system || undefined}
+                                  className={row.primary.is_system ? 'opacity-50 cursor-not-allowed' : ''}
+                                  title={row.primary.is_system ? undefined : t('llmProviders.editProvider')}
+                                >
+                                  <Pencil size={14} />
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            {row.primary.is_system && (
+                              <TooltipContent>{t('llmProviders.systemManagedTooltip')}</TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
                         {/* Delete button — disabled for system-managed providers */}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDelete(row.primary)}
-                                disabled={row.primary.is_system}
-                                aria-disabled={row.primary.is_system || undefined}
-                                className={row.primary.is_system ? 'opacity-50 cursor-not-allowed' : ''}
-                                title={row.primary.is_system ? undefined : t('common.delete')}
-                              >
-                                <Trash2 size={14} className="text-red-500" />
-                              </Button>
-                            </span>
-                          </TooltipTrigger>
-                          {row.primary.is_system && (
-                            <TooltipContent>{t('llmProviders.systemManagedTooltip')}</TooltipContent>
-                          )}
-                        </Tooltip>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDelete(row.primary)}
+                                  disabled={row.primary.is_system}
+                                  aria-disabled={row.primary.is_system || undefined}
+                                  className={row.primary.is_system ? 'opacity-50 cursor-not-allowed' : ''}
+                                  title={row.primary.is_system ? undefined : t('common.delete')}
+                                >
+                                  <Trash2 size={14} className="text-red-500" />
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            {row.primary.is_system && (
+                              <TooltipContent>{t('llmProviders.systemManagedTooltip')}</TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </TableCell>
                   </TableRow>

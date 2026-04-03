@@ -101,7 +101,7 @@ export function ProviderFormDialog({
 
   // -- Form state ------------------------------------------------------------
   const [factoryName, setFactoryName] = useState('')
-  const [modelType, setModelType] = useState(ModelType.CHAT)
+  const [modelType, setModelType] = useState<string>(ModelType.CHAT)
   const [modelName, setModelName] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [apiBase, setApiBase] = useState('')
