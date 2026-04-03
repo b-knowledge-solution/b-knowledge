@@ -62,7 +62,7 @@ Full-stack rename of "Administrators" module to "System" across BE module direct
 |------|------|--------|--------|
 | 1 | Rename BE admin module to system | 64d729c | Done |
 | 2 | Rename FE routes, nav, API URLs, and i18n | 3a026f8 | Done |
-| 3 | Verify full rename in browser | - | Awaiting human verification |
+| 3 | Verify full rename in browser | - | Done (human-verified) |
 
 ## What Changed
 
