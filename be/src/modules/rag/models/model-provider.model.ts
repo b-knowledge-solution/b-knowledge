@@ -111,18 +111,19 @@ export class ModelProviderModel extends BaseModel<ModelProvider> {
       .first()
 
     if (existing) {
-      // Update existing record to ensure is_system flag is set
+      // Update existing record to ensure is_system and is_default flags are set
       await this.knex(this.tableName)
         .where({ id: existing.id })
         .update({
           is_system: true,
+          is_default: true,
           api_key: '__system__',
           updated_at: this.knex.fn.now(),
         })
       return existing.id
     }
 
-    // Create new system provider record
+    // Create new system provider record — set as default so task_executor uses it
     const [record] = await this.knex(this.tableName)
       .insert({
         factory_name: data.factory_name,
@@ -131,6 +132,7 @@ export class ModelProviderModel extends BaseModel<ModelProvider> {
         tenant_id: data.tenant_id,
         api_key: '__system__',
         is_system: true,
+        is_default: true,
         status: ProviderStatus.ACTIVE,
       })
       .returning('id')
