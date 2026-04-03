@@ -484,13 +484,15 @@ export class LlmProviderService {
             const redisUrl = config.redis.url
             const client = createClient({ url: redisUrl })
             client.on('error', (err: Error) => {
-                log.debug('Health Redis client error: {}', err.message)
+                log.debug('Health Redis client error', { error: err.message })
             })
             await client.connect()
             this.healthRedisClient = client as import('redis').RedisClientType
             return this.healthRedisClient
         } catch (err) {
-            log.debug('Failed to connect health Redis client: {}', err instanceof Error ? err.message : String(err))
+            log.debug('Failed to connect health Redis client', {
+                error: err instanceof Error ? err.message : String(err),
+            })
             this.healthRedisInitializing = false
             return null
         }

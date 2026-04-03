@@ -20,6 +20,8 @@
     "setup:python": "node scripts/setup-python.js",
     "setup:worker": "node scripts/setup-worker.js",
     "setup:converter": "node scripts/setup-converter.js",
+    "docker:build": "bash scripts/build-images.sh",
+    "docker:build:no-cache": "bash scripts/build-images.sh --no-cache",
     "docker:base": "docker compose -f docker/docker-compose-base.yml up -d",
     "docker:down": "docker compose -f docker/docker-compose-base.yml down",
     "docker:up": "docker compose -f docker/docker-compose.yml up -d --build",

@@ -195,7 +195,11 @@ export class LlmClientService {
     if (!response.choices?.length) {
       throw new Error(`LLM returned empty response — no choices in completion (model: ${model})`)
     }
-    const content = response.choices[0].message?.content || ''
+    const firstChoice = response.choices[0]
+    if (!firstChoice) {
+      throw new Error(`LLM returned invalid response — first choice missing (model: ${model})`)
+    }
+    const content = firstChoice.message?.content || ''
 
     // Fire-and-forget: create Langfuse generation if parent is provided
     if (parent) {
@@ -271,8 +275,11 @@ export class LlmClientService {
     for await (const chunk of stream) {
       // Skip chunks without choices (e.g., malformed provider responses)
       if (!chunk.choices?.length) continue
-      const delta = chunk.choices[0].delta?.content || ''
-      const done = chunk.choices[0].finish_reason !== null && chunk.choices[0].finish_reason !== undefined
+      const firstChoice = chunk.choices[0]
+      if (!firstChoice) continue
+
+      const delta = firstChoice.delta?.content || ''
+      const done = firstChoice.finish_reason !== null && firstChoice.finish_reason !== undefined
 
       if (delta) {
         fullOutput += delta

@@ -75,13 +75,13 @@ interface AgentRunStatusResult {
 }
 
 // Node types that execute inline in Node.js (lightweight logic)
-const INLINE_NODE_TYPES = new Set([
+const INLINE_NODE_TYPES: ReadonlySet<string> = new Set([
   AgentNodeType.BEGIN, AgentNodeType.ANSWER, AgentNodeType.MESSAGE, AgentNodeType.SWITCH, AgentNodeType.CONDITION,
   AgentNodeType.MERGE, AgentNodeType.NOTE, AgentNodeType.CONCENTRATOR, AgentNodeType.TEMPLATE, AgentNodeType.KEYWORD_EXTRACT,
 ])
 
 // Node types dispatched to Python worker (compute-heavy)
-const DISPATCH_NODE_TYPES = new Set([
+const DISPATCH_NODE_TYPES: ReadonlySet<string> = new Set([
   AgentNodeType.GENERATE, AgentNodeType.CATEGORIZE, AgentNodeType.REWRITE, AgentNodeType.RELEVANT,
   AgentNodeType.RETRIEVAL, 'wikipedia', 'tavily', 'pubmed',
   'code', 'github', 'sql', 'api', 'email',

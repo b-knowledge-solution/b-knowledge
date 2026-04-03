@@ -50,11 +50,16 @@ RUN pip install --no-cache-dir -e ".[all]" 2>/dev/null || pip install --no-cache
 # Copy source code
 COPY . .
 
+# Make entrypoint executable
+RUN chmod +x /app/entrypoint.sh
+
 # Set advance-rag as project base for common/file_utils.py
 ENV RAG_PROJECT_BASE=/app
 ENV DB_TYPE=postgres
 ENV PYTHONPATH=/app
 
-EXPOSE 9380
+# WORKER_MODE controls which worker process is started by entrypoint.sh:
+#   task-executor (default) | connector-sync | embedding | web-crawl
+ENV WORKER_MODE=task-executor
 
-CMD ["python", "-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "9380"]
+ENTRYPOINT ["/app/entrypoint.sh"]
