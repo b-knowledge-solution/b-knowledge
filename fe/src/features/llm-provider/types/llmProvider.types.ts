@@ -34,6 +34,8 @@ export interface ModelProvider {
   is_default: boolean
   /** Whether this provider is system-managed (via LOCAL_EMBEDDING_MODEL env var) */
   is_system?: boolean
+  /** Live model readiness status — only present for system-managed providers */
+  model_status?: 'ready' | 'loading' | 'offline'
   /** User who created this record */
   created_by?: string | null
   /** User who last updated this record */

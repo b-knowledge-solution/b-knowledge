@@ -2195,7 +2195,10 @@
     "connectionSuccess": "接続成功 ({{latency}}ms)",
     "connectionFailed": "接続失敗: {{error}}",
     "systemBadge": "システム",
-    "systemManagedTooltip": "LOCAL_EMBEDDING_MODEL環境変数により管理されています"
+    "systemManagedTooltip": "LOCAL_EMBEDDING_MODEL環境変数により管理されています",
+    "modelReady": "準備完了",
+    "modelLoading": "読み込み中...",
+    "modelOffline": "オフライン"
   },
   "chatAdmin": {
     "title": "チャットアシスタント",

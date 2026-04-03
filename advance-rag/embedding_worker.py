@@ -43,6 +43,9 @@ BLOCK_MS = 5000
 RESPONSE_TTL_SECONDS = 60
 TRIM_INTERVAL = 100
 TRIM_MAXLEN = 10000
+HEALTH_KEY = "embed:worker:status"
+HEALTH_TTL_SECONDS = 30
+HEARTBEAT_INTERVAL = 15
 
 
 def create_redis_client():
@@ -129,6 +132,31 @@ def process_message(r, model, msg_id, data):
     r.xack(STREAM_KEY, GROUP_NAME, msg_id)
 
 
+def publish_health(r, model, status="ready"):
+    """Publish worker health status to Valkey with TTL-based liveness.
+
+    The key auto-expires after HEALTH_TTL_SECONDS. The worker must
+    refresh it periodically via heartbeat to signal it is still alive.
+    If the key is absent, the model is considered offline.
+
+    Args:
+        r: Redis client instance.
+        model: Loaded SentenceTransformer model (or None if not loaded).
+        status: One of 'loading', 'ready', 'offline'.
+    """
+    embedding_dim = model.get_sentence_embedding_dimension() if model else 0
+    model_name = config.LOCAL_EMBEDDING_MODEL or ""
+    health_data = json.dumps({
+        "status": status,
+        "model": model_name,
+        "dimension": embedding_dim,
+        "worker": f"{socket.gethostname()}-{os.getpid()}",
+        "loaded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    })
+    # SET with TTL — key auto-expires if worker dies without cleanup
+    r.set(HEALTH_KEY, health_data, ex=HEALTH_TTL_SECONDS)
+
+
 def main():
     """Run the embedding worker consumer loop.
 
@@ -138,7 +166,14 @@ def main():
     """
     r = create_redis_client()
     ensure_consumer_group(r)
+
+    # Publish loading status before model load (can take minutes on first download)
+    r.set(HEALTH_KEY, json.dumps({"status": "loading", "model": config.LOCAL_EMBEDDING_MODEL or ""}), ex=300)
+
     model = load_model()
+
+    # Publish ready status after model is loaded
+    publish_health(r, model, status="ready")
 
     # Generate unique worker ID based on hostname + PID
     worker_id = f"worker-{socket.gethostname()}-{os.getpid()}"
@@ -146,6 +181,7 @@ def main():
 
     shutdown_flag = False
     processed_count = 0
+    last_heartbeat = time.time()
 
     def handle_shutdown(signum, frame):
         """Set shutdown flag on SIGTERM/SIGINT for graceful exit."""
@@ -165,6 +201,12 @@ def main():
                 count=1,
                 block=BLOCK_MS,
             )
+
+            # Refresh heartbeat periodically to signal liveness
+            now = time.time()
+            if now - last_heartbeat >= HEARTBEAT_INTERVAL:
+                publish_health(r, model, status="ready")
+                last_heartbeat = now
 
             # No messages within the block timeout -- loop again
             if not messages:
@@ -190,6 +232,8 @@ def main():
         except Exception as e:
             logger.exception("Error processing embedding request: {}", e)
 
+    # Clean up health key on graceful shutdown
+    r.delete(HEALTH_KEY)
     logger.info("Embedding worker shut down after processing {} requests", processed_count)
 
 

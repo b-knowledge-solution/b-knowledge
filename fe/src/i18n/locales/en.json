@@ -2225,7 +2225,10 @@
     "connectionSuccess": "Connection successful ({{latency}}ms)",
     "connectionFailed": "Connection failed: {{error}}",
     "systemBadge": "System",
-    "systemManagedTooltip": "Managed by LOCAL_EMBEDDING_MODEL environment variable"
+    "systemManagedTooltip": "Managed by LOCAL_EMBEDDING_MODEL environment variable",
+    "modelReady": "Ready",
+    "modelLoading": "Loading...",
+    "modelOffline": "Offline"
   },
   "chatAdmin": {
     "title": "Chat Assistants",

@@ -350,6 +350,25 @@ export function LLMProviderPage() {
                             {t('llmProviders.systemBadge')}
                           </Badge>
                         )}
+                        {/* Show model readiness status for system providers */}
+                        {row.primary.is_system && row.primary.model_status && (
+                          <Badge
+                            className={
+                              row.primary.model_status === 'ready'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                : row.primary.model_status === 'loading'
+                                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                  : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                            }
+                            role="status"
+                          >
+                            {row.primary.model_status === 'ready'
+                              ? t('llmProviders.modelReady')
+                              : row.primary.model_status === 'loading'
+                                ? t('llmProviders.modelLoading')
+                                : t('llmProviders.modelOffline')}
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
                     {/* API base URL */}

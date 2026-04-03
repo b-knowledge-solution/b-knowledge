@@ -426,7 +426,42 @@ export class LlmProviderService {
      * @returns {Promise<Array<Pick<ModelProvider, 'id' | 'factory_name' | 'model_type' | 'model_name' | 'max_tokens' | 'is_default' | 'vision'>>>} Safe provider records
      */
     async listPublic(modelType?: string) {
-        return ModelFactory.modelProvider.findPublicList(modelType);
+        const providers = await ModelFactory.modelProvider.findPublicList(modelType)
+
+        // Enrich system providers with live model readiness status from Valkey
+        const hasSystem = providers.some((p) => p.is_system)
+        if (hasSystem) {
+            const status = await this.getEmbeddingWorkerStatus()
+            return providers.map((p) =>
+                p.is_system ? { ...p, model_status: status } : p
+            )
+        }
+
+        return providers
+    }
+
+    /**
+     * @description Read embedding worker health status from Valkey.
+     * The Python embedding worker publishes a TTL-based heartbeat key.
+     * If the key exists, the worker is alive. If absent, it's offline.
+     * @returns {Promise<'ready' | 'loading' | 'offline'>} Worker readiness status
+     */
+    private async getEmbeddingWorkerStatus(): Promise<'ready' | 'loading' | 'offline'> {
+        try {
+            const { getRedisClient } = await import('@/shared/services/redis.service.js')
+            const redis = getRedisClient()
+            if (!redis) return 'offline'
+
+            const raw = await redis.get('embed:worker:status')
+            if (!raw) return 'offline'
+
+            const data = JSON.parse(raw) as { status: string }
+            if (data.status === 'ready') return 'ready'
+            if (data.status === 'loading') return 'loading'
+            return 'offline'
+        } catch {
+            return 'offline'
+        }
     }
 
     // =========================================================================
