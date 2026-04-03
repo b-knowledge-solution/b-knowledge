@@ -462,6 +462,18 @@ export const config = {
   },
 
   // --------------------------------------------------------------------------
+  // Local Embedding Configuration (Sentence Transformers)
+  // --------------------------------------------------------------------------
+
+  /** Self-hosted embedding via Sentence Transformers in Python worker */
+  localEmbedding: {
+    /** Master switch to enable/disable local embedding auto-seed */
+    enabled: process.env['LOCAL_EMBEDDING_ENABLE']?.toLowerCase() === 'true',
+    /** HuggingFace model ID (e.g., 'BAAI/bge-m3'). Required when enabled. */
+    model: process.env['LOCAL_EMBEDDING_MODEL'] ?? '',
+  },
+
+  // --------------------------------------------------------------------------
   // WebSocket Configuration
   // --------------------------------------------------------------------------
 
