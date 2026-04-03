@@ -10,7 +10,6 @@
 import { Request, Response } from 'express'
 import { log } from '@/shared/services/logger.service.js'
 import { chatAssistantService } from '../services/chat-assistant.service.js'
-import { ModelFactory } from '@/shared/models/factory.js'
 
 /**
  * @description Controller class for chat assistant endpoints.
@@ -106,8 +105,7 @@ export class ChatAssistantController {
       }
 
       // Fetch team IDs the user belongs to for RBAC evaluation
-      const userTeams = await ModelFactory.userTeam.findAll({ user_id: userId })
-      const teamIds = userTeams.map((ut: { team_id: string }) => ut.team_id)
+      const teamIds = await chatAssistantService.getUserTeamIds(userId)
 
       // Build pagination options, omitting undefined values
       const options: Record<string, unknown> = {}

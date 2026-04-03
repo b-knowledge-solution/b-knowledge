@@ -11,7 +11,7 @@ import { Request, Response } from 'express'
 import { log } from '@/shared/services/logger.service.js'
 import { chatEmbedTokenService } from '@/shared/services/embed-token.service.js'
 import { chatConversationService } from '../services/chat-conversation.service.js'
-import { ModelFactory } from '@/shared/models/factory.js'
+import { chatAssistantService } from '../services/chat-assistant.service.js'
 
 /**
  * @description Controller class for chat embed token endpoints.
@@ -40,7 +40,7 @@ export class ChatEmbedController {
       const dialogId = req.params.id!
 
       // Verify assistant exists
-      const assistant = await ModelFactory.chatAssistant.findById(dialogId)
+      const assistant = await chatAssistantService.getAssistant(dialogId)
       if (!assistant) {
         res.status(404).json({ error: 'Assistant not found' })
         return
@@ -123,7 +123,7 @@ export class ChatEmbedController {
       }
 
       // Fetch the assistant
-      const assistant = await ModelFactory.chatAssistant.findById(tokenRow.dialog_id as string)
+      const assistant = await chatAssistantService.getAssistant(tokenRow.dialog_id as string)
       if (!assistant) {
         res.status(404).json({ error: 'Assistant not found' })
         return

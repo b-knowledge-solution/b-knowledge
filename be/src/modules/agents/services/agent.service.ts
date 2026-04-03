@@ -7,7 +7,6 @@
  * @module modules/agents/services/agent
  */
 import { ModelFactory } from '@/shared/models/factory.js'
-import { db } from '@/shared/db/knex.js'
 import { log } from '@/shared/services/logger.service.js'
 import { AgentStatus } from '@/shared/constants/index.js'
 import type { Agent } from '../models/agent.model.js'
@@ -31,48 +30,10 @@ class AgentService {
     page: number
     page_size: number
   }> {
-    const { page, page_size, mode, status, knowledge_base_id, search } = filters
+    const { page, page_size } = filters
 
-    // Base query: root agents only (not version rows), scoped to tenant
-    let query = ModelFactory.agent.getKnex()
-      .where('tenant_id', tenantId)
-      .whereNull('parent_id')
-
-    // Apply optional mode filter (agent vs pipeline)
-    if (mode) query = query.andWhere('mode', mode)
-
-    // Apply optional status filter (draft vs published)
-    if (status) query = query.andWhere('status', status)
-
-    // Apply optional knowledge base association filter
-    if (knowledge_base_id) query = query.andWhere('knowledge_base_id', knowledge_base_id)
-
-    // Apply optional name/description search (case-insensitive ILIKE)
-    if (search) {
-      query = query.andWhere(function () {
-        this.where('name', 'ilike', `%${search}%`)
-          .orWhere('description', 'ilike', `%${search}%`)
-      })
-    }
-
-    // Run count and paginated data queries in parallel for efficiency
-    // Exclude large JSONB 'dsl' column from list queries to reduce I/O bandwidth
-    const listColumns = [
-      'id', 'name', 'description', 'avatar', 'mode', 'status',
-      'dsl_version', 'tenant_id', 'knowledge_base_id',
-      'parent_id', 'version_number', 'version_label',
-      'created_by', 'created_at', 'updated_at',
-    ]
-    const [countResult, data] = await Promise.all([
-      query.clone().count('* as cnt').first(),
-      query.clone()
-        .select(listColumns)
-        .orderBy('updated_at', 'desc')
-        .limit(page_size)
-        .offset((page - 1) * page_size),
-    ])
-
-    const total = Number((countResult as any)?.cnt ?? 0)
+    // Delegate filtered, paginated query to the model layer
+    const { data, total } = await ModelFactory.agent.listRootAgents(tenantId, filters)
 
     return { data, total, page, page_size }
   }
@@ -180,9 +141,7 @@ class AgentService {
     await this.getById(id, tenantId)
 
     // Delete all version rows first (children with parent_id = id)
-    await ModelFactory.agent.getKnex()
-      .where('parent_id', id)
-      .delete()
+    await ModelFactory.agent.deleteVersionsByParentId(id)
 
     // Delete the parent agent itself
     await ModelFactory.agent.delete(id)
@@ -242,12 +201,8 @@ class AgentService {
     const parent = await this.getById(id, tenantId)
 
     // Determine next version number by finding the max existing version
-    const maxResult = await ModelFactory.agent.getKnex()
-      .where('parent_id', id)
-      .max('version_number as max_version')
-      .first()
-
-    const nextVersion = ((maxResult as any)?.max_version ?? 0) + 1
+    const maxVersion = await ModelFactory.agent.getMaxVersionNumber(id)
+    const nextVersion = maxVersion + 1
 
     // Auto-generate change_summary if not provided
     const summary = changeSummary || `Version ${nextVersion} saved by user`
@@ -283,9 +238,7 @@ class AgentService {
     await this.getById(id, tenantId)
 
     // Retrieve all child version rows ordered by version_number DESC
-    return ModelFactory.agent.getKnex()
-      .where('parent_id', id)
-      .orderBy('version_number', 'desc')
+    return ModelFactory.agent.listVersionsDesc(id)
   }
 
   /**
@@ -375,21 +328,8 @@ class AgentService {
    * @returns {Promise<void>}
    */
   async releaseVersion(canvasId: string, versionId: string, tenantId: string): Promise<void> {
-    // Use transaction to atomically swap the release flag and prevent race conditions
-    await db.transaction(async (trx) => {
-      // Clear any existing release flag for this canvas (only one active release)
-      await trx('user_canvas_version')
-        .where('canvas_id', canvasId)
-        .where('tenant_id', tenantId)
-        .update({ release: false })
-
-      // Set the release flag on the specified version
-      await trx('user_canvas_version')
-        .where('id', versionId)
-        .where('canvas_id', canvasId)
-        .where('tenant_id', tenantId)
-        .update({ release: true })
-    })
+    // Delegate transactional release swap to the model layer
+    await ModelFactory.canvasVersion.releaseVersion(canvasId, versionId, tenantId)
 
     log.info('Canvas version released', { canvasId, versionId, tenantId })
   }
@@ -403,14 +343,34 @@ class AgentService {
    * @returns {Promise<Record<string, unknown> | null>} Released version row or null
    */
   async getReleasedVersion(canvasId: string, tenantId: string): Promise<Record<string, unknown> | null> {
-    // Query for the version with release=true, ordered by creation time desc
-    const version = await db('user_canvas_version')
-      .where('canvas_id', canvasId)
-      .where('tenant_id', tenantId)
-      .where('release', true)
-      .orderBy('create_time', 'desc')
-      .first()
-    return version || null
+    // Delegate released-version lookup to the model layer
+    return ModelFactory.canvasVersion.findReleasedVersion(canvasId, tenantId)
+  }
+
+  // -------------------------------------------------------------------------
+  // Template & Run Queries (controller delegation)
+  // -------------------------------------------------------------------------
+
+  /**
+   * @description List all available agent templates for a tenant.
+   *   Returns system-level templates (tenant_id IS NULL) plus tenant-specific ones.
+   * @param {string} tenantId - Tenant/organization identifier for scoping
+   * @returns {Promise<unknown[]>} Array of agent template records
+   */
+  async listTemplates(tenantId: string): Promise<unknown[]> {
+    // Fetch system templates and tenant-specific templates via the model layer
+    return ModelFactory.agentTemplate.findByTenant(tenantId)
+  }
+
+  /**
+   * @description List all execution runs for a given agent.
+   *   Returns runs sorted by created_at descending for execution history.
+   * @param {string} agentId - Agent UUID to retrieve runs for
+   * @returns {Promise<unknown[]>} Array of agent run records, newest first
+   */
+  async listRuns(agentId: string): Promise<unknown[]> {
+    // Delegate run lookup to the model layer
+    return ModelFactory.agentRun.findByAgent(agentId)
   }
 }
 

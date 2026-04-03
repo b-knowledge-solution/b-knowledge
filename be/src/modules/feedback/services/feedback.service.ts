@@ -107,33 +107,14 @@ class FeedbackService {
    * @returns {Promise<any[]>} Array of matching feedback records with user_email
    */
   async exportFeedback(filters: ExportFeedbackFilters): Promise<any[]> {
-    // Build custom query with users join for user_email, tenant-scoped
-    let query = ModelFactory.answerFeedback.getKnex()
-      .from('answer_feedback')
-      .leftJoin('users', 'answer_feedback.user_id', 'users.id')
-      .select('answer_feedback.*', 'users.email as user_email')
-      .where('answer_feedback.tenant_id', filters.tenantId)
-
-    // Apply optional source filter
-    if (filters.source) {
-      query = query.where('answer_feedback.source', filters.source)
-    }
-
-    // Apply optional thumbup filter
-    if (filters.thumbup !== undefined) {
-      query = query.where('answer_feedback.thumbup', filters.thumbup)
-    }
-
-    // Apply optional date range filters
-    if (filters.startDate) {
-      query = query.where('answer_feedback.created_at', '>=', filters.startDate)
-    }
-    if (filters.endDate) {
-      query = query.where('answer_feedback.created_at', '<=', `${filters.endDate} 23:59:59`)
-    }
-
-    // Cap exports at 10000 records, ordered newest first
-    const data = await query.orderBy('answer_feedback.created_at', 'desc').limit(10000)
+    // Delegate export query with user email join to the model layer
+    const data = await ModelFactory.answerFeedback.findForExport({
+      tenantId: filters.tenantId,
+      ...(filters.source ? { source: filters.source } : {}),
+      ...(filters.thumbup !== undefined ? { thumbup: filters.thumbup } : {}),
+      ...(filters.startDate ? { startDate: filters.startDate } : {}),
+      ...(filters.endDate ? { endDate: filters.endDate } : {}),
+    })
 
     log.info('Exporting feedback', { count: data.length, tenantId: filters.tenantId })
     return data

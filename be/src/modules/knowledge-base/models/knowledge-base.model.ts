@@ -47,4 +47,21 @@ export class KnowledgeBaseModel extends BaseModel<KnowledgeBase> {
       .andWhere('status', 'active')
       .orderBy('created_at', 'desc')
   }
+
+  /**
+   * @description Check if a knowledge base with the given name already exists (excluding deleted ones),
+   *   optionally scoped to a specific tenant
+   * @param {string} name - Knowledge base name to check
+   * @param {string} [tenantId] - Optional tenant ID for scoped duplicate check
+   * @returns {Promise<KnowledgeBase | undefined>} Existing knowledge base if found
+   */
+  async findByNameExcludingDeleted(name: string, tenantId?: string): Promise<KnowledgeBase | undefined> {
+    // Build query to find active/non-deleted knowledge base by name
+    let query = this.knex(this.tableName)
+      .where('name', name)
+      .whereNot('status', 'deleted')
+    // Scope to tenant if provided for multi-tenant isolation
+    if (tenantId) query = query.andWhere('tenant_id', tenantId)
+    return query.first()
+  }
 }

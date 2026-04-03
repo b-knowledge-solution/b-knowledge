@@ -3,6 +3,7 @@
  * Lazy-loaded singletons for all data models to keep connection sharing consistent.
  */
 import { UserModel } from '@/modules/users/models/user.model.js';
+import { UserTenantModel } from '@/modules/users/models/user-tenant.model.js';
 import { TeamModel } from '@/modules/teams/models/team.model.js';
 import { UserTeamModel } from '@/modules/teams/models/user-team.model.js';
 import { ChatSessionModel } from '@/modules/chat/models/chat-session.model.js';
@@ -36,6 +37,7 @@ import { ChatFileModel } from '@/modules/chat/models/chat-file.model.js';
 import { ChatEmbedTokenModel } from '@/modules/chat/models/chat-embed-token.model.js';
 import { SearchAppModel } from '@/modules/search/models/search-app.model.js'
 import { SearchAppAccessModel } from '@/modules/search/models/search-app-access.model.js';
+import { SearchEmbedTokenModel } from '@/modules/search/models/search-embed-token.model.js';
 import { DocumentVersionModel } from '@/modules/rag/models/document-version.model.js';
 import { DocumentVersionFileModel } from '@/modules/rag/models/document-version-file.model.js';
 import { ConverterJobModel } from '@/modules/rag/models/converter-job.model.js';
@@ -61,9 +63,17 @@ import { AgentRunModel } from '@/modules/agents/models/agent-run.model.js';
 import { AgentRunStepModel } from '@/modules/agents/models/agent-run-step.model.js';
 import { AgentTemplateModel } from '@/modules/agents/models/agent-template.model.js';
 import { AgentToolCredentialModel } from '@/modules/agents/models/agent-tool-credential.model.js';
+import { CanvasVersionModel } from '@/modules/agents/models/canvas-version.model.js';
+import { AgentEmbedTokenModel } from '@/modules/agents/models/agent-embed-token.model.js';
 
 // Memory Models
 import { MemoryModel } from '@/modules/memory/models/memory.model.js';
+
+// Dashboard Model
+import { DashboardModel } from '@/modules/dashboard/dashboard.model.js';
+
+// Admin Models
+import { AdminHistoryModel } from '@/modules/admin/models/admin-history.model.js';
 
 /**
  * @description ModelFactory class implementing the Factory Pattern.
@@ -75,6 +85,8 @@ export class ModelFactory {
   // Private static fields to hold singleton instances
   /** User model singleton instance */
   private static userModel: UserModel;
+  /** User-Tenant membership model singleton instance */
+  private static userTenantModel: UserTenantModel;
   /** Team model singleton instance */
   private static teamModel: TeamModel;
   /** User-Team relationship model singleton instance */
@@ -145,6 +157,8 @@ export class ModelFactory {
   private static searchAppModel: SearchAppModel;
   /** SearchAppAccess model singleton instance */
   private static searchAppAccessModel: SearchAppAccessModel;
+  /** SearchEmbedToken model singleton instance */
+  private static searchEmbedTokenModel: SearchEmbedTokenModel;
   /** DocumentVersion model singleton instance */
   private static documentVersionModel: DocumentVersionModel;
   /** DocumentVersionFile model singleton instance */
@@ -191,10 +205,22 @@ export class ModelFactory {
   private static agentTemplateModel: AgentTemplateModel;
   /** AgentToolCredential model singleton instance */
   private static agentToolCredentialModel: AgentToolCredentialModel;
+  /** CanvasVersion model singleton instance */
+  private static canvasVersionModel: CanvasVersionModel;
+  /** AgentEmbedToken model singleton instance */
+  private static agentEmbedTokenModel: AgentEmbedTokenModel;
 
   // Memory Models
   /** Memory model singleton instance */
   private static memoryModel: MemoryModel;
+
+  // Dashboard Model
+  /** Dashboard analytics model singleton instance */
+  private static dashboardModel: DashboardModel;
+
+  // Admin Models
+  /** Admin history analytics model singleton instance */
+  private static adminHistoryModel: AdminHistoryModel;
 
   /**
    * Get the User model singleton.
@@ -205,6 +231,17 @@ export class ModelFactory {
     // Create instance on first access (lazy initialization)
     if (!this.userModel) this.userModel = new UserModel();
     return this.userModel;
+  }
+
+  /**
+   * @description Get the UserTenant model singleton.
+   * Manages user-to-tenant (organization) membership relationships.
+   * @returns {UserTenantModel} Instance for user-tenant membership operations
+   */
+  static get userTenant() {
+    // Create instance on first access (lazy initialization)
+    if (!this.userTenantModel) this.userTenantModel = new UserTenantModel();
+    return this.userTenantModel;
   }
 
   /**
@@ -520,6 +557,17 @@ export class ModelFactory {
   }
 
   /**
+   * Get the SearchEmbedToken model singleton.
+   * Manages embed tokens for external search widget access.
+   * @returns SearchEmbedTokenModel instance for embed token operations
+   */
+  static get searchEmbedToken() {
+    // Create instance on first access (lazy initialization)
+    if (!this.searchEmbedTokenModel) this.searchEmbedTokenModel = new SearchEmbedTokenModel();
+    return this.searchEmbedTokenModel;
+  }
+
+  /**
    * Get the DocumentVersion model singleton.
    * Manages document version records for datasets.
    * @returns DocumentVersionModel instance for version CRUD operations
@@ -721,6 +769,25 @@ export class ModelFactory {
     return this.agentToolCredentialModel;
   }
 
+  /**
+   * Get the CanvasVersion model singleton.
+   * Manages canvas/agent version release state.
+   * @returns CanvasVersionModel instance for canvas version operations
+   */
+  static get canvasVersion() {
+    if (!this.canvasVersionModel) this.canvasVersionModel = new CanvasVersionModel();
+    return this.canvasVersionModel;
+  }
+
+  /**
+   * Get the AgentEmbedToken model singleton.
+   * @returns AgentEmbedTokenModel instance for agent embed token operations
+   */
+  static get agentEmbedToken() {
+    if (!this.agentEmbedTokenModel) this.agentEmbedTokenModel = new AgentEmbedTokenModel();
+    return this.agentEmbedTokenModel;
+  }
+
   // -------------------------------------------------------------------------
   // Memory Models
   // -------------------------------------------------------------------------
@@ -732,5 +799,35 @@ export class ModelFactory {
   static get memory() {
     if (!this.memoryModel) this.memoryModel = new MemoryModel();
     return this.memoryModel;
+  }
+
+  // -------------------------------------------------------------------------
+  // Dashboard Model
+  // -------------------------------------------------------------------------
+
+  /**
+   * @description Get the Dashboard model singleton.
+   * Provides cross-table analytics queries for the dashboard module.
+   * @returns {DashboardModel} Instance for dashboard analytics operations
+   */
+  static get dashboard() {
+    // Create instance on first access (lazy initialization)
+    if (!this.dashboardModel) this.dashboardModel = new DashboardModel();
+    return this.dashboardModel;
+  }
+
+  // -------------------------------------------------------------------------
+  // Admin Models
+  // -------------------------------------------------------------------------
+
+  /**
+   * @description Get the AdminHistory model singleton.
+   * Provides cross-table analytics queries for admin history (chat, search, agent runs).
+   * @returns {AdminHistoryModel} Instance for admin history analytics operations
+   */
+  static get adminHistory() {
+    // Create instance on first access (lazy initialization)
+    if (!this.adminHistoryModel) this.adminHistoryModel = new AdminHistoryModel();
+    return this.adminHistoryModel;
   }
 }

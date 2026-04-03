@@ -54,11 +54,8 @@ export class TeamService {
      */
     async createTeam(data: CreateTeamDTO, user?: { id: string, email: string, ip?: string }): Promise<Team> {
         // Check for duplicate name within the same project
-        const existingTeam = await ModelFactory.team.getKnex()
-            .where('name', data.name)
-            .where('project_name', data.project_name || null)
-            .first();
-        if (existingTeam) {
+        const nameExists = await ModelFactory.team.existsByNameInProject(data.name, data.project_name || null);
+        if (nameExists) {
             throw new Error(`Team with name "${data.name}" already exists${data.project_name ? ` in project "${data.project_name}"` : ''}`);
         }
 
@@ -158,12 +155,8 @@ export class TeamService {
             const currentTeam = await this.getTeam(id);
             const projectName = data.project_name !== undefined ? data.project_name : (currentTeam?.project_name || null);
 
-            const existingTeam = await ModelFactory.team.getKnex()
-                .where('name', data.name)
-                .where('project_name', projectName)
-                .whereNot('id', id)
-                .first();
-            if (existingTeam) {
+            const nameExists = await ModelFactory.team.existsByNameInProject(data.name, projectName, id);
+            if (nameExists) {
                 throw new Error(`Team with name "${data.name}" already exists${projectName ? ` in project "${projectName}"` : ''}`);
             }
         }

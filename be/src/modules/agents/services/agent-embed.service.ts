@@ -14,8 +14,8 @@ import { ModelFactory } from '@/shared/models/factory.js'
 import { agentExecutorService } from './agent-executor.service.js'
 import { log } from '@/shared/services/logger.service.js'
 
-// Singleton instance for the agent_embed_tokens table
-const tokenService = new EmbedTokenService('agent_embed_tokens', 'agent_id')
+// Singleton instance for the agent_embed_tokens table using the model-backed pattern
+const tokenService = new EmbedTokenService(ModelFactory.agentEmbedToken, 'agent_id', 'agent_embed_tokens')
 
 /**
  * @description Singleton service providing agent embed widget functionality.

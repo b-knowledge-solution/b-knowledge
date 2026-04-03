@@ -304,9 +304,7 @@ class MemoryExtractionService {
     tenantId: string,
   ): Promise<{ imported: number }> {
     // Load all messages from the chat session ordered chronologically
-    const messages = await ModelFactory.chatMessage.getKnex()
-      .where('session_id', sessionId)
-      .orderBy('timestamp', 'asc')
+    const messages = await ModelFactory.chatMessage.findBySessionIdOrdered(sessionId)
 
     // Collect user+assistant conversation pairs first
     const pairs: Array<{ userContent: string; assistantResponse: string }> = []

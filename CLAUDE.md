@@ -265,6 +265,50 @@ These apply to **both** `be/src/modules/` and `fe/src/features/`:
 - Migration naming: `YYYYMMDDhhmmss_<name>.ts`
 - **All DB migrations through Knex** — including schema changes to Peewee-managed tables (`document`, `knowledgebase`, `task`, `file`, `tenant_llm`, etc.). Never use Peewee migrators. The backend owns the migration lifecycle; Python workers only read/write data via their ORM.
 
+#### Layering Rules (STRICT — No Exceptions)
+
+**The backend follows a strict 3-layer architecture: Controller → Service → Model**
+
+##### Controller Layer Rules
+Controllers handle HTTP request/response only. Controllers must **NEVER**:
+- Import `ModelFactory` or any model class
+- Call `ModelFactory.*` methods directly
+- Import `db` from `@/shared/db/knex.js`
+
+Controllers must **ONLY** call services. If a controller needs data, it calls a service method — never the model layer directly.
+
+```typescript
+// ✅ CORRECT — Controller calls service:
+const user = await userService.getUserById(id)
+const templates = await agentService.listTemplates(tenantId)
+
+// ❌ WRONG — Controller calls model directly:
+const user = await ModelFactory.user.findById(id)
+const templates = await ModelFactory.agentTemplate.findByTenant(tenantId)
+```
+
+**When a service lacks the needed method:** Add a new method to the service class that wraps the model call — NEVER import ModelFactory in the controller.
+
+##### Service Layer Rules
+Services contain business logic and may call `ModelFactory` for data access. Services must **NEVER**:
+- Import `db` from `@/shared/db/knex.js`
+- Call `db('table')`, `db.raw()`, `db.transaction()` directly
+- Use `.getKnex()` on models to build inline queries
+
+##### Model Layer Rules
+**All database queries MUST live in model files.** Only models may access the database directly.
+
+**When a model lacks the needed query:** Add a new method to the model class — NEVER bypass via raw `db()` in the caller.
+
+**Model query best practices:**
+- **Single responsibility:** Each model method does ONE query or one transaction
+- **Batch operations:** Use `whereIn()` for multi-ID lookups, avoid N+1 patterns
+- **Pagination:** Accept `limit`/`offset` params, return `{ data, total }` for paginated queries
+- **Transactions:** Models own transaction boundaries via `this.knex.transaction()`
+- **Index-aware queries:** Use indexed columns in WHERE/JOIN/ORDER BY clauses
+- **Select only needed columns:** Use `.select(columns)` for large tables, avoid `SELECT *` in list queries
+- **Cross-table analytics:** Create dedicated module-level models (e.g. `DashboardModel`, `AdminHistoryModel`)
+
 ### Frontend Conventions (details in `fe/CLAUDE.md`)
 
 - API layer split: `<domain>Api.ts` (raw HTTP) + `<domain>Queries.ts` (TanStack Query hooks)

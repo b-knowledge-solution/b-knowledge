@@ -198,6 +198,22 @@ export class RagDocumentModel {
     }
 
     /**
+     * @description Find documents pending parsing, ordered by dataset then creation time (FIFO)
+     * @returns {Promise<DocumentRow[]>} Array of pending document records with id, kb_id, parser fields
+     */
+    async findPendingForParsing(): Promise<DocumentRow[]> {
+        // progress = 0 and run = '1' indicates documents queued for parsing
+        return db(this.tableName)
+            .select('id', 'kb_id', 'parser_id', 'parser_config', 'name', 'run', 'create_time')
+            .where('run', '1')
+            .where('progress', 0)
+            .orderBy([
+                { column: 'kb_id', order: 'asc' },
+                { column: 'create_time', order: 'asc' },
+            ])
+    }
+
+    /**
      * @description Get document counts grouped by run status for a dataset.
      * Used for aggregated parsing status overview.
      * @param {string} datasetId - Dataset/knowledgebase UUID (32-char hex, no hyphens)

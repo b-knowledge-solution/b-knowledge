@@ -481,6 +481,21 @@ export class ChatConversationService {
    * @returns {Promise<object>} The created session
    * @throws {Error} If the assistant does not exist
    */
+  /**
+   * @description Create a bare chat session record without assistant validation or prologue insertion.
+   * Used by the OpenAI-compatible API endpoint where sessions are temporary and lightweight.
+   * @param {object} data - Session creation data
+   * @param {string} data.user_id - ID of the user (or synthetic ID for API callers)
+   * @param {string} data.title - Display title for the session
+   * @param {string} data.dialog_id - UUID of the associated assistant/dialog
+   * @param {string} data.created_by - ID of the creator for audit tracking
+   * @returns {Promise<any>} The created chat session record
+   */
+  async createSession(data: { user_id: string; title: string; dialog_id: string; created_by: string }) {
+    // Directly create a session record without prologue or assistant checks
+    return ModelFactory.chatSession.create(data as any)
+  }
+
   async createConversation(
     dialogId: string,
     name: string,
@@ -535,9 +550,7 @@ export class ChatConversationService {
     if (session.user_id !== userId) return null
 
     // Fetch messages ordered by timestamp
-    const messages = await ModelFactory.chatMessage.getKnex()
-      .where('session_id', conversationId)
-      .orderBy('timestamp', 'asc')
+    const messages = await ModelFactory.chatMessage.findBySessionIdOrdered(conversationId)
 
     // Map citations -> reference + feedback (extract feedback to top-level for the frontend)
     const mappedMessages = messages.map((msg: any) => {
@@ -591,9 +604,7 @@ export class ChatConversationService {
    * @returns {Promise<object[]>} Array of conversation sessions ordered by creation date descending
    */
   async listConversations(dialogId: string, userId: string) {
-    return ModelFactory.chatSession.getKnex()
-      .where({ dialog_id: dialogId, user_id: userId })
-      .orderBy('created_at', 'desc')
+    return ModelFactory.chatSession.findByDialogAndUser(dialogId, userId)
   }
 
   /**
@@ -609,22 +620,15 @@ export class ChatConversationService {
     userId: string
   ): Promise<number> {
     // First verify ownership — only delete conversations belonging to this user
-    const ownedIds: string[] = await ModelFactory.chatSession.getKnex()
-      .whereIn('id', conversationIds)
-      .andWhere('user_id', userId)
-      .pluck('id')
+    const ownedIds: string[] = await ModelFactory.chatSession.findOwnedIds(conversationIds, userId)
 
     if (ownedIds.length === 0) return 0
 
     // Delete messages for owned conversations only
-    await ModelFactory.chatMessage.getKnex()
-      .whereIn('session_id', ownedIds)
-      .delete()
+    await ModelFactory.chatMessage.deleteBySessionIds(ownedIds)
 
     // Delete the sessions
-    const deleted = await ModelFactory.chatSession.getKnex()
-      .whereIn('id', ownedIds)
-      .delete()
+    const deleted = await ModelFactory.chatSession.deleteByIds(ownedIds)
 
     log.info('Conversations deleted', { count: deleted, userId })
     return deleted
@@ -640,22 +644,15 @@ export class ChatConversationService {
    */
   async deleteAllSessions(dialogId: string, userId: string): Promise<number> {
     // Find all session IDs owned by this user for the given dialog
-    const sessionIds: string[] = await ModelFactory.chatSession.getKnex()
-      .where('dialog_id', dialogId)
-      .andWhere('user_id', userId)
-      .pluck('id')
+    const sessionIds: string[] = await ModelFactory.chatSession.findIdsByDialogAndUser(dialogId, userId)
 
     if (sessionIds.length === 0) return 0
 
     // Bulk delete all messages belonging to these sessions
-    await ModelFactory.chatMessage.getKnex()
-      .whereIn('session_id', sessionIds)
-      .delete()
+    await ModelFactory.chatMessage.deleteBySessionIds(sessionIds)
 
     // Bulk delete the sessions themselves
-    const count = await ModelFactory.chatSession.getKnex()
-      .whereIn('id', sessionIds)
-      .delete()
+    const count = await ModelFactory.chatSession.deleteByIds(sessionIds)
 
     log.info('All sessions deleted for dialog', { dialogId, userId, count })
     return count
@@ -679,9 +676,7 @@ export class ChatConversationService {
     if (!session || session.user_id !== userId) return false
 
     // Delete the specific message by ID and session scope
-    const deleted = await ModelFactory.chatMessage.getKnex()
-      .where({ id: messageId, session_id: conversationId })
-      .delete()
+    const deleted = await ModelFactory.chatMessage.deleteByIdAndSessionId(messageId, conversationId)
 
     return deleted > 0
   }
@@ -896,11 +891,7 @@ export class ChatConversationService {
       }
 
       // ── Step 3: Load conversation history ───────────────────────────────
-      const history = await ModelFactory.chatMessage.getKnex()
-        .where('session_id', conversationId)
-        .where('id', '!=', userMsgId)
-        .orderBy('timestamp', 'asc')
-        .limit(20)
+      const history = await ModelFactory.chatMessage.findHistoryExcluding(conversationId, userMsgId, 20)
 
       // ── Step 4: Multi-turn refinement ───────────────────────────────────
       const retrievalTimings: Record<string, number> = {}
@@ -1030,9 +1021,7 @@ export class ChatConversationService {
           // Build CASL ability for this specific user to determine authorized datasets
           const userAbility = abilityService.buildAbilityFor(userContext)
           // Fetch all tenant datasets, then filter by what the user's ABAC rules permit
-          const allTenantDatasets = await ModelFactory.dataset.getKnex()
-            .where('tenant_id', tenantId)
-            .select('id', 'name', 'tenant_id')
+          const allTenantDatasets = await ModelFactory.dataset.findByTenantId(tenantId)
 
           // Only include datasets the user is authorized to read via CASL ability check
           const authorizedKbIds = allTenantDatasets
@@ -1451,11 +1440,8 @@ export class ChatConversationService {
       // Cosmetic operation — must not delay stream completion
       void (async () => {
         try {
-          const msgCount = await ModelFactory.chatMessage.getKnex()
-            .where('session_id', conversationId)
-            .count('id as count')
-            .first()
-          if (Number(msgCount?.count) <= 2) {
+          const msgCount = await ModelFactory.chatMessage.countBySessionId(conversationId)
+          if (msgCount <= 2) {
             const title = content.length > 100 ? content.slice(0, 100) + '...' : content
             await ModelFactory.chatSession.update(conversationId, { title } as any)
           }
