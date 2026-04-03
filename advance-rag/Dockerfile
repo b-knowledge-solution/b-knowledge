@@ -50,8 +50,8 @@ RUN pip install --no-cache-dir -e ".[all]" 2>/dev/null || pip install --no-cache
 # Copy source code
 COPY . .
 
-# Make entrypoint executable
-RUN chmod +x /app/entrypoint.sh
+# Normalize Windows line endings before marking the script executable.
+RUN sed -i 's/\r$//' /app/entrypoint.sh && chmod +x /app/entrypoint.sh
 
 # Set advance-rag as project base for common/file_utils.py
 ENV RAG_PROJECT_BASE=/app
