@@ -40,11 +40,22 @@ export class LlmProviderService {
      * @description List all active model providers ordered by factory name
      * @returns {Promise<ModelProvider[]>} Array of active providers
      */
-    async list(): Promise<ModelProvider[]> {
-        return ModelFactory.modelProvider.findAll(
+    async list(): Promise<(ModelProvider & { model_status?: string })[]> {
+        const providers = await ModelFactory.modelProvider.findAll(
             { status: ProviderStatus.ACTIVE },
             { orderBy: { factory_name: 'asc' } }
-        );
+        )
+
+        // Enrich system providers with live model readiness status from Valkey
+        const hasSystem = providers.some((p: ModelProvider) => p.is_system)
+        if (hasSystem) {
+            const status = await this.getEmbeddingWorkerStatus()
+            return providers.map((p: ModelProvider) =>
+                p.is_system ? { ...p, model_status: status } : p
+            )
+        }
+
+        return providers
     }
 
     /**

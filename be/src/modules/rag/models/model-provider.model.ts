@@ -99,6 +99,18 @@ export class ModelProviderModel extends BaseModel<ModelProvider> {
     model_name: string
     tenant_id: string
   }): Promise<string> {
+    // Unset is_default on all other providers of the same type+tenant
+    // so the system provider becomes the sole default
+    await this.knex(this.tableName)
+      .where({
+        model_type: data.model_type,
+        tenant_id: data.tenant_id,
+        status: ProviderStatus.ACTIVE,
+        is_default: true,
+      })
+      .whereNot({ factory_name: data.factory_name, model_name: data.model_name })
+      .update({ is_default: false, updated_at: this.knex.fn.now() })
+
     // Check for existing active record with same factory+model+type+tenant
     const existing = await this.knex(this.tableName)
       .where({
