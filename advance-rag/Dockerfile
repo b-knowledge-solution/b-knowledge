@@ -36,6 +36,13 @@ ENV TIKA_SERVER_JAR="file:///app/tika-server-standard-3.2.3.jar"
 # Set tiktoken cache to project base so it finds the pre-downloaded encoding file
 ENV TIKTOKEN_CACHE_DIR=/app
 
+# Install PyTorch CPU-only build FIRST (per D-03)
+# Using separate index to avoid pulling CUDA wheels (~2.5GB vs ~250MB)
+RUN pip install torch --index-url https://download.pytorch.org/whl/cpu --no-cache-dir
+
+# Install sentence-transformers for local embedding support
+RUN pip install sentence-transformers --no-cache-dir
+
 # Install Python dependencies
 COPY pyproject.toml .
 RUN pip install --no-cache-dir -e ".[all]" 2>/dev/null || pip install --no-cache-dir .
