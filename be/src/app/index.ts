@@ -31,6 +31,7 @@ import { cronService } from '@/shared/services/cron.service.js';
 
 import { systemToolsService } from '@/modules/system-tools/system-tools.service.js';
 import { userService } from '@/modules/users/index.js';
+import { llmProviderService } from '@/modules/llm-provider/index.js';
 import { shutdownLangfuse } from '@/shared/services/langfuse.service.js';
 
 import { socketService } from '@/shared/services/socket.service.js';
@@ -176,6 +177,13 @@ const startServer = async (): Promise<http.Server | https.Server> => {
 
       // Ensure a bootstrap admin exists even on fresh databases
       await userService.initializeRootUser();
+
+      // Auto-seed system embedding provider when LOCAL_EMBEDDING_ENABLE=true (per D-07)
+      try {
+        await llmProviderService.seedSystemEmbeddingProvider()
+      } catch (err) {
+        log.error('Failed to seed system embedding provider', { error: err })
+      }
     } else {
       log.warn('Database connection failed');
     }

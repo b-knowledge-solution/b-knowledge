@@ -4,6 +4,7 @@
  */
 import { ModelFactory } from '@/shared/models/factory.js';
 import { log } from '@/shared/services/logger.service.js';
+import { config } from '@/shared/config/index.js';
 import { cryptoService } from '@/shared/services/crypto.service.js';
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js';
 import { ModelProvider } from '@/shared/models/types.js';
@@ -426,6 +427,43 @@ export class LlmProviderService {
      */
     async listPublic(modelType?: string) {
         return ModelFactory.modelProvider.findPublicList(modelType);
+    }
+
+    // =========================================================================
+    // System embedding provider auto-seed
+    // =========================================================================
+
+    /**
+     * @description Auto-seed or remove system-managed embedding provider based on
+     * LOCAL_EMBEDDING_ENABLE env var. Called on every backend startup (idempotent).
+     * Per D-07: upserts when enabled, removes when disabled.
+     * Per D-11: auto-discovery wires SentenceTransformersEmbed into task_executor --
+     * document embedding reuses existing embed_limiter + EMBEDDING_BATCH_SIZE.
+     * @returns {Promise<void>}
+     */
+    async seedSystemEmbeddingProvider(): Promise<void> {
+        if (config.localEmbedding.enabled) {
+            // Fail fast if model name not specified (per D-04)
+            if (!config.localEmbedding.model) {
+                log.error('LOCAL_EMBEDDING_ENABLE=true but LOCAL_EMBEDDING_MODEL is not set. Skipping system provider seed.')
+                return
+            }
+
+            // Upsert the SentenceTransformers provider for the system tenant
+            const providerId = await ModelFactory.modelProvider.upsertSystemProvider({
+                factory_name: 'SentenceTransformers',
+                model_type: 'embedding',
+                model_name: config.localEmbedding.model,
+                tenant_id: config.opensearch.systemTenantId,
+            })
+            log.info(`System embedding provider seeded: SentenceTransformers/${config.localEmbedding.model} (id=${providerId})`)
+        } else {
+            // Remove any stale system-managed providers when feature is disabled
+            const removed = await ModelFactory.modelProvider.removeSystemProviders()
+            if (removed > 0) {
+                log.info(`Removed ${removed} system-managed provider(s) (LOCAL_EMBEDDING_ENABLE=false)`)
+            }
+        }
     }
 
     // =========================================================================
