@@ -44,6 +44,11 @@ DEFAULT_ASR_MODEL = os.getenv("DEFAULT_ASR_MODEL", "")
 DEFAULT_IMAGE2TEXT_MODEL = os.getenv("DEFAULT_IMAGE2TEXT_MODEL", "")
 DEFAULT_TTS_MODEL = os.getenv("DEFAULT_TTS_MODEL", "")
 
+# Local embedding (Sentence Transformers)
+LOCAL_EMBEDDING_ENABLE = os.getenv("LOCAL_EMBEDDING_ENABLE", "false").lower() in ("true", "1", "yes")
+LOCAL_EMBEDDING_MODEL = os.getenv("LOCAL_EMBEDDING_MODEL", "")
+LOCAL_EMBEDDING_PATH = os.getenv("LOCAL_EMBEDDING_PATH", "")
+
 # FastAPI
 API_HOST = os.getenv("API_HOST", "0.0.0.0")
 API_PORT = int(os.getenv("API_PORT", "9380"))
