@@ -156,6 +156,28 @@ def preload_local_embedding_model():
             'Local embedding model ready: {} (dim={}, factory=SentenceTransformers)',
             model_name, dim
         )
+
+        # Publish health status to Valkey so the LLM Config page shows "Ready"
+        # Uses the same key as embedding_worker.py (embed:worker:status)
+        try:
+            import json
+            import socket
+            import time
+            r = _get_redis()
+            health_data = json.dumps({
+                'status': 'ready',
+                'model': model_name,
+                'dimension': dim,
+                'worker': f'task-executor-{socket.gethostname()}-{os.getpid()}',
+                'loaded_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+            })
+            # TTL of 0 means no expiry — task executor runs for the lifetime of the process
+            # The embedding_worker heartbeat (30s TTL) will take over if it's also running
+            r.set('embed:worker:status', health_data)
+            logger.info('Published embedding health status to Valkey (embed:worker:status)')
+        except Exception as he:
+            logger.warning('Failed to publish embedding health to Valkey: {}', he)
+
     except Exception as e:
         logger.error('Failed to preload local embedding model: {}', e)
 
