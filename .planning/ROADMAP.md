@@ -161,7 +161,7 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 11-01-PLAN.md -- SentenceTransformersEmbed class + env config + DB migration
+- [x] 11-01-PLAN.md -- SentenceTransformersEmbed class + env config + DB migration
 - [ ] 11-02-PLAN.md -- Backend startup auto-seed hook for system provider
 - [ ] 11-03-PLAN.md -- Valkey Stream bridge (Python worker + Node.js service)
 - [ ] 11-04-PLAN.md -- Frontend: system badge + re-embed warning banner + i18n
@@ -185,4 +185,4 @@ Note: Phases 8, 9, 10, and 11 all depend on Phase 7 but are independent of each 
 | 8. Frontend Rename | v0.2 | 3/3 | Complete   | 2026-04-02 |
 | 9. Permission System | v0.2 | 0/? | Not started | - |
 | 10. Chunk Quality Pipeline | v0.2 | 0/? | Not started | - |
-| 11. Internal Embedding System | v0.2 | 0/5 | Not started | - |
+| 11. Internal Embedding System | v0.2 | 1/5 | In Progress|  |
