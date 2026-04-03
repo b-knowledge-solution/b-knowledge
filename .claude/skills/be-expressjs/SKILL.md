@@ -384,14 +384,42 @@ Register in `shared/models/factory.ts` as a lazy singleton getter.
 
 ---
 
-## Database Access Rules (STRICT — No Exceptions)
+## Layering Rules (STRICT — Controller → Service → Model)
 
-**ALL database queries MUST live in model files.** This is the most critical architectural rule.
+The backend enforces a strict 3-layer architecture. Each layer has clear responsibilities and boundaries. **This is the most critical architectural rule.**
 
-### What is FORBIDDEN in services, controllers, and middleware:
+### Controller Layer — HTTP only, calls services ONLY
 
+Controllers must **NEVER**:
 ```ts
-// ❌ NEVER import db in a service/controller:
+// ❌ NEVER import ModelFactory or any model in a controller:
+import { ModelFactory } from '@/shared/models/factory.js'
+
+// ❌ NEVER call ModelFactory.* in a controller:
+const user = await ModelFactory.user.findById(id)
+const app = await ModelFactory.searchApp.findById(appId)
+const templates = await ModelFactory.agentTemplate.findByTenant(tenantId)
+
+// ❌ NEVER import db in a controller:
+import { db } from '@/shared/db/knex.js'
+```
+
+Controllers must **ONLY** call services:
+```ts
+// ✅ CORRECT — Controller calls service:
+const user = await userService.getUserById(id)
+const app = await searchService.getSearchApp(appId)
+const templates = await agentService.listTemplates(tenantId)
+const teamIds = await chatAssistantService.getUserTeamIds(userId)
+```
+
+**When a service lacks the needed method:** Add a new method to the service class that wraps the model call — NEVER import ModelFactory in the controller.
+
+### Service Layer — Business logic, calls ModelFactory ONLY
+
+Services must **NEVER**:
+```ts
+// ❌ NEVER import db in a service:
 import { db } from '@/shared/db/knex.js'
 
 // ❌ NEVER call db() directly:
@@ -407,23 +435,24 @@ await db.transaction(async (trx) => { ... })
 const rows = await ModelFactory.user.getKnex().where({ role: 'admin' })
 ```
 
-### The ONLY correct pattern:
-
+Services call ModelFactory:
 ```ts
-// ✅ In service/controller — delegate to model:
+// ✅ In service — delegate to model:
 const user = await ModelFactory.user.findByEmail(email)
 const stats = await ModelFactory.dashboard.getTopUsers(startDate, endDate)
 await ModelFactory.canvasVersion.releaseVersion(canvasId, versionId, tenantId)
+```
 
+### Model Layer — All DB access lives here
+
+```ts
 // ✅ In model — all DB access lives here:
 async findByEmail(email: string): Promise<User | undefined> {
   return this.knex(this.tableName).where({ email }).first()
 }
 ```
 
-### When the model lacks a method:
-
-**Add a new method to the model class.** Never work around it.
+**When the model lacks a method:** Add a new method to the model class. Never work around it.
 
 ### Model Query Best Practices:
 
@@ -524,7 +553,7 @@ Frontend uses `useSocketEvent()` or `useSocketQueryInvalidation()` to react.
 3. [ ] Create model class extending `BaseModel`, register in `ModelFactory`
 4. [ ] **All DB queries in model methods only** — never in services/controllers
 5. [ ] Create service class with singleton export — uses `ModelFactory` for all DB access
-6. [ ] Create controller class with async methods — delegates to service
+6. [ ] Create controller class with async methods — **delegates to service ONLY, never calls ModelFactory**
 7. [ ] Create routes with `requireAuth` + `validate()` on mutations
 8. [ ] Create `index.ts` barrel file
 9. [ ] Register routes in `be/src/app/routes.ts`
@@ -533,8 +562,9 @@ Frontend uses `useSocketEvent()` or `useSocketQueryInvalidation()` to react.
 12. [ ] Add inline comments above significant logic lines
 13. [ ] Use `.js` extensions in all imports
 14. [ ] Use `config` object for env access, never `process.env`
-15. [ ] **Verify no `db` imports or `.getKnex()` calls in services/controllers**
-16. [ ] Verify with `npm run build` if changes are extensive
+15. [ ] **Verify no `ModelFactory` imports in controllers**
+16. [ ] **Verify no `db` imports or `.getKnex()` calls in services/controllers**
+17. [ ] Verify with `npm run build` if changes are extensive
 
 ## Middleware Reference
 

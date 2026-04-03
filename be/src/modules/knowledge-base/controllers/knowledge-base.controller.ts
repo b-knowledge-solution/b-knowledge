@@ -11,7 +11,6 @@ import { knowledgeBaseSearchService } from '../services/knowledge-base-search.se
 import { knowledgeBaseSyncService } from '../services/knowledge-base-sync.service.js'
 import { ragDocumentService, ragStorageService, ragRedisService, ragSearchService, converterQueueService } from '@/modules/rag/index.js'
 import { RagDocumentService } from '@/modules/rag/services/rag-document.service.js'
-import { ModelFactory } from '@/shared/models/factory.js'
 import { log } from '@/shared/services/logger.service.js'
 import { getClientIp } from '@/shared/utils/ip.js'
 import { getTenantId } from '@/shared/middleware/tenant.middleware.js'
@@ -468,7 +467,7 @@ export class KnowledgeBaseController {
       const datasetId = version.ragflow_dataset_id
 
       // Verify the dataset exists
-      const dataset = await ModelFactory.dataset.findById(datasetId)
+      const dataset = await knowledgeBaseCategoryService.getDatasetById(datasetId)
       if (!dataset) { res.status(404).json({ error: 'Linked dataset not found' }); return }
 
       const files = req.files as Express.Multer.File[] | undefined
@@ -518,7 +517,7 @@ export class KnowledgeBaseController {
         await ragDocumentService.createFile2Document(fileId, docId)
 
         // Track the file in version_files table for knowledge-base-level bookkeeping
-        await ModelFactory.documentCategoryVersionFile.create({
+        await knowledgeBaseCategoryService.createVersionFile({
           version_id: versionId,
           file_name: filename,
           ragflow_doc_id: docId,
@@ -557,7 +556,7 @@ export class KnowledgeBaseController {
           await ragDocumentService.beginParse(docId)
           await ragRedisService.queueParseInit(docId)
           // Update version file status to 'parsing'
-          await ModelFactory.documentCategoryVersionFile.updateStatusByVersionAndDocId(versionId, docId, 'parsing')
+          await knowledgeBaseCategoryService.updateVersionFileStatus(versionId, docId, 'parsing')
         } catch (parseErr) {
           log.warn('Failed to auto-trigger parsing', { docId, error: String(parseErr) })
         }
@@ -582,7 +581,7 @@ export class KnowledgeBaseController {
           await converterQueueService.triggerManualConversion()
           // Update version file statuses to 'converting'
           for (const { docId } of officeFiles) {
-            await ModelFactory.documentCategoryVersionFile.updateStatusByVersionAndDocId(versionId, docId, 'converting')
+            await knowledgeBaseCategoryService.updateVersionFileStatus(versionId, docId, 'converting')
           }
         } catch (convErr) {
           log.warn('Failed to create converter job', { versionId, error: String(convErr) })
@@ -1303,7 +1302,7 @@ export class KnowledgeBaseController {
    */
   async getKnowledgeBaseDatasets(req: Request, res: Response): Promise<void> {
     try {
-      const datasets = await ModelFactory.knowledgeBaseDataset.findByKnowledgeBaseId(req.params['id']!)
+      const datasets = await knowledgeBaseService.getKnowledgeBaseDatasets(req.params['id']!)
       res.json(datasets)
     } catch (error) {
       log.error('Failed to get knowledge base datasets', { error: String(error) })

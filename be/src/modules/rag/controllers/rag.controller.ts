@@ -19,7 +19,6 @@ import { ragSearchService } from '../services/rag-search.service.js';
 import { ragGraphragService } from '../services/rag-graphrag.service.js';
 import { cronService } from '@/shared/services/cron.service.js';
 import { log } from '@/shared/services/logger.service.js';
-import { ModelFactory } from '@/shared/models/factory.js';
 import { getClientIp } from '@/shared/utils/ip.js';
 import { getRedisClient } from '@/shared/services/redis.service.js';
 import { getTenantId } from '@/shared/middleware/tenant.middleware.js';
@@ -29,18 +28,6 @@ import { RagDocumentService } from '../services/rag-document.service.js';
 import { minioClient } from '@/shared/services/minio.service.js'
 import { config } from '@/shared/config/index.js';
 import { ComparisonLiteral, DatasetStatus, ParseRunAction } from '@/shared/constants/index.js';
-
-/**
- * @description Resolve model_providers.id for an embedding model name
- * @param {string} modelName - The embedding model name (e.g., "text-embedding-3-small")
- * @returns {Promise<string | null>} The provider UUID or null if not found
- */
-async function resolveEmbeddingProviderId(modelName: string): Promise<string | null> {
-    if (!modelName) return null;
-    // Look up the active embedding provider by model name
-    const provider = await ModelFactory.modelProvider.findActiveEmbeddingByModelName(modelName);
-    return provider?.id || null;
-}
 
 /**
  * @description Controller for all RAG module endpoints including dataset CRUD,
@@ -274,7 +261,7 @@ export class RagController {
                 }
 
                 // Update doc count on the version dataset
-                await ModelFactory.dataset.incrementDocCount(versionDataset.id, uploadedDocs.length)
+                await ragService.incrementDatasetDocCount(versionDataset.id, uploadedDocs.length)
 
                 // Split uploaded docs into Office files (need conversion) vs direct-parseable
                 const officeFiles: { docId: string; fileName: string }[] = []
@@ -497,7 +484,7 @@ export class RagController {
             }
 
             // Verify dataset exists in datasets table
-            const dataset = await ModelFactory.dataset.findById(datasetId);
+            const dataset = await ragService.getDatasetById(datasetId);
             if (!dataset) {
                 res.status(404).json({ error: ComparisonLiteral.DATASET_NOT_FOUND });
                 return;
@@ -558,7 +545,7 @@ export class RagController {
             }
 
             // Update doc count on datasets table
-            await ModelFactory.dataset.incrementDocCount(datasetId, results.length);
+            await ragService.incrementDatasetDocCount(datasetId, results.length);
 
             // Auto-trigger parsing only for non-Office files (Office files need conversion first)
             for (const result of results) {
@@ -946,7 +933,7 @@ export class RagController {
                 if (req.body.embedding_model !== undefined) {
                     kbData.embedding_model = req.body.embedding_model;
                     // Resolve provider UUID so the Python worker can look up the model config directly
-                    const providerId = await resolveEmbeddingProviderId(req.body.embedding_model);
+                    const providerId = await ragService.resolveEmbeddingProviderId(req.body.embedding_model);
                     kbData.tenant_embd_id = providerId;
                 }
                 if (req.body.parser_id !== undefined) kbData.parser_id = req.body.parser_id;
@@ -1852,7 +1839,7 @@ export class RagController {
 
         try {
             // Verify dataset exists
-            const dataset = await ModelFactory.dataset.findById(datasetId)
+            const dataset = await ragService.getDatasetById(datasetId)
             if (!dataset) {
                 res.status(404).json({ error: ComparisonLiteral.DATASET_NOT_FOUND })
                 return
@@ -1869,7 +1856,7 @@ export class RagController {
             }
 
             // Persist field_map into dataset's parser_config JSONB
-            await ModelFactory.dataset.updateFieldMap(datasetId, fieldMap)
+            await ragService.updateDatasetFieldMap(datasetId, fieldMap)
 
             res.json({ field_map: fieldMap })
         } catch (error) {

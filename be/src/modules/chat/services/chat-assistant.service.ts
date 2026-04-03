@@ -85,6 +85,18 @@ export class ChatAssistantService {
   }
 
   /**
+   * @description Get the team IDs that a user belongs to.
+   * Used for RBAC evaluation when listing accessible assistants.
+   * @param {string} userId - UUID of the user
+   * @returns {Promise<string[]>} Array of team UUIDs the user belongs to
+   */
+  async getUserTeamIds(userId: string): Promise<string[]> {
+    // Fetch all team memberships for the user and extract team IDs
+    const userTeams = await ModelFactory.userTeam.findAll({ user_id: userId })
+    return userTeams.map((ut: { team_id: string }) => ut.team_id)
+  }
+
+  /**
    * @description List assistants accessible to a user based on RBAC rules, with pagination and search.
    * Admins see all assistants. Other users see assistants they created,
    * public assistants, and assistants shared with them or their teams.

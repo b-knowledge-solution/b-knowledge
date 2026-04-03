@@ -87,30 +87,51 @@ modules/<domain>/
 - Transaction support via optional `trx` parameter
 - Register all new models in `ModelFactory` with lazy getter pattern
 
-### Database Access Rules (STRICT)
+### Layering Rules (STRICT — Controller → Service → Model)
 
-**ALL database queries MUST live in model files. No exceptions.**
+The backend enforces a strict 3-layer architecture. Each layer has clear responsibilities and boundaries.
 
-Services, controllers, and middleware must **NEVER**:
+#### Controller Rules
+Controllers handle HTTP request/response ONLY. Controllers must **NEVER**:
+- Import `ModelFactory` or any model class
+- Call `ModelFactory.*` methods directly
+- Import `db` from `@/shared/db/knex.js`
+- Contain business logic beyond request parsing and response formatting
+
+Controllers must **ONLY** call services:
+```typescript
+// ✅ CORRECT — Controller calls service:
+const user = await userService.getUserById(id)
+const templates = await agentService.listTemplates(tenantId)
+const app = await searchService.getSearchApp(appId)
+
+// ❌ WRONG — Controller calls model directly:
+const user = await ModelFactory.user.findById(id)
+const templates = await ModelFactory.agentTemplate.findByTenant(tenantId)
+const app = await ModelFactory.searchApp.findById(appId)
+```
+
+**When a service lacks the needed method:** Add a new method to the service — never import ModelFactory in the controller.
+
+#### Service Rules (Database Access)
+Services contain business logic and call `ModelFactory` for data access. Services must **NEVER**:
 - Import `db` from `@/shared/db/knex.js`
 - Call `db('table')`, `db.raw()`, or `db.transaction()` directly
 - Use `.getKnex()` on models to build inline queries
 - Use raw Knex builder methods (`.whereRaw()`, `.selectRaw()`) outside models
 
-**Only models may access the database.** If a model lacks the needed query, add a new method to the model — never bypass via raw `db()` in the caller.
-
 ```typescript
-// ✅ CORRECT — In service/controller:
+// ✅ CORRECT — Service calls model:
 const user = await ModelFactory.user.findByEmail(email)
 const stats = await ModelFactory.dashboard.countRows('chat_sessions', 'created_at')
 
-// ❌ WRONG — Direct DB in service/controller:
+// ❌ WRONG — Direct DB in service:
 import { db } from '@/shared/db/knex.js'
 const user = await db('users').where({ email }).first()
-
-// ❌ WRONG — getKnex() bypass:
-const user = await ModelFactory.user.getKnex().where({ email }).first()
 ```
+
+#### Model Rules
+**ALL database queries MUST live in model files.** Only models may access the database directly. If a model lacks the needed query, add a new method to the model — never bypass via raw `db()` in the caller.
 
 **Model query best practices:**
 | Practice | Why |

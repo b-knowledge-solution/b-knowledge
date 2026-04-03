@@ -146,6 +146,17 @@ export class SearchService {
   }
 
   /**
+   * @description Retrieve the team IDs a user belongs to for RBAC evaluation
+   * @param {string} userId - UUID of the user
+   * @returns {Promise<string[]>} Array of team UUIDs the user is a member of
+   */
+  async getUserTeamIds(userId: string): Promise<string[]> {
+    // Fetch all team memberships for the user and extract team IDs
+    const userTeams = await ModelFactory.userTeam.findAll({ user_id: userId })
+    return userTeams.map((ut: { team_id: string }) => ut.team_id)
+  }
+
+  /**
    * @description Delete a search app by its UUID
    * @param {string} searchId - UUID of the search app to delete
    * @returns {Promise<void>}

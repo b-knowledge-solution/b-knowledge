@@ -322,6 +322,47 @@ export class KnowledgeBaseCategoryService {
     return ModelFactory.documentCategoryVersionFile.findByVersionId(versionId)
   }
 
+  /**
+   * @description Retrieve a dataset by its UUID. Used by controllers that need to verify
+   *   a version's linked dataset exists before uploading documents.
+   * @param {string} datasetId - UUID of the dataset
+   * @returns {Promise<any | undefined>} Dataset record or undefined if not found
+   */
+  async getDatasetById(datasetId: string): Promise<any | undefined> {
+    return ModelFactory.dataset.findById(datasetId)
+  }
+
+  /**
+   * @description Create a version file record to track a document uploaded to a category version.
+   *   Links the RAG document ID to the version for knowledge-base-level bookkeeping.
+   * @param {object} data - Version file creation data
+   * @param {string} data.version_id - UUID of the category version
+   * @param {string} data.file_name - Original file name
+   * @param {string} data.ragflow_doc_id - UUID of the RAG document record
+   * @param {string} data.status - Initial status (e.g. 'imported', 'parsing', 'converting')
+   * @returns {Promise<DocumentCategoryVersionFile>} Created version file record
+   */
+  async createVersionFile(data: {
+    version_id: string
+    file_name: string
+    ragflow_doc_id: string
+    status: string
+  }): Promise<DocumentCategoryVersionFile> {
+    return ModelFactory.documentCategoryVersionFile.create(data)
+  }
+
+  /**
+   * @description Update the status of a version file identified by version ID and RAG document ID.
+   *   Used to transition files through processing states (imported -> parsing -> ready, etc.)
+   * @param {string} versionId - UUID of the category version
+   * @param {string} ragflowDocId - UUID of the RAG document
+   * @param {string} status - New status value (e.g. 'parsing', 'converting', 'ready', 'error')
+   * @returns {Promise<void>}
+   */
+  async updateVersionFileStatus(versionId: string, ragflowDocId: string, status: string): Promise<void> {
+    return ModelFactory.documentCategoryVersionFile.updateStatusByVersionAndDocId(versionId, ragflowDocId, status)
+  }
+
   // -------------------------------------------------------------------------
   // Code Import
   // -------------------------------------------------------------------------

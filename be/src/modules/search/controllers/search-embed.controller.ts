@@ -9,7 +9,6 @@ import { Request, Response } from 'express'
 import { log } from '@/shared/services/logger.service.js'
 import { searchEmbedTokenService } from '@/shared/services/embed-token.service.js'
 import { searchService } from '../services/search.service.js'
-import { ModelFactory } from '@/shared/models/factory.js'
 import { ComparisonLiteral } from '@/shared/constants/index.js'
 
 /**
@@ -52,7 +51,7 @@ export class SearchEmbedController {
       const { name, expires_at } = req.body
 
       // Verify the search app exists
-      const app = await ModelFactory.searchApp.findById(appId)
+      const app = await searchService.getSearchApp(appId)
       if (!app) {
         res.status(404).json({ error: ComparisonLiteral.SEARCH_APP_NOT_FOUND })
         return
@@ -80,7 +79,7 @@ export class SearchEmbedController {
       const appId = req.params.id!
 
       // Verify the search app exists
-      const app = await ModelFactory.searchApp.findById(appId)
+      const app = await searchService.getSearchApp(appId)
       if (!app) {
         res.status(404).json({ error: ComparisonLiteral.SEARCH_APP_NOT_FOUND })
         return
@@ -142,7 +141,7 @@ export class SearchEmbedController {
       }
 
       // Load the search app
-      const app = await ModelFactory.searchApp.findById(tokenRow.app_id as string)
+      const app = await searchService.getSearchApp(tokenRow.app_id as string)
       if (!app) {
         res.status(404).json({ error: ComparisonLiteral.SEARCH_APP_NOT_FOUND })
         return
@@ -178,7 +177,7 @@ export class SearchEmbedController {
       }
 
       // Load the search app
-      const app = await ModelFactory.searchApp.findById(tokenRow.app_id as string)
+      const app = await searchService.getSearchApp(tokenRow.app_id as string)
       if (!app) {
         res.status(404).json({ error: ComparisonLiteral.SEARCH_APP_NOT_FOUND })
         return
@@ -226,7 +225,7 @@ export class SearchEmbedController {
       }
 
       // Load app to resolve tenant ID
-      const app = await ModelFactory.searchApp.findById(tokenRow.app_id as string)
+      const app = await searchService.getSearchApp(tokenRow.app_id as string)
       if (!app) {
         res.status(404).json({ error: ComparisonLiteral.SEARCH_APP_NOT_FOUND })
         return
@@ -302,7 +301,7 @@ export class SearchEmbedController {
       res.flushHeaders()
 
       // Resolve tenant from app creator for proper multi-tenant isolation
-      const app = await ModelFactory.searchApp.findById(tokenRow.app_id as string)
+      const app = await searchService.getSearchApp(tokenRow.app_id as string)
       if (!app) {
         res.write(`data: ${JSON.stringify({ error: ComparisonLiteral.SEARCH_APP_NOT_FOUND })}\n\n`)
         res.write(`data: ${ComparisonLiteral.STREAM_DONE}\n\n`)
@@ -384,7 +383,7 @@ export class SearchEmbedController {
       }
 
       // Load app to resolve tenant ID
-      const app = await ModelFactory.searchApp.findById(tokenRow.app_id as string)
+      const app = await searchService.getSearchApp(tokenRow.app_id as string)
       if (!app) {
         res.status(404).json({ error: ComparisonLiteral.SEARCH_APP_NOT_FOUND })
         return

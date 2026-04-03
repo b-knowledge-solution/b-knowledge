@@ -346,6 +346,32 @@ class AgentService {
     // Delegate released-version lookup to the model layer
     return ModelFactory.canvasVersion.findReleasedVersion(canvasId, tenantId)
   }
+
+  // -------------------------------------------------------------------------
+  // Template & Run Queries (controller delegation)
+  // -------------------------------------------------------------------------
+
+  /**
+   * @description List all available agent templates for a tenant.
+   *   Returns system-level templates (tenant_id IS NULL) plus tenant-specific ones.
+   * @param {string} tenantId - Tenant/organization identifier for scoping
+   * @returns {Promise<unknown[]>} Array of agent template records
+   */
+  async listTemplates(tenantId: string): Promise<unknown[]> {
+    // Fetch system templates and tenant-specific templates via the model layer
+    return ModelFactory.agentTemplate.findByTenant(tenantId)
+  }
+
+  /**
+   * @description List all execution runs for a given agent.
+   *   Returns runs sorted by created_at descending for execution history.
+   * @param {string} agentId - Agent UUID to retrieve runs for
+   * @returns {Promise<unknown[]>} Array of agent run records, newest first
+   */
+  async listRuns(agentId: string): Promise<unknown[]> {
+    // Delegate run lookup to the model layer
+    return ModelFactory.agentRun.findByAgent(agentId)
+  }
 }
 
 /** @description Singleton agent service instance */

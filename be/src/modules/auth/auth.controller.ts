@@ -10,7 +10,6 @@ import { getClientIp } from '@/shared/utils/ip.js'
 import { config } from '@/shared/config/index.js'
 import { updateAuthTimestamp, getCurrentUser } from '@/shared/middleware/auth.middleware.js'
 import { abilityService } from '@/shared/services/ability.service.js'
-import { ModelFactory } from '@/shared/models/factory.js'
 import { getUuid } from '@/shared/utils/uuid.js'
 
 /**
@@ -31,14 +30,14 @@ export class AuthController {
 
       try {
         // Query user_tenant to get the user's org memberships
-        const memberships = await ModelFactory.userTenant.findMembershipsByUserId(user.id)
+        const memberships = await authService.findMembershipsByUserId(user.id)
 
         // If user has no user_tenant entry, create one with role='user' and system tenant
         if (memberships.length === 0) {
           const systemTenantId = config.opensearch.systemTenantId
           const now = Date.now()
           const nowDate = new Date().toISOString().replace('T', ' ').slice(0, 19)
-          await ModelFactory.userTenant.createMembership({
+          await authService.createMembership({
             id: getUuid(),
             user_id: user.id,
             tenant_id: systemTenantId,
@@ -306,8 +305,7 @@ export class AuthController {
 
             if (!testPasswordMatch) {
                 // If test password doesn't match, try bcrypt for local accounts
-                const { ModelFactory } = await import('@/shared/models/factory.js')
-                const dbUser = await ModelFactory.user.findById(user.id).catch(() => null)
+                const dbUser = await authService.findUserById(user.id)
 
                 if (dbUser?.password_hash) {
                     // Verify with bcrypt for local account users
@@ -325,8 +323,7 @@ export class AuthController {
             }
         } else {
             // For local DB users without TEST_PASSWORD, check bcrypt hash
-            const { ModelFactory } = await import('@/shared/models/factory.js')
-            const dbUser = await ModelFactory.user.findById(user.id).catch(() => null)
+            const dbUser = await authService.findUserById(user.id)
 
             if (dbUser?.password_hash) {
                 const isValid = await authService.verifyPassword(password, dbUser.password_hash)
@@ -512,7 +509,7 @@ export class AuthController {
 
         try {
             // Query user_tenant joined with tenant for display names
-            const memberships = await ModelFactory.userTenant.findMembershipsWithOrgNames(user.id)
+            const memberships = await authService.findMembershipsWithOrgNames(user.id)
 
             res.json({
                 orgs: memberships,
@@ -551,7 +548,7 @@ export class AuthController {
 
         try {
             // Verify user has a membership in the requested org
-            const membership = await ModelFactory.userTenant.findMembership(user.id, orgId)
+            const membership = await authService.findMembership(user.id, orgId)
 
             if (!membership) {
                 res.status(403).json({ error: 'You are not a member of this organization' })

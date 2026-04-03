@@ -481,6 +481,21 @@ export class ChatConversationService {
    * @returns {Promise<object>} The created session
    * @throws {Error} If the assistant does not exist
    */
+  /**
+   * @description Create a bare chat session record without assistant validation or prologue insertion.
+   * Used by the OpenAI-compatible API endpoint where sessions are temporary and lightweight.
+   * @param {object} data - Session creation data
+   * @param {string} data.user_id - ID of the user (or synthetic ID for API callers)
+   * @param {string} data.title - Display title for the session
+   * @param {string} data.dialog_id - UUID of the associated assistant/dialog
+   * @param {string} data.created_by - ID of the creator for audit tracking
+   * @returns {Promise<any>} The created chat session record
+   */
+  async createSession(data: { user_id: string; title: string; dialog_id: string; created_by: string }) {
+    // Directly create a session record without prologue or assistant checks
+    return ModelFactory.chatSession.create(data as any)
+  }
+
   async createConversation(
     dialogId: string,
     name: string,
