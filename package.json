@@ -27,6 +27,7 @@
     "docker:build:be:offline": "bash scripts/build-be-offline.sh",
     "docker:build:worker:offline": "bash scripts/build-worker-offline.sh",
     "docker:build:converter:offline": "bash scripts/build-converter-offline.sh",
+    "docker:build:fe:offline": "bash scripts/build-fe-offline.sh",
     "docker:base": "docker compose -f docker/docker-compose-base.yml up -d",
     "docker:down": "docker compose -f docker/docker-compose-base.yml down",
     "docker:up": "docker compose -f docker/docker-compose.yml up -d --build",

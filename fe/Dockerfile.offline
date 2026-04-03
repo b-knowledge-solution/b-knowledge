@@ -1,0 +1,70 @@
+# ============================================================
+# Offline Build Variant — routes npm and base images through
+# a local Nexus Repository Manager (no internet required).
+#
+# Build args:
+#   NEXUS_REGISTRY     — Docker registry host:port
+#                        e.g. nexus.example.com:8083
+#   NEXUS_NPM_REGISTRY — Full URL to npm proxy/group repo
+#                        e.g. http://nexus.example.com:8081/repository/npm-group/
+#   VITE_API_BASE_URL  — API base URL baked into bundle (default: empty = relative)
+#
+# Prerequisites — push to local registry first:
+#   docker tag node:22-alpine              <NEXUS_REGISTRY>/node:22-alpine
+#   docker tag nginx:stable-alpine         <NEXUS_REGISTRY>/nginx:stable-alpine
+#   docker push <NEXUS_REGISTRY>/node:22-alpine
+#   docker push <NEXUS_REGISTRY>/nginx:stable-alpine
+#
+# Build example (run from REPOSITORY ROOT, not fe/):
+#   docker build \
+#     --build-arg NEXUS_REGISTRY=nexus.example.com:8083 \
+#     --build-arg NEXUS_NPM_REGISTRY=http://nexus.example.com:8081/repository/npm-group/ \
+#     -t kb-frontend:latest \
+#     -f fe/Dockerfile.offline .
+# ============================================================
+
+ARG NEXUS_REGISTRY=nexus.example.com:8083
+
+# ── Stage 1: Build ────────────────────────────────────────────────────────────
+FROM ${NEXUS_REGISTRY}/node:22-alpine AS builder
+
+# Re-declare ARGs inside the stage so they are available in RUN commands
+ARG NEXUS_NPM_REGISTRY=http://nexus.example.com:8081/repository/npm-group/
+# Empty = relative API paths; nginx proxy handles /api → backend:3001
+ARG VITE_API_BASE_URL=""
+
+WORKDIR /app
+
+# Copy workspace root manifests so npm workspaces resolves correctly
+COPY package.json package-lock.json* ./
+
+# Copy only the fe workspace package.json so npm install is layer-cached
+COPY fe/package.json ./fe/
+
+# Install all deps from Nexus npm registry
+RUN npm install --workspace=fe --registry "${NEXUS_NPM_REGISTRY}"
+
+# Copy fe source
+COPY fe/ ./fe/
+
+# Produce optimised production bundle in fe/dist/
+RUN VITE_API_BASE_URL="${VITE_API_BASE_URL}" npm run build:prod --workspace=fe
+
+# ── Stage 2: Production (nginx) ───────────────────────────────────────────────
+FROM ${NEXUS_REGISTRY}/nginx:stable-alpine
+
+# Remove default nginx config
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Copy custom config that handles SPA routing + /api proxy to backend
+COPY docker/nginx/frontend-docker.conf /etc/nginx/conf.d/frontend.conf
+
+# Copy compiled assets from builder stage
+COPY --from=builder /app/fe/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost/health || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]

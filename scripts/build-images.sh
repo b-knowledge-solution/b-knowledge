@@ -29,6 +29,8 @@ RAG_IMAGE=$(grep -E '^RAG_IMAGE=' "${ENV_FILE}" | cut -d= -f2 | tr -d '"' || tru
 RAG_VERSION=$(grep -E '^RAG_VERSION=' "${ENV_FILE}" | cut -d= -f2 | tr -d '"' || true)
 CONVERTER_IMAGE=$(grep -E '^CONVERTER_IMAGE=' "${ENV_FILE}" | cut -d= -f2 | tr -d '"' || true)
 CONVERTER_VERSION=$(grep -E '^CONVERTER_VERSION=' "${ENV_FILE}" | cut -d= -f2 | tr -d '"' || true)
+FRONTEND_IMAGE=$(grep -E '^FRONTEND_IMAGE=' "${ENV_FILE}" | cut -d= -f2 | tr -d '"' || true)
+FRONTEND_VERSION=$(grep -E '^FRONTEND_VERSION=' "${ENV_FILE}" | cut -d= -f2 | tr -d '"' || true)
 
 # Apply defaults if .env had no values
 BACKEND_IMAGE="${BACKEND_IMAGE:-kb-backend}"
@@ -37,6 +39,8 @@ RAG_IMAGE="${RAG_IMAGE:-kb-worker}"
 RAG_VERSION="${RAG_VERSION:-latest}"
 CONVERTER_IMAGE="${CONVERTER_IMAGE:-kb-converter}"
 CONVERTER_VERSION="${CONVERTER_VERSION:-latest}"
+FRONTEND_IMAGE="${FRONTEND_IMAGE:-kb-frontend}"
+FRONTEND_VERSION="${FRONTEND_VERSION:-latest}"
 
 # ── Optional: version override from first positional arg ─────────────────────
 EXTRA_FLAGS=()
@@ -54,6 +58,7 @@ if [[ -n "${VERSION_OVERRIDE}" ]]; then
   BACKEND_VERSION="${VERSION_OVERRIDE}"
   RAG_VERSION="${VERSION_OVERRIDE}"
   CONVERTER_VERSION="${VERSION_OVERRIDE}"
+  FRONTEND_VERSION="${VERSION_OVERRIDE}"
 fi
 
 # ── Helper ────────────────────────────────────────────────────────────────────
@@ -61,7 +66,7 @@ step() { echo; echo "═══════════════════�
 ok()   { echo "  ✓ $*"; }
 
 # ── 1. Backend (Node.js / Express) ───────────────────────────────────────────
-step "Step 1/3 — Backend  →  ${BACKEND_IMAGE}:${BACKEND_VERSION}"
+step "Step 1/4 — Backend  →  ${BACKEND_IMAGE}:${BACKEND_VERSION}"
 docker build "${EXTRA_FLAGS[@]}" \
   -t "${BACKEND_IMAGE}:${BACKEND_VERSION}" \
   -f "${ROOT_DIR}/be/Dockerfile" \
@@ -69,7 +74,7 @@ docker build "${EXTRA_FLAGS[@]}" \
 ok "${BACKEND_IMAGE}:${BACKEND_VERSION}"
 
 # ── 2. RAG Worker (advance-rag / Python) ─────────────────────────────────────
-step "Step 2/3 — RAG Worker  →  ${RAG_IMAGE}:${RAG_VERSION}"
+step "Step 2/4 — RAG Worker  →  ${RAG_IMAGE}:${RAG_VERSION}"
 docker build "${EXTRA_FLAGS[@]}" \
   -t "${RAG_IMAGE}:${RAG_VERSION}" \
   -f "${ROOT_DIR}/advance-rag/Dockerfile" \
@@ -77,12 +82,20 @@ docker build "${EXTRA_FLAGS[@]}" \
 ok "${RAG_IMAGE}:${RAG_VERSION}"
 
 # ── 3. Converter (LibreOffice / Python) ──────────────────────────────────────
-step "Step 3/3 — Converter  →  ${CONVERTER_IMAGE}:${CONVERTER_VERSION}"
+step "Step 3/4 — Converter  →  ${CONVERTER_IMAGE}:${CONVERTER_VERSION}"
 docker build "${EXTRA_FLAGS[@]}" \
   -t "${CONVERTER_IMAGE}:${CONVERTER_VERSION}" \
   -f "${ROOT_DIR}/converter/Dockerfile" \
   "${ROOT_DIR}/converter"
 ok "${CONVERTER_IMAGE}:${CONVERTER_VERSION}"
+
+# ── 4. Frontend (React/Vite → nginx:stable-alpine) ───────────────────────────
+step "Step 4/4 — Frontend  →  ${FRONTEND_IMAGE}:${FRONTEND_VERSION}"
+docker build "${EXTRA_FLAGS[@]}" \
+  -t "${FRONTEND_IMAGE}:${FRONTEND_VERSION}" \
+  -f "${ROOT_DIR}/fe/Dockerfile" \
+  "${ROOT_DIR}"
+ok "${FRONTEND_IMAGE}:${FRONTEND_VERSION}"
 
 # ── Done ─────────────────────────────────────────────────────────────────────
 echo
@@ -90,3 +103,4 @@ echo "All images built successfully:"
 echo "  ${BACKEND_IMAGE}:${BACKEND_VERSION}"
 echo "  ${RAG_IMAGE}:${RAG_VERSION}"
 echo "  ${CONVERTER_IMAGE}:${CONVERTER_VERSION}"
+echo "  ${FRONTEND_IMAGE}:${FRONTEND_VERSION}"

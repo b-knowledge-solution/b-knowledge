@@ -1,0 +1,22 @@
+node_modules
+dist
+coverage
+.cache
+.vite
+*.log
+
+# Dev config / secrets
+.env
+.env.*
+!.env.example
+
+# Test artifacts
+playwright-report
+test-results
+htmlcov
+
+# Editor / OS noise
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

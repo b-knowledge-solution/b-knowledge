@@ -83,6 +83,8 @@ RAG_IMAGE=$(grep -E '^RAG_IMAGE=' "${APP_ENV}" | cut -d= -f2 | tr -d '"' || true
 RAG_VERSION=$(grep -E '^RAG_VERSION=' "${APP_ENV}" | cut -d= -f2 | tr -d '"' || true)
 CONVERTER_IMAGE=$(grep -E '^CONVERTER_IMAGE=' "${APP_ENV}" | cut -d= -f2 | tr -d '"' || true)
 CONVERTER_VERSION=$(grep -E '^CONVERTER_VERSION=' "${APP_ENV}" | cut -d= -f2 | tr -d '"' || true)
+FRONTEND_IMAGE=$(grep -E '^FRONTEND_IMAGE=' "${APP_ENV}" | cut -d= -f2 | tr -d '"' || true)
+FRONTEND_VERSION=$(grep -E '^FRONTEND_VERSION=' "${APP_ENV}" | cut -d= -f2 | tr -d '"' || true)
 
 BACKEND_IMAGE="${BACKEND_IMAGE:-kb-backend}"
 BACKEND_VERSION="${BACKEND_VERSION:-latest}"
@@ -90,6 +92,8 @@ RAG_IMAGE="${RAG_IMAGE:-kb-worker}"
 RAG_VERSION="${RAG_VERSION:-latest}"
 CONVERTER_IMAGE="${CONVERTER_IMAGE:-kb-converter}"
 CONVERTER_VERSION="${CONVERTER_VERSION:-latest}"
+FRONTEND_IMAGE="${FRONTEND_IMAGE:-kb-frontend}"
+FRONTEND_VERSION="${FRONTEND_VERSION:-latest}"
 
 # ── Parse CLI arguments ────────────────────────────────────────────────────────
 EXTRA_FLAGS=()
@@ -103,7 +107,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --service)
-      [[ $# -gt 1 ]] || error "--service requires a value: be | worker | converter"
+      [[ $# -gt 1 ]] || error "--service requires a value: be | worker | converter | fe"
       TARGET_SERVICE="$2"
       shift 2
       ;;
@@ -125,6 +129,7 @@ if [[ -n "${VERSION_OVERRIDE}" ]]; then
   BACKEND_VERSION="${VERSION_OVERRIDE}"
   RAG_VERSION="${VERSION_OVERRIDE}"
   CONVERTER_VERSION="${VERSION_OVERRIDE}"
+  FRONTEND_VERSION="${VERSION_OVERRIDE}"
 fi
 
 # ── Print active configuration ─────────────────────────────────────────────────
@@ -180,10 +185,21 @@ build_converter() {
   ok "${CONVERTER_IMAGE}:${CONVERTER_VERSION}"
 }
 
+build_fe() {
+  step "1/1 — Frontend  →  ${FRONTEND_IMAGE}:${FRONTEND_VERSION}"
+  docker build "${EXTRA_FLAGS[@]}" \
+    --build-arg "NEXUS_REGISTRY=${NEXUS_REGISTRY}" \
+    --build-arg "NEXUS_NPM_REGISTRY=${NEXUS_NPM_REGISTRY}" \
+    -t "${FRONTEND_IMAGE}:${FRONTEND_VERSION}" \
+    -f "${ROOT_DIR}/fe/Dockerfile.offline" \
+    "${ROOT_DIR}"
+  ok "${FRONTEND_IMAGE}:${FRONTEND_VERSION}"
+}
+
 # ── Dispatch ───────────────────────────────────────────────────────────────────
 case "${TARGET_SERVICE}" in
   all)
-    step "Step 1/3 — Backend  →  ${BACKEND_IMAGE}:${BACKEND_VERSION}"
+    step "Step 1/4 — Backend  →  ${BACKEND_IMAGE}:${BACKEND_VERSION}"
     docker build "${EXTRA_FLAGS[@]}" \
       --build-arg "NEXUS_REGISTRY=${NEXUS_REGISTRY}" \
       --build-arg "NEXUS_NPM_REGISTRY=${NEXUS_NPM_REGISTRY}" \
@@ -192,7 +208,7 @@ case "${TARGET_SERVICE}" in
       "${ROOT_DIR}/be"
     ok "${BACKEND_IMAGE}:${BACKEND_VERSION}"
 
-    step "Step 2/3 — RAG Worker  →  ${RAG_IMAGE}:${RAG_VERSION}"
+    step "Step 2/4 — RAG Worker  →  ${RAG_IMAGE}:${RAG_VERSION}"
     docker build "${EXTRA_FLAGS[@]}" \
       --build-arg "NEXUS_REGISTRY=${NEXUS_REGISTRY}" \
       --build-arg "NEXUS_APT_MIRROR=${NEXUS_APT_MIRROR}" \
@@ -206,7 +222,7 @@ case "${TARGET_SERVICE}" in
       "${ROOT_DIR}/advance-rag"
     ok "${RAG_IMAGE}:${RAG_VERSION}"
 
-    step "Step 3/3 — Converter  →  ${CONVERTER_IMAGE}:${CONVERTER_VERSION}"
+    step "Step 3/4 — Converter  →  ${CONVERTER_IMAGE}:${CONVERTER_VERSION}"
     docker build "${EXTRA_FLAGS[@]}" \
       --build-arg "NEXUS_REGISTRY=${NEXUS_REGISTRY}" \
       --build-arg "NEXUS_APT_MIRROR=${NEXUS_APT_MIRROR}" \
@@ -217,11 +233,21 @@ case "${TARGET_SERVICE}" in
       "${ROOT_DIR}/converter"
     ok "${CONVERTER_IMAGE}:${CONVERTER_VERSION}"
 
+    step "Step 4/4 — Frontend  →  ${FRONTEND_IMAGE}:${FRONTEND_VERSION}"
+    docker build "${EXTRA_FLAGS[@]}" \
+      --build-arg "NEXUS_REGISTRY=${NEXUS_REGISTRY}" \
+      --build-arg "NEXUS_NPM_REGISTRY=${NEXUS_NPM_REGISTRY}" \
+      -t "${FRONTEND_IMAGE}:${FRONTEND_VERSION}" \
+      -f "${ROOT_DIR}/fe/Dockerfile.offline" \
+      "${ROOT_DIR}"
+    ok "${FRONTEND_IMAGE}:${FRONTEND_VERSION}"
+
     echo
     echo "All offline images built successfully:"
     echo "  ${BACKEND_IMAGE}:${BACKEND_VERSION}"
     echo "  ${RAG_IMAGE}:${RAG_VERSION}"
     echo "  ${CONVERTER_IMAGE}:${CONVERTER_VERSION}"
+    echo "  ${FRONTEND_IMAGE}:${FRONTEND_VERSION}"
     ;;
   be)
     build_be
@@ -232,7 +258,10 @@ case "${TARGET_SERVICE}" in
   converter)
     build_converter
     ;;
+  fe)
+    build_fe
+    ;;
   *)
-    error "Unknown service: '${TARGET_SERVICE}'  (valid: be | worker | converter)"
+    error "Unknown service: '${TARGET_SERVICE}'  (valid: be | worker | converter | fe)"
     ;;
 esac

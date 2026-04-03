@@ -132,6 +132,29 @@ services:
     networks:
       - kb-network
 
+  # ==========================================================================
+  # Frontend (React/Vite SPA served by nginx:stable-alpine)
+  # ==========================================================================
+  frontend:
+    image: ${FRONTEND_IMAGE:-kb-frontend}:${FRONTEND_VERSION:-latest}
+    restart: unless-stopped
+    cpus: 0.25
+    mem_limit: 128m
+    mem_reservation: 64m
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - kb-network
+
 # ==========================================================================
 # Volumes (app-only — infrastructure volumes are in docker-compose-base.yml)
 # ==========================================================================
