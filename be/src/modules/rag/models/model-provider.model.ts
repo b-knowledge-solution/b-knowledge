@@ -5,7 +5,8 @@
 import { BaseModel } from '@/shared/models/base.model.js'
 import { db } from '@/shared/db/knex.js'
 import { ModelProvider } from '@/shared/models/types.js'
-import { ProviderStatus } from '@/shared/constants/index.js'
+import { ProviderStatus, ModelType } from '@/shared/constants/index.js'
+import { SYSTEM_API_KEY_SENTINEL } from '@/shared/constants/embedding.js'
 
 /**
  * @description Provides data access for the model_providers table, which stores
@@ -44,7 +45,7 @@ export class ModelProviderModel extends BaseModel<ModelProvider> {
   async findActiveEmbeddingByModelName(modelName: string): Promise<ModelProvider | undefined> {
     return this.knex(this.tableName)
       .where('model_name', modelName)
-      .where('model_type', 'embedding')
+      .where('model_type', ModelType.EMBEDDING)
       .where('status', ProviderStatus.ACTIVE)
       .first()
   }
@@ -129,7 +130,7 @@ export class ModelProviderModel extends BaseModel<ModelProvider> {
         .update({
           is_system: true,
           is_default: true,
-          api_key: '__system__',
+          api_key: SYSTEM_API_KEY_SENTINEL,
           updated_at: this.knex.fn.now(),
         })
       return existing.id
@@ -142,7 +143,7 @@ export class ModelProviderModel extends BaseModel<ModelProvider> {
         model_type: data.model_type,
         model_name: data.model_name,
         tenant_id: data.tenant_id,
-        api_key: '__system__',
+        api_key: SYSTEM_API_KEY_SENTINEL,
         is_system: true,
         is_default: true,
         status: ProviderStatus.ACTIVE,

@@ -13,6 +13,7 @@ import OpenAI from 'openai'
 import { ModelFactory } from '@/shared/models/factory.js'
 import { ModelProvider } from '@/shared/models/types.js'
 import { log } from '@/shared/services/logger.service.js'
+import { SENTENCE_TRANSFORMERS_FACTORY } from '@/shared/constants/embedding.js'
 import { ProviderStatus, ModelType } from '@/shared/constants/index.js'
 import { langfuseTraceService } from '@/shared/services/langfuse.service.js'
 import type { LangfuseParent } from '@/shared/services/langfuse.service.js'
@@ -320,7 +321,7 @@ export class LlmClientService {
 
     // Route to Valkey Stream bridge when provider is SentenceTransformers (per D-09)
     // Local models have no HTTP API -- embedding happens in the Python worker process
-    if (provider.factory_name === 'SentenceTransformers') {
+    if (provider.factory_name === SENTENCE_TRANSFORMERS_FACTORY) {
       const { embeddingStreamService } = await import('@/shared/services/embedding-stream.service.js')
       return embeddingStreamService.embedTexts(texts)
     }

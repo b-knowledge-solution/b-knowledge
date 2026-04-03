@@ -9,6 +9,13 @@ import { cryptoService } from '@/shared/services/crypto.service.js';
 import { auditService, AuditAction, AuditResourceType } from '@/modules/audit/services/audit.service.js';
 import { ModelProvider } from '@/shared/models/types.js';
 import { ProviderStatus, ModelType, ComparisonLiteral } from '@/shared/constants/index.js';
+import {
+    EMBED_WORKER_STATUS_KEY,
+    SENTENCE_TRANSFORMERS_FACTORY,
+    SYSTEM_API_KEY_SENTINEL,
+    EmbeddingWorkerStatus,
+    type EmbeddingWorkerStatusType,
+} from '@/shared/constants/embedding.js';
 
 /**
  * @description User context for audit logging on provider operations
@@ -457,28 +464,28 @@ export class LlmProviderService {
      * If the key exists, the worker is alive. If absent, it's offline.
      * @returns {Promise<'ready' | 'loading' | 'offline'>} Worker readiness status
      */
-    private async getEmbeddingWorkerStatus(): Promise<'ready' | 'loading' | 'offline'> {
+    private async getEmbeddingWorkerStatus(): Promise<EmbeddingWorkerStatusType> {
         try {
             const { getRedisClient } = await import('@/shared/services/redis.service.js')
             const redis = getRedisClient()
             if (!redis) {
                 log.debug('getEmbeddingWorkerStatus: Redis client is null (not initialized)')
-                return 'offline'
+                return EmbeddingWorkerStatus.OFFLINE
             }
 
-            const raw = await redis.get('embed:worker:status')
+            const raw = await redis.get(EMBED_WORKER_STATUS_KEY)
             if (!raw) {
-                log.debug('getEmbeddingWorkerStatus: embed:worker:status key not found in Valkey')
-                return 'offline'
+                log.debug('getEmbeddingWorkerStatus: {} key not found in Valkey', EMBED_WORKER_STATUS_KEY)
+                return EmbeddingWorkerStatus.OFFLINE
             }
 
             const data = JSON.parse(raw) as { status: string }
-            if (data.status === 'ready') return 'ready'
-            if (data.status === 'loading') return 'loading'
-            return 'offline'
+            if (data.status === EmbeddingWorkerStatus.READY) return EmbeddingWorkerStatus.READY
+            if (data.status === EmbeddingWorkerStatus.LOADING) return EmbeddingWorkerStatus.LOADING
+            return EmbeddingWorkerStatus.OFFLINE
         } catch (err) {
             log.error('getEmbeddingWorkerStatus: error reading Valkey', { error: err instanceof Error ? err.message : String(err) })
-            return 'offline'
+            return EmbeddingWorkerStatus.OFFLINE
         }
     }
 
@@ -504,7 +511,7 @@ export class LlmProviderService {
 
             // Upsert the SentenceTransformers provider for the system tenant
             const providerId = await ModelFactory.modelProvider.upsertSystemProvider({
-                factory_name: 'SentenceTransformers',
+                factory_name: SENTENCE_TRANSFORMERS_FACTORY,
                 model_type: 'embedding',
                 model_name: config.localEmbedding.model,
                 tenant_id: config.opensearch.systemTenantId,

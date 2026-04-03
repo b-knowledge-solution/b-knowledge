@@ -34,18 +34,21 @@ import redis
 from loguru import logger
 
 import config
-
-# ── Stream constants ────────────────────────────────────────────────
-STREAM_KEY = "embed:requests"
-GROUP_NAME = "embed-workers"
-RESPONSE_PREFIX = "embed:response:"
-BLOCK_MS = 5000
-RESPONSE_TTL_SECONDS = 60
-TRIM_INTERVAL = 100
-TRIM_MAXLEN = 10000
-HEALTH_KEY = "embed:worker:status"
-HEALTH_TTL_SECONDS = 30
-HEARTBEAT_INTERVAL = 15
+from embed_constants import (
+    BLOCK_MS,
+    GROUP_NAME,
+    HEALTH_KEY,
+    HEALTH_TTL_SECONDS,
+    HEARTBEAT_INTERVAL,
+    RESPONSE_PREFIX,
+    RESPONSE_TTL_SECONDS,
+    SENTENCE_TRANSFORMERS_FACTORY,
+    STREAM_KEY,
+    SYSTEM_API_KEY,
+    TRIM_INTERVAL,
+    TRIM_MAXLEN,
+    WorkerStatus,
+)
 
 
 def create_redis_client():
@@ -132,7 +135,7 @@ def process_message(r, model, msg_id, data):
     r.xack(STREAM_KEY, GROUP_NAME, msg_id)
 
 
-def publish_health(r, model, status="ready"):
+def publish_health(r, model, status=WorkerStatus.READY):
     """Publish worker health status to Valkey with TTL-based liveness.
 
     The key auto-expires after HEALTH_TTL_SECONDS. The worker must
@@ -168,12 +171,12 @@ def main():
     ensure_consumer_group(r)
 
     # Publish loading status before model load (can take minutes on first download)
-    r.set(HEALTH_KEY, json.dumps({"status": "loading", "model": config.LOCAL_EMBEDDING_MODEL or ""}), ex=300)
+    r.set(HEALTH_KEY, json.dumps({"status": WorkerStatus.LOADING, "model": config.LOCAL_EMBEDDING_MODEL or ""}), ex=300)
 
     model = load_model()
 
     # Publish ready status after model is loaded
-    publish_health(r, model, status="ready")
+    publish_health(r, model, status=WorkerStatus.READY)
 
     # Generate unique worker ID based on hostname + PID
     worker_id = f"worker-{socket.gethostname()}-{os.getpid()}"
@@ -205,7 +208,7 @@ def main():
             # Refresh heartbeat periodically to signal liveness
             now = time.time()
             if now - last_heartbeat >= HEARTBEAT_INTERVAL:
-                publish_health(r, model, status="ready")
+                publish_health(r, model, status=WorkerStatus.READY)
                 last_heartbeat = now
 
             # No messages within the block timeout -- loop again

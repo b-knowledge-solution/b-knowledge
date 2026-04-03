@@ -16,14 +16,12 @@
 import { createClient, type RedisClientType } from 'redis'
 import { config } from '@/shared/config/index.js'
 import { log } from '@/shared/services/logger.service.js'
+import {
+  EMBED_REQUEST_STREAM,
+  EMBED_RESPONSE_PREFIX,
+  BRPOP_TIMEOUT_SECONDS,
+} from '@/shared/constants/embedding.js'
 import crypto from 'crypto'
-
-/** Stream key for embedding requests */
-const EMBED_REQUEST_STREAM = 'embed:requests'
-/** Response key prefix (per-request) */
-const EMBED_RESPONSE_PREFIX = 'embed:response:'
-/** Timeout in seconds for BRPOP wait */
-const BRPOP_TIMEOUT_SECONDS = 30
 
 /**
  * @description Service that communicates with Python embedding workers via Valkey Streams.

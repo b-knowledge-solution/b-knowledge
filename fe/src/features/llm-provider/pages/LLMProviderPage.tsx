@@ -13,6 +13,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/queryKeys'
+import { EmbeddingWorkerStatus } from '@/constants/embedding'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, Eye, Plug, Loader2, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -354,17 +355,17 @@ export function LLMProviderPage() {
                         {row.primary.is_system && row.primary.model_status && (
                           <Badge
                             className={
-                              row.primary.model_status === 'ready'
+                              row.primary.model_status === EmbeddingWorkerStatus.READY
                                 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                : row.primary.model_status === 'loading'
+                                : row.primary.model_status === EmbeddingWorkerStatus.LOADING
                                   ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                                   : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                             }
                             role="status"
                           >
-                            {row.primary.model_status === 'ready'
+                            {row.primary.model_status === EmbeddingWorkerStatus.READY
                               ? t('llmProviders.modelReady')
-                              : row.primary.model_status === 'loading'
+                              : row.primary.model_status === EmbeddingWorkerStatus.LOADING
                                 ? t('llmProviders.modelLoading')
                                 : t('llmProviders.modelOffline')}
                           </Badge>

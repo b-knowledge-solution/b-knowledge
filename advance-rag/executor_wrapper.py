@@ -136,45 +136,49 @@ def preload_local_embedding_model():
         logger.error('LOCAL_EMBEDDING_ENABLE=true but LOCAL_EMBEDDING_MODEL is not set — skipping preload')
         return
 
+    from embed_constants import (
+        HEALTH_KEY,
+        SENTENCE_TRANSFORMERS_FACTORY,
+        SYSTEM_API_KEY,
+        WorkerStatus,
+    )
+
     logger.info('Preloading local embedding model: {} ...', model_name)
     try:
         from rag.llm import EmbeddingModel
 
-        if 'SentenceTransformers' not in EmbeddingModel:
-            logger.error('SentenceTransformers factory not registered in EmbeddingModel — check embedding_model.py')
+        if SENTENCE_TRANSFORMERS_FACTORY not in EmbeddingModel:
+            logger.error('{} factory not registered in EmbeddingModel — check embedding_model.py', SENTENCE_TRANSFORMERS_FACTORY)
             return
 
         # Instantiate the singleton — this triggers model download + load
-        embed_instance = EmbeddingModel['SentenceTransformers'](
-            '__system__', model_name, base_url=''
+        embed_instance = EmbeddingModel[SENTENCE_TRANSFORMERS_FACTORY](
+            SYSTEM_API_KEY, model_name, base_url=''
         )
 
         # Verify with a test encode
         test_vectors, token_count = embed_instance.encode(['startup test'])
         dim = len(test_vectors[0]) if len(test_vectors) > 0 else 0
         logger.info(
-            'Local embedding model ready: {} (dim={}, factory=SentenceTransformers)',
-            model_name, dim
+            'Local embedding model ready: {} (dim={}, factory={})',
+            model_name, dim, SENTENCE_TRANSFORMERS_FACTORY
         )
 
         # Publish health status to Valkey so the LLM Config page shows "Ready"
-        # Uses the same key as embedding_worker.py (embed:worker:status)
         try:
             import json
             import socket
             import time
             r = _get_redis()
             health_data = json.dumps({
-                'status': 'ready',
+                'status': WorkerStatus.READY,
                 'model': model_name,
                 'dimension': dim,
                 'worker': f'task-executor-{socket.gethostname()}-{os.getpid()}',
                 'loaded_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
             })
-            # TTL of 0 means no expiry — task executor runs for the lifetime of the process
-            # The embedding_worker heartbeat (30s TTL) will take over if it's also running
-            r.set('embed:worker:status', health_data)
-            logger.info('Published embedding health status to Valkey (embed:worker:status)')
+            r.set(HEALTH_KEY, health_data)
+            logger.info('Published embedding health status to Valkey ({})', HEALTH_KEY)
         except Exception as he:
             logger.warning('Failed to publish embedding health to Valkey: {}', he)
 
