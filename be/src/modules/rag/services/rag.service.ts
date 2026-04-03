@@ -534,6 +534,37 @@ export class RagService {
     }
 
     // -------------------------------------------------------------------------
+    // Re-embed
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description Queue a re-embed task for all chunks in a dataset.
+     * Verifies dataset existence before enqueuing the work via Redis Stream.
+     * The Python task executor will pick up the task and re-generate embeddings
+     * using the currently configured embedding model (per D-14).
+     * @param {string} datasetId - UUID of the dataset to re-embed
+     * @returns {Promise<{ taskId: string; message: string }>} Created task reference
+     * @throws {Error} If the dataset is not found or has been deleted
+     */
+    async reEmbedDataset(datasetId: string): Promise<{ taskId: string; message: string }> {
+        // Verify dataset exists before queuing
+        const dataset = await ModelFactory.dataset.findById(datasetId)
+        if (!dataset || dataset.status === DatasetStatus.DELETED) {
+            throw new Error(ComparisonLiteral.DATASET_NOT_FOUND)
+        }
+
+        // Dynamic import to avoid eager Redis init when not needed
+        const { ragRedisService } = await import('./rag-redis.service.js')
+
+        // Enqueue re-embed task via Redis Stream pipeline
+        const taskId = await ragRedisService.queueReEmbed(datasetId)
+
+        log.info('Re-embed task queued', { datasetId, taskId })
+
+        return { taskId, message: 'Re-embed task queued' }
+    }
+
+    // -------------------------------------------------------------------------
     // Dataset Doc Count & Field Map
     // -------------------------------------------------------------------------
 

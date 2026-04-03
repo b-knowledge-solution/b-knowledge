@@ -152,6 +152,31 @@ export class RagRedisService {
     }
 
     /**
+     * @description Queue a re-embed task for all chunks in a dataset.
+     * The Python task executor will re-generate embeddings using the currently
+     * configured embedding model. Uses a synthetic doc_id convention similar
+     * to graph_raptor_x for dataset-level tasks.
+     * @param {string} datasetId - Dataset UUID (hex, no hyphens)
+     * @param {number} [priority=0] - Task priority level
+     * @returns {Promise<string>} Generated task UUID
+     */
+    async queueReEmbed(datasetId: string, priority = 0): Promise<string> {
+        const taskId = getUuid();
+        await this.queueTask({
+            id: taskId,
+            doc_id: 'reembed_x', // Synthetic doc_id for dataset-level re-embed task
+            from_page: 0,
+            to_page: 100000000,
+            task_type: 'reembed',
+            priority,
+            progress_msg: `${timeStr()} Re-embed task queued...`,
+            begin_at: datetimeStr(),
+            dataset_id: datasetId,
+        }, priority);
+        return taskId;
+    }
+
+    /**
      * @description Queue a per-document enrichment task (keyword extraction, question generation, tagging, or metadata)
      * @param {string} docId - Document UUID (hex, no hyphens)
      * @param {'keyword' | 'question' | 'tag' | 'metadata'} taskType - Enrichment type

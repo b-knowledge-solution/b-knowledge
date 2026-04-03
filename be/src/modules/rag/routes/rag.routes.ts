@@ -64,6 +64,9 @@ router.post('/datasets/:id/generate-field-map', requirePermission('manage_datase
 router.get('/datasets/:id/settings', requireAuth, controller.getDatasetSettings.bind(controller));
 router.put('/datasets/:id/settings', requirePermission('manage_datasets'), validate({ params: uuidParamSchema, body: updateDatasetSettingsSchema }), controller.updateDatasetSettings.bind(controller));
 
+// Re-embed: queue background task to re-generate embeddings for all chunks (per D-14)
+router.post('/datasets/:id/re-embed', requirePermission('manage_datasets'), validate({ params: uuidParamSchema }), controller.reEmbedDataset.bind(controller));
+
 // Chunk management endpoints (manual add/edit/delete)
 router.post('/datasets/:id/chunks', requirePermission('manage_datasets'), validate({ params: uuidParamSchema, body: createChunkSchema }), controller.createChunk.bind(controller));
 router.put('/datasets/:id/chunks/:chunkId', requirePermission('manage_datasets'), validate({ params: chunkParamSchema, body: updateChunkSchema }), controller.updateChunk.bind(controller));

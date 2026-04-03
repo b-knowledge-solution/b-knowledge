@@ -955,6 +955,40 @@ export class RagController {
     }
 
     // -------------------------------------------------------------------------
+    // Re-embed
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description POST /datasets/:id/re-embed — Queue a background task to re-embed
+     * all chunks in a dataset. Used when the embedding model changes and existing
+     * vectors become incompatible (per D-14). Returns 202 Accepted with task ID.
+     * @param {Request} req - Express request with dataset ID in params
+     * @param {Response} res - Express response with task ID and confirmation message
+     * @returns {Promise<void>}
+     */
+    async reEmbedDataset(req: Request, res: Response): Promise<void> {
+        const { id } = req.params
+        if (!id) {
+            res.status(400).json({ error: 'Dataset ID is required' })
+            return
+        }
+
+        try {
+            // Delegate to service which validates dataset and enqueues task
+            const result = await ragService.reEmbedDataset(id)
+            res.status(202).json(result)
+        } catch (error: any) {
+            // Return 404 for missing dataset, 500 for other errors
+            if (error.message === ComparisonLiteral.DATASET_NOT_FOUND) {
+                res.status(404).json({ error: ComparisonLiteral.DATASET_NOT_FOUND })
+                return
+            }
+            log.error('Failed to queue re-embed task', { error: String(error) })
+            res.status(500).json({ error: 'Failed to queue re-embed task' })
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Chunk Management (manual add/edit/delete)
     // -------------------------------------------------------------------------
 
