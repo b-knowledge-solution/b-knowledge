@@ -21,6 +21,7 @@ DB_PASSWORD = os.getenv("DB_PASSWORD", "")
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
+REDIS_DB = int(os.getenv("REDIS_DB", "0"))
 
 # Elasticsearch
 ES_HOST = os.getenv("ES_HOST", "http://localhost:9200")
