@@ -18,6 +18,70 @@ set -e
 
 WORKER_MODE="${WORKER_MODE:-task-executor}"
 
+# ── Generate conf/local.service_conf.yaml from environment variables ──────────
+# service_conf.yaml hardcodes localhost for all services. At runtime in Docker
+# the real hostnames come from environment variables. conf/local.service_conf.yaml
+# is merged on top of the base file by config_utils.read_config(), so we write
+# it here (overwriting any stale file from a previous run) to ensure the live
+# env vars always win — regardless of what is baked into the image.
+LOCAL_CONF="/app/conf/local.service_conf.yaml"
+
+# Redis host in service_conf.yaml is "host:port" on a single field.
+# REDIS_HOST / REDIS_PORT / REDIS_PASSWORD / REDIS_DB come from Docker env_file.
+REDIS_HOST="${REDIS_HOST:-localhost}"
+REDIS_PORT="${REDIS_PORT:-6379}"
+REDIS_PASSWORD="${REDIS_PASSWORD:-}"
+REDIS_DB="${REDIS_DB:-0}"
+
+# PostgreSQL
+DB_HOST="${DB_HOST:-localhost}"
+DB_PORT="${DB_PORT:-5432}"
+DB_NAME="${DB_NAME:-knowledge_base}"
+DB_USER="${DB_USER:-postgres}"
+DB_PASSWORD="${DB_PASSWORD:-}"
+
+# S3-compatible storage (MinIO / RustFS)
+S3_ENDPOINT="${S3_ENDPOINT:-localhost}"
+S3_PORT="${S3_PORT:-9000}"
+S3_ACCESS_KEY="${S3_ACCESS_KEY:-}"
+S3_SECRET_KEY="${S3_SECRET_KEY:-}"
+S3_BUCKET="${S3_BUCKET:-knowledge}"
+S3_PREFIX_PATH="${S3_PREFIX_PATH:-}"
+
+# OpenSearch / VectorDB
+VECTORDB_HOST="${VECTORDB_HOST:-http://localhost:9201}"
+VECTORDB_USERNAME="${VECTORDB_USERNAME:-admin}"
+VECTORDB_PASSWORD="${VECTORDB_PASSWORD:-}"
+
+# Warn when VECTORDB_HOST still points to localhost — almost certainly wrong in Docker
+if echo "${VECTORDB_HOST}" | grep -qE 'localhost|127\.0\.0\.1'; then
+  echo "[entrypoint] WARNING: VECTORDB_HOST=${VECTORDB_HOST} — this is likely wrong inside Docker. Set VECTORDB_HOST=http://opensearch:9201 in docker/.env"
+fi
+
+echo "[entrypoint] Writing ${LOCAL_CONF} from environment variables"
+cat > "${LOCAL_CONF}" <<EOF
+redis:
+  host: '${REDIS_HOST}:${REDIS_PORT}'
+  password: '${REDIS_PASSWORD}'
+  db: ${REDIS_DB}
+postgres:
+  host: '${DB_HOST}'
+  port: ${DB_PORT}
+  name: '${DB_NAME}'
+  user: '${DB_USER}'
+  password: '${DB_PASSWORD}'
+minio:
+  host: '${S3_ENDPOINT}:${S3_PORT}'
+  user: '${S3_ACCESS_KEY}'
+  password: '${S3_SECRET_KEY}'
+  bucket: '${S3_BUCKET}'
+  prefix_path: '${S3_PREFIX_PATH}'
+os:
+  hosts: '${VECTORDB_HOST}'
+  username: '${VECTORDB_USERNAME}'
+  password: '${VECTORDB_PASSWORD}'
+EOF
+
 echo "[entrypoint] Starting advance-rag worker: ${WORKER_MODE}"
 
 case "${WORKER_MODE}" in

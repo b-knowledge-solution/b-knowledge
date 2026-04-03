@@ -5,6 +5,7 @@
 !package.json
 !package-lock.json
 !tsconfig.json
+!scripts/
 !src/
 !public/
 

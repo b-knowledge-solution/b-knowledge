@@ -11,6 +11,7 @@ RUN npm install
 
 # Copy source files for compilation
 COPY tsconfig.json ./
+COPY scripts ./scripts
 COPY src ./src
 
 # Compile TypeScript → dist/
