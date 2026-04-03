@@ -464,18 +464,52 @@ export class LlmProviderService {
      * If the key exists, the worker is alive. If absent, it's offline.
      * @returns {Promise<'ready' | 'loading' | 'offline'>} Worker readiness status
      */
+    /** Dedicated Redis client for health checks — avoids dependency on session Redis init */
+    private healthRedisClient: import('redis').RedisClientType | null = null
+    private healthRedisInitializing = false
+
+    /**
+     * @description Get or create a dedicated Redis client for health status reads.
+     * Separate from the session Redis client to avoid the SESSION_STORE gate.
+     * @returns {Promise<import('redis').RedisClientType | null>} Connected client or null
+     */
+    private async getHealthRedisClient() {
+        if (this.healthRedisClient) return this.healthRedisClient
+        if (this.healthRedisInitializing) return null
+
+        this.healthRedisInitializing = true
+        try {
+            const { createClient } = await import('redis')
+            const redisUrl = config.redis.url
+            const client = createClient({ url: redisUrl })
+            client.on('error', (err: Error) => {
+                log.debug('Health Redis client error: {}', err.message)
+            })
+            await client.connect()
+            this.healthRedisClient = client as import('redis').RedisClientType
+            return this.healthRedisClient
+        } catch (err) {
+            log.debug('Failed to connect health Redis client: {}', err instanceof Error ? err.message : String(err))
+            this.healthRedisInitializing = false
+            return null
+        }
+    }
+
+    /**
+     * @description Read embedding worker health status from Valkey.
+     * Uses a dedicated Redis client (not the session client) to avoid
+     * SESSION_STORE gate issues in development mode.
+     * @returns {Promise<EmbeddingWorkerStatusType>} Worker readiness status
+     */
     private async getEmbeddingWorkerStatus(): Promise<EmbeddingWorkerStatusType> {
         try {
-            const { getRedisClient } = await import('@/shared/services/redis.service.js')
-            const redis = getRedisClient()
+            const redis = await this.getHealthRedisClient()
             if (!redis) {
-                log.debug('getEmbeddingWorkerStatus: Redis client is null (not initialized)')
                 return EmbeddingWorkerStatus.OFFLINE
             }
 
             const raw = await redis.get(EMBED_WORKER_STATUS_KEY)
             if (!raw) {
-                log.debug('getEmbeddingWorkerStatus: {} key not found in Valkey', EMBED_WORKER_STATUS_KEY)
                 return EmbeddingWorkerStatus.OFFLINE
             }
 
