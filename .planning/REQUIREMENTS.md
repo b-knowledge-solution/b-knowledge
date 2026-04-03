@@ -7,12 +7,12 @@
 
 Requirements for v0.2 milestone: Knowledge Base Refactor & Quality.
 
-### Rename (Project → Knowledge Base)
+### Rename (Project -> Knowledge Base)
 
 - [x] **REN-01**: User sees "Knowledge Base" instead of "Project" across all UI pages, navigation, and labels (3 locales: en, vi, ja)
-- [x] **REN-02**: All DB tables renamed (`projects` → `knowledge_base`, `project_*` → `knowledge_base_*`, all `project_id` FK columns → `knowledge_base_id`)
-- [x] **REN-03**: All BE module files, routes, models renamed (`/api/projects/*` → `/api/knowledge-base/*`, module directory `modules/knowledge-base/`, barrel exports)
-- [x] **REN-04**: All FE feature files, routes, components renamed (`/projects/:id` → `/knowledge-bases/:id`, feature directory, API layer)
+- [x] **REN-02**: All DB tables renamed (`projects` -> `knowledge_base`, `project_*` -> `knowledge_base_*`, all `project_id` FK columns -> `knowledge_base_id`)
+- [x] **REN-03**: All BE module files, routes, models renamed (`/api/projects/*` -> `/api/knowledge-base/*`, module directory `modules/knowledge-base/`, barrel exports)
+- [x] **REN-04**: All FE feature files, routes, components renamed (`/projects/:id` -> `/knowledge-bases/:id`, feature directory, API layer)
 - [x] **REN-05**: Python worker `ragflow_doc_meta_` prefix renamed to `knowledge_doc_meta_` in all connector files
 - [x] **REN-06**: All test files updated to use new naming, full test suite passes after rename
 
@@ -20,7 +20,7 @@ Requirements for v0.2 milestone: Knowledge Base Refactor & Quality.
 
 - [ ] **CHUNK-01**: User can select table-aware chunking strategy for documents containing tables (adaptive row batching)
 - [ ] **CHUNK-02**: User can select semantic chunking strategy that splits at topic boundaries using embedding similarity
-- [ ] **CHUNK-03**: User can select recursive chunking strategy (hierarchy of separators: paragraph → line → sentence → word)
+- [ ] **CHUNK-03**: User can select recursive chunking strategy (hierarchy of separators: paragraph -> line -> sentence -> word)
 - [ ] **CHUNK-04**: System computes heuristic quality scores per chunk at ingestion (token count, TTR, dedup detection, truncation flag, language coherence)
 - [ ] **CHUNK-05**: User can view chunk quality indicators on the chunk list UI (flagged chunks highlighted)
 - [ ] **CHUNK-06**: Quality scores stored as OpenSearch metadata fields for future query-time filtering
@@ -32,6 +32,17 @@ Requirements for v0.2 milestone: Knowledge Base Refactor & Quality.
 - [ ] **PERM-03**: KB creator has implicit Admin access; system super-admin/admin bypasses KB permissions
 - [ ] **PERM-04**: Permission-aware retrieval filters OpenSearch search/chat results based on user's KB + category access
 - [ ] **PERM-05**: User can view and manage permission grants in KB settings UI
+
+### Internal Embedding System
+
+- [ ] **EMB-01**: SentenceTransformersEmbed class implements Base.encode()/encode_queries() and auto-registers via _FACTORY_NAME in EmbeddingModel dict
+- [ ] **EMB-02**: Environment configuration (LOCAL_EMBEDDING_ENABLE, LOCAL_EMBEDDING_MODEL, LOCAL_EMBEDDING_PATH) in advance-rag, backend, and docker
+- [ ] **EMB-03**: DB migration adds is_system boolean column to model_providers table with default false
+- [ ] **EMB-04**: Backend startup auto-seeds SentenceTransformers model_providers record when LOCAL_EMBEDDING_ENABLE=true; removes when false (idempotent)
+- [ ] **EMB-05**: Valkey Stream bridge connects Node.js search to Python embedding workers for query-time embedding (XADD/XREADGROUP/BRPOP)
+- [ ] **EMB-06**: LLM Config page shows system info badge for system-managed providers with disabled edit/delete and tooltip
+- [ ] **EMB-07**: Dataset Settings shows re-embed warning banner on dimension mismatch with "Re-embed All Chunks" CTA button and confirmation dialog
+- [ ] **EMB-08**: Docker Compose defines embedding-worker service with persistent HuggingFace cache volume and CPU-only torch
 
 ### New KB Features
 
@@ -66,6 +77,9 @@ Deferred to v0.3+. Tracked but not in current roadmap.
 | Custom permission DSL/policy engine | Overkill for 3-tier RBAC; simple role-permission mapping via CASL |
 | Real-time chunk quality scoring at query time | Too slow; score at ingestion, filter by threshold at query time |
 | Automatic re-chunking without user approval | Silently re-chunking breaks existing references; provide manual trigger instead |
+| GPU support for local embedding | Add when CPU throughput is insufficient (Phase 11 deferred) |
+| Micro-batching in query-time embedding | Add if latency becomes an issue (Phase 11 deferred) |
+| Model download management UI | Nice-to-have, not essential for v0.2 |
 
 ## Traceability
 
@@ -90,13 +104,21 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PERM-03 | Phase 9 | Pending |
 | PERM-04 | Phase 9 | Pending |
 | PERM-05 | Phase 9 | Pending |
+| EMB-01 | Phase 11 | Pending |
+| EMB-02 | Phase 11 | Pending |
+| EMB-03 | Phase 11 | Pending |
+| EMB-04 | Phase 11 | Pending |
+| EMB-05 | Phase 11 | Pending |
+| EMB-06 | Phase 11 | Pending |
+| EMB-07 | Phase 11 | Pending |
+| EMB-08 | Phase 11 | Pending |
 | KB-01 | Phase 10 | Pending |
 
 **Coverage:**
-- v0.2 requirements: 18 total
-- Mapped to phases: 18
+- v0.2 requirements: 26 total
+- Mapped to phases: 26
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-02*
-*Last updated: 2026-04-02 after roadmap creation*
+*Last updated: 2026-04-03 after Phase 11 planning*

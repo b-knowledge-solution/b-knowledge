@@ -2,8 +2,8 @@
 
 ## Milestones
 
-- ✅ **v0.1 Document Upload Pipeline** - Phases 1-6 (shipped)
-- 🚧 **v0.2 Knowledge Base Refactor & Quality** - Phases 7-10 (in progress)
+- v0.1 Document Upload Pipeline - Phases 1-6 (shipped)
+- v0.2 Knowledge Base Refactor & Quality - Phases 7-10 (in progress)
 
 ## Phases
 
@@ -82,12 +82,13 @@ Plans:
 
 ### v0.2 Knowledge Base Refactor & Quality (In Progress)
 
-**Milestone Goal:** Rename "Project" to "Knowledge Base" across the entire app, enhance chunk data quality with advanced strategies and scoring, add a 3-tier permission system, and prepare extensibility for future KB features.
+**Milestone Goal:** Rename "Project" to "Knowledge Base" across the entire app, enhance chunk data quality with advanced strategies and scoring, add a 3-tier permission system, add self-hosted embedding via Sentence Transformers, and prepare extensibility for future KB features.
 
 - [ ] **Phase 7: DB + BE + Python Rename** - Rename database schema, backend module, Python worker prefixes from "Project" to "Knowledge Base"
 - [x] **Phase 8: Frontend Rename** - Rename all FE files, routes, components, i18n from "Project" to "Knowledge Base"; verify full test suite (completed 2026-04-02)
 - [ ] **Phase 9: Permission System** - 3-tier KB-level and category-level permissions with permission-aware retrieval
 - [ ] **Phase 10: Chunk Quality Pipeline** - Advanced chunking strategies, heuristic quality scoring, quality UI indicators
+- [ ] **Phase 11: Internal Embedding System** - Self-hosted Sentence Transformers embedding service for documents and chat, replacing external API dependency
 
 ## Phase Details
 
@@ -148,11 +149,29 @@ Plans:
 **Plans**: TBD
 **UI hint**: yes
 
+### Phase 11: Internal Embedding System
+**Goal**: Provide a self-hosted embedding service using Hugging Face Sentence Transformers, enabling document and chat embedding as an internal resource without external API dependency
+**Depends on**: Phase 7
+**Requirements**: EMB-01, EMB-02, EMB-03, EMB-04, EMB-05, EMB-06, EMB-07, EMB-08
+**Success Criteria** (what must be TRUE):
+  1. System can generate embeddings for documents and chat messages using locally-hosted Sentence Transformers models
+  2. Embedding service integrates with the existing RAG pipeline (advance-rag) as an alternative to external embedding APIs
+  3. Admin can configure and select the internal embedding model from the model provider settings
+  4. Existing documents can be re-embedded using the internal service without data loss
+**Plans**: 5 plans
+
+Plans:
+- [ ] 11-01-PLAN.md -- SentenceTransformersEmbed class + env config + DB migration
+- [ ] 11-02-PLAN.md -- Backend startup auto-seed hook for system provider
+- [ ] 11-03-PLAN.md -- Valkey Stream bridge (Python worker + Node.js service)
+- [ ] 11-04-PLAN.md -- Frontend: system badge + re-embed warning banner + i18n
+- [ ] 11-05-PLAN.md -- Docker Compose embedding-worker service + HF cache volume
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 7 -> 8 -> 9 -> 10
-Note: Phases 8, 9, and 10 all depend on Phase 7 but are independent of each other.
+Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11
+Note: Phases 8, 9, 10, and 11 all depend on Phase 7 but are independent of each other.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -166,3 +185,4 @@ Note: Phases 8, 9, and 10 all depend on Phase 7 but are independent of each othe
 | 8. Frontend Rename | v0.2 | 3/3 | Complete   | 2026-04-02 |
 | 9. Permission System | v0.2 | 0/? | Not started | - |
 | 10. Chunk Quality Pipeline | v0.2 | 0/? | Not started | - |
+| 11. Internal Embedding System | v0.2 | 0/5 | Not started | - |
