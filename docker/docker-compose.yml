@@ -117,6 +117,10 @@ services:
       EMBEDDING_BATCH_SIZE: ${EMBEDDING_BATCH_SIZE:-16}
       DOC_BULK_SIZE: ${DOC_BULK_SIZE:-4}
       WORKER_HEARTBEAT_TIMEOUT: ${WORKER_HEARTBEAT_TIMEOUT:-120}
+      # Local embedding (Sentence Transformers) — preloads model at startup if enabled
+      LOCAL_EMBEDDING_ENABLE: ${LOCAL_EMBEDDING_ENABLE:-false}
+      LOCAL_EMBEDDING_MODEL: ${LOCAL_EMBEDDING_MODEL:-}
+      LOCAL_EMBEDDING_PATH: ${LOCAL_EMBEDDING_PATH:-}
       LOG_PREFIX: task-executor
       LOG_ROTATION: ${LOG_ROTATION:-50 MB}
       LOG_RETENTION: ${LOG_RETENTION:-30 days}
@@ -124,6 +128,8 @@ services:
       LOG_DIR: ${LOG_DIR:-/app/logs}
     volumes:
       - app_logs:/app/logs
+      # Share HuggingFace model cache with embedding-worker to avoid double-download
+      - hf-cache:/root/.cache/huggingface
     networks:
       - kb-network
 
