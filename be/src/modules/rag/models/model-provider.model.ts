@@ -68,12 +68,12 @@ export class ModelProviderModel extends BaseModel<ModelProvider> {
    * @description List active providers with safe fields only (no API keys), optionally filtered by model_type.
    * Used by config dialogs that do not require admin permission.
    * @param {string} [modelType] - Optional model type filter (e.g. 'chat', 'embedding', 'rerank')
-   * @returns {Promise<Pick<ModelProvider, 'id' | 'factory_name' | 'model_type' | 'model_name' | 'max_tokens' | 'is_default' | 'vision'>[]>} Safe provider records without sensitive fields
+   * @returns {Promise<Pick<ModelProvider, 'id' | 'factory_name' | 'model_type' | 'model_name' | 'max_tokens' | 'is_default' | 'vision' | 'is_system'>[]>} Safe provider records without sensitive fields
    */
-  async findPublicList(modelType?: string): Promise<Pick<ModelProvider, 'id' | 'factory_name' | 'model_type' | 'model_name' | 'max_tokens' | 'is_default' | 'vision'>[]> {
+  async findPublicList(modelType?: string): Promise<Pick<ModelProvider, 'id' | 'factory_name' | 'model_type' | 'model_name' | 'max_tokens' | 'is_default' | 'vision' | 'is_system'>[]> {
     // Only expose safe columns — never return api_key or api_base
     let query = this.knex(this.tableName)
-      .select('id', 'factory_name', 'model_type', 'model_name', 'max_tokens', 'is_default', 'vision')
+      .select('id', 'factory_name', 'model_type', 'model_name', 'max_tokens', 'is_default', 'vision', 'is_system')
       .where('status', ProviderStatus.ACTIVE)
       .orderBy('factory_name')
       .orderBy('model_name')
@@ -84,5 +84,68 @@ export class ModelProviderModel extends BaseModel<ModelProvider> {
     }
 
     return query
+  }
+
+  /**
+   * @description Upsert a system-managed model provider record. Checks for an existing active
+   * record with the same (factory_name, model_type, model_name, tenant_id) composite key.
+   * If found, updates it to ensure is_system=true. Otherwise, creates a new record.
+   * @param {object} data - Provider data with factory_name, model_type, model_name, tenant_id
+   * @returns {Promise<string>} The ID of the upserted record
+   */
+  async upsertSystemProvider(data: {
+    factory_name: string
+    model_type: string
+    model_name: string
+    tenant_id: string
+  }): Promise<string> {
+    // Check for existing active record with same factory+model+type+tenant
+    const existing = await this.knex(this.tableName)
+      .where({
+        factory_name: data.factory_name,
+        model_type: data.model_type,
+        model_name: data.model_name,
+        tenant_id: data.tenant_id,
+        status: ProviderStatus.ACTIVE,
+      })
+      .first()
+
+    if (existing) {
+      // Update existing record to ensure is_system flag is set
+      await this.knex(this.tableName)
+        .where({ id: existing.id })
+        .update({
+          is_system: true,
+          api_key: '__system__',
+          updated_at: this.knex.fn.now(),
+        })
+      return existing.id
+    }
+
+    // Create new system provider record
+    const [record] = await this.knex(this.tableName)
+      .insert({
+        factory_name: data.factory_name,
+        model_type: data.model_type,
+        model_name: data.model_name,
+        tenant_id: data.tenant_id,
+        api_key: '__system__',
+        is_system: true,
+        status: ProviderStatus.ACTIVE,
+      })
+      .returning('id')
+
+    return record.id
+  }
+
+  /**
+   * @description Remove all system-managed provider records (is_system=true).
+   * Called on startup when LOCAL_EMBEDDING_ENABLE is false to clean up stale records.
+   * @returns {Promise<number>} Number of records deleted
+   */
+  async removeSystemProviders(): Promise<number> {
+    return this.knex(this.tableName)
+      .where({ is_system: true })
+      .del()
   }
 }

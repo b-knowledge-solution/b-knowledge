@@ -738,6 +738,8 @@ export interface ModelProvider {
     status: string;
     /** Whether this is the default provider for its model type */
     is_default: boolean;
+    /** Whether this provider is system-managed (auto-seeded via env vars, non-editable in UI) */
+    is_system: boolean;
     /** User ID who created this record */
     created_by?: string | null;
     /** User ID who last updated this record */
