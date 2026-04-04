@@ -52,6 +52,17 @@ import { agentEmbedController } from '@/modules/agents/controllers/agent-embed.c
 import { requireAuth, requireAbility } from '@/shared/middleware/auth.middleware.js';
 import { requireTenant } from '@/shared/middleware/tenant.middleware.js';
 
+/**
+ * @description Readiness contract for startup-dependent health checks.
+ */
+interface StartupReadiness {
+    /**
+     * @description Returns true only after blocking bootstrap work has completed.
+     * @returns {boolean} Whether the backend is ready for dependent services.
+     */
+    isReady: () => boolean
+}
+
 // ============================================================================
 // Rate Limiters
 // ============================================================================
@@ -236,7 +247,7 @@ function registerRoutes(apiRouter: Router): void {
  * @param {Express} app - Express application instance
  * @returns {void}
  */
-export function setupApiRoutes(app: Express): void {
+export function setupApiRoutes(app: Express, startupReadiness?: StartupReadiness): void {
     // Apply general rate limiter to all API routes
     app.use('/api', generalLimiter);
 
@@ -245,15 +256,21 @@ export function setupApiRoutes(app: Express): void {
         const timestamp = new Date().toISOString();
         const dbConnected = await checkConnection();
         const redisStatus = getRedisStatus();
+        const startupReady = startupReadiness?.isReady() ?? true;
 
-        // Report 'ok' only when both DB and Redis are healthy; treat unconfigured Redis as acceptable
+        // Keep health degraded until migrations and bootstrap tasks finish so
+        // workers do not start against a partially initialized schema.
+        const infraHealthy = dbConnected && (
+            redisStatus === HealthStatus.CONNECTED || redisStatus === HealthStatus.NOT_CONFIGURED
+        )
         const healthPayload = {
-            status: dbConnected && (redisStatus === HealthStatus.CONNECTED || redisStatus === HealthStatus.NOT_CONFIGURED) ? HealthStatus.OK : HealthStatus.DEGRADED,
+            status: infraHealthy && startupReady ? HealthStatus.OK : HealthStatus.DEGRADED,
             timestamp,
             services: {
                 express: 'running',
                 database: dbConnected ? HealthStatus.CONNECTED : HealthStatus.DISCONNECTED,
                 redis: redisStatus,
+                startup: startupReady ? HealthStatus.OK : HealthStatus.DEGRADED,
             },
         };
 

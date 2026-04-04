@@ -38,7 +38,7 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 
 import { useAgents, useCreateAgent, useDeleteAgent, useDuplicateAgent } from '../api/agentQueries'
 import { agentApi } from '../api/agentApi'

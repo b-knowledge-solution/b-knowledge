@@ -23,7 +23,6 @@ import numpy as np
 import requests
 from ollama import Client
 from openai import OpenAI
-from zhipuai import ZhipuAI
 
 from common.log_utils import log_exception
 from common.token_utils import num_tokens_from_string, truncate, total_token_count_from_response
@@ -116,14 +115,24 @@ class SentenceTransformersEmbed(Base):
                     # Lazy import to avoid slowing down workers that don't use local embedding
                     from sentence_transformers import SentenceTransformer
                     from loguru import logger as _logger
+                    from local_embedding_utils import validate_sentence_transformer_path
 
                     # Use local path if provided (offline/air-gapped mode), otherwise download from Hub
                     # Access via config module, not os.getenv() directly (per advance-rag convention)
                     import config as app_config
-                    model_path = app_config.LOCAL_EMBEDDING_PATH or model_name
+                    resolved_local_path = validate_sentence_transformer_path(
+                        app_config.LOCAL_EMBEDDING_PATH
+                    )
+                    model_path = resolved_local_path or model_name
+                    load_kwargs = {"device": "cpu"}
+
+                    # Force offline loading when an explicit local directory is configured.
+                    if resolved_local_path:
+                        load_kwargs["local_files_only"] = True
+
                     _logger.info(f"Loading SentenceTransformers model: {model_path} (device=cpu)")
                     SentenceTransformersEmbed._model = SentenceTransformer(
-                        model_path, device="cpu"
+                        model_path, **load_kwargs
                     )
                     SentenceTransformersEmbed._model_name = model_name
                     _logger.info(
@@ -251,6 +260,10 @@ class ZhipuEmbed(Base):
     _FACTORY_NAME = "ZHIPU-AI"
 
     def __init__(self, key, model_name="embedding-2", **kwargs):
+        # Import the optional provider SDK lazily so one missing package
+        # does not prevent the entire embedding registry from loading.
+        from zhipuai import ZhipuAI
+
         self.client = ZhipuAI(api_key=key)
         self.model_name = model_name
 

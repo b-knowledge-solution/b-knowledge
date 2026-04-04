@@ -1,0 +1,72 @@
+# Root .dockerignore for docker/Dockerfile.demo and docker/Dockerfile.demo.offline
+# The build context is the repository root, so we exclude everything that
+# Dockerfile.demo does NOT need to prevent large/inaccessible paths from
+# being sent to the Docker daemon.
+
+# ── Version control & IDE ────────────────────────────────────────────────────
+.git/
+.gitignore
+.gitattributes
+.claude/
+.code-review-graph/
+
+# ── Node dependencies (root-level only; workspace node_modules excluded) ─────
+node_modules/
+
+# ── Build outputs ─────────────────────────────────────────────────────────────
+be/dist/
+be/node_modules/
+fe/dist/
+fe/node_modules/
+
+# ── Python artefacts ──────────────────────────────────────────────────────────
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.egg-info/
+**/.venv/
+.venv/
+venv/
+
+# ── Logs & temp ───────────────────────────────────────────────────────────────
+logs/
+**/*.log
+*.tmp
+
+# ── Test / dev tooling ────────────────────────────────────────────────────────
+benchmarks/
+reports/
+test-data/
+tasks/
+todo/
+samples/
+release-notes/
+ragflow/
+docs/
+design-system/
+patches/
+scripts/
+certs/
+
+# ── Coverage & test artefacts ─────────────────────────────────────────────────
+coverage/
+**/*.test.ts
+**/*.spec.ts
+**/__tests__/
+tests/
+
+# ── Editor / OS artefacts ─────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# ── Markdown / docs in source roots (not needed at runtime) ──────────────────
+*.md
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+ARCHITECTURE.md
+LICENSE
+README.md
+skills-lock.json

@@ -21,7 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Switch } from '@/components/ui/switch'
 import { api } from '@/lib/api'
 import { searchApi } from '../api/searchApi'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 import type { SearchApp, SearchAppAccessEntry } from '../types/search.types'
 
 // ============================================================================

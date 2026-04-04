@@ -13,7 +13,7 @@ import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { UploadCloud, CheckCircle, XCircle, Loader } from 'lucide-react'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 import { UploadStatus } from '@/constants'
 import { uploadVersionDocument } from '../api/knowledgeBaseApi'
 
@@ -116,7 +116,7 @@ const UploadFilesModal = ({
       key: `${Date.now()}-${i}`,
       name: f.name,
       size: f.size,
-      status: UploadStatus.PENDING as const,
+      status: UploadStatus.PENDING,
     }))
     setFileList(items)
 

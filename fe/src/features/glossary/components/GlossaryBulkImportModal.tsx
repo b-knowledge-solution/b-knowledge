@@ -19,7 +19,7 @@ import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { glossaryApi, type BulkImportRow, type BulkImportResult } from '../api/glossaryApi'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 
 // ============================================================================
 // Props

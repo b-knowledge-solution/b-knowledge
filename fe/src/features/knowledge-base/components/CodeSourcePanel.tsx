@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { GitBranch, Archive, FolderGit2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 import { importGitRepo, importZipFile } from '../api/knowledgeBaseApi'
 import { FileSize } from '@/constants'
 

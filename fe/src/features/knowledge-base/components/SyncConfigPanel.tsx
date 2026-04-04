@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Save, Loader2 } from 'lucide-react'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 import type { KnowledgeBaseSyncConfig, SyncSourceType } from '../api/knowledgeBaseApi'
 import SyncConnectionFields from './SyncConnectionFields'
 

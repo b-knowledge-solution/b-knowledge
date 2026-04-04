@@ -35,7 +35,7 @@ import {
     type GlossaryTask,
     type GlossaryKeyword,
 } from '@/features/glossary/api/glossaryApi'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 
 
 // ============================================================================

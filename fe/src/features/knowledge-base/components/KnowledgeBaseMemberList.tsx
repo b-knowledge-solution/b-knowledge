@@ -28,7 +28,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { userApi } from '@/features/users'
 import type { User } from '@/features/auth'

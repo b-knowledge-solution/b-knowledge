@@ -13,7 +13,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider, MutationCache } from '@tanstack/react-query';
-import { globalMessage } from '@/app/Providers';
+import { globalMessage } from '@/lib/globalMessage';
 import i18n from '@/i18n';
 import App from '@/app/App';
 import './index.css';

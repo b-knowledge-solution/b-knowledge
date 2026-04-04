@@ -8,7 +8,6 @@
  */
 
 import { ReactNode } from 'react';
-import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/features/auth';
 import { AbilityProvider } from '@/lib/ability';
@@ -19,6 +18,7 @@ import { ConfirmProvider } from '@/components/ConfirmDialog';
 import { HeaderActionsProvider } from '@/components/HeaderActions';
 import { NavigationProvider } from '@/components/NavigationLoader'
 import { useSocketQueryInvalidation } from '@/hooks/useSocket';
+import { globalMessage } from '@/lib/globalMessage'
 import SettingsDialog from '@/components/SettingsDialog';
 import { ApiKeysDialog } from '@/features/api-keys';
 
@@ -26,18 +26,7 @@ import { ApiKeysDialog } from '@/features/api-keys';
 // Global Notification Bridge
 // ============================================================================
 
-/**
- * Global notification API using Sonner toast.
- * Provides the same interface as the previous Ant Design message bridge
- * so non-component code (e.g. TanStack Query mutations) can surface
- * notifications without refactoring.
- */
-export const globalMessage = {
-  success: (content: string) => toast.success(content),
-  error: (content: string) => toast.error(content),
-  info: (content: string) => toast.info(content),
-  warning: (content: string) => toast.warning(content),
-};
+export { globalMessage }
 
 // ============================================================================
 // Socket → Query Bridge

@@ -6,7 +6,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { teamApi } from './teamApi'
 import { userApi } from '@/features/users'

@@ -13,7 +13,7 @@ import { ArrowLeft, Upload } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 
 import { useMemory, useUpdateMemory } from '../api/memoryQueries'
 import { MemoryMessageTable } from '../components/MemoryMessageTable'

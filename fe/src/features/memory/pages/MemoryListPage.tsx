@@ -39,7 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 
 import { useMemories, useCreateMemory, useUpdateMemory, useDeleteMemory } from '../api/memoryQueries'
 import { MemoryCard } from '../components/MemoryCard'

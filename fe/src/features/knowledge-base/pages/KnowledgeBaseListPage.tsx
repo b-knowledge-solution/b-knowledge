@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 
 import { getKnowledgeBases, createKnowledgeBase, type KnowledgeBase } from '../api/knowledgeBaseApi'
 import CreateKnowledgeBaseModal from '../components/CreateKnowledgeBaseModal'

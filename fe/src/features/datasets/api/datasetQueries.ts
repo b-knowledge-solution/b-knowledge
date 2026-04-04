@@ -19,7 +19,7 @@ import type {
   Chunk,
   AbacPolicyRule,
 } from '../types'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 import { queryKeys } from '@/lib/queryKeys'
 import { PollInterval } from '@/constants'
 

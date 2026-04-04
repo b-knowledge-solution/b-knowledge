@@ -22,7 +22,7 @@ import { Spinner } from '@/components/ui/spinner'
 
 import { glossaryApi } from '../api/glossaryApi'
 import type { UseGlossaryTasksReturn } from '../api/glossaryQueries'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 
 /**
  * Props for the TaskManagementTab component.

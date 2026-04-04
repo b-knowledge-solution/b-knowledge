@@ -21,7 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Switch } from '@/components/ui/switch'
 import { api } from '@/lib/api'
 import { chatApi } from '../api/chatApi'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 import type { ChatAssistant, ChatAssistantAccessEntry } from '../types/chat.types'
 
 // ============================================================================
