@@ -18,7 +18,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { datasetApi } from '../api/datasetApi'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 import { PolicyRuleEditor } from './PolicyRuleEditor'
 import type { Dataset, AbacPolicyRule } from '../types'
 

@@ -15,7 +15,7 @@ import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { UploadCloud, FolderUp, CheckCircle, XCircle, Loader } from 'lucide-react'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 import { uploadVersionDocument } from '../api/knowledgeBaseApi'
 
 // ============================================================================

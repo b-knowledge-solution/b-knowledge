@@ -181,3 +181,4 @@ generated/**
 *.generated.ts
 vendor/**
 node_modules/**
+models

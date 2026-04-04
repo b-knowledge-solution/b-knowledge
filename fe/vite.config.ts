@@ -79,16 +79,16 @@ export default defineConfig(({ mode }) => {
     optimizeDeps: {
       exclude: ['tiktoken'],
     },
+    // Drop console/debugger at the esbuild transform stage (runs before Rollup)
+    esbuild: {
+      drop: ['console', 'debugger'],
+    },
     build: {
-      // Production optimizations
+      // esbuild minification avoids terser TDZ bugs when babel-plugin-react-compiler
+      // is in the pipeline — terser's module-merge pass can reorder class/const
+      // initializations incorrectly, producing "Cannot access 'X' before initialization"
       sourcemap: false,
-      minify: 'terser',
-      terserOptions: {
-        compress: {
-          drop_console: true,
-          drop_debugger: true,
-        },
-      },
+      minify: 'esbuild',
       rollupOptions: {
         output: {
           manualChunks: {

@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { Settings, Clock, Activity } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Spinner } from '@/components/ui/spinner'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 import {
   getSyncConfigs,
   createSyncConfig,

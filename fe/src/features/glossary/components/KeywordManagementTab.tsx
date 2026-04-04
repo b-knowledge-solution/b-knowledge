@@ -24,7 +24,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { glossaryApi } from '../api/glossaryApi'
 import type { UseGlossaryKeywordsReturn } from '../api/glossaryQueries'
 import { KeywordBulkImportModal } from './KeywordBulkImportModal'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 
 /**
  * @description Props for the KeywordManagementTab component.

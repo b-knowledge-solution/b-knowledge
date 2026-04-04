@@ -27,7 +27,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Pagination } from '@/components/ui/pagination'
 import { useConfirm } from '@/components/ConfirmDialog'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 import {
   getVersionDocuments, deleteVersionDocuments, requeueVersionDocuments,
   parseVersionDocuments, syncVersionParserStatus,

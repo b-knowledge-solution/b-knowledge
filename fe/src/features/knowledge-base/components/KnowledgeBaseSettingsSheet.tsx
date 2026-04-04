@@ -26,7 +26,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 import {
   updateKnowledgeBase,
   deleteKnowledgeBase,

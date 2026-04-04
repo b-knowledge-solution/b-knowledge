@@ -95,11 +95,21 @@ def load_model():
         SentenceTransformer: Loaded model ready for encoding.
     """
     from sentence_transformers import SentenceTransformer
+    from local_embedding_utils import validate_sentence_transformer_path
 
-    model_path = config.LOCAL_EMBEDDING_PATH or config.LOCAL_EMBEDDING_MODEL
+    resolved_local_path = validate_sentence_transformer_path(
+        config.LOCAL_EMBEDDING_PATH
+    )
+    model_path = resolved_local_path or config.LOCAL_EMBEDDING_MODEL
     logger.info("Loading SentenceTransformers model: {}", model_path)
 
-    model = SentenceTransformer(model_path, device="cpu")
+    load_kwargs = {"device": "cpu"}
+
+    # Keep the worker strictly offline when an explicit local model directory is set.
+    if resolved_local_path:
+        load_kwargs["local_files_only"] = True
+
+    model = SentenceTransformer(model_path, **load_kwargs)
 
     # Log model info for operational visibility
     embedding_dim = model.get_sentence_embedding_dimension()

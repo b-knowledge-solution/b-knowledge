@@ -11,7 +11,7 @@ import { useConfirm } from '@/components/ConfirmDialog'
 import { glossaryApi } from './glossaryApi'
 import type { GlossaryKeyword, CreateKeywordDto, GlossaryTask, CreateTaskDto } from './glossaryApi'
 import type { KeywordFormData, TaskFormData } from '../types/glossary.types'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 import { queryKeys } from '@/lib/queryKeys'
 
 // ============================================================================

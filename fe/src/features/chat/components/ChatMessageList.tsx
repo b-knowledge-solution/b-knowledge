@@ -9,7 +9,6 @@ import { useTranslation } from 'react-i18next'
 import { Bot, Search, BarChart3, Sparkles, Globe, BookOpen, Loader2 } from 'lucide-react'
 import ChatMessage from './ChatMessage'
 import type { ChatMessage as ChatMessageType, ChatReference, ChatChunk, DocAggregate } from '../types/chat.types'
-import { MessageRole } from '@/constants'
 
 // ============================================================================
 // Props

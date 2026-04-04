@@ -22,9 +22,6 @@ import { FeatureErrorBoundary } from '@/components/ErrorBoundary'
 import { getRouteRoles } from '@/layouts/sidebarNav'
 import '@/i18n';
 
-// Re-export globalMessage for backward compatibility
-export { globalMessage } from '@/app/Providers';
-
 // ============================================================================
 // NavRoleGuard — auto-resolves roles from sidebarNav config
 // ============================================================================

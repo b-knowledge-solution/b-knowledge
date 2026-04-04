@@ -18,7 +18,8 @@
 # Prerequisites:
 #   1. Build kb-worker FIRST: ./scripts/build-images-offline.sh --service worker
 #   2. Push kb-worker to your local Nexus Docker registry
-#   3. Push base images to Nexus (ubuntu:22.04, node:22-alpine, node:22-slim)
+#   3. Push base images to Nexus (python:3.11-slim-bullseye, node:22-alpine,
+#      node:22-slim)
 #   4. Push infiniflow/ragflow_deps:latest to Nexus
 # =============================================================================
 

@@ -25,7 +25,7 @@ import {
 import { Pagination } from '@/components/ui/pagination'
 import { HeaderActions } from '@/components/HeaderActions'
 import { useConfirm } from '@/components/ConfirmDialog'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 import { searchApi } from '../api/searchApi'
 import { useSearchApps } from '../api/searchQueries'
 import SearchAppConfig from '../components/SearchAppConfig'

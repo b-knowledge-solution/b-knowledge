@@ -11,19 +11,19 @@
 #                            e.g. nexus.example.com:8083
 #   NEXUS_NPM_REGISTRY    — Full URL to Nexus npm proxy/group repo
 #                            e.g. http://nexus.example.com:8081/repository/npm-group/
-#   NEXUS_APT_MIRROR       — Full URL to Nexus APT proxy (Ubuntu jammy)
-#                            e.g. http://nexus.example.com:8081/repository/apt-ubuntu-proxy/
+#   NEXUS_APT_MIRROR       — Full URL to Nexus APT proxy (Debian bullseye)
+#                            e.g. http://nexus.example.com:8081/repository/apt-debian-proxy/
 #   RAGFLOW_DEPS_IMAGE     — Local registry path to ragflow_deps image
 #                            e.g. nexus.example.com:8083/infiniflow/ragflow_deps:latest
 #   RAG_IMAGE              — Local registry path to pre-built kb-worker image
 #                            e.g. nexus.example.com:8083/kb-worker:latest
 #
 # Prerequisites — push to local registry first:
-#   docker tag ubuntu:22.04               <NEXUS_REGISTRY>/ubuntu:22.04
+#   docker tag python:3.11-slim-bullseye  <NEXUS_REGISTRY>/python:3.11-slim-bullseye
 #   docker tag node:22-alpine             <NEXUS_REGISTRY>/node:22-alpine
 #   docker tag node:22-slim               <NEXUS_REGISTRY>/node:22-slim
 #   docker tag infiniflow/ragflow_deps:latest <NEXUS_REGISTRY>/infiniflow/ragflow_deps:latest
-#   docker push <NEXUS_REGISTRY>/ubuntu:22.04
+#   docker push <NEXUS_REGISTRY>/python:3.11-slim-bullseye
 #   docker push <NEXUS_REGISTRY>/node:22-alpine
 #   docker push <NEXUS_REGISTRY>/node:22-slim
 #   docker push <NEXUS_REGISTRY>/infiniflow/ragflow_deps:latest
@@ -35,7 +35,7 @@
 #   DOCKER_BUILDKIT=1 docker build \
 #     --build-arg NEXUS_REGISTRY=nexus.example.com:8083 \
 #     --build-arg NEXUS_NPM_REGISTRY=http://nexus.example.com:8081/repository/npm-group/ \
-#     --build-arg NEXUS_APT_MIRROR=http://nexus.example.com:8081/repository/apt-ubuntu-proxy/ \
+#     --build-arg NEXUS_APT_MIRROR=http://nexus.example.com:8081/repository/apt-debian-proxy/ \
 #     --build-arg RAGFLOW_DEPS_IMAGE=nexus.example.com:8083/infiniflow/ragflow_deps:latest \
 #     --build-arg RAG_IMAGE=nexus.example.com:8083/kb-worker:latest \
 #     -t kb-demo:latest \
@@ -52,12 +52,8 @@ ARG RAG_IMAGE=nexus.example.com:8083/kb-worker:latest
 FROM ${RAGFLOW_DEPS_IMAGE} AS ragflow_deps
 
 # ── Stage 1: kb-worker as Python deps source ────────────────────────────────
-# The kb-worker image (built by advance-rag/Dockerfile.offline) already has:
-#   - Python 3.11 runtime
-#   - PyTorch CPU-only
-#   - sentence-transformers
-#   - All advance-rag pip packages
-# We COPY everything from /usr/local to get Python + all installed packages.
+# The kb-worker image already contains the installed Python packages needed by
+# advance-rag. Reuse those packages, but do not copy its interpreter runtime.
 FROM ${RAG_IMAGE} AS python-deps
 
 # ── Stage 2: Node.js builder — compile FE + BE ──────────────────────────────
@@ -93,19 +89,19 @@ RUN rm -rf be/node_modules && \
 # Copy BE runtime assets (public/icons etc.)
 COPY be/public ./be/public
 
-# ── Stage 3: Runtime — Ubuntu 22.04 with all services ───────────────────────
-FROM ${NEXUS_REGISTRY}/ubuntu:22.04
+# ── Stage 3: Runtime — Debian bullseye with all services ────────────────────
+FROM ${NEXUS_REGISTRY}/python:3.11-slim-bullseye
 
-ARG NEXUS_APT_MIRROR=http://nexus.example.com:8081/repository/apt-ubuntu-proxy/
+ARG NEXUS_APT_MIRROR=http://nexus.example.com:8081/repository/apt-debian-proxy/
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /app
 
-# Overwrite APT sources to point exclusively at Nexus APT proxy
-RUN printf 'deb %s jammy main restricted universe multiverse\n\
-deb %s jammy-security main restricted universe multiverse\n\
-deb %s jammy-updates main restricted universe multiverse\n' \
+# Overwrite APT sources to point exclusively at the Nexus Debian proxy.
+RUN printf 'deb %s bullseye main contrib non-free\n\
+deb %s bullseye-security main contrib non-free\n\
+deb %s bullseye-updates main contrib non-free\n' \
     "${NEXUS_APT_MIRROR}" "${NEXUS_APT_MIRROR}" "${NEXUS_APT_MIRROR}" \
     > /etc/apt/sources.list && \
     apt-get update && apt-get install -y --no-install-recommends \
@@ -134,19 +130,9 @@ COPY --from=node-builder /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
     ln -sf /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
-# ── Copy Python 3.11 + all packages from kb-worker image ───────────────────
-# This includes Python runtime, PyTorch, sentence-transformers, and all
-# advance-rag dependencies — no pip install needed at all.
-COPY --from=python-deps /usr/local/bin/python3.11 /usr/local/bin/python3.11
-COPY --from=python-deps /usr/local/lib/python3.11 /usr/local/lib/python3.11
-COPY --from=python-deps /usr/local/lib/libpython3.11.so* /usr/local/lib/
-COPY --from=python-deps /usr/local/bin/pip3.11 /usr/local/bin/pip3.11
-RUN ln -sf /usr/local/bin/python3.11 /usr/local/bin/python3 && \
-    ln -sf /usr/local/bin/pip3.11 /usr/local/bin/pip3 && \
-    ldconfig
-
-# Copy any additional executables installed by pip (e.g., gunicorn, celery)
+# Copy site-packages and any additional executables installed in kb-worker.
 COPY --from=python-deps /usr/local/bin /tmp/python-bin/
+COPY --from=python-deps /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 RUN cp -a /tmp/python-bin/* /usr/local/bin/ 2>/dev/null || true && \
     rm -rf /tmp/python-bin
 
@@ -171,6 +157,9 @@ COPY --from=node-builder /app/fe/dist /usr/share/nginx/html
 
 # ── Copy built backend ─────────────────────────────────────────────────────
 COPY --from=node-builder /app/be/dist /app/be/dist
+# npm workspaces hoist shared runtime packages like express to /app/node_modules,
+# so the demo image must carry the root production dependency tree as well.
+COPY --from=node-builder /app/node_modules /app/node_modules
 COPY --from=node-builder /app/be/node_modules /app/be/node_modules
 COPY --from=node-builder /app/be/public /app/be/public
 COPY --from=node-builder /app/be/package.json /app/be/package.json
@@ -187,7 +176,8 @@ RUN mkdir -p /app/logs /app/be/.data /app/be/config /app/converter/.data
 
 # ── Copy entrypoint script ─────────────────────────────────────────────────
 COPY docker/demo-entrypoint.sh /app/demo-entrypoint.sh
-RUN chmod +x /app/demo-entrypoint.sh
+# Strip Windows CRLF line endings so the shebang is valid on Linux
+RUN sed -i 's/\r$//' /app/demo-entrypoint.sh && chmod +x /app/demo-entrypoint.sh
 
 # ── Environment variables ──────────────────────────────────────────────────
 # Advance-RAG runtime

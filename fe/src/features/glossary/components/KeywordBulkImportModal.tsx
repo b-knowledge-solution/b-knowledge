@@ -23,7 +23,7 @@ import {
     type BulkImportKeywordRow,
     type BulkImportKeywordResult,
 } from '../api/glossaryApi'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 
 // ============================================================================
 // Props

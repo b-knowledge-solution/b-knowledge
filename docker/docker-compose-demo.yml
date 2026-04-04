@@ -78,6 +78,7 @@ services:
       - converter_data:/app/converter/.data
       # HuggingFace model cache for warm start
       - hf_cache:/root/.cache/huggingface
+      - ./models:/app/models:ro
       # Read-only config files (system-tools, ragflow)
       - ./config:/app/be/config:ro
     healthcheck:

@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Save, Loader2 } from 'lucide-react'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 
 // ============================================================================
 // Types

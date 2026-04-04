@@ -44,6 +44,7 @@ import { syncSchedulerService } from '@/modules/sync/index.js';
  * Exported for test access and route registration.
  */
 const app = express();
+let startupReady = false
 
 // Initialize Redis before any middleware that relies on it (sessions, rate limiting storage)
 await initRedis();
@@ -99,7 +100,9 @@ const sessionConfig: session.SessionOptions = {
 app.use(session(sessionConfig));
 
 // Setup all API routes and middleware
-setupApiRoutes(app);
+setupApiRoutes(app, {
+  isReady: () => startupReady,
+});
 
 // Initialize sync scheduler for connectors with cron schedules (runs after DB is ready)
 // Deferred to after migrations complete in startServer()
@@ -133,61 +136,64 @@ const startServer = async (): Promise<http.Server | https.Server> => {
     socketService.initialize(server);
   }
 
-  server.listen(config.port, async () => {
-    // Allow long-running requests (e.g. file uploads, RAG processing) up to 30 minutes
-    server.setTimeout(30 * 60 * 1000);
+  // Allow long-running requests (e.g. file uploads, RAG processing) up to 30 minutes
+  server.setTimeout(30 * 60 * 1000);
 
-    log.info(`Backend server started`, {
-      url: `${protocol}://${config.devDomain}:${config.port}`,
-      environment: config.nodeEnv,
-      https: config.https.enabled,
-      websocket: config.websocket.enabled,
-      sessionTTL: `${config.session.ttlSeconds / 86400} days`,
-    });
+  if (await checkConnection()) {
+    log.info('Database connected successfully');
 
-    // Schedule recurring maintenance (temp file cleanup, etc.)
+    // Keep schema aligned on boot before accepting any traffic.
+    try {
+      log.info('Running Knex migrations...');
+      const k = knex(dbConfig);
+      await k.migrate.latest();
+      await k.destroy();
+      log.info('Knex migrations completed successfully');
+    } catch (error) {
+      log.error('Failed to run migrations', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        details: JSON.stringify(error, Object.getOwnPropertyNames(error))
+      });
+      process.exit(1);
+    }
+
+    // Ensure a bootstrap admin exists even on fresh databases.
+    await userService.initializeRootUser();
+
+    // Auto-seed system embedding provider when LOCAL_EMBEDDING_ENABLE=true (per D-07).
+    try {
+      await llmProviderService.seedSystemEmbeddingProvider()
+    } catch (err) {
+      log.error('Failed to seed system embedding provider', { error: err })
+    }
+
+    // Initialize background services only after the schema exists.
+    await systemToolsService.initialize();
     cronService.startCleanupJob();
-
-    // Initialize parsing scheduler from system config (if enabled)
     await cronService.initParsingSchedulerFromConfig();
-
-    // Initialize sync scheduler for connectors with cron schedules
     await syncSchedulerService.init();
 
-    await systemToolsService.initialize();
+    // Mark the process ready only after schema migrations and bootstrap data
+    // are fully available for dependent workers and API consumers.
+    startupReady = true
+    log.info('Backend startup readiness complete')
+  } else {
+    log.warn('Database connection failed');
+  }
 
-    if (await checkConnection()) {
-      log.info('Database connected successfully');
-
-      // Keep schema aligned on boot to avoid drift across environments
-      try {
-        log.info('Running Knex migrations...');
-        const k = knex(dbConfig);
-        await k.migrate.latest();
-        await k.destroy();
-        log.info('Knex migrations completed successfully');
-      } catch (error) {
-        log.error('Failed to run migrations', {
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-          details: JSON.stringify(error, Object.getOwnPropertyNames(error))
-        });
-        process.exit(1);
-      }
-
-      // Ensure a bootstrap admin exists even on fresh databases
-      await userService.initializeRootUser();
-
-      // Auto-seed system embedding provider when LOCAL_EMBEDDING_ENABLE=true (per D-07)
-      try {
-        await llmProviderService.seedSystemEmbeddingProvider()
-      } catch (err) {
-        log.error('Failed to seed system embedding provider', { error: err })
-      }
-    } else {
-      log.warn('Database connection failed');
-    }
-  });
+  await new Promise<void>((resolve) => {
+    server.listen(config.port, () => {
+      log.info(`Backend server started`, {
+        url: `${protocol}://${config.devDomain}:${config.port}`,
+        environment: config.nodeEnv,
+        https: config.https.enabled,
+        websocket: config.websocket.enabled,
+        sessionTTL: `${config.session.ttlSeconds / 86400} days`,
+      });
+      resolve();
+    });
+  })
 
   return server;
 };

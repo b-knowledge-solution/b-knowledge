@@ -26,7 +26,7 @@ import {
 import { Pagination } from '@/components/ui/pagination'
 import { HeaderActions } from '@/components/HeaderActions'
 import { useConfirm } from '@/components/ConfirmDialog'
-import { globalMessage } from '@/app/App'
+import { globalMessage } from '@/lib/globalMessage'
 import { chatApi } from '../api/chatApi'
 import { useChatAssistantsAdmin } from '../api/chatQueries'
 import ChatAssistantConfig from '../components/ChatAssistantConfig'
