@@ -52,8 +52,15 @@ export default defineConfig({
       },
     },
     
-    // Test timeout
-    testTimeout: 30000,
+    // Test timeout — bumped from 30s to 90s in Phase 3 because the migration
+    // chain has grown (~10 migrations as of Phase 3 Wave 0) and `withScratchDb`
+    // runs the full chain on every test that uses it. `backfill.test.ts` and
+    // `migrations.test.ts` were timing out at 30s after P3.0a added another
+    // migration. As the chain keeps growing through later phases, this timeout
+    // may need to increase further. The right long-term fix is a shared scratch-DB
+    // pool that doesn't re-run the chain per test, but that's deferred to a
+    // tooling cleanup phase.
+    testTimeout: 90000,
 
     // Knex's migrate.latest() uses runtime `import()` to load migration files,
     // which bypasses Vite's transformer entirely. We register `tsx` as an ESM loader
