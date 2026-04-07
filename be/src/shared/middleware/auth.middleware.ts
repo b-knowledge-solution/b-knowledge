@@ -7,11 +7,18 @@
  *
  * @module middleware/auth
  */
-import { Request, Response, NextFunction } from 'express'
+import { Request, Response, NextFunction, RequestHandler } from 'express'
+import { subject as toCaslSubject } from '@casl/ability'
 import { log } from '@/shared/services/logger.service.js'
 import { User } from '@/shared/models/types.js'
 import { hasPermission, Role, Permission, ADMIN_ROLES } from '@/shared/config/rbac.js'
-import { abilityService, AppAbility } from '@/shared/services/ability.service.js'
+import { abilityService, AppAbility, buildAbilityFor } from '@/shared/services/ability.service.js'
+import { getAllPermissions } from '@/shared/permissions/index.js'
+import { config } from '@/shared/config/index.js'
+// Deep import (not through the module barrel) to avoid a circular dependency:
+// audit/index.ts re-exports audit.routes.ts, which itself imports this
+// middleware file. Importing the service file directly breaks the cycle.
+import { auditService } from '@/modules/audit/services/audit.service.js'
 
 /** Session error code used by frontend to trigger re-auth flows */
 export const REAUTH_REQUIRED_ERROR = 'REAUTH_REQUIRED'
@@ -132,12 +139,19 @@ export function getCurrentUser(req: Request): User | undefined {
 }
 
 /**
- * @description Middleware factory that requires a specific permission to access route.
- * Checks both role-based permissions (via RBAC config) and explicit user permissions.
- * @param {Permission} permission - The permission required to access the route
+ * @description Legacy role-based permission check. Retained under a
+ * `legacy*` name during the Phase 3 middleware sweep so routes that still
+ * pass a legacy `Permission` enum value keep working while Wave 3 migrates
+ * them one-by-one. Checks both role-based permissions (via RBAC config) and
+ * explicit user permissions.
+ * @deprecated Use the new `requirePermission(key: string)` that reads the V2
+ *   ability via the permission registry. This function will be removed in
+ *   P3.5c once every route has been migrated.
+ * @param {Permission} permission - The legacy permission enum required to access the route
  * @returns {Function} Express middleware function
  */
-export function requirePermission(permission: Permission) {
+// TODO(P3.5c): remove after route sweep is green
+export function legacyRequirePermission(permission: Permission) {
   return (req: Request, res: Response, next: NextFunction) => {
     // Get user from session
     const user = req.session?.user
@@ -186,6 +200,109 @@ export function requirePermission(permission: Permission) {
       requiredPermission: permission
     })
     res.status(403).json({ error: 'Access Denied' })
+  }
+}
+
+/**
+ * @description Express middleware that asserts the current user holds the
+ * given permission key in their tenant. Reads the user's V2 ability
+ * (cached via the existing `buildAbilityFor` pipeline) and checks the
+ * `(action, subject)` tuple resolved from the registry for the key.
+ *
+ * **Dual-mode routing for the P3 sweep**: during Wave 3 some routes still
+ * pass a legacy `Permission` enum value whose string is NOT a registry key.
+ * To avoid a flag-day breakage, this function detects whether the input is
+ * a registry key. If it is, the new V2 path runs. If not, it falls through
+ * to `legacyRequirePermission` so existing routes keep working unchanged.
+ * This dual mode goes away in P3.5c when the last legacy call site is gone.
+ *
+ * Returns 403 with `{error: 'permission_denied', key}` on deny. Fires a
+ * best-effort audit log on mutation denies only (POST/PUT/PATCH/DELETE) —
+ * read denies are intentionally not logged to keep the audit volume sane.
+ *
+ * Fails closed in production: if the ability build throws, deny with 500.
+ * Fails open in non-production with a loud warning so local dev isn't
+ * blocked by transient infra flakes.
+ *
+ * @param {string | Permission} key - Permission key from the registry (e.g. `knowledge_base.view`) OR a legacy `Permission` enum value
+ * @returns {RequestHandler} Express request handler
+ *
+ * @example
+ *   router.post('/api/kb', requirePermission('knowledge_base.create'), createKbHandler)
+ */
+export function requirePermission(key: string | Permission): RequestHandler {
+  return async (req, res, next) => {
+    // Validate the user/session context first
+    const user = req.session?.user
+    if (!user) {
+      res.status(401).json({ error: 'Unauthorized' })
+      return
+    }
+    if (!req.user) req.user = user
+
+    // Look up the action+subject from the registry for this key.
+    // If no registry match, fall through to the legacy RBAC middleware so
+    // Wave 3's in-progress route sweep isn't blocked.
+    const all = getAllPermissions()
+    const perm = all.find(p => p.key === key)
+    if (!perm) {
+      // Not a V2 registry key — delegate to the legacy handler
+      legacyRequirePermission(key as Permission)(req, res, next)
+      return
+    }
+
+    try {
+      // Build (or load cached) V2 ability through the existing dispatcher.
+      const ability = await buildAbilityFor({
+        id: user.id,
+        role: user.role,
+        is_superuser: user.is_superuser ?? null,
+        current_org_id: req.session.currentOrgId || (user as any).current_org_id || '',
+      })
+
+      // CASL check — class-level because requirePermission is key-indexed,
+      // not instance-indexed. Row-scoped checks use `requireAbility` instead.
+      if (ability.can(perm.action as any, perm.subject as any)) {
+        next()
+        return
+      }
+
+      // Deny path — audit log only on mutations to avoid read noise
+      const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)
+      if (isMutation) {
+        // Fire-and-forget; never block the response on a logging failure
+        auditService
+          .logPermissionDeny({
+            actor: user.id,
+            tenantId: req.session.currentOrgId || (user as any).current_org_id || '',
+            permissionKey: perm.key,
+            action: perm.action,
+            subject: perm.subject,
+            method: req.method,
+            path: req.path,
+          })
+          .catch(err => log.warn('[requirePermission] audit log failed', { err }))
+      }
+      res.status(403).json({ error: 'permission_denied', key: perm.key })
+      return
+    } catch (err) {
+      // Fail closed in production; fail open with warning in dev/test
+      if (config.nodeEnv === 'production') {
+        log.error('[requirePermission] check failed', {
+          err: err instanceof Error ? err.message : String(err),
+          key: perm.key,
+        })
+        res.status(500).json({ error: 'permission_check_failed' })
+        return
+      } else {
+        log.warn('[requirePermission] check failed in non-prod — failing OPEN', {
+          err: err instanceof Error ? err.message : String(err),
+          key: perm.key,
+        })
+        next()
+        return
+      }
+    }
   }
 }
 
@@ -336,66 +453,166 @@ export function requireOwnershipCustom(
 }
 
 /**
- * @description Middleware factory that checks CASL ability for a specific action on a subject.
- * Loads cached ability from Valkey, falling back to building fresh if cache misses.
- * Attaches the resolved ability to the request for downstream use.
- * @param {string} action - CASL action to check (e.g., 'read', 'create', 'manage')
- * @param {string} subject - CASL subject to check (e.g., 'Dataset', 'Document')
- * @returns {Function} Express middleware function
+ * @description Express middleware that asserts the current user holds the
+ * given `(action, subject)` ability. When `idParam` is provided, the check
+ * is INSTANCE-LEVEL: the subject is wrapped via CASL's `subject(name, instance)`
+ * helper with `id` (and `tenant_id`) set from the request, so row-scoped
+ * grants in `resource_grants` (which V2 emits with `{tenant_id, id}`
+ * conditions) actually match.
+ *
+ * **Bug fix history (P3.1b)**: the previous `requireAbility` at this file's
+ * old ~line 377 called `ability.can(action, subject)` with a bare string
+ * subject. CASL's class-level semantics treat that as "does the user have
+ * ANY rule on this subject class?" and return true even when the only
+ * matching rule is row-scoped to a DIFFERENT id. Concretely: a user holding
+ * a single row-scoped grant on KB `X` was silently allowed through for KB
+ * `Y`, `Z`, etc. — a cross-row over-allow that turned every V2 row-scoped
+ * grant into a de-facto class-level grant at the middleware layer.
+ * The fix is to wrap the subject + id via `toCaslSubject(subjectName, {id,
+ * tenant_id})` so the conditions object reaches the rule matcher. The old
+ * line read:
+ *
+ *   if (!ability.can(action as any, subject as any)) { ... }
+ *
+ * and the new line reads:
+ *
+ *   const instance = toCaslSubject(subjectName, { id, tenant_id: ... })
+ *   allowed = ability.can(action as any, instance)
+ *
+ * When `idParam` is omitted, the check stays CLASS-LEVEL (`ability.can(action,
+ * subjectName)` with a bare string), which preserves the 2-argument
+ * signature for every existing Wave-3-pending call site.
+ *
+ * Fail-closed in production, fail-open in non-prod, mutation-only audit
+ * logging — same semantics as `requirePermission`.
+ *
+ * @param {string} action      CASL action ('read', 'create', 'update', 'delete', 'manage', ...)
+ * @param {string} subjectName CASL subject ('KnowledgeBase', 'User', ...)
+ * @param {string} [idParam]   Optional Express param name for row-scoped checks (e.g. 'id')
+ * @returns {RequestHandler} Express request handler
+ *
+ * @example
+ *   // Class-level
+ *   router.post('/api/kb', requireAbility('create', 'KnowledgeBase'), createKbHandler)
+ *
+ *   // Row-scoped (the case the bug fix enables)
+ *   router.put('/api/kb/:id', requireAbility('update', 'KnowledgeBase', 'id'), updateKbHandler)
  */
-export function requireAbility(action: string, subject: string) {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    // Get user from session
+export function requireAbility(
+  action: string,
+  subjectName: string,
+  idParam?: string,
+): RequestHandler {
+  return async (req, res, next) => {
+    // Session guards
     const user = req.session?.user
     if (!user) {
       res.status(401).json({ error: 'Unauthorized' })
       return
     }
+    if (!req.user) req.user = user
 
-    // Ensure user is attached to request for downstream use
-    if (!req.user) {
-      req.user = user
-    }
+    const tenantId = req.session.currentOrgId || (user as any).current_org_id || ''
 
     try {
-      // Try loading cached ability from Valkey first
+      // Load cached ability first, build fresh on cache miss.
       let ability: AppAbility | null = await abilityService.loadCachedAbility(req.sessionID)
-
       if (!ability) {
-        // Cache miss — build fresh ability from user context
-        ability = await abilityService.buildAbilityFor({
+        ability = await buildAbilityFor({
           id: user.id,
           role: user.role,
           is_superuser: user.is_superuser ?? null,
-          current_org_id: req.session.currentOrgId || '',
+          current_org_id: tenantId,
         })
-        // Cache the freshly built ability for subsequent requests
         await abilityService.cacheAbility(req.sessionID, ability)
       }
 
-      // Check if user has the required ability
-      if (!ability.can(action as any, subject as any)) {
-        log.warn('CASL access denied', {
-          userId: user.id,
-          action,
-          subject,
-          role: user.role,
-        })
-        res.status(403).json({ error: 'Access denied' })
+      // ── Row-scoped check (the P3.1b bug fix) ──────────────────────
+      // When idParam is provided, build a CASL subject instance so the
+      // ability matcher considers row-scoped rules whose conditions contain
+      // `{id}` (and `{tenant_id, id}`). The OLD code called
+      //   `ability.can(action, subject)`
+      // with a bare string, which never matched any rule whose conditions
+      // included an `id` clause — silently bypassing every row-scoped grant.
+      let allowed: boolean
+      if (idParam) {
+        const id = req.params[idParam]
+        if (id == null) {
+          // Route declared an idParam but the request did not provide it.
+          // Developer error — fail closed.
+          log.error('[requireAbility] idParam not found in req.params', {
+            action,
+            subject: subjectName,
+            idParam,
+            paramKeys: Object.keys(req.params ?? {}),
+          })
+          res.status(500).json({ error: 'permission_check_misconfigured' })
+          return
+        }
+        // Canonical CASL instance wrapper. Carries both tenant and id so
+        // rules with `{tenant_id, id}` (V2 resource_grants shape) match.
+        const instance = toCaslSubject(subjectName as any, {
+          id,
+          tenant_id: tenantId,
+        }) as any
+        allowed = ability.can(action as any, instance)
+      } else {
+        // ── Class-level check (original 2-arg semantics preserved) ──
+        allowed = ability.can(action as any, subjectName as any)
+      }
+
+      if (allowed) {
+        // Attach ability for downstream handlers that want to re-check
+        ;(req as any).ability = ability
+        next()
         return
       }
 
-      // Attach ability to request for downstream authorization checks
-      ;(req as any).ability = ability
-      next()
-    } catch (error) {
-      log.error('Error checking ability', {
-        error: error instanceof Error ? error.message : String(error),
+      // Deny path — audit log on mutations only
+      const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)
+      if (isMutation) {
+        auditService
+          .logPermissionDeny({
+            actor: user.id,
+            tenantId,
+            permissionKey: `${subjectName}.${action}`,
+            action,
+            subject: subjectName,
+            method: req.method,
+            path: req.path,
+          })
+          .catch(err => log.warn('[requireAbility] audit log failed', { err }))
+      }
+      log.warn('CASL access denied', {
         userId: user.id,
         action,
-        subject,
+        subject: subjectName,
+        role: user.role,
+        idParam: idParam ?? null,
       })
-      res.status(500).json({ error: 'Internal server error' })
+      res.status(403).json({ error: 'permission_denied', action, subject: subjectName })
+      return
+    } catch (error) {
+      // Fail closed in production; fail open in non-prod with a loud warning
+      if (config.nodeEnv === 'production') {
+        log.error('[requireAbility] check failed', {
+          error: error instanceof Error ? error.message : String(error),
+          userId: user.id,
+          action,
+          subject: subjectName,
+        })
+        res.status(500).json({ error: 'permission_check_failed' })
+        return
+      } else {
+        log.warn('[requireAbility] check failed in non-prod — failing OPEN', {
+          error: error instanceof Error ? error.message : String(error),
+          userId: user.id,
+          action,
+          subject: subjectName,
+        })
+        next()
+        return
+      }
     }
   }
 }

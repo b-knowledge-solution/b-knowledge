@@ -192,6 +192,51 @@ class AuditService {
     }
 
     /**
+     * @description Logs a structured "permission denied" audit entry. Called by
+     * `requirePermission` and `requireAbility` middleware on mutation denies only
+     * (read denies are not logged per the noise-control choice in Phase 3
+     * research §3). Fire-and-forget — callers MUST `.catch(...)` to swallow
+     * logging failures so audit outages never block the response.
+     *
+     * @param {object} input - Structured deny payload
+     * @param {string} input.actor - Acting user id
+     * @param {string} input.tenantId - Tenant/org id the user was acting within
+     * @param {string} input.permissionKey - Canonical permission key or `<subject>.<action>` fallback
+     * @param {string} input.action - CASL action that was denied
+     * @param {string} input.subject - CASL subject that was denied
+     * @param {string} input.method - HTTP method of the denied request
+     * @param {string} input.path - Request path of the denied request
+     * @returns {Promise<void>} Resolves once the audit row is persisted (or logging fails silently)
+     */
+    async logPermissionDeny(input: {
+        actor: string
+        tenantId: string
+        permissionKey: string
+        action: string
+        subject: string
+        method: string
+        path: string
+    }): Promise<void> {
+        // Reuse the best-effort `log()` method so a failure here never throws.
+        // TODO(P3.1d): enrich with userEmail + ipAddress once middleware plumbs req through.
+        await this.log({
+            userId: input.actor,
+            userEmail: '',
+            action: AuditAction.ACCESS_DENIED,
+            resourceType: AuditResourceType.PERMISSION,
+            resourceId: input.permissionKey,
+            tenantId: input.tenantId,
+            details: {
+                permissionKey: input.permissionKey,
+                action: input.action,
+                subject: input.subject,
+                method: input.method,
+                path: input.path,
+            },
+        });
+    }
+
+    /**
      * @description Retrieve paginated audit logs with lightweight filtering by user, action, and resource type
      * @param {Record<string, string>} filters - Filtering criteria (userId, action, resourceType)
      * @param {number} limit - Number of logs per page (default: 50)
