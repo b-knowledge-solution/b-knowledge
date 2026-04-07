@@ -4,7 +4,7 @@
  * Provides three utilities for migration-aware integration testing:
  *   - {@link withScratchDb}                — full migrate.latest, callback, rollback all.
  *   - {@link withScratchDbStoppingBefore}  — partial migrate.latest stopping before a target migration.
- *   - {@link roundTripMigration}           — up → snapshot → rollback one → assertions → up again.
+ *   - {@link roundTripMigration}           — up → snapshot → down ONE migration by name → assertions → up again.
  *
  * Each helper opens its own Knex instance against the configured Postgres
  * database, isolates work to a per-run schema where possible, and guarantees
@@ -180,12 +180,15 @@ export interface PreRollbackSnapshot {
 }
 
 /**
- * @description Run a migration, capture its post-up `information_schema` state,
- * roll back exactly that migration, hand the resulting (legacy) database to an
- * assertion callback, then re-apply the migration. Useful for verifying that
- * `down()` faithfully restores the previous schema.
- * @param {string} migrationFilename - Filename (or filename prefix) of the
- *   migration whose round-trip is being verified.
+ * @description Run all migrations to head, capture an `information_schema`
+ * snapshot, then roll back EXACTLY ONE named migration via Knex's
+ * `migrate.down({ name })` API (Knex >= 0.95). The legacy-shape DB is handed
+ * to an assertion callback, after which the same migration is re-applied via
+ * `migrate.up({ name })`. This isolates the rollback of a single migration
+ * instead of unwinding the whole batch the way `migrate.rollback()` does.
+ * @param {string} migrationFilename - Basename of the migration whose
+ *   round-trip is being verified (e.g.
+ *   `20260407052129_phase1_rename_entity_permissions_to_resource_grants.ts`).
  * @param {(snapshot: PreRollbackSnapshot) => Promise<void>} assertions -
  *   Assertion callback receiving the post-rollback Knex plus the captured snapshot.
  * @returns {Promise<void>} Resolves after the final teardown completes.
@@ -216,17 +219,17 @@ export async function roundTripMigration(
       )
     ).rows as Array<{ table_name: string; column_name: string }>
 
-    // Roll back exactly one batch. Convention: each Phase 1 migration is run
-    // as its own batch, so this undoes only the targeted migration.
-    // The filename argument is informational — Knex always rolls the last batch.
-    void migrationFilename
-    await k.migrate.rollback()
+    // Roll back EXACTLY the named migration (not the whole batch). Knex 0.95+
+    // exposes `migrate.down({ name })` for this purpose; we use the basename
+    // to be tolerant of absolute-vs-relative file path arguments.
+    const targetName = migrationFilename.split('/').pop() as string
+    await k.migrate.down({ name: targetName })
 
     // Hand the legacy-shape DB to the caller's assertions.
     await assertions({ knex: k, tablesBefore, columnsBefore })
 
-    // Re-apply so the surrounding suite leaves the DB in head state if needed.
-    await k.migrate.latest()
+    // Re-apply ONLY the same migration so we leave the DB at head state.
+    await k.migrate.up({ name: targetName })
   } finally {
     await teardownScratch(k, schemaName)
   }

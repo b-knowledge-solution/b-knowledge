@@ -139,65 +139,95 @@ describe('Phase 1 migrations — schema', () => {
 
   it('rejects duplicate (resource_type, resource_id, grantee_type, grantee_id) inserts', () =>
     withScratchDb(async (knex) => {
-      // Insert one row, then attempt the same key tuple — second insert must fail.
-      const baseRow = {
-        id: knex.raw("md5(random()::text)"),
-        knowledge_base_id: 'kb-fixture',
-        resource_type: 'DocumentCategory',
-        resource_id: 'cat-fixture',
-        grantee_type: 'user',
-        grantee_id: 'user-fixture',
-        // Legacy NOT NULL column carried forward unchanged in P1.1.
-        permission_level: 'view',
-      }
-      await knex('resource_grants').insert(baseRow)
-      // Same key tuple — must violate the new unique constraint.
-      await expect(
-        knex('resource_grants').insert({ ...baseRow, id: knex.raw("md5(random()::text)") }),
-      ).rejects.toThrow()
+      // Insert a real parent knowledge_base row so the FK on knowledge_base_id
+      // (preserved through the rename with its legacy constraint name) is
+      // satisfied. Use a transaction so the fixture rolls back automatically.
+      await knex.transaction(async (trx) => {
+        const [kb] = await trx('knowledge_base')
+          .insert({ name: 'rg-dupe-fixture-kb' })
+          .returning(['id'])
+        const baseRow = {
+          id: trx.raw("md5(random()::text)"),
+          knowledge_base_id: kb.id,
+          resource_type: 'DocumentCategory',
+          resource_id: 'cat-fixture',
+          grantee_type: 'user',
+          grantee_id: 'user-fixture',
+          // Legacy NOT NULL column carried forward unchanged in P1.1.
+          permission_level: 'view',
+        }
+        await trx('resource_grants').insert(baseRow)
+        // Same key tuple — must violate the new unique constraint.
+        await expect(
+          trx('resource_grants').insert({ ...baseRow, id: trx.raw("md5(random()::text)") }),
+        ).rejects.toThrow()
+        // Force rollback so the scratch schema is left clean for teardown.
+        throw new Error('__rollback__')
+      }).catch((err) => {
+        if ((err as Error).message !== '__rollback__') throw err
+      })
     }))
 
   it('accepts inserts with actions = {view,edit}', () =>
     withScratchDb(async (knex) => {
-      // Validates that the text[] column round-trips a multi-element literal.
-      const inserted = await knex('resource_grants')
-        .insert({
-          id: knex.raw("md5(random()::text)"),
-          knowledge_base_id: 'kb-actions-fixture',
-          resource_type: 'KnowledgeBase',
-          resource_id: 'kb-actions-fixture',
-          grantee_type: 'user',
-          grantee_id: 'user-actions-fixture',
-          permission_level: 'edit',
-          actions: '{view,edit}',
-        })
-        .returning(['id', 'actions'])
-      expect(inserted.length).toBe(1)
-      // Postgres returns the array as a JS array via the pg driver.
-      expect(inserted[0].actions).toEqual(['view', 'edit'])
+      // Insert a real parent knowledge_base row to satisfy the FK before
+      // exercising the text[] column round-trip.
+      await knex.transaction(async (trx) => {
+        const [kb] = await trx('knowledge_base')
+          .insert({ name: 'rg-actions-fixture-kb' })
+          .returning(['id'])
+        // Validates that the text[] column round-trips a multi-element literal.
+        const inserted = await trx('resource_grants')
+          .insert({
+            id: trx.raw("md5(random()::text)"),
+            knowledge_base_id: kb.id,
+            resource_type: 'KnowledgeBase',
+            resource_id: kb.id,
+            grantee_type: 'user',
+            grantee_id: 'user-actions-fixture',
+            permission_level: 'edit',
+            actions: '{view,edit}',
+          })
+          .returning(['id', 'actions'])
+        expect(inserted.length).toBe(1)
+        // Postgres returns the array as a JS array via the pg driver.
+        expect(inserted[0].actions).toEqual(['view', 'edit'])
+        // Force rollback so fixture rows do not leak across tests.
+        throw new Error('__rollback__')
+      }).catch((err) => {
+        if ((err as Error).message !== '__rollback__') throw err
+      })
     }))
 
-  it('preserves the FK from resource_grants to knowledge_bases after rename', () =>
+  it('preserves the FK from resource_grants to knowledge_base after rename', () =>
     withScratchDb(async (knex) => {
-      // The pre-existing FK on knowledge_base_entity_permissions.knowledge_base_id
-      // must survive the table rename (Postgres preserves FK metadata).
+      // Postgres preserves FK constraint NAMES through table renames, so we
+      // cannot match on conname (the legacy `project_entity_permissions_…`
+      // string survives). Instead, check the FK target table via confrelid,
+      // which is the semantically correct assertion: we care that the FK
+      // still points at `knowledge_base`, not what it is called.
       const fks = await knex.raw(`
-        SELECT conname FROM pg_constraint
+        SELECT conname, confrelid::regclass::text AS target_table
+        FROM pg_constraint
         WHERE conrelid = 'resource_grants'::regclass AND contype = 'f'
       `)
-      expect(fks.rows.some((r: { conname: string }) => r.conname.includes('knowledge_base'))).toBe(true)
+      expect(
+        fks.rows.some((r: { target_table: string }) => r.target_table === 'knowledge_base'),
+      ).toBe(true)
     }))
 
   it('round-trips up → down → up cleanly and restores the legacy schema after down()', () =>
     roundTripMigration('20260407052129_phase1_rename_entity_permissions_to_resource_grants.ts', async ({ knex }) => {
-      // After rollback, the legacy table must exist and the renamed one must NOT.
+      // After rolling back ONLY the rename migration, the legacy table is back
+      // and the renamed one is gone — but migration 1 (create permission tables)
+      // is still applied, so its tables remain.
       expect(await knex.schema.hasTable('knowledge_base_entity_permissions')).toBe(true)
       expect(await knex.schema.hasTable('resource_grants')).toBe(false)
-      // The new tables created by P1.1 migration 1 must also be gone (rollback unwinds the whole batch).
-      expect(await knex.schema.hasTable('permissions')).toBe(false)
-      expect(await knex.schema.hasTable('role_permissions')).toBe(false)
-      expect(await knex.schema.hasTable('user_permission_overrides')).toBe(false)
-      // Legacy column names are back.
+      // Migration 1's tables are still present — only the rename was undone.
+      expect(await knex.schema.hasTable('permissions')).toBe(true)
+      expect(await knex.schema.hasTable('role_permissions')).toBe(true)
+      expect(await knex.schema.hasTable('user_permission_overrides')).toBe(true)
+      // Legacy column names are back on the un-renamed table.
       expect(await knex.schema.hasColumn('knowledge_base_entity_permissions', 'entity_type')).toBe(true)
       expect(await knex.schema.hasColumn('knowledge_base_entity_permissions', 'entity_id')).toBe(true)
     }))
