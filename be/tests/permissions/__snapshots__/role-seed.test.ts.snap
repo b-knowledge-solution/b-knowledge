@@ -109,6 +109,7 @@ exports[`Day-one role seed (P1.5) > produces a stable per-role permission set (s
     "documents.edit",
     "documents.enrich",
     "documents.parse",
+    "documents.view",
     "search_apps.create",
     "search_apps.delete",
     "search_apps.edit",
@@ -216,6 +217,8 @@ exports[`Day-one role seed (P1.5) > produces a stable per-role permission set (s
   ],
   "user": [
     "chat.view",
+    "datasets.view",
+    "documents.view",
     "search_apps.view",
     "user_history.view",
   ],
