@@ -167,15 +167,26 @@ const flattenNodes = (node: OrgNode): OrgNode[] => {
  * @param {{ node: OrgNode; selectedId: string | null }} props - Node data and current selection
  * @returns {JSX.Element} Rendered node card
  */
-const NodeCard = ({ node, selectedId }: { node: OrgNode; selectedId: string | null }) => {
-  // Apply a ring + scale when this node is the one chosen in the dropdown
-  const isHighlighted = selectedId === node.id
+// Tailwind classes applied to a highlighted node — overrides background + text
+const HIGHLIGHT_CLASSES = 'bg-amber-400 text-slate-900 ring-4 ring-amber-500 ring-offset-2 ring-offset-background scale-105 shadow-lg'
+
+/**
+ * @description Visual card for a single org node. When highlighted, the card swaps
+ * its background and text color entirely (not just a ring overlay).
+ * @param {{ node: OrgNode; highlightedNodeId: string | null }} props - Node data and the currently highlighted node id
+ * @returns {JSX.Element} Rendered node card
+ */
+const NodeCard = ({ node, highlightedNodeId }: { node: OrgNode; highlightedNodeId: string | null }) => {
+  // Only one node is highlighted at a time — compare ids to decide styling
+  const isHighlighted = highlightedNodeId === node.id
+
+  // When highlighted, drop the node's own color classes and use HIGHLIGHT_CLASSES instead,
+  // so the background + text color visibly change rather than just showing an outline.
+  const appearance = isHighlighted ? HIGHLIGHT_CLASSES : node.color
 
   return (
     <Card
-      className={`inline-block px-4 py-2 min-w-[140px] border-0 rounded-md shadow-sm transition-all ${node.color} ${
-        isHighlighted ? 'ring-4 ring-amber-400 ring-offset-2 ring-offset-background scale-105' : ''
-      }`}
+      className={`inline-block px-4 py-2 min-w-[140px] border-0 rounded-md shadow-sm transition-all ${appearance}`}
     >
       <div className="text-sm font-semibold leading-tight">{node.title}</div>
       <div className="text-[11px] opacity-90 leading-tight">{node.role}</div>
@@ -185,17 +196,34 @@ const NodeCard = ({ node, selectedId }: { node: OrgNode; selectedId: string | nu
 
 /**
  * @description Recursively render org tree nodes inside `react-organizational-chart`
- * @param {{ node: OrgNode; selectedId: string | null }} props - Node data and current selection
- * @returns {JSX.Element} Rendered TreeNode subtree
+ * @param {OrgNode} node - Current subtree root
+ * @param {string | null} highlightedNodeId - Id of the node that should be highlighted
+ * @returns {ReactElement} Rendered TreeNode subtree
  */
-const renderTree = (node: OrgNode, selectedId: string | null): ReactElement => (
-  <TreeNode label={<NodeCard node={node} selectedId={selectedId} />}>
+const renderTree = (node: OrgNode, highlightedNodeId: string | null): ReactElement => (
+  <TreeNode label={<NodeCard node={node} highlightedNodeId={highlightedNodeId} />}>
     {(node.children ?? []).map(child => (
       // Recurse so every descendant is wrapped in a TreeNode
-      <div key={child.id}>{renderTree(child, selectedId)}</div>
+      <div key={child.id}>{renderTree(child, highlightedNodeId)}</div>
     ))}
   </TreeNode>
 )
+
+// ============================================================================
+// Props
+// ============================================================================
+
+/**
+ * @description Props for `HealthcareOrgChart`. Parents can pass a controlled
+ * `highlightedNodeId` to drive the highlight from outside, and subscribe to
+ * dropdown changes via `onHighlightChange`.
+ */
+export interface HealthcareOrgChartProps {
+  /** Controlled highlighted node id (from parent). If omitted, the component manages its own state. */
+  highlightedNodeId?: string | null
+  /** Fired when the user picks a different node in the dropdown */
+  onHighlightChange?: (nodeId: string | null) => void
+}
 
 // ============================================================================
 // Main component
@@ -203,14 +231,32 @@ const renderTree = (node: OrgNode, selectedId: string | null): ReactElement => (
 
 /**
  * @description Healthcare organizational chart with a dropdown that highlights the chosen node.
- * Uses `react-organizational-chart` for a landscape tree and shadcn `Select` for the picker.
+ * Supports controlled mode (parent passes `highlightedNodeId`) and uncontrolled mode
+ * (component tracks selection internally). In both cases, highlighting swaps the node's
+ * background and text color via Tailwind classes.
+ * @param {HealthcareOrgChartProps} props - Optional controlled highlight id + change handler
  * @returns {JSX.Element} Rendered org chart tab content
  */
-const HealthcareOrgChart = () => {
+const HealthcareOrgChart = ({ highlightedNodeId, onHighlightChange }: HealthcareOrgChartProps = {}) => {
   const { t } = useTranslation()
 
-  // Currently highlighted node id (null = nothing selected)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  // Internal fallback state used only when the parent does not control the highlight
+  const [internalId, setInternalId] = useState<string | null>(null)
+
+  // Treat the component as controlled when the parent explicitly passes the prop (even null)
+  const isControlled = highlightedNodeId !== undefined
+  const activeId = isControlled ? highlightedNodeId ?? null : internalId
+
+  /**
+   * @description Handle dropdown change — updates internal state if uncontrolled
+   * and always notifies the parent via `onHighlightChange`.
+   * @param {string | null} nextId - Newly selected node id, or null to clear
+   */
+  const handleChange = (nextId: string | null) => {
+    // Only mutate internal state when we own it — otherwise the parent is source of truth
+    if (!isControlled) setInternalId(nextId)
+    onHighlightChange?.(nextId)
+  }
 
   // Flatten the tree once per render so the dropdown lists every node
   const allNodes = flattenNodes(ORG_DATA)
@@ -223,8 +269,8 @@ const HealthcareOrgChart = () => {
           {t('knowledgeBase.orgChart.highlightLabel', 'Highlight node')}
         </label>
         <Select
-          value={selectedId ?? ''}
-          onValueChange={(value: string) => setSelectedId(value || null)}
+          value={activeId ?? ''}
+          onValueChange={(value: string) => handleChange(value || null)}
         >
           <SelectTrigger className="w-[320px]">
             <SelectValue placeholder={t('knowledgeBase.orgChart.selectPlaceholder', 'Select a node to highlight…')} />
@@ -245,10 +291,10 @@ const HealthcareOrgChart = () => {
           lineWidth="2px"
           lineColor="hsl(var(--border))"
           lineBorderRadius="8px"
-          label={<NodeCard node={ORG_DATA} selectedId={selectedId} />}
+          label={<NodeCard node={ORG_DATA} highlightedNodeId={activeId} />}
         >
           {(ORG_DATA.children ?? []).map(child => (
-            <div key={child.id}>{renderTree(child, selectedId)}</div>
+            <div key={child.id}>{renderTree(child, activeId)}</div>
           ))}
         </Tree>
       </div>
