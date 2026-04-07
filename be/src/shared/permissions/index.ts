@@ -81,3 +81,7 @@ export { SYSTEM_TOOLS_PERMISSIONS } from '@/modules/system-tools/system-tools.pe
 export { TEAMS_PERMISSIONS } from '@/modules/teams/teams.permissions.js'
 export { USER_HISTORY_PERMISSIONS } from '@/modules/user-history/user-history.permissions.js'
 export { USERS_PERMISSIONS } from '@/modules/users/users.permissions.js'
+
+// ── Boot sync service (P1.4) ───────────────────────────────────────
+
+export { syncPermissionsCatalog, type SyncResult } from './sync.js'

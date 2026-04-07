@@ -38,6 +38,7 @@ import { socketService } from '@/shared/services/socket.service.js';
 
 import { setupApiRoutes } from '@/app/routes.js';
 import { syncSchedulerService } from '@/modules/sync/index.js';
+import { syncPermissionsCatalog } from '@/shared/permissions/sync.js';
 
 /**
  * @description Express application instance shared across the module.
@@ -156,6 +157,20 @@ const startServer = async (): Promise<http.Server | https.Server> => {
         details: JSON.stringify(error, Object.getOwnPropertyNames(error))
       });
       process.exit(1);
+    }
+
+    // Reconcile the permission catalog with the in-code registry. MUST run
+    // after migrations (so the `permissions` table exists) and before the
+    // root-user bootstrap. Phase 1 keeps the legacy `rbac.ts` shim as the
+    // active auth path, so a sync failure here is logged but MUST NOT take
+    // the server down — wrap in try/catch and continue startup.
+    try {
+      const syncResult = await syncPermissionsCatalog();
+      log.info('[boot] permission catalog synced', { ...syncResult });
+    } catch (syncErr) {
+      log.error('[boot] permission catalog sync failed — continuing startup', {
+        error: syncErr instanceof Error ? syncErr.message : String(syncErr),
+      });
     }
 
     // Ensure a bootstrap admin exists even on fresh databases.
