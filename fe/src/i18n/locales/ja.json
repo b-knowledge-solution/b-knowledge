@@ -2603,6 +2603,11 @@
     "documentsTab": "ドキュメント",
     "standardTab": "スタンダード",
     "codeTab": "コード",
+    "orgChartTab": "組織図",
+    "orgChart": {
+      "highlightLabel": "ノードをハイライト",
+      "selectPlaceholder": "ハイライトするノードを選択…"
+    },
     "newCategory": "新しいカテゴリ",
     "newVersion": "新しいバージョン",
     "selectCategory": "カテゴリを選択して内容を表示",

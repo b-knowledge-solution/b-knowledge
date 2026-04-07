@@ -2617,6 +2617,11 @@
     "documentsTab": "Tài liệu",
     "standardTab": "Tiêu chuẩn",
     "codeTab": "Mã nguồn",
+    "orgChartTab": "Sơ đồ tổ chức",
+    "orgChart": {
+      "highlightLabel": "Làm nổi bật nút",
+      "selectPlaceholder": "Chọn một nút để làm nổi bật…"
+    },
     "newCategory": "Danh mục mới",
     "newVersion": "Phiên bản mới",
     "selectCategory": "Chọn danh mục để xem nội dung",
