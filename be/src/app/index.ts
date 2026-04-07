@@ -40,6 +40,7 @@ import { setupApiRoutes } from '@/app/routes.js';
 import { syncSchedulerService } from '@/modules/sync/index.js';
 import { syncPermissionsCatalog } from '@/shared/permissions/sync.js';
 import { rolePermissionCacheService } from '@/shared/services/role-permission-cache.service.js';
+import { ModelFactory } from '@/shared/models/factory.js';
 
 /**
  * @description Express application instance shared across the module.
@@ -187,6 +188,71 @@ const startServer = async (): Promise<http.Server | https.Server> => {
       // Non-fatal — the legacy shim will return false for all queries
       // until a subsequent refresh succeeds. The new V2 path does not
       // depend on this cache, so the app continues to function.
+    }
+
+    // --------------------------------------------------------------------
+    // Phase 3 P3.2c — V2 cutover boot deploy guardrails.
+    // Runs AFTER the role-permission cache load and BEFORE the root user
+    // bootstrap so any production-fatal data issue aborts startup before
+    // the bootstrap admin is (re)touched. All three guardrails share a
+    // single try/catch so a guardrail *failure itself* never crashes the
+    // server — only the intentional production fail-fast in guardrail 1
+    // throws out of this block.
+    // --------------------------------------------------------------------
+    try {
+      // Guardrail 1 — fail-fast on empty actions[] in resource_grants.
+      // Carry-forward IOU #7 from Phase 2: any row with `actions = '{}'`
+      // is a pre-P1.2-backfill orphan that V2 silently skips. In
+      // V2-default production mode this equals silent permission loss.
+      const orphanGrants = await ModelFactory.resourceGrant.countWithEmptyActions();
+      if (orphanGrants > 0) {
+        log.error('[boot] resource_grants has rows with empty actions[]', { count: orphanGrants });
+        if (config.isProduction) {
+          // Intentional hard crash — refuse to start in production.
+          throw new Error(
+            `[boot] Cannot start in production: ${orphanGrants} resource_grants rows have empty actions[]. Run the P1.2 backfill or manually populate actions before retrying.`,
+          );
+        } else {
+          log.warn('[boot] continuing in non-production despite orphan resource_grants — DO NOT DEPLOY UNTIL FIXED');
+        }
+      }
+
+      // Snapshot the catalog key set once — reused by guardrails 2 and 3.
+      const catalogKeys = new Set((await ModelFactory.permission.findAll()).map((p) => p.key));
+
+      // Guardrail 2 — warn on role_permissions ↔ catalog drift.
+      // Rows whose permission_key is no longer in the registry catalog are
+      // dead weight (V2 logs-and-skips them). Surface the count so admins
+      // can clean up stale seed rows.
+      const allRolePermKeys = await ModelFactory.rolePermission.findAllDistinctKeys();
+      const driftKeys = allRolePermKeys.filter((k) => !catalogKeys.has(k));
+      if (driftKeys.length > 0) {
+        log.warn('[boot] role_permissions references keys not in catalog', {
+          count: driftKeys.length,
+          sample: driftKeys.slice(0, 10),
+        });
+      }
+
+      // Guardrail 3 — warn on user_permission_overrides ↔ catalog drift.
+      // Same logic as guardrail 2 but for per-user overrides.
+      const allOverrideKeys = await ModelFactory.userPermissionOverride.findAllDistinctKeys();
+      const overrideDrift = allOverrideKeys.filter((k) => !catalogKeys.has(k));
+      if (overrideDrift.length > 0) {
+        log.warn('[boot] user_permission_overrides references keys not in catalog', {
+          count: overrideDrift.length,
+          sample: overrideDrift.slice(0, 10),
+        });
+      }
+    } catch (guardErr) {
+      // Re-throw production fail-fast errors so they abort startup; any
+      // other guardrail failure (e.g. transient DB hiccup on the drift
+      // queries) is logged and startup continues.
+      if (config.isProduction && guardErr instanceof Error && guardErr.message.startsWith('[boot] Cannot start in production')) {
+        throw guardErr;
+      }
+      log.error('[boot] permission guardrails failed — continuing startup', {
+        error: guardErr instanceof Error ? guardErr.message : String(guardErr),
+      });
     }
 
     // Ensure a bootstrap admin exists even on fresh databases.

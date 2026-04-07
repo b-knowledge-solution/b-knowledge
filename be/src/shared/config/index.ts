@@ -488,13 +488,20 @@ export const config = {
    */
   permissions: {
     /**
-     * When true, requests use the new DB-backed CASL ability builder
-     * (`buildAbilityForV2`). When false (default), the legacy static builder
-     * (`buildAbilityForV1Sync` at `ability.service.ts`) is used. Phase 3 flips
-     * the default to true after the parity matrix is green.
+     * @description Selects which CASL ability builder runs per request.
+     *
+     * Phase 3 P3.2b cutover: V2 is now the DEFAULT ability engine. Set
+     * `USE_ABILITY_ENGINE_V2=false` in the environment to revert to the
+     * legacy V1 builder for emergency rollback. Any other value (including
+     * unset) selects V2.
+     *
+     * The Phase 2 per-fixture parity matrix proves this is a no-op for end
+     * users within the V1-relevant subject set. Subjects V1 did not touch
+     * (chat, search_apps, user_history, etc.) gain V2 grants from the seed.
+     *
      * @see ability.service.ts buildAbilityFor dispatcher
      */
-    useV2Engine: process.env['USE_ABILITY_ENGINE_V2'] === 'true',
+    useV2Engine: process.env['USE_ABILITY_ENGINE_V2'] !== 'false',
   },
 
   websocket: {

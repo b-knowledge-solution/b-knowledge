@@ -133,6 +133,21 @@ export class UserPermissionOverrideModel extends BaseModel<UserPermissionOverrid
   }
 
   /**
+   * @description Return every DISTINCT `permission_key` currently referenced
+   * in the `user_permission_overrides` table, irrespective of tenant or user.
+   * Used by the Phase 3 boot drift guardrail which diffs this set against the
+   * live registry catalog to surface orphan overrides.
+   * @returns {Promise<string[]>} Distinct permission keys referenced by any override.
+   */
+  async findAllDistinctKeys(): Promise<string[]> {
+    // `distinct().pluck()` yields a flat string[] in one round-trip; the
+    // boot guardrail needs the global set so no tenant/user filter is applied.
+    return this.knex(this.tableName)
+      .distinct('permission_key')
+      .pluck('permission_key')
+  }
+
+  /**
    * @description Delete every override row for a given user in a tenant.
    * Used by the Phase 5 admin UI "reset overrides" action.
    *

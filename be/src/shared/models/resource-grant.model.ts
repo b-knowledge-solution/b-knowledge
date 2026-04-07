@@ -198,6 +198,25 @@ export class ResourceGrantModel extends BaseModel<ResourceGrantRow> {
   }
 
   /**
+   * @description Count every `resource_grants` row whose `actions` array is
+   * empty (`'{}'`). Rows in this shape are pre-P1.2-backfill carry-overs that
+   * the V2 ability builder logs-and-skips — in production V2-default mode
+   * they represent silent permission losses. The Phase 3 boot guardrail uses
+   * this count to fail-fast when non-zero in production.
+   * @returns {Promise<number>} Count of rows with an empty `actions` array.
+   */
+  async countWithEmptyActions(): Promise<number> {
+    // `actions = '{}'` is the Postgres text[] literal for an empty array and
+    // matches exactly the rows the V2 builder skips. whereRaw is required
+    // because Knex cannot express empty-array equality via the builder API.
+    const row = await this.knex(this.tableName)
+      .whereRaw("actions = '{}'")
+      .count<{ c: string | number }[]>('* as c')
+      .first()
+    return Number(row?.c ?? 0)
+  }
+
+  /**
    * @description Delete a grant by id, gated on the caller's tenant so a
    * misconfigured admin UI cannot accidentally wipe grants belonging to a
    * different tenant.

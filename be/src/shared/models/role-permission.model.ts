@@ -131,6 +131,21 @@ export class RolePermissionModel extends BaseModel<RolePermissionRow> {
   }
 
   /**
+   * @description Return every DISTINCT `permission_key` currently referenced
+   * in the `role_permissions` table, irrespective of role or tenant. Used by
+   * the Phase 3 boot drift guardrail which diffs this set against the live
+   * registry catalog to surface dead seed rows.
+   * @returns {Promise<string[]>} Distinct permission keys referenced by any role.
+   */
+  async findAllDistinctKeys(): Promise<string[]> {
+    // `distinct().pluck()` yields a flat string[] in one round-trip; no
+    // tenant/role filter here because the boot guardrail needs the global set.
+    return this.knex(this.tableName)
+      .distinct('permission_key')
+      .pluck('permission_key')
+  }
+
+  /**
    * @description Return every permission granted to a role — pre-joined to
    * the `permissions` catalog so the caller receives `(key, action, subject)`
    * triples in a single round-trip. This is THE primary read path for the
