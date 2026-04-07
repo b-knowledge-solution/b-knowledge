@@ -145,7 +145,7 @@ describe('Phase 1 migrations — schema', () => {
       await knex.transaction(async (trx) => {
         const [kb] = await trx('knowledge_base')
           .insert({ name: 'rg-dupe-fixture-kb' })
-          .returning(['id'])
+          .returning(['id', 'tenant_id'])
         const baseRow = {
           id: trx.raw("md5(random()::text)"),
           knowledge_base_id: kb.id,
@@ -155,6 +155,8 @@ describe('Phase 1 migrations — schema', () => {
           grantee_id: 'user-fixture',
           // Legacy NOT NULL column carried forward unchanged in P1.1.
           permission_level: 'view',
+          // tenant_id is NOT NULL after the P1.2 backfill migration runs.
+          tenant_id: kb.tenant_id,
         }
         await trx('resource_grants').insert(baseRow)
         // Same key tuple — must violate the new unique constraint.
@@ -175,7 +177,7 @@ describe('Phase 1 migrations — schema', () => {
       await knex.transaction(async (trx) => {
         const [kb] = await trx('knowledge_base')
           .insert({ name: 'rg-actions-fixture-kb' })
-          .returning(['id'])
+          .returning(['id', 'tenant_id'])
         // Validates that the text[] column round-trips a multi-element literal.
         const inserted = await trx('resource_grants')
           .insert({
@@ -187,6 +189,8 @@ describe('Phase 1 migrations — schema', () => {
             grantee_id: 'user-actions-fixture',
             permission_level: 'edit',
             actions: '{view,edit}',
+            // tenant_id is NOT NULL after the P1.2 backfill migration runs.
+            tenant_id: kb.tenant_id,
           })
           .returning(['id', 'actions'])
         expect(inserted.length).toBe(1)
