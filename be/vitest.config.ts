@@ -53,7 +53,19 @@ export default defineConfig({
     },
     
     // Test timeout
-    testTimeout: 10000,
+    testTimeout: 30000,
+
+    // Knex's migrate.latest() uses runtime `import()` to load migration files,
+    // which bypasses Vite's transformer entirely. We register `tsx` as an ESM loader
+    // in each forked test process so runtime imports of `.js`-suffixed paths inside
+    // migration files (NodeNext convention) resolve to their `.ts` sources. This is
+    // the same mechanism `npm run db:migrate` already uses.
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        execArgv: ['--import', 'tsx/esm'],
+      },
+    },
     
     // Type checking
     typecheck: {
@@ -64,6 +76,14 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+    },
+    // Source code uses NodeNext-style `.js` extensions in TypeScript imports
+    // (`import { foo } from './bar.js'` resolves to `bar.ts` at compile time).
+    // Vite/Vitest's resolver does not do this by default — `extensionAlias` tells
+    // it to try `.ts` and `.tsx` when an import ends in `.js` / `.jsx`.
+    extensionAlias: {
+      '.js': ['.ts', '.tsx', '.js'],
+      '.jsx': ['.tsx', '.jsx'],
     },
   },
 });
