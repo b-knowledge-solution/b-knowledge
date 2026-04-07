@@ -363,7 +363,7 @@ export function requireAbility(action: string, subject: string) {
 
       if (!ability) {
         // Cache miss — build fresh ability from user context
-        ability = abilityService.buildAbilityFor({
+        ability = await abilityService.buildAbilityFor({
           id: user.id,
           role: user.role,
           is_superuser: user.is_superuser ?? null,

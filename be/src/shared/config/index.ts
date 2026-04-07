@@ -477,6 +477,26 @@ export const config = {
   // WebSocket Configuration
   // --------------------------------------------------------------------------
 
+  // --------------------------------------------------------------------------
+  // Permissions / Ability Engine Configuration
+  // --------------------------------------------------------------------------
+
+  /**
+   * Ability engine feature flags.
+   * Controls whether CASL abilities are built by the legacy static V1 builder
+   * or the new DB-backed V2 builder (Phase 2 of the permissions rewrite).
+   */
+  permissions: {
+    /**
+     * When true, requests use the new DB-backed CASL ability builder
+     * (`buildAbilityForV2`). When false (default), the legacy static builder
+     * (`buildAbilityForV1Sync` at `ability.service.ts`) is used. Phase 3 flips
+     * the default to true after the parity matrix is green.
+     * @see ability.service.ts buildAbilityFor dispatcher
+     */
+    useV2Engine: process.env['USE_ABILITY_ENGINE_V2'] === 'true',
+  },
+
   websocket: {
     /** Enable/disable WebSocket server */
     enabled: process.env['WEBSOCKET_ENABLED'] !== 'false',

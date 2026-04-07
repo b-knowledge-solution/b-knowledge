@@ -25,7 +25,12 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { buildAbilityFor } from '@/shared/services/ability.service.js'
+import { __forTesting } from '@/shared/services/ability.service.js'
+
+// Pull the raw synchronous V1 builder directly. Post-P2.2, `buildAbilityFor`
+// is an async dispatcher that picks V1 or V2 based on a feature flag — this
+// spec intentionally freezes V1's output and must call V1 unconditionally.
+const buildAbilityFor = __forTesting.buildAbilityForV1Sync
 import { ALL_FIXTURES } from './__fixtures__/user-fixtures.js'
 import { serializeRules } from './__fixtures__/serialize-rules.js'
 

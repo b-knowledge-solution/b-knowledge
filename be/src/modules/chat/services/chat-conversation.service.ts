@@ -1019,7 +1019,7 @@ export class ChatConversationService {
             current_org_id: tenantId,
           }
           // Build CASL ability for this specific user to determine authorized datasets
-          const userAbility = abilityService.buildAbilityFor(userContext)
+          const userAbility = await abilityService.buildAbilityFor(userContext)
           // Fetch all tenant datasets, then filter by what the user's ABAC rules permit
           const allTenantDatasets = await ModelFactory.dataset.findByTenantId(tenantId)
 
