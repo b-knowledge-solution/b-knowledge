@@ -18,6 +18,7 @@
  */
 
 import { UserRole } from '@/shared/constants/index.js'
+import { rolePermissionCacheService } from '@/shared/services/role-permission-cache.service.js'
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -110,6 +111,11 @@ export function isAdminRole(role: string): boolean {
  * - leader: User management and content access (no system config)
  * - user: Basic content viewing only
  */
+// LEGACY: kept for reference / fallback. Phase 6 removes this.
+// The canonical source of truth for role→permission mappings is now the
+// DB-backed `role_permissions` table, cached in memory at boot by
+// `RolePermissionCacheService`. The `hasPermission` shim below reads from
+// that cache; this map is retained only to keep historical context visible.
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     /** Super-admin has platform-level access across all orgs */
     'super-admin': [
@@ -168,25 +174,33 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 // ============================================================================
 
 /**
- * @description Checks if a given role has a specific permission.
- * Admin role is granted all permissions by default (short-circuit).
+ * @description Checks if a role has a permission key. PHASE 3 SHIM:
+ * this function previously consulted the static `ROLE_PERMISSIONS` map at
+ * the bottom of this file. As of Phase 3 / P3.2a, it consults the
+ * boot-cached snapshot of `role_permissions` from
+ * `RolePermissionCacheService` — which IS the source of truth for
+ * production permissions in the V2-default world.
+ *
+ * The function signature is preserved for backward compatibility with the
+ * one remaining caller at `be/src/shared/middleware/auth.middleware.ts:13`
+ * (the legacy `requirePermission`). Phase 6 will remove this shim entirely.
+ *
+ * Super-admin and admin short-circuit to `true` to preserve V1 semantics:
+ * those roles were historically granted every permission regardless of the
+ * underlying map, and the legacy middleware continues to rely on that.
+ *
+ * @deprecated Use `requirePermission` from `auth.middleware.ts` instead.
  * @param {string} userRole - The role to check (as string for flexibility)
- * @param {Permission} permission - The permission to verify
- * @returns {boolean} True if the role has the permission, false otherwise
- *
- * @example
- * // Check if admin can manage users
- * hasPermission('admin', 'manage_users'); // true
- *
- * // Check if regular user can manage system
- * hasPermission('user', 'manage_system'); // false
+ * @param {Permission} permission - The permission key to verify
+ * @returns {boolean} True if the role has the permission in the global scope
  */
 export const hasPermission = (userRole: string, permission: Permission): boolean => {
-    // Super-admin and admin roles have all permissions — no need to check the permission list
+    // Super-admin and admin roles historically bypass the permission list —
+    // preserve that contract so the legacy middleware behaves identically.
     if (userRole === UserRole.SUPER_ADMIN || userRole === UserRole.ADMIN) return true;
-    const role = userRole as Role;
-    const permissions = ROLE_PERMISSIONS[role] || [];
-    return permissions.includes(permission);
+    // Consult the boot-cached snapshot of the DB-backed `role_permissions`
+    // table. The cache is loaded during app startup after the catalog sync.
+    return rolePermissionCacheService.has(userRole, permission as string);
 };
 
 /**

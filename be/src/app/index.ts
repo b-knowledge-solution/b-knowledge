@@ -39,6 +39,7 @@ import { socketService } from '@/shared/services/socket.service.js';
 import { setupApiRoutes } from '@/app/routes.js';
 import { syncSchedulerService } from '@/modules/sync/index.js';
 import { syncPermissionsCatalog } from '@/shared/permissions/sync.js';
+import { rolePermissionCacheService } from '@/shared/services/role-permission-cache.service.js';
 
 /**
  * @description Express application instance shared across the module.
@@ -171,6 +172,21 @@ const startServer = async (): Promise<http.Server | https.Server> => {
       log.error('[boot] permission catalog sync failed — continuing startup', {
         error: syncErr instanceof Error ? syncErr.message : String(syncErr),
       });
+    }
+
+    // Load the role_permissions snapshot into the in-process cache. This
+    // populates `RolePermissionCacheService` so the legacy `hasPermission`
+    // shim at `rbac.ts` can answer queries synchronously from the DB-backed
+    // source of truth instead of the hardcoded ROLE_PERMISSIONS map.
+    try {
+      await rolePermissionCacheService.loadAll();
+    } catch (err) {
+      log.error('[boot] role permission cache load failed', {
+        err: err instanceof Error ? err.message : String(err),
+      });
+      // Non-fatal — the legacy shim will return false for all queries
+      // until a subsequent refresh succeeds. The new V2 path does not
+      // depend on this cache, so the app continues to function.
     }
 
     // Ensure a bootstrap admin exists even on fresh databases.
