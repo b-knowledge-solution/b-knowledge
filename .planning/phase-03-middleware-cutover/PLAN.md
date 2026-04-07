@@ -99,8 +99,9 @@ flip the V2 ability engine to default.
 **Tasks:**
 1. Implement `markPublicRoute()` no-op tagging middleware that the walker recognizes by function name.
 2. Walker uses `ts-morph` (already in devDeps per research §3) to parse route files, extract POST/PUT/PATCH/DELETE registrations, scan their middleware chain for `requirePermission`, `requireAbility`, or `markPublicRoute`.
-3. Initial allowlist hardcodes only login/health/oauth-callback routes.
-4. Test starts in **report-only mode** initially (logs offenders, fails the test with the count). End of Phase 3 it must report 0.
+3. **Param-name correctness check** — when the walker finds a `requireAbility(action, subject, idParam)` call where `idParam` is the third arg (string literal), it must extract the route's path string and assert `idParam` is one of the actual `:param` tokens in the path. Example: `router.put('/users/:id', requireAbility('edit','User','id'))` is OK; `router.put('/users/:id', requireAbility('edit','User','userId'))` fails because `userId` is not a token in `/users/:id`. This catches the typo class of bug that would otherwise only surface as runtime "id is undefined" denials.
+4. Initial allowlist hardcodes only login/health/oauth-callback routes.
+5. Test starts in **report-only mode** initially (logs offenders, fails the test with the count). End of Phase 3 it must report 0.
 
 **Tests:** the file IS the test.
 **Verification:** Test exists, runs, currently red with the un-gated count (expected). End of Phase 3 must be green.
@@ -226,13 +227,13 @@ flip the V2 ability engine to default.
 **Outputs:** `be/src/shared/config/rbac.ts` (rewritten), `be/src/shared/services/role-permission-cache.service.ts` (new singleton).
 
 **Tasks:**
-1. New singleton `RolePermissionCacheService` with `loadAll()`, `has(roleName, key)`, `refresh()`. Loaded at boot.
+1. New singleton `RolePermissionCacheService` with `loadAll()`, `has(roleName, key)`, `refresh()`. Loaded at boot. **`refresh()` MUST use an atomic-swap pattern**: build the new snapshot in a fresh `Map` off to the side, then assign it to the singleton's internal field in one operation. Concurrent `has()` reads must observe either the old snapshot or the new one — never a partially-loaded state. Inline JSDoc cites this race-condition guarantee.
 2. `rbac.ts::hasPermission(role, key)` becomes a sync call to the cache.
 3. Refresh hook exported for permissions module mutations to call.
 4. Document lifecycle in JSDoc on the service class.
 5. Verify `auth.middleware.ts:13` caller still type-checks unchanged.
 
-**Tests:** `be/src/shared/services/__tests__/role-permission-cache.test.ts` — load, query, refresh.
+**Tests:** `be/src/shared/services/__tests__/role-permission-cache.test.ts` — load, query, refresh, **plus a concurrency test**: spawn N (e.g., 100) `has()` reads in parallel via `Promise.all`, interleaved with a `refresh()` call that flips the snapshot midway. Every read must return either the pre-refresh or the post-refresh value, never `undefined` or a value from a half-loaded map. This proves the atomic-swap guarantee.
 **Verification:** Tests green; existing call sites unchanged.
 **Commit:** `refactor(rbac): convert hasPermission to sync shim over boot-cached snapshot`
 
@@ -314,7 +315,7 @@ flip the V2 ability engine to default.
 3. Run `route-sweep-coverage.test.ts` after each module — expect that module's offender count → 0.
 4. Run module-specific tests.
 
-**Modules:** auth, agent, audit, chat, conversation, dashboard, dialog, document, file, kb, llm, oauth, organization, prompt, search, system, task, tenant, tool, user-group, workspace (21 total). Confirm count vs. inventory.
+**Modules:** Confirm exact module list against `ls be/src/modules/` at execution time (not the speculative list above — this plan was drafted from research, but `feature/permission` may have new modules). The actual count is 22 (`auth` is in the dir but has no `.permissions.ts` per Phase 1 — it has 1 mutating `switch-org` route + `change-password` etc. that are NOT public. **`auth` must NOT be entirely `markPublicRoute`d** — only `login`, `logout`, `oauth-callback` are public; `switch-org`, `change-password`, `revoke-session`, etc. are mutations that need a gate (likely `requirePermission('users.view')` or a session-based check).
 
 **Tests:** Each module's existing test suite must remain green.
 **Verification:** `route-sweep-coverage.test.ts` reports 0 offenders.
@@ -373,7 +374,7 @@ flip the V2 ability engine to default.
 - `DELETE /api/permissions/users/:userId/overrides/:key` — same
 - `GET /api/permissions/grants?subject=&resourceId=`
 - `POST /api/permissions/grants` — create resource grant; audit + `invalidateAbility(granteeId)`
-- `DELETE /api/permissions/grants/:id`
+- `DELETE /api/permissions/grants/:id` — delete resource grant; audit + `invalidateAbility(granteeId)` (look up the grantee from the row before deleting)
 
 **Tasks:** Per endpoint:
 1. Zod schema in `permissions.schemas.ts`.
