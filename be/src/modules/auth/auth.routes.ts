@@ -6,6 +6,7 @@
 import { Router } from 'express'
 import { AuthController } from '@/modules/auth/auth.controller.js'
 import { requireAuth } from '@/shared/middleware/auth.middleware.js'
+import { markPublicRoute } from '@/shared/middleware/markPublicRoute.js'
 
 const router = Router()
 const controller = new AuthController()
@@ -80,7 +81,9 @@ router.get('/token-status', requireAuth, controller.getTokenStatus.bind(controll
  * @access Public
  */
 // Authenticate using local root credentials config
-router.post('/login/root', controller.loginRoot.bind(controller));
+// Intentionally public: this IS the login endpoint — the point is that no
+// session/permission exists yet when the caller hits it.
+router.post('/login/root', markPublicRoute(), controller.loginRoot.bind(controller));
 
 /**
  * @route GET /api/auth/abilities
