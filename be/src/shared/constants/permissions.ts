@@ -96,3 +96,22 @@ export const PermissionSubjects = {
 
 export type PermissionSubject =
   (typeof PermissionSubjects)[keyof typeof PermissionSubjects]
+
+// ── Ability cache ──────────────────────────────────────────────────
+
+/**
+ * @description Redis key prefix for cached CASL ability rules.
+ * Bumped from `'ability:'` to `'ability:v2:'` in Phase 2 so that any cached
+ * V1-shaped rules from before the cutover naturally fall out of the cache
+ * (the new prefix means lookups never find the old keys). This is the R-2
+ * cache flush mitigation — instead of explicitly invalidating millions of
+ * keys at deploy time, we let them expire on their natural TTL while the
+ * new code path writes to a fresh namespace. The new prefix is a strict
+ * extension of the old key namespace (old keys under `ability:<sessionId>`
+ * are not readable by the new code path, which looks under
+ * `ability:v2:<sessionId>`), so the same R-2 outcome holds even though the
+ * pre-bump literal was `'ability:'` rather than `'ability:v1:'` as the
+ * original plan wording suggested.
+ * @see Phase 2 PLAN.md P2.5, RISKS.md R-2
+ */
+export const ABILITY_CACHE_PREFIX = 'ability:v2:'

@@ -17,7 +17,7 @@ import { log } from '@/shared/services/logger.service.js'
 import { UserRole } from '@/shared/constants/index.js'
 import { ModelFactory } from '@/shared/models/factory.js'
 import { getAllPermissions } from '@/shared/permissions/index.js'
-import { PermissionSubjects } from '@/shared/constants/permissions.js'
+import { PermissionSubjects, ABILITY_CACHE_PREFIX } from '@/shared/constants/permissions.js'
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -108,9 +108,6 @@ export interface AbacPolicyRule {
 // ============================================================================
 // CONSTANTS
 // ============================================================================
-
-/** @description Redis key prefix for cached ability rules */
-const ABILITY_CACHE_PREFIX = 'ability:'
 
 /** @description Default TTL for cached abilities (matches session TTL: 7 days) */
 const ABILITY_CACHE_TTL_SECONDS = config.session.ttlSeconds || 604800
