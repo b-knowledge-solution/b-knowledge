@@ -20,6 +20,7 @@ import {
   FolderOpen,
   FileText,
   Code2,
+  Network,
   Settings,
 } from 'lucide-react'
 
@@ -39,6 +40,7 @@ import {
 import DocumentsTabRedesigned from '../components/DocumentsTabRedesigned'
 import StandardTabRedesigned from '../components/StandardTabRedesigned'
 import CodeTabRedesigned from '../components/CodeTabRedesigned'
+import HealthcareOrgChart from '../components/HealthcareOrgChart'
 import KnowledgeBaseSettingsSheet from '../components/KnowledgeBaseSettingsSheet'
 
 // ============================================================================
@@ -192,6 +194,11 @@ const KnowledgeBaseDetailPage = () => {
                 {codeCategories.length}
               </Badge>
             </TabsTrigger>
+            {/* Healthcare org chart — read-only landscape tree with dropdown highlight */}
+            <TabsTrigger value="org-chart">
+              <Network className="h-4 w-4 mr-1.5" />
+              {t('knowledgeBase.orgChartTab', 'Org Chart')}
+            </TabsTrigger>
           </TabsList>
 
           {/* Documents tab: 3-column progressive-reveal layout */}
@@ -219,6 +226,11 @@ const KnowledgeBaseDetailPage = () => {
               initialCategories={codeCategories}
               embeddingModels={[]}
             />
+          </TabsContent>
+
+          {/* Org Chart tab: landscape healthcare organization chart with dropdown highlighting */}
+          <TabsContent value="org-chart" className="flex-1 flex flex-col min-h-0 mt-0 data-[state=inactive]:hidden">
+            <HealthcareOrgChart />
           </TabsContent>
         </Tabs>
       </div>

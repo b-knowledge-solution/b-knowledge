@@ -2633,6 +2633,11 @@
     "documentsTab": "Documents",
     "standardTab": "Standard",
     "codeTab": "Code",
+    "orgChartTab": "Org Chart",
+    "orgChart": {
+      "highlightLabel": "Highlight node",
+      "selectPlaceholder": "Select a node to highlight…"
+    },
     "newCategory": "New Category",
     "newVersion": "New Version",
     "selectCategory": "Select a category to view its contents",
