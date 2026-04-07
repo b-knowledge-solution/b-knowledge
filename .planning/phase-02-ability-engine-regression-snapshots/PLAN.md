@@ -488,8 +488,33 @@ feat(phase-02): add buildAbilityForV2 + KB→Category cascade behind feature fla
 
 **Goal**: This is the **load-bearing test of the entire milestone**. Two distinct test files with two distinct jobs:
 
-1. **PRIMARY — Behavioral parity matrix** (`v1-v2-parity.test.ts`): For every `(action × subject × fixture × resourceId)` tuple in the matrix, assert `v1.can(...) === v2.can(...)`. This is the safety net for Phase 3 cutover.
-2. **SECONDARY — Literal snapshot tripwire** (`v2-vs-v1-snapshot.test.ts`): Asserts `serializeRules(v2) === serializeRules(v1)` for each fixture. Detects rule-shape drift, not just decision drift. (The V1 snapshot capture from P2.1 is the OTHER tripwire — it watches V1 itself.)
+1. **PRIMARY — Behavioral parity matrix** (`v1-v2-parity.test.ts`): For every `(action × subject × fixture × resourceId)` tuple in the matrix **where the subject appears in V1's rule list for at least one fixture**, assert `v1.can(...) === v2.can(...)`. This is the safety net for Phase 3 cutover.
+
+   **CRITICAL — Subject-scoped parity (locked decision C, post-Wave-2):** V1 has two parallel permission systems internally — `buildAbilityFor()` (CASL) and `hasPermission()` (legacy static map at `rbac.ts:113`). They never agreed on what plain users could do. Phase 1's seed mirrored `hasPermission()`, so `role_permissions` contains keys (e.g. `chat.view`, `search_apps.view`, `user_history.view`) that V1's CASL builder never emitted rules for. Strict equality `v1.can() === v2.can()` for those subjects would always fail because V1's CASL output is **narrower** than the seed.
+
+   **The matrix MUST be subject-scoped to "subjects V1 ever emitted CASL rules for"**. Compute this set empirically from the V1 snapshots committed in P2.1:
+   ```ts
+   // Build the V1-relevant subject set ONCE at suite startup by reading the
+   // V1 ability output for every fixture and collecting every subject string
+   // that V1 emits a rule for. This is the universe over which V2 must agree.
+   const v1RelevantSubjects = new Set<string>()
+   for (const fixture of ALL_FIXTURES) {
+     const v1 = buildAbilityForV1Sync(fixture)
+     for (const rule of v1.rules) {
+       if (rule.subject === 'all') {
+         // super-admin's `manage all` — every subject is relevant for super-admin only
+         continue
+       }
+       const subjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject]
+       for (const s of subjects) v1RelevantSubjects.add(s as string)
+     }
+   }
+   ```
+   In the matrix iteration, **skip** any tuple whose `subject` is not in `v1RelevantSubjects`. The skipped tuples are exercised by Phase 3's middleware tests (`requirePermission()` against `role_permissions` directly) — they are NOT V2's CASL builder's responsibility.
+   The expected `v1RelevantSubjects` set per the P2.1 snapshots: `{ Dataset, Document, KnowledgeBase, ChatAssistant, SearchApp, User, AuditLog, Agent, Memory }`. Any drift in this set from a future V1 edit will be caught by P2.1's snapshot tripwire.
+   The matrix file's top-of-file comment MUST loudly document this scoping: "If V1's CASL builder ever gains a rule for a new subject, this matrix automatically picks it up via the empirical computation above; no code change needed here."
+
+2. **SECONDARY — Literal snapshot tripwire** (`v2-vs-v1-snapshot.test.ts`): Asserts `serializeRules(v2) === serializeRules(v1)` for each fixture, **after filtering both rule sets to `v1RelevantSubjects`**. Detects rule-shape drift, not just decision drift. (The V1 snapshot capture from P2.1 is the OTHER tripwire — it watches V1 itself.) Same subject-scoping rationale as the PRIMARY test: V2's rule list will be longer than V1's because it grants permissions on subjects V1 never touched (chat, search_apps, user_history, etc.) — but for the V1-relevant subjects, the rules MUST be byte-equal after deterministic sorting.
 
 The plan must label which file does which job in a top-of-file comment so a future reader doesn't conflate them.
 
