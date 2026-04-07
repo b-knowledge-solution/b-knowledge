@@ -146,7 +146,7 @@ Output: 5 Knex migrations, ~24 new TypeScript source files, 4 new Vitest spec fi
 | # | Description | Files | Acceptance check |
 |---|---|---|---|
 | T0.1 | Create `be/tests/permissions/` directory and `.gitkeep`. | `be/tests/permissions/.gitkeep` | `test -d be/tests/permissions` |
-| T0.2 | Grep for an existing test-DB helper (`grep -rn "migrate.latest\|migrate.rollback" be/tests/`) and either reuse OR create `_helpers.ts` exporting `withScratchDb(fn)`: opens a Knex handle against the dev Postgres, `migrate.rollback({ all: true })`, `migrate.latest()`, runs the callback, then rolls back. JSDoc required. | `be/tests/permissions/_helpers.ts` | `npx tsc --noEmit be/tests/permissions/_helpers.ts` (or `npm run build -w be`) succeeds |
+| T0.2 | Grep for an existing test-DB helper (`grep -rn "migrate.latest\|migrate.rollback" be/tests/`) and either reuse OR create `_helpers.ts` exporting **three** utilities: (a) `withScratchDb(fn)` — full migrate.latest then run callback then rollback. (b) `withScratchDbStoppingBefore(migrationFilename, fn)` — runs `migrate.latest` *up to but not including* the named migration, runs the callback (used to insert legacy fixtures), then `migrate.latest` to top, then `migrate.rollback({all:true})`. (c) `roundTripMigration(migrationFilename, assertions)` — runs migrate.latest, captures `informationSchema` snapshot, runs `migrate.rollback` of just that migration, runs `assertions(prevSchema)`, then `migrate.latest` again. All three functions: full JSDoc, transactional cleanup in `finally`, isolated to a `permissions_test` schema if Postgres permits. | `be/tests/permissions/_helpers.ts` | `npm run build -w be` succeeds AND `grep -E "withScratchDb\|withScratchDbStoppingBefore\|roundTripMigration" be/tests/permissions/_helpers.ts \| wc -l` ≥ 3 |
 | T0.3 | Add npm script alias `test:permissions` in `be/package.json`: `"test:permissions": "vitest run tests/permissions"`. **DO NOT modify any other script.** | `be/package.json` | `grep -q '"test:permissions"' be/package.json` |
 
 **Tests:** none (this plan creates the substrate; specs land in P1.1–P1.5).
@@ -258,10 +258,27 @@ describe('Phase 1 migrations — schema', () => {
     expect(inserted.length).toBe(1)
   }))
 
-  it('round-trips up → down → up cleanly', () => withScratchDb(async (knex) => {
-    // Helper provides a `roundTrip()` utility that runs rollback + migrate.latest()
-    // and asserts the final schema matches the post-up state.
-    expect(await knex.schema.hasTable('resource_grants')).toBe(true)
+  it('round-trips up → down → up cleanly and restores the legacy schema after down()', () =>
+    roundTripMigration('20260407XXXXXX_permission_foundation.ts', async (preUpKnex) => {
+      // After rollback, the legacy table must exist and the renamed one must NOT.
+      expect(await preUpKnex.schema.hasTable('knowledge_base_entity_permissions')).toBe(true)
+      expect(await preUpKnex.schema.hasTable('resource_grants')).toBe(false)
+      // The new tables created by this migration must also be gone.
+      expect(await preUpKnex.schema.hasTable('permissions')).toBe(false)
+      expect(await preUpKnex.schema.hasTable('role_permissions')).toBe(false)
+      expect(await preUpKnex.schema.hasTable('user_permission_overrides')).toBe(false)
+      // The legacy column names must be back.
+      expect(await preUpKnex.schema.hasColumn('knowledge_base_entity_permissions', 'entity_type')).toBe(true)
+      expect(await preUpKnex.schema.hasColumn('knowledge_base_entity_permissions', 'entity_id')).toBe(true)
+    }))
+
+  it('preserves the FK from resource_grants to knowledge_bases after rename', () => withScratchDb(async (knex) => {
+    // The pre-existing FK on knowledge_base_entity_permissions.knowledge_base_id must survive the rename.
+    const fks = await knex.raw(`
+      SELECT conname FROM pg_constraint
+      WHERE conrelid = 'resource_grants'::regclass AND contype = 'f'
+    `)
+    expect(fks.rows.some((r: any) => r.conname.includes('knowledge_base'))).toBe(true)
   }))
 })
 ```
@@ -540,6 +557,23 @@ import { withScratchDb } from './_helpers'
 import { ModelFactory } from '@/shared/models'
 
 describe('Day-one role seed', () => {
+  it('is a strict superset of the live ROLE_PERMISSIONS map (programmatic parity)', () => withScratchDb(async () => {
+    // Programmatic parity test — imports the live legacy map at test-time.
+    // Asserts that for every (role, legacyPermission) in ROLE_PERMISSIONS, the
+    // expanded set in role_permissions contains all keys produced by LEGACY_TO_NEW expansion.
+    const { ROLE_PERMISSIONS } = await import('@/shared/config/rbac.js')
+    const { LEGACY_TO_NEW } = await import('@/shared/permissions/legacy-mapping.js')
+    for (const [role, legacyPerms] of Object.entries(ROLE_PERMISSIONS)) {
+      const seeded = new Set(await ModelFactory.rolePermission.findByRole(role))
+      for (const legacyKey of legacyPerms) {
+        const expandedKeys = LEGACY_TO_NEW[legacyKey] ?? [legacyKey]
+        for (const newKey of expandedKeys) {
+          expect(seeded.has(newKey), `role=${role} legacy=${legacyKey} expanded=${newKey} missing`).toBe(true)
+        }
+      }
+    }
+  }))
+
   it('produces a stable per-role permission set (snapshot)', () => withScratchDb(async () => {
     const roles = ['super-admin', 'admin', 'leader', 'user']
     const result: Record<string, string[]> = {}
