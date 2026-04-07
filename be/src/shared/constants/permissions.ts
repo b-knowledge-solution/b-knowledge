@@ -35,6 +35,12 @@ export enum SyncLogCode {
   Updated = 'permissions.sync.updated',
   Removed = 'permissions.sync.removed',
   NoOp = 'permissions.sync.noop',
+  /**
+   * Raised when `getAllPermissions()` returns an empty array at sync time.
+   * This is always a developer error (the eager imports in
+   * `shared/permissions/index.ts` failed to fire) — never a legitimate runtime state.
+   */
+  EMPTY_REGISTRY = 'permissions.sync.empty_registry',
 }
 
 // ── Registry key shape ─────────────────────────────────────────────

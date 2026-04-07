@@ -22,7 +22,13 @@
 import { ModelFactory } from '@/shared/models/factory.js'
 import { log } from '@/shared/services/logger.service.js'
 import { SyncLogCode } from '@/shared/constants/permissions.js'
-import { getAllPermissions, type Permission } from './registry.js'
+// IMPORTANT: import from the barrel (`./index.js`), NOT from `./registry.js`.
+// The barrel's module body contains 21 eager imports of each `<feature>.permissions.ts`
+// file. Those imports are the side effects that populate `ALL_PERMISSIONS`. If we
+// import directly from `./registry.js`, the barrel is never loaded, the module files
+// never execute, and the registry ends up empty — a silent "in sync with zero rows"
+// bug that was caught by UAT after Phase 1 shipped. See commit history + phase 1 UAT.
+import { getAllPermissions, type Permission } from './index.js'
 
 /**
  * @description Result of a single sync run. All three counters are returned
@@ -52,6 +58,22 @@ export async function syncPermissionsCatalog(): Promise<SyncResult> {
   // `@/shared/permissions/index.ts` guarantee every module's permissions
   // file has fired its `definePermissions` side effect by the time we get here.
   const registered: readonly Permission[] = getAllPermissions()
+
+  // Sanity assertion — an empty registry is always a developer bug, never a
+  // legitimate runtime state. We ship with 21 module files; if `registered`
+  // is empty it means the barrel's eager imports did not fire (see the import
+  // comment at the top of this file). Throwing here turns a silent "sync OK
+  // with zero rows" failure into a loud, actionable error. The caller in
+  // `app/index.ts` wraps this in try/catch so startup still succeeds.
+  if (registered.length === 0) {
+    const err = new Error(
+      '[permissions.sync] Registry is empty — the eager imports in @/shared/permissions/index.ts did not populate ALL_PERMISSIONS. Check the import path in sync.ts and verify every module .permissions.ts file is listed in the barrel.'
+    )
+    log.error('[permissions.sync] Empty registry — aborting sync', {
+      code: SyncLogCode.EMPTY_REGISTRY,
+    })
+    throw err
+  }
 
   // Build the upsert payload — strip the optional `description` when absent
   // so `exactOptionalPropertyTypes` is satisfied.
