@@ -52,4 +52,6 @@ export const resourcesBySubject: Readonly<Record<string, readonly string[]>> = O
   [PermissionSubjects.CodeGraph]: [],
   [PermissionSubjects.Preview]: [],
   [PermissionSubjects.UserHistory]: [],
+  // P3.0a — permissions catalog management is admin-only class-level; no per-row checks.
+  [PermissionSubjects.PermissionCatalog]: [],
 })

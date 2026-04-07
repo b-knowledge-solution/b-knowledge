@@ -37,6 +37,7 @@ import '@/modules/glossary/glossary.permissions.js'
 import '@/modules/knowledge-base/knowledge-base.permissions.js'
 import '@/modules/llm-provider/llm-provider.permissions.js'
 import '@/modules/memory/memory.permissions.js'
+import '@/modules/permissions/permissions.permissions.js'
 import '@/modules/preview/preview.permissions.js'
 import '@/modules/rag/rag.permissions.js'
 import '@/modules/search/search.permissions.js'
@@ -65,6 +66,7 @@ export {
 } from '@/modules/knowledge-base/knowledge-base.permissions.js'
 export { LLM_PROVIDER_PERMISSIONS } from '@/modules/llm-provider/llm-provider.permissions.js'
 export { MEMORY_PERMISSIONS } from '@/modules/memory/memory.permissions.js'
+export { PERMISSIONS_PERMISSIONS } from '@/modules/permissions/permissions.permissions.js'
 export { PREVIEW_PERMISSIONS } from '@/modules/preview/preview.permissions.js'
 export {
   RAG_PERMISSIONS,

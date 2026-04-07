@@ -92,6 +92,7 @@ export const PermissionSubjects = {
   Preview: 'Preview',
   UserHistory: 'UserHistory',
   SyncConnector: 'SyncConnector',
+  PermissionCatalog: 'PermissionCatalog',
 } as const
 
 export type PermissionSubject =
