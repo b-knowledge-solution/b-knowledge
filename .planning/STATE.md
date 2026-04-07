@@ -19,19 +19,37 @@ Consolidate the two coexisting authorization systems (static `rbac.ts` + CASL `a
 
 ## Active Phase
 
-**None yet.** Next action: `/gsd:plan-phase 1` (Schema, Registry, Boot Sync).
+**None.** Phase 1 verified and complete. Next action: `/gsd:plan-phase 2` (Ability Engine + Regression Snapshots).
 
 ## Phase Pipeline
 
 | # | Name | Status | Plans | Depends on |
 |---|---|---|---|---|
-| 1 | Schema, Registry, Boot Sync | Pending | 5 | — |
+| 1 | Schema, Registry, Boot Sync | ✓ DONE (verified PASS, 5/5) | 6 (P1.0–P1.5) | — |
 | 2 | Ability Engine + Regression Snapshots | Pending | 5 | P1 |
 | 3 | Middleware Cutover | Pending | — | P2 |
 | 4 | FE Catalog + `<Can>` Codemod | Pending | — | P3 |
 | 5 | Admin UI Rewrite | Pending | — | P4 (partial) |
 | 6 | Legacy Cleanup + OpenSearch Integration | Pending | — | P3 |
 | 7 | Should-Haves (SH1, SH2) | Optional | — | P6 |
+
+## Phase 1 Outcome
+
+- **34/34 permissions tests passing** (5 suites: migrations, backfill, registry, sync, role-seed)
+- **81 permissions** registered across 21 BE modules
+- **209 day-one role_permissions rows** seeded (super-admin 80, admin 80, leader 46, user 3)
+- **Zero user-visible behavior change** — no routes, middleware, services, FE, or `rbac.ts` touched
+- Boot sync wired at `be/src/app/index.ts:168` between migrations and root-user bootstrap, fail-safe via try/catch
+- See `.planning/phase-01-schema-registry-boot-sync/VERIFICATION.md` for full evidence
+
+### Carry-forward IOUs (from Phase 1 verification)
+
+1. **129 pre-existing BE test failures** — unrelated to Phase 1, but worth a dedicated cleanup phase. Phase 1 added zero new failures.
+2. **sync.test.ts typed-cast hack** — temporarily reassigns `ModelFactory.permission`'s `knex` field for scratch-DB isolation. The clean fix is a per-test ModelFactory instance; deferred.
+3. **NULL-distinct workaround in P1.5 seed** — relies on app-layer pre-filter. Postgres 15+ `NULLS NOT DISTINCT` could simplify in a future migration.
+4. **Snapshot baselining** — `role-seed.test.ts` uses `toMatchSnapshot()` which becomes a tripwire whenever the registry changes; intentional but worth documenting.
+5. **Boot sync failure mode** — currently logs and continues. After Phase 3 cutover (when CASL becomes the active auth path), revisit and consider making sync failures fatal.
+6. **`subject` field semantics** — every `.permissions.ts` file declares a subject string; Phase 2 must align these with CASL Subjects type and reconcile FE/BE drift (Subjects in `fe/src/lib/ability.tsx` still has legacy `Project`).
 
 ## Configuration
 
@@ -68,8 +86,9 @@ Consolidate the two coexisting authorization systems (static `rbac.ts` + CASL `a
 - `.planning/codebase/` — codebase map (7 docs)
 - `.planning/research/` — investigation outputs (7 docs)
 
-## Git State at Initialization
+## Git State
 
+### Initialization
 | Commit | What |
 |---|---|
 | `8666102` | docs: initialize permission-system overhaul project (PROJECT.md) |
@@ -77,7 +96,29 @@ Consolidate the two coexisting authorization systems (static `rbac.ts` + CASL `a
 | `a9dc8a0` | docs: add permission overhaul research |
 | `7a28e93` | docs: add permission overhaul requirements |
 | `62be50a` | docs: add permission overhaul roadmap |
-| (this commit) | docs: initialize project state |
+| `b749d35` | docs: initialize project state |
+
+### Phase 1 (planning)
+| Commit | What |
+|---|---|
+| `e614355` | docs(phase-1): add research |
+| `17c98fe` | docs(phase-1): amend schema decisions from research |
+| `ec741b6` | docs(phase-1): add plan |
+| `f243c5d` | docs(phase-1): apply plan-checker fixes |
+| `0c13666` | docs(phase-1): amend PLAN.md schema (subject col, tenant_id, effect in unique) |
+
+### Phase 1 (execution)
+| Commit | What |
+|---|---|
+| `f2f8cfb` | chore(tests): scaffold be/tests/permissions/ + scratch-DB helper for Phase 1 |
+| `06faab0` | chore(test): register tsx ESM loader for vitest forks so Knex can load .ts migrations |
+| `b4cdf6c` | feat(db): add permission tables and rename entity_permissions → resource_grants |
+| `53c069a` | fix(test): repair P1.1 migration test fixtures and roundTrip helper |
+| `cae200b` | feat(db): backfill tenant_id and actions on resource_grants |
+| `6727911` | feat(permissions): scaffold per-module permission registry for all 21 BE modules |
+| `9c71d24` | feat(permissions): add Permission/RolePermission models and boot-time catalog sync |
+| `6be5e68` | feat(permissions): seed day-one role permissions from legacy ROLE_PERMISSIONS map |
+| `1cd4806` | docs(phase-1): verification — PASS, 5/5 requirements met |
 
 ## Key Risks (top 5 — full list in research/RISKS.md)
 
