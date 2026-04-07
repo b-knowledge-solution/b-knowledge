@@ -1,0 +1,453 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`P3.0d — V2 effective permissions on User subject (D1 before-image) > effective-permissions-for-admin 1`] = `
+"[
+  {
+    "fixture": "fixture-admin",
+    "action": "create",
+    "resourceId": null,
+    "result": true
+  },
+  {
+    "fixture": "fixture-admin",
+    "action": "create",
+    "resourceId": "fixture-user-1",
+    "result": true
+  },
+  {
+    "fixture": "fixture-admin",
+    "action": "create",
+    "resourceId": "fixture-user-2",
+    "result": true
+  },
+  {
+    "fixture": "fixture-admin",
+    "action": "delete",
+    "resourceId": null,
+    "result": true
+  },
+  {
+    "fixture": "fixture-admin",
+    "action": "delete",
+    "resourceId": "fixture-user-1",
+    "result": true
+  },
+  {
+    "fixture": "fixture-admin",
+    "action": "delete",
+    "resourceId": "fixture-user-2",
+    "result": true
+  },
+  {
+    "fixture": "fixture-admin",
+    "action": "edit",
+    "resourceId": null,
+    "result": true
+  },
+  {
+    "fixture": "fixture-admin",
+    "action": "edit",
+    "resourceId": "fixture-user-1",
+    "result": true
+  },
+  {
+    "fixture": "fixture-admin",
+    "action": "edit",
+    "resourceId": "fixture-user-2",
+    "result": true
+  },
+  {
+    "fixture": "fixture-admin",
+    "action": "manage",
+    "resourceId": null,
+    "result": true
+  },
+  {
+    "fixture": "fixture-admin",
+    "action": "manage",
+    "resourceId": "fixture-user-1",
+    "result": true
+  },
+  {
+    "fixture": "fixture-admin",
+    "action": "manage",
+    "resourceId": "fixture-user-2",
+    "result": true
+  },
+  {
+    "fixture": "fixture-admin",
+    "action": "read",
+    "resourceId": null,
+    "result": true
+  },
+  {
+    "fixture": "fixture-admin",
+    "action": "read",
+    "resourceId": "fixture-user-1",
+    "result": true
+  },
+  {
+    "fixture": "fixture-admin",
+    "action": "read",
+    "resourceId": "fixture-user-2",
+    "result": true
+  },
+  {
+    "fixture": "fixture-admin",
+    "action": "update",
+    "resourceId": null,
+    "result": true
+  },
+  {
+    "fixture": "fixture-admin",
+    "action": "update",
+    "resourceId": "fixture-user-1",
+    "result": true
+  },
+  {
+    "fixture": "fixture-admin",
+    "action": "update",
+    "resourceId": "fixture-user-2",
+    "result": true
+  }
+]"
+`;
+
+exports[`P3.0d — V2 effective permissions on User subject (D1 before-image) > effective-permissions-for-leader 1`] = `
+"[
+  {
+    "fixture": "fixture-leader",
+    "action": "create",
+    "resourceId": null,
+    "result": true
+  },
+  {
+    "fixture": "fixture-leader",
+    "action": "create",
+    "resourceId": "fixture-user-1",
+    "result": true
+  },
+  {
+    "fixture": "fixture-leader",
+    "action": "create",
+    "resourceId": "fixture-user-2",
+    "result": true
+  },
+  {
+    "fixture": "fixture-leader",
+    "action": "delete",
+    "resourceId": null,
+    "result": true
+  },
+  {
+    "fixture": "fixture-leader",
+    "action": "delete",
+    "resourceId": "fixture-user-1",
+    "result": true
+  },
+  {
+    "fixture": "fixture-leader",
+    "action": "delete",
+    "resourceId": "fixture-user-2",
+    "result": true
+  },
+  {
+    "fixture": "fixture-leader",
+    "action": "edit",
+    "resourceId": null,
+    "result": true
+  },
+  {
+    "fixture": "fixture-leader",
+    "action": "edit",
+    "resourceId": "fixture-user-1",
+    "result": true
+  },
+  {
+    "fixture": "fixture-leader",
+    "action": "edit",
+    "resourceId": "fixture-user-2",
+    "result": true
+  },
+  {
+    "fixture": "fixture-leader",
+    "action": "manage",
+    "resourceId": null,
+    "result": true
+  },
+  {
+    "fixture": "fixture-leader",
+    "action": "manage",
+    "resourceId": "fixture-user-1",
+    "result": true
+  },
+  {
+    "fixture": "fixture-leader",
+    "action": "manage",
+    "resourceId": "fixture-user-2",
+    "result": true
+  },
+  {
+    "fixture": "fixture-leader",
+    "action": "read",
+    "resourceId": null,
+    "result": true
+  },
+  {
+    "fixture": "fixture-leader",
+    "action": "read",
+    "resourceId": "fixture-user-1",
+    "result": true
+  },
+  {
+    "fixture": "fixture-leader",
+    "action": "read",
+    "resourceId": "fixture-user-2",
+    "result": true
+  },
+  {
+    "fixture": "fixture-leader",
+    "action": "update",
+    "resourceId": null,
+    "result": true
+  },
+  {
+    "fixture": "fixture-leader",
+    "action": "update",
+    "resourceId": "fixture-user-1",
+    "result": true
+  },
+  {
+    "fixture": "fixture-leader",
+    "action": "update",
+    "resourceId": "fixture-user-2",
+    "result": true
+  }
+]"
+`;
+
+exports[`P3.0d — V2 effective permissions on User subject (D1 before-image) > effective-permissions-for-super-admin 1`] = `
+"[
+  {
+    "fixture": "fixture-super",
+    "action": "create",
+    "resourceId": null,
+    "result": true
+  },
+  {
+    "fixture": "fixture-super",
+    "action": "create",
+    "resourceId": "fixture-user-1",
+    "result": true
+  },
+  {
+    "fixture": "fixture-super",
+    "action": "create",
+    "resourceId": "fixture-user-2",
+    "result": true
+  },
+  {
+    "fixture": "fixture-super",
+    "action": "delete",
+    "resourceId": null,
+    "result": true
+  },
+  {
+    "fixture": "fixture-super",
+    "action": "delete",
+    "resourceId": "fixture-user-1",
+    "result": true
+  },
+  {
+    "fixture": "fixture-super",
+    "action": "delete",
+    "resourceId": "fixture-user-2",
+    "result": true
+  },
+  {
+    "fixture": "fixture-super",
+    "action": "edit",
+    "resourceId": null,
+    "result": true
+  },
+  {
+    "fixture": "fixture-super",
+    "action": "edit",
+    "resourceId": "fixture-user-1",
+    "result": true
+  },
+  {
+    "fixture": "fixture-super",
+    "action": "edit",
+    "resourceId": "fixture-user-2",
+    "result": true
+  },
+  {
+    "fixture": "fixture-super",
+    "action": "manage",
+    "resourceId": null,
+    "result": true
+  },
+  {
+    "fixture": "fixture-super",
+    "action": "manage",
+    "resourceId": "fixture-user-1",
+    "result": true
+  },
+  {
+    "fixture": "fixture-super",
+    "action": "manage",
+    "resourceId": "fixture-user-2",
+    "result": true
+  },
+  {
+    "fixture": "fixture-super",
+    "action": "read",
+    "resourceId": null,
+    "result": true
+  },
+  {
+    "fixture": "fixture-super",
+    "action": "read",
+    "resourceId": "fixture-user-1",
+    "result": true
+  },
+  {
+    "fixture": "fixture-super",
+    "action": "read",
+    "resourceId": "fixture-user-2",
+    "result": true
+  },
+  {
+    "fixture": "fixture-super",
+    "action": "update",
+    "resourceId": null,
+    "result": true
+  },
+  {
+    "fixture": "fixture-super",
+    "action": "update",
+    "resourceId": "fixture-user-1",
+    "result": true
+  },
+  {
+    "fixture": "fixture-super",
+    "action": "update",
+    "resourceId": "fixture-user-2",
+    "result": true
+  }
+]"
+`;
+
+exports[`P3.0d — V2 effective permissions on User subject (D1 before-image) > effective-permissions-for-user 1`] = `
+"[
+  {
+    "fixture": "fixture-user",
+    "action": "create",
+    "resourceId": null,
+    "result": false
+  },
+  {
+    "fixture": "fixture-user",
+    "action": "create",
+    "resourceId": "fixture-user-1",
+    "result": false
+  },
+  {
+    "fixture": "fixture-user",
+    "action": "create",
+    "resourceId": "fixture-user-2",
+    "result": false
+  },
+  {
+    "fixture": "fixture-user",
+    "action": "delete",
+    "resourceId": null,
+    "result": false
+  },
+  {
+    "fixture": "fixture-user",
+    "action": "delete",
+    "resourceId": "fixture-user-1",
+    "result": false
+  },
+  {
+    "fixture": "fixture-user",
+    "action": "delete",
+    "resourceId": "fixture-user-2",
+    "result": false
+  },
+  {
+    "fixture": "fixture-user",
+    "action": "edit",
+    "resourceId": null,
+    "result": false
+  },
+  {
+    "fixture": "fixture-user",
+    "action": "edit",
+    "resourceId": "fixture-user-1",
+    "result": false
+  },
+  {
+    "fixture": "fixture-user",
+    "action": "edit",
+    "resourceId": "fixture-user-2",
+    "result": false
+  },
+  {
+    "fixture": "fixture-user",
+    "action": "manage",
+    "resourceId": null,
+    "result": false
+  },
+  {
+    "fixture": "fixture-user",
+    "action": "manage",
+    "resourceId": "fixture-user-1",
+    "result": false
+  },
+  {
+    "fixture": "fixture-user",
+    "action": "manage",
+    "resourceId": "fixture-user-2",
+    "result": false
+  },
+  {
+    "fixture": "fixture-user",
+    "action": "read",
+    "resourceId": null,
+    "result": false
+  },
+  {
+    "fixture": "fixture-user",
+    "action": "read",
+    "resourceId": "fixture-user-1",
+    "result": false
+  },
+  {
+    "fixture": "fixture-user",
+    "action": "read",
+    "resourceId": "fixture-user-2",
+    "result": false
+  },
+  {
+    "fixture": "fixture-user",
+    "action": "update",
+    "resourceId": null,
+    "result": false
+  },
+  {
+    "fixture": "fixture-user",
+    "action": "update",
+    "resourceId": "fixture-user-1",
+    "result": false
+  },
+  {
+    "fixture": "fixture-user",
+    "action": "update",
+    "resourceId": "fixture-user-2",
+    "result": false
+  }
+]"
+`;

@@ -32,7 +32,7 @@ export const resourcesBySubject: Readonly<Record<string, readonly string[]>> = O
   [PermissionSubjects.Chunk]: ['fixture-chunk-1'],
   [PermissionSubjects.ChatAssistant]: ['fixture-chat-1'],
   [PermissionSubjects.SearchApp]: ['fixture-search-1'],
-  [PermissionSubjects.User]: ['fixture-user-1'],
+  [PermissionSubjects.User]: ['fixture-user-1', 'fixture-user-2'],
   [PermissionSubjects.Team]: ['fixture-team-1'],
   [PermissionSubjects.Agent]: ['fixture-agent-1'],
   [PermissionSubjects.Memory]: ['fixture-memory-1'],
