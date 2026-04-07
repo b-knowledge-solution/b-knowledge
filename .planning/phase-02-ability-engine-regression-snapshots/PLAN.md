@@ -184,6 +184,7 @@ test(phase-02): scaffold permission test infra — fixtures, helpers, snapshot d
 
 1. **Verify the exact registry keys** for "view dataset" and "view document". Likely candidates: `dataset.view`, `documents.view`, `knowledge_base.view`. Read `be/src/modules/knowledge-base/knowledge-base.permissions.ts` and `be/src/modules/rag/rag.permissions.ts` to find them. **DO NOT GUESS** — read the registry files. Document the chosen keys in a top-of-file comment in the migration.
    - Acceptance: comment in migration cites the registry file + line number.
+   - **Hard halt:** if the keys cannot be found in the registry (e.g., the inventory predicted them but they don't exist), the executor MUST stop and escalate to the user. Inventing or substituting keys here would silently break V1/V2 parity for the `user` role. This is a P0 correctness gate.
 
 2. **Generate the migration** with `npm run db:migrate:make phase02_seed_user_leader_dataset_document_view`.
 
@@ -522,7 +523,7 @@ The plan must label which file does which job in a top-of-file comment so a futu
    // do not merge the two — they catch different bugs.
    ```
    Implementation:
-   - Build V1 ability via `buildAbilityForV1Sync(fixture)` (call the un-exported function via test-only re-export, OR temporarily set `useV2Engine = false`, build, then `useV2Engine = true`, build again — pick the cleaner path; I prefer adding a `__forTesting` named export from `ability.service.ts` for both V1 and V2 raw builders so the test never has to fiddle with config).
+   - Build V1 ability via `buildAbilityForV1Sync(fixture)` and V2 via `buildAbilityForV2(fixture)`. **Both functions MUST be exposed via a single `__forTesting` named export from `ability.service.ts`** — no config-mutation in tests, no temporary flag flips. The export is documented inline as test-only and is NOT re-exported through any barrel.
    - Build V2 ability via `buildAbilityForV2(fixture)` (await it).
    - Iterate the matrix using the P2.0 `iterateMatrix` helper.
    - For each tuple, use `expect.soft` so a single failure doesn't mask the rest:
@@ -558,7 +559,8 @@ The plan must label which file does which job in a top-of-file comment so a futu
 
 5. **Write `tenant-isolation.test.ts`**:
    - Insert a `resource_grants` row in tenant T2 for the `adminFixture` (whose `current_org_id = 'org-fixture-1' = T1`). Build V2 ability. Assert `v2.can('read', 'KnowledgeBase', { id: '<the-T2-resource-id>' }) === false`. The rule simply must not be loaded.
-   - Confirm that the `findActiveForUser` model query has `tenant_id = T1` as the first WHERE clause via SQL log inspection (or, if logging isn't easy to capture, by a model-layer test that's already in P2.2.0).
+   - Tenant filtering correctness is validated by the model-layer test in P2.2.0 (which directly asserts the WHERE clause shape). Do NOT rely on SQL log inspection — it's flaky and not in scope here.
+   - **Override + grant test exhaustiveness gate (covers the Q15 matrix asymmetry):** since V1 has no override/grant logic, the parity matrix CANNOT prove V2's correctness on those code paths. This file plus `override-precedence.test.ts` are the ONLY safety net for them. Before declaring P2.4 done, the executor MUST cross-check that every edge case enumerated in `2-RESEARCH.md` §10 is covered by at least one test in this file or `override-precedence.test.ts`. Specifically: (a) override on a registry-missing key (skip+log), (b) deny-only for a permission the role doesn't grant (no-op), (c) idempotent allow on already-granted permission, (d) expired grant filtered, (e) grant for unknown resource_type (skip+log), (f) cross-tenant override attempt rejected at query layer, (g) user with empty role_permissions in current tenant (empty ability). Any uncovered case → STOP and report.
 
 **Database setup for these tests**: Use Vitest `beforeEach` to seed rows directly via `ModelFactory` (NOT raw `db()` — layering rule applies even in tests). Use a transaction-per-test pattern with rollback in `afterEach` to keep tests isolated. If the project doesn't already have this, mirror the pattern from any Phase 1 test.
 
@@ -689,6 +691,8 @@ Before declaring Phase 2 done, ALL of the following MUST be true. Verify with th
 - [ ] **Locked R-G ordering** — `override-precedence.test.ts` "deny wins over allow on same key" test passes.
 - [ ] **Locked Option A cascade** — `cascade.test.ts` Test C passes (exactly ONE `DocumentCategory` rule with `$in`).
 - [ ] **Locked SQL `expires_at`** — `grep -rn "expires_at" be/src/shared/models/user-permission-override.model.ts be/src/shared/models/resource-grant.model.ts` shows `IS NULL OR expires_at > NOW()` SQL, NOT JS `Date.now()` filtering.
+- [ ] **No stray `buildAbilityFor` callers** — `grep -rn "buildAbilityFor" be/src --include='*.ts' | grep -v 'ability.service.ts' | wc -l` returns exactly **3** (the three updated `auth.controller.ts` call sites). If any new caller appeared between Phase 1 and now, it must also be updated for the async signature.
+- [ ] **Q15 override/grant test exhaustiveness** — Every edge case in `2-RESEARCH.md` §10 (cases a–g) has at least one test in `override-precedence.test.ts` OR `tenant-isolation.test.ts`. Cross-checked manually before merging the phase.
 
 **Human review gate**: Before merging the phase, the user MUST review the parity matrix output (P2.4) row count. Expected ballpark: `4 fixtures × ~5 actions × ~12 subjects × (~3 representative ids + 1 class check) ≈ 960 assertions`. If the row count is dramatically lower, the matrix iterator is under-enumerating and the safety net has a hole.
 
