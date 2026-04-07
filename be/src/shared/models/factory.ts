@@ -78,6 +78,8 @@ import { SystemHistoryModel } from '@/modules/system/models/system-history.model
 // Permission Models (Phase 1 — permission-system overhaul)
 import { PermissionModel } from '@/shared/models/permission.model.js';
 import { RolePermissionModel } from '@/shared/models/role-permission.model.js';
+import { UserPermissionOverrideModel } from '@/shared/models/user-permission-override.model.js';
+import { ResourceGrantModel } from '@/shared/models/resource-grant.model.js';
 
 /**
  * @description ModelFactory class implementing the Factory Pattern.
@@ -231,6 +233,10 @@ export class ModelFactory {
   private static permissionModel: PermissionModel;
   /** Role-permission grants model singleton instance */
   private static rolePermissionModel: RolePermissionModel;
+  /** User permission override model singleton instance */
+  private static userPermissionOverrideModel: UserPermissionOverrideModel;
+  /** Resource grant model singleton instance */
+  private static resourceGrantModel: ResourceGrantModel;
 
   /**
    * Get the User model singleton.
@@ -866,5 +872,29 @@ export class ModelFactory {
     // Create instance on first access (lazy initialization)
     if (!this.rolePermissionModel) this.rolePermissionModel = new RolePermissionModel();
     return this.rolePermissionModel;
+  }
+
+  /**
+   * @description Get the UserPermissionOverride model singleton.
+   * Backs the `user_permission_overrides` table consumed by the Phase 2 V2
+   * ability builder and written by the Phase 5 admin UI.
+   * @returns {UserPermissionOverrideModel} Instance for per-user override operations
+   */
+  static get userPermissionOverride() {
+    // Create instance on first access (lazy initialization)
+    if (!this.userPermissionOverrideModel) this.userPermissionOverrideModel = new UserPermissionOverrideModel();
+    return this.userPermissionOverrideModel;
+  }
+
+  /**
+   * @description Get the ResourceGrant model singleton.
+   * Backs the `resource_grants` table (formerly `knowledge_base_entity_permissions`)
+   * consumed by the Phase 2 V2 ability builder for resource-scoped CASL rules.
+   * @returns {ResourceGrantModel} Instance for resource-grant operations
+   */
+  static get resourceGrant() {
+    // Create instance on first access (lazy initialization)
+    if (!this.resourceGrantModel) this.resourceGrantModel = new ResourceGrantModel();
+    return this.resourceGrantModel;
   }
 }
