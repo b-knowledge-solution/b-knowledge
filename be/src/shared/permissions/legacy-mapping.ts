@@ -201,9 +201,32 @@ export const AGENTS_MEMORY_ADMIN_ONLY_KEYS: readonly string[] = [
 ] as const
 
 /**
- * @description Roles that receive the locked agents/memory grants on day one.
+ * @description Roles that receive the `agents.*` and `memory.*` permissions
+ * on day one.
+ *
+ * Originally locked in Phase 1 as "admin + super-admin only", but Phase 2's
+ * P2.4 parity matrix discovered that V1's `buildAbilityForV1Sync()` at
+ * `be/src/shared/services/ability.service.ts` lines 173-174 also grants
+ * `manage Agent` and `manage Memory` to the `leader` role via hard-coded
+ * `if` blocks. Since Phase 2's contract is "zero user-visible behavior
+ * change" when flipping `config.permissions.useV2Engine` to true, the locked
+ * Phase 1 decision is amended here to preserve V1's existing leader behavior.
+ *
+ * The original Phase 1 reasoning ("admin + super-admin only") was likely
+ * more restrictive than V1's actual production behavior. A future milestone
+ * can revisit whether `leader` should retain agents/memory access; until
+ * then, V1's status quo wins per the Phase 2 parity contract.
+ *
+ * Note: this constant change only affects FRESH databases via P1.5. Existing
+ * databases that already ran P1.5 before this amendment landed are patched
+ * in `20260407090000_phase02_patch_role_permissions_for_v2_parity.ts`, which
+ * inserts the same agents/memory rows for the leader role.
+ *
+ * @see Phase 2 P2.4 divergences rows 4-5
+ * @see be/src/shared/services/ability.service.ts:173-174
  */
 export const AGENTS_MEMORY_ADMIN_ROLES: readonly string[] = [
   'admin',
   'super-admin',
+  'leader',
 ] as const

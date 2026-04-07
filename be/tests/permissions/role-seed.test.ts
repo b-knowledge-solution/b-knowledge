@@ -41,6 +41,25 @@ import {
 // Import the migration module directly so the idempotency test can re-run up()
 // without having to resolve the filename through Knex's migration API.
 import * as seedMigration from '@/shared/db/migrations/20260407062700_phase1_seed_role_permissions.js'
+// Phase 2 P2.4 patch — see file header section "Phase 2 reconciliation" below.
+import * as p24Patch from '@/shared/db/migrations/20260407090000_phase02_patch_role_permissions_for_v2_parity.js'
+
+/**
+ * @description Leader's three Dataset over-grants that P2.4-patch INTENTIONALLY
+ * removes from role_permissions to mirror V1's leader behavior (V1 grants only
+ * create/update/delete on Dataset to leader, NOT manage). P1.5's
+ * `manage_datasets` expansion would otherwise include these because they share
+ * the same legacy expansion as admin. The role-seed invariant tests below
+ * exclude these three from their parity / idempotency assertions because they
+ * are owned by the P2.4 reconciliation, not by P1.5.
+ *
+ * @see be/src/shared/db/migrations/20260407090000_phase02_patch_role_permissions_for_v2_parity.ts
+ */
+const LEADER_DATASET_OVER_GRANTS_REMOVED_BY_P24 = new Set<string>([
+  'datasets.share',
+  'datasets.reindex',
+  'datasets.advanced',
+])
 
 /**
  * @description Temporarily point the RolePermission model singleton at a
@@ -91,6 +110,17 @@ describe('Day-one role seed (P1.5)', () => {
           for (const legacyKey of legacyPerms) {
             const expanded = LEGACY_TO_NEW[legacyKey] ?? []
             for (const newKey of expanded) {
+              // Skip the three keys P2.4-patch removes from leader for V1
+              // parity (see LEADER_DATASET_OVER_GRANTS_REMOVED_BY_P24 above).
+              // P1.5 alone seeds them, but P2.4-patch (which runs in the same
+              // migrate.latest batch) deletes them, so the post-head DB
+              // intentionally lacks them for the leader role.
+              if (
+                role === 'leader' &&
+                LEADER_DATASET_OVER_GRANTS_REMOVED_BY_P24.has(newKey)
+              ) {
+                continue
+              }
               expect(
                 seeded.has(newKey),
                 `role=${role} legacy=${legacyKey} expanded=${newKey} missing from seeded rows`,
@@ -104,25 +134,27 @@ describe('Day-one role seed (P1.5)', () => {
     })
   })
 
-  it('grants admin and super-admin every agents.* and memory.* action; user/leader get none', async () => {
+  it('grants admin, super-admin, AND leader every agents.* and memory.* action; user gets none', async () => {
     await withScratchDb(async (scratch) => {
       const restore = pinRolePermissionModelTo(scratch)
       try {
-        // Admin + super-admin must carry every locked agents/memory key.
-        for (const role of ['admin', 'super-admin']) {
+        // Phase 2 P2.4 reconciliation: V1's `buildAbilityForV1Sync` grants
+        // `manage Agent` and `manage Memory` to leader (ability.service.ts
+        // L173-L174). The locked Phase 1 decision was amended to include
+        // 'leader' in `AGENTS_MEMORY_ADMIN_ROLES` so day-one parity holds.
+        // See legacy-mapping.ts header for the full history.
+        for (const role of ['admin', 'super-admin', 'leader']) {
           const perms = new Set(await ModelFactory.rolePermission.findByRole(role))
           for (const key of AGENTS_MEMORY_ADMIN_ONLY_KEYS) {
             expect(perms.has(key), `role=${role} missing key=${key}`).toBe(true)
           }
         }
-        // Regular user and leader must carry zero agents.* / memory.* keys.
-        for (const role of ['user', 'leader']) {
-          const perms = await ModelFactory.rolePermission.findByRole(role)
-          const leaked = perms.filter(
-            (k) => k.startsWith('agents.') || k.startsWith('memory.'),
-          )
-          expect(leaked, `role=${role} unexpectedly has ${leaked.join(', ')}`).toEqual([])
-        }
+        // Regular `user` is the only role that must carry zero agents/memory keys.
+        const userPerms = await ModelFactory.rolePermission.findByRole('user')
+        const leaked = userPerms.filter(
+          (k) => k.startsWith('agents.') || k.startsWith('memory.'),
+        )
+        expect(leaked, `role=user unexpectedly has ${leaked.join(', ')}`).toEqual([])
       } finally {
         restore()
       }
@@ -185,17 +217,28 @@ describe('Day-one role seed (P1.5)', () => {
     })
   })
 
-  it('is idempotent — re-running up() inserts zero additional rows', async () => {
+  it('is idempotent — re-running P1.5 + P2.4-patch in sequence inserts zero additional rows', async () => {
     await withScratchDb(async (scratch) => {
-      // `migrate.latest()` already ran the seed once during withScratchDb setup,
-      // so the scratch schema is warm. Re-invoke up() against the same Knex
-      // handle and assert the row count is unchanged.
+      // `migrate.latest()` already ran the seed migrations once during
+      // withScratchDb setup, so the scratch schema is at head with both
+      // P1.5 and P2.4-patch applied. The idempotency contract for the
+      // permission-seed CHAIN is: re-running both migrations in their
+      // forward order must leave the table identical.
+      //
+      // Note: re-running P1.5 alone is NOT idempotent in the post-P2.4-patch
+      // world because P1.5's `manage_datasets` expansion would re-insert
+      // the three leader Dataset over-grants that P2.4-patch intentionally
+      // removes (datasets.share / .reindex / .advanced). The chain-level
+      // idempotency below is the meaningful invariant — that's what
+      // `migrate.latest()` actually executes on every boot.
       const before = await scratch(ROLE_PERMISSIONS_TABLE).count<{ n: string }[]>('* as n')
       const beforeN = Number(before[0]!.n)
 
-      // Call the migration's exported up() directly. Its insert path uses
-      // onConflict(...).ignore() so every row collides and is skipped.
+      // Re-run both seeds in their forward order. Both use onConflict().ignore()
+      // plus an application-layer existing-token filter, so every row should
+      // collide and skip.
       await seedMigration.up(scratch)
+      await p24Patch.up(scratch)
 
       const after = await scratch(ROLE_PERMISSIONS_TABLE).count<{ n: string }[]>('* as n')
       const afterN = Number(after[0]!.n)
