@@ -19,19 +19,45 @@ Consolidate the two coexisting authorization systems (static `rbac.ts` + CASL `a
 
 ## Active Phase
 
-**None.** Phase 1 verified and complete. Next action: `/gsd:plan-phase 2` (Ability Engine + Regression Snapshots).
+**None.** Phase 2 verified and complete. Next action: `/gsd:verify-work 2` (UAT) then `/gsd:plan-phase 3` (Middleware Cutover).
 
 ## Phase Pipeline
 
 | # | Name | Status | Plans | Depends on |
 |---|---|---|---|---|
-| 1 | Schema, Registry, Boot Sync | ✓ DONE (verified PASS, 5/5) | 6 (P1.0–P1.5) | — |
-| 2 | Ability Engine + Regression Snapshots | Pending | 5 | P1 |
+| 1 | Schema, Registry, Boot Sync | ✓ DONE (verified PASS, 5/5; UAT 5/5) | 6 (P1.0–P1.5) | — |
+| 2 | Ability Engine + Regression Snapshots | ✓ DONE (verified PASS, 5/5) | 7 (P2.0, P2.6, P2.1, P2.2.0, P2.2, P2.4, P2.5) + 1 patch | P1 |
 | 3 | Middleware Cutover | Pending | — | P2 |
 | 4 | FE Catalog + `<Can>` Codemod | Pending | — | P3 |
 | 5 | Admin UI Rewrite | Pending | — | P4 (partial) |
 | 6 | Legacy Cleanup + OpenSearch Integration | Pending | — | P3 |
 | 7 | Should-Haves (SH1, SH2) | Optional | — | P6 |
+
+## Phase 2 Outcome
+
+- **89 tests passing** across 16 test files (Phase 1: 5 files / 34 tests; Phase 2: 11 files / 55 tests)
+- **buildAbilityForV2** behind feature flag `config.permissions.useV2Engine` (defaults `false` — V1 still active)
+- **3 new models**: `UserPermissionOverrideModel`, `ResourceGrantModel`, extended `RolePermissionModel.findByRoleWithSubjects` — all SQL-side `expires_at` filtering
+- **Per-fixture parity matrix**: 135 tuples (super-admin 1, admin 65, leader 55, user 14) — V1 and V2 produce identical CASL decisions across the V1-relevant subject set
+- **Subject scoping locked decision C**: parity matrix scoped per-fixture to V1's actual rule emission (not the union); V2 emitting more rules for subjects V1 never touched is intentional
+- **Cache prefix bumped** to `'ability:v2:'` so old V1-shaped Redis entries naturally rotate at cutover
+- **5 callers updated** for the new async signature: `auth.controller.ts:65,474,566`, `auth.middleware.ts:366`, `chat-conversation.service.ts:1022`
+- **Two Phase 1 over-grants caught and fixed** by the parity matrix:
+  - Leader was missing `manage_knowledge_base` expansion + agents/memory keys (V1 grants these via hard-coded if blocks; the legacy ROLE_PERMISSIONS map didn't reflect that)
+  - Leader was *over-granted* `datasets.share/reindex/advanced` (which the registry declares with `action: 'manage'`); patched out
+- See `.planning/phase-02-ability-engine-regression-snapshots/VERIFICATION.md` for full evidence
+
+### Carry-forward IOUs from Phase 2
+
+1. **`AGENTS_MEMORY_ADMIN_ROLES` amendment** — locked decision changed from "admin + super-admin only" to include `leader`. Documented in `legacy-mapping.ts` with rationale (V1 already grants this via `ability.service.ts:173-174`; preserving zero behavior change). Worth revisiting in a future milestone.
+2. **`as any` casts on V2 condition objects** at `ability.service.ts:286,318` — CASL's `MongoQuery<subject>` rejects arbitrary keys for string-literal subjects. V1 has the same casts. Phase 4 could introduce per-subject row interfaces.
+3. **Subjects type drift** between BE (27 subjects in `ability.service.ts`) and FE (`fe/src/lib/ability.tsx` still has legacy `'Project'`). **Phase 4 must reconcile.**
+4. **Chain-idempotency contract change** — after the P2.4 patch migration, the canonical idempotent unit is the full migration chain, not any single migration. The P1.5 seed in isolation is no longer idempotent because the chain re-applies its over-grants. This is documented in `role-seed.test.ts`.
+5. **Team-membership deferred to Phase 5** — V2's `findActiveForUser` resource_grants call passes empty `teamIds: []`. Marked TODO at `ability.service.ts:263-267`.
+6. **Per-fixture matrix tuple counts** are the human-review-gate evidence — Phase 3 reviewer should spot-check 2-3 of the snapshot files before flipping the flag.
+7. **Legacy `permission_level` rows in `resource_grants`** are logged-and-skipped by V2 at `ability.service.ts:272-279`. Phase 3 deploy hook should fail-fast on any unbackfilled rows in production.
+8. **Vitest test count "89" is runtime-expanded** via `it.each` from a smaller set of static `it()` declarations. Not a blocker but Phase 3 readiness script should verify the actual count.
+9. **Snapshot normalizer `MANAGE_EXPANSION`** is now registry-derived instead of hardcoded — no maintenance burden for new custom actions.
 
 ## Phase 1 Outcome
 
@@ -119,6 +145,28 @@ Consolidate the two coexisting authorization systems (static `rbac.ts` + CASL `a
 | `9c71d24` | feat(permissions): add Permission/RolePermission models and boot-time catalog sync |
 | `6be5e68` | feat(permissions): seed day-one role permissions from legacy ROLE_PERMISSIONS map |
 | `1cd4806` | docs(phase-1): verification — PASS, 5/5 requirements met |
+| `f8f7482` | fix(permissions): load registry side-effects via barrel + empty-registry sanity assertion (UAT bug) |
+| `49f704b` | docs(phase-1): UAT report — 5/5 pass |
+
+### Phase 2 (planning)
+| Commit | What |
+|---|---|
+| `b4057ca` | docs(phase-2): research — 7 red flags |
+| `c6ea719` | docs(phase-2): add executable plan |
+| `2483b75` | docs(phase-2): apply plan-checker refinements |
+| `4b06e4d` | docs(phase-2): lock decision C — subject-scope parity matrix |
+
+### Phase 2 (execution)
+| Commit | What |
+|---|---|
+| `5c6a21a` | test(permissions): scaffold Phase 2 fixtures, serializeRules, iterateMatrix helpers |
+| `e53b3ec` | feat(permissions): seed dataset.view + documents.view for user/leader (R-A fix) |
+| `d7815f9` | test(permissions): capture V1 ability rule snapshot per fixture (drift tripwire) |
+| `64f2947` | feat(models): add UserPermissionOverride + ResourceGrant models, extend RolePermission |
+| `d2e81ba` | feat(permissions): add buildAbilityForV2 behind feature flag |
+| `566e5a4` | feat(permissions): bump ABILITY_CACHE_PREFIX to ability:v2: (R-2 mitigation) |
+| `6cac9be` | test(permissions): Phase 2 parity matrix + 6 V1↔V2 reconciliation patches |
+| `cd9b5f6` | docs(phase-2): verification — PASS, 5/5 requirements met |
 
 ## Key Risks (top 5 — full list in research/RISKS.md)
 
