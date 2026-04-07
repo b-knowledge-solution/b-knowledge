@@ -27,7 +27,10 @@
 ### TS1 — DB schema is in place
 - Knex migrations create `permissions` and `role_permissions` tables.
 - Migration creates `user_permission_overrides` (with `effect` column: `allow`|`deny`).
-- Migration **renames `knowledge_base_entity_permissions` → `resource_grants`** and adds columns: `action` (text), `tenant_id` (uuid, denormalized at insert), `expires_at` (timestamptz, nullable).
+- Migration **renames `knowledge_base_entity_permissions` → `resource_grants`**, renames columns `entity_type → resource_type` and `entity_id → resource_id`, and adds columns: `actions` (text[], Postgres array — one row per grant carries multiple actions), `tenant_id` (uuid, denormalized at insert), `expires_at` (timestamptz, nullable).
+- `UNIQUE(resource_type, resource_id, grantee_type, grantee_id)` constraint on `resource_grants` (one grant row per principal × resource).
+- The legacy `permission_level` → `actions[]` *data* transform is deferred to Phase 2 (when the new ability engine consumes the column). Phase 1 only adds `actions` as a nullable column with a sensible default applied at the rename. This keeps the schema migration trivially reversible.
+- The unrelated table `knowledge_base_permissions` (per-tab UI flags: `tab_documents/tab_chat/tab_settings`) is **not touched** in this milestone. If it needs to migrate later it gets its own dedicated phase.
 - Backfill script populates `tenant_id` on existing rows by joining through `knowledge_bases`.
 - All new tables have `tenant_id` indexed and FK constraints declared.
 - **Done when:** `npm run db:migrate` runs cleanly on a fresh DB and on a DB with the existing `knowledge_base_entity_permissions` rows; rollback is reversible; existing rows survive.

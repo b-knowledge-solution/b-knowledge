@@ -24,8 +24,8 @@
 **Depends on**: Nothing
 **Requirements**: TS1, TS2, TS3, TS4 (seed only, not enforcement)
 **Plans**:
-  1. **P1.1 Knex migrations** — Create `permissions`, `role_permissions`, `user_permission_overrides`; rename `knowledge_base_entity_permissions` → `resource_grants`; add `action`, `tenant_id` (denormalized, NOT NULL), `expires_at` columns + indexes + FKs + tenant CHECK constraint
-  2. **P1.2 Backfill migration** — Populate `tenant_id` on existing `resource_grants` rows by joining `knowledge_bases`; migrate `knowledge_base_permissions` (KB-level grants) into `resource_grants`; idempotent
+  1. **P1.1 Knex migrations** — Create `permissions`, `role_permissions`, `user_permission_overrides`; rename `knowledge_base_entity_permissions` → `resource_grants`; rename columns `entity_type→resource_type`, `entity_id→resource_id`; add `actions text[]`, `tenant_id` (denormalized, NOT NULL after backfill), `expires_at` columns + indexes + FKs + `UNIQUE(resource_type, resource_id, grantee_type, grantee_id)` constraint
+  2. **P1.2 Backfill migration** — Populate `tenant_id` on existing `resource_grants` rows by joining `knowledge_bases`; populate `actions` with sensible default at rename; idempotent. **Out of scope:** the unrelated `knowledge_base_permissions` table (per-tab UI flags) is NOT migrated here.
   3. **P1.3 Registry scaffolding** — `be/src/shared/permissions/registry.ts` with `definePermissions()` helper + type-safe key uniqueness; one `<feature>.permissions.ts` per module (22 files) sourced from `PERMISSION_INVENTORY.md`
   4. **P1.4 Boot sync service** — `be/src/shared/permissions/sync.ts` upserts registry into `permissions` table at boot; logs stale-row removals; idempotent on warm DB
   5. **P1.5 Day-one role seed migration** — Knex migration seeds `role_permissions` from `LEGACY_TO_NEW` mapping in `MIGRATION_PLAN.md` step (b); expands `manage_users` lazy permission per `PERMISSION_INVENTORY.md`
