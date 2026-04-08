@@ -125,7 +125,7 @@ export function OverrideEditor({ userId, userRole }: OverrideEditorProps) {
       <button
         type="button"
         aria-label={t('permissions.admin.overrides.remove')}
-        className="text-slate-400 hover:text-red-500"
+        className="text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400"
         onClick={() => handleRemove(row)}
       >
         <X className="h-4 w-4" />
