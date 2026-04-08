@@ -9,15 +9,15 @@
  * @module pages/SystemToolsPage
  */
 
-import { AlertCircle, RefreshCw, Server } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
-import { queryKeys } from '@/lib/queryKeys';
-import { getSystemTools } from '../api/systemToolsApi';
-import SystemToolCard from '../components/SystemToolCard';
-import CronSchedulerSettings from '../components/CronSchedulerSettings';
-import { useAuth } from '@/features/auth';
-import { UserRole } from '@/constants';
+import { AlertCircle, RefreshCw, Server } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/queryKeys'
+import { getSystemTools } from '../api/systemToolsApi'
+import SystemToolCard from '../components/SystemToolCard'
+import CronSchedulerSettings from '../components/CronSchedulerSettings'
+import { useAuth } from '@/features/auth'
+import { UserRole } from '@/constants'
 
 // ============================================================================
 // Component
@@ -33,6 +33,7 @@ import { UserRole } from '@/constants';
  * - Empty state when no tools configured
  * - Admin info about configuration file location
  */
+// TODO(perm-codemod): review — replace with useHasPermission
 const SystemToolsPage = () => {
     const { t } = useTranslation();
     const { user } = useAuth();
