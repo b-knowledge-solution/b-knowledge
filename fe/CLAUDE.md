@@ -104,6 +104,60 @@ Full conventions: `fe/STATE_MANAGEMENT.md`
   3. Add i18n keys for all 3 locales
   4. Wrap route with `<FeatureErrorBoundary>`
 
+## Permission Gating: `<Can>` vs `useHasPermission` (Phase 4+)
+
+### Decision tree: <Can> vs useHasPermission
+
+Use `<Can I="action" a="Subject">` when you need CASL conditions — per-tenant, per-owner, or per-instance reasoning. The check operates against a specific subject instance or class with conditions.
+
+Use `useHasPermission(PERMISSION_KEYS.X)` for flat catalog-key feature gates with no per-instance reasoning. Pure boolean: "does this user have permission X?"
+
+```
+Need to gate a UI element on permission?
+├── Does the check depend on a specific resource instance (this KB, this doc)?
+│   ├── YES → <Can I="update" a="KnowledgeBase" this={kb}>...</Can>
+│   └── NO  → continue
+├── Does the check depend on subject CLASS without an instance (any KB)?
+│   ├── YES → <Can I="create" a="KnowledgeBase">...</Can>
+│   └── NO  → continue
+└── Flat capability check (e.g. "can submit feedback")?
+    └── useHasPermission(PERMISSION_KEYS.FEEDBACK_SUBMIT)
+```
+
+### Examples
+
+```tsx
+// Instance check — CASL conditions evaluated against the specific KB
+<Can I="delete" a="KnowledgeBase" this={kb}>
+  <Button onClick={() => deleteKb(kb.id)}>Delete</Button>
+</Can>
+
+// Class check — "can the user create ANY knowledge base?"
+<Can I="create" a="KnowledgeBase">
+  <Button onClick={openCreateDialog}>New Knowledge Base</Button>
+</Can>
+
+// Flat capability check — no instance reasoning
+const canCreateDataset = useHasPermission(PERMISSION_KEYS.DATASETS_CREATE)
+if (!canCreateDataset) return null
+```
+
+### Hard rules
+
+- **isAdmin prop drilling is banned.** Do not add `isAdmin?: boolean` props to components or thread booleans through the tree. Gate at the leaf with `<Can>` or `useHasPermission(PERMISSION_KEYS.X)` instead.
+- **Bare string keys are banned in useHasPermission — always use PERMISSION_KEYS.X.** This honors the project-wide no-hardcoded-strings rule from root `CLAUDE.md`. Typos surface as TS errors at edit time, not at runtime.
+- **Role-string comparisons (user.role === '...') are banned outside features/auth/.** The P4.5 ESLint rule enforces this; the only legal home for role string literals is `fe/src/features/auth/` and `fe/src/constants/roles.ts`.
+- The `PERMISSION_KEYS` const is auto-generated from `fe/src/generated/permissions-catalog.json`. If you need a key that doesn't exist yet, regenerate the snapshot from the BE: `npm run permissions:export-catalog` from the root, then rebuild the FE so `permission-keys.ts` regenerates.
+
+### Where the pieces live
+
+| File | Provides |
+|------|----------|
+| `fe/src/lib/ability.tsx` | `<Can>`, `useAppAbility()`, `AbilityContext`, `AbilityProvider`, `Subjects` union |
+| `fe/src/lib/permissions.tsx` | `useHasPermission(key)` flat-key hook |
+| `fe/src/constants/permission-keys.ts` | `PERMISSION_KEYS` const map (AUTO-GENERATED — do not edit) |
+| `fe/src/generated/permissions-catalog.json` | Committed snapshot exported from BE catalog |
+
 ## Documentation Comments (Mandatory)
 
 All code MUST follow the root `CLAUDE.md` comment conventions. Summary:
