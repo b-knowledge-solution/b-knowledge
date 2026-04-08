@@ -47,6 +47,7 @@
     "db:migrate:rollback": "npm run db:migrate:rollback --workspace=be",
     "db:seed": "npm run db:seed --workspace=be",
     "db:setup": "npm run db:migrate --workspace=be && npm run db:seed --workspace=be",
+    "permissions:export-catalog": "cd be && tsx scripts/export-permissions-catalog.mjs",
     "docs:dev": "cd docs && npx vitepress dev --port 5174",
     "docs:build": "cd docs && npx vitepress build",
     "docs:preview": "cd docs && npx vitepress preview --port 5174"
