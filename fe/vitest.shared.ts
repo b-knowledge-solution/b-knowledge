@@ -13,6 +13,7 @@ export const unitTestFiles = [
   'tests/utils/document-util.test.ts',
   'tests/utils/format.test.ts',
   'tests/version.test.ts',
+  'scripts/__tests__/codemod-permissions.test.ts',
 ]
 
 export const sharedConfig = {
