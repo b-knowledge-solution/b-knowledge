@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Plus, Search, LayoutGrid, List } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Spinner } from '@/components/ui/spinner';
-import { EmptyState } from '@/components/ui/empty-state';
-import { useAuth } from '@/features/auth';
-import { UserRole } from '@/constants';
-import { useDatasets } from '../api/datasetQueries';
-import DatasetCard from '../components/DatasetCard';
-import CreateDatasetModal from '../components/CreateDatasetModal';
-import DatasetAccessDialog from '../components/DatasetAccessDialog';
-import type { Dataset } from '../types';
+import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Plus, Search, LayoutGrid, List } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Spinner } from '@/components/ui/spinner'
+import { EmptyState } from '@/components/ui/empty-state'
+import { useAuth } from '@/features/auth'
+import { UserRole } from '@/constants'
+import { useDatasets } from '../api/datasetQueries'
+import DatasetCard from '../components/DatasetCard'
+import CreateDatasetModal from '../components/CreateDatasetModal'
+import DatasetAccessDialog from '../components/DatasetAccessDialog'
+import type { Dataset } from '../types'
 
 /**
  * @description Datasets listing page with search, grid/list view toggle,
@@ -24,6 +24,7 @@ const DatasetsPage: React.FC = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   // Grant admin privileges to admin and leader roles
+  // TODO(perm-codemod): multi-role chain — manual migration required (split into useHasPermission calls per capability)
   const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.LEADER;
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   // State for access control dialog
@@ -105,7 +106,6 @@ const DatasetsPage: React.FC = () => {
               onEdit={openModal}
               onDelete={handleDelete}
               onManageAccess={isAdmin ? (d: Dataset) => setAccessDataset(d) : undefined}
-              isAdmin={isAdmin}
             />
           ))}
         </div>
@@ -118,7 +118,6 @@ const DatasetsPage: React.FC = () => {
               onEdit={openModal}
               onDelete={handleDelete}
               onManageAccess={isAdmin ? (d: Dataset) => setAccessDataset(d) : undefined}
-              isAdmin={isAdmin}
             />
           ))}
         </div>
