@@ -8,6 +8,7 @@
 import { Router } from 'express'
 import rateLimit from 'express-rate-limit'
 import { requireApiKey, requireScope } from '@/shared/middleware/external-auth.middleware.js'
+import { markPublicRoute } from '@/shared/middleware/markPublicRoute.js'
 import { validate } from '@/shared/middleware/validate.middleware.js'
 import { externalApiController } from '../controllers/external-api.controller.js'
 import {
@@ -45,6 +46,10 @@ router.use(requireApiKey)
  */
 router.post(
   '/chat',
+  // markPublicRoute: this surface is gated by Bearer API-key auth (requireApiKey)
+  // and per-key scope checks, not session permissions. The external.permissions
+  // catalog explicitly excludes these endpoints — see external.permissions.ts.
+  markPublicRoute(),
   requireScope('chat'),
   validate({ body: externalChatSchema }),
   externalApiController.chat.bind(externalApiController)
@@ -56,6 +61,8 @@ router.post(
  */
 router.post(
   '/search',
+  // markPublicRoute: API-key auth surface, see /chat above for rationale.
+  markPublicRoute(),
   requireScope('search'),
   validate({ body: externalSearchSchema }),
   externalApiController.search.bind(externalApiController)
@@ -67,6 +74,8 @@ router.post(
  */
 router.post(
   '/retrieval',
+  // markPublicRoute: API-key auth surface, see /chat above for rationale.
+  markPublicRoute(),
   requireScope('retrieval'),
   validate({ body: externalRetrievalSchema }),
   externalApiController.retrieval.bind(externalApiController)
