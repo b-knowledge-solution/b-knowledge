@@ -11,7 +11,7 @@ import { Request, Response, NextFunction, RequestHandler } from 'express'
 import { subject as toCaslSubject } from '@casl/ability'
 import { log } from '@/shared/services/logger.service.js'
 import { User } from '@/shared/models/types.js'
-import { hasPermission, Role, Permission, ADMIN_ROLES } from '@/shared/config/rbac.js'
+import { Role, ADMIN_ROLES } from '@/shared/config/rbac.js'
 import { abilityService, AppAbility, buildAbilityFor } from '@/shared/services/ability.service.js'
 import { getAllPermissions } from '@/shared/permissions/index.js'
 import { config } from '@/shared/config/index.js'
@@ -139,98 +139,31 @@ export function getCurrentUser(req: Request): User | undefined {
 }
 
 /**
- * @description Legacy role-based permission check. Retained under a
- * `legacy*` name during the Phase 3 middleware sweep so routes that still
- * pass a legacy `Permission` enum value keep working while Wave 3 migrates
- * them one-by-one. Checks both role-based permissions (via RBAC config) and
- * explicit user permissions.
- * @deprecated Use the new `requirePermission(key: string)` that reads the V2
- *   ability via the permission registry. This function will be removed in
- *   P3.5c once every route has been migrated.
- * @param {Permission} permission - The legacy permission enum required to access the route
- * @returns {Function} Express middleware function
- */
-// TODO(P3.5c): remove after route sweep is green
-export function legacyRequirePermission(permission: Permission) {
-  return (req: Request, res: Response, next: NextFunction) => {
-    // Get user from session
-    const user = req.session?.user
-
-    // No user - return 401 Unauthorized
-    if (!user) {
-      res.status(401).json({ error: 'Unauthorized' })
-      return
-    }
-
-    // Ensure user is attached to request for downstream use
-    if (!req.user) {
-      req.user = user
-    }
-
-    // Check if user's role grants the required permission
-    if (user.role && hasPermission(user.role, permission)) {
-      next()
-      return
-    }
-
-    // Check explicit user permissions (may be string or array)
-    if (user.permissions) {
-      let perms: string[] = []
-
-      // Parse permissions if stored as JSON string
-      if (typeof user.permissions === 'string') {
-        try {
-          perms = JSON.parse(user.permissions)
-        } catch { perms = [] }
-      } else if (Array.isArray(user.permissions)) {
-        perms = user.permissions
-      }
-
-      // Check if user has the required permission explicitly
-      if (perms.includes(permission)) {
-        next()
-        return
-      }
-    }
-
-    // Permission not found - log and return 403 Forbidden
-    log.warn('Access denied: missing permission', {
-      userId: user.id,
-      role: user.role,
-      requiredPermission: permission
-    })
-    res.status(403).json({ error: 'Access Denied' })
-  }
-}
-
-/**
  * @description Express middleware that asserts the current user holds the
  * given permission key in their tenant. Reads the user's V2 ability
  * (cached via the existing `buildAbilityFor` pipeline) and checks the
  * `(action, subject)` tuple resolved from the registry for the key.
  *
- * **Dual-mode routing for the P3 sweep**: during Wave 3 some routes still
- * pass a legacy `Permission` enum value whose string is NOT a registry key.
- * To avoid a flag-day breakage, this function detects whether the input is
- * a registry key. If it is, the new V2 path runs. If not, it falls through
- * to `legacyRequirePermission` so existing routes keep working unchanged.
- * This dual mode goes away in P3.5c when the last legacy call site is gone.
- *
  * Returns 403 with `{error: 'permission_denied', key}` on deny. Fires a
  * best-effort audit log on mutation denies only (POST/PUT/PATCH/DELETE) —
  * read denies are intentionally not logged to keep the audit volume sane.
+ *
+ * Registry-missing keys are a **developer error** post-Phase 3: the dual-mode
+ * legacy fall-through that survived during the Wave 3 sweep was deleted in
+ * P3.5c. An unknown key now returns HTTP 500 with `permission_misconfigured`
+ * so the offending route is caught loudly in CI / dev.
  *
  * Fails closed in production: if the ability build throws, deny with 500.
  * Fails open in non-production with a loud warning so local dev isn't
  * blocked by transient infra flakes.
  *
- * @param {string | Permission} key - Permission key from the registry (e.g. `knowledge_base.view`) OR a legacy `Permission` enum value
+ * @param {string} key - Permission key from the registry (e.g. `knowledge_base.create`)
  * @returns {RequestHandler} Express request handler
  *
  * @example
  *   router.post('/api/kb', requirePermission('knowledge_base.create'), createKbHandler)
  */
-export function requirePermission(key: string | Permission): RequestHandler {
+export function requirePermission(key: string): RequestHandler {
   return async (req, res, next) => {
     // Validate the user/session context first
     const user = req.session?.user
@@ -240,14 +173,17 @@ export function requirePermission(key: string | Permission): RequestHandler {
     }
     if (!req.user) req.user = user
 
-    // Look up the action+subject from the registry for this key.
-    // If no registry match, fall through to the legacy RBAC middleware so
-    // Wave 3's in-progress route sweep isn't blocked.
+    // Look up the action+subject from the registry for this key. Post-Phase 3
+    // every key MUST be in the registry — the legacy fall-through is gone.
     const all = getAllPermissions()
     const perm = all.find(p => p.key === key)
     if (!perm) {
-      // Not a V2 registry key — delegate to the legacy handler
-      legacyRequirePermission(key as Permission)(req, res, next)
+      log.error('[requirePermission] unknown permission key — registry missing', {
+        key,
+        path: req.path,
+        method: req.method,
+      })
+      res.status(500).json({ error: 'permission_misconfigured', key })
       return
     }
 
