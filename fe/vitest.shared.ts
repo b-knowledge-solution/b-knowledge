@@ -10,6 +10,8 @@ export const unitTestFiles = [
   'tests/features/datasets/TagEditor.test.tsx',
   'tests/features/datasets/WebCrawlDialog.test.tsx',
   'tests/features/permissions/permissionsApi.test.ts',
+  'tests/features/permissions/PrincipalPicker.test.tsx',
+  'tests/features/permissions/ResourceGrantEditor.test.tsx',
   'tests/lib/queryKeys.test.ts',
   'tests/utils/document-util.test.ts',
   'tests/utils/format.test.ts',
