@@ -35,11 +35,14 @@ Scope: ~55 occurrences across 12 files in `fe/src/`. Out of scope: admin UI rewr
   - TypeScript compile errors become the migration checklist — every site that referenced `Project` must be fixed in the same commit (or its follow-on per-file commits from D-02).
   - **No transition window** where both old and new are valid — that prevents new code from being merged against the deprecated subject during the migration.
 
-### Catalog Boot Behavior
-- **D-04: Block render until catalog loads.**
-  - The catalog fetch joins the existing `AbilityProvider` boot phase. App shell renders, but any gated content waits for both `/api/auth/abilities` AND `/api/permissions/catalog` to resolve.
-  - On fetch failure: show retry UI (consistent with existing `AbilityProvider` failure mode — researcher should confirm exact pattern).
-  - Rationale: matches the loading model the rest of the app already has. Deny-by-default would cause visible UI flicker (gates flipping after catalog arrives) — explicit Phase 4 acceptance criterion is "zero visible behavior change."
+### Catalog Source (REVISED 2026-04-08 after research finding)
+- **D-04 (REVISED): Snapshot-only — no runtime catalog fetch in Phase 4.**
+  - **Why revised:** Research found that `GET /api/permissions/catalog` is gated by `permissions.view`, which Phase 3 seeded only to `admin` and `super-admin`. A boot-time fetch would 403 for every non-admin user, locking them out of the app shell. The original D-04 ("block render until catalog loads") is therefore unsafe.
+  - **New approach:** The BE produces `permissions-catalog.json` via a script (or the existing seed exporter); the file is checked in at `fe/src/generated/permissions-catalog.json`. The build-time generator from D-05 reads this snapshot and produces `permission-keys.ts`. **There is no runtime fetch in Phase 4.**
+  - **Loading model:** Trivial — the catalog is a static import. No provider blocking, no retry UI, no failure path. The existing `AbilityProvider` (which fetches `/api/auth/abilities`) is unchanged; only the catalog primitive is added alongside it as a pure compile-time artifact.
+  - **Honors TS10's intent** (the FE has the catalog) without violating the zero-behavior-change criterion or breaking non-admin login.
+  - **Phase 7 (SH1 hot-reload) reintroduces a runtime fetch** with proper auth scoping, at which point the `permissions.view` gating must also be widened or a public `permissions.catalog.read` seed added. That's Phase 7's problem, not Phase 4's.
+  - **Catalog freshness in dev/CI:** the BE script that emits the snapshot must be runnable independently (`npm run permissions:export-catalog` or similar — planner to spec). Snapshot is regenerated whenever the BE registry changes; the file is git-tracked so PRs surface drift.
 
 ### Catalog Key Naming
 - **D-05: Generated TS const file at build time.**
@@ -48,11 +51,19 @@ Scope: ~55 occurrences across 12 files in `fe/src/`. Out of scope: admin UI rewr
   - Honors the project-wide no-hardcoded-strings rule from root `CLAUDE.md`.
   - Strongest typo guardrail: typos surface at edit time (TS error + no autocomplete), not at lint or runtime.
 
-### Sequencing Constraint (consequence of D-02 + D-05)
-- **D-06: Generator runs BEFORE codemod.**
-  - The catalog → `permission-keys.ts` generator must run first and produce the const file.
-  - The codemod then imports from `PERMISSION_KEYS` and rewrites call sites to reference those constants.
-  - **Planner must NOT parallelize P4.1 (catalog provider + generator) with P4.3 (codemod script writing) or P4.4/P4.5 (sweeps).** P4.3 may be *written* in parallel with P4.1, but it cannot *run* until P4.1 has produced the const file.
+### Sequencing Constraint (consequence of D-02 + D-05 + D-04 revised)
+- **D-06: Snapshot → generator → codemod, in that order.**
+  - **Step 1:** BE exports `permissions-catalog.json` (one-time script during Phase 4; later runs whenever the BE registry changes).
+  - **Step 2:** Generator reads the snapshot and emits `fe/src/constants/permission-keys.ts`.
+  - **Step 3:** Codemod imports from `PERMISSION_KEYS` and rewrites call sites to reference those constants.
+  - **Planner must NOT parallelize the snapshot export with codemod runs.** The codemod script can be *written* in parallel with the generator and snapshot export (Wave 1), but it cannot *execute against the codebase* until both upstream artifacts exist (Wave 2+).
+  - The codemod must also explicitly skip the 3 dangerous site classes (see "Codemod Skip List" in research).
+
+### Codemod Skip List (must be explicit in P4.3)
+- **`fe/src/features/teams/api/teamQueries.ts`** — role checks here drive query `enabled:` flags, not UI gates. Touching them changes data fetching behavior.
+- **`fe/src/features/knowledge-base/components/KnowledgeBaseMemberList.tsx` (lines ~139-142)** — switch-case for badge rendering, not authorization.
+- **`fe/src/features/guideline/`** — uses ordinal role comparison; deferred to Phase 6 cleanup. Out of Phase 4 scope.
+- **Codemod glob restriction:** `**/*.{ts,tsx}` only. Never `.json`, `.md`, or i18n files.
 
 ### Claude's Discretion
 - ESLint rule mechanics for P4.5 (which rule package, where it lives, error message wording).
