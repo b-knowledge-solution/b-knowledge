@@ -111,13 +111,17 @@
 **Goal**: By end of this phase, an admin can manage roles, per-user overrides, and resource grants entirely from the UI — discovering permissions automatically from the catalog endpoint with no hardcoded enums.
 **Depends on**: Phase 4 (catalog + `<Can>` plumbing)
 **Requirements**: TS12, TS14 (`whoCanDo` helper used by UI), TS15 (FE matrix tests)
-**Plans**:
-  1. **P5.1 Role × permission matrix page** — Rewrite `PermissionManagementPage.tsx` registry-driven; checkbox grid grouped by feature module; PUT `/api/permissions/roles/:role` on save; optimistic update + invalidate cache
-  2. **P5.2 Per-user override editor** — New flow on user detail page: list current overrides, add allow/deny override against any catalog key; calls `POST/DELETE /api/permissions/users/:userId/overrides`
-  3. **P5.3 Resource grant modal rewire** — `KnowledgeBasePermissionModal.tsx` + `EntityPermissionModal.tsx` call new `/api/permissions/grants` endpoints; principal picker (user/team/role); KB-level + category-level grant flows
-  4. **P5.4 i18n + dark mode pass** — All new strings in `en.json`, `vi.json`, `ja.json`; verify dark-mode in matrix + override + grant modals
-  5. **P5.5 FE Vitest suite** — `useHasPermission` hook, `<Can>` rendering with mocked rules, matrix page CRUD flows
-**Parallelization**: P5.1 + P5.2 + P5.3 in parallel. P5.4 + P5.5 after.
+**Plans:** 8 plans
+Plans:
+- [ ] 5.0a-PLAN.md — BE: make resource_grants.knowledge_base_id nullable (Phase 3 IOU #2; blocks P5.3)
+- [ ] 5.0b-PLAN.md — FE: scaffold features/permissions API+Queries layer + install shadcn Command/Popover
+- [ ] 5.1-PLAN.md — Role × permission matrix page + route + sidebar nav entry
+- [ ] 5.2-PLAN.md — New UserDetailPage with Profile+Permissions tabs, OverrideEditor, EffectivePermissionsPanel
+- [ ] 5.3-PLAN.md — Shared ResourceGrantEditor + PrincipalPicker; rewire KB + Entity modals (category branch)
+- [ ] 5.4-PLAN.md — i18n parity audit + dark-mode sweep + manual UAT checkpoint
+- [ ] 5.5-PLAN.md — Vitest coverage thresholds ≥85% + useHasPermission/<Can> tests
+- [ ] 5.6-PLAN.md — Effective Access page (D-11 scope addition — single-feature view via whoCanDo)
+**Parallelization**: Wave 0 (5.0a ║ 5.0b) → Wave 1 (5.1 ║ 5.2 ║ 5.3) → Wave 2 (5.4 ║ 5.5) ║ Wave 3 (5.6). Plans in the same wave have non-overlapping files_modified.
 **Verification**:
   - Acceptance test: "Admin assigns a permission to a role via the matrix UI → page reloads, permission is reflected"
   - Acceptance test: "Admin can grant a feature-level permission to a role, override it for a user, and grant a category to a team — all from the UI"
