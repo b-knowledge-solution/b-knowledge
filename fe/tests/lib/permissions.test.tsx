@@ -8,10 +8,17 @@
  *   4. Bare strings outside the PERMISSION_KEYS map are caught at compile time.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { createMongoAbility } from '@casl/ability'
 import React from 'react'
+
+// Mock the auth feature so ability.tsx's AbilityProvider dependency graph
+// doesn't drag the full feature barrel into the test transform — mirrors the
+// approach used in tests/lib/ability.test.tsx.
+vi.mock('@/features/auth', () => ({
+  useAuth: () => ({ user: null }),
+}))
 
 import { AbilityContext } from '@/lib/ability'
 import { useHasPermission } from '@/lib/permissions'
