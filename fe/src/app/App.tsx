@@ -14,41 +14,57 @@
 
 import { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { ProtectedRoute, useAuth } from '@/features/auth';
+import { ProtectedRoute } from '@/features/auth';
 import { Providers } from '@/app/Providers';
 import Layout from '@/layouts/MainLayout';
 import { config } from '@/config';
 import { FeatureErrorBoundary } from '@/components/ErrorBoundary'
-import { getRouteRoles } from '@/layouts/sidebarNav'
+import { getRoutePermission } from '@/layouts/sidebarNav'
+import { useHasPermission } from '@/lib/permissions'
 import '@/i18n';
 
 // ============================================================================
-// NavRoleGuard — auto-resolves roles from sidebarNav config
+// NavRoleGuard — auto-resolves required permission from sidebarNav config
 // ============================================================================
 
 /**
- * @description Route guard that reads allowed roles from sidebarNav.ts config.
- *   Resolves the current pathname against the nav role map (exact + prefix match).
- *   Redirects to /403 when the user's role is not in the allowed list.
+ * @description Route guard that reads the required permission key from sidebarNav.ts config
+ *   and checks it via useHasPermission. Resolves the current pathname against the nav
+ *   permission map (exact + prefix match). Redirects to /403 when the user lacks the key.
+ *
+ *   Phase 4: migrated from role-set membership to catalog permission keys. The guard
+ *   component name is preserved for call-site stability; call sites in this file still
+ *   wrap routes as `<NavRoleGuard>` with no explicit prop — the required permission is
+ *   resolved from the route path.
+ *
  * @param {{ children: React.ReactNode }} props - Child content to render when authorized
  * @returns {JSX.Element} The children when authorized, or a redirect to /403
  */
+function PermissionGate({
+  requiredPermission,
+  children,
+}: {
+  requiredPermission: ReturnType<typeof getRoutePermission>;
+  children: React.ReactNode;
+}) {
+  // requiredPermission is guaranteed defined here by the parent guard.
+  const hasRequired = useHasPermission(requiredPermission as NonNullable<typeof requiredPermission>);
+  if (!hasRequired) {
+    return <Navigate to="/403" replace />;
+  }
+  return <>{children}</>;
+}
+
 function NavRoleGuard({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
-  const { user } = useAuth();
-  const allowedRoles = getRouteRoles(pathname);
+  const requiredPermission = getRoutePermission(pathname);
 
-  // No roles defined for this path → unrestricted
-  if (!allowedRoles) {
+  // No permission mapped for this path → unrestricted.
+  if (!requiredPermission) {
     return <>{children}</>;
   }
 
-  // User has no role or role not in allowed list → deny
-  if (!user?.role || !allowedRoles.includes(user.role)) {
-    return <Navigate to="/403" replace />;
-  }
-
-  return <>{children}</>;
+  return <PermissionGate requiredPermission={requiredPermission}>{children}</PermissionGate>;
 }
 
 

@@ -15,6 +15,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import { SidebarNavLink } from './SidebarNavLink'
 import type { SidebarNavItem } from './sidebarNav'
 import type { LucideIcon } from 'lucide-react'
+import { useHasPermission } from '@/lib/permissions'
 
 // ============================================================================
 // Props
@@ -29,8 +30,25 @@ interface SidebarGroupProps {
   children: SidebarNavItem[]
   /** Whether the sidebar is collapsed (icon-only mode) */
   isCollapsed?: boolean | undefined
-  /** Current user role — used to filter child items with `roles` guards */
-  userRole?: string | undefined
+}
+
+/**
+ * @description Renders a sidebar child link only when the current user holds the required permission.
+ *   Encapsulates the hook call per child to avoid hook-in-loop violations.
+ * @param {{ child: SidebarNavItem }} props - Child nav item config
+ * @returns {JSX.Element | null} The rendered link or null when the permission is missing
+ */
+function GatedChildLink({ child }: { child: SidebarNavItem }) {
+  const allowed = child.requiredPermission ? useHasPermission(child.requiredPermission) : true
+  if (!allowed) return null
+  return (
+    <SidebarNavLink
+      path={child.path}
+      labelKey={child.labelKey}
+      icon={child.icon}
+      iconSize={child.iconSize ?? 18}
+    />
+  )
 }
 
 // ============================================================================
@@ -47,7 +65,6 @@ export function SidebarGroup({
   icon: Icon,
   children,
   isCollapsed = false,
-  userRole,
 }: SidebarGroupProps) {
   const { t } = useTranslation()
   const location = useLocation()
@@ -55,13 +72,9 @@ export function SidebarGroup({
   // Manual toggle state
   const [isExpanded, setIsExpanded] = useState(false)
 
-  // Compute which children are visible (respecting per-child role guards)
-  const visibleChildren = children.filter(
-    (child) => !child.roles || (userRole && child.roles.includes(userRole)),
-  )
-
-  // Auto-expand when a child's route is active
-  const isChildActive = visibleChildren.some(
+  // Auto-expand when any child's route is active. Visibility filtering now happens inside
+  // GatedChildLink (permission-keyed), so we consider all declared children here.
+  const isChildActive = children.some(
     (child) =>
       location.pathname === child.path ||
       location.pathname.startsWith(`${child.path}/`),
@@ -94,14 +107,8 @@ export function SidebarGroup({
       {/* Collapsible child links */}
       {!isCollapsed && shouldExpand && (
         <div className="pl-3 ml-3 border-l border-white/20 flex flex-col gap-1">
-          {visibleChildren.map((child) => (
-            <SidebarNavLink
-              key={child.path}
-              path={child.path}
-              labelKey={child.labelKey}
-              icon={child.icon}
-              iconSize={child.iconSize ?? 18}
-            />
+          {children.map((child) => (
+            <GatedChildLink key={child.path} child={child} />
           ))}
         </div>
       )}

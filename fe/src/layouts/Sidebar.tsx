@@ -15,6 +15,8 @@ import { useTranslation } from 'react-i18next'
 import { useAuth, User } from '@/features/auth'
 import { useSettings } from '@/app/contexts/SettingsContext'
 import { config } from '@/config'
+import { useHasPermission } from '@/lib/permissions'
+import type { SidebarNavItem, SidebarNavGroup } from './sidebarNav'
 import { LogOut, ChevronLeft, ChevronRight, Settings, KeyRound } from 'lucide-react'
 import logoDark from '@/assets/logo-dark.svg'
 import {
@@ -68,6 +70,49 @@ function UserAvatar({ user, size = 'md' }: { user: User; size?: 'sm' | 'md' }) {
 }
 
 // ============================================================================
+// Permission-gated nav wrappers
+// ============================================================================
+
+/**
+ * @description Wrapper that renders a standalone nav link only when the current user holds the required permission.
+ *   Needed because React forbids calling hooks inside loops — each nav item gets its own component instance.
+ * @param {{ entry: SidebarNavItem; isCollapsed: boolean }} props - Nav item and sidebar collapse state
+ * @returns {JSX.Element | null} The rendered link or null when the permission is missing
+ */
+function GatedNavLink({ entry, isCollapsed }: { entry: SidebarNavItem; isCollapsed: boolean }) {
+  // Phase 4: nav visibility resolves via permission keys, not role-set membership.
+  const allowed = entry.requiredPermission ? useHasPermission(entry.requiredPermission) : true
+  if (!allowed) return null
+  return (
+    <SidebarNavLink
+      path={entry.path}
+      labelKey={entry.labelKey}
+      icon={entry.icon}
+      iconSize={entry.iconSize ?? 20}
+      isCollapsed={isCollapsed}
+    />
+  )
+}
+
+/**
+ * @description Wrapper that renders an expandable nav group only when the current user holds the group-level permission.
+ * @param {{ entry: SidebarNavGroup; isCollapsed: boolean }} props - Group entry and sidebar collapse state
+ * @returns {JSX.Element | null} The rendered group or null when the permission is missing
+ */
+function GatedNavGroup({ entry, isCollapsed }: { entry: SidebarNavGroup; isCollapsed: boolean }) {
+  const allowed = entry.requiredPermission ? useHasPermission(entry.requiredPermission) : true
+  if (!allowed) return null
+  return (
+    <SidebarGroup
+      labelKey={entry.labelKey}
+      icon={entry.icon}
+      children={entry.children}
+      isCollapsed={isCollapsed}
+    />
+  )
+}
+
+// ============================================================================
 // Sidebar Component
 // ============================================================================
 
@@ -105,23 +150,9 @@ export function Sidebar() {
       {/* Navigation — rendered from SIDEBAR_NAV config */}
       <nav className="flex flex-col gap-2 flex-1 mt-4 overflow-y-auto scrollbar-hide px-2">
         {SIDEBAR_NAV.map((entry) => {
-          // ── Expandable group ──────────────────────────────────
+          // ── Expandable group — permission gated via wrapper ───
           if (isNavGroup(entry)) {
-            // Skip group if user lacks required role
-            if (entry.roles && (!user?.role || !entry.roles.includes(user.role))) {
-              return null
-            }
-
-            return (
-              <SidebarGroup
-                key={entry.labelKey}
-                labelKey={entry.labelKey}
-                icon={entry.icon}
-                children={entry.children}
-                isCollapsed={isCollapsed}
-                userRole={user?.role}
-              />
-            )
+            return <GatedNavGroup key={entry.labelKey} entry={entry} isCollapsed={isCollapsed} />
           }
 
           // ── Standalone link ───────────────────────────────────
@@ -129,21 +160,8 @@ export function Sidebar() {
           if (entry.featureFlag && !config.features[entry.featureFlag]) {
             return null
           }
-          // Skip if user lacks required role
-          if (entry.roles && (!user?.role || !entry.roles.includes(user.role))) {
-            return null
-          }
 
-          return (
-            <SidebarNavLink
-              key={entry.path}
-              path={entry.path}
-              labelKey={entry.labelKey}
-              icon={entry.icon}
-              iconSize={entry.iconSize ?? 20}
-              isCollapsed={isCollapsed}
-            />
-          )
+          return <GatedNavLink key={entry.path} entry={entry} isCollapsed={isCollapsed} />
         })}
       </nav>
 
