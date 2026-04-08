@@ -34,6 +34,7 @@ export const GlossaryPage = () => {
     const { user } = useAuth()
 
     // Determine admin/leader privileges
+    // TODO(perm-codemod): multi-role chain — manual migration required (split into useHasPermission calls per capability)
     const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.LEADER
 
     // Active tab and bulk import modal state
@@ -65,7 +66,6 @@ export const GlossaryPage = () => {
                 <TabsContent value="tasks" className="flex-1 mt-0">
                     <TaskManagementTab
                         taskHook={taskHook}
-                        isAdmin={isAdmin}
                         onOpenBulkImport={() => setIsBulkImportOpen(true)}
                     />
                 </TabsContent>
@@ -73,7 +73,6 @@ export const GlossaryPage = () => {
                 <TabsContent value="keywords" className="flex-1 mt-0">
                     <KeywordManagementTab
                         keywordHook={keywordHook}
-                        isAdmin={isAdmin}
                     />
                 </TabsContent>
             </Tabs>
