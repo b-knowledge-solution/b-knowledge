@@ -19,19 +19,53 @@ Consolidate the two coexisting authorization systems (static `rbac.ts` + CASL `a
 
 ## Active Phase
 
-**None.** Phase 2 verified and complete. Next action: `/gsd:verify-work 2` (UAT) then `/gsd:plan-phase 3` (Middleware Cutover).
+**None.** Phase 3 execution complete (28 commits across 5 waves). Verification + UAT pending in a fresh session with Docker available. Next action: `/gsd:verify-work 3` (UAT) once Docker is back up, then `/gsd:plan-phase 4` (FE Catalog + `<Can>` Codemod).
 
 ## Phase Pipeline
 
 | # | Name | Status | Plans | Depends on |
 |---|---|---|---|---|
 | 1 | Schema, Registry, Boot Sync | ✓ DONE (verified PASS, 5/5; UAT 5/5) | 6 (P1.0–P1.5) | — |
-| 2 | Ability Engine + Regression Snapshots | ✓ DONE (verified PASS, 5/5) | 7 (P2.0, P2.6, P2.1, P2.2.0, P2.2, P2.4, P2.5) + 1 patch | P1 |
-| 3 | Middleware Cutover | Pending | — | P2 |
+| 2 | Ability Engine + Regression Snapshots | ✓ DONE (verified PASS, 5/5; UAT 5/5 zero bugs) | 7 (P2.0, P2.6, P2.1, P2.2.0, P2.2, P2.4, P2.5) + 1 patch | P1 |
+| 3 | Middleware Cutover | ✓ EXECUTION DONE (28 commits) — verification + UAT pending | 21 (P3.0a-d, P3.1a-d, P3.2a-d, P3.3a-c, P3.4a-d, P3.5a-d) + dispatched as 5 waves | P2 |
 | 4 | FE Catalog + `<Can>` Codemod | Pending | — | P3 |
 | 5 | Admin UI Rewrite | Pending | — | P4 (partial) |
 | 6 | Legacy Cleanup + OpenSearch Integration | Pending | — | P3 |
 | 7 | Should-Haves (SH1, SH2) | Optional | — | P6 |
+
+## Phase 3 Outcome
+
+**THIS IS THE ONLY PHASE IN THE MILESTONE WITH REAL PRODUCTION BEHAVIOR CHANGE.** The V2 ability engine became the production default at commit `1f6962d` (Wave 2 P3.2b). Every previous phase deferred behavior change behind a feature flag; this phase flipped it. Rollback is `USE_ABILITY_ENGINE_V2=false`.
+
+- **28 commits** across 5 waves
+- **Route sweep**: 62 missing-gate offenders → **0** in ENFORCING mode (permanent CI gate)
+- **177 mutating routes** scanned across 34 route files; every one has `requirePermission` / `requireAbility` / `markPublicRoute`
+- **2 latent bugs fixed** by Wave 1 + Wave 3:
+  - **Row-scoped CASL over-allow** at `auth.middleware.ts:377` — silent privilege escalation: bare-string `ability.can('read', 'KnowledgeBase')` was returning `true` whenever ANY rule existed on the class, including row-scoped rules for OTHER ids. Fix: use CASL's `subject(name, instance)` helper to wrap the id into the conditions object. Regression test in `auth-middleware.test.ts`.
+  - **Mixed-mode auth** in `users.routes.ts:49,58,93` — both `requirePermission('manage_users')` and `requireAbility('manage','User')` were on the same routes. Normalized to `requireAbility('edit','User','id')` per locked decision D1. P3.0d before-image snapshot proves no fixture's effective permissions changed.
+- **New middleware**: `requirePermission(key)` and `requireAbility(action, subject, idParam?)` (Wave 1)
+- **New service**: `RolePermissionCacheService` with atomic-swap concurrency pattern (Wave 2 — 5/5 race tests pass)
+- **`rbac.ts::hasPermission` shim** — Wave 2 converted to read from boot-cached `role_permissions` snapshot. The legacy `ROLE_PERMISSIONS` map still exists but is unused; Phase 6 removes it.
+- **Boot deploy guardrails**: fail-fast on empty `actions[]` in `resource_grants` (production only); drift warnings on role_permissions / user_permission_overrides vs catalog (Wave 2 P3.2c)
+- **New module** `be/src/modules/permissions/`: 10 admin CRUD endpoints + `whoCanDo` introspection helper. Strict layering preserved (controller → service → model); the atomic role-replace transaction lives in `RolePermissionModel.replaceForRole` per the rule that services never use `db.transaction()` directly. (Wave 4)
+- **`feedback.submit`** seed migration added for all 4 roles (Wave 5 closing the gap from the Wave 3 feedback executor's `markPublicRoute()` workaround)
+- **Legacy `legacyRequirePermission` deleted** (Wave 5) — registry-missing keys now hard-error instead of falling through. The cutover is irreversible at the code level.
+
+### Phase 3 cutover commit (the moment behavior changes)
+
+`1f6962d` — `feat(permissions): flip V2 default and add boot deploy guardrails`
+
+Rollback knob: `USE_ABILITY_ENGINE_V2=false` env var. Even after this commit lands, setting the env var reverts to V1. Wave 5's deletion of `legacyRequirePermission` does NOT remove the V1 ability builder itself — only the legacy middleware. So the rollback knob still works.
+
+### Carry-forward IOUs from Phase 3
+
+1. **`invalidateAllSessionsForUser(userId)` not implemented** — single-user override/grant mutations currently call `invalidateAllAbilities()` (correct but inefficient). Adding the per-user variant requires reverse-indexing the Redis session store by user id. Phase 5 perf optimization.
+2. **`resource_grants.knowledge_base_id` is NOT NULL** — restricts grant creation to `resource_type === 'KnowledgeBase'`. Phase 5 schema migration to make it nullable so `DocumentCategory`-only grants work.
+3. **`be/src/shared/models/` is gitignored** (latent project bug surfaced during Wave 4) — every Phase 1+2+3 commit had to use `git add -f` for files in this directory. Needs a one-line `.gitignore` cleanup.
+4. **Permissions module HTTP-layer integration tests deferred** — Wave 4 shipped 5 model+service tests but skipped full Express harness with session store. Add in Phase 5 or as dedicated test plan.
+5. **DB-bound test verification deferred** — Docker was unreachable from this session for most of Wave 3-5. Route-sweep + build pass; the DB-touching tests (parity matrix, cascade, override-precedence, tenant-isolation, models, middleware) need to be re-run with Postgres up before Phase 3 transitions.
+6. **`chat-embed.controller.ts` doc-comment cleanup** — Wave 5 deviation #1 noted but did not address.
+7. **Phase 1's `.gitignore` issue applies to all phases**, not just Phase 3 — every commit that added a file under `be/src/shared/models/` may need re-tracking after the `.gitignore` fix.
 
 ## Phase 2 Outcome
 
@@ -167,6 +201,44 @@ Consolidate the two coexisting authorization systems (static `rbac.ts` + CASL `a
 | `566e5a4` | feat(permissions): bump ABILITY_CACHE_PREFIX to ability:v2: (R-2 mitigation) |
 | `6cac9be` | test(permissions): Phase 2 parity matrix + 6 V1↔V2 reconciliation patches |
 | `cd9b5f6` | docs(phase-2): verification — PASS, 5/5 requirements met |
+| `aa49b1e` | docs(phase-2): UAT report — 5/5 pass, zero bugs |
+
+### Phase 3 (planning)
+| Commit | What |
+|---|---|
+| `53d0b6f` | docs(phase-3): research — 7 red flags, 2 existing bugs |
+| `dfe3ff1` | docs(phase-3): add executable plan (21 plans, 85 tasks, 6 waves) |
+| `0f7cba2` | docs(phase-3): apply plan-checker refinements |
+
+### Phase 3 (execution)
+| Wave | Commit | What |
+|---|---|---|
+| W0 | `877d1fd` | feat(permissions): add permissions.view/manage keys for new admin module gates |
+| W0 | `b2d7ec6` | test(permissions): add route-sweep-coverage gate + markPublicRoute helper (62-offender baseline) |
+| W0 | `bf713f5` | test(auth): add org-switch cache invalidation regression test (R-12 already mitigated) |
+| W0 | `56881f6` | test(permissions): freeze V2 effective permissions on User subject (P3.0d before-image for D1) |
+| W0 | `6b69a35` | chore(test): bump vitest testTimeout to 90s for growing migration chain |
+| W1 | `b3aa880` | feat(auth): new requirePermission/requireAbility middleware with row-scoped CASL fix (LATENT BUG: over-allow) |
+| W2 | `b76c0e7` | refactor(rbac): convert hasPermission to sync shim over boot-cached role_permissions snapshot |
+| **W2** | **`1f6962d`** | **feat(permissions): flip V2 default and add boot deploy guardrails** ⭐ **CUTOVER** |
+| W3 | `3c43c4c` | refactor(chat): migrate routes to new permission middleware (11 gates) |
+| W3 | `31ada02` | refactor(search): migrate routes to new permission middleware (11 gates) |
+| W3 | `802a7ca` | refactor(glossary): migrate routes to new permission middleware (9 gates) |
+| W3 | `1a343e0` | refactor(code-graph): migrate routes to new permission middleware (2 gates) |
+| W3 | `bb8d235` | refactor(rag): migrate routes to new permission middleware (25 gates — scope expansion) |
+| W3 | `041da3f` | refactor(memory): migrate routes to new permission middleware (8 gates) |
+| W3 | `d6c9828` | refactor(external): migrate routes to new permission middleware (6 gates) |
+| W3 | `f9b1f45` | refactor(auth): gate session-mutation routes with requirePermission or markPublicRoute (5 gates) |
+| W3 | `36eac29` | refactor(knowledge-base): migrate routes to new permission middleware (4 gates with row-scoped requireAbility) |
+| W3 | `f1fcd0e` | refactor(agents): migrate routes to new permission middleware (2 gates) |
+| W3 | `ba39c34` | refactor(broadcast): migrate routes to new permission middleware (1 gate) |
+| W3 | `7c83373` | refactor(feedback): migrate routes to new permission middleware (1 gate) |
+| W4 | `7f80229` | feat(permissions): admin CRUD module for roles, overrides, grants + whoCanDo helper |
+| W5 | `17df109` | refactor(chat): migrate chat-assistant + chat-embed routes (8 more legacy strings) |
+| W5 | `c3a4949` | feat(permissions): seed feedback.submit for all roles (Phase 3 P3.5 follow-up) |
+| W5 | `390f75a` | refactor(feedback): replace markPublicRoute workaround with requirePermission('feedback.submit') |
+| W5 | `bd30dd6` | chore(auth): remove legacyRequirePermission middleware after Phase 3 cutover |
+| W5 | `ad6502b` | test(permissions): flip route-sweep gate to enforcing mode (Phase 3 exit) |
 
 ## Key Risks (top 5 — full list in research/RISKS.md)
 
