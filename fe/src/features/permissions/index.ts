@@ -9,3 +9,8 @@ export { PrincipalPicker } from './components/PrincipalPicker'
 export type { Principal, PrincipalPickerProps } from './components/PrincipalPicker'
 export { ResourceGrantEditor } from './components/ResourceGrantEditor'
 export type { ResourceGrantEditorProps } from './components/ResourceGrantEditor'
+export { default as EffectiveAccessPage } from './pages/EffectiveAccessPage'
+export {
+  decodePermissionKey,
+  buildUserDetailUrl,
+} from './pages/EffectiveAccessPage'
