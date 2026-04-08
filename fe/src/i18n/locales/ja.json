@@ -204,7 +204,60 @@
   "permissions": {
     "noTeamsAvailable": "利用可能なチームがありません",
     "noUsersAvailable": "利用可能なユーザーがいません",
-    "noMatches": "一致する結果がありません"
+    "noMatches": "一致する結果がありません",
+    "admin": {
+      "sessionRefreshNotice": "保存しました。影響を受けるユーザーは次のリクエストで変更が反映されます — 再読み込みが必要な場合があります。",
+      "overrides": {
+        "title": "権限の上書き",
+        "allowSection": "許可の上書き",
+        "denySection": "拒否の上書き",
+        "addAllow": "許可を追加",
+        "addDeny": "拒否を追加",
+        "remove": "上書きを削除",
+        "searchPlaceholder": "権限を検索...",
+        "addError": "上書きを追加できませんでした",
+        "removeError": "上書きを削除できませんでした",
+        "empty": "上書きはありません。このユーザーはロールの全権限を継承します。"
+      },
+      "effective": {
+        "title": "有効な権限 ({{count}})"
+      },
+      "grants": {
+        "title": "リソース権限",
+        "currentGrants": "現在の権限",
+        "addGrant": "権限を追加",
+        "addButton": "追加",
+        "empty": "権限はありません。ロール権限を持つユーザーはこのリソースを閲覧できます。",
+        "addError": "権限を追加できませんでした",
+        "removeError": "権限を削除できませんでした",
+        "scopeKb": "ナレッジベース全体",
+        "scopeCategory": "特定のカテゴリ",
+        "scopeCategoryHint": "ナレッジベース画面からカテゴリを開いて権限を管理してください。"
+      },
+      "picker": {
+        "searchPlaceholder": "ユーザー、チーム、ロールを検索...",
+        "empty": "該当なし",
+        "chip": { "all": "すべて", "user": "ユーザー", "team": "チーム", "role": "ロール" },
+        "type": { "user": "ユーザー", "team": "チーム", "role": "ロール" }
+      }
+    }
+  },
+  "users": {
+    "detail": {
+      "title": "ユーザー詳細",
+      "notFound": "ユーザーが見つかりません",
+      "backToList": "ユーザー一覧に戻る",
+      "tabs": {
+        "profile": "プロフィール",
+        "permissions": "権限"
+      },
+      "fields": {
+        "displayName": "表示名",
+        "email": "メール",
+        "role": "ロール",
+        "department": "部署"
+      }
+    }
   },
   "chatWidget": {
     "title": "チャット",

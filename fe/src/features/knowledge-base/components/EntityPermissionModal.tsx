@@ -2,12 +2,14 @@
  * EntityPermissionModal: Modal for managing per-entity permissions.
  * Opens from a lock icon on each category/chat/search row.
  *
- * @description Design inspired by RAGFlow's "Edit Permissions" modal:
- * - Entity info banner at top
- * - Private Access toggle
- * - Separate team/user multi-select dropdowns
- * - Name/Email table of granted users with delete buttons
- * - Cancel/Save footer with batch save
+ * @description Phase 5 P5.3 — the `category` branch is rewired to the new
+ * `<ResourceGrantEditor>` driving `/api/permissions/grants`. The `chat` and
+ * `search` branches still use the legacy entity-permissions endpoints
+ * (`getEntityPermissionsByEntity` / `setEntityPermission` / `removeEntityPermission`).
+ *
+ * IOU: Migrating chat/search entity permissions requires expanding the
+ * resource_grants `resource_type` union beyond `KnowledgeBase | DocumentCategory`
+ * (TS1 / D-08). Deferred to a future phase — see 5-RESEARCH.md §13 #5.
  */
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -27,6 +29,15 @@ import {
   setEntityPermission,
   removeEntityPermission,
 } from '../api/knowledgeBaseApi'
+import { ResourceGrantEditor } from '@/features/permissions/components/ResourceGrantEditor'
+import { GRANT_RESOURCE_DOCUMENT_CATEGORY } from '@/features/permissions/types/permissions.types'
+
+// ============================================================================
+// Constants — entity type discriminator literals (no bare strings)
+// ============================================================================
+
+/** @description Entity type literal — DocumentCategory (rewired to resource_grants). */
+const ENTITY_TYPE_CATEGORY = 'category' as const
 
 // ============================================================================
 // Types
@@ -280,6 +291,41 @@ export const EntityPermissionModal: React.FC<EntityPermissionModalProps> = ({
     `knowledgeBase.entityPermissions.entityTypes.${entityType}`,
     entityType,
   )
+
+  // Phase 5 P5.3 rewire: category entities use the shared ResourceGrantEditor.
+  // Chat/search entities continue down the legacy code path below (IOU).
+  if (entityType === ENTITY_TYPE_CATEGORY) {
+    return (
+      <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) onClose() }}>
+        <DialogContent className="max-w-[640px]">
+          <DialogHeader>
+            <DialogTitle>
+              {t('knowledgeBase.entityPermissions.editTitle', 'Edit Permissions')}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{entityName}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{entityTypeLabel}</p>
+            </div>
+            <ResourceGrantEditor
+              scope={GRANT_RESOURCE_DOCUMENT_CATEGORY}
+              resourceId={entityId}
+              kbId={Number(knowledgeBaseId)}
+              allowScopeToggle={false}
+            />
+          </div>
+          <DialogFooter>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={onClose}>
+                {t('common.close', 'Close')}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )
+  }
 
   return (
     <Dialog open={open} onOpenChange={(v: boolean) => { if (!v) onClose() }}>

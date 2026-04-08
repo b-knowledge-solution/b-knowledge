@@ -108,12 +108,15 @@ export interface PickerTeam {
  */
 export function buildPrincipalList(users: PickerUser[], teams: PickerTeam[]): Principal[] {
   return [
-    ...users.map<Principal>((u) => ({
-      type: PRINCIPAL_TYPE_USER,
-      id: u.id,
-      label: u.displayName || u.name || u.email || String(u.id),
-      sublabel: u.email,
-    })),
+    ...users.map<Principal>((u) => {
+      const base: Principal = {
+        type: PRINCIPAL_TYPE_USER,
+        id: u.id,
+        label: u.displayName || u.name || u.email || String(u.id),
+      }
+      // Only attach sublabel when defined (exactOptionalPropertyTypes is strict)
+      return u.email ? { ...base, sublabel: u.email } : base
+    }),
     ...teams.map<Principal>((tm) => ({
       type: PRINCIPAL_TYPE_TEAM,
       id: tm.id,

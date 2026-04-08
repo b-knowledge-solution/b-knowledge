@@ -203,7 +203,60 @@
   "permissions": {
     "noTeamsAvailable": "No teams available",
     "noUsersAvailable": "No users available",
-    "noMatches": "No matches"
+    "noMatches": "No matches",
+    "admin": {
+      "sessionRefreshNotice": "Saved. Affected users will see changes on their next request — they may need to refresh.",
+      "overrides": {
+        "title": "Permission Overrides",
+        "allowSection": "Allow overrides",
+        "denySection": "Deny overrides",
+        "addAllow": "Add allow override",
+        "addDeny": "Add deny override",
+        "remove": "Remove override",
+        "searchPlaceholder": "Search permissions...",
+        "addError": "Failed to add override",
+        "removeError": "Failed to remove override",
+        "empty": "No overrides. This user inherits all permissions from their role."
+      },
+      "effective": {
+        "title": "Effective permissions ({{count}})"
+      },
+      "grants": {
+        "title": "Resource Grants",
+        "currentGrants": "Current grants",
+        "addGrant": "Add grant",
+        "addButton": "Add",
+        "empty": "No grants. Anyone with role-level access can view this resource.",
+        "addError": "Failed to add grant",
+        "removeError": "Failed to remove grant",
+        "scopeKb": "Whole knowledge base",
+        "scopeCategory": "Specific category",
+        "scopeCategoryHint": "Open a category from the knowledge base view to manage its grants."
+      },
+      "picker": {
+        "searchPlaceholder": "Search users, teams, roles...",
+        "empty": "No matches",
+        "chip": { "all": "All", "user": "Users", "team": "Teams", "role": "Roles" },
+        "type": { "user": "User", "team": "Team", "role": "Role" }
+      }
+    }
+  },
+  "users": {
+    "detail": {
+      "title": "User Detail",
+      "notFound": "User not found",
+      "backToList": "Back to users",
+      "tabs": {
+        "profile": "Profile",
+        "permissions": "Permissions"
+      },
+      "fields": {
+        "displayName": "Display name",
+        "email": "Email",
+        "role": "Role",
+        "department": "Department"
+      }
+    }
   },
   "chatWidget": {
     "title": "Chat",
