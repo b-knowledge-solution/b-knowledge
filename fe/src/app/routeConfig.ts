@@ -101,6 +101,9 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     titleKey: 'permissions.admin.matrix.title',
     guidelineFeatureId: 'permissions',
   },
+  '/iam/effective-access': {
+    titleKey: 'permissions.admin.effectiveAccess.title',
+  },
   '/agent-studio/chat-assistants': {
     titleKey: 'chatAdmin.title',
     fullBleed: true,

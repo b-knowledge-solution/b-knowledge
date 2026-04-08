@@ -49,7 +49,7 @@ const GROUPED_PERMISSION_KEYS = groupPermissionKeys(
  *   into the P5.2 per-user override editor.
  * @returns {JSX.Element} Effective Access page.
  */
-export default function EffectiveAccessPage(): JSX.Element {
+export default function EffectiveAccessPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()

@@ -112,6 +112,7 @@
     "userManagement": "Người dùng",
     "teamManagement": "Đội nhóm",
     "permissionManagement": "Phân quyền",
+    "effectiveAccess": "Quyền thực tế",
     "systemTools": "Công cụ Hệ thống",
     "systemMonitor": "Giám sát Hệ thống",
     "storage": "Kho Tài liệu",
@@ -221,6 +222,17 @@
       },
       "effective": {
         "title": "Quyền thực tế ({{count}})"
+      },
+      "effectiveAccess": {
+        "title": "Quyền thực tế",
+        "subtitle": "Xem người dùng nào trong tenant có thể thực hiện hành động đã chọn.",
+        "selectFeature": "Chọn một quyền để xem ai đang có",
+        "user": "Người dùng",
+        "email": "Email",
+        "role": "Vai trò",
+        "has": "Có quyền",
+        "empty": "Không có người dùng nào trong tenant có quyền này.",
+        "error": "Không thể tra cứu quyền thực tế."
       },
       "grants": {
         "title": "Quyền tài nguyên",

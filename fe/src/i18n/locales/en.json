@@ -111,6 +111,7 @@
     "userManagement": "Users",
     "teamManagement": "Teams",
     "permissionManagement": "Permissions",
+    "effectiveAccess": "Effective Access",
     "systemTools": "System Tools",
     "systemMonitor": "System Monitor",
     "storage": "Documents",
@@ -220,6 +221,17 @@
       },
       "effective": {
         "title": "Effective permissions ({{count}})"
+      },
+      "effectiveAccess": {
+        "title": "Effective Access",
+        "subtitle": "See which users in your tenant can perform a given action.",
+        "selectFeature": "Select a permission to see who has it",
+        "user": "User",
+        "email": "Email",
+        "role": "Role",
+        "has": "Has permission",
+        "empty": "No users in your tenant have this permission.",
+        "error": "Failed to look up effective access."
       },
       "grants": {
         "title": "Resource Grants",

@@ -218,6 +218,12 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
         icon: ShieldCheck,
         requiredPermission: PERMISSION_KEYS.PERMISSIONS_MANAGE,
       },
+      {
+        path: '/iam/effective-access',
+        labelKey: 'nav.effectiveAccess',
+        icon: Search,
+        requiredPermission: PERMISSION_KEYS.PERMISSIONS_VIEW,
+      },
     ],
   },
 

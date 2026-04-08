@@ -80,6 +80,7 @@ const LogoutPage = lazy(() => import('@/features/auth/pages/LogoutPage'));
 const UserManagementPage = lazy(() => import('@/features/users/pages/UserManagementPage'));
 const UserDetailPage = lazy(() => import('@/features/users/pages/UserDetailPage'));
 const PermissionManagementPage = lazy(() => import('@/features/users/pages/PermissionManagementPage'));
+const EffectiveAccessPage = lazy(() => import('@/features/permissions/pages/EffectiveAccessPage'));
 const TeamManagementPage = lazy(() => import('@/features/teams/pages/TeamManagementPage'));
 const SystemToolsPage = lazy(() => import('@/features/system/pages/SystemToolsPage'));
 const SystemMonitorPage = lazy(() => import('@/features/system/pages/SystemMonitorPage'));
@@ -216,6 +217,7 @@ function App() {
               <Route path="iam/users/:id" element={<FeatureErrorBoundary><NavRoleGuard><UserDetailPage /></NavRoleGuard></FeatureErrorBoundary>} />
               <Route path="iam/teams" element={<FeatureErrorBoundary><NavRoleGuard><TeamManagementPage /></NavRoleGuard></FeatureErrorBoundary>} />
               <Route path="iam/permissions" element={<FeatureErrorBoundary><NavRoleGuard><PermissionManagementPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="iam/effective-access" element={<FeatureErrorBoundary><NavRoleGuard><EffectiveAccessPage /></NavRoleGuard></FeatureErrorBoundary>} />
 
               {/* System */}
               <Route path="system/audit-log" element={<FeatureErrorBoundary><NavRoleGuard><AuditLogPage /></NavRoleGuard></FeatureErrorBoundary>} />
