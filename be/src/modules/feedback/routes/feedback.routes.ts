@@ -8,6 +8,7 @@ import { Router } from 'express'
 import { FeedbackController } from '../controllers/feedback.controller.js'
 import { requireAuth, requireRole } from '@/shared/middleware/auth.middleware.js'
 import { requireTenant } from '@/shared/middleware/tenant.middleware.js'
+import { markPublicRoute } from '@/shared/middleware/markPublicRoute.js'
 import { validate } from '@/shared/middleware/validate.middleware.js'
 import { createFeedbackSchema, listFeedbackQuerySchema, feedbackStatsQuerySchema } from '../schemas/feedback.schemas.js'
 
@@ -84,6 +85,13 @@ router.get(
 router.post(
   '/',
   requireAuth,
+  // P3.3b: tagged public-ish — feedback submission is open to every authenticated
+  // user and the `feedback.submit` registry key is intentionally NOT included in
+  // the day-one role_permissions seed (see legacy-mapping.ts). Once a later plan
+  // seeds `feedback.submit` for all roles, swap this tag for
+  // `requirePermission('feedback.submit')`. `requireAuth` above still enforces
+  // that an authenticated user is present.
+  markPublicRoute(),
   validate(createFeedbackSchema),
   controller.create.bind(controller)
 )
