@@ -9,6 +9,7 @@
 import { Router } from 'express'
 import { ChatEmbedController } from '../controllers/chat-embed.controller.js'
 import { requireAuth, requirePermission } from '@/shared/middleware/auth.middleware.js'
+import { markPublicRoute } from '@/shared/middleware/markPublicRoute.js'
 import { validate } from '@/shared/middleware/validate.middleware.js'
 import {
   createEmbedTokenSchema,
@@ -85,8 +86,13 @@ router.get(
  * @description Create an anonymous session for embed widget.
  * @access Public (token-based)
  */
+// Public embed session creation — authenticated by the opaque `:token` path
+// parameter (validated against `chat_embed_tokens` by the controller). No
+// session/user auth applies here; anonymous visitors to an embed widget use
+// this endpoint. Marked public so the route-sweep gate recognizes the intent.
 router.post(
   '/embed/:token/sessions',
+  markPublicRoute(),
   validate({ body: embedCreateSessionSchema, params: embedTokenParamSchema }),
   controller.createSession.bind(controller)
 )
@@ -96,8 +102,13 @@ router.post(
  * @description Stream a chat completion via SSE for embed widget.
  * @access Public (token-based)
  */
+// Public embed completion stream — authenticated by the opaque `:token` path
+// parameter (validated against `chat_embed_tokens` by the controller). This is
+// the anonymous widget-visitor streaming endpoint; no session/user auth is
+// possible. Marked public so the route-sweep gate recognizes the intent.
 router.post(
   '/embed/:token/completions',
+  markPublicRoute(),
   validate({ body: embedCompletionSchema, params: embedTokenParamSchema }),
   controller.streamCompletion.bind(controller)
 )

@@ -7,7 +7,7 @@
  */
 import { Router } from 'express'
 import { ChatConversationController } from '../controllers/chat-conversation.controller.js'
-import { requireAuth, checkSession } from '@/shared/middleware/auth.middleware.js'
+import { requireAuth, checkSession, requirePermission, requireAbility } from '@/shared/middleware/auth.middleware.js'
 import { validate } from '@/shared/middleware/validate.middleware.js'
 import {
   createConversationSchema,
@@ -31,6 +31,7 @@ const controller = new ChatConversationController()
 router.post(
   '/conversations',
   checkSession,
+  requirePermission('chat.create'),
   validate(createConversationSchema),
   controller.createConversation.bind(controller)
 )
@@ -66,6 +67,7 @@ router.get(
 router.patch(
   '/conversations/:id',
   requireAuth,
+  requireAbility('update', 'ChatAssistant', 'id'),
   validate({ body: renameConversationSchema, params: conversationIdParamSchema }),
   controller.renameConversation.bind(controller)
 )
@@ -78,6 +80,7 @@ router.patch(
 router.delete(
   '/conversations',
   requireAuth,
+  requirePermission('chat.delete'),
   validate(deleteConversationsSchema),
   controller.deleteConversations.bind(controller)
 )
@@ -90,6 +93,7 @@ router.delete(
 router.delete(
   '/conversations/:id/messages/:msgId',
   requireAuth,
+  requireAbility('delete', 'ChatAssistant', 'id'),
   validate({ params: deleteMessageParamsSchema }),
   controller.deleteMessage.bind(controller)
 )
@@ -102,6 +106,7 @@ router.delete(
 router.post(
   '/conversations/:id/completion',
   checkSession,
+  requireAbility('read', 'ChatAssistant', 'id'),
   validate({ body: chatCompletionSchema, params: conversationIdParamSchema }),
   controller.streamChat.bind(controller)
 )
@@ -114,6 +119,7 @@ router.post(
 router.post(
   '/conversations/:id/feedback',
   checkSession,
+  requireAbility('read', 'ChatAssistant', 'id'),
   validate({ body: feedbackSchema, params: conversationIdParamSchema }),
   controller.sendFeedback.bind(controller)
 )
@@ -126,6 +132,7 @@ router.post(
 router.post(
   '/tts',
   checkSession,
+  requirePermission('chat.view'),
   validate({ body: ttsSchema }),
   controller.textToSpeech.bind(controller)
 )
