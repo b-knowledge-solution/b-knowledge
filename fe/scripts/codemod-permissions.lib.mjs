@@ -12,7 +12,7 @@
  * `// TODO(perm-codemod): review` marker for human follow-up.
  */
 
-import { Project, SyntaxKind, QuoteKind } from 'ts-morph'
+import { Project, SyntaxKind, QuoteKind, IndentationText } from 'ts-morph'
 
 /**
  * @description Authoritative file → permission key mapping. Pinned at plan
@@ -172,7 +172,15 @@ function isSingleRoleEquality(bin) {
  *      `FILE_KEY_MAP`. Multi-role OR-chains are left unchanged with a TODO.
  *   C) Bare `user?.role === ...` boolean expressions outside an isAdmin const
  *      get a `// TODO(perm-codemod): review` marker.
- *   D) Insert `useHasPermission` + `PERMISSION_KEYS` imports if any rewrite
+ *   D) Consumer-side `isAdmin` prop elimination (Plan 4.3b). For files in
+ *      `FILE_KEY_MAP` whose component receives `isAdmin: boolean` as a prop
+ *      (Props interface/type alias + destructuring) we (1) drop the prop from
+ *      the interface, (2) drop it from the destructuring pattern, (3) inject
+ *      `const isAdmin = useHasPermission(PERMISSION_KEYS.<KEY>)` as the first
+ *      statement of the function body. JSX usages are left untouched and
+ *      transparently bind to the new local. Idempotent: re-running on a
+ *      migrated file is a no-op.
+ *   IMP) Insert `useHasPermission` + `PERMISSION_KEYS` imports if any rewrite
  *      introduced a reference to them. Idempotent — existing imports are not
  *      duplicated.
  *
@@ -193,7 +201,7 @@ export function transformSource(source, filename) {
     useInMemoryFileSystem: true,
     skipFileDependencyResolution: true,
     // Match repo style: single quotes, no semicolons.
-    manipulationSettings: { quoteKind: QuoteKind.Single },
+    manipulationSettings: { quoteKind: QuoteKind.Single, indentationText: IndentationText.TwoSpaces },
   })
   // Suffix .tsx so ts-morph parses JSX even if the caller passes a .ts file.
   const file = project.createSourceFile(filename.replace(/\\/g, '/'), source, { overwrite: true })
@@ -319,7 +327,126 @@ export function transformSource(source, filename) {
     }
   }
 
-  // ── Pattern D: ensure imports exist if Pattern B injected references ──────
+  // ── Pattern D: consumer-side `isAdmin` prop elimination ──────────────────
+  // Fires only if (a) the file is in FILE_KEY_MAP with a non-null key and
+  // (b) a component declared in the file has `isAdmin: boolean` in its Props
+  // type AND destructures `isAdmin` from its parameter. We then drop the
+  // prop from the interface, drop it from the destructure, and inject a
+  // local `const isAdmin = useHasPermission(PERMISSION_KEYS.<KEY>)` as the
+  // first statement of the function body. JSX usages remain valid since
+  // they bind to the new local. See Plan 4.3b for the design rationale.
+  if (fileFound && mappedKey !== null) {
+    /**
+     * @description Find the props parameter ObjectBindingPattern (with an
+     * `isAdmin` element) for any function/arrow component in this file. We
+     * walk all function-like declarations and inspect parameter[0].
+     * @returns {Array<{ paramBinding: import('ts-morph').ObjectBindingPattern, body: import('ts-morph').Block, typeName: string | null }>}
+     */
+    function findCandidateComponents() {
+      /** @type {Array<{ paramBinding: import('ts-morph').ObjectBindingPattern, body: import('ts-morph').Block, typeName: string | null }>} */
+      const out = []
+      const fnLikeKinds = [
+        SyntaxKind.FunctionDeclaration,
+        SyntaxKind.ArrowFunction,
+        SyntaxKind.FunctionExpression,
+      ]
+      for (const kind of fnLikeKinds) {
+        for (const fn of file.getDescendantsOfKind(kind)) {
+          const params = /** @type {any} */ (fn).getParameters?.()
+          if (!params || params.length === 0) continue
+          const param0 = params[0]
+          const nameNode = param0.getNameNode()
+          if (nameNode.getKind() !== SyntaxKind.ObjectBindingPattern) continue
+          const binding = /** @type {import('ts-morph').ObjectBindingPattern} */ (nameNode)
+          const hasIsAdmin = binding.getElements().some((el) => el.getName() === 'isAdmin')
+          if (!hasIsAdmin) continue
+          const body = /** @type {any} */ (fn).getBody?.()
+          if (!body || body.getKind() !== SyntaxKind.Block) continue
+          // Capture the type-annotation name (Props interface) if any.
+          let typeName = null
+          const typeNode = param0.getTypeNode()
+          if (typeNode) {
+            const txt = typeNode.getText()
+            // Strip generic args, take the bare identifier.
+            const m = txt.match(/^([A-Za-z_$][\w$]*)/)
+            if (m) typeName = m[1]
+          }
+          out.push({ paramBinding: binding, body, typeName })
+        }
+      }
+      return out
+    }
+
+    const candidates = findCandidateComponents()
+    if (candidates.length > 0) {
+      // Idempotency check — first body already starts with the migrated const.
+      const firstBody = candidates[0].body
+      const firstStmt = firstBody.getStatements()[0]
+      const alreadyMigrated =
+        firstStmt && firstStmt.getText().includes('useHasPermission(PERMISSION_KEYS.')
+      if (!alreadyMigrated) {
+        // D.1 — Strip `isAdmin` from any matching Props interface/type alias.
+        // We accept either an InterfaceDeclaration or a TypeAliasDeclaration
+        // whose body is a TypeLiteralNode. Match by type name (when known)
+        // or fall back to "name endsWith Props" heuristic.
+        const typeNames = new Set(candidates.map((c) => c.typeName).filter(Boolean))
+        for (const iface of file.getInterfaces()) {
+          if (typeNames.size > 0 && !typeNames.has(iface.getName())) continue
+          const prop = iface.getProperty('isAdmin')
+          if (prop) {
+            prop.remove()
+            mutated = true
+          }
+        }
+        for (const alias of file.getTypeAliases()) {
+          if (typeNames.size > 0 && !typeNames.has(alias.getName())) continue
+          const tn = alias.getTypeNode()
+          if (!tn || tn.getKind() !== SyntaxKind.TypeLiteral) continue
+          const lit = /** @type {import('ts-morph').TypeLiteralNode} */ (tn)
+          const member = lit.getProperty('isAdmin')
+          if (member) {
+            member.remove()
+            mutated = true
+          }
+        }
+
+        // D.3 — Inject local const into the FIRST candidate's body. We do
+        // this BEFORE D.2 because rebuilding the destructuring pattern via
+        // replaceWithText forgets descendant nodes — and the body is fine to
+        // mutate independently (it lives in a sibling subtree).
+        firstBody.insertStatements(0, `const isAdmin = useHasPermission(PERMISSION_KEYS.${mappedKey})`)
+        if (candidates.length > 1) {
+          firstBody.insertStatements(
+            0,
+            `// TODO(perm-codemod): multiple isAdmin consumers in one file — verify each matches PERMISSION_KEYS.${mappedKey}`,
+          )
+        }
+
+        // D.2 — Remove `isAdmin` from each candidate's destructuring pattern.
+        // BindingElement has no `.remove()` in ts-morph, so rebuild the
+        // ObjectBindingPattern text with the `isAdmin` element filtered out.
+        // Done LAST so any prior ancestor mutations don't forget these nodes.
+        for (const { paramBinding } of candidates) {
+          // Re-fetch elements: prior body insertions may have updated positions
+          // but the binding pattern node itself is still valid.
+          if (paramBinding.wasForgotten()) continue
+          const elements = paramBinding.getElements()
+          const remaining = elements
+            .filter((e) => e.getName() !== 'isAdmin')
+            .map((e) => e.getText())
+          if (remaining.length !== elements.length) {
+            paramBinding.replaceWithText(`{ ${remaining.join(', ')} }`)
+            mutated = true
+          }
+        }
+        needsHookImport = true
+        needsKeysImport = true
+        mutated = true
+      }
+    }
+  }
+
+  // ── Imports: ensure useHasPermission + PERMISSION_KEYS are present ───────
   if (needsHookImport) {
     const existing = file.getImportDeclaration((d) => d.getModuleSpecifierValue() === '@/lib/permissions')
     if (existing) {
