@@ -6,6 +6,7 @@
 import { Router } from 'express'
 import { BroadcastMessageController } from '../controllers/broadcast-message.controller.js'
 import { requirePermission } from '@/shared/middleware/auth.middleware.js'
+import { markPublicRoute } from '@/shared/middleware/markPublicRoute.js'
 import { validate } from '@/shared/middleware/validate.middleware.js'
 import { createBroadcastSchema, updateBroadcastSchema, uuidParamSchema } from '../schemas/broadcast.schemas.js'
 
@@ -25,8 +26,9 @@ router.get('/active', controller.getActive.bind(controller))
  * @description Record that the current user has dismissed a specific broadcast message.
  * @access Private
  */
-// Allows authenticated users to hide specific announcements
-router.post('/:id/dismiss', controller.dismiss.bind(controller))
+// Intentionally public — any visitor who can see an announcement can dismiss it for themselves.
+// Controller treats `req.user` as optional and records anonymous dismissals by IP.
+router.post('/:id/dismiss', markPublicRoute(), controller.dismiss.bind(controller))
 
 /**
  * Admin routes (prefixed with /api/broadcast-messages/admin or handled via permission check)
