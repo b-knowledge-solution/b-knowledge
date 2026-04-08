@@ -167,6 +167,52 @@ export class RolePermissionModel extends BaseModel<RolePermissionRow> {
    * @param {string} tenantId - Tenant scope for tenant-specific overlays.
    * @returns {Promise<RolePermissionWithSubject[]>} Triples consumed by the V2 builder.
    */
+  /**
+   * @description Replace the entire permission key set for `(role, tenantId)`
+   * atomically: deletes every existing row in scope and inserts the supplied
+   * keys in a single transaction so concurrent readers never observe a half-
+   * replaced state. Empty `permissionKeys` is legal and means "revoke all".
+   *
+   * Used by the permissions admin module (P3.4a-d). Lives on the model so
+   * services never need to import `db` directly — strict layering preserved.
+   *
+   * @param {string} role - Role to replace.
+   * @param {string[]} permissionKeys - Desired end-state key set.
+   * @param {string | null} tenantId - Tenant scope (`null` for global defaults).
+   * @returns {Promise<void>} Resolves once the swap commits.
+   */
+  async replaceForRole(
+    role: string,
+    permissionKeys: string[],
+    tenantId: string | null,
+  ): Promise<void> {
+    // Atomic delete-then-insert. The transaction guarantees no concurrent
+    // reader sees a state with neither the old nor the new key set present.
+    await this.knex.transaction(async (trx) => {
+      // Step 1 — delete every existing row for this (role, tenant) scope.
+      const delQuery = trx(this.tableName).where({ role })
+      // Knex does NOT translate `where({ tenant_id: null })` into `IS NULL`,
+      // so we use an explicit `whereNull` for the global-default case.
+      if (tenantId === null || tenantId === undefined) {
+        delQuery.whereNull('tenant_id')
+      } else {
+        delQuery.where({ tenant_id: tenantId })
+      }
+      await delQuery.delete()
+
+      // Step 2 — insert the desired state, if any. Empty array = revoke-all
+      // and we skip the insert entirely.
+      if (permissionKeys.length > 0) {
+        const rows = permissionKeys.map((key) => ({
+          role,
+          permission_key: key,
+          tenant_id: tenantId ?? null,
+        }))
+        await trx(this.tableName).insert(rows)
+      }
+    })
+  }
+
   async findByRoleWithSubjects(
     role: string,
     tenantId: string,

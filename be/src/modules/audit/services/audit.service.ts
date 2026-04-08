@@ -237,6 +237,47 @@ class AuditService {
     }
 
     /**
+     * @description Logs a permission-mutation audit entry written by the
+     * permissions admin module (P3.4a-d). Captures actor, tenant, what changed,
+     * and before/after snapshots so the audit pipeline can reconstruct the
+     * full history of role/override/grant edits. Fire-and-forget — callers
+     * MUST `.catch(...)` to swallow logging failures so audit outages never
+     * block the response.
+     *
+     * @param {object} input - Structured mutation payload
+     * @param {string} input.actor - Acting user id (the admin)
+     * @param {string} input.tenantId - Tenant the mutation took effect in
+     * @param {string} input.action - Mutation action (e.g. `permission_role_updated`)
+     * @param {string} input.target - Target entity descriptor (role name, user id, grant id)
+     * @param {Record<string, unknown> | null} input.before - Pre-mutation snapshot, null on create
+     * @param {Record<string, unknown> | null} input.after - Post-mutation snapshot, null on delete
+     * @returns {Promise<void>} Resolves once the audit row is persisted (or logging fails silently)
+     */
+    async logPermissionMutation(input: {
+        actor: string
+        tenantId: string
+        action: string
+        target: string
+        before: Record<string, unknown> | null
+        after: Record<string, unknown> | null
+    }): Promise<void> {
+        // Reuse the best-effort `log()` method so a failure here never throws.
+        await this.log({
+            userId: input.actor,
+            userEmail: '',
+            action: input.action,
+            resourceType: AuditResourceType.PERMISSION,
+            resourceId: input.target,
+            tenantId: input.tenantId,
+            details: {
+                target: input.target,
+                before: input.before,
+                after: input.after,
+            },
+        });
+    }
+
+    /**
      * @description Retrieve paginated audit logs with lightweight filtering by user, action, and resource type
      * @param {Record<string, string>} filters - Filtering criteria (userId, action, resourceType)
      * @param {number} limit - Number of logs per page (default: 50)

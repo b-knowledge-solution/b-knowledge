@@ -47,6 +47,7 @@ import agentWebhookRoutes from '@/modules/agents/routes/agent-webhook.routes.js'
 import agentEmbedRoutes from '@/modules/agents/routes/agent-embed.routes.js';
 import memoryRoutes from '@/modules/memory/routes/memory.routes.js';
 import codeGraphRoutes from '@/modules/code-graph/code-graph.routes.js';
+import { permissionsRoutes } from '@/modules/permissions/index.js';
 import { agentController } from '@/modules/agents/controllers/agent.controller.js';
 import { agentEmbedController } from '@/modules/agents/controllers/agent-embed.controller.js';
 import { requireAuth, requireAbility } from '@/shared/middleware/auth.middleware.js';
@@ -158,6 +159,9 @@ function registerRoutes(apiRouter: Router): void {
 
     // Audit logging
     apiRouter.use('/audit', auditRoutes);
+
+    // Permissions admin (roles, overrides, resource grants, whoCanDo)
+    apiRouter.use('/permissions', permissionsRoutes);
 
 
     // Broadcast messages
