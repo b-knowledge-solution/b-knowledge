@@ -5,7 +5,7 @@
 import { Router } from 'express'
 import multer from 'multer'
 import { KnowledgeBaseController } from '../controllers/knowledge-base.controller.js'
-import { requireAuth, requireAbility, requireRole } from '@/shared/middleware/auth.middleware.js'
+import { requireAuth, requireAbility } from '@/shared/middleware/auth.middleware.js'
 import { requireTenant } from '@/shared/middleware/tenant.middleware.js'
 import { validate } from '@/shared/middleware/validate.middleware.js'
 import {
@@ -143,14 +143,16 @@ router.delete('/:id/entity-permissions/:permId', requireAuth, requireTenant, req
 // Members — admin/leader can add/remove, all auth users can list
 // -------------------------------------------------------------------------
 router.get('/:id/members', requireAuth, requireTenant, requireAbility('read', 'KnowledgeBase'), controller.getMembers.bind(controller))
-router.post('/:id/members', requireAuth, requireTenant, requireRole('admin', 'leader'), validate({ params: knowledgeBaseIdParamSchema, body: addMemberSchema }), controller.addMember.bind(controller))
-router.delete('/:id/members/:userId', requireAuth, requireTenant, requireRole('admin', 'leader'), controller.removeMember.bind(controller))
+// Row-scoped: caller must hold `manage` on THIS KnowledgeBase id (V2 resource_grants honored)
+router.post('/:id/members', requireAuth, requireTenant, requireAbility('manage', 'KnowledgeBase', 'id'), validate({ params: knowledgeBaseIdParamSchema, body: addMemberSchema }), controller.addMember.bind(controller))
+router.delete('/:id/members/:userId', requireAuth, requireTenant, requireAbility('manage', 'KnowledgeBase', 'id'), controller.removeMember.bind(controller))
 
 // -------------------------------------------------------------------------
 // Dataset Binding — admin/leader can bind/unbind
 // -------------------------------------------------------------------------
-router.post('/:id/datasets/bind', requireAuth, requireTenant, requireRole('admin', 'leader'), validate({ params: knowledgeBaseIdParamSchema, body: bindDatasetsSchema }), controller.bindDatasets.bind(controller))
-router.delete('/:id/datasets/:datasetId/unbind', requireAuth, requireTenant, requireRole('admin', 'leader'), controller.unbindDataset.bind(controller))
+// Row-scoped: dataset bind/unbind requires `manage` on THIS KnowledgeBase id
+router.post('/:id/datasets/bind', requireAuth, requireTenant, requireAbility('manage', 'KnowledgeBase', 'id'), validate({ params: knowledgeBaseIdParamSchema, body: bindDatasetsSchema }), controller.bindDatasets.bind(controller))
+router.delete('/:id/datasets/:datasetId/unbind', requireAuth, requireTenant, requireAbility('manage', 'KnowledgeBase', 'id'), controller.unbindDataset.bind(controller))
 
 // -------------------------------------------------------------------------
 // Activity Feed — paginated audit log scoped to knowledge base
