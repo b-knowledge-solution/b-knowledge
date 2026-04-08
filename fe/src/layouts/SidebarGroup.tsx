@@ -38,9 +38,7 @@ interface SidebarGroupProps {
  * @param {{ child: SidebarNavItem }} props - Child nav item config
  * @returns {JSX.Element | null} The rendered link or null when the permission is missing
  */
-function GatedChildLink({ child }: { child: SidebarNavItem }) {
-  const allowed = child.requiredPermission ? useHasPermission(child.requiredPermission) : true
-  if (!allowed) return null
+function RenderChildLink({ child }: { child: SidebarNavItem }) {
   return (
     <SidebarNavLink
       path={child.path}
@@ -49,6 +47,23 @@ function GatedChildLink({ child }: { child: SidebarNavItem }) {
       iconSize={child.iconSize ?? 18}
     />
   )
+}
+
+function PermissionGatedChildLink({
+  child,
+}: {
+  child: SidebarNavItem & { requiredPermission: NonNullable<SidebarNavItem['requiredPermission']> }
+}) {
+  const allowed = useHasPermission(child.requiredPermission)
+  if (!allowed) return null
+  return <RenderChildLink child={child} />
+}
+
+function GatedChildLink({ child }: { child: SidebarNavItem }) {
+  if (!child.requiredPermission) {
+    return <RenderChildLink child={child} />
+  }
+  return <PermissionGatedChildLink child={child as SidebarNavItem & { requiredPermission: NonNullable<SidebarNavItem['requiredPermission']> }} />
 }
 
 // ============================================================================

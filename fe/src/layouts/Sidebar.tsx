@@ -79,10 +79,7 @@ function UserAvatar({ user, size = 'md' }: { user: User; size?: 'sm' | 'md' }) {
  * @param {{ entry: SidebarNavItem; isCollapsed: boolean }} props - Nav item and sidebar collapse state
  * @returns {JSX.Element | null} The rendered link or null when the permission is missing
  */
-function GatedNavLink({ entry, isCollapsed }: { entry: SidebarNavItem; isCollapsed: boolean }) {
-  // Phase 4: nav visibility resolves via permission keys, not role-set membership.
-  const allowed = entry.requiredPermission ? useHasPermission(entry.requiredPermission) : true
-  if (!allowed) return null
+function RenderNavLink({ entry, isCollapsed }: { entry: SidebarNavItem; isCollapsed: boolean }) {
   return (
     <SidebarNavLink
       path={entry.path}
@@ -94,14 +91,32 @@ function GatedNavLink({ entry, isCollapsed }: { entry: SidebarNavItem; isCollaps
   )
 }
 
+function PermissionGatedNavLink({
+  entry,
+  isCollapsed,
+}: {
+  entry: SidebarNavItem & { requiredPermission: NonNullable<SidebarNavItem['requiredPermission']> }
+  isCollapsed: boolean
+}) {
+  // Phase 4: nav visibility resolves via permission keys, not role-set membership.
+  const allowed = useHasPermission(entry.requiredPermission)
+  if (!allowed) return null
+  return <RenderNavLink entry={entry} isCollapsed={isCollapsed} />
+}
+
+function GatedNavLink({ entry, isCollapsed }: { entry: SidebarNavItem; isCollapsed: boolean }) {
+  if (!entry.requiredPermission) {
+    return <RenderNavLink entry={entry} isCollapsed={isCollapsed} />
+  }
+  return <PermissionGatedNavLink entry={entry as SidebarNavItem & { requiredPermission: NonNullable<SidebarNavItem['requiredPermission']> }} isCollapsed={isCollapsed} />
+}
+
 /**
  * @description Wrapper that renders an expandable nav group only when the current user holds the group-level permission.
  * @param {{ entry: SidebarNavGroup; isCollapsed: boolean }} props - Group entry and sidebar collapse state
  * @returns {JSX.Element | null} The rendered group or null when the permission is missing
  */
-function GatedNavGroup({ entry, isCollapsed }: { entry: SidebarNavGroup; isCollapsed: boolean }) {
-  const allowed = entry.requiredPermission ? useHasPermission(entry.requiredPermission) : true
-  if (!allowed) return null
+function RenderNavGroup({ entry, isCollapsed }: { entry: SidebarNavGroup; isCollapsed: boolean }) {
   return (
     <SidebarGroup
       labelKey={entry.labelKey}
@@ -110,6 +125,25 @@ function GatedNavGroup({ entry, isCollapsed }: { entry: SidebarNavGroup; isColla
       isCollapsed={isCollapsed}
     />
   )
+}
+
+function PermissionGatedNavGroup({
+  entry,
+  isCollapsed,
+}: {
+  entry: SidebarNavGroup & { requiredPermission: NonNullable<SidebarNavGroup['requiredPermission']> }
+  isCollapsed: boolean
+}) {
+  const allowed = useHasPermission(entry.requiredPermission)
+  if (!allowed) return null
+  return <RenderNavGroup entry={entry} isCollapsed={isCollapsed} />
+}
+
+function GatedNavGroup({ entry, isCollapsed }: { entry: SidebarNavGroup; isCollapsed: boolean }) {
+  if (!entry.requiredPermission) {
+    return <RenderNavGroup entry={entry} isCollapsed={isCollapsed} />
+  }
+  return <PermissionGatedNavGroup entry={entry as SidebarNavGroup & { requiredPermission: NonNullable<SidebarNavGroup['requiredPermission']> }} isCollapsed={isCollapsed} />
 }
 
 // ============================================================================
