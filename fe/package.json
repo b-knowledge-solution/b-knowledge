@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
-    "prebuild": "rimraf dist",
+    "predev": "node scripts/generate-permission-keys.mjs",
+    "permissions:generate-keys": "node scripts/generate-permission-keys.mjs",
+    "prebuild": "rimraf dist && node scripts/generate-permission-keys.mjs",
+    "pretest": "node scripts/generate-permission-keys.mjs",
     "build": "tsc -b && vite build",
     "build:prod": "tsc -b && vite build --mode production",
     "preview": "vite preview",
