@@ -23,6 +23,8 @@ import { Spinner } from '@/components/ui/spinner'
 import { glossaryApi } from '../api/glossaryApi'
 import type { UseGlossaryTasksReturn } from '../api/glossaryQueries'
 import { globalMessage } from '@/lib/globalMessage'
+import { useHasPermission } from '@/lib/permissions'
+import { PERMISSION_KEYS } from '@/constants/permission-keys'
 
 /**
  * Props for the TaskManagementTab component.
@@ -31,8 +33,6 @@ import { globalMessage } from '@/lib/globalMessage'
 interface TaskManagementTabProps {
     /** All values and handlers from useGlossaryTasks. */
     taskHook: UseGlossaryTasksReturn
-    /** Whether the current user has admin/leader privileges. */
-    isAdmin: boolean
     /** Callback to open the bulk import modal. */
     onOpenBulkImport: () => void
 }
@@ -42,11 +42,8 @@ interface TaskManagementTabProps {
  * @param props - Component props.
  * @returns React element.
  */
-export const TaskManagementTab: React.FC<TaskManagementTabProps> = ({
-    taskHook,
-    isAdmin,
-    onOpenBulkImport,
-}) => {
+export const TaskManagementTab: React.FC<TaskManagementTabProps> = ({ taskHook, onOpenBulkImport }) => {
+  const isAdmin = useHasPermission(PERMISSION_KEYS.GLOSSARY_EDIT)
     const { t } = useTranslation()
     const confirm = useConfirm()
 
