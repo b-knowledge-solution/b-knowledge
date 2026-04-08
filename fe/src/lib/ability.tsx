@@ -25,8 +25,27 @@ import { useAuth } from '@/features/auth'
 /** @description Available permission actions matching the backend CASL definition */
 type Actions = 'manage' | 'create' | 'read' | 'update' | 'delete'
 
-/** @description Resource subjects that can be permission-gated */
-type Subjects = 'Dataset' | 'Document' | 'ChatAssistant' | 'SearchApp' | 'User' | 'AuditLog' | 'Policy' | 'Org' | 'Project' | 'all'
+/**
+ * @description Resource subjects that can be permission-gated. Aligned with BE ability.service.ts Subjects union (Phase 4).
+ *
+ * Phase 4 (D-03): drop legacy `Project`, add new BE-aligned entities
+ * (`KnowledgeBase`, `Agent`, `Memory`, `DocumentCategory`). Atomic single-commit
+ * swap — no transition window where both old and new are valid.
+ */
+type Subjects =
+  | 'Dataset'
+  | 'Document'
+  | 'ChatAssistant'
+  | 'SearchApp'
+  | 'User'
+  | 'AuditLog'
+  | 'Policy'
+  | 'Org'
+  | 'KnowledgeBase'
+  | 'Agent'
+  | 'Memory'
+  | 'DocumentCategory'
+  | 'all'
 
 /** @description CASL ability type combining actions and subjects for the app */
 export type AppAbility = MongoAbility<[Actions, Subjects]>
