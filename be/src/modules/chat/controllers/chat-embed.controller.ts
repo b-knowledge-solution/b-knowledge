@@ -19,7 +19,7 @@ import { chatAssistantService } from '../services/chat-assistant.service.js'
  */
 export class ChatEmbedController {
   // ==========================================================================
-  // Admin endpoints (authenticated, manage_users permission)
+  // Admin endpoints (authenticated, chat.embed permission)
   // ==========================================================================
 
   /**
