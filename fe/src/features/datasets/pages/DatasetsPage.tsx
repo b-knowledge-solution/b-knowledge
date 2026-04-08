@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
-import { useAuth } from '@/features/auth'
-import { UserRole } from '@/constants'
+import { useHasPermission } from '@/lib/permissions'
+import { PERMISSION_KEYS } from '@/constants/permission-keys'
 import { useDatasets } from '../api/datasetQueries'
 import DatasetCard from '../components/DatasetCard'
 import CreateDatasetModal from '../components/CreateDatasetModal'
@@ -22,10 +22,8 @@ import type { Dataset } from '../types'
  */
 const DatasetsPage: React.FC = () => {
   const { t } = useTranslation();
-  const { user } = useAuth();
-  // Grant admin privileges to admin and leader roles
-  // TODO(perm-codemod): multi-role chain — manual migration required (split into useHasPermission calls per capability)
-  const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.LEADER;
+  // Catalog-driven gate replacing legacy admin/leader role check (Plan 4.4 manual migration)
+  const isAdmin = useHasPermission(PERMISSION_KEYS.DATASETS_VIEW);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   // State for access control dialog
   const [accessDataset, setAccessDataset] = useState<Dataset | null>(null);
