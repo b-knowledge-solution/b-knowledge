@@ -31,6 +31,8 @@ import ProcessLogDialog from './ProcessLogDialog'
 import UploadNewVersionDialog from './UploadNewVersionDialog'
 import MetadataManageDialog from './MetadataManageDialog'
 import type { Document } from '../types'
+import { useHasPermission } from '@/lib/permissions'
+import { PERMISSION_KEYS } from '@/constants/permission-keys'
 
 // ============================================================================
 // Types
@@ -46,8 +48,6 @@ interface DocumentTableProps {
   documents: Document[]
   /** Whether documents are currently loading */
   loading: boolean
-  /** Whether the current user has admin privileges */
-  isAdmin: boolean
   /** Callback to trigger parsing for a single document */
   onParse: (docId: string) => void
   /** Callback to delete a single document */
@@ -124,18 +124,8 @@ function getStatusBadge(doc: Document): {
  * @param {DocumentTableProps} props - Component properties
  * @returns {JSX.Element} Rendered document table with bulk action controls
  */
-const DocumentTable: React.FC<DocumentTableProps> = ({
-  datasetId,
-  documents,
-  loading,
-  isAdmin,
-  onParse,
-  onDelete,
-  onToggleAvailability,
-  onBulkParse,
-  onBulkDelete,
-  onChangeParser,
-}) => {
+const DocumentTable: React.FC<DocumentTableProps> = ({ datasetId, documents, loading, onParse, onDelete, onToggleAvailability, onBulkParse, onBulkDelete, onChangeParser }) => {
+  const isAdmin = useHasPermission(PERMISSION_KEYS.DATASETS_VIEW)
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
