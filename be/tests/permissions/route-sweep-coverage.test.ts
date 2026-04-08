@@ -45,7 +45,7 @@ import { join, relative, resolve } from 'node:path'
  * When true, offenders are reported but the test passes. Flip to false at the
  * end of Phase 3 Wave 3 (plan P3.5a) to turn this into an enforcing gate.
  */
-const ALLOW_OFFENDERS = true
+const ALLOW_OFFENDERS = false
 
 /** Express route methods that mutate state and therefore require gating. */
 const MUTATING_METHODS = new Set(['post', 'put', 'patch', 'delete'])
