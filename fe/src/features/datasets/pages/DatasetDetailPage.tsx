@@ -14,8 +14,8 @@ import {
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useAuth } from '@/features/auth'
-import { UserRole } from '@/constants'
+import { useHasPermission } from '@/lib/permissions'
+import { PERMISSION_KEYS } from '@/constants/permission-keys'
 import { datasetApi } from '../api/datasetApi'
 import { useDocuments, useChangeDocumentParser, useWebCrawl } from '../api/datasetQueries'
 import DocumentTable from '../components/DocumentTable'
@@ -42,10 +42,8 @@ const DatasetDetailPage: React.FC = () => {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigateWithLoader();
-  const { user } = useAuth();
-  // Grant admin privileges to admin and leader roles for write operations
-  // TODO(perm-codemod): multi-role chain — manual migration required (split into useHasPermission calls per capability)
-  const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.LEADER;
+  // Catalog-driven gate replacing legacy admin/leader role check (Plan 4.4 manual migration)
+  const isAdmin = useHasPermission(PERMISSION_KEYS.DATASETS_VIEW);
 
   const [dataset, setDataset] = useState<Dataset | null>(null);
   const [loadingDataset, setLoadingDataset] = useState(true);
