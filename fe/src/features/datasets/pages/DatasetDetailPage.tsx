@@ -1,35 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { useNavigateWithLoader, usePageReady } from '@/components/NavigationLoader';
-import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Upload, RefreshCw, Shield, Settings, Database, BarChart3, Network, Tags, Globe, ChevronDown, Link2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Spinner } from '@/components/ui/spinner';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import React, { useState, useEffect } from 'react'
+import { useParams } from 'react-router-dom'
+import { useNavigateWithLoader, usePageReady } from '@/components/NavigationLoader'
+import { useTranslation } from 'react-i18next'
+import { ArrowLeft, Upload, RefreshCw, Shield, Settings, Database, BarChart3, Network, Tags, Globe, ChevronDown, Link2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Spinner } from '@/components/ui/spinner'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/components/ui/sheet';
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useAuth } from '@/features/auth';
-import { UserRole } from '@/constants';
-import { datasetApi } from '../api/datasetApi';
-import { useDocuments, useChangeDocumentParser, useWebCrawl } from '../api/datasetQueries';
-import DocumentTable from '../components/DocumentTable';
-import FileUploadModal from '../components/FileUploadModal';
-import DatasetAccessDialog from '../components/DatasetAccessDialog';
-import DatasetSettingsDrawer from '../components/DatasetSettingsDrawer';
-import DatasetOverviewTab from '../components/DatasetOverviewTab';
-import KnowledgeGraphTab from '../components/KnowledgeGraphTab';
-import MetadataManageDialog from '../components/MetadataManageDialog';
-import ChangeParserDialog from '../components/ChangeParserDialog';
-import WebCrawlDialog from '../components/WebCrawlDialog';
-import ConnectorListPanel from '../components/ConnectorListPanel';
-import { DocumentPreviewer } from '@/components/DocumentPreviewer';
-import type { Dataset, Document } from '../types';
+import { useAuth } from '@/features/auth'
+import { UserRole } from '@/constants'
+import { datasetApi } from '../api/datasetApi'
+import { useDocuments, useChangeDocumentParser, useWebCrawl } from '../api/datasetQueries'
+import DocumentTable from '../components/DocumentTable'
+import FileUploadModal from '../components/FileUploadModal'
+import DatasetAccessDialog from '../components/DatasetAccessDialog'
+import DatasetSettingsDrawer from '../components/DatasetSettingsDrawer'
+import DatasetOverviewTab from '../components/DatasetOverviewTab'
+import KnowledgeGraphTab from '../components/KnowledgeGraphTab'
+import MetadataManageDialog from '../components/MetadataManageDialog'
+import ChangeParserDialog from '../components/ChangeParserDialog'
+import WebCrawlDialog from '../components/WebCrawlDialog'
+import ConnectorListPanel from '../components/ConnectorListPanel'
+import { DocumentPreviewer } from '@/components/DocumentPreviewer'
+import type { Dataset, Document } from '../types'
 
 /**
  * @description Dataset detail page with tabbed interface for Documents, Overview,
@@ -44,6 +44,7 @@ const DatasetDetailPage: React.FC = () => {
   const navigate = useNavigateWithLoader();
   const { user } = useAuth();
   // Grant admin privileges to admin and leader roles for write operations
+  // TODO(perm-codemod): multi-role chain — manual migration required (split into useHasPermission calls per capability)
   const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.LEADER;
 
   const [dataset, setDataset] = useState<Dataset | null>(null);
@@ -296,7 +297,6 @@ const DatasetDetailPage: React.FC = () => {
               datasetId={id!}
               documents={documents}
               loading={loadingDocs}
-              isAdmin={isAdmin}
               onParse={parseDocument}
               onDelete={deleteDocument}
               onToggleAvailability={toggleAvailability}
@@ -313,7 +313,7 @@ const DatasetDetailPage: React.FC = () => {
       )}
 
       {activeTab === 'sources' && id && (
-        <ConnectorListPanel kbId={id} isAdmin={isAdmin} />
+        <ConnectorListPanel kbId={id} />
       )}
 
       {activeTab === 'graph' && id && (
