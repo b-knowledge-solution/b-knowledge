@@ -249,6 +249,27 @@ export function useOrgMembers() {
 }
 
 /**
+ * @description Fetch a single user by id from the cached list.
+ *
+ * The BE doesn't expose a `/api/users/:id` GET endpoint, so we reuse the
+ * existing list query and pluck the matching record. This piggy-backs on
+ * any existing user-list cache so the detail page is instant when navigated
+ * to from the management table.
+ *
+ * @param {string} userId - Target user id (string — the User entity uses string ids).
+ * @returns Query result whose data is the matching User or null when missing.
+ */
+export function useUser(userId: string) {
+    return useQuery({
+        queryKey: queryKeys.users.list(),
+        queryFn: () => userApi.getUsers(),
+        // Pluck the specific user out of the list response
+        select: (users: User[]) => users.find(u => u.id === userId) ?? null,
+        enabled: Boolean(userId),
+    })
+}
+
+/**
  * @description Standalone mutation hook for updating a single user's role.
  * Shows success/error toasts and invalidates the users query on success.
  * @returns Mutation hook for role updates

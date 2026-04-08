@@ -78,6 +78,7 @@ const AiSearchPage = lazy(() => import('@/features/search/pages/SearchPage'));
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'));
 const LogoutPage = lazy(() => import('@/features/auth/pages/LogoutPage'));
 const UserManagementPage = lazy(() => import('@/features/users/pages/UserManagementPage'));
+const UserDetailPage = lazy(() => import('@/features/users/pages/UserDetailPage'));
 const PermissionManagementPage = lazy(() => import('@/features/users/pages/PermissionManagementPage'));
 const TeamManagementPage = lazy(() => import('@/features/teams/pages/TeamManagementPage'));
 const SystemToolsPage = lazy(() => import('@/features/system/pages/SystemToolsPage'));
@@ -212,6 +213,7 @@ function App() {
 
               {/* IAM */}
               <Route path="iam/users" element={<FeatureErrorBoundary><NavRoleGuard><UserManagementPage /></NavRoleGuard></FeatureErrorBoundary>} />
+              <Route path="iam/users/:id" element={<FeatureErrorBoundary><NavRoleGuard><UserDetailPage /></NavRoleGuard></FeatureErrorBoundary>} />
               <Route path="iam/teams" element={<FeatureErrorBoundary><NavRoleGuard><TeamManagementPage /></NavRoleGuard></FeatureErrorBoundary>} />
               <Route path="iam/permissions" element={<FeatureErrorBoundary><NavRoleGuard><PermissionManagementPage /></NavRoleGuard></FeatureErrorBoundary>} />
 

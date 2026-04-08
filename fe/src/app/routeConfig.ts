@@ -89,6 +89,9 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     titleKey: 'userManagement.title',
     guidelineFeatureId: 'users',
   },
+  '/iam/users/:id': {
+    titleKey: 'users.detail.title',
+  },
   '/iam/teams': {
     titleKey: 'iam.teams.title',
     guidelineFeatureId: 'teams',

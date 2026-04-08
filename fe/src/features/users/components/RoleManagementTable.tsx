@@ -8,6 +8,7 @@
  */
 
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Loader2, Users, KeyRound, Cloud, MoreHorizontal, Globe } from 'lucide-react'
 import {
@@ -82,7 +83,19 @@ export function RoleManagementTable({
 }: RoleManagementTableProps) {
   const { t } = useTranslation()
   const confirm = useConfirm()
+  const navigate = useNavigate()
   const { user: currentUser } = useAuth()
+
+  /**
+   * @description Navigate to the per-user detail page (Plan 5.2). Stops the
+   * row click from triggering when the user actually clicked an interactive
+   * descendant (role select, action menu) — those handlers call
+   * `event.stopPropagation()` themselves below.
+   * @param {string} userId - The id of the user whose row was clicked.
+   */
+  const handleRowNavigate = (userId: string) => {
+    navigate(`/iam/users/${userId}`)
+  }
 
   // Track which user's role select is pending confirmation
   const [pendingChange, setPendingChange] = useState<{
@@ -208,7 +221,11 @@ export function RoleManagementTable({
               (pendingChange?.userId === member.id)
 
             return (
-              <TableRow key={member.id}>
+              <TableRow
+                key={member.id}
+                className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800"
+                onClick={() => handleRowNavigate(member.id)}
+              >
                 {/* Name column with avatar */}
                 <TableCell>
                   <div className="flex items-center gap-2">
@@ -251,7 +268,7 @@ export function RoleManagementTable({
                 </TableCell>
 
                 {/* Actions: role select + dropdown menu */}
-                <TableCell className="text-right">
+                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-2">
                     {isUpdating && (
                       <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />

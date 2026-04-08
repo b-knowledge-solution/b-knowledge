@@ -6,6 +6,7 @@
 
 // Pages
 export { default as UserManagementPage } from './pages/UserManagementPage'
+export { default as UserDetailPage } from './pages/UserDetailPage'
 export { default as PermissionManagementPage } from './pages/PermissionManagementPage'
 
 // Components
