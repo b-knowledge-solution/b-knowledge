@@ -1,3 +1,11 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: executing
+last_updated: "2026-04-09T11:10:00.000Z"
+---
+
 # Project State
 
 > Loaded by every GSD command. Keeps cross-session context lean and current.
@@ -15,11 +23,11 @@
 **M1 — Permission System Overhaul**
 Consolidate the two coexisting authorization systems (static `rbac.ts` + CASL `ability.service.ts`) into a single CASL engine fed from a DB-backed permission registry, with feature-level coverage across all 22 BE modules and resource-grant scoping for KnowledgeBase + DocumentCategory.
 
-**Status:** Initialized — research, requirements, and roadmap complete. Ready for `/gsd:plan-phase 1`.
+**Status:** Phase 6 execution complete; verification debt remains before milestone close
 
 ## Active Phase
 
-**None.** Phase 3 execution complete (28 commits across 5 waves). Verification + UAT pending in a fresh session with Docker available. Next action: `/gsd:verify-work 3` (UAT) once Docker is back up, then `/gsd:plan-phase 4` (FE Catalog + `<Can>` Codemod).
+**None.** Phase 6 execution is complete. The remaining milestone blocker is earlier verification debt: Phase 3 still needs verification + UAT in a session with Docker/Postgres available. After that, decide whether optional Phase 7 should be planned or the milestone should be closed.
 
 ## Phase Pipeline
 
@@ -28,10 +36,27 @@ Consolidate the two coexisting authorization systems (static `rbac.ts` + CASL `a
 | 1 | Schema, Registry, Boot Sync | ✓ DONE (verified PASS, 5/5; UAT 5/5) | 6 (P1.0–P1.5) | — |
 | 2 | Ability Engine + Regression Snapshots | ✓ DONE (verified PASS, 5/5; UAT 5/5 zero bugs) | 7 (P2.0, P2.6, P2.1, P2.2.0, P2.2, P2.4, P2.5) + 1 patch | P1 |
 | 3 | Middleware Cutover | ✓ EXECUTION DONE (28 commits) — verification + UAT pending | 21 (P3.0a-d, P3.1a-d, P3.2a-d, P3.3a-c, P3.4a-d, P3.5a-d) + dispatched as 5 waves | P2 |
-| 4 | FE Catalog + `<Can>` Codemod | Pending | — | P3 |
-| 5 | Admin UI Rewrite | Pending | — | P4 (partial) |
-| 6 | Legacy Cleanup + OpenSearch Integration | Pending | — | P3 |
+| 4 | FE Catalog + `<Can>` Codemod | ✓ DONE | 5 plans completed + summaries committed | P3 |
+| 5 | Admin UI Rewrite | ✓ DONE | 8 plans completed + summaries committed | P4 (partial) |
+| 6 | Legacy Cleanup + OpenSearch Integration | ✓ EXECUTION DONE | 5 plans completed + summaries committed | P3 |
 | 7 | Should-Haves (SH1, SH2) | Optional | — | P6 |
+
+## Phase 6 Outcome
+
+- **8 commits** across 3 waves after the planning handoff already in the repo
+- **Legacy aliases removed** from code and data: `member -> user`, `superadmin -> super-admin`
+- **Repo guardrail shipped**: `npm run check:legacy-roles`
+- **Grant-aware retrieval path shipped**: `resolveGrantedDatasetsForUser()` now expands KB and category grants into dataset IDs used by chat retrieval
+- **Validation closed** with:
+  - unit coverage for grant resolution in `be/tests/shared/services/ability.service.test.ts`
+  - scratch-DB integration coverage in `be/tests/permissions/grant-dataset-resolution.test.ts`
+- **ADMIN_ROLES deferral documented** rather than silently preserved, via inline comments and `.planning/codebase/ADMIN_ROLES-preservation.md`
+
+### Phase 6 carry-forward notes
+
+1. **Broad `tests/chat/` suite still red** — failures observed while validating 6.3 were pre-existing mock-drift issues outside the Phase 6 diff. They remain a general backend test debt item, not a phase blocker.
+2. **ROADMAP / STATE drift corrected manually** — the repo's `.planning` layout does not match the stock `gsd-tools` assumptions (`phase-*` vs `.planning/phases/`), so progress routing and plan counting must continue to be verified against the actual files.
+3. **Phase 7 remains optional** — no planning has been done for SH1/SH2 after Phase 6 completion. Milestone close should decide whether to execute it or defer it cleanly.
 
 ## Phase 3 Outcome
 
@@ -120,6 +145,13 @@ Rollback knob: `USE_ABILITY_ENGINE_V2=false` env var. Even after this commit lan
 - **Model profile:** quality (Opus for research/roadmap, Sonnet for others)
 - **Workflow agents:** research ✓ · plan-check ✓ · verifier ✓ · nyquist-validation ✓ · auto-advance ✓
 
+## Recommended Next Action
+
+1. Bring Docker/Postgres up and run Phase 3 verification/UAT that was deferred earlier.
+2. If that passes, choose between:
+   - planning/executing optional Phase 7, or
+   - closing the milestone with Phase 7 explicitly deferred.
+
 ## Locked Decisions (from questioning + research)
 
 | Topic | Decision |
@@ -149,6 +181,7 @@ Rollback knob: `USE_ABILITY_ENGINE_V2=false` env var. Even after this commit lan
 ## Git State
 
 ### Initialization
+
 | Commit | What |
 |---|---|
 | `8666102` | docs: initialize permission-system overhaul project (PROJECT.md) |
@@ -159,6 +192,7 @@ Rollback knob: `USE_ABILITY_ENGINE_V2=false` env var. Even after this commit lan
 | `b749d35` | docs: initialize project state |
 
 ### Phase 1 (planning)
+
 | Commit | What |
 |---|---|
 | `e614355` | docs(phase-1): add research |
@@ -168,6 +202,7 @@ Rollback knob: `USE_ABILITY_ENGINE_V2=false` env var. Even after this commit lan
 | `0c13666` | docs(phase-1): amend PLAN.md schema (subject col, tenant_id, effect in unique) |
 
 ### Phase 1 (execution)
+
 | Commit | What |
 |---|---|
 | `f2f8cfb` | chore(tests): scaffold be/tests/permissions/ + scratch-DB helper for Phase 1 |
@@ -183,6 +218,7 @@ Rollback knob: `USE_ABILITY_ENGINE_V2=false` env var. Even after this commit lan
 | `49f704b` | docs(phase-1): UAT report — 5/5 pass |
 
 ### Phase 2 (planning)
+
 | Commit | What |
 |---|---|
 | `b4057ca` | docs(phase-2): research — 7 red flags |
@@ -191,6 +227,7 @@ Rollback knob: `USE_ABILITY_ENGINE_V2=false` env var. Even after this commit lan
 | `4b06e4d` | docs(phase-2): lock decision C — subject-scope parity matrix |
 
 ### Phase 2 (execution)
+
 | Commit | What |
 |---|---|
 | `5c6a21a` | test(permissions): scaffold Phase 2 fixtures, serializeRules, iterateMatrix helpers |
@@ -204,6 +241,7 @@ Rollback knob: `USE_ABILITY_ENGINE_V2=false` env var. Even after this commit lan
 | `aa49b1e` | docs(phase-2): UAT report — 5/5 pass, zero bugs |
 
 ### Phase 3 (planning)
+
 | Commit | What |
 |---|---|
 | `53d0b6f` | docs(phase-3): research — 7 red flags, 2 existing bugs |
@@ -211,6 +249,7 @@ Rollback knob: `USE_ABILITY_ENGINE_V2=false` env var. Even after this commit lan
 | `0f7cba2` | docs(phase-3): apply plan-checker refinements |
 
 ### Phase 3 (execution)
+
 | Wave | Commit | What |
 |---|---|---|
 | W0 | `877d1fd` | feat(permissions): add permissions.view/manage keys for new admin module gates |

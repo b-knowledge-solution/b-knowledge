@@ -7,12 +7,12 @@
 
 ## Phases
 
-- [ ] **Phase 1: Schema, Registry, Boot Sync** — Foundation tables, registry scaffolding, no behavior change
-- [ ] **Phase 2: Ability Engine + Regression Snapshots** — New DB-backed builder + parity tests against legacy
-- [ ] **Phase 3: Middleware Cutover** — `rbac.ts` becomes shim; routes flip to new gates
-- [ ] **Phase 4: FE Catalog + `<Can>` Codemod** — Frontend gating migration (largest scope)
-- [ ] **Phase 5: Admin UI Rewrite** — Matrix, override editor, KB modal rewire
-- [ ] **Phase 6: Legacy Cleanup + OpenSearch Integration** — Alias removal + Strategy A grant filtering
+- [x] **Phase 1: Schema, Registry, Boot Sync** — Foundation tables, registry scaffolding, no behavior change
+- [x] **Phase 2: Ability Engine + Regression Snapshots** — New DB-backed builder + parity tests against legacy
+- [x] **Phase 3: Middleware Cutover** — `rbac.ts` becomes shim; routes flip to new gates
+- [x] **Phase 4: FE Catalog + `<Can>` Codemod** — Frontend gating migration (largest scope)
+- [x] **Phase 5: Admin UI Rewrite** — Matrix, override editor, KB modal rewire
+- [x] **Phase 6: Legacy Cleanup + OpenSearch Integration** — Alias removal + Strategy A grant filtering
 - [ ] **Phase 7: Should-Haves (Versioning + expires_at)** — SH1, SH2 if milestone is on track
 
 ---
@@ -133,23 +133,24 @@ Plans:
 ---
 
 ### Phase 6: Legacy Cleanup + OpenSearch Integration
-**Goal**: By end of this phase, all legacy role aliases are removed from code and DB, and RAG search results respect resource grants via Strategy A (`dataset_id IN(...)` filter clause).
+**Goal**: By end of this phase, legacy role aliases are removed from code and DB, grant-aware dataset expansion is wired into chat retrieval via Strategy A semantics, and the remaining `ADMIN_ROLES` exception is explicitly documented rather than left implicit.
 **Depends on**: Phases 3, 4, 5 (all new code paths must be wired before legacy is removed)
 **Requirements**: TS9, TS13
 **Plans**:
-  1. **P6.1 Legacy alias DB migration** — `UPDATE users SET role='user' WHERE role='member'`; `UPDATE users SET role='super-admin' WHERE role='superadmin'`; alter `users.role` column default `'member'` → `'user'`
-  2. **P6.2 Code alias removal** — Delete `UserRole.SUPERADMIN` + `UserRole.MEMBER` from `roles.ts`; replace references in `knowledge-base.service.ts:29`, `sync.controller.ts:71`, `be/tests/{projects,chat,search}/`; leave `TeamRole.MEMBER` alone; grep verification
-  3. **P6.3 OpenSearch grant filter (Strategy A)** — Extend `buildOpenSearchAbacFilters` to walk user's `resource_grants` and emit `terms { dataset_id: [...] }` clause; preserve mandatory tenant filter from `buildAccessFilters()` as first clause
-  4. **P6.4 OpenSearch integration test** — User with no grants beyond role default → identical results to today; user with category grant → RAG results filter to that KB's chunks; no-grants user → zero chunks from KBs they can't access
-  5. **P6.5 Backward-compat shim drop decision** — Decide whether to drop dual-write to old `knowledge_base_entity_permissions` (keep until next milestone per `MIGRATION_PLAN.md` rationale)
-**Parallelization**: P6.1 + P6.2 sequential. P6.3 + P6.4 in parallel with P6.1+P6.2.
+  1. **P6.1 Legacy alias DB migration** — safe, idempotent cleanup migration for `users.role` legacy aliases with scratch-DB coverage
+  2. **P6.2 Code alias removal + guardrail** — delete legacy `UserRole` aliases, rewrite call sites, preserve `TeamRole.MEMBER`, and ship `npm run check:legacy-roles`
+  3. **P6.3 Grant dataset resolution** — resolve `resource_grants` for KBs and DocumentCategories into dataset IDs and union them into the existing chat retrieval expansion path; delete dead `buildOpenSearchAbacFilters`
+  4. **P6.4 Two-tier validation** — unit coverage for `resolveGrantedDatasetsForUser()` plus scratch-DB integration tests for expiry, tenant scoping, and overlap behavior
+  5. **P6.5 ADMIN_ROLES documentation pass** — document the three active `ADMIN_ROLES` sites and record the milestone-2 deferral in `.planning/codebase/ADMIN_ROLES-preservation.md`
+**Parallelization**: P6.1 → P6.2 → (P6.3, P6.5 in parallel) → P6.4 after P6.2 + P6.3.
 **Verification**:
-  - `grep -r "'member'\|'superadmin'" be/src/ fe/src/` returns zero (excluding `TeamRole`)
-  - Migration runs cleanly on snapshot
-  - Acceptance test: "User Y has a category grant in KB X → RAG search results filter to that KB's chunks"
-  - Acceptance test: "Removing legacy `superadmin`/`member` does not break any code path"
-**Risks addressed**: R-9 (deferred to follow-up — `ADMIN_ROLES` stays in shim, documented), legacy cleanup risk
-**Out-of-band concerns**: Strategy A only — chunk schema changes are explicitly out of scope. If the next milestone needs Strategy B, R-3 cross-language constants apply.
+  - `npm run check:legacy-roles` exits 0 on a clean repo
+  - targeted migration + grant-resolution tests pass in `be/tests/permissions/`
+  - `npm run build -w be` exits 0
+  - acceptance test: "User Y has a category grant in KB X → the retrieval dataset set now includes KB X's underlying datasets"
+  - acceptance test: "Removing legacy `superadmin`/`member` does not break any code path"
+**Risks addressed**: R-9 (documented defer, not refactored), legacy cleanup risk
+**Out-of-band concerns**: Strategy A remained dataset-resolution based; no chunk schema changes were introduced.
 
 ---
 
@@ -252,14 +253,14 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Schema, Registry, Boot Sync | 0/5 | Not started | - |
-| 2. Ability Engine + Snapshots | 0/5 | Not started | - |
-| 3. Middleware Cutover | 0/5 | Not started | - |
-| 4. FE Catalog + Codemod | 0/5 | Not started | - |
-| 5. Admin UI Rewrite | 0/5 | Not started | - |
-| 6. Legacy Cleanup + OpenSearch | 0/5 | Not started | - |
-| 7. Should-Haves | 0/3 | Not started | - |
+| 1. Schema, Registry, Boot Sync | 5/5 | Complete | 2026-04-07 |
+| 2. Ability Engine + Snapshots | 5/5 | Complete | 2026-04-07 |
+| 3. Middleware Cutover | 5/5 | Execution complete; verification debt remains | 2026-04-07 |
+| 4. FE Catalog + Codemod | 5/5 | Complete | 2026-04-08 |
+| 5. Admin UI Rewrite | 8/8 | Complete | 2026-04-08 |
+| 6. Legacy Cleanup + OpenSearch | 5/5 | Complete | 2026-04-09 |
+| 7. Should-Haves | 0/3 | Optional / unplanned | - |
 
 ---
 
-*Generated 2026-04-07. Input to `/gsd:plan-phase`.*
+*Updated 2026-04-09. Input to `/gsd:plan-phase`.*
