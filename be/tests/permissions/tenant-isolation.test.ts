@@ -24,7 +24,7 @@ import {
 } from '@/shared/services/ability.service.js'
 import { ModelFactory } from '@/shared/models/factory.js'
 import { syncPermissionsCatalog } from '@/shared/permissions/index.js'
-import { adminFixture } from './__fixtures__/user-fixtures.js'
+import { adminFixture, userFixture } from './__fixtures__/user-fixtures.js'
 
 const TENANT_A = 'org-fixture-1'
 const TENANT_B = 'org-other'
@@ -53,6 +53,10 @@ function pinAllAbilityModels(k: Knex): () => void {
 async function seedKb(k: Knex, name: string): Promise<string> {
   const [row] = await k('knowledge_base').insert({ name }).returning(['id'])
   return row.id as string
+}
+
+async function seedUser(k: Knex, id: string, email: string): Promise<void> {
+  await k('users').insert({ id, email, display_name: id })
 }
 
 describe('V2 tenant isolation + grant edge cases (Q15 exhaustiveness)', () => {
@@ -180,6 +184,91 @@ describe('V2 tenant isolation + grant edge cases (Q15 exhaustiveness)', () => {
             asSubject('KnowledgeBase', { tenant_id: TENANT_A }) as any,
           ),
         ).toBe(true)
+      } finally {
+        restore()
+      }
+    }))
+
+  it('expired allow override is filtered via SQL while a future allow override is honored on the next rebuild', () =>
+    withScratchDb(async (k) => {
+      const restore = pinAllAbilityModels(k)
+      try {
+        await syncPermissionsCatalog()
+        await seedUser(k, userFixture.id, 'tenant-isolation-user@example.com')
+
+        await k('user_permission_overrides').insert({
+          tenant_id: userFixture.current_org_id,
+          user_id: userFixture.id,
+          permission_key: 'users.create',
+          effect: 'allow',
+          expires_at: k.raw("NOW() - INTERVAL '1 hour'"),
+        })
+        await k('user_permission_overrides').insert({
+          tenant_id: userFixture.current_org_id,
+          user_id: userFixture.id,
+          permission_key: 'knowledge_base.view',
+          effect: 'allow',
+          expires_at: k.raw("NOW() + INTERVAL '1 hour'"),
+        })
+
+        const v2 = await __forTesting.buildAbilityForV2(userFixture)
+        expect(
+          v2.can(
+            'create',
+            asSubject('User', { tenant_id: userFixture.current_org_id }) as any,
+          ),
+        ).toBe(false)
+        expect(
+          v2.can(
+            'read',
+            asSubject('KnowledgeBase', {
+              tenant_id: userFixture.current_org_id,
+            }) as any,
+          ),
+        ).toBe(true)
+      } finally {
+        restore()
+      }
+    }))
+
+  it('expired deny override is filtered via SQL while a future deny override still masks the role grant', () =>
+    withScratchDb(async (k) => {
+      const restore = pinAllAbilityModels(k)
+      try {
+        await syncPermissionsCatalog()
+        await seedUser(k, adminFixture.id, 'tenant-isolation-admin@example.com')
+
+        await k('user_permission_overrides').insert({
+          tenant_id: adminFixture.current_org_id,
+          user_id: adminFixture.id,
+          permission_key: 'users.create',
+          effect: 'deny',
+          expires_at: k.raw("NOW() - INTERVAL '1 hour'"),
+        })
+        await k('user_permission_overrides').insert({
+          tenant_id: adminFixture.current_org_id,
+          user_id: adminFixture.id,
+          permission_key: 'knowledge_base.delete',
+          effect: 'deny',
+          expires_at: k.raw("NOW() + INTERVAL '1 hour'"),
+        })
+
+        const v2 = await __forTesting.buildAbilityForV2(adminFixture)
+        expect(
+          v2.can(
+            'create',
+            asSubject('User', { tenant_id: adminFixture.current_org_id }) as any,
+          ),
+        ).toBe(true)
+        expect(
+          v2.can(
+            'delete',
+            asSubject('KnowledgeBase', {
+              tenant_id: adminFixture.current_org_id,
+              id: 'fixture-kb-live',
+            }) as any,
+          ),
+        ).toBe(false)
       } finally {
         restore()
       }

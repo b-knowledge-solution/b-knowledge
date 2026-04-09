@@ -5,9 +5,16 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { subject as asSubject } from '@casl/ability'
 
 const mockModelFactory = vi.hoisted(() => ({
+  rolePermission: {
+    findByRoleWithSubjects: vi.fn(),
+  },
   resourceGrant: {
+    findActiveForUser: vi.fn(),
+  },
+  userPermissionOverride: {
     findActiveForUser: vi.fn(),
   },
   documentCategory: {
@@ -31,10 +38,135 @@ vi.mock('../../../src/shared/services/logger.service.js', () => ({
   log: mockLog,
 }))
 
+vi.mock('../../../src/shared/permissions/index.js', () => ({
+  getAllPermissions: () => [
+    { key: 'users.create', action: 'create', subject: 'User' },
+    { key: 'knowledge_base.view', action: 'read', subject: 'KnowledgeBase' },
+    { key: 'knowledge_base.delete', action: 'delete', subject: 'KnowledgeBase' },
+  ],
+}))
+
 import { ResourceType } from '../../../src/shared/constants/resource-grants.js'
-import { resolveGrantedDatasetsForUser } from '../../../src/shared/services/ability.service.js'
+import { UserRole } from '../../../src/shared/constants/index.js'
+import {
+  __forTesting,
+  resolveGrantedDatasetsForUser,
+} from '../../../src/shared/services/ability.service.js'
 
 describe('AbilityService', () => {
+  describe('buildAbilityForV2', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+      mockModelFactory.rolePermission.findByRoleWithSubjects.mockResolvedValue([])
+      mockModelFactory.resourceGrant.findActiveForUser.mockResolvedValue([])
+      mockModelFactory.userPermissionOverride.findActiveForUser.mockResolvedValue([])
+    })
+
+    it('expired grant rows filtered out by findActiveForUser do not produce CASL rules on the next rebuild', async () => {
+      const ability = await __forTesting.buildAbilityForV2({
+        id: 'user-expired-grant',
+        role: UserRole.USER,
+        current_org_id: 'tenant-1',
+        is_superuser: false,
+      })
+
+      expect(mockModelFactory.resourceGrant.findActiveForUser).toHaveBeenCalledWith(
+        'user-expired-grant',
+        'tenant-1',
+        [],
+      )
+      expect(
+        ability.can(
+          'read',
+          asSubject('KnowledgeBase', {
+            tenant_id: 'tenant-1',
+            id: 'kb-expired',
+          }) as any,
+        ),
+      ).toBe(false)
+    })
+
+    it('expired override rows filtered out by findActiveForUser do not produce allow or deny rules on the next rebuild', async () => {
+      mockModelFactory.rolePermission.findByRoleWithSubjects.mockResolvedValue([
+        { action: 'create', subject: 'User' },
+        { action: 'delete', subject: 'KnowledgeBase' },
+      ])
+
+      const ability = await __forTesting.buildAbilityForV2({
+        id: 'admin-expired-override',
+        role: UserRole.ADMIN,
+        current_org_id: 'tenant-1',
+        is_superuser: false,
+      })
+
+      expect(mockModelFactory.userPermissionOverride.findActiveForUser).toHaveBeenCalledWith(
+        'admin-expired-override',
+        'tenant-1',
+      )
+      // The expired deny row is absent from the active read path, so the
+      // role grant remains intact on the next rebuild.
+      expect(
+        ability.can(
+          'delete',
+          asSubject('KnowledgeBase', {
+            tenant_id: 'tenant-1',
+            id: 'kb-live',
+          }) as any,
+        ),
+      ).toBe(true)
+      // The expired allow row is absent too, so no synthetic User create rule appears.
+      expect(
+        ability.can(
+          'create',
+          asSubject('User', {
+            tenant_id: 'tenant-1',
+          }) as any,
+        ),
+      ).toBe(true)
+    })
+
+    it('future-dated active grant and override rows still produce the expected rules', async () => {
+      mockModelFactory.resourceGrant.findActiveForUser.mockResolvedValue([
+        {
+          resource_type: ResourceType.KNOWLEDGE_BASE,
+          resource_id: 'kb-future',
+          actions: ['read'],
+        },
+      ])
+      mockModelFactory.userPermissionOverride.findActiveForUser.mockResolvedValue([
+        {
+          permission_key: 'users.create',
+          effect: 'allow',
+        },
+      ])
+
+      const ability = await __forTesting.buildAbilityForV2({
+        id: 'user-live-expiry',
+        role: UserRole.USER,
+        current_org_id: 'tenant-1',
+        is_superuser: false,
+      })
+
+      expect(
+        ability.can(
+          'read',
+          asSubject('KnowledgeBase', {
+            tenant_id: 'tenant-1',
+            id: 'kb-future',
+          }) as any,
+        ),
+      ).toBe(true)
+      expect(
+        ability.can(
+          'create',
+          asSubject('User', {
+            tenant_id: 'tenant-1',
+          }) as any,
+        ),
+      ).toBe(true)
+    })
+  })
+
   describe('resolveGrantedDatasetsForUser', () => {
     beforeEach(() => {
       vi.clearAllMocks()
