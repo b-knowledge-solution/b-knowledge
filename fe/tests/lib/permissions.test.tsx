@@ -41,38 +41,50 @@ function makeWrapper(ability: ReturnType<typeof createMongoAbility>) {
   }
 }
 
+/**
+ * @description Render the permission hook against a fixed CASL ability so
+ * tests can focus on catalog-key behavior instead of wrapper setup.
+ * @param {PermissionKey} key - Permission key under test.
+ * @param {ReturnType<typeof createMongoAbility>} ability - Ability instance exposed through context.
+ * @returns {boolean} Current hook result for the supplied key.
+ */
+function renderPermissionCheck(
+  key: Parameters<typeof useHasPermission>[0],
+  ability: ReturnType<typeof createMongoAbility>,
+): boolean {
+  const { result } = renderHook(() => useHasPermission(key), {
+    wrapper: makeWrapper(ability),
+  })
+
+  return result.current
+}
+
 describe('useHasPermission', () => {
   it('returns true when the ability grants the matching (action, subject) pair', () => {
     // Knowledge base view maps to (read, KnowledgeBase) in the catalog.
     const ability = createMongoAbility([{ action: 'read', subject: 'KnowledgeBase' }])
-
-    const { result } = renderHook(() => useHasPermission(PERMISSION_KEYS.KNOWLEDGE_BASE_VIEW), {
-      wrapper: makeWrapper(ability),
-    })
-
-    expect(result.current).toBe(true)
+    expect(renderPermissionCheck(PERMISSION_KEYS.KNOWLEDGE_BASE_VIEW, ability)).toBe(true)
   })
 
   it('returns false when no matching rule exists', () => {
     // Only read on KnowledgeBase — delete should be denied.
     const ability = createMongoAbility([{ action: 'read', subject: 'KnowledgeBase' }])
-
-    const { result } = renderHook(() => useHasPermission(PERMISSION_KEYS.KNOWLEDGE_BASE_DELETE), {
-      wrapper: makeWrapper(ability),
-    })
-
-    expect(result.current).toBe(false)
+    expect(renderPermissionCheck(PERMISSION_KEYS.KNOWLEDGE_BASE_DELETE, ability)).toBe(false)
   })
 
   it('returns false against the default empty ability (logged-out / pre-boot)', () => {
     // No rules at all — every check should deny.
     const ability = createMongoAbility()
+    expect(renderPermissionCheck(PERMISSION_KEYS.KNOWLEDGE_BASE_VIEW, ability)).toBe(false)
+  })
 
-    const { result } = renderHook(() => useHasPermission(PERMISSION_KEYS.KNOWLEDGE_BASE_VIEW), {
-      wrapper: makeWrapper(ability),
-    })
+  it('supports repeated checks against the same provider-backed ability', () => {
+    const ability = createMongoAbility([{ action: 'read', subject: 'KnowledgeBase' }])
 
-    expect(result.current).toBe(false)
+    // This establishes the provider-backed baseline that Phase 7.3 will keep
+    // exercising after the catalog data source becomes runtime-refreshable.
+    expect(renderPermissionCheck(PERMISSION_KEYS.KNOWLEDGE_BASE_VIEW, ability)).toBe(true)
+    expect(renderPermissionCheck(PERMISSION_KEYS.KNOWLEDGE_BASE_DELETE, ability)).toBe(false)
   })
 
   it('rejects bare strings outside PERMISSION_KEYS at compile time', () => {

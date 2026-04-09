@@ -58,6 +58,25 @@ describe('permissionsApi', () => {
     expect(mockedApi.get).toHaveBeenCalledWith('/api/permissions/catalog')
   })
 
+  it('getCatalog returns the raw backend payload for the current scaffold contract', async () => {
+    const catalogPayload = {
+      permissions: [
+        {
+          key: 'knowledge_base.view',
+          action: 'read',
+          subject: 'KnowledgeBase',
+        },
+      ],
+    } as Awaited<ReturnType<typeof getCatalog>>
+    mockedApi.get.mockResolvedValueOnce(catalogPayload)
+
+    const result = await getCatalog()
+
+    // Phase 7.1 will tighten this assertion to the versioned payload without
+    // having to recreate the HTTP mock harness.
+    expect(result).toEqual(catalogPayload)
+  })
+
   it('getRolePermissions hits GET /api/permissions/roles/:role', async () => {
     await getRolePermissions('admin')
     expect(mockedApi.get).toHaveBeenCalledWith('/api/permissions/roles/admin')
@@ -135,6 +154,10 @@ describe('permissionsApi', () => {
 })
 
 describe('queryKeys.permissions', () => {
+  it('catalog key is stable across repeated calls', () => {
+    expect(queryKeys.permissions.catalog()).toEqual(queryKeys.permissions.catalog())
+  })
+
   it('rolePermissions key contains "permissions" namespace and the role', () => {
     const key = queryKeys.permissions.rolePermissions('admin')
     expect(key).toContain('permissions')
