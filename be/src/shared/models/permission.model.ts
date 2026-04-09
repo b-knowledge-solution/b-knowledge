@@ -217,8 +217,9 @@ export class PermissionModel extends BaseModel<PermissionRow> {
    *      If none match, return [] immediately.
    *   2. UNION three SELECTs joined to `users` (always filtered by
    *      `users.current_org_id = tenantId` to prevent cross-tenant leakage):
-   *        a. role_permissions where the user's role grants any matching key,
-   *           and tenant_id is NULL (global default) OR matches `tenantId`.
+   *        a. role_permissions where the user's tenant membership role grants
+   *           any matching key, and tenant_id is NULL (global default) OR
+   *           matches `tenantId`.
    *        b. user_permission_overrides with effect='allow' for any matching key,
    *           tenant-scoped, and not expired (`expires_at IS NULL OR > NOW()`).
    *        c. resource_grants where actions[] contains the target action and
@@ -226,9 +227,10 @@ export class PermissionModel extends BaseModel<PermissionRow> {
    *           not expired, and (when `resourceId` is provided) row-scoped.
    *   3. Subtract any users with an active deny override on a matching key.
    *
-   * Tenant isolation: every join carries `users.current_org_id = tenantId` AND
-   * each subquery filters its source table by `tenant_id`, so a user in T2 can
-   * never appear in a query for T1 even if they happen to have a stale row.
+   * Tenant isolation: every join carries `user_tenant.tenant_id = tenantId`
+   * and each subquery filters its source table by `tenant_id`, so a user in
+   * T2 can never appear in a query for T1 even if they happen to have a stale
+   * row.
    *
    * @param {string} action - CASL action verb (e.g. `read`, `manage`).
    * @param {string} subject - CASL subject (e.g. `KnowledgeBase`).
@@ -256,16 +258,17 @@ export class PermissionModel extends BaseModel<PermissionRow> {
     // Empty registry match → no users can possibly have this permission.
     if (matchingKeys.length === 0) return []
 
-    // Step 2a — role-default grants. Tenant filter on `users.current_org_id`
+    // Step 2a — role-default grants. Tenant filter on `user_tenant.tenant_id`
     // is the structural cross-tenant guard; the `(tenant_id IS NULL OR =)`
     // clause covers both global defaults and tenant-specific overlays.
     const roleRows = await this.knex('users')
+      .innerJoin('user_tenant', 'users.id', 'user_tenant.user_id')
       .innerJoin(
         ROLE_PERMISSIONS_TABLE,
-        'users.role',
+        'user_tenant.role',
         `${ROLE_PERMISSIONS_TABLE}.role`,
       )
-      .where('users.current_org_id', tenantId)
+      .where('user_tenant.tenant_id', tenantId)
       .whereIn(`${ROLE_PERMISSIONS_TABLE}.permission_key`, matchingKeys)
       .andWhere((qb) => {
         qb.whereNull(`${ROLE_PERMISSIONS_TABLE}.tenant_id`).orWhere(
@@ -276,19 +279,20 @@ export class PermissionModel extends BaseModel<PermissionRow> {
       .select(
         'users.id as user_id',
         'users.email as user_email',
-        'users.role as user_role',
+        'user_tenant.role as user_role',
         `${ROLE_PERMISSIONS_TABLE}.id as source_id`,
       )
 
     // Step 2b — explicit allow overrides on a matching key, not expired.
     // Tenant scope is enforced both on the override row and on the user join.
     const allowOverrideRows = await this.knex('users')
+      .innerJoin('user_tenant', 'users.id', 'user_tenant.user_id')
       .innerJoin(
         USER_PERMISSION_OVERRIDES_TABLE,
         'users.id',
         `${USER_PERMISSION_OVERRIDES_TABLE}.user_id`,
       )
-      .where('users.current_org_id', tenantId)
+      .where('user_tenant.tenant_id', tenantId)
       .where(`${USER_PERMISSION_OVERRIDES_TABLE}.tenant_id`, tenantId)
       .whereIn(
         `${USER_PERMISSION_OVERRIDES_TABLE}.permission_key`,
@@ -304,7 +308,7 @@ export class PermissionModel extends BaseModel<PermissionRow> {
       .select(
         'users.id as user_id',
         'users.email as user_email',
-        'users.role as user_role',
+        'user_tenant.role as user_role',
         `${USER_PERMISSION_OVERRIDES_TABLE}.id as source_id`,
       )
 
@@ -313,12 +317,13 @@ export class PermissionModel extends BaseModel<PermissionRow> {
     // When `resourceId` is provided, narrow to that specific row so the query
     // answers "who can do X on resource R" rather than "who can do X anywhere".
     const grantQuery = this.knex('users')
+      .innerJoin('user_tenant', 'users.id', 'user_tenant.user_id')
       .innerJoin(
         RESOURCE_GRANTS_TABLE,
         'users.id',
         `${RESOURCE_GRANTS_TABLE}.grantee_id`,
       )
-      .where('users.current_org_id', tenantId)
+      .where('user_tenant.tenant_id', tenantId)
       .where(`${RESOURCE_GRANTS_TABLE}.tenant_id`, tenantId)
       .where(`${RESOURCE_GRANTS_TABLE}.grantee_type`, 'user')
       .where(`${RESOURCE_GRANTS_TABLE}.resource_type`, subject)
@@ -339,7 +344,7 @@ export class PermissionModel extends BaseModel<PermissionRow> {
     const grantRows = await grantQuery.select(
       'users.id as user_id',
       'users.email as user_email',
-      'users.role as user_role',
+      'user_tenant.role as user_role',
       `${RESOURCE_GRANTS_TABLE}.id as source_id`,
     )
 

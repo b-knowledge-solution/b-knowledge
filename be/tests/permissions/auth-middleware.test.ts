@@ -215,11 +215,9 @@ describe('requirePermission(key)', () => {
     expect(ctx.next).not.toHaveBeenCalled()
   })
 
-  it('falls through to legacyRequirePermission for unknown keys (backward compat)', async () => {
-    // An unknown key means "not a V2 registry entry" — the dual-mode
-    // routing should delegate to legacyRequirePermission. The legacy
-    // handler checks role-based hasPermission(); passing a bogus legacy
-    // value denies → 403 'Access Denied' (legacy shape, not permission_denied).
+  it('returns 500 when the permission key is missing from the registry', async () => {
+    // Post-Phase 3 the legacy fall-through is gone. Unknown keys are a route
+    // misconfiguration and must fail loudly so they are caught in CI.
     const mw = requirePermission('totally.fake_key_nonexistent' as any)
     const ctx = makeReqRes({
       user: {
@@ -229,9 +227,11 @@ describe('requirePermission(key)', () => {
       },
     })
     await mw(ctx.req, ctx.res, ctx.next)
-    // Legacy denies because the bogus key isn't in any role's permission list
-    expect(ctx.status).toBe(403)
-    expect(ctx.body).toEqual({ error: 'Access Denied' })
+    expect(ctx.status).toBe(500)
+    expect(ctx.body).toEqual({
+      error: 'permission_misconfigured',
+      key: 'totally.fake_key_nonexistent',
+    })
   })
 })
 

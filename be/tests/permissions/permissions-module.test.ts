@@ -88,14 +88,28 @@ async function seedFixture(k: any, tenantId: string) {
       email: 'admin@test.local',
       display_name: 'Admin',
       role: 'admin',
-      current_org_id: tenantId,
     },
     {
       id: userId,
       email: 'user@test.local',
       display_name: 'User',
       role: 'user',
-      current_org_id: tenantId,
+    },
+  ])
+  await k('user_tenant').insert([
+    {
+      id: 'user-tenant-admin',
+      user_id: adminId,
+      tenant_id: tenantId,
+      role: 'admin',
+      invited_by: adminId,
+    },
+    {
+      id: 'user-tenant-user',
+      user_id: userId,
+      tenant_id: tenantId,
+      role: 'user',
+      invited_by: adminId,
     },
   ])
 
@@ -158,7 +172,13 @@ describe('permissions-module — PermissionModel.whoCanDo', () => {
         email: 'adminB@test.local',
         display_name: 'Admin B',
         role: 'admin',
-        current_org_id: tenantB,
+      })
+      await k('user_tenant').insert({
+        id: 'user-tenant-admin-b',
+        user_id: adminB,
+        tenant_id: tenantB,
+        role: 'admin',
+        invited_by: adminB,
       })
 
       const model = new (class extends PermissionModel {
@@ -221,7 +241,7 @@ describe('permissions-module — PermissionModel.whoCanDo', () => {
       // Insert a fake KB row so the FK on resource_grants.knowledge_base_id is
       // satisfied. The knowledge_bases table has many columns; we insert the
       // minimum and rely on defaults for the rest.
-      await k('knowledge_bases').insert({
+      await k('knowledge_base').insert({
         id: kbId,
         name: 'test-kb',
         tenant_id: tenantId,
