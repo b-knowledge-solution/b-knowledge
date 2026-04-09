@@ -91,6 +91,11 @@ export const DEFAULT_ROLE: Role = 'user';
  * These roles can bypass certain ownership checks (IDOR prevention).
  * Used in authorization middleware for resource access decisions.
  */
+// ADMIN_ROLES preserved per R-9 through milestone 1. This constant is a
+// tenant-level metadata gate ("is this user a tenant operator?") and is
+// intentionally NOT migrated to the registry-driven useHasPermission model
+// yet. See .planning/codebase/ADMIN_ROLES-preservation.md for the full
+// rationale and the milestone-2 migration plan.
 export const ADMIN_ROLES: readonly Role[] = ['super-admin', 'admin', 'leader'] as const;
 
 /**

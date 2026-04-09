@@ -323,7 +323,9 @@ export function requireOwnership(
       return
     }
 
-    // Check if admin bypass is enabled and user is admin
+    // ADMIN_ROLES preserved per R-9 - admin bypass for ownership checks.
+    // Candidate for replacement with `requirePermission('<key>')` in milestone 2.
+    // See .planning/codebase/ADMIN_ROLES-preservation.md.
     if (options.allowAdminBypass && user.role && ADMIN_ROLES.includes(user.role as Role)) {
       next()
       return
@@ -377,7 +379,9 @@ export function requireOwnershipCustom(
       return
     }
 
-    // Check if admin bypass is enabled and user is admin
+    // ADMIN_ROLES preserved per R-9 - admin bypass for ownership checks.
+    // Candidate for replacement with `requirePermission('<key>')` in milestone 2.
+    // See .planning/codebase/ADMIN_ROLES-preservation.md.
     if (options.allowAdminBypass && user.role && ADMIN_ROLES.includes(user.role as Role)) {
       next()
       return
