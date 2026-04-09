@@ -57,9 +57,9 @@ const GRANTS_PATH = `${PERMISSIONS_API_BASE}/grants`
 
 /**
  * @description Fetches the full registered permission catalog from the backend.
- * Phase 4 normally uses the committed build-time snapshot; this is available
- * for runtime refresh scenarios.
- * @returns {Promise<PermissionCatalogResult>} Catalog keys + version tag.
+ * The response carries the same live `{ version, permissions }` contract used
+ * by the runtime permission provider for silent refresh.
+ * @returns {Promise<PermissionCatalogResult>} Versioned catalog payload.
  */
 export async function getCatalog(): Promise<PermissionCatalogResult> {
   return api.get<PermissionCatalogResult>(CATALOG_PATH)

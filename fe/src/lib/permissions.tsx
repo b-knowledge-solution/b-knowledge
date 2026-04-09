@@ -1,21 +1,25 @@
 /**
- * @fileoverview Catalog-backed permission hook for the FE.
+ * @fileoverview Runtime permission catalog provider and permission hook for the FE.
  *
- * Pairs the auto-generated `PERMISSION_KEYS` map with the CASL ability supplied
- * by `@/lib/ability`. Consumers call `useHasPermission(PERMISSION_KEYS.X)` to
- * imperatively check whether the current user holds a specific permission key,
- * which is resolved against the `(action, subject)` pair recorded in the
- * committed catalog snapshot at build time.
- *
- * Phase 4 is snapshot-only (per revised D-04 in 4-CONTEXT.md) — there is NO
- * runtime fetch of `/api/permissions/catalog`. Phase 7 will introduce that.
+ * Seeds from the committed snapshot so first render stays deterministic, then
+ * hydrates from the live versioned `/api/permissions/catalog` contract so
+ * `useHasPermission()` is not limited to build-time metadata.
  *
  * @module lib/permissions
  */
 
-import { useAppAbility } from './ability'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react'
 import { PERMISSION_KEYS, type PermissionKey } from '@/constants/permission-keys'
 import catalogJson from '@/generated/permissions-catalog.json'
+import { usePermissionCatalog } from '@/features/permissions/api/permissionsQueries'
+import type { PermissionCatalogEntry } from '@/features/permissions/types/permissions.types'
+import { useAppAbility } from './ability'
 
 /**
  * @description Internal lookup shape: each catalog entry is reduced to the
@@ -26,26 +30,92 @@ interface CatalogEntry {
   subject: string
 }
 
-// Build the lookup once at module init — NOT inside the hook. The catalog is
-// static (imported JSON) so memoizing per-render with useMemo would just be
-// redundant work; module scope is the simplest correct cache.
-const CATALOG_MAP: Map<string, CatalogEntry> = (() => {
-  const map = new Map<string, CatalogEntry>()
-  // The JSON shape is { generatedAt, permissions: [...] } — see export-permissions-catalog.mjs.
-  for (const entry of (catalogJson as { permissions: Array<{ key: string; action: string; subject: string }> }).permissions) {
-    map.set(entry.key, { action: entry.action, subject: entry.subject })
-  }
-  return map
-})()
+/**
+ * @description Runtime context value exposed by PermissionCatalogProvider.
+ */
+interface PermissionCatalogContextValue {
+  catalogMap: Map<string, CatalogEntry>
+  version: string
+}
 
 /**
- * @description Imperative permission check backed by the BE catalog snapshot.
+ * @description Build a permission lookup map from catalog rows.
+ * @param {PermissionCatalogEntry[]} permissions - Versioned catalog rows from snapshot or BE.
+ * @returns {Map<string, CatalogEntry>} Map keyed by permission key for fast lookups.
+ */
+function buildCatalogMap(permissions: PermissionCatalogEntry[]): Map<string, CatalogEntry> {
+  const map = new Map<string, CatalogEntry>()
+
+  for (const entry of permissions) {
+    map.set(entry.key, { action: entry.action, subject: entry.subject })
+  }
+
+  return map
+}
+
+const snapshotCatalog = catalogJson as {
+  generatedAt: string
+  permissions: PermissionCatalogEntry[]
+}
+
+// Seed from the committed snapshot so the first render stays synchronous and
+// fail-closed even before the authenticated catalog query completes.
+const SNAPSHOT_CATALOG_MAP = buildCatalogMap(snapshotCatalog.permissions)
+
+const SNAPSHOT_VERSION = snapshotCatalog.generatedAt
+
+const PermissionCatalogContext = createContext<PermissionCatalogContextValue>({
+  catalogMap: SNAPSHOT_CATALOG_MAP,
+  version: SNAPSHOT_VERSION,
+})
+
+/**
+ * @description Provides the live permission catalog to runtime permission checks.
+ * Seeds from the generated snapshot, then replaces the in-memory map when a
+ * newer authenticated catalog payload arrives from the backend.
+ * @param {{ children: ReactNode }} props - Provider children.
+ * @returns {ReactNode} Provider tree with runtime catalog context.
+ */
+export function PermissionCatalogProvider({ children }: { children: ReactNode }) {
+  const { data } = usePermissionCatalog()
+  const [catalogState, setCatalogState] = useState<PermissionCatalogContextValue>({
+    catalogMap: SNAPSHOT_CATALOG_MAP,
+    version: SNAPSHOT_VERSION,
+  })
+
+  useEffect(() => {
+    // Ignore empty payloads so the last known-good catalog stays active.
+    if (!data || data.permissions.length === 0) {
+      return
+    }
+
+    setCatalogState(currentState => {
+      // Skip no-op updates when the server version has not changed.
+      if (currentState.version === data.version) {
+        return currentState
+      }
+
+      return {
+        catalogMap: buildCatalogMap(data.permissions),
+        version: data.version,
+      }
+    })
+  }, [data])
+
+  return (
+    <PermissionCatalogContext.Provider value={catalogState}>
+      {children}
+    </PermissionCatalogContext.Provider>
+  )
+}
+
+/**
+ * @description Imperative permission check backed by the runtime catalog map.
  *
  * Resolves the supplied catalog key to its `(action, subject)` pair via the
- * static lookup, then defers to the CASL ability for the actual rule check.
- * Unknown keys (e.g. a stale snapshot still references a removed key) log a
- * warning and return `false` — gating UI conservatively is safer than throwing
- * during render.
+ * current in-memory catalog, then defers to the CASL ability for the actual
+ * rule check. Unknown keys still fail closed so drift or partial refresh never
+ * widens access accidentally.
  *
  * @param {PermissionKey} key - One of the auto-generated PERMISSION_KEYS values.
  * @returns {boolean} True iff the current user's CASL ability grants the catalog's (action, subject) pair for `key`.
@@ -56,8 +126,9 @@ const CATALOG_MAP: Map<string, CatalogEntry> = (() => {
  */
 export function useHasPermission(key: PermissionKey): boolean {
   const ability = useAppAbility()
+  const { catalogMap } = useContext(PermissionCatalogContext)
 
-  const entry = CATALOG_MAP.get(key)
+  const entry = catalogMap.get(key)
 
   // Defense in depth: an unknown key means the snapshot drifted from the BE
   // (or the caller bypassed the type with a cast). Warn loudly so devs notice

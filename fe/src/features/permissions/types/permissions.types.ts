@@ -116,12 +116,23 @@ export interface WhoCanDoResult {
 }
 
 /**
+ * @description Minimal permission metadata returned by the live catalog
+ * endpoint and consumed by the runtime permission provider.
+ */
+export interface PermissionCatalogEntry {
+  key: string
+  action: string
+  subject: string
+}
+
+/**
  * @description Result shape for `GET /api/permissions/catalog` — the full
- * registered permission key catalog plus a version tag for cache validation.
+ * registered permission catalog plus a deterministic version token for
+ * runtime cache refresh.
  */
 export interface PermissionCatalogResult {
-  keys: string[]
   version: string
+  permissions: PermissionCatalogEntry[]
 }
 
 // ============================================================================

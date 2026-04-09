@@ -1,15 +1,16 @@
 /**
  * @fileoverview Phase 7 SH1 frontend harness for runtime catalog refresh work.
  *
- * Keeps the current Phase 4 behavior green while establishing the query-client
- * and refetch utilities that 7.3 will extend with socket invalidation and
- * polling fallback assertions.
+ * Exercises the live catalog query contract so the runtime permission provider
+ * can hydrate from `{ version, permissions }` and replace its in-memory map
+ * when a newer payload arrives.
  */
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { queryKeys } from '@/lib/queryKeys'
+import { PERMISSION_KEYS } from '@/constants/permission-keys'
 
 vi.mock('@/features/permissions/api/permissionsApi', () => ({
   permissionsApi: {
@@ -83,9 +84,10 @@ afterEach(() => {
 describe('permissionsCatalogRefresh harness', () => {
   it('hydrates the catalog query through the existing usePermissionCatalog hook', async () => {
     const response = {
+      version: '2026-04-09T12:00:00Z',
       permissions: [
         {
-          key: 'knowledge_base.view',
+          key: PERMISSION_KEYS.KNOWLEDGE_BASE_VIEW,
           action: 'read',
           subject: 'KnowledgeBase',
         },
@@ -104,12 +106,14 @@ describe('permissionsCatalogRefresh harness', () => {
     expect(result.current.data).toEqual(response)
   })
 
-  it('reuses the same query key when the catalog is manually invalidated', async () => {
+  it('reuses the same query key when the versioned catalog is manually invalidated', async () => {
     const firstResponse = {
-      permissions: [{ key: 'knowledge_base.view', action: 'read', subject: 'KnowledgeBase' }],
+      version: '2026-04-09T12:00:00Z',
+      permissions: [{ key: PERMISSION_KEYS.KNOWLEDGE_BASE_VIEW, action: 'read', subject: 'KnowledgeBase' }],
     } as MockCatalogResponse
     const secondResponse = {
-      permissions: [{ key: 'knowledge_base.delete', action: 'delete', subject: 'KnowledgeBase' }],
+      version: '2026-04-09T12:05:00Z',
+      permissions: [{ key: PERMISSION_KEYS.KNOWLEDGE_BASE_VIEW, action: 'delete', subject: 'KnowledgeBase' }],
     } as MockCatalogResponse
     mockedPermissionsApi.getCatalog
       .mockResolvedValueOnce(firstResponse)
@@ -130,7 +134,7 @@ describe('permissionsCatalogRefresh harness', () => {
       expect(result.current.data).toEqual(secondResponse)
     })
 
-    expect(queryClient.getQueryState(queryKeys.permissions.catalog()))?.toBeDefined()
+    expect(queryClient.getQueryData(queryKeys.permissions.catalog())).toEqual(secondResponse)
     expect(mockedPermissionsApi.getCatalog).toHaveBeenCalledTimes(2)
   })
 })
