@@ -51,7 +51,8 @@ updated: 2026-04-09
 | 6.3.2 | TS9, TS13 | `resolveGrantedDatasetsForUser` helper exists; `buildOpenSearchAbacFilters` deleted | build + grep | `cd be && npm run build` + `grep -rn "buildOpenSearchAbacFilters" be/src` returns 0 |
 | 6.3.3 | TS9 | `chat-conversation.service.ts` wires the helper into `allKbIds` expansion; dead import removed | build + existing chat tests | `cd be && npm run build && npm run test -- --run tests/chat/` |
 | 6.4.1 | TS9, TS13 | Tier A unit tests: zero-grant parity, KB-only, category-only, union, soft-cap truncation, dead-code documentation | unit | `cd be && npm run test -- --run tests/shared/services/ability.service.test.ts` |
-| 6.4.2 | TS9 | Tier B scratch-DB integration tests: no-grants, live KB grant, versioned category grant, expired grant (D-09), deleted version, overlapping union | integration | `cd be && npm run test -- --run tests/permissions/grant-dataset-resolution.test.ts` |
+| 6.4.2 | TS9 | Tier B scratch-DB integration tests: no-grants, live KB grant, versioned category grant, expired grant (D-09), non-searchable version status (archived), overlapping union | integration | `cd be && npm run test -- --run tests/permissions/grant-dataset-resolution.test.ts` |
+| 6.4.2c | TS9 (cross-tenant invariant) | Grant seeded in tenant B is invisible when helper is called with tenant A; control call with tenant B returns the dataset — proves SQL-layer tenant filter survives A-2 mechanism change | integration | `cd be && npm run test -- --run tests/permissions/grant-dataset-resolution.test.ts -t "cross-tenant"` |
 | 6.5.1 | TS13 (R-9) | 3 active ADMIN_ROLES sites carry rationale comments; no code logic change | build + grep | `cd be && npm run build` + `grep -c "ADMIN_ROLES preserved per R-9" be/src/shared/config/rbac.ts be/src/shared/middleware/auth.middleware.ts` ≥ 3 |
 | 6.5.2 | TS13 (R-9) | ADR-style preservation note exists with 3 active sites + milestone 2 plan | file + grep | `test -f .planning/codebase/ADMIN_ROLES-preservation.md && grep -c "R-9" .planning/codebase/ADMIN_ROLES-preservation.md` ≥ 3 |
 
@@ -91,3 +92,15 @@ Wave 0 gaps are NOT separately scheduled — they are absorbed into Wave 1/2 tas
 - [x] `nyquist_compliant: true` set in frontmatter after planner filled the task map
 
 **Approval:** approved — planner filled Task ID column and every row has an automated command.
+
+---
+
+## Revision 1 (Blockers 1-4 + Highs 5-7 + Mediums 9-10 + Low 12)
+
+- **Wave topology update:** 6.5 moved from `wave: 4, depends_on: []` → `wave: 3, depends_on: [6.2]` (Blocker 3 — 6.5 edits `auth.middleware.ts` which is in the scope of the `check:legacy-roles` script shipped by 6.2). 6.4 updated from `depends_on: [6.3]` → `depends_on: [6.2, 6.3]` (Medium 9 — 6.4 runs `check:legacy-roles` in its verification).
+- **New task row 6.4.2c added** for the TS9 cross-tenant isolation test (Blocker 4).
+- **R-J resolved (Blocker 1):** `document_category_versions.status` whitelist is `[ACTIVE, SYNCING]`; a new `DocumentCategoryVersionStatus` + `SEARCHABLE_VERSION_STATUSES` constant was added to `be/src/shared/constants/statuses.ts`, replacing the bare `'deleted'` literal (which was also semantically wrong — no `'deleted'` status exists in this schema).
+- **Blocker 2 closed:** `ModelFactory.documentCategory` (factory.ts:680) and `ModelFactory.resourceGrant` (factory.ts:895) getters verified present by planner; 6.3.2 Step 5 removed, acceptance criteria now grep-assert their continued presence.
+- **High 6:** `translateConditions` (ability.service.ts:601) has exactly one caller — `buildOpenSearchAbacFilters` — so it is now unconditionally deleted alongside the A-2c removal; acceptance criteria assert zero remaining references.
+- **High 7:** `check-legacy-roles.sh` rewritten to capture matches into variables with `|| true` so `set -euo pipefail` does not trip when `grep -v` filters everything; tautological `if [[ $? -eq 0 ]]` removed.
+- **Low 12:** 6.2.3 now ships a mandatory negative-path smoke test (plant `UserRole.SUPERADMIN` in a probe file, assert script fails, clean up in same subshell).
