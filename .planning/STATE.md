@@ -88,7 +88,7 @@ Rollback knob: `USE_ABILITY_ENGINE_V2=false` env var. Even after this commit lan
 2. **`resource_grants.knowledge_base_id` is NOT NULL** — restricts grant creation to `resource_type === 'KnowledgeBase'`. Phase 5 schema migration to make it nullable so `DocumentCategory`-only grants work.
 3. **`be/src/shared/models/` is gitignored** (latent project bug surfaced during Wave 4) — every Phase 1+2+3 commit had to use `git add -f` for files in this directory. Needs a one-line `.gitignore` cleanup.
 4. **Permissions module HTTP-layer integration tests deferred** — Wave 4 shipped 5 model+service tests but skipped full Express harness with session store. Add in Phase 5 or as dedicated test plan.
-5. **DB-bound test verification deferred** — Docker was unreachable from this session for most of Wave 3-5. Route-sweep + build pass; the DB-touching tests (parity matrix, cascade, override-precedence, tenant-isolation, models, middleware) need to be re-run with Postgres up before Phase 3 transitions.
+5. **DB-bound test verification closed on 2026-04-09** — Docker/Postgres were brought up and the full `npm test -w be -- --run tests/permissions/ --reporter=dot` suite passed cleanly (`25/25` files, `138/138` tests). The rerun also surfaced and corrected stale Phase 3 verification drift in `permissions-module.test.ts`, `auth-middleware.test.ts`, and the role-seed snapshot.
 6. **`chat-embed.controller.ts` doc-comment cleanup** — Wave 5 deviation #1 noted but did not address.
 7. **Phase 1's `.gitignore` issue applies to all phases**, not just Phase 3 — every commit that added a file under `be/src/shared/models/` may need re-tracking after the `.gitignore` fix.
 
@@ -147,8 +147,8 @@ Rollback knob: `USE_ABILITY_ENGINE_V2=false` env var. Even after this commit lan
 
 ## Recommended Next Action
 
-1. Bring Docker/Postgres up and run Phase 3 verification/UAT that was deferred earlier.
-2. If that passes, choose between:
+1. Manual/UAT follow-through remains if this milestone needs human sign-off beyond the backend permissions regression suite.
+2. Choose between:
    - planning/executing optional Phase 7, or
    - closing the milestone with Phase 7 explicitly deferred.
 
