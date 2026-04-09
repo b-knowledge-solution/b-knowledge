@@ -22,11 +22,13 @@
  * @module modules/permissions/services
  */
 import { ModelFactory } from '@/shared/models/factory.js'
+import { createHash } from 'node:crypto'
 import { log } from '@/shared/services/logger.service.js'
 import { abilityService } from '@/shared/services/ability.service.js'
 import { rolePermissionCacheService } from '@/shared/services/role-permission-cache.service.js'
 import { auditService } from '@/modules/audit/services/audit.service.js'
-import { getAllPermissions, type Permission } from '@/shared/permissions/index.js'
+import * as permissionsRegistry from '@/shared/permissions/index.js'
+import type { Permission } from '@/shared/permissions/index.js'
 import { PermissionSubjects } from '@/shared/constants/permissions.js'
 import type {
   UserPermissionOverrideRow,
@@ -52,11 +54,44 @@ export const PermissionAuditAction = {
 } as const
 
 /**
+ * @description Versioned catalog payload consumed by the HTTP controller and
+ * Socket.IO invalidation path.
+ */
+export interface VersionedPermissionsCatalog {
+  version: string
+  permissions: readonly Permission[]
+}
+
+/**
  * @description Singleton service backing the permissions admin module. All
  * controller methods delegate to one of these methods; nothing in the
  * controller layer touches a model or the database directly.
  */
 export class PermissionsService {
+  /**
+   * @description Build a deterministic version token from the registry
+   * contents by hashing a stable projection of each permission row.
+   * @param {readonly Permission[]} permissions - Registry permissions to hash.
+   * @returns {string} Stable SHA-256 hex digest for the current catalog state.
+   */
+  private buildCatalogVersion(permissions: readonly Permission[]): string {
+    // Sort by key fields first so registration order cannot perturb the hash.
+    const stableCatalog = permissions
+      .map((permission) => ({
+        action: permission.action,
+        description: permission.description ?? null,
+        feature: permission.feature,
+        key: permission.key,
+        label: permission.label,
+        subject: permission.subject,
+      }))
+      .sort((left, right) => left.key.localeCompare(right.key))
+
+    return createHash('sha256')
+      .update(JSON.stringify(stableCatalog))
+      .digest('hex')
+  }
+
   /**
    * @description Return the full registry catalog. Used by the admin UI to
    * render the permission picker. Read-only — no DB roundtrip beyond the
@@ -66,7 +101,21 @@ export class PermissionsService {
   getCatalog(): readonly Permission[] {
     // The registry is the source of truth for the catalog UI; the DB row is a
     // mirror used by joins and is intentionally NOT consulted here.
-    return getAllPermissions()
+    return permissionsRegistry.getAllPermissions()
+  }
+
+  /**
+   * @description Return the full registry catalog with a deterministic version
+   * token so clients can cheaply detect server-side catalog drift.
+   * @returns {VersionedPermissionsCatalog} Stable version plus registry payload.
+   */
+  getVersionedCatalog(): VersionedPermissionsCatalog {
+    const permissions = this.getCatalog()
+
+    return {
+      version: this.buildCatalogVersion(permissions),
+      permissions,
+    }
   }
 
   /**

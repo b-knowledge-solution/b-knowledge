@@ -46,16 +46,16 @@ function getActorId(req: Request): string {
  */
 export class PermissionsController {
   /**
-   * @description `GET /api/permissions/catalog` — return every registered
-   * permission key. Read-only; no body.
+   * @description `GET /api/permissions/catalog` — return the full permission
+   * catalog plus a deterministic version token for silent client refresh.
    * @param {Request} _req - Express request (unused).
    * @param {Response} res - Express response.
    * @returns {Promise<void>}
    */
   async getCatalog(_req: Request, res: Response): Promise<void> {
     try {
-      const catalog = permissionsService.getCatalog()
-      res.json({ permissions: catalog })
+      const catalog = permissionsService.getVersionedCatalog()
+      res.json(catalog)
     } catch (err) {
       log.error('[permissionsController] getCatalog failed', { err: String(err) })
       res.status(500).json({ error: 'failed_to_load_catalog' })

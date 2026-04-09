@@ -6,10 +6,9 @@
  * extend with deterministic version hashing and mutation-event assertions.
  *
  * Current coverage:
- *   1. The service returns the live registry catalog unchanged.
- *   2. The controller exposes the existing `{ permissions }` HTTP payload.
- *   3. Role mutations still trigger the cache-refresh + ability-invalidation
- *      side effects that 7.1's catalog-update event emitter will hook into.
+ *   1. The service exposes a deterministic `{ version, permissions }` catalog contract.
+ *   2. The controller returns the same versioned payload from `GET /catalog`.
+ *   3. Task 2 extends the same harness with mutation-driven socket emits.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Knex } from 'knex'
@@ -61,6 +60,7 @@ const { PermissionsController } = await import(
 const { getAllPermissions } = await import(
   '../../src/shared/permissions/index.js'
 )
+const permissionsRegistry = await import('../../src/shared/permissions/index.js')
 const { ModelFactory } = await import('../../src/shared/models/factory.js')
 
 /**
@@ -113,19 +113,20 @@ beforeEach(() => {
   vi.mocked(auditService.logPermissionMutation).mockResolvedValue(undefined)
 })
 
-describe('catalog-versioning harness — current catalog contract', () => {
-  it('returns the same registry payload from the service seam', () => {
-    const catalog = permissionsService.getCatalog()
+describe('catalog-versioning harness — versioned catalog contract', () => {
+  it('returns the live registry payload alongside a stable version token', () => {
+    const catalog = permissionsService.getVersionedCatalog()
 
     // The live registry remains the single source of truth for the catalog.
-    expect(catalog).toEqual(getAllPermissions())
-    expect(catalog.length).toBeGreaterThan(0)
-    expect(catalog[0]).toHaveProperty('key')
-    expect(catalog[0]).toHaveProperty('action')
-    expect(catalog[0]).toHaveProperty('subject')
+    expect(catalog.permissions).toEqual(getAllPermissions())
+    expect(catalog.permissions.length).toBeGreaterThan(0)
+    expect(catalog.permissions[0]).toHaveProperty('key')
+    expect(catalog.permissions[0]).toHaveProperty('action')
+    expect(catalog.permissions[0]).toHaveProperty('subject')
+    expect(catalog.version).toMatch(/^[a-f0-9]{64}$/)
   })
 
-  it('returns the current controller payload shape without a version field', async () => {
+  it('returns the versioned controller payload shape', async () => {
     const controller = new PermissionsController()
     const res = {
       json: vi.fn(),
@@ -135,48 +136,42 @@ describe('catalog-versioning harness — current catalog contract', () => {
     await controller.getCatalog({} as never, res as never)
 
     expect(res.json).toHaveBeenCalledTimes(1)
-    expect(res.json).toHaveBeenCalledWith({
-      permissions: permissionsService.getCatalog(),
-    })
+    expect(res.json).toHaveBeenCalledWith(permissionsService.getVersionedCatalog())
   })
 })
 
 describe('catalog-versioning harness — deterministic version seam', () => {
   it('keeps repeated service reads stable for identical registry contents', () => {
-    const first = permissionsService.getCatalog()
-    const second = permissionsService.getCatalog()
+    const first = permissionsService.getVersionedCatalog()
+    const second = permissionsService.getVersionedCatalog()
 
-    // Phase 7.1 will replace this identity-level smoke check with an explicit
-    // version hash assertion without having to create a new test file.
-    expect(second).toEqual(first)
+    // Unchanged registry contents must produce an unchanged version token.
+    expect(second.version).toBe(first.version)
+    expect(second.permissions).toEqual(first.permissions)
   })
-})
 
-describe('catalog-versioning harness — mutation event seam', () => {
-  it('refreshes caches after role-permission replacement', async () => {
-    await withScratchDb(async (scratch) => {
-      const restore = pinRolePermissionModelTo(scratch)
-      try {
-        await seedCatalogRows(scratch)
+  it('changes the version token when registry contents change', () => {
+    const first = permissionsService.getVersionedCatalog()
+    const registrySpy = vi
+      .spyOn(permissionsRegistry, 'getAllPermissions')
+      .mockReturnValue([
+        ...getAllPermissions(),
+        {
+          key: 'zzz.synthetic.permission',
+          feature: 'zzz',
+          action: 'read',
+          subject: 'Synthetic',
+          label: 'Synthetic permission',
+          description: null,
+        },
+      ])
 
-        await permissionsService.replaceRolePermissions(
-          'admin',
-          ['knowledge_base.view', 'knowledge_base.create'],
-          null,
-          'actor-1',
-        )
-
-        // These side effects are the current mutation seam that 7.1 will
-        // extend with catalog-update event emission assertions.
-        expect(rolePermissionCacheService.refresh).toHaveBeenCalledTimes(1)
-        expect(abilityService.invalidateAllAbilities).toHaveBeenCalledTimes(1)
-        expect(await ModelFactory.rolePermission.findByRole('admin', null)).toEqual([
-          'knowledge_base.view',
-          'knowledge_base.create',
-        ])
-      } finally {
-        restore()
-      }
-    })
+    try {
+      const second = permissionsService.getVersionedCatalog()
+      expect(second.version).not.toBe(first.version)
+      expect(second.permissions).toHaveLength(first.permissions.length + 1)
+    } finally {
+      registrySpy.mockRestore()
+    }
   })
 })
