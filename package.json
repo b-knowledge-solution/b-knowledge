@@ -35,6 +35,7 @@
     "docker:litellm:down": "docker compose -f docker/docker-compose-litellm.yml down",
     "dev:https": "concurrently --names BE,FE --prefix-colors blue,green --prefix \"{name}\" \"npm run dev:be\" \"npm run dev:fe\"",
     "generate:cert": "node scripts/generate-cert.js",
+    "check:legacy-roles": "bash scripts/check-legacy-roles.sh",
     "loc": "node scripts/count-loc.js",
     "build": "npm run build --workspaces",
     "build:prod": "npm run build:prod --workspaces",

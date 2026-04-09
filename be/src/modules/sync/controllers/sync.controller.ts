@@ -68,7 +68,7 @@ async function checkKbAccess(req: Request, kbId: string): Promise<boolean> {
   const user = req.user as any
   if (!user) return false
   // Admin/leader roles have global KB access
-  if (user.role === UserRole.ADMIN || user.role === UserRole.SUPERADMIN || user.role === UserRole.LEADER) return true
+  if (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.LEADER) return true
   try {
     return await ragService.checkDatasetAccess(kbId, user.id, user.role, user.teamIds || [])
   } catch {

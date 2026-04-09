@@ -188,7 +188,7 @@ export class SearchService {
     const sortOrder = options?.sortOrder || 'desc'
 
     // Determine if user has admin-level access (sees all apps)
-    const isAdmin = userRole === UserRole.ADMIN || userRole === UserRole.SUPERADMIN
+    const isAdmin = userRole === UserRole.ADMIN || userRole === UserRole.SUPER_ADMIN
 
     // For non-admins, resolve accessible app IDs from search_app_access table
     let accessibleIds: string[] = []
@@ -313,7 +313,7 @@ export class SearchService {
     teamIds: string[]
   ): Promise<boolean> {
     // Admins always have access
-    if (userRole === UserRole.ADMIN || userRole === UserRole.SUPERADMIN) {
+    if (userRole === UserRole.ADMIN || userRole === UserRole.SUPER_ADMIN) {
       return true
     }
 

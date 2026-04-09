@@ -140,7 +140,7 @@ describe('ChatAssistantService', () => {
       const builder = makeBuilder(ALL_ASSISTANTS, 5)
       mockGetKnex.mockReturnValue(builder)
 
-      const result = await service.listAccessibleAssistants('sa-1', 'superadmin', [])
+      const result = await service.listAccessibleAssistants('sa-1', 'super-admin', [])
 
       expect(result.data).toHaveLength(5)
       expect(mockFindAccessibleAssistantIds).not.toHaveBeenCalled()
@@ -343,7 +343,7 @@ describe('ChatAssistantService', () => {
     })
 
     it('superadmin always has access', async () => {
-      const result = await service.checkUserAccess('d-any', 'sa-1', 'superadmin', [])
+      const result = await service.checkUserAccess('d-any', 'sa-1', 'super-admin', [])
       expect(result).toBe(true)
     })
 

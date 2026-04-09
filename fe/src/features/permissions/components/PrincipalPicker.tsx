@@ -74,11 +74,12 @@ export interface PrincipalPickerProps {
  * in this file by the project no-hardcoded-strings rule.
  */
 export const ROLE_PRINCIPALS: ReadonlyArray<{ id: string; label: string }> = [
-  // Excludes USER (legacy alias of MEMBER); admins grant against canonical roles only
+  // Phase 6 canonical roles exclude the legacy MEMBER alias; USER is the
+  // surviving low-privilege role grantee.
   { id: UserRole.SUPER_ADMIN, label: UserRole.SUPER_ADMIN },
   { id: UserRole.ADMIN, label: UserRole.ADMIN },
   { id: UserRole.LEADER, label: UserRole.LEADER },
-  { id: UserRole.MEMBER, label: UserRole.MEMBER },
+  { id: UserRole.USER, label: UserRole.USER },
 ]
 
 // ============================================================================

@@ -1,15 +1,18 @@
 /**
- * @description User and team role constants used across the application
+ * @description User and team role constants used across the application.
  */
 
-/** User roles for RBAC checks */
+/**
+ * @description Canonical UserRole enum. Legacy keys SUPERADMIN (value
+ * `'superadmin'`) and MEMBER (value `'member'`) were removed in Phase 6 per
+ * D-04 - their values were data-migrated to `'super-admin'` and `'user'`
+ * respectively by the phase06_legacy_role_cleanup migration. TeamRole.MEMBER
+ * is a separate domain and is preserved.
+ */
 export const UserRole = {
   SUPER_ADMIN: 'super-admin',
-  /** @description Legacy alias without hyphen — used in some older code paths */
-  SUPERADMIN: 'superadmin',
   ADMIN: 'admin',
   LEADER: 'leader',
-  MEMBER: 'member',
   USER: 'user',
 } as const
 
