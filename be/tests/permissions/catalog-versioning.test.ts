@@ -41,6 +41,11 @@ vi.mock('../../src/shared/services/logger.service.js', () => ({
     warn: vi.fn(),
   },
 }))
+vi.mock('../../src/shared/services/socket.service.js', () => ({
+  socketService: {
+    emit: vi.fn(),
+  },
+}))
 
 const { abilityService } = await import(
   '../../src/shared/services/ability.service.js'
@@ -53,6 +58,12 @@ const { auditService } = await import(
 )
 const { permissionsService } = await import(
   '../../src/modules/permissions/services/permissions.service.js'
+)
+const { SocketEvents } = await import(
+  '../../src/shared/constants/socket-events.js'
+)
+const { socketService } = await import(
+  '../../src/shared/services/socket.service.js'
 )
 const { PermissionsController } = await import(
   '../../src/modules/permissions/controllers/permissions.controller.js'
@@ -111,6 +122,7 @@ beforeEach(() => {
   vi.mocked(rolePermissionCacheService.refresh).mockClear()
   vi.mocked(auditService.logPermissionMutation).mockReset()
   vi.mocked(auditService.logPermissionMutation).mockResolvedValue(undefined)
+  vi.mocked(socketService.emit).mockClear()
 })
 
 describe('catalog-versioning harness — versioned catalog contract', () => {
@@ -137,6 +149,7 @@ describe('catalog-versioning harness — versioned catalog contract', () => {
 
     expect(res.json).toHaveBeenCalledTimes(1)
     expect(res.json).toHaveBeenCalledWith(permissionsService.getVersionedCatalog())
+    expect(socketService.emit).not.toHaveBeenCalled()
   })
 })
 
@@ -173,5 +186,39 @@ describe('catalog-versioning harness — deterministic version seam', () => {
     } finally {
       registrySpy.mockRestore()
     }
+  })
+})
+
+describe('catalog-versioning harness — mutation event seam', () => {
+  it('emits the canonical catalog-update event after a successful mutation', async () => {
+    await withScratchDb(async (scratch) => {
+      const restore = pinRolePermissionModelTo(scratch)
+      try {
+        await seedCatalogRows(scratch)
+
+        await permissionsService.replaceRolePermissions(
+          'admin',
+          ['knowledge_base.view', 'knowledge_base.create'],
+          null,
+          'actor-1',
+        )
+
+        // The role replacement path remains the representative mutation seam
+        // for SH1 because it already exercises the shared invalidation flow.
+        expect(rolePermissionCacheService.refresh).toHaveBeenCalledTimes(1)
+        expect(abilityService.invalidateAllAbilities).toHaveBeenCalledTimes(1)
+        expect(await ModelFactory.rolePermission.findByRole('admin', null)).toEqual([
+          'knowledge_base.view',
+          'knowledge_base.create',
+        ])
+        expect(socketService.emit).toHaveBeenCalledTimes(1)
+        expect(socketService.emit).toHaveBeenCalledWith(
+          SocketEvents.PermissionsCatalogUpdated,
+          { version: permissionsService.getVersionedCatalog().version },
+        )
+      } finally {
+        restore()
+      }
+    })
   })
 })

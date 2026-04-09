@@ -30,6 +30,7 @@ import { auditService } from '@/modules/audit/services/audit.service.js'
 import * as permissionsRegistry from '@/shared/permissions/index.js'
 import type { Permission } from '@/shared/permissions/index.js'
 import { PermissionSubjects } from '@/shared/constants/permissions.js'
+import { SocketEvents } from '@/shared/constants/socket-events.js'
 import type {
   UserPermissionOverrideRow,
   UserPermissionOverrideEffect,
@@ -39,6 +40,7 @@ import type {
   ResourceGranteeType,
 } from '@/shared/models/resource-grant.model.js'
 import type { WhoCanDoEntry } from '@/shared/models/permission.model.js'
+import { socketService } from '@/shared/services/socket.service.js'
 
 /**
  * @description Stable audit-action codes emitted by `auditService.logPermissionMutation`.
@@ -90,6 +92,19 @@ export class PermissionsService {
     return createHash('sha256')
       .update(JSON.stringify(stableCatalog))
       .digest('hex')
+  }
+
+  /**
+   * @description Broadcast the latest catalog version after a successful
+   * mutation so connected clients can invalidate their local cache cheaply.
+   * @returns {void}
+   */
+  private emitCatalogUpdated(): void {
+    const { version } = this.getVersionedCatalog()
+
+    // Broadcast version metadata only; clients can re-fetch the catalog over
+    // HTTP when the token changes instead of trusting socket-pushed contents.
+    socketService.emit(SocketEvents.PermissionsCatalogUpdated, { version })
   }
 
   /**
@@ -173,6 +188,7 @@ export class PermissionsService {
     // broadest invalidation we issue — narrower scoping is impossible without
     // walking the session store for users with this role.
     await abilityService.invalidateAllAbilities()
+    this.emitCatalogUpdated()
 
     // Audit log — fire-and-forget so a logging outage never blocks the admin.
     auditService
@@ -245,6 +261,7 @@ export class PermissionsService {
     // user id — correctness is preserved (the user sees the new ability on
     // the next request) but the cache miss footprint is wider than ideal.
     await abilityService.invalidateAllAbilities()
+    this.emitCatalogUpdated()
 
     auditService
       .logPermissionMutation({
@@ -293,6 +310,7 @@ export class PermissionsService {
 
     // Same broad invalidation as createOverride — see TODO above.
     await abilityService.invalidateAllAbilities()
+    this.emitCatalogUpdated()
 
     auditService
       .logPermissionMutation({
@@ -402,6 +420,7 @@ export class PermissionsService {
     // Invalidate every cached ability — Phase 5 will narrow this to just the
     // grantee's sessions (user/team membership / role lookup).
     await abilityService.invalidateAllAbilities()
+    this.emitCatalogUpdated()
 
     auditService
       .logPermissionMutation({
@@ -451,6 +470,7 @@ export class PermissionsService {
     const deleted = await ModelFactory.resourceGrant.deleteById(grantId, tenantId)
 
     await abilityService.invalidateAllAbilities()
+    this.emitCatalogUpdated()
 
     auditService
       .logPermissionMutation({
