@@ -408,6 +408,81 @@ describe('resolveGrantedDatasetsForUser (scratch-DB integration)', () => {
       }
     }))
 
+  it('keeps only active datasets when live and expired grants overlap', () =>
+    withScratchDb(async (knex) => {
+      const restores = [
+        pinModelTo(ModelFactory.resourceGrant, knex),
+        pinModelTo(ModelFactory.documentCategory, knex),
+      ]
+
+      try {
+        await seedUser(knex, USER_A, 'grant-user-a@test.local')
+        await seedKnowledgeBase(knex, 'kb-live-overlap', TENANT_A)
+        await seedKnowledgeBase(knex, 'kb-expired-overlap', TENANT_A)
+        await seedDirectCategory(knex, {
+          id: 'cat-live-direct-overlap',
+          knowledgeBaseId: 'kb-live-overlap',
+          datasetId: 'ds-shared-live',
+          tenantId: TENANT_A,
+          createdBy: USER_A,
+        })
+        await seedVersionedCategory(knex, {
+          id: 'cat-live-version-overlap',
+          knowledgeBaseId: 'kb-live-overlap',
+        })
+        await seedCategoryVersion(knex, {
+          id: 'ver-live-shared-overlap',
+          categoryId: 'cat-live-version-overlap',
+          datasetId: 'ds-shared-live',
+          status: 'active',
+        })
+        await seedCategoryVersion(knex, {
+          id: 'ver-live-unique-overlap',
+          categoryId: 'cat-live-version-overlap',
+          datasetId: 'ds-live-unique',
+          status: 'active',
+        })
+        await seedDirectCategory(knex, {
+          id: 'cat-expired-direct-overlap',
+          knowledgeBaseId: 'kb-expired-overlap',
+          datasetId: 'ds-expired-only',
+          tenantId: TENANT_A,
+          createdBy: USER_A,
+        })
+        await seedGrant(knex, {
+          id: 'grant-live-kb-overlap',
+          knowledgeBaseId: 'kb-live-overlap',
+          resourceType: ResourceType.KNOWLEDGE_BASE,
+          resourceId: 'kb-live-overlap',
+          tenantId: TENANT_A,
+          granteeId: USER_A,
+        })
+        await seedGrant(knex, {
+          id: 'grant-live-cat-overlap',
+          knowledgeBaseId: 'kb-live-overlap',
+          resourceType: ResourceType.DOCUMENT_CATEGORY,
+          resourceId: 'cat-live-version-overlap',
+          tenantId: TENANT_A,
+          granteeId: USER_A,
+        })
+        await seedGrant(knex, {
+          id: 'grant-expired-kb-overlap',
+          knowledgeBaseId: 'kb-expired-overlap',
+          resourceType: ResourceType.KNOWLEDGE_BASE,
+          resourceId: 'kb-expired-overlap',
+          tenantId: TENANT_A,
+          granteeId: USER_A,
+          expiresAt: '2020-01-01T00:00:00Z',
+        })
+
+        const result = await resolveGrantedDatasetsForUser(USER_A, TENANT_A)
+
+        expect(result.sort()).toEqual(['ds-live-unique', 'ds-shared-live'])
+      } finally {
+        restores.reverse().forEach((restore) => restore())
+      }
+    }))
+
   it('cross-tenant grant is invisible outside its tenant', () =>
     withScratchDb(async (knex) => {
       const restores = [
