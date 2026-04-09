@@ -18,8 +18,10 @@ import { queryKeys } from '@/lib/queryKeys'
 // Mock the auth feature so ability.tsx's AbilityProvider dependency graph
 // doesn't drag the full feature barrel into the test transform — mirrors the
 // approach used in tests/lib/ability.test.tsx.
+let mockUser: { id: string; email: string } | null = null
+
 vi.mock('@/features/auth', () => ({
-  useAuth: () => ({ user: null }),
+  useAuth: () => ({ user: mockUser }),
 }))
 
 import { PERMISSION_KEYS } from '@/constants/permission-keys'
@@ -121,6 +123,7 @@ function renderPermissionCheck(
 
 describe('useHasPermission', () => {
   beforeEach(() => {
+    mockUser = null
     mockedPermissionsApi.getCatalog.mockReset()
   })
 
@@ -157,6 +160,7 @@ describe('useHasPermission', () => {
 
   it('prefers the live runtime catalog mapping over the generated snapshot', async () => {
     const { PermissionCatalogProvider, useHasPermission } = await importPermissionsModule()
+    mockUser = { id: 'user-1', email: 'test@example.com' }
     mockedPermissionsApi.getCatalog.mockResolvedValueOnce({
       version: '2026-04-09T12:00:00Z',
       permissions: [
@@ -182,6 +186,7 @@ describe('useHasPermission', () => {
 
   it('updates the in-memory permission map when a newer catalog payload arrives', async () => {
     const { PermissionCatalogProvider, useHasPermission } = await importPermissionsModule()
+    mockUser = { id: 'user-1', email: 'test@example.com' }
     mockedPermissionsApi.getCatalog
       .mockResolvedValueOnce({
         version: '2026-04-09T12:00:00Z',

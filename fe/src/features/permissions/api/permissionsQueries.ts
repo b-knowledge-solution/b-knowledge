@@ -17,6 +17,9 @@ import type {
   UpdateRolePermissionsBody,
 } from '../types/permissions.types'
 
+/** @description Bounded fallback polling interval for the live permission catalog. */
+export const PERMISSION_CATALOG_POLL_INTERVAL_MS = 5 * 60 * 1000
+
 // ============================================================================
 // Catalog
 // ============================================================================
@@ -25,11 +28,17 @@ import type {
  * @description Fetches the live permission catalog from the BE. Most call sites
  * should prefer the build-time snapshot (`PERMISSION_KEYS`); use this only for
  * runtime refresh scenarios.
+ * @param {boolean} [enabled=true] - Whether the query should be active for the current session.
  */
-export function usePermissionCatalog() {
+export function usePermissionCatalog(enabled = true) {
   return useQuery({
     queryKey: queryKeys.permissions.catalog(),
     queryFn: permissionsApi.getCatalog,
+    enabled,
+    // Bound the fallback to minutes so missed socket events self-heal without
+    // turning the catalog endpoint into a hot loop.
+    refetchInterval: PERMISSION_CATALOG_POLL_INTERVAL_MS,
+    refetchIntervalInBackground: true,
   })
 }
 

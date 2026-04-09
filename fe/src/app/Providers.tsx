@@ -7,17 +7,18 @@
  * @module app/Providers
  */
 
-import { ReactNode } from 'react';
-import { Toaster } from '@/components/ui/sonner';
-import { AuthProvider } from '@/features/auth';
-import { AbilityProvider } from '@/lib/ability';
-import { SettingsProvider } from '@/app/contexts/SettingsContext';
+import { ReactNode } from 'react'
+import { Toaster } from '@/components/ui/sonner'
+import { AuthProvider } from '@/features/auth'
+import { AuthenticatedSocketBridge } from '@/app/AuthenticatedSocketBridge'
+import { AbilityProvider } from '@/lib/ability'
+import { PermissionCatalogProvider } from '@/lib/permissions'
+import { SettingsProvider } from '@/app/contexts/SettingsContext'
 
 import { GuidelineProvider } from '@/features/guideline';
 import { ConfirmProvider } from '@/components/ConfirmDialog';
 import { HeaderActionsProvider } from '@/components/HeaderActions';
 import { NavigationProvider } from '@/components/NavigationLoader'
-import { useSocketQueryInvalidation } from '@/hooks/useSocket';
 import { globalMessage } from '@/lib/globalMessage'
 import SettingsDialog from '@/components/SettingsDialog';
 import { ApiKeysDialog } from '@/features/api-keys';
@@ -27,21 +28,6 @@ import { ApiKeysDialog } from '@/features/api-keys';
 // ============================================================================
 
 export { globalMessage }
-
-// ============================================================================
-// Socket → Query Bridge
-// ============================================================================
-
-/**
- * Bridges socket events to TanStack Query cache invalidation.
- *
- * @description Renders nothing; exists solely to call the
- * `useSocketQueryInvalidation` hook inside the React provider tree.
- */
-function SocketQueryBridge() {
-  useSocketQueryInvalidation()
-  return null
-}
 
 // ============================================================================
 // Providers Component
@@ -80,24 +66,27 @@ export function Providers({ children }: ProvidersProps) {
   return (
     <AuthProvider>
       <AbilityProvider>
-        <SettingsProvider>
-        <GuidelineProvider>
-          <ConfirmProvider>
-            <HeaderActionsProvider>
-              <NavigationProvider>
-                <SocketQueryBridge />
-                {children}
-                <SettingsDialog />
-                <ApiKeysDialog />
-                <Toaster />
-              </NavigationProvider>
-            </HeaderActionsProvider>
-          </ConfirmProvider>
-        </GuidelineProvider>
+        <PermissionCatalogProvider>
+          <SettingsProvider>
+          <GuidelineProvider>
+            <ConfirmProvider>
+              <HeaderActionsProvider>
+                <NavigationProvider>
+                  {/* Mount the authenticated permissions catalog socket bridge inside the provider tree. */}
+                  <AuthenticatedSocketBridge />
+                  {children}
+                  <SettingsDialog />
+                  <ApiKeysDialog />
+                  <Toaster />
+                </NavigationProvider>
+              </HeaderActionsProvider>
+            </ConfirmProvider>
+          </GuidelineProvider>
         </SettingsProvider>
+        </PermissionCatalogProvider>
       </AbilityProvider>
     </AuthProvider>
-  );
+  )
 }
 
-export default Providers;
+export default Providers

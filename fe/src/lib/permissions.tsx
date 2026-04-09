@@ -18,6 +18,7 @@ import {
 import { PERMISSION_KEYS, type PermissionKey } from '@/constants/permission-keys'
 import catalogJson from '@/generated/permissions-catalog.json'
 import { usePermissionCatalog } from '@/features/permissions/api/permissionsQueries'
+import { useAuth } from '@/features/auth'
 import type { PermissionCatalogEntry } from '@/features/permissions/types/permissions.types'
 import { useAppAbility } from './ability'
 
@@ -77,13 +78,23 @@ const PermissionCatalogContext = createContext<PermissionCatalogContextValue>({
  * @returns {ReactNode} Provider tree with runtime catalog context.
  */
 export function PermissionCatalogProvider({ children }: { children: ReactNode }) {
-  const { data } = usePermissionCatalog()
+  const { user } = useAuth()
+  const { data } = usePermissionCatalog(Boolean(user))
   const [catalogState, setCatalogState] = useState<PermissionCatalogContextValue>({
     catalogMap: SNAPSHOT_CATALOG_MAP,
     version: SNAPSHOT_VERSION,
   })
 
   useEffect(() => {
+    // Reset to the committed snapshot when the session disappears.
+    if (!user) {
+      setCatalogState({
+        catalogMap: SNAPSHOT_CATALOG_MAP,
+        version: SNAPSHOT_VERSION,
+      })
+      return
+    }
+
     // Ignore empty payloads so the last known-good catalog stays active.
     if (!data || data.permissions.length === 0) {
       return
@@ -100,7 +111,7 @@ export function PermissionCatalogProvider({ children }: { children: ReactNode })
         version: data.version,
       }
     })
-  }, [data])
+  }, [data, user])
 
   return (
     <PermissionCatalogContext.Provider value={catalogState}>

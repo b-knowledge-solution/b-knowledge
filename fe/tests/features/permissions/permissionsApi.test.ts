@@ -60,6 +60,7 @@ describe('permissionsApi', () => {
 
   it('getCatalog returns the raw backend payload for the current scaffold contract', async () => {
     const catalogPayload = {
+      version: '2026-04-09T12:00:00Z',
       permissions: [
         {
           key: 'knowledge_base.view',
@@ -72,8 +73,6 @@ describe('permissionsApi', () => {
 
     const result = await getCatalog()
 
-    // Phase 7.1 will tighten this assertion to the versioned payload without
-    // having to recreate the HTTP mock harness.
     expect(result).toEqual(catalogPayload)
   })
 

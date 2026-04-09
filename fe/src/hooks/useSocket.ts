@@ -11,6 +11,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { SOCKET_EVENTS } from '@/constants/socket-events'
 import {
   getSocket,
   getSocketStatus,
@@ -127,6 +128,7 @@ const DEFAULT_EVENT_KEY_MAP: Record<string, readonly (readonly string[])[]> = {
   'system:updated': [queryKeys.systemTools.all],
   'dashboard:updated': [queryKeys.dashboard.all],
   'histories:updated': [queryKeys.histories.all],
+  [SOCKET_EVENTS.PERMISSIONS_CATALOG_UPDATED]: [queryKeys.permissions.catalog()],
 }
 
 /**
