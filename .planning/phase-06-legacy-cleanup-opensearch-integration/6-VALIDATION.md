@@ -2,15 +2,17 @@
 phase: 6
 slug: legacy-cleanup-opensearch-integration
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-04-09
+updated: 2026-04-09
 ---
 
 # Phase 6 — Validation Strategy
 
 > Per-phase validation contract for feedback sampling during execution.
 > Derived from RESEARCH.md §12 (Validation Architecture) and CONTEXT.md amendments A-1..A-5.
+> Task IDs filled in after plans 6.1–6.5 were written.
 
 ---
 
@@ -23,7 +25,7 @@ created: 2026-04-09
 | **Quick run command** | `cd be && npm run test -- --run <changed test file>` |
 | **Full suite command** | `cd be && npm run test -- --run` |
 | **Estimated runtime** | ~60–120 seconds (planner should verify against current suite baseline) |
-| **Scratch-DB helper** | `withScratchDb` (existing pattern in `be/tests/` — researcher §6) |
+| **Scratch-DB helper** | `withScratchDb` + `withScratchDbStoppingBefore` (`be/tests/permissions/_helpers.ts`) |
 
 ---
 
@@ -31,44 +33,43 @@ created: 2026-04-09
 
 - **After every task commit:** Run vitest on the changed test file only (`npm run test -- --run <file>`)
 - **After every plan wave:** Run the full BE vitest suite
-- **Before `/gsd:verify-work`:** Full suite must be green + `npm run check:legacy-roles` (new in P6.2) must exit 0 + `npm run build` clean
+- **Before `/gsd:verify-work`:** Full suite must be green + `npm run check:legacy-roles` (new in 6.2.3) must exit 0 + `npm run build` clean
 - **Max feedback latency:** 30 seconds for per-task quick run
 
 ---
 
 ## Per-Task Verification Map
 
-> Plans/tasks don't exist yet — this table is a placeholder structure the planner fills in.
-> Each requirement below MUST map to at least one automated verification.
+| Task ID | Requirement | Behavior | Test Type | Automated Command |
+|---------|-------------|----------|-----------|-------------------|
+| 6.1.1 | TS13 | Migration file exists with pre-check + conditional UPDATEs + no-op down | build + grep | `cd be && npm run build` + grep assertions in plan |
+| 6.1.2 | TS13 | Pre-check aborts on unknown role; UPDATEs rewrite legacy values; idempotent on re-run | integration | `cd be && npm run test -- --run tests/permissions/legacy-role-cleanup.test.ts` |
+| 6.2.1 | TS13 | 7 production sites + 4 test fixtures mechanically rewritten to `UserRole.SUPER_ADMIN` / `'super-admin'` | build + grep | `cd be && npm run build` + `grep -rn "UserRole\\.SUPERADMIN" be/src be/tests` returns 0 |
+| 6.2.2 | TS13 | `UserRole` enum trimmed to 4 canonical keys; `TeamRole.MEMBER` preserved | build + unit | `cd be && npm run build && npm run test -- --run tests/permissions/` |
+| 6.2.3 | TS13 | `scripts/check-legacy-roles.sh` + `npm run check:legacy-roles` exit 0 on clean repo, non-zero on regression | grep + script exit | `npm run check:legacy-roles` |
+| 6.3.1 | TS9 | `findDatasetIdsByCategoryIds` / `findDatasetIdsByKnowledgeBaseIds` exist on `DocumentCategoryModel` with JSDoc and SQL filtering deleted versions | build + grep | `cd be && npm run build` + grep assertions |
+| 6.3.2 | TS9, TS13 | `resolveGrantedDatasetsForUser` helper exists; `buildOpenSearchAbacFilters` deleted | build + grep | `cd be && npm run build` + `grep -rn "buildOpenSearchAbacFilters" be/src` returns 0 |
+| 6.3.3 | TS9 | `chat-conversation.service.ts` wires the helper into `allKbIds` expansion; dead import removed | build + existing chat tests | `cd be && npm run build && npm run test -- --run tests/chat/` |
+| 6.4.1 | TS9, TS13 | Tier A unit tests: zero-grant parity, KB-only, category-only, union, soft-cap truncation, dead-code documentation | unit | `cd be && npm run test -- --run tests/shared/services/ability.service.test.ts` |
+| 6.4.2 | TS9 | Tier B scratch-DB integration tests: no-grants, live KB grant, versioned category grant, expired grant (D-09), deleted version, overlapping union | integration | `cd be && npm run test -- --run tests/permissions/grant-dataset-resolution.test.ts` |
+| 6.5.1 | TS13 (R-9) | 3 active ADMIN_ROLES sites carry rationale comments; no code logic change | build + grep | `cd be && npm run build` + `grep -c "ADMIN_ROLES preserved per R-9" be/src/shared/config/rbac.ts be/src/shared/middleware/auth.middleware.ts` ≥ 3 |
+| 6.5.2 | TS13 (R-9) | ADR-style preservation note exists with 3 active sites + milestone 2 plan | file + grep | `test -f .planning/codebase/ADMIN_ROLES-preservation.md && grep -c "R-9" .planning/codebase/ADMIN_ROLES-preservation.md` ≥ 3 |
 
-| Requirement | Behavior | Test Type | Expected Automated Command |
-|-------------|----------|-----------|----------------------------|
-| TS9 | Legacy `'superadmin'` / `'member'` strings absent from be/src code | grep | `npm run check:legacy-roles` (exit 0) |
-| TS9 | `UserRole.SUPERADMIN` / `UserRole.MEMBER` enum keys deleted from `roles.ts` | unit | vitest assertion on imported enum |
-| TS9 | P6.1 migration aborts on unknown role values (pre-check) | integration | scratch-DB test: seed bad role, expect migration to throw |
-| TS9 | P6.1 migration idempotent — re-running leaves DB unchanged | integration | scratch-DB test: run twice, diff row states |
-| TS13 | `resolveGrantedDatasetsForUser` returns empty array for zero-grant user | unit | vitest, mocked ResourceGrantModel |
-| TS13 | `resolveGrantedDatasetsForUser` unions KB + DocCat grants into flat set | unit | vitest, mocked model with both grant types |
-| TS13 | `resolveGrantedDatasetsForUser` filters expired grants (expires_at < now) | integration | withScratchDb: seed expired grant, assert excluded |
-| TS13 | Parity — chat-conversation kbIds expansion unchanged when user has zero grants | integration | withScratchDb + mocked retrieval client, assert kbIds pre/post identical |
-| TS13 | Positive — user with category grant sees granted KB's dataset IDs in expanded kbIds | integration | withScratchDb + mocked retrieval client, assert dataset IDs present |
-| TS13 | No-access — user with zero grants + no role access to private KB → kbIds does not include that KB | integration | withScratchDb + mocked retrieval client, negative assertion |
-| TS13 | `buildOpenSearchAbacFilters` function deleted | grep | `grep -c "buildOpenSearchAbacFilters" be/src` returns 0 |
-| (P6.5) | ADMIN_ROLES audit — 3 active sites have rationale comment | grep | `grep -B1 "ADMIN_ROLES" be/src/shared/rbac.ts be/src/shared/middleware/auth.middleware.ts` shows comment line above each |
-
-*Status tracking: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky — planner fills task IDs once plans exist*
+*Status tracking: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky — filled during execution*
 
 ---
 
 ## Wave 0 Requirements
 
-Planner must confirm or create, before Wave 1:
+Wave 0 gaps are NOT separately scheduled — they are absorbed into Wave 1/2 task scaffolding:
 
-- [ ] `be/tests/permissions/resource-grant.test.ts` — if not present, stub for P6.3 unit tests on the new helper
-- [ ] `be/tests/shared/services/ability.service.test.ts` — verify `buildOpenSearchAbacFilters` removal doesn't break existing tests (researcher §6 flagged 6 test mocks)
-- [ ] `be/tests/db/migrations/phase6-legacy-role-cleanup.test.ts` — stub for migration integration tests using `withScratchDb`
-- [ ] `scripts/check-legacy-roles.sh` — CI grep script + `npm run check:legacy-roles` npm script entry (P6.2)
-- [ ] Confirm `withScratchDb` helper location and shape — researcher recommends it as the P6.4 harness; if it's not already used by permission tests, Wave 0 task should verify it covers `resource_grants` seeding
+- [x] `scripts/check-legacy-roles.sh` — created by Task 6.2.3 (Wave 2)
+- [x] `be/tests/permissions/legacy-role-cleanup.test.ts` — created by Task 6.1.2 (Wave 1)
+- [x] `be/tests/permissions/grant-dataset-resolution.test.ts` — created by Task 6.4.2 (Wave 3)
+- [x] `be/tests/shared/services/ability.service.test.ts` — extended by Task 6.4.1 (Wave 3) replacing existing `it.todo()` placeholders
+- [x] `withScratchDb` helper — already present in `be/tests/permissions/_helpers.ts`, used directly
+
+**Rationale:** Phase 6 has no test-scaffolding dependency cycles — each Wave 1/2 task that introduces a new behavior also ships the test file covering it, so an explicit Wave 0 pass is unnecessary. Every task in the Per-Task Verification Map has an `<automated>` command embedded in its plan's `<verify>` block.
 
 ---
 
@@ -82,11 +83,11 @@ Planner must confirm or create, before Wave 1:
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify commands or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references (scratch-DB helper, CI grep script, test stubs)
-- [ ] No watch-mode flags (`--watch` forbidden in per-task verify commands)
-- [ ] Feedback latency < 30s for quick run
-- [ ] `nyquist_compliant: true` set in frontmatter after planner fills the task map
+- [x] All tasks have `<automated>` verify commands or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (scratch-DB helper, CI grep script, test stubs)
+- [x] No watch-mode flags (`--watch` forbidden in per-task verify commands)
+- [x] Feedback latency < 30s for quick run
+- [x] `nyquist_compliant: true` set in frontmatter after planner filled the task map
 
-**Approval:** pending — planner must fill the task ID column in §Per-Task Verification Map
+**Approval:** approved — planner filled Task ID column and every row has an automated command.
