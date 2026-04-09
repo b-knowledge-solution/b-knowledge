@@ -200,7 +200,65 @@ None — no todos matched this phase.
 
 </deferred>
 
+<amendments>
+## Amendments (2026-04-09, post-research)
+
+**These amendments correct factual premise errors in the original decisions.** They do not change user design intent — they update the mechanism to match the real codebase. Original D-XX lines are preserved above for audit; these amendments take precedence where they conflict.
+
+### A-1 — P6.1 scope correction (amends D-01, D-02, D-03)
+
+**Premise error:** The original CONTEXT.md assumed `users.role` defaults to `'member'` and that seed `00_sample_users.ts:295` sets `users.role='member'`. Research verified both are wrong:
+- `users.role` default is **already `'user'`** in `20260312000000_initial_schema.ts:33`.
+- The `'member'` default at `20260312000000_initial_schema.ts:93` is on `user_teams.role` (TeamRole.MEMBER), which explicitly stays per roadmap.
+- Seed `00_sample_users.ts:295` writes a `user_teams.role='member'` row (TeamRole), not a `users.role='member'` row.
+
+**Corrected P6.1 scope:**
+1. **Keep:** Pre-check `SELECT COUNT(*) FROM users WHERE role NOT IN ('user','admin','super-admin','superadmin','member','leader')` — abort with listing if > 0.
+2. **Keep (conditional):** `UPDATE users SET role='super-admin' WHERE role='superadmin'` — runs if the pre-check or a separate row count finds any. Defensive for any legacy rows from pre-current-schema deployments.
+3. **Keep (conditional):** `UPDATE users SET role='user' WHERE role='member'` — same conditional rationale. Idempotent on re-run.
+4. **Drop:** `ALTER COLUMN role SET DEFAULT 'user'` — already `'user'`, no change needed.
+5. **Drop:** `00_sample_users.ts:295` update — that line is TeamRole, not UserRole. Stays.
+6. **Drop:** Down migration default-flip. Down migration is either absent (documented as "data cleanup, one-way") or contains only a no-op + comment.
+
+**Acceptance test adjustment:** P6.1 verification is now "pre-check runs cleanly AND no rows with legacy role values remain in `users` after the migration", not "column default flipped".
+
+### A-2 — P6.3 extension point correction (amends D-06..D-09 mechanism, NOT intent)
+
+**Premise error:** The original CONTEXT.md said P6.3 extends `buildOpenSearchAbacFilters` in `be/src/shared/services/ability.service.ts`. Research verified this function has **zero production callers** — it's speculative dead code from Phase 2. The only reference is an unused import at `be/src/modules/chat/services/chat-conversation.service.ts:42`.
+
+**The real RAG search flow:**
+1. BE assembles a `kbIds: string[]` array per-request in retrieval call sites (chat, search, rag, external-api).
+2. `chat-conversation.service.ts:1013-1058` already has an **RBAC dataset expansion** block (`allKbIds = [...kbIds, ...authorizedKbIds]`) gated by `cfg.allow_rbac_datasets`. This is the existing expansion pattern Strategy A must extend.
+3. The expanded `kbIds` array is passed to `advance-rag/rag/nlp/search.py` via the retrieval service. Python's `search()` already filters by `kb_ids` — **no Python changes needed**.
+
+**Corrected P6.3 shape:**
+- **A-2a: New BE helper.** Introduce `resolveGrantedDatasetsForUser(userId, tenantId, { now }): Promise<string[]>` in a new method on an existing model (likely `ResourceGrantModel` — extend `findActiveForUser` per researcher §3) or a new helper in `be/src/shared/services/ability.service.ts`. Returns the flat union of KB grant dataset IDs + DocumentCategory grant → dataset resolution, with `expires_at` enforced in SQL (D-09 survives as-is).
+- **A-2b: Wire into every `kbIds` expansion site.** The exhaustive list of call sites comes from grep `kbIds\s*=\|allKbIds` in `be/src/modules/{chat,search,rag,external}/services/**.ts` — the planner/researcher should enumerate them. At each site, union the grant-derived dataset IDs into the kbIds array before it's sent to retrieval.
+- **A-2c: Delete dead code.** Delete `buildOpenSearchAbacFilters` from `ability.service.ts` AND delete the unused import at `chat-conversation.service.ts:42`. This removes the "wrong extension point" trap for future contributors. (User decision — see AskUserQuestion 2026-04-09 Q2.)
+- **A-2d: Filter composition (D-08) reinterpreted.** `tenant AND (role_base OR grants)` is now enforced implicitly by the kbIds set expansion: tenant isolation comes from `index_name(tenant_id)` on the Python side (already present), role-base datasets come from the existing RBAC expansion, grant datasets are added to the same flat set. Union = OR. Tenant = mandatory outer scope. The semantic stays identical to what D-08 intended.
+- **A-2e: Zero-grant behavior (D-06) preserved.** If `resolveGrantedDatasetsForUser` returns an empty array, the expansion adds nothing — identical to today's flow. Parity acceptance test still applies.
+
+### A-3 — P6.4 test harness narrowed (amends D-10 implementation)
+
+**Correction:** No real-OS integration test. Researcher found no existing OS integration test pattern in the repo and recommended:
+- **Tier A:** Pure-function unit tests for `resolveGrantedDatasetsForUser` (mock the model, assert on returned dataset_id set under various grant configurations including expired grants).
+- **Tier B:** Scratch-DB integration tests via the existing `withScratchDb` helper — seed `resource_grants` rows, call the helper, assert on returned IDs. Covers the SQL path.
+- **Tier C (optional — Claude's Discretion):** A thin integration test at the retrieval call site level (e.g. mock the Python retrieval client, seed grants in scratch DB, invoke `chat-conversation.service.ts` handler with a fake chat request, assert the `kbIds` passed to the retrieval mock includes the granted datasets).
+
+The three semantic cases from D-10 (parity / positive grant / no-access) map onto Tier A + Tier B without needing OS — they're all about whether the expanded kbIds set is correct. Python-side filtering by kb_ids is already tested upstream (trust the boundary).
+
+### A-4 — P6.5 unchanged
+
+R-9 ADMIN_ROLES documentation pass stands as D-11. Researcher found 3 active sites (rbac.ts:94, auth.middleware.ts:327, auth.middleware.ts:381). No amendment needed.
+
+### A-5 — Open question R-I resolved
+
+The unused `buildOpenSearchAbacFilters` import at `chat-conversation.service.ts:42` is treated as dead code from Phase 2 speculative work. P6.3 deletes it alongside the function itself (A-2c). No git archaeology required.
+
+</amendments>
+
 ---
 
 *Phase: 06-legacy-cleanup-opensearch-integration*
 *Context gathered: 2026-04-09*
+*Amended: 2026-04-09 (post-research premise corrections)*
