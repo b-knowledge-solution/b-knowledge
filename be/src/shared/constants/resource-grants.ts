@@ -1,11 +1,10 @@
 /**
  * @description Canonical resource_type values used in the `resource_grants`
- * table. Must match the check constraint introduced by the Phase 1 rename
- * migration.
+ * table as consumed by the live permission service and ability builder.
  */
 export const ResourceType = {
-  KNOWLEDGE_BASE: 'knowledge_base',
-  DOCUMENT_CATEGORY: 'document_category',
+  KNOWLEDGE_BASE: 'KnowledgeBase',
+  DOCUMENT_CATEGORY: 'DocumentCategory',
 } as const
 
 export type ResourceType = (typeof ResourceType)[keyof typeof ResourceType]
