@@ -39,7 +39,7 @@ import {
 } from '@/shared/prompts/index.js'
 import { detectLanguage, buildLanguageInstruction } from '@/shared/utils/language-detect.js'
 import { htmlToMarkdown } from '@/shared/utils/html-to-markdown.js'
-import { abilityService, buildOpenSearchAbacFilters } from '@/shared/services/ability.service.js'
+import { abilityService, resolveGrantedDatasetsForUser } from '@/shared/services/ability.service.js'
 import { log } from '@/shared/services/logger.service.js'
 import { langfuseTraceService, getLangfuseClient } from '@/shared/services/langfuse.service.js'
 import { queryLogService } from '@/modules/rag/index.js'
@@ -1038,6 +1038,34 @@ export class ChatConversationService {
           }
         } catch (err) {
           log.warn('RBAC dataset expansion failed, using original kbIds', { error: String(err) })
+        }
+      }
+
+      // ── Step 7b: Union Phase-6 resource-grant datasets into allKbIds ────
+      // SECURITY-SEMANTIC: resolveGrantedDatasetsForUser enforces tenant
+      // isolation + expires_at at the SQL layer. Zero-grant users keep the
+      // exact same retrieval set; granted users get additive dataset access.
+      if (!skipRetrieval && userId && tenantId) {
+        try {
+          const grantedDatasetIds = await resolveGrantedDatasetsForUser(userId, tenantId)
+          if (grantedDatasetIds.length > 0) {
+            const merged = new Set<string>([...allKbIds, ...grantedDatasetIds])
+            const beforeCount = allKbIds.length
+            allKbIds = Array.from(merged)
+
+            if (allKbIds.length > beforeCount) {
+              log.info('Expanded KB search with Phase-6 resource grants', {
+                original: beforeCount,
+                added: allKbIds.length - beforeCount,
+                total: allKbIds.length,
+              })
+            }
+          }
+        } catch (err) {
+          // Fail open so a transient grant-resolution issue does not break chat.
+          log.warn('Phase-6 grant expansion failed, using pre-grant kbIds', {
+            error: String(err),
+          })
         }
       }
 

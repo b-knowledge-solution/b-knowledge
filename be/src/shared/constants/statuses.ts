@@ -18,6 +18,28 @@ export const DatasetStatus = {
 
 export type DatasetStatusType = (typeof DatasetStatus)[keyof typeof DatasetStatus]
 
+/**
+ * @description Document category version lifecycle statuses from the
+ * `document_category_versions` table.
+ */
+export const DocumentCategoryVersionStatus = {
+  ACTIVE: 'active',
+  SYNCING: 'syncing',
+  ARCHIVED: 'archived',
+} as const
+
+export type DocumentCategoryVersionStatusType =
+  (typeof DocumentCategoryVersionStatus)[keyof typeof DocumentCategoryVersionStatus]
+
+/**
+ * @description Version statuses whose underlying datasets are searchable by
+ * grant-based retrieval in Phase 6.
+ */
+export const SEARCHABLE_VERSION_STATUSES = [
+  DocumentCategoryVersionStatus.ACTIVE,
+  DocumentCategoryVersionStatus.SYNCING,
+] as const
+
 /** RAG task processing statuses */
 export const TaskStatus = {
   DONE: 'done',

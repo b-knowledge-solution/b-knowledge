@@ -14,7 +14,7 @@ import { AbilityBuilder, createMongoAbility, MongoAbility, RawRuleOf } from '@ca
 import { getRedisClient } from '@/shared/services/redis.service.js'
 import { config } from '@/shared/config/index.js'
 import { log } from '@/shared/services/logger.service.js'
-import { UserRole } from '@/shared/constants/index.js'
+import { ResourceType, UserRole } from '@/shared/constants/index.js'
 import { ModelFactory } from '@/shared/models/factory.js'
 import { getAllPermissions } from '@/shared/permissions/index.js'
 import { PermissionSubjects, ABILITY_CACHE_PREFIX } from '@/shared/constants/permissions.js'
@@ -111,6 +111,8 @@ export interface AbacPolicyRule {
 
 /** @description Default TTL for cached abilities (matches session TTL: 7 days) */
 const ABILITY_CACHE_TTL_SECONDS = config.session.ttlSeconds || 604800
+/** @description Soft cap on Phase 6 grant-derived dataset fan-out. */
+const GRANT_DATASET_SOFT_CAP = 10000
 
 // ============================================================================
 // ABILITY BUILDER
@@ -405,6 +407,64 @@ export async function buildAbilityFor(
   return buildAbilityForV1Sync(user, policies)
 }
 
+/**
+ * @description Resolve a user's active resource grants to the flat list of
+ * dataset IDs they may search via Phase 6 Strategy A. Reuses the SQL-side
+ * `findActiveForUser` expiry and tenant filters, then batches KB and category
+ * resolution through the DocumentCategoryModel.
+ * @param {string} userId - User whose grants to walk.
+ * @param {string} tenantId - Tenant scope for the grant query.
+ * @param {{ teamIds?: readonly string[] }} [opts] - Optional team IDs for team grants.
+ * @returns {Promise<string[]>} Flat deduped dataset ID list.
+ */
+export async function resolveGrantedDatasetsForUser(
+  userId: string,
+  tenantId: string,
+  opts: { teamIds?: readonly string[] } = {},
+): Promise<string[]> {
+  // Read active grants with tenant isolation and SQL-side expires_at handling.
+  const grants = await ModelFactory.resourceGrant.findActiveForUser(
+    userId,
+    tenantId,
+    opts.teamIds ?? [],
+  )
+  if (grants.length === 0) return []
+
+  const kbIds: string[] = []
+  const categoryIds: string[] = []
+
+  // Partition by resource kind so the downstream model methods stay batched.
+  for (const grant of grants) {
+    if (grant.resource_type === ResourceType.KNOWLEDGE_BASE) {
+      kbIds.push(grant.resource_id)
+      continue
+    }
+    if (grant.resource_type === ResourceType.DOCUMENT_CATEGORY) {
+      categoryIds.push(grant.resource_id)
+    }
+  }
+
+  const [kbDatasets, categoryDatasets] = await Promise.all([
+    ModelFactory.documentCategory.findDatasetIdsByKnowledgeBaseIds(kbIds),
+    ModelFactory.documentCategory.findDatasetIdsByCategoryIds(categoryIds),
+  ])
+
+  const union = new Set<string>([...kbDatasets, ...categoryDatasets])
+
+  // Cap pathological fan-out so retrieval does not emit oversized dataset lists.
+  if (union.size > GRANT_DATASET_SOFT_CAP) {
+    log.warn('resolveGrantedDatasetsForUser truncated: grant fan-out exceeds soft cap', {
+      userId,
+      tenantId,
+      total: union.size,
+      cap: GRANT_DATASET_SOFT_CAP,
+    })
+    return Array.from(union).slice(0, GRANT_DATASET_SOFT_CAP)
+  }
+
+  return Array.from(union)
+}
+
 // ============================================================================
 // CACHE OPERATIONS
 // ============================================================================
@@ -522,115 +582,13 @@ export async function invalidateAllAbilities(): Promise<void> {
   }
 }
 
-// ============================================================================
-// OPENSEARCH ABAC FILTER TRANSLATION
-// ============================================================================
-
-/**
- * @description Translates ABAC policy conditions into OpenSearch bool/filter clauses.
- * Converts allow rules to bool.should (OR — user matches ANY allow rule) and
- * deny rules to bool.must_not. Only processes rules targeting 'read' action on 'Document' subject.
- *
- * @param {AbacPolicyRule[]} policies - ABAC policy rules to translate
- * @param {Record<string, unknown>} _userAttributes - User attributes for future condition evaluation
- * @returns {Record<string, unknown>[]} Array of OpenSearch filter clauses
- *
- * @example
- * const filters = buildOpenSearchAbacFilters([
- *   { id: '1', effect: 'allow', action: 'read', subject: 'Document', conditions: { department: 'clinical' } }
- * ])
- * // Returns: [{ bool: { should: [{ term: { department: 'clinical' } }], minimum_should_match: 1 } }]
- */
-export function buildOpenSearchAbacFilters(
-  policies: AbacPolicyRule[],
-  _userAttributes: Record<string, unknown> = {}
-): Record<string, unknown>[] {
-  const allowFilters: Record<string, unknown>[] = []
-  const denyFilters: Record<string, unknown>[] = []
-
-  for (const policy of policies) {
-    // Only translate Document read rules to OpenSearch filters
-    if (policy.subject !== 'Document' || (policy.action !== 'read' && policy.action !== 'manage')) {
-      continue
-    }
-
-    const conditionFilters = translateConditions(policy.conditions)
-
-    if (policy.effect === 'allow') {
-      // Each allow rule contributes to a should clause (OR logic)
-      if (conditionFilters.length > 0) {
-        allowFilters.push(...conditionFilters)
-      }
-    } else if (policy.effect === 'deny') {
-      // Deny rules become must_not filters
-      denyFilters.push(...conditionFilters)
-    }
-  }
-
-  const result: Record<string, unknown>[] = []
-
-  // Wrap allow conditions in bool.should (user matches ANY allow rule)
-  if (allowFilters.length > 0) {
-    result.push({
-      bool: {
-        should: allowFilters,
-        minimum_should_match: 1,
-      },
-    })
-  }
-
-  // Deny conditions become must_not
-  if (denyFilters.length > 0) {
-    result.push({
-      bool: {
-        must_not: denyFilters,
-      },
-    })
-  }
-
-  return result
-}
-
-/**
- * @description Translates CASL condition key-value pairs to OpenSearch query clauses.
- * Handles simple equality (term), $in operator (terms), and $nin operator (must_not terms).
- *
- * @param {Record<string, unknown>} conditions - CASL-style conditions object
- * @returns {Record<string, unknown>[]} Array of OpenSearch query clauses
- */
-function translateConditions(conditions: Record<string, unknown>): Record<string, unknown>[] {
-  const filters: Record<string, unknown>[] = []
-
-  for (const [key, value] of Object.entries(conditions)) {
-    if (value === null || value === undefined) continue
-
-    // Handle operator objects ($in, $nin, etc.)
-    if (typeof value === 'object' && !Array.isArray(value)) {
-      const ops = value as Record<string, unknown>
-      if (Array.isArray(ops['$in'])) {
-        // $in operator maps to OpenSearch terms query
-        filters.push({ terms: { [key]: ops['$in'] } })
-      }
-      if (Array.isArray(ops['$nin'])) {
-        // $nin operator maps to must_not terms query
-        filters.push({ bool: { must_not: [{ terms: { [key]: ops['$nin'] } }] } })
-      }
-    } else {
-      // Simple equality maps to OpenSearch term query
-      filters.push({ term: { [key]: value } })
-    }
-  }
-
-  return filters
-}
-
 /**
  * @description Builds the complete access filter array for OpenSearch queries.
- * Combines mandatory tenant isolation with optional ABAC filters.
+ * Combines mandatory tenant isolation with optional additional filter clauses.
  * The tenant_id filter is ALWAYS present to ensure zero cross-tenant data leakage.
  *
  * @param {string} tenantId - The tenant ID for mandatory isolation
- * @param {Record<string, unknown>[]} abacFilters - Optional ABAC filter clauses from buildOpenSearchAbacFilters
+ * @param {Record<string, unknown>[]} abacFilters - Optional additional filter clauses.
  * @returns {Record<string, unknown>[]} Combined filter array for OpenSearch bool.filter
  */
 export function buildAccessFilters(
@@ -654,11 +612,11 @@ export function buildAccessFilters(
  */
 export const abilityService = {
   buildAbilityFor,
+  resolveGrantedDatasetsForUser,
   cacheAbility,
   loadCachedAbility,
   invalidateAbility,
   invalidateAllAbilities,
-  buildOpenSearchAbacFilters,
   buildAccessFilters,
 }
 

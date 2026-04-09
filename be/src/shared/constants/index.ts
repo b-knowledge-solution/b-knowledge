@@ -4,6 +4,7 @@
 
 export * from './roles.js'
 export * from './statuses.js'
+export * from './resource-grants.js'
 export * from './model-types.js'
 export * from './message-roles.js'
 export * from './entity-types.js'
