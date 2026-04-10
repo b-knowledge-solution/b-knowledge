@@ -12,6 +12,7 @@
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Workflow } from 'lucide-react'
+import { ADMIN_AGENT_NEW_ID, buildAdminAgentCanvasPath } from '@/app/adminRoutes'
 
 // ============================================================================
 // Component
@@ -19,7 +20,7 @@ import { Workflow } from 'lucide-react'
 
 /**
  * @description Subtle link component offering "Create as Agent Workflow (Advanced)" option
- * in chat assistant creation flows. Navigates to /agents/new?mode=chat.
+ * in chat assistant creation flows. Navigates to the admin agent canvas create route.
  * @returns {JSX.Element} Rendered agent workflow link with icon and description
  */
 export function CreateChatAssistantAgentLink() {
@@ -30,7 +31,8 @@ export function CreateChatAssistantAgentLink() {
    * @description Navigate to agent canvas with chat mode pre-configured
    */
   const handleClick = () => {
-    navigate('/agent-studio/agents/new?mode=chat')
+    // Preserve the dynamic `:id` route contract by treating `new` as the canvas pseudo-id.
+    navigate(`${buildAdminAgentCanvasPath(ADMIN_AGENT_NEW_ID)}?mode=chat`)
   }
 
   return (

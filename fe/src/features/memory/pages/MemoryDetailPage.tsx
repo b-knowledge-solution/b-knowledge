@@ -14,6 +14,7 @@ import { ArrowLeft, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { globalMessage } from '@/lib/globalMessage'
+import { ADMIN_MEMORY_ROUTE } from '@/app/adminRoutes'
 
 import { useMemory, useUpdateMemory } from '../api/memoryQueries'
 import { MemoryMessageTable } from '../components/MemoryMessageTable'
@@ -94,7 +95,7 @@ export default function MemoryDetailPage() {
         <p className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
           {t('common.notFound', { defaultValue: 'Not Found' })}
         </p>
-        <Button variant="outline" onClick={() => navigate('/agent-studio/memory')}>
+        <Button variant="outline" onClick={() => navigate(ADMIN_MEMORY_ROUTE)}>
           <ArrowLeft size={16} className="mr-1" />
           {t('common.back', { defaultValue: 'Back' })}
         </Button>
@@ -110,7 +111,7 @@ export default function MemoryDetailPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/agent-studio/memory')}
+            onClick={() => navigate(ADMIN_MEMORY_ROUTE)}
             className="h-8 w-8 p-0"
           >
             <ArrowLeft size={18} />
