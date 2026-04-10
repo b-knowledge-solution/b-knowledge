@@ -2,6 +2,7 @@ import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
 
 export const unitTestFiles = [
+  'tests/app/routeConfig.test.ts',
   'tests/components/llm-presets.test.ts',
   'tests/config.test.ts',
   'tests/features/agent/agent.stub.test.ts',
