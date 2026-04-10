@@ -84,13 +84,13 @@ describe('EffectiveAccessPage — decodePermissionKey', () => {
 })
 
 describe('EffectiveAccessPage — buildUserDetailUrl', () => {
-  it('Test 8: builds /iam/users/:id?tab=permissions for a numeric id', () => {
-    expect(buildUserDetailUrl(42)).toBe('/iam/users/42?tab=permissions')
+  it('Test 8: builds /admin/iam/users/:id?tab=permissions for a numeric id', () => {
+    expect(buildUserDetailUrl(42)).toBe('/admin/iam/users/42?tab=permissions')
   })
 
   it('Test 9: always targets the P5.2 permissions tab deep-link shape', () => {
     // Guard regression: the exact substring must be preserved so the P5.2
     // UserDetailPage tab-sync logic still reads ?tab=permissions on arrival.
-    expect(buildUserDetailUrl(1)).toMatch(/\/iam\/users\/\d+\?tab=permissions$/)
+    expect(buildUserDetailUrl(1)).toMatch(/\/admin\/iam\/users\/\d+\?tab=permissions$/)
   })
 })

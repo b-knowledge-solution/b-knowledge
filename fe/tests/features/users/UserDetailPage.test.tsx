@@ -50,7 +50,7 @@ function renderAt(url: string) {
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={[url]}>
         <Routes>
-          <Route path="/iam/users/:id" element={<UserDetailPage />} />
+          <Route path="/admin/iam/users/:id" element={<UserDetailPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -63,20 +63,20 @@ describe('UserDetailPage', () => {
   })
 
   it('defaults to the profile tab when no ?tab param is set', () => {
-    renderAt('/iam/users/42')
+    renderAt('/admin/iam/users/42')
     const profileTrigger = screen.getByRole('tab', { name: 'users.detail.tabs.profile' })
     expect(profileTrigger.getAttribute('data-state')).toBe('active')
   })
 
   it('opens the permissions tab when ?tab=permissions is in the URL', () => {
-    const { container } = renderAt('/iam/users/42?tab=permissions')
+    const { container } = renderAt('/admin/iam/users/42?tab=permissions')
     // The perms TabsContent should not be hidden by Radix
     const permsContent = container.querySelector('[id$="content-permissions"]')
     expect(permsContent?.getAttribute('data-state')).toBe('active')
   })
 
   it('switches tabs on click', () => {
-    renderAt('/iam/users/42')
+    renderAt('/admin/iam/users/42')
     // Profile tab is active initially → no override-editor stub yet
     expect(screen.queryByTestId('override-editor-stub')).toBeNull()
     const permsTrigger = screen.getByRole('tab', { name: 'users.detail.tabs.permissions' })
