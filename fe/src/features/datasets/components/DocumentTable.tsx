@@ -27,6 +27,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { Checkbox } from '@/components/Checkbox'
+import { buildAdminDatasetChunkPath } from '@/app/adminRoutes'
 import ProcessLogDialog from './ProcessLogDialog'
 import UploadNewVersionDialog from './UploadNewVersionDialog'
 import MetadataManageDialog from './MetadataManageDialog'
@@ -293,13 +294,13 @@ const DocumentTable: React.FC<DocumentTableProps> = ({ datasetId, documents, loa
                       )}
                       <TooltipProvider>
                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span
-                              className="font-medium truncate block cursor-pointer text-primary hover:underline transition-colors"
-                              onClick={() => navigate(`/data-studio/datasets/${datasetId}/documents/${doc.id}/chunks`)}
-                            >
-                              {doc.name}
-                            </span>
+                              <TooltipTrigger asChild>
+                                <span
+                                  className="font-medium truncate block cursor-pointer text-primary hover:underline transition-colors"
+                                  onClick={() => navigate(buildAdminDatasetChunkPath(datasetId, doc.id))}
+                                >
+                                  {doc.name}
+                                </span>
                           </TooltipTrigger>
                           <TooltipContent>{doc.name}</TooltipContent>
                         </Tooltip>

@@ -14,6 +14,7 @@ import {
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { ADMIN_DATASETS_ROUTE } from '@/app/adminRoutes'
 import { useHasPermission } from '@/lib/permissions'
 import { PERMISSION_KEYS } from '@/constants/permission-keys'
 import { datasetApi } from '../api/datasetApi'
@@ -104,7 +105,7 @@ const DatasetDetailPage: React.FC = () => {
     datasetApi
       .getDataset(id)
       .then(setDataset)
-      .catch(() => navigate('/data-studio/datasets'))
+      .catch(() => navigate(ADMIN_DATASETS_ROUTE))
       .finally(() => setLoadingDataset(false));
   }, [id, navigate]);
 
@@ -140,7 +141,7 @@ const DatasetDetailPage: React.FC = () => {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate('/data-studio/datasets')}
+          onClick={() => navigate(ADMIN_DATASETS_ROUTE)}
         >
           <ArrowLeft size={18} />
         </Button>

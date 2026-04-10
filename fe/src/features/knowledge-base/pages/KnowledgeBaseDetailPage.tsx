@@ -29,6 +29,9 @@ import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { globalMessage } from '@/lib/globalMessage'
+import {
+  ADMIN_KNOWLEDGE_BASE_ROUTE,
+} from '@/app/adminRoutes'
 
 import {
   getKnowledgeBaseById,
@@ -140,7 +143,7 @@ const KnowledgeBaseDetailPage = () => {
         <div className="mb-6 shrink-0">
           <Button
             variant="ghost"
-            onClick={() => navigate('/data-studio/knowledge-base')}
+            onClick={() => navigate(ADMIN_KNOWLEDGE_BASE_ROUTE)}
             className="mb-2"
           >
             <ArrowLeft size={16} className="mr-2" />
@@ -241,7 +244,7 @@ const KnowledgeBaseDetailPage = () => {
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         onKnowledgeBaseUpdated={fetchKnowledgeBase}
-        onKnowledgeBaseDeleted={() => navigate('/data-studio/knowledge-base')}
+        onKnowledgeBaseDeleted={() => navigate(ADMIN_KNOWLEDGE_BASE_ROUTE)}
       />
 
     </div>

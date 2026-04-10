@@ -153,6 +153,25 @@ export function buildAdminKnowledgeBasePath(knowledgeBaseId: string): string {
 }
 
 /**
+ * @description Builds the admin dataset detail path for a specific dataset
+ * @param {string} datasetId - Dataset identifier
+ * @returns {string} Concrete admin dataset detail URL
+ */
+export function buildAdminDatasetPath(datasetId: string): string {
+  return ADMIN_DATASET_DETAIL_ROUTE.replace(':id', datasetId)
+}
+
+/**
+ * @description Builds the admin dataset chunk detail path for a specific document inside a dataset
+ * @param {string} datasetId - Dataset identifier
+ * @param {string} docId - Document identifier
+ * @returns {string} Concrete admin dataset chunk detail URL
+ */
+export function buildAdminDatasetChunkPath(datasetId: string, docId: string): string {
+  return ADMIN_DATASET_CHUNK_DETAIL_ROUTE.replace(':id', datasetId).replace(':docId', docId)
+}
+
+/**
  * @description Builds the hidden admin code-graph path for a knowledge base
  * @param {string} kbId - Knowledge-base identifier
  * @returns {string} Concrete admin code-graph URL
@@ -168,6 +187,22 @@ export function buildAdminCodeGraphPath(kbId: string): string {
  */
 export function buildAdminAgentCanvasPath(agentId: string): string {
   return ADMIN_AGENT_CANVAS_ROUTE.replace(':id', agentId)
+}
+
+/**
+ * @description Builds the admin IAM user-detail path, optionally preserving the selected tab
+ * @param {string | number} userId - User identifier
+ * @param {string} [tab] - Optional detail-tab query parameter
+ * @returns {string} Concrete admin IAM user-detail URL
+ */
+export function buildAdminUserDetailPath(userId: string | number, tab?: string): string {
+  const detailPath = ADMIN_USER_DETAIL_ROUTE.replace(':id', String(userId))
+  if (!tab) {
+    return detailPath
+  }
+
+  const params = new URLSearchParams({ tab })
+  return `${detailPath}?${params.toString()}`
 }
 
 /**

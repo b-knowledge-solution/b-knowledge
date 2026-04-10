@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { globalMessage } from '@/lib/globalMessage'
+import { buildAdminCodeGraphPath } from '@/app/adminRoutes'
 import {
   getDocumentCategories,
   createDocumentCategory,
@@ -108,7 +109,7 @@ const CodeGraphPanel = ({ datasetId }: { datasetId: string }) => {
           variant="outline"
           size="sm"
           className="text-xs"
-          onClick={() => navigate(`/code-graph/${datasetId}`)}
+          onClick={() => navigate(buildAdminCodeGraphPath(datasetId))}
         >
           <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
           {t('knowledgeBase.viewFullGraph', 'View Full Graph')}
