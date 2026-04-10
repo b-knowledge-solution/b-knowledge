@@ -5,6 +5,7 @@
  */
 import { useTranslation } from 'react-i18next'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
+import { ADMIN_USERS_ROUTE } from '@/app/adminRoutes'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { OverrideEditor } from '@/features/permissions/components/OverrideEditor'
 import { useUser } from '../api/userQueries'
@@ -54,7 +55,7 @@ export default function UserDetailPage() {
           {t('users.detail.notFound')}
         </h3>
         <Link
-          to="/iam/users"
+          to={ADMIN_USERS_ROUTE}
           className="mt-2 text-sm text-primary-600 hover:underline dark:text-primary-400"
         >
           {t('users.detail.backToList')}
@@ -85,7 +86,7 @@ export default function UserDetailPage() {
     <div className="p-6 space-y-4">
       <div>
         <Link
-          to="/iam/users"
+          to={ADMIN_USERS_ROUTE}
           className="text-xs text-slate-500 hover:underline dark:text-slate-400"
         >
           {t('users.detail.backToList')}

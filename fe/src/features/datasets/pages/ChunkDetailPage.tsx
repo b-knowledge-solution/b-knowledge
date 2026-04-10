@@ -1,6 +1,6 @@
 /**
  * @fileoverview Chunk detail page with split-view document preview and chunk list.
- * Route: /data-studio/datasets/:id/documents/:docId/chunks
+ * Route: /admin/data-studio/datasets/:id/documents/:docId/chunks
  *
  * Full-page layout with document preview on the left and a scrollable chunk
  * list on the right. Supports chunk CRUD operations (edit, delete, add).

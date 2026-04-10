@@ -4,7 +4,7 @@
  * Single-feature view: admin picks ONE permission key from a dropdown, page
  * fires exactly ONE `useWhoCanDo(action, subject)` call, and renders the
  * resulting users as a clickable table that drills into the P5.2 per-user
- * override editor via `/iam/users/:id?tab=permissions`.
+ * override editor via `/admin/iam/users/:id?tab=permissions`.
  *
  * Design rationale (per 5-RESEARCH §6 + §12): fanning out `whoCanDo` across
  * the full ~100-key catalog is O(keys × principals) and too expensive for v1.
@@ -20,6 +20,7 @@
  */
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { buildAdminUserDetailPath } from '@/app/adminRoutes'
 import { PERMISSION_KEYS } from '@/constants/permission-keys'
 import { useWhoCanDo } from '@/features/permissions/api/permissionsQueries'
 import { groupPermissionKeys } from '@/features/permissions/components/PermissionMatrix'
@@ -210,10 +211,10 @@ export function decodePermissionKey(key: string): { action: string; subject: str
 /**
  * @description Builds the deep-link URL to the P5.2 UserDetailPage permissions tab.
  * @param {number} userId - Target user numeric id.
- * @returns {string} `/iam/users/:id?tab=permissions` path string.
+ * @returns {string} `/admin/iam/users/:id?tab=permissions` path string.
  */
 export function buildUserDetailUrl(userId: number): string {
-  return `/iam/users/${userId}?tab=permissions`
+  return buildAdminUserDetailPath(userId, 'permissions')
 }
 
 /**

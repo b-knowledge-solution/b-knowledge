@@ -10,6 +10,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { buildAdminUserDetailPath } from '@/app/adminRoutes'
 import { Loader2, Users, KeyRound, Cloud, MoreHorizontal, Globe } from 'lucide-react'
 import {
   Table,
@@ -94,7 +95,7 @@ export function RoleManagementTable({
    * @param {string} userId - The id of the user whose row was clicked.
    */
   const handleRowNavigate = (userId: string) => {
-    navigate(`/iam/users/${userId}`)
+    navigate(buildAdminUserDetailPath(userId))
   }
 
   // Track which user's role select is pending confirmation
