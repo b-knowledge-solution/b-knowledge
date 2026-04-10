@@ -18,6 +18,10 @@ const mockDeleteMutateAsync = vi.fn()
 const mockDuplicateMutateAsync = vi.fn()
 const mockNavigateWithLoader = vi.fn()
 const mockSetSearchParams = vi.fn()
+const { mockGlobalMessageSuccess, mockGlobalMessageError } = vi.hoisted(() => ({
+  mockGlobalMessageSuccess: vi.fn(),
+  mockGlobalMessageError: vi.fn(),
+}))
 
 vi.mock('@/features/agents/api/agentQueries', () => ({
   useAgents: () => mockUseAgents(),
@@ -66,13 +70,30 @@ vi.mock('@/features/agents/components/AgentCard', () => ({
 }))
 
 vi.mock('@/features/agents/components/TemplateGallery', () => ({
-  TemplateGallery: () => <div data-testid="template-gallery">Templates</div>,
+  TemplateGallery: ({ onUseTemplate }: any) => (
+    <div data-testid="template-gallery">
+      Templates
+      <button
+        data-testid="use-template"
+        onClick={() =>
+          onUseTemplate({
+            id: 'template-1',
+            name: 'Template Agent',
+            description: 'Template description',
+            mode: 'pipeline',
+          })
+        }
+      >
+        Use Template
+      </button>
+    </div>
+  ),
 }))
 
-vi.mock('@/app/App', () => ({
+vi.mock('@/lib/globalMessage', () => ({
   globalMessage: {
-    success: vi.fn(),
-    error: vi.fn(),
+    success: mockGlobalMessageSuccess,
+    error: mockGlobalMessageError,
   },
 }))
 
@@ -169,6 +190,8 @@ describe('AgentListPage', () => {
     vi.clearAllMocks()
     mockSetSearchParams.mockReset()
     mockNavigateWithLoader.mockReset()
+    mockGlobalMessageSuccess.mockReset()
+    mockGlobalMessageError.mockReset()
   })
 
   it('shows loading skeleton when data is loading', () => {
@@ -264,5 +287,20 @@ describe('AgentListPage', () => {
     render(<AgentListPage />)
 
     expect(screen.getAllByText('agents.browseTemplates').length).toBeGreaterThan(0)
+  })
+
+  it('navigates to the admin agent canvas after creating from a template', async () => {
+    mockUseAgents.mockReturnValue({ data: { data: [], total: 0 }, isLoading: false })
+    mockCreateMutateAsync.mockResolvedValue(buildAgent({ id: 'agent-template-1' }))
+
+    render(<AgentListPage />)
+
+    fireEvent.click(screen.getByTestId('use-template'))
+
+    await waitFor(() => {
+      expect(mockNavigateWithLoader).toHaveBeenCalledWith(
+        '/admin/agent-studio/agents/agent-template-1'
+      )
+    })
   })
 })
