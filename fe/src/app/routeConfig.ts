@@ -225,14 +225,14 @@ export function getRouteMetadata(pathname: string): RouteMetadata {
   // Match dynamic routes whose contract includes parameters or hidden admin paths.
   for (const matcher of ROUTE_MATCHERS) {
     if (matcher.test.test(pathname)) {
-      return ROUTE_CONFIG[matcher.key]
+      return ROUTE_CONFIG[matcher.key]!
     }
   }
 
   // Reuse list metadata for nested detail pages that stay within the same section.
   for (const prefixMatch of ROUTE_PREFIX_MATCHES) {
     if (pathname.startsWith(prefixMatch.prefix)) {
-      return ROUTE_CONFIG[prefixMatch.key]
+      return ROUTE_CONFIG[prefixMatch.key]!
     }
   }
 

@@ -169,3 +169,12 @@ export function buildAdminCodeGraphPath(kbId: string): string {
 export function buildAdminAgentCanvasPath(agentId: string): string {
   return ADMIN_AGENT_CANVAS_ROUTE.replace(':id', agentId)
 }
+
+/**
+ * @description Converts an absolute admin route contract into the nested child path used under the `/admin` parent route
+ * @param {string} route - Absolute admin route contract
+ * @returns {string} Relative child path for nested React Router configuration
+ */
+export function toAdminChildPath(route: string): string {
+  return route.replace('/admin/', '')
+}
