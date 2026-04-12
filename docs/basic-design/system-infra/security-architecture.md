@@ -1,6 +1,24 @@
 # Security Architecture
 
-## Authentication Flow
+> Current authentication and authorization architecture for the registry-backed permission system.
+
+## 1. Overview
+
+B-Knowledge uses session-based authentication and a registry-backed authorization model. Authentication establishes the user and active tenant. Authorization is then enforced through a permission catalog synchronized from backend code into database tables, a CASL ability builder that composes role defaults, user overrides, and resource grants, and route middleware that distinguishes flat permission checks from row-scoped ability checks.
+
+The current source-of-truth chain is:
+
+1. Backend permission definitions in module `*.permissions.ts` files
+2. Boot-time sync into the `permissions` catalog table
+3. Tenant-scoped role and override tables (`role_permissions`, `user_permission_overrides`)
+4. Row-scoped grant table (`resource_grants`)
+5. Ability construction in [`be/src/shared/services/ability.service.ts`](/mnt/d/Project/b-solution/b-knowledge/be/src/shared/services/ability.service.ts)
+6. Route enforcement via [`requirePermission`](/mnt/d/Project/b-solution/b-knowledge/be/src/shared/middleware/auth.middleware.ts) and [`requireAbility`](/mnt/d/Project/b-solution/b-knowledge/be/src/shared/middleware/auth.middleware.ts)
+7. Frontend consumers via [`/api/auth/abilities`](/mnt/d/Project/b-solution/b-knowledge/be/src/modules/auth) and [`/api/permissions/catalog`](/mnt/d/Project/b-solution/b-knowledge/be/src/modules/permissions/routes/permissions.routes.ts)
+
+`rbac.ts` remains in the codebase as a compatibility shim and helper surface. It is not the canonical permission definition layer.
+
+## 2. Authentication Flow
 
 ```mermaid
 sequenceDiagram
@@ -13,151 +31,158 @@ sequenceDiagram
     alt Local Login
         U->>N: POST /api/auth/login {email, password}
         N->>B: Forward request
-        B->>B: Validate credentials (bcrypt)
-        B->>V: Create session
+        B->>B: Validate credentials
+        B->>V: Create session with user + currentOrgId
         V-->>B: Session ID
-        B-->>U: Set-Cookie: connect.sid (httpOnly, secure)
+        B-->>U: Set-Cookie: connect.sid
     end
 
     alt Azure AD OAuth2
         U->>N: GET /api/auth/azure
-        N->>B: Forward
-        B-->>U: Redirect to Azure AD authorize URL
-        U->>A: Authenticate with Microsoft
+        N->>B: Forward request
+        B-->>U: Redirect to Azure AD
+        U->>A: Authenticate
         A-->>U: Redirect with auth code
-        U->>B: GET /api/auth/azure/callback?code=xxx
+        U->>B: GET /api/auth/azure/callback?code=...
         B->>A: Exchange code for tokens
-        A-->>B: ID token + access token
-        B->>B: Find or create user by azure_ad_id
-        B->>V: Create session
+        B->>B: Find or provision user
+        B->>V: Create session with tenant context
         B-->>U: Set-Cookie + redirect to SPA
     end
 ```
 
-## Authentication Methods
+## 3. Authorization Architecture
 
-| Method | When Used | Details |
-|--------|-----------|---------|
-| Local login | Development, root admin | Email + bcrypt password; disabled in prod via `ENABLE_LOCAL_LOGIN=false` |
-| Azure AD OAuth2 | Production SSO | OIDC flow with PKCE; auto-provisions users on first login |
-| Session cookie | All authenticated requests | `connect.sid` with Valkey backing store |
-
-## Authorization Model
-
-B-Knowledge uses a dual authorization approach:
-
-- **RBAC** (Role-Based): Global role hierarchy via CASL
-- **ABAC** (Attribute-Based): Per-dataset and per-project permissions
-
-### Role Hierarchy
-
-```mermaid
-graph TD
-    SA["super-admin<br/>Full system access"]
-    A["admin<br/>Tenant management"]
-    L["leader<br/>Team + dataset management"]
-    M["member<br/>Read + use assigned resources"]
-
-    SA --> A
-    A --> L
-    L --> M
-```
-
-Each higher role inherits all abilities of lower roles.
-
-### Request Authorization Pipeline
+### 3.1 Registry-to-runtime pipeline
 
 ```mermaid
 flowchart TD
-    req["Incoming Request"] --> auth{"requireAuth<br/>middleware"}
-    auth -->|"No session"| r401["401 Unauthorized"]
-    auth -->|"Valid session"| perm{"requirePermission<br/>middleware"}
-    perm -->|"Route-level<br/>role check"| role{"User role ≥<br/>required role?"}
-    role -->|No| r403["403 Forbidden"]
-    role -->|Yes| ability{"requireAbility<br/>middleware"}
-    ability -->|"CASL check on<br/>resource + action"| can{"user.can(action,<br/>resource)?"}
-    can -->|No| r403
-    can -->|Yes| handler["Route Handler"]
-    handler --> abac{"Resource-level<br/>ABAC check?"}
-    abac -->|"Dataset/Project"| check["Check grantee_type<br/>+ permission level"]
-    abac -->|"No ABAC"| ok["200 OK"]
-    check -->|Denied| r403
-    check -->|Allowed| ok
+    registry["Module permission definitions<br/>`*.permissions.ts`"] --> sync["Boot sync<br/>`syncPermissionsCatalog()`"]
+    sync --> permissions["`permissions` catalog"]
+    permissions --> rolePerms["`role_permissions`"]
+    permissions --> overrides["`user_permission_overrides`"]
+    permissions --> grants["`resource_grants`"]
+    rolePerms --> ability["`buildAbilityFor()`"]
+    overrides --> ability
+    grants --> ability
+    ability --> permMW["`requirePermission(key)`"]
+    ability --> abilityMW["`requireAbility(action, subject, idParam?)`"]
+    ability --> authAbilities["GET `/api/auth/abilities`"]
+    permissions --> catalog["GET `/api/permissions/catalog`"]
+    authAbilities --> feAbility["FE CASL provider / `<Can>`"]
+    catalog --> feCatalog["FE PermissionCatalogProvider / `useHasPermission()`"]
 ```
 
-### ABAC Permission Grants
+### 3.2 Permission catalog and role model
 
-Resources like datasets, chat assistants, and search apps use a grantee model:
+The active tenant role set is:
 
-| Field | Values | Description |
-|-------|--------|-------------|
-| `grantee_type` | `user`, `team` | Who receives the permission |
-| `grantee_id` | UUID | User or team ID |
-| `permission` | `view`, `edit`, `manage` | Access level granted |
+| Role | Scope |
+|------|-------|
+| `super-admin` | Platform-wide unrestricted access |
+| `admin` | Full tenant administration |
+| `leader` | Tenant operator with narrower management scope |
+| `user` | Baseline end-user access |
 
-## Security Headers
+The live permission model is no longer a static route-to-role map. Instead:
 
-Configured via Helmet middleware:
+- Backend features declare permissions with keys such as `permissions.view` or `knowledge_base.create`
+- Startup runs `syncPermissionsCatalog()` to upsert the current registry into `permissions`
+- `role_permissions` grants catalog keys to roles per tenant
+- `user_permission_overrides` applies allow or deny exceptions for individual users
+- `resource_grants` adds row-scoped access for `KnowledgeBase` and `DocumentCategory`
 
-| Header | Value | Purpose |
-|--------|-------|---------|
-| `Content-Security-Policy` | `frame-ancestors` relaxed | Allow embedding in customer sites via widgets |
-| `X-Content-Type-Options` | `nosniff` | Prevent MIME-type sniffing |
-| `X-Frame-Options` | Relaxed (for embeds) | Controlled framing for widget use cases |
-| `Strict-Transport-Security` | `max-age=31536000` | Enforce HTTPS |
-| `X-XSS-Protection` | `0` | Disabled (CSP preferred) |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` | Limit referrer leakage |
+### 3.3 Ability construction
 
-## Rate Limiting
+[`ability.service.ts`](/mnt/d/Project/b-solution/b-knowledge/be/src/shared/services/ability.service.ts) builds a tenant-scoped CASL ability using this order:
 
-| Scope | Limit | Window | Key |
-|-------|-------|--------|-----|
-| General API | 1000 requests | 15 minutes | IP address |
-| Auth endpoints | 20 requests | 15 minutes | IP address |
+1. Super-admin shortcut
+2. Role-default rules from `role_permissions`
+3. Row-scoped resource grants from `resource_grants`
+4. Knowledge-base to `DocumentCategory` read cascade where applicable
+5. User-level allow overrides
+6. ABAC policy overlay compatibility
+7. User-level deny overrides last so deny wins
 
-Implemented via `express-rate-limit` with Valkey store for distributed counting.
+This keeps authorization data-driven while still supporting row-scoped checks for KB and category resources.
 
-## Session Configuration
+## 4. Enforcement Path
 
-| Property | Value | Purpose |
-|----------|-------|---------|
-| `httpOnly` | `true` | Prevent JavaScript access to cookie |
-| `secure` | `true` (prod) | Cookie only sent over HTTPS |
-| `sameSite` | `lax` | CSRF protection while allowing top-level navigations |
-| `maxAge` | 7 days | Session TTL |
-| `store` | Valkey (connect-redis) | Distributed session storage |
-| `secret` | `SESSION_SECRET` env var | Must be strong random value in production |
-
-## CORS Policy
-
-- **Allowed origin**: Restricted to `FRONTEND_URL` environment variable
-- **Credentials**: `true` (cookies sent cross-origin)
-- **Methods**: `GET, POST, PUT, PATCH, DELETE, OPTIONS`
-- **Exposed headers**: `Content-Disposition` (for file downloads)
-
-## Input Validation
+### 4.1 Middleware pipeline
 
 ```mermaid
-flowchart LR
-    req["Request"] --> ct{"Content-Type<br/>check"}
-    ct -->|"Invalid"| r415["415 Unsupported<br/>Media Type"]
-    ct -->|"Valid"| zod["Zod Schema<br/>Validation"]
-    zod -->|"Invalid"| r400["400 Bad Request<br/>+ field errors"]
-    zod -->|"Valid"| sanitize["Sanitize &<br/>Transform"]
-    sanitize --> handler["Route Handler"]
+flowchart TD
+    req["Incoming request"] --> auth["`requireAuth`"]
+    auth -->|"Missing session"| r401["401 Unauthorized"]
+    auth -->|"Session valid"| route{"Route requires flat key or row check?"}
+    route -->|"Flat capability"| perm["`requirePermission(key)`"]
+    route -->|"Instance/row scope"| ability["`requireAbility(action, subject, idParam?)`"]
+    perm -->|"Denied"| r403["403 Forbidden"]
+    ability -->|"Denied"| r403
+    perm -->|"Allowed"| validate["Zod `validate()` if mutation"]
+    ability -->|"Allowed"| validate
+    validate --> handler["Controller / service"]
+    handler --> ok["2xx response"]
 ```
 
-- All mutation endpoints (POST, PUT, PATCH, DELETE) use Zod schemas via `validate()` middleware
-- Content-type enforcement prevents request smuggling
-- Zod schemas strip unknown fields (`.strict()` or `.strip()`)
-- Error responses include per-field validation details
+### 4.2 `requirePermission` vs `requireAbility`
 
-## Security Checklist (Production)
+| Middleware | Use when | Input | Decision shape |
+|------------|----------|-------|----------------|
+| `requirePermission` | The route depends on a catalog key such as `permissions.manage` or `users.view` | Permission key | Resolves key to `(action, subject)` via the catalog and performs a class-level CASL check |
+| `requireAbility` | The route must evaluate a specific resource instance | CASL action, subject, and optional route param id | Performs a row-scoped CASL check against an instance-shaped subject payload |
 
-- [ ] Set `ENABLE_LOCAL_LOGIN=false`
-- [ ] Generate strong `SESSION_SECRET` (min 64 random characters)
-- [ ] Change all default database/service passwords
-- [ ] Configure TLS certificates (not self-signed)
-- [ ] Restrict CORS to production frontend URL
-- [ ] Enable Nginx rate limiting headers
-- [ ] Review CSP `frame-ancestors` for embed domains
+This distinction is important:
+
+- `requirePermission` answers “does this user hold this feature capability in the current tenant?”
+- `requireAbility` answers “can this user perform this action on this specific record?”
+
+The permissions module uses `requirePermission` for catalog/administration APIs. Resource-facing modules use `requireAbility` when ownership, tenant scoping, or grant-derived access must be evaluated against a concrete id.
+
+## 5. Frontend Security Consumers
+
+The frontend consumes two backend contracts:
+
+| Contract | Consumer | Purpose |
+|----------|----------|---------|
+| `GET /api/auth/abilities` | FE CASL provider in `fe/src/lib/ability.tsx` | Supplies serialized CASL rules for `<Can>` and row-scoped UI gating |
+| `GET /api/permissions/catalog` | `PermissionCatalogProvider` in `fe/src/lib/permissions.tsx` | Hydrates key → `(action, subject)` mapping for `useHasPermission()` |
+
+Frontend guidance:
+
+- Use `useHasPermission(PERMISSION_KEYS.X)` for flat capability checks driven by a catalog key
+- Use `<Can I="read" a="KnowledgeBase">` or the equivalent app ability hook for subject-aware checks
+- Do not implement new UI gates by comparing role strings
+
+## 6. Security Controls Around Authorization
+
+### 6.1 Headers and transport
+
+Helmet, CORS, secure cookies, and Nginx remain the outer security envelope:
+
+| Control | Purpose |
+|---------|---------|
+| Helmet headers | Browser hardening and content policy defaults |
+| `httpOnly` session cookie | Prevents client-side script access to session identifier |
+| `sameSite=lax` | Reduces CSRF exposure for session cookie flows |
+| Restricted CORS origins | Limits credentialed cross-origin access |
+| Rate limiting | Protects general API and auth endpoints from abuse |
+
+### 6.2 Validation and auditing
+
+- Mutating routes use Zod-backed `validate()` middleware before controller execution
+- Permission-denied mutations can emit audit records from authorization middleware
+- Permission and grant admin mutations are also expected to be observable through audit logging and effective-access tooling
+
+## 7. Compatibility Notes
+
+- `rbac.ts` should be read as compatibility and helper infrastructure, not as the place to add or remove permissions
+- Older route-role narratives are obsolete; current authorization depends on the catalog and ability engine
+- Legacy ABAC concepts may still appear in selected code paths, but the active permission data model is `permissions` + `role_permissions` + `user_permission_overrides` + `resource_grants`
+
+## 8. Related Docs
+
+- [API Design Overview](/basic-design/component/api-design-overview)
+- [API Endpoint Reference](/basic-design/component/api-design-endpoints)
+- [Database Design: Core Tables](/basic-design/database/database-design-core)
+- [Database Design: RAG Tables](/basic-design/database/database-design-rag)
