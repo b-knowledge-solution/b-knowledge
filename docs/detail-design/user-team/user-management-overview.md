@@ -1,157 +1,142 @@
 # User Management Overview
 
-## Overview
+> High-level map of how user lifecycle, role assignment, per-user overrides, and team-derived access work in the current permission system.
 
-User management covers the full lifecycle of user accounts in B-Knowledge, from creation through role assignment, profile updates, and deletion. Users can be created via Azure AD auto-provisioning or manual admin creation.
+## 1. Overview
 
-## User Lifecycle
+User management now sits on top of the permission-system milestone rather than a standalone role matrix. A user's effective access is composed from:
+
+1. one tenant role from the active four-role model: `super-admin`, `admin`, `leader`, `user`
+2. tenant-scoped role defaults from `role_permissions`
+3. explicit per-user allow or deny rows from `user_permission_overrides`
+4. row-scoped access inherited through `resource_grants`, including grants addressed to teams
+
+This page summarizes the lifecycle and the operational surfaces. For backend and frontend extension work, continue to the auth detail docs and the permission maintainer guide.
+
+## 2. User Lifecycle
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Invited: Admin creates user
-    [*] --> AutoCreated: First Azure AD login
+    [*] --> Provisioned: Manual create or first SSO login
+    Provisioned --> Active: Session issued
 
-    Invited --> Active: User logs in
-    AutoCreated --> Active: Session created
-
-    Active --> ProfileUpdated: Update name/email/avatar
-    Active --> RoleChanged: Admin changes role
-    Active --> PermissionsUpdated: Permissions modified
+    Active --> ProfileUpdated: Admin or self-service profile changes
+    Active --> RoleChanged: Admin updates tenant role
+    Active --> OverridesChanged: Admin edits allow/deny overrides
+    Active --> TeamMembershipChanged: Admin updates user_teams membership
+    Active --> ResourceAccessChanged: Admin adds or removes resource_grants
 
     ProfileUpdated --> Active
     RoleChanged --> Active
-    PermissionsUpdated --> Active
+    OverridesChanged --> Active
+    TeamMembershipChanged --> Active
+    ResourceAccessChanged --> Active
 
     Active --> Disabled: Admin disables account
     Disabled --> Active: Admin re-enables
-
-    Active --> Deleted: Admin deletes user
-    Disabled --> Deleted: Admin deletes user
+    Disabled --> Deleted: Admin deletes account
+    Active --> Deleted: Admin deletes account
     Deleted --> [*]
 ```
 
-## User Creation Paths
+## 3. Provisioning Paths
 
 ```mermaid
 flowchart TD
-    subgraph Azure AD Auto-Create
-        A1[User authenticates via Azure AD] --> A2{User exists in DB?}
-        A2 -->|No| A3[Create user from AD claims]
-        A3 --> A4[Assign default role: member]
-        A4 --> A5[Assign to default organization]
-        A2 -->|Yes| A6[Update profile from AD claims]
+    subgraph SSO Provisioning
+        A1[Azure AD login succeeds] --> A2{User exists?}
+        A2 -->|No| A3[Create tenant user record]
+        A3 --> A4[Assign default role user]
+        A4 --> A5[Persist session and active org]
+        A2 -->|Yes| A6[Refresh profile fields]
+        A6 --> A5
     end
 
-    subgraph Manual Admin Create
-        B1[Admin opens user management] --> B2[Fill user form]
-        B2 --> B3[POST /api/users]
-        B3 --> B4[Validate with Zod schema]
-        B4 --> B5[Create user record]
-        B5 --> B6[Assign specified role]
+    subgraph Admin Provisioning
+        B1[Admin opens user create flow] --> B2[POST /api/users]
+        B2 --> B3[Validate payload]
+        B3 --> B4[Create user with selected role]
+        B4 --> B5[Optional follow-up: add team memberships and overrides]
     end
 ```
 
-## User Actions Overview
+The default tenant role is `user`. Older documentation that treated another label as the default role is historical only.
+
+## 4. Current Role Model
+
+| Role | Purpose | Notes |
+|------|---------|-------|
+| `super-admin` | Platform-wide operator | Cross-tenant operator role; still short-circuits many checks |
+| `admin` | Tenant administrator | Can manage the permissions admin module |
+| `leader` | Tenant operator | Broader operational access than standard users |
+| `user` | Baseline authenticated user | Gains more access only through role updates, overrides, or grants |
+
+The role itself is only the baseline. It is no longer sufficient to document user access as "role equals permission set" because overrides and grants can change the result per user and per resource.
+
+## 5. Effective Access Composition
 
 ```mermaid
 flowchart LR
-    subgraph Profile
-        P1[Update display name]
-        P2[Update email]
-        P3[Upload avatar]
-        P4[Set language preference]
-    end
-
-    subgraph Access Control
-        AC1[Assign role]
-        AC2[Grant permissions]
-        AC3[Add to team]
-        AC4[Set dataset access]
-    end
-
-    subgraph Admin Actions
-        AD1[Create user]
-        AD2[Disable user]
-        AD3[Delete user]
-        AD4[View user activity]
-    end
-
-    User --> Profile
-    User --> Access_Control
-    Admin --> Admin_Actions
+    A[User session + active org] --> B[buildAbilityFor]
+    B --> C[role_permissions]
+    B --> D[user_permission_overrides]
+    B --> E[resource_grants]
+    E --> F[user principals]
+    E --> G[team principals]
+    C --> H[CASL ability]
+    D --> H
+    F --> H
+    G --> H
+    H --> I[Backend requirePermission / requireAbility]
+    H --> J[Frontend useHasPermission / Can]
 ```
 
-## Profile Management
+Key consequences for user-management documentation:
 
-| Field | Editable By | Sync Source | Notes |
-|-------|-------------|------------|-------|
-| `display_name` | Self, Admin | Azure AD (on login) | AD value takes precedence if SSO |
-| `email` | Admin only | Azure AD (on login) | Used as fallback match key |
-| `avatar` | Self | Manual upload | Stored in RustFS |
-| `language` | Self | - | `en`, `vi`, `ja` |
-| `azure_ad_id` | System | Azure AD | Immutable after link |
+- role changes affect the baseline permission catalog for the user
+- overrides are the canonical exception mechanism for one user
+- team membership matters because grants can target a team principal
+- resource sharing is no longer documented as a separate user-permission table
 
-## Role Assignment Rules
+## 6. Admin Surfaces
 
-```mermaid
-flowchart TD
-    A[Role change request] --> B{Who is requesting?}
-    B -->|super-admin| C[Can assign any role]
-    B -->|admin| D{Target role?}
-    D -->|leader or member| E[Allowed]
-    D -->|admin or super-admin| F[Denied: insufficient privilege]
-    B -->|leader/member| G[Denied: no role assignment rights]
+| Surface | Purpose | Current file |
+|---------|---------|--------------|
+| Role matrix | Edit baseline role permissions | `PermissionManagementPage` and `PermissionMatrix` |
+| Per-user detail | Inspect a single user and open the permissions tab | `fe/src/features/users/pages/UserDetailPage.tsx` |
+| Override editor | Add allow or deny exceptions for one user | `OverrideEditor` |
+| Effective access | Ask who can perform an action and drill into a user | `EffectiveAccessPage` |
+| Resource sharing modal | Maintain KB or category grants that later affect users | `ResourceGrantEditor` |
 
-    C --> H{Self-demotion?}
-    E --> H
-    H -->|Yes| I[Warning: confirm action]
-    H -->|No| J[Apply role change]
-```
+The FE admin workflow is intentionally split. `PermissionManagementPage` owns role-wide changes, while the user detail page owns per-user exceptions.
 
-| Assigner Role | Can Assign |
-|---------------|-----------|
-| super-admin | super-admin, admin, leader, member |
-| admin | leader, member |
-| leader | - |
-| member | - |
+## 7. Invalidation and Visibility of Changes
 
-## Permission Grant Model
+Permission mutations are persisted immediately, but the system does not promise an instant push refresh to every active browser tab. Current behavior is:
 
-Permissions can be granted at three levels:
+- role and grant mutations invalidate cached ability state centrally
+- user-specific mutations may still rely on broad invalidation rather than a targeted per-user session purge
+- FE admin surfaces show a session-refresh notice after successful permission changes
+- users reliably observe the new result on their next request or after refreshing the app
 
-| Level | Mechanism | Example |
-|-------|-----------|---------|
-| **Role** | Inherited from assigned role | admin gets `manage_users` |
-| **User** | Explicit per-user grant | User X gets `manage_datasets` |
-| **Team** | Inherited from team membership | Team Y members get dataset access |
+This means user-management operations should be documented as eventually visible within the active session, not as live websocket-driven updates.
 
-## IP History Tracking
+## 8. Compatibility Notes
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant AuthMiddleware
-    participant IPService
-    participant DB as PostgreSQL
+The canonical maintenance model is registry plus overrides plus grants, but some user-management routes still use legacy permission keys such as `manage_users`. Those routes remain part of the live system. Documentation should therefore say:
 
-    Client->>AuthMiddleware: Any authenticated request
-    AuthMiddleware->>AuthMiddleware: Extract IP from request headers
-    AuthMiddleware->>IPService: recordIP(userId, ip, userAgent)
-    IPService->>DB: INSERT INTO user_ip_history (user_id, ip, user_agent, timestamp)
-    Note over DB: Tracks every unique IP per user
-    AuthMiddleware->>AuthMiddleware: Continue to route handler
-```
+- use the permissions module for new role, override, and grant maintenance
+- expect some surrounding CRUD endpoints to still be protected by compatibility keys while the broader cleanup continues
 
-- IP is extracted from `X-Forwarded-For` or `req.ip`
-- Stored in `user_ip_history` table with timestamp and user agent
-- Admins can view IP history for audit purposes
-- Used for security monitoring and anomaly detection
-
-## Key Files
+## 9. Key Files
 
 | File | Purpose |
 |------|---------|
-| `be/src/modules/users/` | User module (controller, service, routes) |
-| `be/src/modules/auth/auth.service.ts` | User creation during Azure AD flow |
-| `be/src/shared/middleware/auth.middleware.ts` | IP tracking middleware |
-| `be/src/shared/config/rbac.js` | Role hierarchy and permission map |
+| `be/src/modules/users/` | User CRUD and profile endpoints |
+| `be/src/modules/permissions/routes/permissions.routes.ts` | Role, override, grant, and effective-access APIs |
+| `be/src/shared/services/ability.service.ts` | Effective access composition |
+| `be/src/shared/middleware/auth.middleware.ts` | `requirePermission` and `requireAbility` enforcement |
+| `fe/src/features/users/pages/PermissionManagementPage.tsx` | Entry page for the role matrix |
+| `fe/src/features/permissions/components/PermissionMatrix.tsx` | Role-by-role permission editing UI |
+| `fe/src/features/permissions/components/OverrideEditor.tsx` | Per-user overrides UI |
+| `fe/src/features/permissions/pages/EffectiveAccessPage.tsx` | "Who can do X?" inspection UI |

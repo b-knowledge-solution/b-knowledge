@@ -1,245 +1,154 @@
 # Team Management: Step-by-Step Detail
 
-## Overview
+> Detailed map of how teams affect access in the current system: membership remains a core entity, while shared access is primarily expressed through resource grants rather than standalone team-permission tables.
 
-Teams group users together for shared permission management. Permissions granted to a team cascade to all team members, simplifying access control for datasets and other resources.
+## 1. Overview
 
-## Team Operations Flow
+Teams still group users operationally, but the live permission model has changed. The canonical way for a team to influence access is now:
 
-```mermaid
-flowchart TD
-    A[Create Team] --> B[Add Members]
-    B --> C[Grant Permissions to Team]
-    C --> D[Members inherit team permissions]
-    D --> E[Use in RBAC/ABAC checks]
+1. manage `user_teams` membership
+2. create `resource_grants` whose grantee is that team
+3. let the ability builder merge those grants into the effective access of team members
 
-    F[Update Team] --> G[Modify name/description]
-    H[Remove Member] --> I[Revoke inherited permissions]
-    J[Delete Team] --> K[Cascade: remove memberships + permissions]
-```
+This means team management must distinguish between:
 
-## Create Team
+- team CRUD and membership administration
+- team-derived resource access
+- remaining compatibility gates on older routes
 
-```mermaid
-sequenceDiagram
-    participant Admin
-    participant Frontend
-    participant Backend
-    participant DB as PostgreSQL
-
-    Admin->>Frontend: Fill team creation form
-    Frontend->>Backend: POST /api/teams {name, description}
-
-    Backend->>Backend: requireAuth
-    Backend->>Backend: requireRole('admin')
-    Backend->>Backend: Validate Zod schema
-
-    Backend->>DB: Check team name uniqueness within org
-    alt Name taken
-        Backend-->>Frontend: 409 Team name already exists
-    end
-
-    Backend->>DB: INSERT INTO teams (name, description, org_id, created_by)
-    Backend-->>Frontend: 201 {team: {id, name, description}}
-    Frontend->>Admin: Show team created, navigate to team page
-```
-
-## Add Members
-
-```mermaid
-sequenceDiagram
-    participant Admin
-    participant Frontend
-    participant Backend
-    participant Valkey
-    participant DB as PostgreSQL
-
-    Admin->>Frontend: Select users to add
-    Frontend->>Backend: POST /api/teams/:id/members {userIds: [...]}
-
-    Backend->>Backend: requireAuth
-    Backend->>Backend: requirePermission('manage_users')
-
-    Backend->>DB: Verify team exists and belongs to org
-    Backend->>DB: Verify all userIds belong to same org
-    Backend->>DB: INSERT INTO user_teams (user_id, team_id) for each user
-
-    Backend->>Valkey: Invalidate permission cache for affected users
-    Backend-->>Frontend: 200 {added: count}
-    Frontend->>Admin: Update member list
-```
-
-## Grant Team Permissions
-
-```mermaid
-sequenceDiagram
-    participant Admin
-    participant Frontend
-    participant Backend
-    participant Valkey
-    participant DB as PostgreSQL
-
-    Admin->>Frontend: Configure team permissions
-    Frontend->>Backend: POST /api/teams/:id/permissions {permissions: [...]}
-
-    Backend->>Backend: requireAuth
-    Backend->>Backend: requireRole('admin')
-
-    loop Each permission
-        Backend->>Backend: Validate permission structure
-        Backend->>DB: INSERT INTO team_permissions (team_id, resource_type, resource_id, action)
-    end
-
-    Backend->>Valkey: Invalidate permission cache for all team members
-    Backend-->>Frontend: 200 {permissions: [...]}
-```
-
-### Permission Structure
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `resource_type` | string | `dataset`, `project`, `model_provider` |
-| `resource_id` | UUID | Specific resource or `*` for all |
-| `action` | string | `read`, `write`, `manage` |
-
-## Permission Cascade to Members
+## 2. Team Lifecycle
 
 ```mermaid
 flowchart TD
-    A[Team: Engineering] --> B[Permission: read Dataset X]
-    A --> C[Permission: write Dataset Y]
+    A[Create team] --> B[Add or remove members]
+    B --> C[Grant team access to KB or category]
+    C --> D[Ability builder resolves team-derived grants]
+    D --> E[Members gain effective resource access]
 
-    D[User Alice] -->|member of| A
-    E[User Bob] -->|member of| A
-
-    D --> F[Alice can read Dataset X]
-    D --> G[Alice can write Dataset Y]
-    E --> H[Bob can read Dataset X]
-    E --> I[Bob can write Dataset Y]
-
-    J[CASL Ability Builder] --> K[Load user permissions]
-    K --> L[Load team memberships]
-    L --> M[Load team permissions]
-    M --> N[Merge into ability]
+    B --> F[Membership changes]
+    F --> G[Invalidate cached abilities]
+    G --> E
 ```
 
-## Entity Relationship
-
-```mermaid
-erDiagram
-    teams {
-        uuid id PK
-        string name
-        string description
-        uuid org_id FK
-        uuid created_by FK
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    users {
-        uuid id PK
-        string email
-        string display_name
-        string role
-        uuid org_id FK
-    }
-
-    user_teams {
-        uuid id PK
-        uuid user_id FK
-        uuid team_id FK
-        timestamp joined_at
-    }
-
-    team_permissions {
-        uuid id PK
-        uuid team_id FK
-        string resource_type
-        uuid resource_id
-        string action
-        timestamp created_at
-    }
-
-    teams ||--o{ user_teams : "has members"
-    users ||--o{ user_teams : "belongs to"
-    teams ||--o{ team_permissions : "has permissions"
-```
-
-## Remove Member
+## 3. Create Team
 
 ```mermaid
 sequenceDiagram
     participant Admin
-    participant Frontend
-    participant Backend
-    participant Valkey
+    participant FE as Frontend
+    participant BE as Backend
     participant DB as PostgreSQL
 
-    Admin->>Frontend: Click remove on member
-    Frontend->>Backend: DELETE /api/teams/:teamId/members/:userId
-
-    Backend->>Backend: requireAuth
-    Backend->>Backend: requirePermission('manage_users')
-
-    Backend->>DB: DELETE FROM user_teams WHERE team_id = :teamId AND user_id = :userId
-    Backend->>Valkey: Invalidate permission cache for removed user
-    Backend-->>Frontend: 200 {removed: true}
+    Admin->>FE: Submit team form
+    FE->>BE: POST /api/teams
+    BE->>BE: requireAuth + current route auth guard
+    BE->>BE: Validate payload
+    BE->>DB: Insert team row
+    BE-->>FE: 201 Created
 ```
 
-## Delete Team (Cascade)
+Team CRUD still exists independently of the permissions module because teams are business entities, not just permission containers.
+
+## 4. Manage Membership
 
 ```mermaid
 sequenceDiagram
     participant Admin
-    participant Frontend
-    participant Backend
-    participant Valkey
+    participant FE as Frontend
+    participant BE as Backend
+    participant Cache as Ability Cache
     participant DB as PostgreSQL
 
-    Admin->>Frontend: Click delete team, confirm
-    Frontend->>Backend: DELETE /api/teams/:id
-
-    Backend->>Backend: requireAuth
-    Backend->>Backend: requireRole('admin')
-
-    Backend->>DB: SELECT user_ids FROM user_teams WHERE team_id = :id
-    Backend->>DB: DELETE FROM team_permissions WHERE team_id = :id
-    Backend->>DB: DELETE FROM user_teams WHERE team_id = :id
-    Backend->>DB: DELETE FROM teams WHERE id = :id
-
-    Backend->>Valkey: Invalidate permission cache for all former members
-    Backend-->>Frontend: 200 {deleted: true}
+    Admin->>FE: Add or remove team members
+    FE->>BE: POST or DELETE /api/teams/:id/members
+    BE->>BE: requireAuth + route-specific guard
+    BE->>DB: Insert or delete user_teams rows
+    BE->>Cache: Invalidate affected abilities
+    BE-->>FE: 200 Updated membership
 ```
 
-### Cascade Deletion Order
+Membership matters because a later team-targeted `resource_grants` row can flow through to every current team user without creating duplicate user-specific rows.
 
-| Step | Table | Action |
-|------|-------|--------|
-| 1 | `team_permissions` | Remove all team permission grants |
-| 2 | `user_teams` | Remove all membership records |
-| 3 | `teams` | Delete team record |
-| 4 | Valkey | Invalidate cached permissions for former members |
+## 5. Grant Team Access to Resources
 
-## Team CRUD Summary
+```mermaid
+sequenceDiagram
+    participant Admin
+    participant FE as ResourceGrantEditor
+    participant BE as Permissions API
+    participant DB as PostgreSQL
 
-| Operation | Method | Endpoint | Auth |
-|-----------|--------|----------|------|
-| List teams | GET | `/api/teams` | requireAuth |
-| Create team | POST | `/api/teams` | requireRole('admin') |
-| Get team | GET | `/api/teams/:id` | requireAuth |
-| Update team | PUT | `/api/teams/:id` | requireRole('admin') |
-| Delete team | DELETE | `/api/teams/:id` | requireRole('admin') |
-| List members | GET | `/api/teams/:id/members` | requireAuth |
-| Add members | POST | `/api/teams/:id/members` | requirePermission('manage_users') |
-| Remove member | DELETE | `/api/teams/:id/members/:userId` | requirePermission('manage_users') |
-| Set permissions | POST | `/api/teams/:id/permissions` | requireRole('admin') |
+    Admin->>FE: Open KB or category sharing modal
+    FE->>BE: GET /api/permissions/grants
+    BE-->>FE: Existing grants for resource
 
-## Key Files
+    Admin->>FE: Select principal type team
+    FE->>BE: POST /api/permissions/grants
+    BE->>DB: INSERT resource_grants row
+    BE-->>FE: 201 Created
+```
+
+Important current-state details:
+
+- the shared FE editor is `ResourceGrantEditor`
+- the grant can target a team principal, not only a single user
+- the main documented scopes are knowledge base and document category
+- the ability builder later resolves those grants into access for team users
+
+## 6. Effective Access Inheritance
+
+```mermaid
+flowchart LR
+    A[user_teams] --> B[Resolve team ids for user]
+    B --> C[Find matching resource_grants]
+    C --> D[Merge with role_permissions]
+    C --> E[Merge with user_permission_overrides]
+    D --> F[CASL ability]
+    E --> F
+    F --> G[requireAbility on KB/category routes]
+```
+
+The important correction to older documentation is that team-derived access is no longer modeled as a standalone legacy team-grant table. The maintained path is team principal plus `resource_grants`.
+
+## 7. When Team Access Is the Right Tool
+
+Use a team-based grant when:
+
+- multiple users need the same scoped access
+- access should follow membership changes automatically
+- the scope is a knowledge base or document category rather than a flat feature flag
+
+Do not use team-derived grants when:
+
+- the need is one person's unique exception
+- the permission is global and not tied to one resource
+- the problem should really be solved by changing the role baseline in `PermissionMatrix`
+
+## 8. Compatibility Notes
+
+Some team-management endpoints still use older auth patterns, including role-based guards on route entry. Those compatibility guards are live, but they are not the recommended place to extend the permission system.
+
+Documentation should therefore distinguish:
+
+- canonical permission maintenance: registry, overrides, `resource_grants`
+- surrounding operational route protection: still partly compatibility-oriented
+
+## 9. Team CRUD Summary
+
+| Concern | Canonical surface |
+|---------|-------------------|
+| Create, update, delete teams | `be/src/modules/teams/` |
+| Add or remove members | `be/src/modules/teams/` |
+| Grant team access to KB/category | `be/src/modules/permissions/routes/permissions.routes.ts` and `ResourceGrantEditor` |
+| Inspect merged access | `EffectiveAccessPage` plus the user detail permissions tab |
+
+## 10. Key Files
 
 | File | Purpose |
 |------|---------|
-| `be/src/modules/teams/teams.controller.ts` | Route handlers for team endpoints |
-| `be/src/modules/teams/teams.service.ts` | Business logic: CRUD, membership, permissions |
-| `be/src/modules/teams/teams.routes.ts` | Route definitions with middleware chains |
-| `be/src/modules/auth/auth.service.ts` | CASL ability builder (loads team permissions) |
+| `be/src/modules/teams/teams.routes.ts` | Team CRUD and membership endpoints |
+| `be/src/modules/permissions/routes/permissions.routes.ts` | Grant-management endpoints |
+| `be/src/shared/services/ability.service.ts` | Grant resolution and effective access assembly |
+| `fe/src/features/permissions/components/ResourceGrantEditor.tsx` | Shared grant editor used by KB/category sharing UIs |
+| `fe/src/features/permissions/pages/EffectiveAccessPage.tsx` | Effective-access inspection UI |
+| `fe/src/features/users/pages/PermissionManagementPage.tsx` | Role baseline editor for team-adjacent admin work |
