@@ -6,7 +6,7 @@
 
 The implemented authorization stack is a CASL-based engine fed by a backend permission registry plus database-backed role defaults, overrides, and resource grants. This page documents the live architecture and its remaining compatibility debt. It should be read as a code-aligned reference, not as a replacement permission model written in prose.
 
-For the shorter overview, see [RBAC & ABAC Permission Model](/detail-design/auth/rbac-abac). For operational maintenance steps, use `/detail-design/auth/permission-maintenance-guide`.
+For the shorter overview, see [RBAC & ABAC Permission Model](/detail-design/auth/rbac-abac). For operational maintenance steps, use the `permission-maintenance-guide` path at `/detail-design/auth/permission-maintenance-guide`.
 
 ## 2. Architecture
 

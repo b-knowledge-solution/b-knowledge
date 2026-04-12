@@ -6,7 +6,7 @@
 
 B-Knowledge authenticates users through Azure AD SSO or the local root-login bootstrap path, then authorizes requests through the permission-system overhaul delivered in this milestone. The live authorization path is no longer a static role map first; it is a registry-backed, database-synced, CASL-driven system that feeds both backend middleware and frontend gates.
 
-This page is the high-level map. For the permission architecture, read [RBAC & ABAC Permission Model](/detail-design/auth/rbac-abac). For the fuller contract reference, read [RBAC & ABAC: Comprehensive Authorization Reference](/detail-design/auth/rbac-abac-comprehensive). For operational maintenance, use `/detail-design/auth/permission-maintenance-guide` once that guide is published in this phase.
+This page is the high-level map. For the permission architecture, read [RBAC & ABAC Permission Model](/detail-design/auth/rbac-abac). For the fuller contract reference, read [RBAC & ABAC: Comprehensive Authorization Reference](/detail-design/auth/rbac-abac-comprehensive). For operational maintenance, use the `permission-maintenance-guide` path at `/detail-design/auth/permission-maintenance-guide` once that guide is published in this phase.
 
 ## 2. Authentication Flow
 

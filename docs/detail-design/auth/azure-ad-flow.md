@@ -6,7 +6,7 @@
 
 Azure AD authentication uses the OAuth2 Authorization Code flow. The backend acts as the confidential client, exchanges the authorization code for tokens, upserts the tenant user record, assigns the live default role when needed, and creates the application session used by the permission system.
 
-This page focuses on sign-in and user provisioning. For permission resolution after login, see [RBAC & ABAC Permission Model](/detail-design/auth/rbac-abac) and `/detail-design/auth/permission-maintenance-guide`.
+This page focuses on sign-in and user provisioning. For permission resolution after login, see [RBAC & ABAC Permission Model](/detail-design/auth/rbac-abac) and the `permission-maintenance-guide` path at `/detail-design/auth/permission-maintenance-guide`.
 
 ## 2. Sequence Diagram
 

@@ -6,7 +6,7 @@
 
 B-Knowledge now uses a registry-backed authorization model that combines role defaults, per-user overrides, row-scoped resource grants, and CASL ability checks. The primary extension path is no longer a hardcoded role map. New permissions enter the system through the backend permission registry and then propagate through sync, middleware, frontend catalog hydration, and admin tooling.
 
-Use this page for the mental model. Use [RBAC & ABAC: Comprehensive Authorization Reference](/detail-design/auth/rbac-abac-comprehensive) for the full contracts and `/detail-design/auth/permission-maintenance-guide` for the operational workflow.
+Use this page for the mental model. Use [RBAC & ABAC: Comprehensive Authorization Reference](/detail-design/auth/rbac-abac-comprehensive) for the full contracts and the `permission-maintenance-guide` path at `/detail-design/auth/permission-maintenance-guide` for the operational workflow.
 
 ## 2. Canonical Permission Flow
 
