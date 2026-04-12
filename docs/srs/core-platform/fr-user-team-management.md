@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-B-Knowledge provides tenant-scoped user and team management backed by the current permission-system milestone. User access is no longer defined by a static `member`-centric RBAC document. Instead, the product combines:
+B-Knowledge provides tenant-scoped user and team management backed by the current permission-system milestone. User access is no longer defined by the legacy `member` role narrative or by a static RBAC document. Instead, the product combines:
 
 - a four-role tenant model: `super-admin`, `admin`, `leader`, `user`
 - a DB-backed permission catalog synchronized from the backend registry
@@ -91,7 +91,7 @@ flowchart TD
 | PERM-002  | Role defaults | Tenant roles receive their default permission set from `role_permissions`, not from a static source file documented as the live source of truth. | Must |
 | PERM-003  | User overrides | The platform supports per-user allow and deny overrides stored separately from role defaults so exceptions can be managed without inventing extra roles. | Must |
 | PERM-004  | Resource grants | The platform supports row-scoped grants through the shared resource-grant model for protected resources, with Knowledge Base grant management active today and the same model shaping Document Category access surfaces. | Must |
-| PERM-005  | Permission admin API | Permission management surfaces are exposed through `/api/permissions/` endpoints for catalog lookup, role replacement, user overrides, grants, and effective-access inspection. | Must |
+| PERM-005  | Permission admin API | Permission management surfaces are exposed through `/api/permissions/` endpoints for catalog lookup, role replacement, user overrides, grants, and effective-access inspection, with dedicated admin permission surfaces such as `permissions.view` and `permissions.manage`. | Must |
 | PERM-006  | Flat and row-scoped enforcement | Permission evaluation must support both flat capability checks and row-scoped subject checks so tenant-wide actions and resource-level access use the same permission engine. | Must |
 | PERM-007  | Tenant isolation | Roles, overrides, and grants must remain tenant-scoped unless the caller is a platform-level `super-admin`. | Must |
 
