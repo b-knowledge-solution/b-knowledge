@@ -15,9 +15,10 @@ A **Dataset** in B-Knowledge is a Knowledge Base — a collection of documents s
 ```mermaid
 flowchart TD
     subgraph Actors
+        SA[Super-admin]
         A[Admin]
         L[Leader]
-        M[Member]
+        U[User]
         S[System]
     end
 
@@ -35,9 +36,10 @@ flowchart TD
         UC11[Re-index dataset]
     end
 
+    SA --> UC1 & UC2 & UC3 & UC7 & UC8 & UC9 & UC11
     A --> UC1 & UC2 & UC3 & UC7 & UC8 & UC9 & UC11
     L --> UC1 & UC2 & UC5 & UC6 & UC10
-    M --> UC4 & UC5 & UC10
+    U --> UC4 & UC5 & UC10
     S --> UC11
 ```
 
@@ -55,8 +57,8 @@ flowchart TD
 | DS-008   | Embedding configuration    | Select embedding model and dimension; applies to all new documents in the dataset                 | Must     |
 | DS-009   | Chunk strategy config      | Configure chunking method (fixed, recursive, semantic, layout-aware), size, and overlap            | Must     |
 | DS-010   | Dataset version uploads    | Upload new document versions and list dataset version groups                                       | Should   |
-| DS-011   | RBAC access control        | Assign dataset access by role (admin full, leader team-scoped, member read-only)                  | Must     |
-| DS-012   | ABAC access policies       | Define attribute-based rules (team membership, IP range) for dataset access                       | Should   |
+| DS-011   | Permission-based access control | Resolve dataset access from the registry-backed permission catalog, user overrides, and resource grants | Must     |
+| DS-012   | Row-scoped access policies | Enforce tenant-scoped CASL checks and resource grants for dataset-related access paths            | Should   |
 | DS-013   | Dataset statistics         | Display document count, chunk count, total size, last updated, indexing status                    | Must     |
 | DS-014   | Re-index dataset           | Admin triggers full re-indexing of all documents (re-parse, re-chunk, re-embed)                   | Must     |
 | DS-015   | Duplicate dataset          | Clone dataset config (without documents) into a new dataset                                      | Could    |
@@ -127,26 +129,38 @@ stateDiagram-v2
 
 ```mermaid
 flowchart TD
-    REQ[API Request] --> RBAC{RBAC Check}
-    RBAC -->|Role allows| ABAC{ABAC Check}
-    RBAC -->|Role denies| DENY[403 Forbidden]
-    ABAC -->|Policy allows| GRANT[Access Granted]
-    ABAC -->|Policy denies| DENY
-    ABAC -->|No policy defined| GRANT
+    REQ[API request] --> AUTH[requireAuth]
+    AUTH --> ORG[Resolve active org]
+    ORG --> ABILITY[Build CASL ability]
+    ABILITY --> ROLE[role_permissions]
+    ABILITY --> OVERRIDE[user_permission_overrides]
+    ABILITY --> GRANTS[resource_grants]
+    ROLE --> CHECK{Permission or ability check}
+    OVERRIDE --> CHECK
+    GRANTS --> CHECK
+    CHECK -->|Allow| OK[Access granted]
+    CHECK -->|Deny| DENY[403 Forbidden]
 
-    subgraph RBAC Rules
-        R1[Super-admin: all datasets]
-        R2[Admin: all org datasets]
-        R3[Leader: team datasets]
-        R4[Member: assigned datasets]
+    subgraph Role Baseline
+        R1[super-admin: unrestricted platform access]
+        R2[admin: tenant-wide management baseline]
+        R3[leader: broader tenant operator baseline]
+        R4[user: baseline authenticated access]
     end
 
-    subgraph ABAC Policies
-        P1[Team membership match]
-        P2[IP range whitelist]
-        P3[Time-of-day restriction]
+    subgraph Resource Scope
+        P1[Knowledge-base grants]
+        P2[Document-category grants]
+        P3[Tenant isolation conditions]
     end
 ```
+
+Dataset access is no longer documented through legacy role labels or standalone team-permission tables. The maintained model combines:
+
+- tenant role defaults from `role_permissions`
+- per-user allow or deny exceptions from `user_permission_overrides`
+- row-scoped resource access from `resource_grants`
+- middleware enforcement through `requirePermission(...)` and `requireAbility(...)`
 
 ## 7. Business Rules
 
