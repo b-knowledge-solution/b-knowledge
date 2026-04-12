@@ -158,16 +158,17 @@ Plans:
 **Goal**: By end of this phase, the catalog endpoint exposes a version hash that triggers FE refresh, and `expires_at` on `resource_grants` is honored by the ability builder — IF the milestone is on track.
 **Depends on**: Phase 6
 **Requirements**: SH1, SH2
-**Plans**:
-  1. **P7.1 Catalog version hash** — `GET /api/permissions/catalog` response includes `version` field (hash of registry contents); FE compares on poll/Socket.IO event and re-fetches on mismatch
-  2. **P7.2 `expires_at` enforcement** — Ability builder filters out grants where `expires_at < now()` at query time (preferred over cron sweep); add Vitest case
-  3. **P7.3 Optional cron sweeper** — Lightweight scheduled task removes long-expired rows; only if query-time filtering proves insufficient
-**Parallelization**: All three independent.
+**Plans:** 4 plans
+- [ ] 7.0-PLAN.md — Wave 0 SH1 backend + frontend test scaffolding for runnable targeted verification
+- [ ] 7.1-PLAN.md — BE catalog version contract + mutation-driven Socket.IO event emission for SH1
+- [ ] 7.2-PLAN.md — SH2 prove-and-tighten coverage for query-time `expires_at` enforcement on ability + dataset-resolution paths
+- [ ] 7.3-PLAN.md — FE runtime catalog refresh with authenticated socket invalidation and polling fallback
+**Parallelization**: Wave 0 (`7.0-PLAN.md`) → Wave 1 (`7.1-PLAN.md` ║ `7.2-PLAN.md`) → Wave 2 (`7.3-PLAN.md`). `7.1-PLAN.md` and `7.3-PLAN.md` depend on the Wave 0 SH1 test scaffold, and `7.3-PLAN.md` also depends on the 7.1 backend contract; SH2 stays parallel because it reuses existing SQL-side enforcement.
 **Verification**:
   - SH1: Adding a permission server-side propagates to a connected client without hard reload
   - SH2: Expired grant is not in CASL rules within one ability rebuild
 **Risks addressed**: None new
-**Out-of-band concerns**: SH3 (`expires_at` in admin UI) and SH4 (self-service "what can I do" page) remain DEFERRED. Drop this entire phase if Phase 6 slips.
+**Out-of-band concerns**: SH3 (`expires_at` in admin UI) and SH4 (self-service "what can I do" page) remain DEFERRED. Query-time enforcement is the chosen SH2 approach; no cron sweeper is planned unless a future verification failure proves it necessary.
 
 ---
 
@@ -190,8 +191,8 @@ Plans:
 | TS13 (legacy alias cleanup) | Phase 6 | P6.1, P6.2 |
 | TS14 (audit & observability + whoCanDo) | Phase 3 | P3.4 (audit) + helper used in Phase 5 |
 | TS15 (tests — BE + FE) | Phases 2, 3, 5 | P2.4 (regression), P3.2 (middleware), P3.4 (CRUD), P5.5 (FE) |
-| SH1 (catalog versioning) | Phase 7 | P7.1 |
-| SH2 (expires_at backend) | Phase 7 | P7.2, P7.3 |
+| SH1 (catalog versioning) | Phase 7 | 7.1-PLAN.md, 7.3-PLAN.md |
+| SH2 (expires_at backend) | Phase 7 | 7.2-PLAN.md |
 | SH3 (expires_at in admin UI) | DEFERRED | Stretch — out of scope unless surplus |
 | SH4 (self-service "what can I do") | DEFERRED | Stretch — out of scope unless surplus |
 
@@ -259,7 +260,33 @@ Plans:
 | 4. FE Catalog + Codemod | 5/5 | Complete | 2026-04-08 |
 | 5. Admin UI Rewrite | 8/8 | Complete | 2026-04-08 |
 | 6. Legacy Cleanup + OpenSearch | 5/5 | Complete | 2026-04-09 |
-| 7. Should-Haves | 0/3 | Optional / unplanned | - |
+| 7. Should-Haves | 0/3 | Optional / planned | - |
+
+### Phase 8: FE admin routing for restricted first-login nav and /admin layout with data-studio, agent-studio, IAM, system sections
+
+**Goal:** Split the authenticated frontend into two shells so non-admin users only navigate Chat/Search, all admin surfaces live exclusively under `/admin/...`, and role-gated admin entry/access safely reuses the existing admin pages without breaking hidden routes or deep links.
+**Requirements**: AR8-01, AR8-02, AR8-03
+**Depends on:** Phase 6
+**Plans:** 4 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — Define `/admin` route contracts, split user/admin shells, and centralize role-gated admin entry/access
+- [ ] 08-02-PLAN.md — Migrate Data Studio, IAM, and hidden code-graph consumers onto `/admin/...` paths
+- [ ] 08-03-PLAN.md — Migrate Agent Studio and memory entry points onto `/admin/...` paths while preserving `new` pseudo-id flows
+- [ ] 08-04-PLAN.md — Add FE regression tests for shell selection, admin gating, removed legacy paths, and hidden admin routes
+
+### Phase 9: Update docs with current milestone. Update all SRS, basic design and detail design for new permission feature on fe and be, i need it detail for new developer who will add new permission and maintain it later
+
+**Goal:** By end of this phase, the permission-system documentation set matches the implemented milestone across SRS, basic design, and detail design, and a new maintainer guide shows future developers exactly how to add and verify permissions safely across BE, FE, admin UI, tests, i18n, and docs.
+**Requirements**: DOC9-01, DOC9-02, DOC9-03
+**Depends on:** Phase 8
+**Plans:** 4 plans
+
+Plans:
+- [x] 09-01-PLAN.md — Correct the SRS permission narrative for current roles, auth/permission integration, and tenant-scoped admin flows
+- [x] 09-02-PLAN.md — Correct the basic-design security, API, and database docs for the registry-backed permission system
+- [x] 09-03-PLAN.md — Reconcile auth detail-design docs with the implemented CASL, registry-sync, compatibility-shim, and permissions API model
+- [x] 09-04-PLAN.md — Update user/team detail design docs, add the maintainer permission guide, wire sidebar discoverability, and run final docs verification
 
 ---
 

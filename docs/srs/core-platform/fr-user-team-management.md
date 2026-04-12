@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-B-Knowledge provides tenant-scoped user and team management backed by the current permission-system milestone. User access is no longer defined by the legacy `member` role narrative or by a static RBAC document. Instead, the product combines:
+B-Knowledge provides tenant-scoped user and team management backed by the current permission-system milestone. User access is no longer defined by the legacy default-role narrative or by a static RBAC document. Instead, the product combines:
 
 - a four-role tenant model: `super-admin`, `admin`, `leader`, `user`
 - a DB-backed permission catalog synchronized from the backend registry
@@ -41,8 +41,8 @@ flowchart TD
         T1[Create team]
         T2[Update team]
         T3[Delete team]
-        T4[Add team member]
-        T5[Remove team member]
+        T4[Add user to team]
+        T5[Remove user from team]
     end
 
     subgraph Permission Management
@@ -79,8 +79,8 @@ flowchart TD
 | TEAM-001 | Create team | Admin creates a team within the current tenant. | Must |
 | TEAM-002 | Update team | Admin or otherwise authorized leaders can update team metadata inside tenant boundaries. | Must |
 | TEAM-003 | Delete team | Admin deletes a team without deleting the underlying user accounts. | Must |
-| TEAM-004 | Add team member | Admin or otherwise authorized leaders can add an existing tenant user to a team. | Must |
-| TEAM-005 | Remove team member | Admin or otherwise authorized leaders can remove a user from a team. | Must |
+| TEAM-004 | Add user to team | Admin or otherwise authorized leaders can add an existing tenant user to a team. | Must |
+| TEAM-005 | Remove user from team | Admin or otherwise authorized leaders can remove a user from a team. | Must |
 | TEAM-006 | Team-scoped access inputs | Team membership remains a valid access input for permission evaluation and future grant expansion, even when final access is enforced through the central permission engine. | Must |
 
 ## 5. Functional Requirements — Permission Model
@@ -155,7 +155,7 @@ flowchart TD
 | BR-PERM-03 | Per-user deny overrides must be able to narrow access granted earlier by role defaults or resource grants. |
 | BR-PERM-04 | Resource grants must be row-scoped and must not widen access outside the tenant or outside the granted resource identifier. |
 | BR-PERM-05 | Registry-driven admin screens must expose permission management based on the current catalog rather than a manually maintained static matrix. |
-| BR-PERM-06 | Historical legacy aliases such as `member` may appear only as migration context; they are not valid current-state roles for new requirements. |
+| BR-PERM-06 | Historical legacy default-role aliases may appear only as migration context; they are not valid current-state roles for new requirements. |
 
 ## 8. Business Rules
 

@@ -167,6 +167,23 @@
 - A logged-in user can view their own effective permissions (role defaults + overrides + grants) on a profile sub-page.
 - Useful for support and for users debugging access denials themselves.
 
+## Documentation Extension (Phase 9)
+
+### DOC9-01 — Permission-system docs match the implemented milestone
+- The SRS, basic-design, and detail-design permission pages describe the registry-backed catalog, role permissions, per-user overrides, resource grants, and CASL ability enforcement that now exist in BE and FE.
+- Legacy `member`/static-RBAC wording is removed or clearly demoted to historical compatibility context only.
+- **Done when:** the targeted docs surfaces no longer direct maintainers toward deprecated role names, stale tables, or obsolete route-guard concepts.
+
+### DOC9-02 — Maintainer guide is operational and discoverable
+- A dedicated permission maintainer guide explains how to add a new permission across backend registry files, sync expectations, frontend catalog generation, admin UI surfaces, tests, i18n, and docs.
+- The guide is reachable from the docs navigation without relying on tribal knowledge or file-path guessing.
+- **Done when:** a new developer can follow the guide end-to-end and find it from the auth section of the docs site.
+
+### DOC9-03 — Documentation verification is part of the phase contract
+- Phase 9 ends with a cross-doc stale-wording sweep plus a docs-site build so content drift and navigation breakage are caught before sign-off.
+- Requirement traceability for the documentation phase is recorded in the same `.planning/REQUIREMENTS.md` source of truth used by the roadmap and plan files.
+- **Done when:** the docs verification sweep passes, `npm run docs:build` succeeds in the project workspace, and the roadmap/plan IDs resolve back to explicit requirements.
+
 ## Out of Scope (Explicit)
 
 | Item | Why |

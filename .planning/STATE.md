@@ -2,8 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-04-09T11:10:00.000Z"
+status: completed
+last_updated: "2026-04-12T03:36:31.013Z"
+progress:
+  total_phases: 9
+  completed_phases: 2
+  total_plans: 8
+  completed_plans: 8
+  percent: 100
 ---
 
 # Project State
@@ -23,7 +29,7 @@ last_updated: "2026-04-09T11:10:00.000Z"
 **M1 — Permission System Overhaul**
 Consolidate the two coexisting authorization systems (static `rbac.ts` + CASL `ability.service.ts`) into a single CASL engine fed from a DB-backed permission registry, with feature-level coverage across all 22 BE modules and resource-grant scoping for KnowledgeBase + DocumentCategory.
 
-**Status:** Phase 6 execution complete; verification debt remains before milestone close
+**Status:** Milestone complete
 
 ## Active Phase
 
@@ -144,6 +150,13 @@ Rollback knob: `USE_ABILITY_ENGINE_V2=false` env var. Even after this commit lan
 - **Commit docs:** yes
 - **Model profile:** quality (Opus for research/roadmap, Sonnet for others)
 - **Workflow agents:** research ✓ · plan-check ✓ · verifier ✓ · nyquist-validation ✓ · auto-advance ✓
+
+## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 8 added: FE admin routing for restricted first-login nav and /admin layout with data-studio, agent-studio, IAM, system sections
+- Phase 9 added: Update docs with current milestone. Update all SRS, basic design and detail design for new permission feature on fe and be, i need it detail for new developer who will add new permission and maintain it later
 
 ## Recommended Next Action
 
@@ -294,4 +307,4 @@ Rollback knob: `USE_ABILITY_ENGINE_V2=false` env var. Even after this commit lan
 Run `/gsd:plan-phase 1` to plan the foundation phase (schema, registry, boot sync).
 
 ---
-*Last updated: 2026-04-07 after roadmap completion.*
+*Last updated: 2026-04-12 after Phase 9 roadmap addition.*
