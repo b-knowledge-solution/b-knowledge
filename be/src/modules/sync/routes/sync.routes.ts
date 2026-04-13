@@ -27,7 +27,7 @@ const controller = new SyncController()
 /** Test connection to an external data source without creating a connector */
 router.post(
   '/connectors/test-connection',
-  requirePermission('manage_knowledge_base'),
+  requirePermission('sync_connectors.create'),
   validate(testConnectionSchema),
   controller.testConnection.bind(controller),
 )
@@ -48,7 +48,7 @@ router.get(
 /** Create a new connector */
 router.post(
   '/connectors',
-  requirePermission('manage_knowledge_base'),
+  requirePermission('sync_connectors.create'),
   validate(createConnectorSchema),
   controller.createConnector.bind(controller),
 )
@@ -56,7 +56,7 @@ router.post(
 /** Update an existing connector */
 router.put(
   '/connectors/:id',
-  requirePermission('manage_knowledge_base'),
+  requirePermission('sync_connectors.edit'),
   validate({ params: uuidParamSchema, body: updateConnectorSchema }),
   controller.updateConnector.bind(controller),
 )
@@ -64,7 +64,7 @@ router.put(
 /** Delete a connector (optionally cascade-delete synced documents) */
 router.delete(
   '/connectors/:id',
-  requirePermission('manage_knowledge_base'),
+  requirePermission('sync_connectors.delete'),
   validate({ params: uuidParamSchema, query: deleteConnectorQuerySchema }),
   controller.deleteConnector.bind(controller),
 )
@@ -74,7 +74,7 @@ router.delete(
 /** Trigger a manual sync for a connector */
 router.post(
   '/connectors/:id/sync',
-  requirePermission('manage_knowledge_base'),
+  requirePermission('sync_connectors.run'),
   validate({ params: uuidParamSchema, body: triggerSyncSchema }),
   controller.triggerSync.bind(controller),
 )

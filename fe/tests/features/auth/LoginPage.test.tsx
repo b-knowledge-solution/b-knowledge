@@ -2,15 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
-const { vi_mockNav, vi_mockAuth, vi_mockSettings } = vi.hoisted(() => ({
+const { vi_mockNav, vi_mockAuth, vi_mockSettings, vi_mockSearchParams } = vi.hoisted(() => ({
   vi_mockNav: vi.fn(),
   vi_mockAuth: vi.fn(),
   vi_mockSettings: vi.fn(() => ({ isDarkMode: false, resolvedTheme: 'light' })),
+  vi_mockSearchParams: vi.fn(() => new URLSearchParams()),
 }));
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
-  return { ...actual, useNavigate: () => vi_mockNav, useSearchParams: () => [new URLSearchParams(), vi.fn()] }
+  return { ...actual, useNavigate: () => vi_mockNav, useSearchParams: () => [vi_mockSearchParams(), vi.fn()] }
 })
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }) }))
 vi.mock('../../../src/features/auth/hooks/useAuth', () => ({ useAuth: vi_mockAuth }))
@@ -24,7 +25,8 @@ import LoginPage from '../../../src/features/auth/pages/LoginPage'
 describe('LoginPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi_mockAuth.mockReturnValue({ isAuthenticated: false, isLoading: false })
+    vi_mockSearchParams.mockReturnValue(new URLSearchParams())
+    vi_mockAuth.mockReturnValue({ isAuthenticated: false, isLoading: false, user: null })
     delete (window as any).location
     ;(window as any).location = { href: '' }
     // Default fetch handler for auth config
@@ -49,9 +51,39 @@ describe('LoginPage', () => {
   })
 
   it('redirects authenticated users', () => {
-    vi_mockAuth.mockReturnValue({ isAuthenticated: true, isLoading: false })
+    vi_mockAuth.mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      user: { role: 'user' },
+    })
     render(<MemoryRouter><LoginPage /></MemoryRouter>)
     // The app now redirects to '/chat' for authenticated users
+    expect(vi_mockNav).toHaveBeenCalledWith('/chat', expect.any(Object))
+  })
+
+  it('sanitizes stale 403 redirects for authenticated users', () => {
+    vi_mockSearchParams.mockReturnValue(new URLSearchParams('redirect=/403'))
+    vi_mockAuth.mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      user: { role: 'user' },
+    })
+
+    render(<MemoryRouter><LoginPage /></MemoryRouter>)
+
+    expect(vi_mockNav).toHaveBeenCalledWith('/chat', expect.any(Object))
+  })
+
+  it('blocks non-admin users from stale admin redirects', () => {
+    vi_mockSearchParams.mockReturnValue(new URLSearchParams('redirect=/admin/system/dashboard'))
+    vi_mockAuth.mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      user: { role: 'user' },
+    })
+
+    render(<MemoryRouter><LoginPage /></MemoryRouter>)
+
     expect(vi_mockNav).toHaveBeenCalledWith('/chat', expect.any(Object))
   })
 

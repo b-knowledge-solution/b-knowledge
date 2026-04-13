@@ -16,7 +16,7 @@ const controller = new SystemToolsController()
  * @access Private (View System Tools)
  */
 // Returns list of registered diagnostic tools
-router.get('/', requirePermission('view_system_tools'), controller.getTools.bind(controller))
+router.get('/', requirePermission('system_tools.view'), controller.getTools.bind(controller))
 
 /**
  * @route GET /api/system-tools/health
@@ -24,7 +24,7 @@ router.get('/', requirePermission('view_system_tools'), controller.getTools.bind
  * @access Private (View System Tools)
  */
 // Checks status of underlying services used by tools
-router.get('/health', requirePermission('view_system_tools'), controller.getHealth.bind(controller))
+router.get('/health', requirePermission('system_tools.view'), controller.getHealth.bind(controller))
 
 /**
  * @route POST /api/system-tools/:id/run
@@ -32,6 +32,6 @@ router.get('/health', requirePermission('view_system_tools'), controller.getHeal
  * @access Private (Manage System)
  */
 // Trigger tool execution restricted to system managers
-router.post('/:id/run', requirePermission('manage_system'), controller.runTool.bind(controller))
+router.post('/:id/run', requirePermission('system_tools.run'), controller.runTool.bind(controller))
 
 export default router

@@ -209,6 +209,27 @@
     "noMatches": "一致する結果がありません",
     "admin": {
       "sessionRefreshNotice": "保存しました。影響を受けるユーザーは次のリクエストで変更が反映されます — 再読み込みが必要な場合があります。",
+      "matrix": {
+        "title": "ロール権限マトリクス",
+        "permissionColumn": "権限",
+        "cancelButton": "キャンセル",
+        "saveButton": "保存 ({{count}})",
+        "saveError": "ロール権限の保存に失敗しました",
+        "roles": {
+          "super_admin": "スーパー管理者",
+          "admin": "管理者",
+          "leader": "リーダー",
+          "user": "ユーザー"
+        },
+        "sections": {
+          "chat": "チャット",
+          "datasets": "データセット",
+          "files": "ファイル",
+          "permissions": "権限",
+          "search": "検索",
+          "users": "ユーザー"
+        }
+      },
       "overrides": {
         "title": "権限の上書き",
         "allowSection": "許可の上書き",
@@ -252,6 +273,63 @@
         "empty": "該当なし",
         "chip": { "all": "すべて", "user": "ユーザー", "team": "チーム", "role": "ロール" },
         "type": { "user": "ユーザー", "team": "チーム", "role": "ロール" }
+      },
+      "principalMatrix": {
+        "title": "ユーザー & チームの権限",
+        "addPrincipal": "ユーザー / チームを追加",
+        "featureHeader": {
+          "view": "閲覧",
+          "addEdit": "追加/編集",
+          "delete": "削除"
+        },
+        "noPrincipals": "ユーザーまたはチームが追加されていません。「ユーザー / チームを追加」をクリックしてください。",
+        "saveButton": "保存 ({{count}})",
+        "cancelButton": "キャンセル",
+        "saveError": "権限の保存に失敗しました",
+        "saveSuccess": "権限を保存しました。影響を受けるユーザーは再読み込みが必要な場合があります。",
+        "removePrincipal": "削除",
+        "principalType": {
+          "user": "ユーザー",
+          "team": "チーム"
+        },
+        "features": {
+          "agents": "エージェント",
+          "api_keys": "APIキー",
+          "audit": "監査",
+          "broadcast": "ブロードキャスト",
+          "chat": "チャット",
+          "chunks": "チャンク",
+          "code_graph": "コードグラフ",
+          "dashboard": "ダッシュボード",
+          "datasets": "データセット",
+          "document_categories": "ドキュメントカテゴリ",
+          "documents": "ドキュメント",
+          "feedback": "フィードバック",
+          "glossary": "用語集",
+          "knowledge_base": "ナレッジベース",
+          "llm_providers": "LLMプロバイダー",
+          "memory": "メモリ",
+          "permissions": "権限",
+          "preview": "プレビュー",
+          "search_apps": "検索アプリ",
+          "sync_connectors": "同期コネクター",
+          "system": "システム",
+          "system_history": "システム履歴",
+          "system_tools": "システムツール",
+          "teams": "チーム",
+          "user_history": "個人履歴",
+          "users": "ユーザー"
+        }
+      },
+      "addPrincipalDialog": {
+        "title": "ユーザーまたはチームを追加",
+        "usersTab": "ユーザー",
+        "teamsTab": "チーム",
+        "searchUsers": "ユーザーを検索...",
+        "searchTeams": "チームを検索...",
+        "noUsers": "ユーザーがいません",
+        "noTeams": "チームがありません",
+        "alreadyAdded": "追加済み"
       }
     }
   },

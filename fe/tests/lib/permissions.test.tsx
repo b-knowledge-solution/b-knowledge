@@ -50,7 +50,9 @@ function makeWrapper(ability: ReturnType<typeof createMongoAbility>) {
     // Cast keeps the strongly-typed AppAbility shape happy without leaking
     // CASL generics into every test case.
     return (
-      <AbilityContext.Provider value={ability as never}>{children}</AbilityContext.Provider>
+      <AbilityContext.Provider value={{ ability: ability as never, isLoading: false }}>
+        {children}
+      </AbilityContext.Provider>
     )
   }
 }
@@ -80,7 +82,7 @@ function makeLiveCatalogWrapper(
   function Wrapper({ children }: { children: React.ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <AbilityContext.Provider value={ability as never}>
+        <AbilityContext.Provider value={{ ability: ability as never, isLoading: false }}>
           <PermissionCatalogProviderComponent>{children}</PermissionCatalogProviderComponent>
         </AbilityContext.Provider>
       </QueryClientProvider>
@@ -156,6 +158,38 @@ describe('useHasPermission', () => {
     // exercising after the catalog data source becomes runtime-refreshable.
     expect(renderPermissionCheck(PERMISSION_KEYS.KNOWLEDGE_BASE_VIEW, useHasPermission, ability)).toBe(true)
     expect(renderPermissionCheck(PERMISSION_KEYS.KNOWLEDGE_BASE_DELETE, useHasPermission, ability)).toBe(false)
+  })
+
+  it('treats tenant-scoped allow rules as valid UI permissions', async () => {
+    const { useHasPermission } = await importPermissionsModule()
+    const ability = createMongoAbility([
+      {
+        action: 'read',
+        subject: 'KnowledgeBase',
+        conditions: { tenant_id: 'tenant-1' },
+      },
+    ])
+
+    expect(renderPermissionCheck(PERMISSION_KEYS.KNOWLEDGE_BASE_VIEW, useHasPermission, ability)).toBe(true)
+  })
+
+  it('respects later deny precedence for matching tenant-scoped rules', async () => {
+    const { useHasPermission } = await importPermissionsModule()
+    const ability = createMongoAbility([
+      {
+        action: 'read',
+        subject: 'KnowledgeBase',
+        conditions: { tenant_id: 'tenant-1' },
+      },
+      {
+        action: 'read',
+        subject: 'KnowledgeBase',
+        inverted: true,
+        conditions: { tenant_id: 'tenant-1' },
+      },
+    ])
+
+    expect(renderPermissionCheck(PERMISSION_KEYS.KNOWLEDGE_BASE_VIEW, useHasPermission, ability)).toBe(false)
   })
 
   it('prefers the live runtime catalog mapping over the generated snapshot', async () => {

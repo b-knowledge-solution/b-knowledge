@@ -12,6 +12,7 @@ import { subject as toCaslSubject } from '@casl/ability'
 import { log } from '@/shared/services/logger.service.js'
 import { User } from '@/shared/models/types.js'
 import { Role, ADMIN_ROLES } from '@/shared/config/rbac.js'
+import { UserRole } from '@/shared/constants/index.js'
 import { abilityService, AppAbility, buildAbilityFor } from '@/shared/services/ability.service.js'
 import { getAllPermissions } from '@/shared/permissions/index.js'
 import { config } from '@/shared/config/index.js'
@@ -262,6 +263,13 @@ export function requireRole(...roles: Role[]) {
     // Ensure user is attached to request for downstream use
     if (!req.user) {
       req.user = user
+    }
+
+    // Super-admin is the platform-level superset role and should satisfy
+    // any route guarded by requireRole(...), including legacy admin-only call sites.
+    if (user.role === UserRole.SUPER_ADMIN) {
+      next()
+      return
     }
 
     // Check if user's role is in the allowed roles list

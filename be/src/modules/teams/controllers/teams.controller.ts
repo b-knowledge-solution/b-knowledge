@@ -199,6 +199,30 @@ export class TeamController {
   }
 
   /**
+   * @description Retrieve the stored permission keys for a specific team record
+   * @param {Request} req - Express request object with team id in params
+   * @param {Response} res - Express response object returning { permissions: string[] }
+   * @returns {Promise<void>}
+   */
+  async getPermissions(req: Request, res: Response): Promise<void> {
+    const { id } = req.params
+    // Validate team ID presence
+    if (!id) {
+      res.status(400).json({ error: 'Team ID is required' })
+      return
+    }
+    try {
+      // Fetch team-level permissions from service
+      const permissions = await teamService.getTeamPermissions(id)
+      res.json({ permissions })
+    } catch (error) {
+      // Log error and return 500 status
+      log.error('Failed to fetch team permissions', { error: String(error) })
+      res.status(500).json({ error: 'Failed to fetch team permissions' })
+    }
+  }
+
+  /**
    * @description Grant permissions to all members of a team by merging into their user profiles
    * @param {Request} req - Express request object with team id in params and permissions array in body
    * @param {Response} res - Express response object

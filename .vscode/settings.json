@@ -1,1 +1,12 @@
-{}
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd /d/Project/b-solution/b-knowledge/docs && npx tsc -p tsconfig\\.json --noEmit$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^cd /d/Project/b-solution/b-knowledge/docs && node /tmp/check-unreferenced-docs\\.js$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

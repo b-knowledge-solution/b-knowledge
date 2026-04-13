@@ -9,8 +9,7 @@ export { PrincipalPicker } from './components/PrincipalPicker'
 export type { Principal, PrincipalPickerProps } from './components/PrincipalPicker'
 export { ResourceGrantEditor } from './components/ResourceGrantEditor'
 export type { ResourceGrantEditorProps } from './components/ResourceGrantEditor'
-export { default as EffectiveAccessPage } from './pages/EffectiveAccessPage'
-export {
-  decodePermissionKey,
-  buildUserDetailUrl,
-} from './pages/EffectiveAccessPage'
+export { default as PrincipalPermissionMatrix } from './components/PrincipalPermissionMatrix'
+export type { PrincipalEntry } from './components/PrincipalPermissionMatrix'
+export { AddPrincipalDialog } from './components/AddPrincipalDialog'
+export type { AddPrincipalDialogProps } from './components/AddPrincipalDialog'

@@ -4,6 +4,7 @@
  * Tests:
  * - useAppAbility: returns the ability from context
  * - AbilityProvider: fetches rules on mount when user is authenticated
+ * - AbilityProvider: exposes loading state while the fetch is in flight
  * - AbilityProvider: resets to default (no permissions) on logout
  * - AbilityProvider: keeps default ability on fetch error
  * - Can component: conditionally renders based on permissions
@@ -47,10 +48,10 @@ describe('ability', () => {
   }
 
   // --------------------------------------------------------------------------
-  // useAppAbility
+  // useAppAbility / useAbilityLoading
   // --------------------------------------------------------------------------
 
-  describe('useAppAbility', () => {
+  describe('ability hooks', () => {
     /** @description Should return default ability with no permissions when no provider wraps it */
     it('returns default ability with no permissions outside provider', async () => {
       const { useAppAbility } = await importModule()
@@ -60,6 +61,15 @@ describe('ability', () => {
       // Default ability should deny everything
       expect(result.current.can('read', 'Dataset')).toBe(false)
       expect(result.current.can('manage', 'all')).toBe(false)
+    })
+
+    /** @description Should report not-loading outside the provider */
+    it('returns false for useAbilityLoading outside provider', async () => {
+      const { useAbilityLoading } = await importModule()
+
+      const { result } = renderHook(() => useAbilityLoading())
+
+      expect(result.current).toBe(false)
     })
   })
 
@@ -98,6 +108,55 @@ describe('ability', () => {
         expect.stringContaining('/api/auth/abilities'),
         expect.objectContaining({ credentials: 'include' }),
       )
+    })
+
+    /** @description Should expose a transient loading state until the backend rules arrive */
+    it('reports loading while ability fetch is in flight', async () => {
+      mockUser = { id: 'user-1', email: 'test@example.com' }
+
+      let resolveFetch: ((value: Response) => void) | undefined
+      vi.mocked(global.fetch).mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveFetch = resolve
+          }),
+      )
+
+      const { AbilityProvider, useAbilityLoading } = await importModule()
+
+      const { result } = renderHook(() => useAbilityLoading(), {
+        wrapper: ({ children }) => <AbilityProvider>{children}</AbilityProvider>,
+      })
+
+      await waitFor(() => {
+        expect(result.current).toBe(true)
+      })
+
+      resolveFetch?.({
+        ok: true,
+        json: async () => ({ rules: [{ action: 'read', subject: 'Dataset' }] }),
+      } as Response)
+
+      await waitFor(() => {
+        expect(result.current).toBe(false)
+      })
+    })
+
+    /** @description Should report loading immediately on first authenticated render to avoid refresh-time 403 redirects */
+    it('is already loading on the first authenticated render before the fetch resolves', async () => {
+      mockUser = { id: 'user-1', email: 'test@example.com' }
+
+      vi.mocked(global.fetch).mockImplementationOnce(
+        () => new Promise<Response>(() => {}),
+      )
+
+      const { AbilityProvider, useAbilityLoading } = await importModule()
+
+      const { result } = renderHook(() => useAbilityLoading(), {
+        wrapper: ({ children }) => <AbilityProvider>{children}</AbilityProvider>,
+      })
+
+      expect(result.current).toBe(true)
     })
 
     /** @description Should not fetch abilities when user is null (logged out) */

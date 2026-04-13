@@ -22,7 +22,7 @@ erDiagram
         int version_number "0=root, 1+=snapshot"
         varchar version_label "Human-readable version name"
         text tenant_id "Multi-tenant isolation"
-        text project_id FK "Optional project association"
+        text knowledge_base_id FK "Optional knowledge-base association"
         text created_by "Creator user UUID"
         timestamp created_at
         timestamp updated_at
@@ -146,7 +146,7 @@ erDiagram
 |-------|-------|---------|---------|
 | agents | idx_agents_tenant_parent | `(tenant_id, parent_id)` | Fast version listing within tenant |
 | agents | idx_agents_tenant_status | `(tenant_id, status)` | Filter by status within tenant |
-| agents | idx_agents_project | `(project_id)` | Project association lookup |
+| agents | idx_agents_project_id | `(knowledge_base_id)` | Knowledge-base association lookup |
 | agent_runs | idx_runs_agent | `(agent_id)` | Execution history per agent |
 | agent_runs | idx_runs_tenant_status | `(tenant_id, status)` | Filter runs by status |
 | agent_run_steps | idx_steps_run | `(run_id)` | All steps for a run |
@@ -202,7 +202,7 @@ erDiagram
     users ||--o{ agents : "created_by"
     users ||--o{ agent_runs : "triggered_by"
     users ||--o{ memories : "created_by"
-    projects ||--o{ agents : "project_id"
+    knowledge_base ||--o{ agents : "knowledge_base_id"
     tenant ||--o{ agents : "tenant_id"
     tenant ||--o{ memories : "tenant_id"
     model_providers ||--o{ memories : "embd_id, llm_id"
@@ -211,7 +211,7 @@ erDiagram
 | Relationship | FK Column | Target Table | Notes |
 |-------------|-----------|-------------|-------|
 | Agent → User | `created_by` | `users` | Creator tracking |
-| Agent → Project | `project_id` | `projects` | Optional project scope |
+| Agent → Knowledge Base | `knowledge_base_id` | `knowledge_base` | Optional knowledge-base scope |
 | Agent → Tenant | `tenant_id` | `tenant` | Multi-tenant isolation |
 | Agent Run → User | `triggered_by` | `users` | Who started the run |
 | Memory → User | `created_by` | `users` | Pool creator (soft ref, no FK) |

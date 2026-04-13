@@ -327,6 +327,19 @@ describe('Auth Middleware', () => {
       expect(next).toHaveBeenCalled();
     });
 
+    it('should allow super-admin through admin-only middleware', () => {
+      const user = createMockUser({ role: 'super-admin' });
+      const req = createMockRequest({ session: { user } });
+      const res = createMockResponse();
+      const next = createMockNext();
+
+      const middleware = requireRole('admin');
+      middleware(req, res, next);
+
+      expect(next).toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalledWith(403);
+    });
+
     it('should return 403 if user has different role', () => {
       const user = createMockUser({ role: 'user' });
       const req = createMockRequest({ session: { user } });

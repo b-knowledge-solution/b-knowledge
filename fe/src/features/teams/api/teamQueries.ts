@@ -385,3 +385,38 @@ export const useTeamMembers = (onTeamsChanged: () => void): UseTeamMembersReturn
         reset,
     }
 }
+
+// ============================================================================
+// useTeamPermissions
+// ============================================================================
+
+/**
+ * @description Fetch the stored permission keys for a specific team.
+ * @param {string} teamId - The team ID to fetch permissions for.
+ * @param {boolean} [enabled=true] - Whether the query is enabled.
+ * @returns Query result with { permissions: string[] } payload.
+ */
+export function useTeamPermissions(teamId: string, enabled = true) {
+    return useQuery({
+        queryKey: queryKeys.teams.permissions(teamId),
+        queryFn: () => teamApi.getTeamPermissions(teamId),
+        enabled: !!teamId && enabled,
+    })
+}
+
+/**
+ * @description Mutation hook to replace a team's stored permission keys.
+ *   Invalidates the team permissions cache on success.
+ * @returns Mutation hook for setting team permissions.
+ */
+export function useSetTeamPermissions() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: ({ teamId, permissions }: { teamId: string; permissions: string[] }) =>
+            teamApi.setTeamPermissions(teamId, permissions),
+        onSuccess: (_data, variables) => {
+            // Invalidate the permissions cache for this specific team
+            queryClient.invalidateQueries({ queryKey: queryKeys.teams.permissions(variables.teamId) })
+        },
+    })
+}

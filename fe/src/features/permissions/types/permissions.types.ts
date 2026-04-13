@@ -108,7 +108,7 @@ export interface RolePermissions {
  */
 export interface WhoCanDoResult {
   users: Array<{
-    id: number
+    id: string
     display_name: string
     email: string
     role: string

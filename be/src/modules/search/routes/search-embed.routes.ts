@@ -25,18 +25,18 @@ const router = Router()
 const controller = new SearchEmbedController()
 
 // ============================================================================
-// Admin Token Management (requires authentication + manage_users permission)
+// Admin Token Management (requires authentication + search_apps.embed permission)
 // ============================================================================
 
 /**
  * @route POST /api/search/apps/:id/embed-tokens
  * @description Create a new embed token for a search app.
- * @access Admin only (manage_users permission)
+ * @access Admin only (search_apps.embed permission)
  */
 router.post(
   '/apps/:id/embed-tokens',
   requireAuth,
-  requirePermission('manage_users'),
+  requirePermission('search_apps.embed'),
   validate({ body: createEmbedTokenSchema, params: embedAppIdParamSchema }),
   controller.createToken.bind(controller)
 )
@@ -44,12 +44,12 @@ router.post(
 /**
  * @route GET /api/search/apps/:id/embed-tokens
  * @description List all embed tokens for a search app.
- * @access Admin only (manage_users permission)
+ * @access Admin only (search_apps.embed permission)
  */
 router.get(
   '/apps/:id/embed-tokens',
   requireAuth,
-  requirePermission('manage_users'),
+  requirePermission('search_apps.embed'),
   validate({ params: embedAppIdParamSchema }),
   controller.listTokens.bind(controller)
 )
@@ -57,12 +57,12 @@ router.get(
 /**
  * @route DELETE /api/search/embed-tokens/:tokenId
  * @description Revoke (delete) an embed token.
- * @access Admin only (manage_users permission)
+ * @access Admin only (search_apps.embed permission)
  */
 router.delete(
   '/embed-tokens/:tokenId',
   requireAuth,
-  requirePermission('manage_users'),
+  requirePermission('search_apps.embed'),
   validate({ params: embedTokenIdParamSchema }),
   controller.revokeToken.bind(controller)
 )

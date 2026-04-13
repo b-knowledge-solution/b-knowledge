@@ -71,4 +71,25 @@ export const teamApi = {
      */
     grantPermissions: (teamId: string, permissions: string[]): Promise<void> =>
         api.post<void>(`${BASE_URL}/${teamId}/permissions`, { permissions }),
+
+    /**
+     * @description Fetch the stored permission keys for a specific team record.
+     *   Calls GET /api/teams/:teamId/permissions.
+     * @param {string} teamId - Team ID to fetch permissions for.
+     * @returns {Promise<{permissions: string[]}>} Object containing the array of permission key strings.
+     */
+    getTeamPermissions: (teamId: string): Promise<{ permissions: string[] }> =>
+        api.get<{ permissions: string[] }>(`${BASE_URL}/${teamId}/permissions`),
+
+    /**
+     * @description Replace the stored permission keys for a team with the provided array.
+     *   Calls POST /api/teams/:teamId/permissions — uses existing endpoint with full replacement semantics.
+     *   Keep `grantPermissions` as-is for backward compatibility; this method is the canonical
+     *   PrincipalPermissionMatrix save path.
+     * @param {string} teamId - Team ID to update permissions for.
+     * @param {string[]} permissions - Complete new set of permission key strings.
+     * @returns {Promise<void>}
+     */
+    setTeamPermissions: (teamId: string, permissions: string[]): Promise<void> =>
+        api.post<void>(`${BASE_URL}/${teamId}/permissions`, { permissions }),
 }

@@ -50,4 +50,39 @@ export class TeamModel extends BaseModel<Team> {
     const existing = await query.first()
     return !!existing
   }
+
+  /**
+   * @description Retrieve the stored permissions array for a team.
+   *   Returns a parsed string array regardless of whether the DB stored a JSON string or JSONB array.
+   * @param {string} teamId - UUID of the team
+   * @returns {Promise<string[]>} Array of permission key strings (empty when none set)
+   */
+  async getPermissions(teamId: string): Promise<string[]> {
+    const row = await this.knex(this.tableName)
+      .select('permissions')
+      .where('id', teamId)
+      .first()
+
+    // Return empty array if team not found
+    if (!row) return []
+
+    // Handle both raw JSON string (older PostgreSQL drivers) and parsed JSONB
+    if (typeof row.permissions === 'string') {
+      return JSON.parse(row.permissions)
+    }
+    return Array.isArray(row.permissions) ? row.permissions : []
+  }
+
+  /**
+   * @description Replace the permissions array for a team with a new set.
+   *   Uses full replacement semantics — the new array overwrites any prior value.
+   * @param {string} teamId - UUID of the team
+   * @param {string[]} permissions - New set of permission key strings
+   * @returns {Promise<void>}
+   */
+  async setPermissions(teamId: string, permissions: string[]): Promise<void> {
+    await this.knex(this.tableName)
+      .where('id', teamId)
+      .update({ permissions: JSON.stringify(permissions) })
+  }
 }

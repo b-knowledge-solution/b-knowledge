@@ -25,6 +25,8 @@ import {
 export interface WhoCanDoEntry {
   /** Target user id. */
   user_id: string
+  /** Target user display name. */
+  user_display_name: string | null
   /** Target user email — denormalized for admin UI display. */
   user_email: string
   /** Target user role at the time of the query. */
@@ -278,6 +280,7 @@ export class PermissionModel extends BaseModel<PermissionRow> {
       })
       .select(
         'users.id as user_id',
+        'users.display_name as user_display_name',
         'users.email as user_email',
         'user_tenant.role as user_role',
         `${ROLE_PERMISSIONS_TABLE}.id as source_id`,
@@ -307,6 +310,7 @@ export class PermissionModel extends BaseModel<PermissionRow> {
       })
       .select(
         'users.id as user_id',
+        'users.display_name as user_display_name',
         'users.email as user_email',
         'user_tenant.role as user_role',
         `${USER_PERMISSION_OVERRIDES_TABLE}.id as source_id`,
@@ -343,6 +347,7 @@ export class PermissionModel extends BaseModel<PermissionRow> {
     }
     const grantRows = await grantQuery.select(
       'users.id as user_id',
+      'users.display_name as user_display_name',
       'users.email as user_email',
       'user_tenant.role as user_role',
       `${RESOURCE_GRANTS_TABLE}.id as source_id`,

@@ -208,6 +208,27 @@
     "noMatches": "No matches",
     "admin": {
       "sessionRefreshNotice": "Saved. Affected users will see changes on their next request — they may need to refresh.",
+      "matrix": {
+        "title": "Role-Permission Matrix",
+        "permissionColumn": "Permission",
+        "cancelButton": "Cancel",
+        "saveButton": "Save ({{count}})",
+        "saveError": "Failed to save role permissions",
+        "roles": {
+          "super_admin": "Super Admin",
+          "admin": "Admin",
+          "leader": "Leader",
+          "user": "User"
+        },
+        "sections": {
+          "chat": "Chat",
+          "datasets": "Datasets",
+          "files": "Files",
+          "permissions": "Permissions",
+          "search": "Search",
+          "users": "Users"
+        }
+      },
       "overrides": {
         "title": "Permission Overrides",
         "allowSection": "Allow overrides",
@@ -251,6 +272,63 @@
         "empty": "No matches",
         "chip": { "all": "All", "user": "Users", "team": "Teams", "role": "Roles" },
         "type": { "user": "User", "team": "Team", "role": "Role" }
+      },
+      "principalMatrix": {
+        "title": "User & Team Permissions",
+        "addPrincipal": "Add User / Team",
+        "featureHeader": {
+          "view": "View",
+          "addEdit": "Add/Edit",
+          "delete": "Delete"
+        },
+        "noPrincipals": "No users or teams added. Click \"Add User / Team\" to get started.",
+        "saveButton": "Save ({{count}})",
+        "cancelButton": "Cancel",
+        "saveError": "Failed to save permissions",
+        "saveSuccess": "Permissions saved. Affected users may need to refresh.",
+        "removePrincipal": "Remove",
+        "principalType": {
+          "user": "User",
+          "team": "Team"
+        },
+        "features": {
+          "agents": "Agents",
+          "api_keys": "API Keys",
+          "audit": "Audit",
+          "broadcast": "Broadcast",
+          "chat": "Chat",
+          "chunks": "Chunks",
+          "code_graph": "Code Graph",
+          "dashboard": "Dashboard",
+          "datasets": "Datasets",
+          "document_categories": "Document Categories",
+          "documents": "Documents",
+          "feedback": "Feedback",
+          "glossary": "Glossary",
+          "knowledge_base": "Knowledge Base",
+          "llm_providers": "LLM Providers",
+          "memory": "Memory",
+          "permissions": "Permissions",
+          "preview": "Preview",
+          "search_apps": "Search Apps",
+          "sync_connectors": "Sync Connectors",
+          "system": "System",
+          "system_history": "System History",
+          "system_tools": "System Tools",
+          "teams": "Teams",
+          "user_history": "User History",
+          "users": "Users"
+        }
+      },
+      "addPrincipalDialog": {
+        "title": "Add User or Team",
+        "usersTab": "Users",
+        "teamsTab": "Teams",
+        "searchUsers": "Search users...",
+        "searchTeams": "Search teams...",
+        "noUsers": "No users available",
+        "noTeams": "No teams available",
+        "alreadyAdded": "Already added"
       }
     }
   },

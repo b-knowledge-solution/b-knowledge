@@ -12,6 +12,7 @@ import { permissionsService } from '../services/permissions.service.js'
 import { log } from '@/shared/services/logger.service.js'
 import type { ResourceGranteeType } from '@/shared/models/resource-grant.model.js'
 import type { UserPermissionOverrideEffect } from '@/shared/models/user-permission-override.model.js'
+import type { WhoCanDoEntry } from '@/shared/models/permission.model.js'
 
 /**
  * @description Resolve the tenant id from the session, falling back to the
@@ -38,6 +39,33 @@ function getTenantId(req: Request): string {
  */
 function getActorId(req: Request): string {
   return req.session?.user?.id || ''
+}
+
+/**
+ * @description Collapse per-source who-can-do rows into a unique user list for
+ * the Effective Access page.
+ * @param {WhoCanDoEntry[]} rows - Raw rows from the permission model.
+ * @returns {Array<{ id: string; display_name: string; email: string; role: string }>} Dedupe user list.
+ */
+function normalizeWhoCanDoUsers(rows: WhoCanDoEntry[]): Array<{
+  id: string
+  display_name: string
+  email: string
+  role: string
+}> {
+  const usersById = new Map<string, { id: string; display_name: string; email: string; role: string }>()
+
+  for (const row of rows) {
+    if (usersById.has(row.user_id)) continue
+    usersById.set(row.user_id, {
+      id: row.user_id,
+      display_name: row.user_display_name || row.user_email,
+      email: row.user_email,
+      role: row.user_role,
+    })
+  }
+
+  return Array.from(usersById.values())
 }
 
 /**
@@ -322,7 +350,12 @@ export class PermissionsController {
         resourceId,
         tenantId,
       )
-      res.json({ action, subject, resource_id: resourceId, users })
+      res.json({
+        action,
+        subject,
+        resource_id: resourceId,
+        users: normalizeWhoCanDoUsers(users),
+      })
     } catch (err) {
       log.error('[permissionsController] whoCanDo failed', { err: String(err) })
       res.status(500).json({ error: 'failed_to_resolve_who_can_do' })

@@ -24,6 +24,8 @@ import { buildAdminUserDetailPath } from '@/app/adminRoutes'
 import { PERMISSION_KEYS } from '@/constants/permission-keys'
 import { useWhoCanDo } from '@/features/permissions/api/permissionsQueries'
 import { groupPermissionKeys } from '@/features/permissions/components/PermissionMatrix'
+import catalogJson from '@/generated/permissions-catalog.json'
+import type { PermissionCatalogEntry } from '@/features/permissions/types/permissions.types'
 
 // ============================================================================
 // Constants
@@ -39,6 +41,12 @@ const DEFAULT_PERMISSION_KEY: string = PERMISSION_KEYS.KNOWLEDGE_BASE_VIEW
 const GROUPED_PERMISSION_KEYS = groupPermissionKeys(
   Object.values(PERMISSION_KEYS).slice().sort(),
 )
+
+/** @description Snapshot catalog used to resolve permission keys without guessing. */
+const SNAPSHOT_CATALOG = (catalogJson as {
+  generatedAt: string
+  permissions: PermissionCatalogEntry[]
+}).permissions
 
 // ============================================================================
 // Page component
@@ -59,7 +67,7 @@ export default function EffectiveAccessPage() {
   const selectedKey = searchParams.get(SELECTED_KEY_PARAM) ?? DEFAULT_PERMISSION_KEY
 
   // Decode the dotted key into (action, subject) once per render — pure helper
-  const { action, subject } = decodePermissionKey(selectedKey)
+  const { action, subject } = resolvePermissionKey(selectedKey)
 
   // ONE whoCanDo call per selection. Guarded internally by the hook's enabled:.
   const { data, isLoading, isError } = useWhoCanDo(action, subject)
@@ -75,9 +83,9 @@ export default function EffectiveAccessPage() {
 
   /**
    * @description Row click handler — navigates to the P5.2 override editor.
-   * @param {number} userId - Target user's numeric id.
+   * @param {string} userId - Target user's id.
    */
-  const handleRowClick = (userId: number) => {
+  const handleRowClick = (userId: string) => {
     navigate(buildUserDetailUrl(userId))
   }
 
@@ -182,52 +190,34 @@ export default function EffectiveAccessPage() {
 // ============================================================================
 
 /**
- * @description Decodes a dotted PERMISSION_KEYS value (e.g. `knowledge_base.view`)
- *   into the CASL `(action, subject)` pair expected by the BE `whoCanDo`
- *   endpoint — snake_case prefix becomes PascalCase subject; the suffix is
- *   passed through as the action.
- *
- *   Examples:
- *     `knowledge_base.view`     → `{ action: 'view', subject: 'KnowledgeBase' }`
- *     `api_keys.create`         → `{ action: 'create', subject: 'ApiKeys' }`
- *     `users.view_sessions`     → `{ action: 'view_sessions', subject: 'Users' }`
- *     `system.parsing_config`   → `{ action: 'parsing_config', subject: 'System' }`
+ * @description Resolves a permission key to the canonical registry-backed
+ * `(action, subject)` pair used by the backend `who-can-do` endpoint.
+ * Never guesses from the dotted key shape because FE-friendly aliases like
+ * `.view` or `.edit` do not always match the backend CASL action names.
  *
  * @param {string} key - Flat permission key from PERMISSION_KEYS.
- * @returns {{ action: string; subject: string }} Decoded action/subject pair.
+ * @param {PermissionCatalogEntry[]} [catalog=SNAPSHOT_CATALOG] - Catalog rows to search.
+ * @returns {{ action: string; subject: string }} Canonical action/subject pair.
  */
-export function decodePermissionKey(key: string): { action: string; subject: string } {
-  // Split on the FIRST dot only — some suffixes contain underscores but never dots
-  const firstDot = key.indexOf('.')
-  // Guard: malformed key (no dot) falls back to subject-only view/all
-  if (firstDot === -1) {
-    return { action: 'view', subject: pascalCase(key) }
+export function resolvePermissionKey(
+  key: string,
+  catalog: PermissionCatalogEntry[] = SNAPSHOT_CATALOG,
+): { action: string; subject: string } {
+  const entry = catalog.find((permission) => permission.key === key)
+
+  // Fall back to a deny-by-default no-op query shape if the key is unknown.
+  if (!entry) {
+    return { action: '', subject: '' }
   }
-  const prefix = key.slice(0, firstDot)
-  const action = key.slice(firstDot + 1)
-  return { action, subject: pascalCase(prefix) }
+
+  return { action: entry.action, subject: entry.subject }
 }
 
 /**
  * @description Builds the deep-link URL to the P5.2 UserDetailPage permissions tab.
- * @param {number} userId - Target user numeric id.
+ * @param {string | number} userId - Target user id.
  * @returns {string} `/admin/iam/users/:id?tab=permissions` path string.
  */
-export function buildUserDetailUrl(userId: number): string {
+export function buildUserDetailUrl(userId: string | number): string {
   return buildAdminUserDetailPath(userId, 'permissions')
-}
-
-/**
- * @description Converts a snake_case token to PascalCase. Private helper.
- * @param {string} input - snake_case or plain token.
- * @returns {string} PascalCase output (empty input → empty string).
- */
-function pascalCase(input: string): string {
-  if (!input) return ''
-  // Split on underscore, capitalize every segment, re-join
-  return input
-    .split('_')
-    .filter(Boolean)
-    .map(seg => seg.charAt(0).toUpperCase() + seg.slice(1))
-    .join('')
 }

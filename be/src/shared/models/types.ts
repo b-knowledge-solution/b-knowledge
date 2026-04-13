@@ -62,6 +62,11 @@ export interface Team {
     project_name?: string | null;
     /** Description of the team's purpose */
     description?: string | null;
+    /**
+     * Team-level permission keys stored as a JSONB array.
+     * Can be a JSON string when read directly from DB, or a parsed array in application.
+     */
+    permissions?: string | string[];
     /** User ID who created this record */
     created_by?: string | null;
     /** User ID who last updated this record */

@@ -3,7 +3,7 @@
  * @fileoverview User management routes.
  * 
  * This module provides API endpoints for managing users in the system.
- * All routes require 'manage_users' permission (admin/manager roles).
+ * All routes require registry-backed `users.*` permissions.
  * 
  * Security: Implements OWASP Authorization Cheat Sheet:
  * - Deny by default (middleware chain)
@@ -46,16 +46,16 @@ const controller = new UserController();
  * List all users in the system.
  * @requires requireAuth
  */
-router.get('/', requireAuth, requirePermission('manage_users'), controller.getUsers.bind(controller));
+router.get('/', requireAuth, requirePermission('users.view'), controller.getUsers.bind(controller));
 
 /**
  * POST /api/users
  * Create a new local user (with optional password).
- * @requires manage_users permission
+ * @requires users.create permission
  */
 router.post(
   '/',
-  requirePermission('manage_users'),
+  requirePermission('users.create'),
   validate({ body: createUserSchema }),
   controller.createUser.bind(controller)
 );
@@ -63,23 +63,23 @@ router.post(
 /**
  * GET /api/users/ip-history
  * Get IP access history for all users.
- * @requires manage_users permission
+ * @requires users.view_ip permission
  */
-router.get('/ip-history', requirePermission('manage_users'), controller.getAllIpHistory.bind(controller));
+router.get('/ip-history', requirePermission('users.view_ip'), controller.getAllIpHistory.bind(controller));
 
 /**
  * GET /api/users/:id/ip-history
  * Get IP access history for a specific user.
- * @requires manage_users permission
+ * @requires users.view_ip permission
  */
-router.get('/:id/ip-history', requirePermission('manage_users'), controller.getUserIpHistory.bind(controller));
+router.get('/:id/ip-history', requirePermission('users.view_ip'), controller.getUserIpHistory.bind(controller));
 
 /**
  * GET /api/users/:id/sessions
  * Get active sessions for a specific user from the session store.
- * @requires manage_users permission
+ * @requires users.view_sessions permission
  */
-router.get('/:id/sessions', requirePermission('manage_users'), controller.getUserSessions.bind(controller));
+router.get('/:id/sessions', requirePermission('users.view_sessions'), controller.getUserSessions.bind(controller));
 
 /**
  * PUT /api/users/:id/role
@@ -99,11 +99,11 @@ router.put(
 /**
  * PUT /api/users/:id/permissions
  * Update user permissions.
- * @requires manage_users permission
+ * @requires users.assign_perms permission
  */
 router.put(
   '/:id/permissions',
-  requirePermission('manage_users'),
+  requirePermission('users.assign_perms'),
   validate({ params: uuidParamSchema, body: updatePermissionsSchema }),
   controller.updateUserPermissions.bind(controller)
 );
@@ -111,11 +111,11 @@ router.put(
 /**
  * PUT /api/users/:id
  * Update user profile fields (display_name, department, job_title, mobile_phone).
- * @requires manage_users permission
+ * @requires users.edit permission
  */
 router.put(
   '/:id',
-  requirePermission('manage_users'),
+  requirePermission('users.edit'),
   validate({ params: uuidParamSchema, body: updateUserSchema }),
   controller.updateUser.bind(controller)
 );
@@ -123,11 +123,11 @@ router.put(
 /**
  * DELETE /api/users/:id
  * Delete a user from the system.
- * @requires manage_users permission + recent auth
+ * @requires users.delete permission + recent auth
  */
 router.delete(
   '/:id',
-  requirePermission('manage_users'),
+  requirePermission('users.delete'),
   requireRecentAuth(15),
   validate({ params: uuidParamSchema }),
   controller.deleteUser.bind(controller)

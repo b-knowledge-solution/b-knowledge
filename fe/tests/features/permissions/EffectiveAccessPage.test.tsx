@@ -5,7 +5,7 @@
  * documented in PermissionMatrix/OverrideEditor/PrincipalPicker/
  * ResourceGrantEditor tests — cmdk + babel-plugin-react-compiler + jsdom
  * hangs vitest during transform. The page's logic is exercised through
- * the exported pure helpers `decodePermissionKey` and `buildUserDetailUrl`,
+ * the exported pure helpers `resolvePermissionKey` and `buildUserDetailUrl`,
  * which mirror the in-component flow 1:1.
  *
  * The five behavioral assertions from 5.6-PLAN.md map as follows:
@@ -13,7 +13,7 @@
  *                                      already cover groupPermissionKeys; here we
  *                                      also spot-check the decoded mapping over
  *                                      a representative subset of real keys.
- *   Test 2 (ONE whoCanDo call)      → encoded by "decodePermissionKey is pure and
+ *   Test 2 (ONE whoCanDo call)      → encoded by "resolvePermissionKey is pure and
  *                                      deterministic" — the component calls the
  *                                      hook exactly once per render with these
  *                                      outputs.
@@ -27,58 +27,57 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
-  decodePermissionKey,
+  resolvePermissionKey,
   buildUserDetailUrl,
 } from '@/features/permissions/pages/EffectiveAccessPage'
 import { PERMISSION_KEYS } from '@/constants/permission-keys'
 
-describe('EffectiveAccessPage — decodePermissionKey', () => {
-  it('Test 1: decodes snake_case prefix + simple suffix (knowledge_base.view)', () => {
-    expect(decodePermissionKey(PERMISSION_KEYS.KNOWLEDGE_BASE_VIEW)).toEqual({
-      action: 'view',
+describe('EffectiveAccessPage — resolvePermissionKey', () => {
+  it('Test 1: resolves catalog-backed actions for knowledge_base.view', () => {
+    expect(resolvePermissionKey(PERMISSION_KEYS.KNOWLEDGE_BASE_VIEW)).toEqual({
+      action: 'read',
       subject: 'KnowledgeBase',
     })
   })
 
-  it('Test 2: decodes single-word prefix (chat.create)', () => {
-    expect(decodePermissionKey(PERMISSION_KEYS.CHAT_CREATE)).toEqual({
+  it('Test 2: resolves single-word features without guessing the subject', () => {
+    expect(resolvePermissionKey(PERMISSION_KEYS.CHAT_CREATE)).toEqual({
       action: 'create',
-      subject: 'Chat',
+      subject: 'ChatAssistant',
     })
   })
 
-  it('Test 3: preserves underscored suffixes (users.view_sessions)', () => {
-    // view_sessions must NOT be split — only the first dot delimits action
-    expect(decodePermissionKey(PERMISSION_KEYS.USERS_VIEW_SESSIONS)).toEqual({
-      action: 'view_sessions',
-      subject: 'Users',
+  it('Test 3: resolves user session permission aliases to the canonical read action', () => {
+    expect(resolvePermissionKey(PERMISSION_KEYS.USERS_VIEW_SESSIONS)).toEqual({
+      action: 'read',
+      subject: 'User',
     })
   })
 
-  it('Test 4: decodes multi-segment snake prefix (api_keys.delete → ApiKeys)', () => {
-    expect(decodePermissionKey(PERMISSION_KEYS.API_KEYS_DELETE)).toEqual({
+  it('Test 4: resolves multi-segment features from the catalog snapshot', () => {
+    expect(resolvePermissionKey(PERMISSION_KEYS.API_KEYS_DELETE)).toEqual({
       action: 'delete',
-      subject: 'ApiKeys',
+      subject: 'ApiKey',
     })
   })
 
-  it('Test 5: falls back to view + PascalSubject when key has no dot', () => {
-    expect(decodePermissionKey('malformed')).toEqual({
-      action: 'view',
-      subject: 'Malformed',
+  it('Test 5: returns an empty query shape for unknown keys', () => {
+    expect(resolvePermissionKey('malformed')).toEqual({
+      action: '',
+      subject: '',
     })
   })
 
   it('Test 6: handles empty string defensively', () => {
-    expect(decodePermissionKey('')).toEqual({ action: 'view', subject: '' })
+    expect(resolvePermissionKey('')).toEqual({ action: '', subject: '' })
   })
 
   it('Test 7: is deterministic — two calls for the same input produce identical output', () => {
     // Guarantees the component fires exactly ONE whoCanDo per selection:
     // if this helper were non-deterministic, the query key would flap and
     // trigger duplicate network calls.
-    const a = decodePermissionKey(PERMISSION_KEYS.DATASETS_VIEW)
-    const b = decodePermissionKey(PERMISSION_KEYS.DATASETS_VIEW)
+    const a = resolvePermissionKey(PERMISSION_KEYS.DATASETS_VIEW)
+    const b = resolvePermissionKey(PERMISSION_KEYS.DATASETS_VIEW)
     expect(a).toEqual(b)
   })
 })
@@ -92,5 +91,9 @@ describe('EffectiveAccessPage — buildUserDetailUrl', () => {
     // Guard regression: the exact substring must be preserved so the P5.2
     // UserDetailPage tab-sync logic still reads ?tab=permissions on arrival.
     expect(buildUserDetailUrl(1)).toMatch(/\/admin\/iam\/users\/\d+\?tab=permissions$/)
+  })
+
+  it('Test 10: preserves string user ids such as root-user', () => {
+    expect(buildUserDetailUrl('root-user')).toBe('/admin/iam/users/root-user?tab=permissions')
   })
 })

@@ -50,6 +50,16 @@ type Subjects =
 /** @description CASL ability type combining actions and subjects for the app */
 export type AppAbility = MongoAbility<[Actions, Subjects]>
 
+/**
+ * @description Ability context payload combining the CASL instance with its
+ * loading state so route guards can distinguish "not loaded yet" from
+ * "loaded and denied".
+ */
+interface AbilityContextValue {
+  ability: AppAbility
+  isLoading: boolean
+}
+
 // ============================================================================
 // Context & Components
 // ============================================================================
@@ -58,9 +68,19 @@ export type AppAbility = MongoAbility<[Actions, Subjects]>
 const defaultAbility = createMongoAbility<[Actions, Subjects]>()
 
 /**
- * @description React context holding the current user's CASL ability instance
+ * @description React context that exposes only the CASL ability instance for
+ * `@casl/react` consumers such as `<Can>`.
  */
-export const AbilityContext = createContext<AppAbility>(defaultAbility)
+const AbilityInstanceContext = createContext<AppAbility>(defaultAbility)
+
+/**
+ * @description React context holding the current user's CASL ability instance
+ * and the current backend-loading state.
+ */
+export const AbilityContext = createContext<AbilityContextValue>({
+  ability: defaultAbility,
+  isLoading: false,
+})
 
 /**
  * @description Declarative permission gate component that conditionally renders children
@@ -73,7 +93,9 @@ export const AbilityContext = createContext<AppAbility>(defaultAbility)
  * </Can>
  * ```
  */
-export const Can = createContextualCan(AbilityContext.Consumer)
+export const Can = createContextualCan(
+  AbilityInstanceContext.Consumer,
+)
 
 // ============================================================================
 // Hook
@@ -92,7 +114,15 @@ export const Can = createContextualCan(AbilityContext.Consumer)
  * ```
  */
 export function useAppAbility(): AppAbility {
-  return useContext(AbilityContext)
+  return useContext(AbilityContext).ability
+}
+
+/**
+ * @description Hook exposing whether authenticated ability rules are still loading.
+ * @returns {boolean} True while `/api/auth/abilities` is in flight for the current session.
+ */
+export function useAbilityLoading(): boolean {
+  return useContext(AbilityContext).isLoading
 }
 
 // ============================================================================
@@ -115,15 +145,21 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
  */
 export function AbilityProvider({ children }: { children: React.ReactNode }) {
   const [ability, setAbility] = useState<AppAbility>(defaultAbility)
+  const [loadedAbilityScope, setLoadedAbilityScope] = useState<string | null>(null)
   const { user } = useAuth()
+  const currentAbilityScope = user ? `${user.id}:${user.email}` : null
+  const isLoading = currentAbilityScope !== null && loadedAbilityScope !== currentAbilityScope
 
   useEffect(() => {
     // Only fetch abilities when user is authenticated
     if (!user) {
       // Reset to default when user logs out
       setAbility(defaultAbility)
+      setLoadedAbilityScope(null)
       return
     }
+
+    let isCancelled = false
 
     async function loadAbilities() {
       try {
@@ -133,20 +169,32 @@ export function AbilityProvider({ children }: { children: React.ReactNode }) {
         if (res.ok) {
           const data = await res.json()
           // Create a new ability instance with the rules from the backend
-          setAbility(createMongoAbility<[Actions, Subjects]>(data.rules))
+          if (!isCancelled) {
+            setAbility(createMongoAbility<[Actions, Subjects]>(data.rules))
+          }
         }
       } catch (err) {
         // On error, keep default (no permissions) -- user will see access denied
         console.error('Failed to load abilities', err)
+      } finally {
+        if (!isCancelled) {
+          setLoadedAbilityScope(currentAbilityScope)
+        }
       }
     }
 
     loadAbilities()
-  }, [user])
+
+    return () => {
+      isCancelled = true
+    }
+  }, [currentAbilityScope, user])
 
   return (
-    <AbilityContext.Provider value={ability}>
-      {children}
-    </AbilityContext.Provider>
+    <AbilityInstanceContext.Provider value={ability}>
+      <AbilityContext.Provider value={{ ability, isLoading }}>
+        {children}
+      </AbilityContext.Provider>
+    </AbilityInstanceContext.Provider>
   )
 }

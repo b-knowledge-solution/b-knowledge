@@ -320,6 +320,28 @@ export class TeamService {
     }
 
     /**
+     * @description Retrieve the stored permission keys for a team record.
+     *   Reads directly from the teams.permissions JSONB column; does not propagate to members.
+     * @param {string} teamId - UUID of the team
+     * @returns {Promise<string[]>} Array of permission key strings stored on the team
+     */
+    async getTeamPermissions(teamId: string): Promise<string[]> {
+        return ModelFactory.team.getPermissions(teamId)
+    }
+
+    /**
+     * @description Replace the stored permission keys for a team record.
+     *   Uses full replacement semantics — the provided array becomes the new truth.
+     *   Does NOT propagate to individual team members (MVP scope).
+     * @param {string} teamId - UUID of the team
+     * @param {string[]} permissions - New complete set of permission key strings
+     * @returns {Promise<void>}
+     */
+    async setTeamPermissions(teamId: string, permissions: string[]): Promise<void> {
+        await ModelFactory.team.setPermissions(teamId, permissions)
+    }
+
+    /**
      * Grant permissions to all members of a team.
      * @param teamId - Team ID.
      * @param permissionsToGrant - Array of permissions strings.

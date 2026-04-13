@@ -52,12 +52,12 @@ export class UserService {
 
             log.debug('Initializing root user', { email: rootUserEmail });
 
-            // Create the root admin user with full permissions
+            // Create the root super-admin user with full permissions
             await ModelFactory.user.create({
                 id: 'root-user',
                 email: rootUserEmail,
                 display_name: 'System Administrator',
-                role: UserRole.ADMIN,
+                role: UserRole.SUPER_ADMIN,
                 permissions: JSON.stringify(['*']),  // Wildcard grants all permissions
             });
 

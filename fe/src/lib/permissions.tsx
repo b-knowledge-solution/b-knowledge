@@ -20,7 +20,7 @@ import catalogJson from '@/generated/permissions-catalog.json'
 import { usePermissionCatalog } from '@/features/permissions/api/permissionsQueries'
 import { useAuth } from '@/features/auth'
 import type { PermissionCatalogEntry } from '@/features/permissions/types/permissions.types'
-import { useAppAbility } from './ability'
+import { useAppAbility, type AppAbility } from './ability'
 
 /**
  * @description Internal lookup shape: each catalog entry is reduced to the
@@ -29,6 +29,80 @@ import { useAppAbility } from './ability'
 interface CatalogEntry {
   action: string
   subject: string
+}
+
+/**
+ * @description Normalizes a CASL rule field into an array for wildcard-aware matching.
+ * @param {string | string[] | undefined} value - CASL rule action/subject field.
+ * @returns {string[]} Normalized array form for matching.
+ */
+function normalizeRuleField(value: string | string[] | undefined): string[] {
+  if (!value) {
+    return []
+  }
+
+  return Array.isArray(value) ? value : [value]
+}
+
+/**
+ * @description Checks whether a CASL rule action matches the requested action.
+ * Treats `manage` as the action wildcard.
+ * @param {string | string[] | undefined} action - Action field from a CASL rule.
+ * @param {string} expectedAction - Requested permission action.
+ * @returns {boolean} True when the rule covers the requested action.
+ */
+function matchesRuleAction(
+  action: string | string[] | undefined,
+  expectedAction: string,
+): boolean {
+  const actions = normalizeRuleField(action)
+  return actions.includes('manage') || actions.includes(expectedAction)
+}
+
+/**
+ * @description Checks whether a CASL rule subject matches the requested subject.
+ * Treats `all` as the subject wildcard.
+ * @param {string | string[] | undefined} subject - Subject field from a CASL rule.
+ * @param {string} expectedSubject - Requested permission subject.
+ * @returns {boolean} True when the rule covers the requested subject.
+ */
+function matchesRuleSubject(
+  subject: string | string[] | undefined,
+  expectedSubject: string,
+): boolean {
+  const subjects = normalizeRuleField(subject)
+  return subjects.includes('all') || subjects.includes(expectedSubject)
+}
+
+/**
+ * @description Performs a UI-level permission check against raw CASL rules.
+ *
+ * The backend emits tenant-scoped route abilities with `{ tenant_id }`
+ * conditions. Route and nav checks only need to know whether the current org
+ * exposes the capability at all, so they intentionally ignore rule conditions
+ * and apply CASL's "later wins" ordering across matching rules.
+ *
+ * @param {AppAbility} ability - Current CASL ability from the backend.
+ * @param {string} action - Requested action from the permission catalog.
+ * @param {string} subject - Requested subject from the permission catalog.
+ * @returns {boolean} True when the last matching rule is an allow rule.
+ */
+function hasCatalogAbilityPermission(
+  ability: AppAbility,
+  action: string,
+  subject: string,
+): boolean {
+  const matchingRules = ability.rules.filter(
+    (rule) =>
+      matchesRuleAction(rule.action, action) &&
+      matchesRuleSubject(rule.subject as string | string[] | undefined, subject),
+  )
+
+  if (matchingRules.length === 0) {
+    return false
+  }
+
+  return matchingRules[matchingRules.length - 1]?.inverted !== true
 }
 
 /**
@@ -149,7 +223,7 @@ export function useHasPermission(key: PermissionKey): boolean {
     return false
   }
 
-  return ability.can(entry.action as never, entry.subject as never)
+  return hasCatalogAbilityPermission(ability, entry.action, entry.subject)
 }
 
 // Re-export the const map so callers can do a single import:

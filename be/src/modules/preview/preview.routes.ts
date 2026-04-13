@@ -11,6 +11,6 @@ const router = Router()
 const controller = new PreviewController()
 
 // Fetches and converts file content for preview handling
-router.get('/:bucketName/*', requirePermission('view_search'), controller.getPreview.bind(controller))
+router.get('/:bucketName/*', requirePermission('preview.view'), controller.getPreview.bind(controller))
 
 export default router

@@ -97,6 +97,7 @@ export const queryKeys = {
     list: () => [...queryKeys.teams.all, 'list'] as const,
     detail: (id: string) => [...queryKeys.teams.all, 'detail', id] as const,
     members: (teamId: string) => [...queryKeys.teams.all, teamId, 'members'] as const,
+    permissions: (teamId: string) => [...queryKeys.teams.all, teamId, 'permissions'] as const,
   },
 
   // --------------------------------------------------------------------------

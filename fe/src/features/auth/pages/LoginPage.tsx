@@ -20,9 +20,39 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import logo from '@/assets/logo.svg';
 import logoDark from '@/assets/logo-dark.svg';
 import BroadcastBanner from '@/features/broadcast/components/BroadcastBanner';
+import { canAccessAdminShell } from '@/features/auth/components/AdminRoute';
 
 /** API base URL from environment */
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
+/**
+ * @description Resolves a safe post-login redirect path from the raw query parameter.
+ * Prevents stale `/403` or admin-only redirects from bouncing users directly
+ * back into a forbidden page after a successful login.
+ *
+ * @param {string | null} rawRedirect - Raw `redirect` query parameter from the URL.
+ * @param {string | undefined} role - Authenticated user role when known.
+ * @returns {string} Sanitized in-app redirect path.
+ */
+function resolveSafeRedirect(rawRedirect: string | null, role: string | undefined): string {
+  if (!rawRedirect || !rawRedirect.startsWith('/')) {
+    return '/chat';
+  }
+
+  const blockedRedirects = ['/login', '/logout', '/403', '/404', '/500'];
+
+  // Never redirect straight back into auth or error pages after a successful login.
+  if (blockedRedirects.some(path => rawRedirect === path || rawRedirect.startsWith(`${path}?`))) {
+    return '/chat';
+  }
+
+  // Non-admin-shell roles must not be sent to an admin destination by a stale redirect param.
+  if (rawRedirect.startsWith('/admin') && !canAccessAdminShell(role)) {
+    return '/chat';
+  }
+
+  return rawRedirect;
+}
 
 // ============================================================================
 // Component
@@ -48,8 +78,8 @@ function LoginPage() {
 
   // Get error and redirect from URL params
   const error = searchParams.get('error');
-  const redirect = searchParams.get('redirect') || '/chat';
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const redirect = resolveSafeRedirect(searchParams.get('redirect'), user?.role);
 
   // Root login state
   const [enableLocalLogin, setEnableLocalLogin] = useState(false);
@@ -137,7 +167,7 @@ function LoginPage() {
 
       if (response.ok) {
         // Force full page reload to pick up the new session cookie and redirect
-        window.location.href = redirect;
+        window.location.href = resolveSafeRedirect(searchParams.get('redirect'), 'super-admin');
       } else {
         // Extract error message from API response or fall back to generic error
         const data = await response.json();

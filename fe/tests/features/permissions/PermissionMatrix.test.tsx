@@ -73,6 +73,11 @@ describe('isCellChecked', () => {
     const dirty: DirtyMap = new Map()
     expect(isCellChecked(dirty, server, 'ghost', 'datasets.view')).toBe(false)
   })
+
+  it('handles empty server role snapshots without throwing', () => {
+    const dirty: DirtyMap = new Map()
+    expect(isCellChecked(dirty, {}, 'admin', 'datasets.view')).toBe(false)
+  })
 })
 
 describe('toggleInDirtyMap', () => {

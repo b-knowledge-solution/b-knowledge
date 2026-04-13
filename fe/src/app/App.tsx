@@ -21,7 +21,6 @@ import {
   ADMIN_DASHBOARD_ROUTE,
   ADMIN_DATASETS_ROUTE,
   ADMIN_DOCUMENT_REVIEW_ROUTE,
-  ADMIN_EFFECTIVE_ACCESS_ROUTE,
   ADMIN_HISTORIES_ROUTE,
   ADMIN_KNOWLEDGE_BASE_ROUTE,
   ADMIN_LLM_PROVIDERS_ROUTE,
@@ -43,6 +42,7 @@ import { config } from '@/config'
 import { AdminRoute, ProtectedRoute } from '@/features/auth'
 import MainLayout from '@/layouts/MainLayout'
 import { ADMIN_SIDEBAR_NAV, getRoutePermission, USER_SIDEBAR_NAV } from '@/layouts/sidebarNav'
+import { useAbilityLoading } from '@/lib/ability'
 import { useHasPermission } from '@/lib/permissions'
 import '@/i18n'
 
@@ -58,9 +58,14 @@ function PermissionGate({
   requiredPermission: ReturnType<typeof getRoutePermission>
   children: ReactNode
 }) {
+  const isAbilityLoading = useAbilityLoading()
   const hasRequiredPermission = useHasPermission(
     requiredPermission as NonNullable<typeof requiredPermission>,
   )
+
+  if (isAbilityLoading) {
+    return null
+  }
 
   if (!hasRequiredPermission) {
     return <Navigate to="/403" replace />
@@ -93,7 +98,6 @@ const LogoutPage = lazy(() => import('@/features/auth/pages/LogoutPage'))
 const UserManagementPage = lazy(() => import('@/features/users/pages/UserManagementPage'))
 const UserDetailPage = lazy(() => import('@/features/users/pages/UserDetailPage'))
 const PermissionManagementPage = lazy(() => import('@/features/users/pages/PermissionManagementPage'))
-const EffectiveAccessPage = lazy(() => import('@/features/permissions/pages/EffectiveAccessPage'))
 const TeamManagementPage = lazy(() => import('@/features/teams/pages/TeamManagementPage'))
 const SystemToolsPage = lazy(() => import('@/features/system/pages/SystemToolsPage'))
 const SystemMonitorPage = lazy(() => import('@/features/system/pages/SystemMonitorPage'))
@@ -224,7 +228,6 @@ function App() {
               <Route path={toAdminChildPath(ADMIN_USER_DETAIL_ROUTE)} element={<FeatureErrorBoundary><NavRoleGuard><UserDetailPage /></NavRoleGuard></FeatureErrorBoundary>} />
               <Route path={toAdminChildPath(ADMIN_TEAMS_ROUTE)} element={<FeatureErrorBoundary><NavRoleGuard><TeamManagementPage /></NavRoleGuard></FeatureErrorBoundary>} />
               <Route path={toAdminChildPath(ADMIN_PERMISSIONS_ROUTE)} element={<FeatureErrorBoundary><NavRoleGuard><PermissionManagementPage /></NavRoleGuard></FeatureErrorBoundary>} />
-              <Route path={toAdminChildPath(ADMIN_EFFECTIVE_ACCESS_ROUTE)} element={<FeatureErrorBoundary><NavRoleGuard><EffectiveAccessPage /></NavRoleGuard></FeatureErrorBoundary>} />
 
               <Route path={toAdminChildPath(ADMIN_AUDIT_LOG_ROUTE)} element={<FeatureErrorBoundary><NavRoleGuard><AuditLogPage /></NavRoleGuard></FeatureErrorBoundary>} />
               <Route path={toAdminChildPath(ADMIN_SYSTEM_TOOLS_ROUTE)} element={<FeatureErrorBoundary><NavRoleGuard><SystemToolsPage /></NavRoleGuard></FeatureErrorBoundary>} />

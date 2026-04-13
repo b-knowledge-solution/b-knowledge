@@ -39,31 +39,31 @@ router.post('/:id/dismiss', markPublicRoute(), controller.dismiss.bind(controlle
  * @description List all broadcast messages (active and inactive).
  * @access Private (System Managers)
  */
-// Restricted to users with 'manage_system' permission
-router.get('/', requirePermission('manage_system'), controller.getAll.bind(controller))
+// Restricted to users with registry-backed broadcast.view permission
+router.get('/', requirePermission('broadcast.view'), controller.getAll.bind(controller))
 
 /**
  * @route POST /api/broadcast-messages
  * @description Create a new system-wide broadcast message.
  * @access Private (System Managers)
  */
-// Restricted to users with 'manage_system' permission
-router.post('/', requirePermission('manage_system'), validate(createBroadcastSchema), controller.create.bind(controller))
+// Restricted to users with registry-backed broadcast.create permission
+router.post('/', requirePermission('broadcast.create'), validate(createBroadcastSchema), controller.create.bind(controller))
 
 /**
  * @route PUT /api/broadcast-messages/:id
  * @description Update an existing broadcast message.
  * @access Private (System Managers)
  */
-// Restricted to users with 'manage_system' permission
-router.put('/:id', requirePermission('manage_system'), validate({ params: uuidParamSchema, body: updateBroadcastSchema }), controller.update.bind(controller))
+// Restricted to users with registry-backed broadcast.edit permission
+router.put('/:id', requirePermission('broadcast.edit'), validate({ params: uuidParamSchema, body: updateBroadcastSchema }), controller.update.bind(controller))
 
 /**
  * @route DELETE /api/broadcast-messages/:id
  * @description Delete a broadcast message.
  * @access Private (System Managers)
  */
-// Restricted to users with 'manage_system' permission
-router.delete('/:id', requirePermission('manage_system'), controller.delete.bind(controller))
+// Restricted to users with registry-backed broadcast.delete permission
+router.delete('/:id', requirePermission('broadcast.delete'), controller.delete.bind(controller))
 
 export default router

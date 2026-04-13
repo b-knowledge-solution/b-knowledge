@@ -192,10 +192,11 @@ export default function PermissionMatrix() {
 
   // Server snapshot aggregated into a single record for helper consumption
   const serverByRole: Record<string, readonly string[]> = {
-    [UserRole.SUPER_ADMIN]: (superAdminQ.data ?? []) as readonly string[],
-    [UserRole.ADMIN]: (adminQ.data ?? []) as readonly string[],
-    [UserRole.LEADER]: (leaderQ.data ?? []) as readonly string[],
-    [UserRole.USER]: (userQ.data ?? []) as readonly string[],
+    // Extract the actual permission key arrays from the API response shape.
+    [UserRole.SUPER_ADMIN]: superAdminQ.data?.permission_keys ?? [],
+    [UserRole.ADMIN]: adminQ.data?.permission_keys ?? [],
+    [UserRole.LEADER]: leaderQ.data?.permission_keys ?? [],
+    [UserRole.USER]: userQ.data?.permission_keys ?? [],
   }
 
   /**

@@ -29,12 +29,12 @@ const controller = new SearchController()
 /**
  * @route POST /api/search/apps
  * @description Create a new search app.
- * @access Admin only (manage_users permission)
+ * @access Admin only (search_apps.create permission)
  */
 router.post(
   '/apps',
   requireAuth,
-  requirePermission('manage_users'),
+  requirePermission('search_apps.create'),
   validate(createSearchAppSchema),
   controller.createSearchApp.bind(controller)
 )
@@ -66,12 +66,12 @@ router.get(
 /**
  * @route PUT /api/search/apps/:id
  * @description Update an existing search app.
- * @access Admin only (manage_users permission)
+ * @access Admin only (search_apps.edit permission)
  */
 router.put(
   '/apps/:id',
   requireAuth,
-  requirePermission('manage_users'),
+  requirePermission('search_apps.edit'),
   validate({ body: updateSearchAppSchema, params: searchAppIdParamSchema }),
   controller.updateSearchApp.bind(controller)
 )
@@ -79,12 +79,12 @@ router.put(
 /**
  * @route DELETE /api/search/apps/:id
  * @description Delete a search app.
- * @access Admin only (manage_users permission)
+ * @access Admin only (search_apps.delete permission)
  */
 router.delete(
   '/apps/:id',
   requireAuth,
-  requirePermission('manage_users'),
+  requirePermission('search_apps.delete'),
   validate({ params: searchAppIdParamSchema }),
   controller.deleteSearchApp.bind(controller)
 )
@@ -92,12 +92,12 @@ router.delete(
 /**
  * @route GET /api/search/apps/:id/access
  * @description Get access control entries for a search app.
- * @access Admin only (manage_users permission)
+ * @access Admin only (search_apps.edit permission)
  */
 router.get(
   '/apps/:id/access',
   requireAuth,
-  requirePermission('manage_users'),
+  requirePermission('search_apps.edit'),
   validate({ params: searchAppIdParamSchema }),
   controller.getAppAccess.bind(controller)
 )
@@ -105,12 +105,12 @@ router.get(
 /**
  * @route PUT /api/search/apps/:id/access
  * @description Set (replace) access control entries for a search app.
- * @access Admin only (manage_users permission)
+ * @access Admin only (search_apps.edit permission)
  */
 router.put(
   '/apps/:id/access',
   requireAuth,
-  requirePermission('manage_users'),
+  requirePermission('search_apps.edit'),
   validate({ body: searchAppAccessSchema, params: searchAppIdParamSchema }),
   controller.setAppAccess.bind(controller)
 )

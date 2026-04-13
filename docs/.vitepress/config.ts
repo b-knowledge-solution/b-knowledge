@@ -143,7 +143,7 @@ export default withMermaid(
           },
         ],
 
-        '/basic-design/system-infra/': [
+        '/basic-design/': [
           {
             text: 'System & Infrastructure',
             items: [
@@ -152,9 +152,6 @@ export default withMermaid(
               { text: 'Security Architecture', link: '/basic-design/system-infra/security-architecture' },
             ],
           },
-        ],
-
-        '/basic-design/database/': [
           {
             text: 'Database Design',
             items: [
@@ -166,9 +163,6 @@ export default withMermaid(
               { text: 'Agent & Memory Tables', link: '/basic-design/database/database-design-agents-memory' },
             ],
           },
-        ],
-
-        '/basic-design/component/': [
           {
             text: 'Component Architecture',
             items: [
@@ -178,9 +172,6 @@ export default withMermaid(
               { text: 'API Design: Endpoints', link: '/basic-design/component/api-design-endpoints' },
             ],
           },
-        ],
-
-        '/basic-design/rag-pipeline/': [
           {
             text: 'RAG Pipeline',
             items: [
@@ -197,9 +188,6 @@ export default withMermaid(
               { text: 'Dataset Gaps Architecture', link: '/basic-design/rag-pipeline/dataset-gaps-architecture' },
             ],
           },
-        ],
-
-        '/basic-design/agent-memory/': [
           {
             text: 'Agent & Memory',
             items: [
@@ -207,9 +195,6 @@ export default withMermaid(
               { text: 'Memory Architecture', link: '/basic-design/agent-memory/memory-architecture' },
             ],
           },
-        ],
-
-        '/basic-design/converter/': [
           {
             text: 'Converter',
             items: [
@@ -218,7 +203,7 @@ export default withMermaid(
           },
         ],
 
-        '/detail-design/auth/': [
+        '/detail-design/': [
           {
             text: 'Authentication & Authorization',
             items: [
@@ -230,9 +215,6 @@ export default withMermaid(
               { text: 'Permission Maintenance Guide', link: '/detail-design/auth/permission-maintenance-guide' },
             ],
           },
-        ],
-
-        '/detail-design/user-team/': [
           {
             text: 'User & Team Management',
             items: [
@@ -241,9 +223,6 @@ export default withMermaid(
               { text: 'Team Management', link: '/detail-design/user-team/team-management-detail' },
             ],
           },
-        ],
-
-        '/detail-design/dataset-document/': [
           {
             text: 'Dataset & Document',
             items: [
@@ -262,9 +241,6 @@ export default withMermaid(
               { text: 'RAG Pipeline Parsers ➜', link: '/detail-design/rag-pipeline/overview' },
             ],
           },
-        ],
-
-        '/detail-design/chat/': [
           {
             text: 'AI Chat',
             items: [
@@ -276,9 +252,6 @@ export default withMermaid(
               { text: 'Embed Widget', link: '/detail-design/chat/embed-widget' },
             ],
           },
-        ],
-
-        '/detail-design/search/': [
           {
             text: 'AI Search',
             items: [
@@ -290,9 +263,6 @@ export default withMermaid(
               { text: 'Embed Widget', link: '/detail-design/search/embed-widget' },
             ],
           },
-        ],
-
-        '/detail-design/project/': [
           {
             text: 'Project Management',
             items: [
@@ -301,9 +271,6 @@ export default withMermaid(
               { text: 'Categories & Versions', link: '/detail-design/project/category-detail' },
             ],
           },
-        ],
-
-        '/detail-design/agent/': [
           {
             text: 'Agent Workflows',
             items: [
@@ -314,9 +281,6 @@ export default withMermaid(
               { text: 'Triggers & Embed Widget', link: '/detail-design/agent/triggers-embed' },
             ],
           },
-        ],
-
-        '/detail-design/memory/': [
           {
             text: 'AI Memory',
             items: [
@@ -325,9 +289,6 @@ export default withMermaid(
               { text: 'Chat Integration', link: '/detail-design/memory/chat-integration' },
             ],
           },
-        ],
-
-        '/detail-design/supporting/': [
           {
             text: 'Supporting Features',
             items: [
@@ -361,9 +322,6 @@ export default withMermaid(
               { text: 'Horizontal Scaling', link: '/detail-design/supporting/horizontal-scaling' },
             ],
           },
-        ],
-
-        '/detail-design/rag-pipeline/': [
           {
             text: 'RAG Ingestion Pipeline',
             items: [
@@ -452,6 +410,7 @@ export default withMermaid(
           {
             text: 'Superpowers Plans',
             items: [
+              { text: '2026-04-01 Document Upload Converter Pipeline', link: '/superpowers/plans/2026-04-01-document-upload-converter-pipeline' },
               { text: '2026-03-25 Search Feature Gaps', link: '/superpowers/plans/2026-03-25-search-feature-gaps' },
               { text: '2026-03-25 SQL Tags Spotlight', link: '/superpowers/plans/2026-03-25-sql-tags-spotlight' },
               { text: '2026-03-24 Retrieval Quality Parity', link: '/superpowers/plans/2026-03-24-retrieval-quality-parity' },
@@ -467,6 +426,7 @@ export default withMermaid(
               { text: '2026-03-25 Doc Coverage Audit', link: '/superpowers/specs/2026-03-25-doc-coverage-audit' },
               { text: 'Search Feature Gaps Design', link: '/superpowers/specs/2026-03-25-search-feature-gaps-design' },
               { text: 'SQL Fallback, Tags, Spotlight Design', link: '/superpowers/specs/2026-03-25-sql-fallback-tags-spotlight-design' },
+              { text: '2026-04-01 Document Upload Converter Pipeline Plan', link: '/superpowers/plans/2026-04-01-document-upload-converter-pipeline' },
               { text: '2026-03-25 Search Feature Gaps Plan', link: '/superpowers/plans/2026-03-25-search-feature-gaps' },
               { text: '2026-03-25 SQL Tags Spotlight Plan', link: '/superpowers/plans/2026-03-25-sql-tags-spotlight' },
               { text: '2026-03-24 Retrieval Quality Parity Plan', link: '/superpowers/plans/2026-03-24-retrieval-quality-parity' },

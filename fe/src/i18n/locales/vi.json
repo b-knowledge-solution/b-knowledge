@@ -209,6 +209,27 @@
     "noMatches": "Không có kết quả khớp",
     "admin": {
       "sessionRefreshNotice": "Đã lưu. Người dùng bị ảnh hưởng sẽ thấy thay đổi ở yêu cầu tiếp theo — họ có thể cần làm mới trang.",
+      "matrix": {
+        "title": "Ma trận vai trò - quyền",
+        "permissionColumn": "Quyền",
+        "cancelButton": "Hủy",
+        "saveButton": "Lưu ({{count}})",
+        "saveError": "Không thể lưu quyền của vai trò",
+        "roles": {
+          "super_admin": "Quản trị cấp cao",
+          "admin": "Quản trị viên",
+          "leader": "Trưởng nhóm",
+          "user": "Người dùng"
+        },
+        "sections": {
+          "chat": "Trò chuyện",
+          "datasets": "Bộ dữ liệu",
+          "files": "Tệp",
+          "permissions": "Quyền",
+          "search": "Tìm kiếm",
+          "users": "Người dùng"
+        }
+      },
       "overrides": {
         "title": "Ghi đè quyền",
         "allowSection": "Quyền được cấp thêm",
@@ -252,6 +273,63 @@
         "empty": "Không có kết quả",
         "chip": { "all": "Tất cả", "user": "Người dùng", "team": "Nhóm", "role": "Vai trò" },
         "type": { "user": "Người dùng", "team": "Nhóm", "role": "Vai trò" }
+      },
+      "principalMatrix": {
+        "title": "Quyền người dùng & nhóm",
+        "addPrincipal": "Thêm người dùng / nhóm",
+        "featureHeader": {
+          "view": "Xem",
+          "addEdit": "Thêm/Sửa",
+          "delete": "Xoá"
+        },
+        "noPrincipals": "Chưa có người dùng hoặc nhóm nào. Nhấn \"Thêm người dùng / nhóm\" để bắt đầu.",
+        "saveButton": "Lưu ({{count}})",
+        "cancelButton": "Hủy",
+        "saveError": "Không thể lưu quyền",
+        "saveSuccess": "Đã lưu quyền. Người dùng bị ảnh hưởng có thể cần làm mới trang.",
+        "removePrincipal": "Xoá",
+        "principalType": {
+          "user": "Người dùng",
+          "team": "Nhóm"
+        },
+        "features": {
+          "agents": "Tác nhân",
+          "api_keys": "Khóa API",
+          "audit": "Kiểm tra",
+          "broadcast": "Thông báo",
+          "chat": "Trò chuyện",
+          "chunks": "Đoạn văn",
+          "code_graph": "Đồ thị mã",
+          "dashboard": "Bảng điều khiển",
+          "datasets": "Bộ dữ liệu",
+          "document_categories": "Danh mục tài liệu",
+          "documents": "Tài liệu",
+          "feedback": "Phản hồi",
+          "glossary": "Thuật ngữ",
+          "knowledge_base": "Kho tri thức",
+          "llm_providers": "Nhà cung cấp LLM",
+          "memory": "Bộ nhớ",
+          "permissions": "Quyền",
+          "preview": "Xem trước",
+          "search_apps": "Ứng dụng tìm kiếm",
+          "sync_connectors": "Đồng bộ dữ liệu",
+          "system": "Hệ thống",
+          "system_history": "Lịch sử hệ thống",
+          "system_tools": "Công cụ hệ thống",
+          "teams": "Nhóm",
+          "user_history": "Lịch sử cá nhân",
+          "users": "Người dùng"
+        }
+      },
+      "addPrincipalDialog": {
+        "title": "Thêm người dùng hoặc nhóm",
+        "usersTab": "Người dùng",
+        "teamsTab": "Nhóm",
+        "searchUsers": "Tìm người dùng...",
+        "searchTeams": "Tìm nhóm...",
+        "noUsers": "Không có người dùng",
+        "noTeams": "Không có nhóm",
+        "alreadyAdded": "Đã thêm"
       }
     }
   },

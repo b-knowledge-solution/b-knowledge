@@ -308,7 +308,7 @@ export class AuthService {
       const user = {
         id: 'root-user',
         email: username,
-        role: 'admin',
+        role: 'super-admin',
         displayName: 'System Administrator'
       };
 
