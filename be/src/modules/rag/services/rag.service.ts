@@ -315,7 +315,7 @@ export class RagService {
         teamIds: string[]
     ): Promise<boolean> {
         // Admins always have access
-        if (userRole === UserRole.ADMIN || userRole === UserRole.SUPERADMIN) {
+        if (userRole === UserRole.ADMIN || userRole === UserRole.SUPER_ADMIN) {
             return true;
         }
 

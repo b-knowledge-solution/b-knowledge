@@ -62,7 +62,7 @@ export class AuthController {
         }
 
         // Build and cache CASL ability for this session
-        const ability = abilityService.buildAbilityFor({
+        const ability = await abilityService.buildAbilityFor({
           id: user.id,
           role: primaryMembership.role,
           is_superuser: user.is_superuser ?? null,
@@ -471,7 +471,7 @@ export class AuthController {
 
             if (!ability) {
                 // Cache miss — build fresh ability and cache it
-                ability = abilityService.buildAbilityFor({
+                ability = await abilityService.buildAbilityFor({
                     id: user.id,
                     role: user.role,
                     is_superuser: user.is_superuser ?? null,
@@ -561,9 +561,13 @@ export class AuthController {
                 req.session.user.role = membership.role
             }
 
-            // Invalidate old ability and build/cache fresh one with new org context
+            // Invalidate the cached ability for this session — V2 ability rules are
+            // tenant-scoped via `tenant_id` conditions embedded in the rule conditions,
+            // and the cache must not outlive the org context that produced it. Failing
+            // to invalidate here would grant the user the PREVIOUS org's permissions
+            // for up to the cache TTL (see Phase 3 P3.0c / R-12).
             await abilityService.invalidateAbility(req.sessionID)
-            const ability = abilityService.buildAbilityFor({
+            const ability = await abilityService.buildAbilityFor({
                 id: user.id,
                 role: membership.role,
                 is_superuser: user.is_superuser ?? null,

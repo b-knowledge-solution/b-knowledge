@@ -9,15 +9,15 @@
  * @module pages/SystemToolsPage
  */
 
-import { AlertCircle, RefreshCw, Server } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
-import { queryKeys } from '@/lib/queryKeys';
-import { getSystemTools } from '../api/systemToolsApi';
-import SystemToolCard from '../components/SystemToolCard';
-import CronSchedulerSettings from '../components/CronSchedulerSettings';
-import { useAuth } from '@/features/auth';
-import { UserRole } from '@/constants';
+import { AlertCircle, RefreshCw, Server } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/queryKeys'
+import { getSystemTools } from '../api/systemToolsApi'
+import SystemToolCard from '../components/SystemToolCard'
+import CronSchedulerSettings from '../components/CronSchedulerSettings'
+import { useHasPermission } from '@/lib/permissions'
+import { PERMISSION_KEYS } from '@/constants/permission-keys'
 
 // ============================================================================
 // Component
@@ -35,7 +35,8 @@ import { UserRole } from '@/constants';
  */
 const SystemToolsPage = () => {
     const { t } = useTranslation();
-    const { user } = useAuth();
+    // Catalog-driven gate replacing legacy admin role check (Plan 4.4 manual migration)
+    const isAdmin = useHasPermission(PERMISSION_KEYS.SYSTEM_TOOLS_VIEW);
 
     /**
      * Fetch system tools via TanStack Query (deduplicated, cached).
@@ -134,7 +135,7 @@ const SystemToolsPage = () => {
                         <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                             <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
                                 {t('systemTools.toolsAvailable', { count: tools.length })}
-                                {user?.role === UserRole.ADMIN && (
+                                {isAdmin && (
                                     <span className="ml-2">
                                         · {t('systemTools.configInfo')} <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs">system-tools.config.json</code>
                                     </span>

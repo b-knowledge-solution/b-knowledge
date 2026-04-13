@@ -307,7 +307,7 @@ describe('SearchService – comprehensive', () => {
       const chain = makeKnexChain(allApps)
       mockGetKnex.mockReturnValue(chain)
 
-      const result = await service.listAccessibleApps('admin-1', 'superadmin', [])
+      const result = await service.listAccessibleApps('admin-1', 'super-admin', [])
 
       expect(result.data).toHaveLength(3)
       expect(result.total).toBe(3)

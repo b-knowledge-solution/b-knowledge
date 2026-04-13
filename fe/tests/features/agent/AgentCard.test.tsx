@@ -164,7 +164,7 @@ describe('AgentCard', () => {
     const card = screen.getByTestId('card')
     fireEvent.click(card)
 
-    expect(mockNavigate).toHaveBeenCalledWith('/agent-studio/agents/agent-1')
+    expect(mockNavigate).toHaveBeenCalledWith('/admin/agent-studio/agents/agent-1')
   })
 
   it('renders kebab dropdown menu', () => {

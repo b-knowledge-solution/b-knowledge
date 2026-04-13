@@ -1,46 +1,50 @@
 /**
- * @fileoverview Main application layout component.
+ * @fileoverview Shared authenticated application shell.
  *
- * Composes the Sidebar and Header into the overall app shell.
- * Content area behavior (padding, overflow) is driven by route config.
+ * Composes the shell-specific sidebar and the shared header/banner layout while
+ * route metadata controls page chrome and content padding.
  *
  * @module layouts/MainLayout
  */
 
-import { useLocation } from 'react-router-dom';
-import { Outlet } from 'react-router-dom';
-import { Sidebar } from './Sidebar';
-import { Header } from './Header';
-import { getRouteMetadata } from '@/app/routeConfig';
-import BroadcastBanner from '@/features/broadcast/components/BroadcastBanner';
-
-// ============================================================================
-// Main Layout Component
-// ============================================================================
+import { Outlet, useLocation } from 'react-router-dom'
+import { getRouteMetadata } from '@/app/routeConfig'
+import BroadcastBanner from '@/features/broadcast/components/BroadcastBanner'
+import type { SidebarNavEntry } from './sidebarNav'
+import { Header } from './Header'
+import { Sidebar } from './Sidebar'
 
 /**
- * @description Renders the main application shell with sidebar navigation, header bar, broadcast banner, and content outlet
- * @returns {JSX.Element} Full-screen layout with sidebar and content area
+ * @description Props for the shared authenticated layout shell
  */
-function Layout() {
-  const location = useLocation();
-  // Determine layout behavior (padding, overflow) based on the current route
-  const routeMetadata = getRouteMetadata(location.pathname);
+interface MainLayoutProps {
+  /** Navigation registry for the current shell */
+  navEntries: SidebarNavEntry[]
+}
+
+/**
+ * @description Renders the authenticated shell with shell-specific navigation and shared content chrome
+ * @param {MainLayoutProps} props - Layout configuration including the sidebar nav registry
+ * @returns {JSX.Element} Full-screen layout with sidebar, banner, header, and nested route outlet
+ */
+function MainLayout({ navEntries }: MainLayoutProps) {
+  const location = useLocation()
+  const routeMetadata = getRouteMetadata(location.pathname)
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar />
+      <Sidebar navEntries={navEntries} />
 
       <main className="flex-1 flex flex-col bg-gradient-to-br from-slate-50 via-white to-blue-50/30 dark:from-slate-850 dark:via-slate-800 dark:to-slate-900 overflow-hidden">
         <BroadcastBanner />
         <Header />
-        {/* Apply padding only for non-fullBleed routes; fullBleed pages manage their own padding */}
+        {/* Let full-bleed routes manage their own padding and overflow behavior. */}
         <div className={`flex-1 overflow-hidden ${routeMetadata.fullBleed ? '' : 'p-8 overflow-auto'}`}>
           <Outlet />
         </div>
       </main>
     </div>
-  );
+  )
 }
 
-export default Layout;
+export default MainLayout

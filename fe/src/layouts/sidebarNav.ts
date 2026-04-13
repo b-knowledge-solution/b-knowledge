@@ -1,47 +1,61 @@
 /**
- * @fileoverview Declarative sidebar navigation configuration.
+ * @fileoverview Declarative sidebar navigation registries for user and admin shells.
  *
- * Defines all sidebar items (links and expandable groups) as data.
- * Each item specifies its route, label key, icon, and optional
- * role / feature-flag guards.
- *
- * When adding a new sidebar entry, add it here instead of touching
- * the Sidebar component directly.
+ * Keeps shell navigation and route-permission resolution in one place so
+ * `/admin/...` routing cannot drift from sidebar visibility rules.
  *
  * @module layouts/sidebarNav
  */
 
 import type { LucideIcon } from 'lucide-react'
 import {
+  Activity,
+  BarChart3,
+  Brain,
+  BrainCircuit,
+  ClipboardList,
+  Database,
+  FileCode,
+  FolderOpen,
+  History,
+  LayoutDashboard,
+  Megaphone,
   MessageSquare,
   Search,
-  BookOpen,
-  Users,
   Server,
-  ClipboardList,
-  FileCode,
-  Activity,
+  Shield,
+  ShieldCheck,
   User as UserIcon,
   UserCog,
-  Megaphone,
-  History,
-  BarChart3,
-  Database,
-  Shield,
-  FolderOpen,
-  LayoutDashboard,
-  BrainCircuit,
+  Users,
   Workflow,
-  Brain,
 } from 'lucide-react'
 import type { config } from '@/config'
-
-// ============================================================================
-// Types
-// ============================================================================
+import {
+  ADMIN_AGENTS_ROUTE,
+  ADMIN_AUDIT_LOG_ROUTE,
+  ADMIN_BROADCAST_MESSAGES_ROUTE,
+  ADMIN_CHAT_ASSISTANTS_ROUTE,
+  ADMIN_CODE_GRAPH_ROUTE,
+  ADMIN_DASHBOARD_ROUTE,
+  ADMIN_DATASETS_ROUTE,
+  ADMIN_EFFECTIVE_ACCESS_ROUTE,
+  ADMIN_HISTORIES_ROUTE,
+  ADMIN_KNOWLEDGE_BASE_ROUTE,
+  ADMIN_LLM_PROVIDERS_ROUTE,
+  ADMIN_MEMORY_ROUTE,
+  ADMIN_PERMISSIONS_ROUTE,
+  ADMIN_SEARCH_APPS_ROUTE,
+  ADMIN_SYSTEM_MONITOR_ROUTE,
+  ADMIN_SYSTEM_TOOLS_ROUTE,
+  ADMIN_TEAMS_ROUTE,
+  ADMIN_TOKENIZER_ROUTE,
+  ADMIN_USERS_ROUTE,
+} from '@/app/adminRoutes'
+import { PERMISSION_KEYS, type PermissionKey } from '@/constants/permission-keys'
 
 /**
- * @description A single sidebar navigation link (leaf item) with route, label, icon, and optional access guards
+ * @description A single sidebar navigation link with its path, label, icon, and optional access guards
  */
 export interface SidebarNavItem {
   /** Route path used for navigation and active-state matching */
@@ -50,59 +64,46 @@ export interface SidebarNavItem {
   labelKey: string
   /** Lucide icon component */
   icon: LucideIcon
-  /** Icon size (defaults to 18 for children, 20 for top-level) */
+  /** Icon size override for compact children */
   iconSize?: number
-  /** Restrict to specific user roles */
-  roles?: string[]
-  /** Feature flag key in `config.features` — item hidden when `false` */
+  /** Catalog permission key required to see this item */
+  requiredPermission?: PermissionKey
+  /** Feature flag key in `config.features` */
   featureFlag?: keyof typeof config.features
 }
 
 /**
- * @description An expandable sidebar group containing child navigation links with optional role-based access control
+ * @description An expandable sidebar group containing child navigation links
  */
 export interface SidebarNavGroup {
-  /** i18n key for the group header label */
+  /** i18n key for the group label */
   labelKey: string
   /** Lucide icon for the group header */
   icon: LucideIcon
-  /** Restrict entire group to specific user roles */
-  roles?: string[]
-  /** Child links rendered inside the collapsible section */
+  /** Catalog permission key required to see the group */
+  requiredPermission?: PermissionKey
+  /** Child routes rendered inside the group */
   children: SidebarNavItem[]
 }
 
 /**
- * @description Union type representing either a standalone navigation link or an expandable group with children
+ * @description Union type for standalone nav links and grouped nav sections
  */
 export type SidebarNavEntry = SidebarNavItem | SidebarNavGroup
 
-// ============================================================================
-// Type Guards
-// ============================================================================
-
 /**
- * @description Type guard that determines whether a navigation entry is an expandable group by checking for the children property
- * @param {SidebarNavEntry} entry - The navigation entry to check
- * @returns {boolean} True when the entry has children (is a group)
+ * @description Type guard that determines whether a navigation entry is an expandable group
+ * @param {SidebarNavEntry} entry - Candidate navigation entry
+ * @returns {boolean} True when the entry contains child links
  */
 export function isNavGroup(entry: SidebarNavEntry): entry is SidebarNavGroup {
   return 'children' in entry
 }
 
-// ============================================================================
-// Navigation Configuration
-// ============================================================================
-
 /**
- * All sidebar navigation entries in display order.
- *
- * To add a new sidebar link:
- *  1. Add a `SidebarNavItem` entry (or add to an existing group's `children`)
- *  2. Add the route metadata in `routeConfig.ts`
- *  3. Add the `<Route>` element in `App.tsx`
+ * @description Sidebar registry for the standard authenticated shell
  */
-export const SIDEBAR_NAV: SidebarNavEntry[] = [
+export const USER_SIDEBAR_NAV: SidebarNavEntry[] = [
   {
     path: '/chat',
     labelKey: 'nav.aiChat',
@@ -117,174 +118,203 @@ export const SIDEBAR_NAV: SidebarNavEntry[] = [
     iconSize: 20,
     featureFlag: 'enableAiSearch',
   },
+]
 
-
-  // ── Data Studio (super-admin / admin / leader) ─────────────────
+/**
+ * @description Sidebar registry for the `/admin` shell
+ */
+export const ADMIN_SIDEBAR_NAV: SidebarNavEntry[] = [
   {
     labelKey: 'nav.dataStudio',
     icon: LayoutDashboard,
-    roles: ['super-admin', 'admin', 'leader'],
+    requiredPermission: PERMISSION_KEYS.KNOWLEDGE_BASE_VIEW,
     children: [
       {
-        path: '/data-studio/knowledge-base',
+        path: ADMIN_KNOWLEDGE_BASE_ROUTE,
         labelKey: 'nav.knowledgeBase',
         icon: FolderOpen,
+        requiredPermission: PERMISSION_KEYS.KNOWLEDGE_BASE_VIEW,
       },
       {
-        path: '/data-studio/datasets',
+        path: ADMIN_DATASETS_ROUTE,
         labelKey: 'nav.datasets',
         icon: Database,
+        requiredPermission: PERMISSION_KEYS.DATASETS_VIEW,
       },
     ],
   },
-
-  // ── Agent Studio (Agents, Memory, Chat Assistants, Search Apps, Histories) ──
   {
     labelKey: 'nav.agentStudio',
     icon: Workflow,
-    roles: ['super-admin', 'admin'],
+    requiredPermission: PERMISSION_KEYS.AGENTS_VIEW,
     children: [
       {
-        path: '/agent-studio/chat-assistants',
+        path: ADMIN_CHAT_ASSISTANTS_ROUTE,
         labelKey: 'nav.chatAssistants',
         icon: MessageSquare,
-        roles: ['super-admin', 'admin'],
+        requiredPermission: PERMISSION_KEYS.CHAT_VIEW,
       },
       {
-        path: '/agent-studio/search-apps',
+        path: ADMIN_SEARCH_APPS_ROUTE,
         labelKey: 'nav.searchApps',
         icon: Search,
-        roles: ['super-admin', 'admin'],
+        requiredPermission: PERMISSION_KEYS.SEARCH_APPS_VIEW,
       },
       {
-        path: '/agent-studio/histories',
+        path: ADMIN_HISTORIES_ROUTE,
         labelKey: 'nav.histories',
         icon: History,
-        roles: ['super-admin', 'admin'],
+        requiredPermission: PERMISSION_KEYS.SYSTEM_HISTORY_VIEW,
       },
-      { path: '/agent-studio/agents', labelKey: 'nav.agentList', icon: Workflow, iconSize: 18 },
-      { path: '/agent-studio/memory', labelKey: 'nav.memory', icon: Brain, iconSize: 18 },
-
+      {
+        path: ADMIN_AGENTS_ROUTE,
+        labelKey: 'nav.agentList',
+        icon: Workflow,
+        iconSize: 18,
+        requiredPermission: PERMISSION_KEYS.AGENTS_VIEW,
+      },
+      {
+        path: ADMIN_MEMORY_ROUTE,
+        labelKey: 'nav.memory',
+        icon: Brain,
+        iconSize: 18,
+        requiredPermission: PERMISSION_KEYS.MEMORY_VIEW,
+      },
     ],
   },
-  {
-    path: '/glossary',
-    labelKey: 'nav.glossary',
-    icon: BookOpen,
-    iconSize: 20,
-    roles: ['super-admin', 'admin'],
-  },
-  // ── IAM (super-admin / admin) ───────────────────────────────────
   {
     labelKey: 'nav.iam',
     icon: UserCog,
-    roles: ['super-admin', 'admin'],
+    requiredPermission: PERMISSION_KEYS.USERS_VIEW,
     children: [
       {
-        path: '/iam/users',
+        path: ADMIN_USERS_ROUTE,
         labelKey: 'nav.userManagement',
         icon: UserIcon,
+        requiredPermission: PERMISSION_KEYS.USERS_VIEW,
       },
       {
-        path: '/iam/teams',
+        path: ADMIN_TEAMS_ROUTE,
         labelKey: 'nav.teamManagement',
         icon: Users,
+        requiredPermission: PERMISSION_KEYS.TEAMS_VIEW,
+      },
+      {
+        path: ADMIN_PERMISSIONS_ROUTE,
+        labelKey: 'nav.permissionManagement',
+        icon: ShieldCheck,
+        requiredPermission: PERMISSION_KEYS.PERMISSIONS_MANAGE,
+      },
+      {
+        path: ADMIN_EFFECTIVE_ACCESS_ROUTE,
+        labelKey: 'nav.effectiveAccess',
+        icon: Search,
+        requiredPermission: PERMISSION_KEYS.PERMISSIONS_VIEW,
       },
     ],
   },
-
-  // ── System (super-admin / admin) ─────────────────────────────────
   {
     labelKey: 'nav.system',
     icon: Shield,
-    roles: ['super-admin', 'admin'],
+    requiredPermission: PERMISSION_KEYS.SYSTEM_VIEW,
     children: [
       {
-        path: '/system/dashboard',
+        path: ADMIN_DASHBOARD_ROUTE,
         labelKey: 'nav.dashboard',
         icon: BarChart3,
+        requiredPermission: PERMISSION_KEYS.DASHBOARD_VIEW,
       },
       {
-        path: '/system/audit-log',
+        path: ADMIN_AUDIT_LOG_ROUTE,
         labelKey: 'nav.auditLog',
         icon: ClipboardList,
+        requiredPermission: PERMISSION_KEYS.AUDIT_VIEW,
       },
       {
-        path: '/system/system-tools',
+        path: ADMIN_SYSTEM_TOOLS_ROUTE,
         labelKey: 'nav.systemTools',
         icon: Server,
+        requiredPermission: PERMISSION_KEYS.SYSTEM_TOOLS_VIEW,
       },
       {
-        path: '/system/system-monitor',
+        path: ADMIN_SYSTEM_MONITOR_ROUTE,
         labelKey: 'nav.systemMonitor',
         icon: Activity,
+        requiredPermission: PERMISSION_KEYS.SYSTEM_VIEW,
       },
       {
-        path: '/system/tokenizer',
+        path: ADMIN_TOKENIZER_ROUTE,
         labelKey: 'nav.tokenizer',
         icon: FileCode,
+        requiredPermission: PERMISSION_KEYS.SYSTEM_VIEW,
       },
       {
-        path: '/system/broadcast-messages',
+        path: ADMIN_BROADCAST_MESSAGES_ROUTE,
         labelKey: 'nav.broadcastMessages',
         icon: Megaphone,
+        requiredPermission: PERMISSION_KEYS.BROADCAST_VIEW,
       },
       {
-        path: '/system/llm-providers',
+        path: ADMIN_LLM_PROVIDERS_ROUTE,
         labelKey: 'nav.llmProviders',
         icon: BrainCircuit,
+        requiredPermission: PERMISSION_KEYS.LLM_PROVIDERS_VIEW,
       },
     ],
   },
 ]
 
-// ============================================================================
-// Role Resolution Helper
-// ============================================================================
+const HIDDEN_ADMIN_ROUTE_PERMISSIONS: Record<string, PermissionKey> = {
+  [ADMIN_CODE_GRAPH_ROUTE]: PERMISSION_KEYS.KNOWLEDGE_BASE_VIEW,
+}
 
-/**
- * Flat map of route path → effective roles[], built once from SIDEBAR_NAV.
- * Child items inherit the parent group's roles when they don't define their own.
- */
-const ROUTE_ROLES_MAP: Record<string, string[]> = {}
+const ROUTE_PERMISSION_MAP: Record<string, PermissionKey> = {}
 
-// Build the map at module load time
-for (const entry of SIDEBAR_NAV) {
+for (const entry of [...USER_SIDEBAR_NAV, ...ADMIN_SIDEBAR_NAV]) {
   if (isNavGroup(entry)) {
-    const groupRoles = entry.roles || []
+    const groupPermission = entry.requiredPermission
     for (const child of entry.children) {
-      // Child-level roles take precedence; fall back to group-level roles
-      const effectiveRoles = child.roles?.length ? child.roles : groupRoles
-      if (effectiveRoles.length) {
-        ROUTE_ROLES_MAP[child.path] = effectiveRoles
+      const effectivePermission = child.requiredPermission ?? groupPermission
+      if (effectivePermission) {
+        ROUTE_PERMISSION_MAP[child.path] = effectivePermission
       }
     }
-  } else if (entry.roles?.length) {
-    ROUTE_ROLES_MAP[entry.path] = entry.roles
+    continue
+  }
+
+  if (entry.requiredPermission) {
+    ROUTE_PERMISSION_MAP[entry.path] = entry.requiredPermission
   }
 }
 
+for (const [path, permission] of Object.entries(HIDDEN_ADMIN_ROUTE_PERMISSIONS)) {
+  ROUTE_PERMISSION_MAP[path] = permission
+}
+
 /**
- * @description Resolve the allowed roles for a given pathname from the nav config.
- *   Uses exact match first, then longest-prefix match for detail pages
- *   (e.g. `/data-studio/datasets/abc` matches `/data-studio/datasets`).
- * @param {string} pathname - The current URL pathname
- * @returns {string[] | undefined} Allowed roles array, or undefined if no restriction
+ * @description Resolves the permission required for the given pathname using exact, hidden-route, and prefix matching
+ * @param {string} pathname - Current URL pathname
+ * @returns {PermissionKey | undefined} Required permission key, or undefined when the route is unrestricted
  */
-export function getRouteRoles(pathname: string): string[] | undefined {
-  // Exact match
-  if (ROUTE_ROLES_MAP[pathname]) {
-    return ROUTE_ROLES_MAP[pathname]
+export function getRoutePermission(pathname: string): PermissionKey | undefined {
+  if (ROUTE_PERMISSION_MAP[pathname]) {
+    return ROUTE_PERMISSION_MAP[pathname]
   }
 
-  // Prefix match — find the longest matching path
+  // Guard hidden code-graph routes explicitly because they are not visible nav entries.
+  if (/^\/admin\/code-graph\/[^/]+$/.test(pathname)) {
+    return ROUTE_PERMISSION_MAP[ADMIN_CODE_GRAPH_ROUTE]
+  }
+
   let bestMatch: string | undefined
   let bestLength = 0
-  for (const path of Object.keys(ROUTE_ROLES_MAP)) {
-    if (pathname.startsWith(path + '/') && path.length > bestLength) {
+
+  for (const path of Object.keys(ROUTE_PERMISSION_MAP)) {
+    if (pathname.startsWith(`${path}/`) && path.length > bestLength) {
       bestMatch = path
       bestLength = path.length
     }
   }
-  return bestMatch ? ROUTE_ROLES_MAP[bestMatch] : undefined
+
+  return bestMatch ? ROUTE_PERMISSION_MAP[bestMatch] : undefined
 }

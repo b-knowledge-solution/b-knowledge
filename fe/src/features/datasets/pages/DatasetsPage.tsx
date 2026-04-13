@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Plus, Search, LayoutGrid, List } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Spinner } from '@/components/ui/spinner';
-import { EmptyState } from '@/components/ui/empty-state';
-import { useAuth } from '@/features/auth';
-import { UserRole } from '@/constants';
-import { useDatasets } from '../api/datasetQueries';
-import DatasetCard from '../components/DatasetCard';
-import CreateDatasetModal from '../components/CreateDatasetModal';
-import DatasetAccessDialog from '../components/DatasetAccessDialog';
-import type { Dataset } from '../types';
+import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Plus, Search, LayoutGrid, List } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Spinner } from '@/components/ui/spinner'
+import { EmptyState } from '@/components/ui/empty-state'
+import { useHasPermission } from '@/lib/permissions'
+import { PERMISSION_KEYS } from '@/constants/permission-keys'
+import { useDatasets } from '../api/datasetQueries'
+import DatasetCard from '../components/DatasetCard'
+import CreateDatasetModal from '../components/CreateDatasetModal'
+import DatasetAccessDialog from '../components/DatasetAccessDialog'
+import type { Dataset } from '../types'
 
 /**
  * @description Datasets listing page with search, grid/list view toggle,
@@ -22,9 +22,8 @@ import type { Dataset } from '../types';
  */
 const DatasetsPage: React.FC = () => {
   const { t } = useTranslation();
-  const { user } = useAuth();
-  // Grant admin privileges to admin and leader roles
-  const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.LEADER;
+  // Catalog-driven gate replacing legacy admin/leader role check (Plan 4.4 manual migration)
+  const isAdmin = useHasPermission(PERMISSION_KEYS.DATASETS_VIEW);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   // State for access control dialog
   const [accessDataset, setAccessDataset] = useState<Dataset | null>(null);
@@ -105,7 +104,6 @@ const DatasetsPage: React.FC = () => {
               onEdit={openModal}
               onDelete={handleDelete}
               onManageAccess={isAdmin ? (d: Dataset) => setAccessDataset(d) : undefined}
-              isAdmin={isAdmin}
             />
           ))}
         </div>
@@ -118,7 +116,6 @@ const DatasetsPage: React.FC = () => {
               onEdit={openModal}
               onDelete={handleDelete}
               onManageAccess={isAdmin ? (d: Dataset) => setAccessDataset(d) : undefined}
-              isAdmin={isAdmin}
             />
           ))}
         </div>

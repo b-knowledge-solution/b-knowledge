@@ -293,6 +293,20 @@ export const queryKeys = {
   },
 
   // --------------------------------------------------------------------------
+  // Permissions (Admin)
+  // --------------------------------------------------------------------------
+  permissions: {
+    all: ['permissions'] as const,
+    catalog: () => ['permissions', 'catalog'] as const,
+    rolePermissions: (role: string) => ['permissions', 'role', role] as const,
+    userOverrides: (userId: number) => ['permissions', 'user-overrides', userId] as const,
+    grants: (resourceType: string, resourceId: string) =>
+      ['permissions', 'grants', resourceType, resourceId] as const,
+    whoCanDo: (action: string, subject: string, resourceId?: string) =>
+      ['permissions', 'who-can-do', action, subject, resourceId ?? null] as const,
+  },
+
+  // --------------------------------------------------------------------------
   // Code Graph (Memgraph)
   // --------------------------------------------------------------------------
   codeGraph: {

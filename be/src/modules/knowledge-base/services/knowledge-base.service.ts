@@ -26,7 +26,7 @@ export class KnowledgeBaseService {
    */
   async getAccessibleKnowledgeBases(user: UserContext, tenantId: string): Promise<KnowledgeBase[]> {
     // Admins see all active knowledge bases within the tenant scope
-    if (user.role === UserRole.ADMIN || user.role === UserRole.SUPERADMIN) {
+    if (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN) {
       return ModelFactory.knowledgeBase.findByTenant(tenantId)
     }
 

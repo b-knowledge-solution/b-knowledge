@@ -368,7 +368,7 @@ const StandardTabRedesigned = ({ knowledgeBaseId, initialCategories, embeddingMo
             </DialogTitle>
           </DialogHeader>
           {sourcesCategory?.dataset_id && (
-            <ConnectorListPanel kbId={sourcesCategory.dataset_id} isAdmin />
+            <ConnectorListPanel kbId={sourcesCategory.dataset_id} />
           )}
         </DialogContent>
       </Dialog>

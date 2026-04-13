@@ -7,7 +7,7 @@
  */
 import { Router } from 'express'
 import { SearchController } from '../controllers/search.controller.js'
-import { requireAuth, requirePermission, checkSession } from '@/shared/middleware/auth.middleware.js'
+import { requireAuth, requirePermission, requireAbility, checkSession } from '@/shared/middleware/auth.middleware.js'
 import { validate } from '@/shared/middleware/validate.middleware.js'
 import {
   createSearchAppSchema,
@@ -122,8 +122,10 @@ router.put(
  */
 router.post(
   '/apps/:id/retrieval-test',
-  checkSession,
+  requireAuth,
   validate({ body: retrievalTestSchema, params: searchAppIdParamSchema }),
+  // Row-scoped read gate: a user may only retrieval-test search apps they can view
+  requireAbility('read', 'SearchApp', 'id'),
   controller.retrievalTest.bind(controller)
 )
 
@@ -134,8 +136,10 @@ router.post(
  */
 router.post(
   '/apps/:id/feedback',
-  checkSession,
+  requireAuth,
   validate({ body: searchFeedbackSchema, params: searchAppIdParamSchema }),
+  // Row-scoped read gate: feedback requires the user can view this search app
+  requireAbility('read', 'SearchApp', 'id'),
   controller.sendFeedback.bind(controller)
 )
 
@@ -146,8 +150,10 @@ router.post(
  */
 router.post(
   '/apps/:id/search',
-  checkSession,
+  requireAuth,
   validate({ body: executeSearchSchema, params: searchAppIdParamSchema }),
+  // Row-scoped read gate: search execution requires view access to the app
+  requireAbility('read', 'SearchApp', 'id'),
   controller.executeSearch.bind(controller)
 )
 
@@ -158,8 +164,10 @@ router.post(
  */
 router.post(
   '/apps/:id/ask',
-  checkSession,
+  requireAuth,
   validate({ body: askSearchSchema, params: searchAppIdParamSchema }),
+  // Row-scoped read gate: AI answer streaming requires view access to the app
+  requireAbility('read', 'SearchApp', 'id'),
   controller.askSearch.bind(controller)
 )
 
@@ -170,8 +178,10 @@ router.post(
  */
 router.post(
   '/apps/:id/related-questions',
-  checkSession,
+  requireAuth,
   validate({ body: relatedQuestionsSchema, params: searchAppIdParamSchema }),
+  // Row-scoped read gate: related-questions generation requires view access to the app
+  requireAbility('read', 'SearchApp', 'id'),
   controller.relatedQuestions.bind(controller)
 )
 
@@ -182,8 +192,10 @@ router.post(
  */
 router.post(
   '/apps/:id/mindmap',
-  checkSession,
+  requireAuth,
   validate({ body: mindmapSchema, params: searchAppIdParamSchema }),
+  // Row-scoped read gate: mindmap generation requires view access to the app
+  requireAbility('read', 'SearchApp', 'id'),
   controller.mindmap.bind(controller)
 )
 

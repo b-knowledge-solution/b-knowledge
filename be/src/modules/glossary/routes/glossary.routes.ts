@@ -7,7 +7,7 @@ import { Router } from "express";
 import { GlossaryController } from "../controllers/glossary.controller.js";
 import {
   requireAuth,
-  requireRole,
+  requirePermission,
 } from "@/shared/middleware/auth.middleware.js";
 import { validate } from "@/shared/middleware/validate.middleware.js";
 import { createTaskSchema, updateTaskSchema, createKeywordSchema, updateKeywordSchema, generatePromptSchema, uuidParamSchema } from "../schemas/glossary.schemas.js";
@@ -21,8 +21,8 @@ const router = Router();
 // Search tasks and keywords
 router.get("/search", requireAuth, GlossaryController.search);
 
-// Generate prompt from task + keyword selections
-router.post("/generate-prompt", requireAuth, validate(generatePromptSchema), GlossaryController.generatePrompt);
+// Generate prompt from task + keyword selections — read-only composition over glossary data
+router.post("/generate-prompt", requirePermission('glossary.view'), validate(generatePromptSchema), GlossaryController.generatePrompt);
 
 // ============================================================================
 // Task Management (admin/leader only)
@@ -37,7 +37,7 @@ router.get("/tasks/:id", requireAuth, GlossaryController.getTask);
 // Create a new task
 router.post(
   "/tasks",
-  requireRole("admin"),
+  requirePermission('glossary.create'),
   validate(createTaskSchema),
   GlossaryController.createTask,
 );
@@ -45,7 +45,7 @@ router.post(
 // Update a task
 router.put(
   "/tasks/:id",
-  requireRole("admin"),
+  requirePermission('glossary.edit'),
   validate({ params: uuidParamSchema, body: updateTaskSchema }),
   GlossaryController.updateTask,
 );
@@ -53,7 +53,7 @@ router.put(
 // Delete a task
 router.delete(
   "/tasks/:id",
-  requireRole("admin"),
+  requirePermission('glossary.delete'),
   GlossaryController.deleteTask,
 );
 
@@ -70,7 +70,7 @@ router.get("/keywords", requireAuth, GlossaryController.listKeywords);
 // Create a keyword
 router.post(
   "/keywords",
-  requireRole("admin"),
+  requirePermission('glossary.create'),
   validate(createKeywordSchema),
   GlossaryController.createKeyword,
 );
@@ -78,7 +78,7 @@ router.post(
 // Update a keyword
 router.put(
   "/keywords/:id",
-  requireRole("admin"),
+  requirePermission('glossary.edit'),
   validate({ params: uuidParamSchema, body: updateKeywordSchema }),
   GlossaryController.updateKeyword,
 );
@@ -86,7 +86,7 @@ router.put(
 // Delete a keyword
 router.delete(
   "/keywords/:id",
-  requireRole("admin"),
+  requirePermission('glossary.delete'),
   GlossaryController.deleteKeyword,
 );
 
@@ -97,14 +97,14 @@ router.delete(
 // Bulk import tasks from Excel data
 router.post(
   "/bulk-import",
-  requireRole("admin"),
+  requirePermission('glossary.import'),
   GlossaryController.bulkImport,
 );
 
 // Bulk import keywords from Excel data
 router.post(
   "/keywords/bulk-import",
-  requireRole("admin"),
+  requirePermission('glossary.import'),
   GlossaryController.bulkImportKeywords,
 );
 

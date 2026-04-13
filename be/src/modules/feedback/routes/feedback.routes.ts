@@ -6,7 +6,7 @@
  */
 import { Router } from 'express'
 import { FeedbackController } from '../controllers/feedback.controller.js'
-import { requireAuth, requireRole } from '@/shared/middleware/auth.middleware.js'
+import { requireAuth, requireRole, requirePermission } from '@/shared/middleware/auth.middleware.js'
 import { requireTenant } from '@/shared/middleware/tenant.middleware.js'
 import { validate } from '@/shared/middleware/validate.middleware.js'
 import { createFeedbackSchema, listFeedbackQuerySchema, feedbackStatsQuerySchema } from '../schemas/feedback.schemas.js'
@@ -84,6 +84,7 @@ router.get(
 router.post(
   '/',
   requireAuth,
+  requirePermission('feedback.submit'),
   validate(createFeedbackSchema),
   controller.create.bind(controller)
 )

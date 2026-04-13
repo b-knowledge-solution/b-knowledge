@@ -1,55 +1,56 @@
 /**
- * @fileoverview Admin-only route wrapper component.
+ * @fileoverview Admin shell route guard.
  *
- * Restricts access to routes that require admin role.
- * Redirects non-admin users to 403 Forbidden page.
+ * Restricts `/admin` shell access to the explicit admin-shell role set defined
+ * for this phase.
  *
- * @module components/AdminRoute
+ * @module features/auth/components/AdminRoute
  */
 
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '@/features/auth';
-import { UserRole } from '@/constants';
-
-// ============================================================================
-// Types
-// ============================================================================
-
-/** 
- * @description Props for AdminRoute component
- */
-interface AdminRouteProps {
-    /** Child components to render for admin users */
-    children: React.ReactNode;
-}
-
-// ============================================================================
-// Component
-// ============================================================================
+import type { ReactNode } from 'react'
+import { Navigate } from 'react-router-dom'
+import { isElevatedRole } from '@/constants/roles'
+import { useAuth } from '../hooks/useAuth'
 
 /**
- * @description Route wrapper that restricts access to admin users only.
- * Checks the user's role and redirects if they are not an admin.
- *
- * @param {AdminRouteProps} props - Component properties.
- * @returns {JSX.Element | null} The child components if allowed, or a redirect.
+ * @description Props for the admin shell guard
  */
-const AdminRoute = ({ children }: AdminRouteProps) => {
-    const { user, isLoading } = useAuth();
+interface AdminRouteProps {
+  /** Child routes to render when the user belongs to the admin shell role set */
+  children: ReactNode
+}
 
-    // Do nothing while authentication state is being determined
-    if (isLoading) {
-        return null;
-    }
+/**
+ * @description Determines whether a role may enter the admin shell
+ * @param {string | undefined} role - Current user role
+ * @returns {boolean} True when the role is `leader`, `admin`, or `super-admin`
+ */
+export function canAccessAdminShell(role: string | undefined): boolean {
+  if (!role) {
+    return false
+  }
 
-    // Check if the user is authenticated and has admin-level role
-    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN)) {
-        // Redirect to the 403 Forbidden page if access is denied
-        return <Navigate to="/403" replace />;
-    }
+  return isElevatedRole(role)
+}
 
-    // Render the protected children if the user is an admin
-    return <>{children}</>;
-};
+/**
+ * @description Route wrapper that redirects non-admin-shell users to `/403`
+ * @param {AdminRouteProps} props - Guard configuration
+ * @returns {JSX.Element | null} Child content when authorized, otherwise a redirect
+ */
+function AdminRoute({ children }: AdminRouteProps) {
+  const { user, isLoading } = useAuth()
 
-export default AdminRoute;
+  if (isLoading) {
+    return null
+  }
+
+  // Reject authenticated users outside the locked admin-shell role set.
+  if (!user || !canAccessAdminShell(user.role)) {
+    return <Navigate to="/403" replace />
+  }
+
+  return <>{children}</>
+}
+
+export default AdminRoute

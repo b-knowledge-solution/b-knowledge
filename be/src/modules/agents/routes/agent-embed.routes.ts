@@ -7,6 +7,7 @@
  */
 import { Router } from 'express'
 import { agentEmbedController } from '../controllers/agent-embed.controller.js'
+import { markPublicRoute } from '@/shared/middleware/markPublicRoute.js'
 
 const router = Router()
 
@@ -31,6 +32,8 @@ router.get(
  */
 router.post(
   '/:token/:agentId/run',
+  // Intentionally public — authenticated via embed token in the URL path, not session.
+  markPublicRoute(),
   agentEmbedController.runEmbed.bind(agentEmbedController),
 )
 

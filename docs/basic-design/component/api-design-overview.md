@@ -1,69 +1,108 @@
 # API Design Overview
 
-## Overview
+> Request lifecycle, auth pipeline, and authorization behavior for the current backend API.
 
-The B-Knowledge API follows RESTful conventions with session-based authentication, Zod request validation, structured error responses, pagination, rate limiting, and SSE streaming for real-time chat and search.
+## 1. Overview
 
-## Request Lifecycle
+The B-Knowledge API is a session-backed REST API with Zod validation, structured errors, rate limiting, and SSE for streaming features. The permission-system milestone changed the authorization layer from static role-first route descriptions to a registry-backed permission and CASL ability pipeline.
+
+Current API authorization has two distinct enforcement modes:
+
+- `requirePermission(key)` for flat feature capabilities backed by the permission catalog
+- `requireAbility(action, subject, idParam?)` for row-scoped CASL checks against a specific resource instance
+
+The permissions catalog itself is exposed through `/api/permissions/*`, while runtime CASL rules are still fetched through `/api/auth/abilities`.
+
+## 2. Request Lifecycle
 
 ```mermaid
 graph LR
     Client([Client]) --> Nginx
-    Nginx -->|proxy_pass| Express[Express Server]
+    Nginx --> Express[Express Server]
     Express --> Helmet
     Helmet --> CORS
     CORS --> Cookie[Cookie Parser]
-    Cookie --> Session[Session Check]
+    Cookie --> Session[Session Store Check]
     Session --> RateLimit[Rate Limiter]
     RateLimit --> AuthMW[requireAuth]
-    AuthMW --> PermMW[requirePermission]
-    PermMW --> Validate[validate schema]
-    Validate --> Handler[Route Handler]
-    Handler --> Response([JSON Response])
+    AuthMW --> Authz{requirePermission or requireAbility}
+    Authz --> Validate[validate schema]
+    Validate --> Controller[Controller]
+    Controller --> Service[Service]
+    Service --> Response([JSON / SSE Response])
 ```
 
-## REST Conventions
+## 3. Authorization Pipeline
 
-| Convention | Rule |
-|-----------|------|
-| Base path | `/api/{module}/{resource}` |
-| Resource names | Plural nouns (`/users`, `/datasets`, `/conversations`) |
-| HTTP verbs | `GET` read, `POST` create, `PUT` update, `DELETE` remove |
-| ID parameters | UUID in path (`/api/users/:id`) |
-| Nested resources | `/api/rag/datasets/:datasetId/documents/:docId` |
+### 3.1 Boot and runtime inputs
 
-## Authentication Flow
+```mermaid
+flowchart TD
+    registry["Backend registry definitions"] --> sync["Boot sync"]
+    sync --> permissions["`permissions`"]
+    permissions --> rolePerms["`role_permissions`"]
+    permissions --> overrides["`user_permission_overrides`"]
+    permissions --> grants["`resource_grants`"]
+    rolePerms --> ability["CASL ability builder"]
+    overrides --> ability
+    grants --> ability
+    ability --> routes["API route middleware"]
+```
+
+The API layer does not hardcode authorization truth in route files. Routes refer to permission keys or subject/action pairs, and middleware resolves them through the shared ability builder.
+
+### 3.2 Middleware contract
+
+| Step | Purpose |
+|------|---------|
+| `requireAuth` | Requires a valid session and attaches `req.user` |
+| `requirePermission(key)` | Resolves a permission key to `(action, subject)` and checks the current CASL ability |
+| `requireAbility(action, subject, idParam?)` | Checks a row-scoped action on a concrete resource instance |
+| `validate(...)` | Runs Zod validation for body/query/params before controller logic |
+
+### 3.3 Flat vs row-scoped decisions
+
+| API pattern | Recommended guard | Example |
+|-------------|-------------------|---------|
+| Tenant-wide admin capability | `requirePermission` | `/api/permissions/catalog` requires `permissions.view` |
+| Role/override/grant management | `requirePermission` | `/api/permissions/grants` requires `permissions.manage` for mutations |
+| Editing a specific record | `requireAbility` | Route checks whether a user can update the specific `KnowledgeBase`, `Document`, or `User` instance |
+| Read access inherited from `resource_grants` | `requireAbility` | CASL evaluates row-scoped rules or grant-derived conditions |
+
+The practical distinction is that `requirePermission` is key-centric, while `requireAbility` is instance-centric.
+
+## 4. Authentication and Ability Retrieval
 
 ```mermaid
 sequenceDiagram
     participant C as Client
-    participant N as Nginx
     participant E as Express
-    participant S as Session Store (Valkey)
-    participant H as Route Handler
+    participant S as Session Store
+    participant A as Ability Builder
 
-    C->>N: Request with session cookie
-    N->>E: Proxy request
-    E->>S: Validate session ID
-    S-->>E: Session data (user, tenant)
-    E->>E: requireAuth middleware
-    alt Session valid
-        E->>E: Attach req.user
-        E->>E: requirePermission check
-        alt Has permission
-            E->>H: Forward to handler
-            H-->>C: 200 OK + response body
-        else No permission
-            E-->>C: 403 Forbidden
-        end
-    else Session invalid / missing
-        E-->>C: 401 Unauthorized
+    C->>E: Request with session cookie
+    E->>S: Validate session
+    S-->>E: Session data with user + tenant
+    E->>E: requireAuth
+    E->>A: Build/load cached CASL ability
+    alt Route uses requirePermission
+        E->>E: Resolve key from catalog, check class-level ability
+    else Route uses requireAbility
+        E->>E: Check action on instance-shaped subject
     end
+    E-->>C: 2xx / 4xx / 5xx
 ```
 
-## Error Response Format
+The frontend pulls:
 
-All errors follow a consistent structure:
+- `GET /api/auth/abilities` for serialized CASL rules
+- `GET /api/permissions/catalog` for the live permission key catalog
+
+This split allows the FE to support both `<Can>`-style subject checks and key-based gating through `useHasPermission()`.
+
+## 5. Error Response Expectations
+
+All routes still use a consistent JSON error shape:
 
 ```json
 {
@@ -77,95 +116,38 @@ All errors follow a consistent structure:
 }
 ```
 
-| HTTP Status | Error Code | Usage |
-|-------------|-----------|-------|
-| 400 | `VALIDATION_ERROR` | Zod schema validation failure |
-| 401 | `UNAUTHORIZED` | Missing or invalid session |
-| 403 | `FORBIDDEN` | Insufficient permissions |
-| 404 | `NOT_FOUND` | Resource does not exist |
-| 409 | `CONFLICT` | Duplicate resource |
-| 429 | `RATE_LIMITED` | Too many requests |
-| 500 | `INTERNAL_ERROR` | Unhandled server error |
+| HTTP Status | Typical cause |
+|-------------|---------------|
+| `400` | Zod validation failure |
+| `401` | Missing or invalid session |
+| `403` | Permission or ability check denied |
+| `404` | Resource not found |
+| `409` | Conflict such as duplicate resource |
+| `429` | Rate limit exceeded |
+| `500` | Internal server error or permission misconfiguration |
 
-## Pagination
+Authorization-specific behavior:
 
-Paginated endpoints return data with pagination metadata:
+- Unknown permission keys are treated as server misconfiguration, not as an ordinary deny
+- Permission and ability middleware both fail closed in production when the ability build cannot complete
 
-```json
-{
-  "data": [ ... ],
-  "pagination": {
-    "page": 1,
-    "pageSize": 20,
-    "total": 142
-  }
-}
-```
-
-**Query parameters:** `?page=1&pageSize=20&sortBy=createdAt&sortOrder=desc`
-
-## Rate Limiting
-
-| Scope | Limit | Window |
-|-------|-------|--------|
-| General API | 1000 requests | 15 minutes |
-| Auth endpoints | 20 requests | 15 minutes |
-
-Rate limit headers are included in responses:
-
-- `X-RateLimit-Limit` -- maximum requests allowed
-- `X-RateLimit-Remaining` -- requests remaining
-- `X-RateLimit-Reset` -- UTC epoch when window resets
-
-## Zod Validation
-
-The `validate(schema)` middleware intercepts requests before the handler executes:
+## 6. Validation and Mutation Rules
 
 ```mermaid
 graph LR
-    REQ[Request Body] --> ZOD[Zod Schema Parse]
-    ZOD -->|valid| COERCE[Coerced & Typed Body]
-    COERCE --> Handler
-    ZOD -->|invalid| ERR[400 VALIDATION_ERROR]
+    REQ[Request] --> AUTH[Auth + Authorization]
+    AUTH --> ZOD[Zod validation]
+    ZOD -->|valid| CTRL[Controller]
+    ZOD -->|invalid| ERR[400 response]
 ```
 
-- Schemas are defined per-module in `schemas/` directories
-- Validation coerces types (string to number, etc.)
-- All mutation endpoints (`POST`, `PUT`, `DELETE`) require validation
-- `GET` endpoints validate query parameters when filtering is complex
+- All mutating routes use `validate(...)`
+- Query validation is applied where filter or lookup parameters are structured
+- Validation runs after authentication and authorization guards, so only authorized callers reach controller logic
 
-## SSE Streaming (Chat and Search)
+## 7. Streaming Endpoints
 
-Real-time responses use Server-Sent Events for token-by-token streaming.
-
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant API as Express Handler
-    participant LLM as LLM Provider
-
-    C->>API: POST /api/chat/conversations/:id/messages
-    API->>API: Set Content-Type: text/event-stream
-    API->>LLM: Stream request to LLM
-    loop Token by token
-        LLM-->>API: Delta token
-        API-->>C: data: {"delta": "token"}
-    end
-    API-->>C: data: [DONE]
-    API->>API: Close connection
-```
-
-**SSE message format:**
-
-```
-data: {"delta": "Hello"}
-
-data: {"delta": " world"}
-
-data: {"delta": "!"}
-
-data: [DONE]
-```
+Chat and search still use SSE for streaming responses. The permission overhaul did not change the transport, but it changed who may reach those handlers because dataset, knowledge-base, and category access can now be enforced through the shared ability and grant pipeline.
 
 | Header | Value |
 |--------|-------|
@@ -173,4 +155,14 @@ data: [DONE]
 | `Cache-Control` | `no-cache` |
 | `Connection` | `keep-alive` |
 
-The client reads the stream using the `EventSource` API or `fetch` with a `ReadableStream` reader. The `[DONE]` sentinel signals that the response is complete and the connection should be closed.
+## 8. Compatibility Notes
+
+- Do not describe API access as a fixed admin-versus-basic-user route split in new documentation
+- Do not treat `rbac.ts` as the API’s source of truth; it is only a compatibility layer
+- Permissions APIs under `/api/permissions/*` are the current admin contract for catalog, role, override, grant, and effective-access operations
+
+## 9. Related Docs
+
+- [Security Architecture](/basic-design/system-infra/security-architecture)
+- [API Endpoint Reference](/basic-design/component/api-design-endpoints)
+- [Database Design: Core Tables](/basic-design/database/database-design-core)

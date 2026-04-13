@@ -1,6 +1,6 @@
 /**
  * @fileoverview Chunk detail page with split-view document preview and chunk list.
- * Route: /data-studio/datasets/:id/documents/:docId/chunks
+ * Route: /admin/data-studio/datasets/:id/documents/:docId/chunks
  *
  * Full-page layout with document preview on the left and a scrollable chunk
  * list on the right. Supports chunk CRUD operations (edit, delete, add).
@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import { DocumentPreviewer } from '@/components/DocumentPreviewer'
+import { buildAdminDatasetPath } from '@/app/adminRoutes'
 import { datasetApi } from '../api/datasetApi'
 import { queryKeys } from '@/lib/queryKeys'
 import { getExtension } from '@/utils/document-util'
@@ -66,7 +67,7 @@ const ChunkDetailPage: React.FC = () => {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate(`/data-studio/datasets/${datasetId}`)}
+          onClick={() => navigate(buildAdminDatasetPath(datasetId))}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>

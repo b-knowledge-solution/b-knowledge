@@ -12,8 +12,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BookOpen, Tag } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { useAuth } from '@/features/auth'
-import { UserRole } from '@/constants'
 import { useGlossaryTasks } from '../api/glossaryQueries'
 import { useGlossaryKeywords } from '../api/glossaryQueries'
 import { TaskManagementTab } from '../components/TaskManagementTab'
@@ -31,10 +29,6 @@ import { GlossaryBulkImportModal } from '../components/GlossaryBulkImportModal'
  */
 export const GlossaryPage = () => {
     const { t } = useTranslation()
-    const { user } = useAuth()
-
-    // Determine admin/leader privileges
-    const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.LEADER
 
     // Active tab and bulk import modal state
     const [activeTab, setActiveTab] = useState('tasks')
@@ -65,7 +59,6 @@ export const GlossaryPage = () => {
                 <TabsContent value="tasks" className="flex-1 mt-0">
                     <TaskManagementTab
                         taskHook={taskHook}
-                        isAdmin={isAdmin}
                         onOpenBulkImport={() => setIsBulkImportOpen(true)}
                     />
                 </TabsContent>
@@ -73,7 +66,6 @@ export const GlossaryPage = () => {
                 <TabsContent value="keywords" className="flex-1 mt-0">
                     <KeywordManagementTab
                         keywordHook={keywordHook}
-                        isAdmin={isAdmin}
                     />
                 </TabsContent>
             </Tabs>

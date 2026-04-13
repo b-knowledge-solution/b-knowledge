@@ -8,7 +8,12 @@
  */
 import { Router } from 'express'
 import { ChatAssistantController } from '../controllers/chat-assistant.controller.js'
-import { requireAuth, requirePermission, checkSession } from '@/shared/middleware/auth.middleware.js'
+import {
+  requireAuth,
+  requirePermission,
+  requireAbility,
+  checkSession,
+} from '@/shared/middleware/auth.middleware.js'
 import { validate } from '@/shared/middleware/validate.middleware.js'
 import {
   createAssistantSchema,
@@ -24,12 +29,12 @@ const controller = new ChatAssistantController()
 /**
  * @route POST /api/chat/assistants
  * @description Create a new assistant configuration.
- * @access Admin only (manage_users permission)
+ * @access Requires `chat.create` permission.
  */
 router.post(
   '/assistants',
   requireAuth,
-  requirePermission('manage_users'),
+  requirePermission('chat.create'),
   validate(createAssistantSchema),
   controller.createAssistant.bind(controller)
 )
@@ -61,12 +66,12 @@ router.get(
 /**
  * @route PUT /api/chat/assistants/:id
  * @description Update an existing assistant.
- * @access Admin only (manage_users permission)
+ * @access Row-scoped: requires `update ChatAssistant` on the addressed id.
  */
 router.put(
   '/assistants/:id',
   requireAuth,
-  requirePermission('manage_users'),
+  requireAbility('update', 'ChatAssistant', 'id'),
   validate({ body: updateAssistantSchema, params: assistantIdParamSchema }),
   controller.updateAssistant.bind(controller)
 )
@@ -74,12 +79,12 @@ router.put(
 /**
  * @route DELETE /api/chat/assistants/:id
  * @description Delete an assistant by ID.
- * @access Admin only (manage_users permission)
+ * @access Row-scoped: requires `delete ChatAssistant` on the addressed id.
  */
 router.delete(
   '/assistants/:id',
   requireAuth,
-  requirePermission('manage_users'),
+  requireAbility('delete', 'ChatAssistant', 'id'),
   validate({ params: assistantIdParamSchema }),
   controller.deleteAssistant.bind(controller)
 )
@@ -87,12 +92,12 @@ router.delete(
 /**
  * @route GET /api/chat/assistants/:id/access
  * @description Get access control entries for an assistant.
- * @access Admin only (manage_users permission)
+ * @access Row-scoped: requires `update ChatAssistant` on the addressed id.
  */
 router.get(
   '/assistants/:id/access',
   requireAuth,
-  requirePermission('manage_users'),
+  requireAbility('update', 'ChatAssistant', 'id'),
   validate({ params: assistantIdParamSchema }),
   controller.getAssistantAccess.bind(controller)
 )
@@ -100,12 +105,12 @@ router.get(
 /**
  * @route PUT /api/chat/assistants/:id/access
  * @description Set (replace) access control entries for an assistant.
- * @access Admin only (manage_users permission)
+ * @access Row-scoped: requires `update ChatAssistant` on the addressed id.
  */
 router.put(
   '/assistants/:id/access',
   requireAuth,
-  requirePermission('manage_users'),
+  requireAbility('update', 'ChatAssistant', 'id'),
   validate({ body: assistantAccessSchema, params: assistantIdParamSchema }),
   controller.setAssistantAccess.bind(controller)
 )

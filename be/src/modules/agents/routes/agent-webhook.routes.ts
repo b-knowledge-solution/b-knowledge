@@ -12,6 +12,7 @@ import { Router, Request, Response } from 'express'
 import rateLimit from 'express-rate-limit'
 import { agentWebhookService } from '../services/agent-webhook.service.js'
 import { log } from '@/shared/services/logger.service.js'
+import { markPublicRoute } from '@/shared/middleware/markPublicRoute.js'
 
 const router = Router()
 
@@ -40,7 +41,8 @@ const webhookLimiter = rateLimit({
  *   No authentication required. Rate-limited to 100 requests per 15 min per IP.
  *   Accepts JSON body with 'input', 'message', or 'query' field.
  */
-router.post('/:agentId', webhookLimiter, async (req: Request, res: Response) => {
+// Intentionally public — external webhook callers (CI, Zapier) have no user session.
+router.post('/:agentId', markPublicRoute(), webhookLimiter, async (req: Request, res: Response) => {
   try {
     const agentId = req.params['agentId']!
     const result = await agentWebhookService.handleWebhook(agentId, req.body)

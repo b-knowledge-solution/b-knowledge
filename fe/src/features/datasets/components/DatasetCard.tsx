@@ -1,11 +1,14 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
-import { useNavigateWithLoader } from '@/components/NavigationLoader';
-import { Database, FileText, Hash, Edit2, Trash2, Globe, Lock, Shield } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import VersionBadge from './VersionBadge';
-import type { Dataset } from '../types';
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import { useNavigateWithLoader } from '@/components/NavigationLoader'
+import { Database, FileText, Hash, Edit2, Trash2, Globe, Lock, Shield } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { buildAdminDatasetPath } from '@/app/adminRoutes'
+import VersionBadge from './VersionBadge'
+import type { Dataset } from '../types'
+import { useHasPermission } from '@/lib/permissions'
+import { PERMISSION_KEYS } from '@/constants/permission-keys'
 
 /**
  * @description Props for the DatasetCard component.
@@ -19,8 +22,6 @@ interface DatasetCardProps {
   onDelete: (dataset: Dataset) => void;
   /** Optional callback for manage access button (admin only) */
   onManageAccess?: ((dataset: Dataset) => void) | undefined;
-  /** Whether the current user has admin privileges */
-  isAdmin: boolean;
 }
 
 /**
@@ -31,13 +32,14 @@ interface DatasetCardProps {
  * @param {DatasetCardProps} props - Component properties
  * @returns {JSX.Element} Rendered dataset card
  */
-const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onEdit, onDelete, onManageAccess, isAdmin }) => {
+const DatasetCard: React.FC<DatasetCardProps> = ({ dataset, onEdit, onDelete, onManageAccess }) => {
+  const isAdmin = useHasPermission(PERMISSION_KEYS.DATASETS_VIEW)
   const { t } = useTranslation();
   const navigate = useNavigateWithLoader();
 
   /** Navigate to dataset detail page on card click, showing overlay until detail page data loads */
   const handleClick = () => {
-    navigate(`/data-studio/datasets/${dataset.id}`, { waitForReady: true });
+    navigate(buildAdminDatasetPath(dataset.id), { waitForReady: true });
   };
 
   // Map dataset status to Tailwind color classes for the status badge

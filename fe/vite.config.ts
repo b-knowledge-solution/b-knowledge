@@ -96,6 +96,9 @@ export default defineConfig(({ mode }) => {
             i18n: ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
             ui: ['lucide-react', '@headlessui/react'],
             tiktoken: ['js-tiktoken'],
+              // Keep pdfjs-dist in a separate chunk so the PDF engine is only
+              // loaded when the previewer is actually needed.
+              pdfjs: ['pdfjs-dist'],
           },
         },
       },

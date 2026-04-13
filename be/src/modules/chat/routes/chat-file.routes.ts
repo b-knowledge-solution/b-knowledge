@@ -8,7 +8,7 @@
 import { Router } from 'express'
 import multer from 'multer'
 import { ChatFileController } from '../controllers/chat-file.controller.js'
-import { requireAuth } from '@/shared/middleware/auth.middleware.js'
+import { requireAuth, requirePermission } from '@/shared/middleware/auth.middleware.js'
 import { validate } from '@/shared/middleware/validate.middleware.js'
 import { fileUploadParamsSchema, fileContentParamsSchema } from '../schemas/chat-file.schemas.js'
 
@@ -25,6 +25,7 @@ const upload = multer({ storage: multer.memoryStorage() })
 router.post(
   '/conversations/:id/files',
   requireAuth,
+  requirePermission('chat.upload'),
   validate({ params: fileUploadParamsSchema }),
   upload.array('files', 5),
   controller.uploadFiles.bind(controller),

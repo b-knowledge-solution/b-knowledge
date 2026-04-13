@@ -25,6 +25,8 @@ import { glossaryApi } from '../api/glossaryApi'
 import type { UseGlossaryKeywordsReturn } from '../api/glossaryQueries'
 import { KeywordBulkImportModal } from './KeywordBulkImportModal'
 import { globalMessage } from '@/lib/globalMessage'
+import { useHasPermission } from '@/lib/permissions'
+import { PERMISSION_KEYS } from '@/constants/permission-keys'
 
 /**
  * @description Props for the KeywordManagementTab component.
@@ -32,8 +34,6 @@ import { globalMessage } from '@/lib/globalMessage'
 interface KeywordManagementTabProps {
     /** All values and handlers from useGlossaryKeywords */
     keywordHook: UseGlossaryKeywordsReturn
-    /** Whether the current user has admin/leader privileges */
-    isAdmin: boolean
 }
 
 /**
@@ -41,10 +41,8 @@ interface KeywordManagementTabProps {
  * @param {KeywordManagementTabProps} props - Keyword hook return and admin flag.
  * @returns {JSX.Element} Rendered keyword management tab.
  */
-export const KeywordManagementTab: React.FC<KeywordManagementTabProps> = ({
-    keywordHook,
-    isAdmin,
-}) => {
+export const KeywordManagementTab: React.FC<KeywordManagementTabProps> = ({ keywordHook }) => {
+  const isAdmin = useHasPermission(PERMISSION_KEYS.GLOSSARY_EDIT)
     const { t } = useTranslation()
     const confirm = useConfirm()
     const [isBulkImportOpen, setIsBulkImportOpen] = useState(false)

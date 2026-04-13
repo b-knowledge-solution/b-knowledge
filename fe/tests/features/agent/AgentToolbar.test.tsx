@@ -343,7 +343,7 @@ describe('AgentToolbar', () => {
 
     fireEvent.click(getButtonByText('common.back'))
 
-    expect(mockNavigate).toHaveBeenCalledWith('/agent-studio/agents')
+    expect(mockNavigate).toHaveBeenCalledWith('/admin/agent-studio/agents')
   })
 
   it('shows export and delete in more menu', () => {

@@ -18,6 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { buildAdminAgentCanvasPath } from '@/app/adminRoutes'
 
 import type { Agent } from '../types/agent.types'
 
@@ -67,14 +68,14 @@ export function AgentCard({ agent, onDuplicate, onDelete, onExport }: AgentCardP
    * @description Navigate to the agent canvas editor for this agent
    */
   const handleEdit = () => {
-    navigate(`/agent-studio/agents/${agent.id}`)
+    navigate(buildAdminAgentCanvasPath(agent.id))
   }
 
   /**
    * @description Navigate to agent canvas on card body click (not dropdown)
    */
   const handleCardClick = () => {
-    navigate(`/agent-studio/agents/${agent.id}`)
+    navigate(buildAdminAgentCanvasPath(agent.id))
   }
 
   // Format the last modified date for display

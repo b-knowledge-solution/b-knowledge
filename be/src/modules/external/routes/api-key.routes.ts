@@ -6,7 +6,7 @@
  */
 
 import { Router } from 'express'
-import { requireAuth } from '@/shared/middleware/auth.middleware.js'
+import { requireAuth, requireAbility, requirePermission } from '@/shared/middleware/auth.middleware.js'
 import { validate } from '@/shared/middleware/validate.middleware.js'
 import { apiKeyController } from '../controllers/api-key.controller.js'
 import {
@@ -24,6 +24,7 @@ const router = Router()
 router.post(
   '/',
   requireAuth,
+  requirePermission('api_keys.create'),
   validate({ body: createApiKeySchema }),
   apiKeyController.create.bind(apiKeyController)
 )
@@ -45,6 +46,7 @@ router.get(
 router.patch(
   '/:id',
   requireAuth,
+  requireAbility('update', 'ApiKey', 'id'),
   validate({ params: uuidParamSchema, body: updateApiKeySchema }),
   apiKeyController.update.bind(apiKeyController)
 )
@@ -56,6 +58,7 @@ router.patch(
 router.delete(
   '/:id',
   requireAuth,
+  requireAbility('delete', 'ApiKey', 'id'),
   validate({ params: uuidParamSchema }),
   apiKeyController.remove.bind(apiKeyController)
 )

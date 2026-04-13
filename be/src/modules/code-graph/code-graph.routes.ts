@@ -7,7 +7,7 @@
 
 import { Router } from 'express'
 import { CodeGraphController } from './code-graph.controller.js'
-import { requireAuth, requireRole } from '@/shared/middleware/auth.middleware.js'
+import { requireAuth, requirePermission } from '@/shared/middleware/auth.middleware.js'
 import { validate } from '@/shared/middleware/validate.middleware.js'
 import {
   kbIdParamSchema,
@@ -137,7 +137,8 @@ router.get(
  */
 router.post(
   '/:kbId/nl-query',
-  requireAuth,
+  // NL query is semantically read-only — composes a Cypher read query from natural language
+  requirePermission('code_graph.view'),
   validate({ params: kbIdParamSchema, body: nlQueryBodySchema }),
   controller.nlQuery.bind(controller),
 )
@@ -149,8 +150,8 @@ router.post(
  */
 router.post(
   '/:kbId/cypher',
-  requireAuth,
-  requireRole('admin'),
+  // Raw Cypher execution — maintenance-level operation gated on the manage permission
+  requirePermission('code_graph.manage'),
   validate({ params: kbIdParamSchema, body: cypherBodySchema }),
   controller.executeCypher.bind(controller),
 )

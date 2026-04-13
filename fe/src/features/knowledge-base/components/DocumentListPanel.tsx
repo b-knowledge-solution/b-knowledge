@@ -28,6 +28,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { Pagination } from '@/components/ui/pagination'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { globalMessage } from '@/lib/globalMessage'
+import { buildAdminDatasetChunkPath } from '@/app/adminRoutes'
 import {
   getVersionDocuments, deleteVersionDocuments, requeueVersionDocuments,
   parseVersionDocuments, syncVersionParserStatus,
@@ -696,7 +697,7 @@ const DocumentListPanel = ({ knowledgeBaseId, categoryId, versionId, datasetId, 
                                 <TooltipTrigger asChild>
                                   <span
                                     className="font-medium truncate block cursor-pointer text-primary hover:underline transition-colors"
-                                    onClick={() => navigate(`/data-studio/datasets/${datasetId}/documents/${doc.id}/chunks`)}
+                                    onClick={() => navigate(buildAdminDatasetChunkPath(datasetId, doc.id))}
                                   >
                                     {doc.name}
                                   </span>

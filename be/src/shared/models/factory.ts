@@ -75,6 +75,12 @@ import { DashboardModel } from '@/modules/dashboard/dashboard.model.js';
 // System Models
 import { SystemHistoryModel } from '@/modules/system/models/system-history.model.js';
 
+// Permission Models (Phase 1 — permission-system overhaul)
+import { PermissionModel } from '@/shared/models/permission.model.js';
+import { RolePermissionModel } from '@/shared/models/role-permission.model.js';
+import { UserPermissionOverrideModel } from '@/shared/models/user-permission-override.model.js';
+import { ResourceGrantModel } from '@/shared/models/resource-grant.model.js';
+
 /**
  * @description ModelFactory class implementing the Factory Pattern.
  * Provides lazy-loaded singletons for all data models.
@@ -221,6 +227,16 @@ export class ModelFactory {
   // System Models
   /** System history analytics model singleton instance */
   private static systemHistoryModel: SystemHistoryModel;
+
+  // Permission Models (Phase 1)
+  /** Permission catalog model singleton instance */
+  private static permissionModel: PermissionModel;
+  /** Role-permission grants model singleton instance */
+  private static rolePermissionModel: RolePermissionModel;
+  /** User permission override model singleton instance */
+  private static userPermissionOverrideModel: UserPermissionOverrideModel;
+  /** Resource grant model singleton instance */
+  private static resourceGrantModel: ResourceGrantModel;
 
   /**
    * Get the User model singleton.
@@ -829,5 +845,56 @@ export class ModelFactory {
     // Create instance on first access (lazy initialization)
     if (!this.systemHistoryModel) this.systemHistoryModel = new SystemHistoryModel();
     return this.systemHistoryModel;
+  }
+
+  // -------------------------------------------------------------------------
+  // Permission Models (Phase 1 — permission-system overhaul)
+  // -------------------------------------------------------------------------
+
+  /**
+   * @description Get the Permission catalog model singleton.
+   * Backs the `permissions` table populated by the boot-time registry sync.
+   * @returns {PermissionModel} Instance for permission catalog operations
+   */
+  static get permission() {
+    // Create instance on first access (lazy initialization)
+    if (!this.permissionModel) this.permissionModel = new PermissionModel();
+    return this.permissionModel;
+  }
+
+  /**
+   * @description Get the RolePermission model singleton.
+   * Backs the `role_permissions` join table seeded by the day-one role
+   * migration and consumed by Phase 2's CASL ability builder.
+   * @returns {RolePermissionModel} Instance for role-permission grant operations
+   */
+  static get rolePermission() {
+    // Create instance on first access (lazy initialization)
+    if (!this.rolePermissionModel) this.rolePermissionModel = new RolePermissionModel();
+    return this.rolePermissionModel;
+  }
+
+  /**
+   * @description Get the UserPermissionOverride model singleton.
+   * Backs the `user_permission_overrides` table consumed by the Phase 2 V2
+   * ability builder and written by the Phase 5 admin UI.
+   * @returns {UserPermissionOverrideModel} Instance for per-user override operations
+   */
+  static get userPermissionOverride() {
+    // Create instance on first access (lazy initialization)
+    if (!this.userPermissionOverrideModel) this.userPermissionOverrideModel = new UserPermissionOverrideModel();
+    return this.userPermissionOverrideModel;
+  }
+
+  /**
+   * @description Get the ResourceGrant model singleton.
+   * Backs the `resource_grants` table (formerly `knowledge_base_entity_permissions`)
+   * consumed by the Phase 2 V2 ability builder for resource-scoped CASL rules.
+   * @returns {ResourceGrantModel} Instance for resource-grant operations
+   */
+  static get resourceGrant() {
+    // Create instance on first access (lazy initialization)
+    if (!this.resourceGrantModel) this.resourceGrantModel = new ResourceGrantModel();
+    return this.resourceGrantModel;
   }
 }

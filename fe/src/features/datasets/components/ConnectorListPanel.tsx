@@ -30,6 +30,8 @@ import { useSyncProgress } from '../hooks/useSyncProgress'
 import AddConnectorDialog from './AddConnectorDialog'
 import ConnectorSyncLogsDialog from './ConnectorSyncLogsDialog'
 import type { Connector, CreateConnectorDto, UpdateConnectorDto } from '../types'
+import { useHasPermission } from '@/lib/permissions'
+import { PERMISSION_KEYS } from '@/constants/permission-keys'
 
 // ============================================================================
 // Types
@@ -39,8 +41,6 @@ import type { Connector, CreateConnectorDto, UpdateConnectorDto } from '../types
 interface ConnectorListPanelProps {
   /** Knowledge base (dataset) ID */
   kbId: string
-  /** Whether the user has admin privileges to manage connectors */
-  isAdmin: boolean
 }
 
 // ============================================================================
@@ -53,7 +53,8 @@ interface ConnectorListPanelProps {
  * @param {ConnectorListPanelProps} props - Dataset ID and permission info
  * @returns {JSX.Element} Rendered connector list panel
  */
-const ConnectorListPanel = ({ kbId, isAdmin }: ConnectorListPanelProps) => {
+const ConnectorListPanel = ({ kbId }: ConnectorListPanelProps) => {
+  const isAdmin = useHasPermission(PERMISSION_KEYS.DATASETS_VIEW)
   const { t } = useTranslation()
   const confirm = useConfirm()
 

@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { globalMessage } from '@/lib/globalMessage'
+import { buildAdminKnowledgeBasePath } from '@/app/adminRoutes'
 
 import { getKnowledgeBases, createKnowledgeBase, type KnowledgeBase } from '../api/knowledgeBaseApi'
 import CreateKnowledgeBaseModal from '../components/CreateKnowledgeBaseModal'
@@ -142,7 +143,7 @@ const KnowledgeBaseListPage = () => {
               <Card
                 key={kb.id}
                 className="cursor-pointer hover:border-primary/50 transition-colors"
-                onClick={() => navigate(`/data-studio/knowledge-base/${kb.id}`, { waitForReady: true })}
+                onClick={() => navigate(buildAdminKnowledgeBasePath(kb.id), { waitForReady: true })}
               >
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-2">

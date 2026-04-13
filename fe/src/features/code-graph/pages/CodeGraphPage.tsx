@@ -9,6 +9,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Network, RefreshCw, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { buildAdminKnowledgeBasePath } from '@/app/adminRoutes'
 import { useCodeGraphStats, useCodeGraphData } from '../api/codeGraphQueries'
 import ForceGraph from '../components/ForceGraph'
 import GraphControls from '../components/GraphControls'
@@ -76,7 +77,7 @@ const CodeGraphPage = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" asChild className="h-8 w-8">
-            <Link to="/">
+            <Link to={buildAdminKnowledgeBasePath(kbId)}>
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>

@@ -1,63 +1,56 @@
 /**
- * @fileoverview Route configuration and metadata.
+ * @fileoverview Route metadata registry for shell titles and layout behavior.
  *
- * Centralizes route paths, page titles, guideline feature IDs,
- * and layout behavior. Every new route should be added here instead
- * of scattering switch/if-blocks across Layout / App components.
+ * Centralizes page titles, guideline feature ids, and layout flags so the
+ * shell can resolve `/admin/...` and non-admin routes consistently.
  *
  * @module app/routeConfig
  */
 
-// ============================================================================
-// Types
-// ============================================================================
+import {
+  ADMIN_AGENT_CANVAS_ROUTE,
+  ADMIN_AGENTS_ROUTE,
+  ADMIN_AUDIT_LOG_ROUTE,
+  ADMIN_BROADCAST_MESSAGES_ROUTE,
+  ADMIN_CHAT_ASSISTANTS_ROUTE,
+  ADMIN_CODE_GRAPH_ROUTE,
+  ADMIN_DASHBOARD_ROUTE,
+  ADMIN_DATASETS_ROUTE,
+  ADMIN_DATASET_CHUNK_DETAIL_ROUTE,
+  ADMIN_EFFECTIVE_ACCESS_ROUTE,
+  ADMIN_HISTORIES_ROUTE,
+  ADMIN_KNOWLEDGE_BASE_ROUTE,
+  ADMIN_LLM_PROVIDERS_ROUTE,
+  ADMIN_MEMORY_DETAIL_ROUTE,
+  ADMIN_MEMORY_ROUTE,
+  ADMIN_PERMISSIONS_ROUTE,
+  ADMIN_SEARCH_APPS_ROUTE,
+  ADMIN_SYSTEM_MONITOR_ROUTE,
+  ADMIN_SYSTEM_TOOLS_ROUTE,
+  ADMIN_TEAMS_ROUTE,
+  ADMIN_TOKENIZER_ROUTE,
+  ADMIN_USERS_ROUTE,
+  ADMIN_USER_DETAIL_ROUTE,
+} from './adminRoutes'
 
 /**
  * @description Metadata associated with a route, controlling header display, help buttons, and layout behavior
  */
 export interface RouteMetadata {
   /** i18n key for the page title shown in the header */
-  titleKey: string;
-  /** Guideline feature ID for the help button (empty = no help button) */
-  guidelineFeatureId?: string;
+  titleKey: string
+  /** Guideline feature id for the help button */
+  guidelineFeatureId?: string
   /** If true, the header bar is hidden for this route */
-  hideHeader?: boolean;
+  hideHeader?: boolean
   /** If true, the content area gets no padding and allows overflow */
-  fullBleed?: boolean;
+  fullBleed?: boolean
 }
 
-// ============================================================================
-// Route Map
-// ============================================================================
-
 /**
- * Map of route paths to their metadata.
- *
- * When adding a new page:
- *  1. Add a lazy import in App.tsx
- *  2. Add the <Route> element
- *  3. Add an entry here
- *
- * For dynamic routes (e.g. `/datasets/:id`), use the `matchRoute()` helper.
+ * @description Exact and pattern route metadata keyed by route contract
  */
 export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
-  '/agent-studio/agents': {
-    titleKey: 'agents.pageTitle',
-    fullBleed: true,
-  },
-  '/agent-studio/agents/:id': {
-    titleKey: 'agents.canvasTitle',
-    fullBleed: true,
-    hideHeader: true,
-  },
-  '/agent-studio/memory': {
-    titleKey: 'memory.title',
-    fullBleed: true,
-  },
-  '/agent-studio/memory/:id': {
-    titleKey: 'memory.detail',
-    fullBleed: true,
-  },
   '/chat': {
     titleKey: 'pages.aiChat.title',
     guidelineFeatureId: 'ai-chat',
@@ -73,79 +66,100 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     guidelineFeatureId: 'ai-search',
     fullBleed: true,
   },
-  '/glossary': {
-    titleKey: 'glossary.title',
-  },
-  '/data-studio/datasets': {
-    titleKey: 'datasets.title',
+  [ADMIN_AGENTS_ROUTE]: {
+    titleKey: 'agents.pageTitle',
     fullBleed: true,
   },
-  '/data-studio/knowledge-base': {
+  [ADMIN_AGENT_CANVAS_ROUTE]: {
+    titleKey: 'agents.canvasTitle',
+    fullBleed: true,
+    hideHeader: true,
+  },
+  [ADMIN_MEMORY_ROUTE]: {
+    titleKey: 'memory.title',
+    fullBleed: true,
+  },
+  [ADMIN_MEMORY_DETAIL_ROUTE]: {
+    titleKey: 'memory.detail',
+    fullBleed: true,
+  },
+  [ADMIN_KNOWLEDGE_BASE_ROUTE]: {
     titleKey: 'knowledgeBase.title',
     guidelineFeatureId: 'knowledge-base',
     fullBleed: true,
   },
-  '/iam/users': {
+  [ADMIN_DATASETS_ROUTE]: {
+    titleKey: 'datasets.title',
+    fullBleed: true,
+  },
+  [ADMIN_CODE_GRAPH_ROUTE]: {
+    titleKey: 'knowledgeBase.title',
+    guidelineFeatureId: 'knowledge-base',
+    fullBleed: true,
+  },
+  [ADMIN_USERS_ROUTE]: {
     titleKey: 'userManagement.title',
     guidelineFeatureId: 'users',
   },
-  '/iam/teams': {
+  [ADMIN_USER_DETAIL_ROUTE]: {
+    titleKey: 'users.detail.title',
+  },
+  [ADMIN_TEAMS_ROUTE]: {
     titleKey: 'iam.teams.title',
     guidelineFeatureId: 'teams',
     fullBleed: true,
   },
-  '/agent-studio/chat-assistants': {
+  [ADMIN_PERMISSIONS_ROUTE]: {
+    titleKey: 'permissions.admin.matrix.title',
+    guidelineFeatureId: 'permissions',
+  },
+  [ADMIN_EFFECTIVE_ACCESS_ROUTE]: {
+    titleKey: 'permissions.admin.effectiveAccess.title',
+  },
+  [ADMIN_CHAT_ASSISTANTS_ROUTE]: {
     titleKey: 'chatAdmin.title',
     fullBleed: true,
   },
-  '/agent-studio/search-apps': {
+  [ADMIN_SEARCH_APPS_ROUTE]: {
     titleKey: 'searchAdmin.title',
     fullBleed: true,
   },
-  '/system/dashboard': {
+  [ADMIN_DASHBOARD_ROUTE]: {
     titleKey: 'dashboard.title',
   },
-  '/system/audit-log': {
+  [ADMIN_AUDIT_LOG_ROUTE]: {
     titleKey: 'pages.auditLog.title',
     guidelineFeatureId: 'audit',
   },
-  '/system/system-tools': {
+  [ADMIN_SYSTEM_TOOLS_ROUTE]: {
     titleKey: 'pages.systemMonitor.title',
     hideHeader: true,
     fullBleed: true,
   },
-  '/system/system-monitor': {
+  [ADMIN_SYSTEM_MONITOR_ROUTE]: {
     titleKey: 'pages.systemMonitor.title',
     hideHeader: true,
     fullBleed: true,
   },
-  '/system/tokenizer': {
+  [ADMIN_TOKENIZER_ROUTE]: {
     titleKey: 'pages.tokenizer.title',
     hideHeader: true,
     fullBleed: true,
   },
-  '/system/broadcast-messages': {
+  [ADMIN_BROADCAST_MESSAGES_ROUTE]: {
     titleKey: 'system.broadcastMessages',
     guidelineFeatureId: 'broadcast',
   },
-  '/agent-studio/histories': {
+  [ADMIN_HISTORIES_ROUTE]: {
     titleKey: 'histories.title',
     guidelineFeatureId: 'global-histories',
     fullBleed: true,
   },
-  '/system/llm-providers': {
+  [ADMIN_LLM_PROVIDERS_ROUTE]: {
     titleKey: 'llmProviders.title',
     fullBleed: true,
   },
-'/data-studio/datasets/:id/settings': {
-    titleKey: 'datasetSettings.title',
-    fullBleed: true,
-  },
-  '/data-studio/datasets/:id/chunks': {
-    titleKey: 'datasetSettings.chunks.title',
-    fullBleed: true,
-  },
-  '/data-studio/datasets/:id/documents/:docId/chunks': {
+  [ADMIN_DATASET_CHUNK_DETAIL_ROUTE]: {
     titleKey: 'datasets.chunkDetail',
     fullBleed: true,
   },
@@ -153,50 +167,76 @@ export const ROUTE_CONFIG: Record<string, RouteMetadata> = {
     titleKey: 'pages.aiSearch.title',
     fullBleed: true,
   },
-};
+}
 
-// ============================================================================
-// Helpers
-// ============================================================================
+interface RouteMatcher {
+  key: keyof typeof ROUTE_CONFIG
+  test: RegExp
+}
+
+const ROUTE_MATCHERS: RouteMatcher[] = [
+  {
+    key: ADMIN_DATASET_CHUNK_DETAIL_ROUTE,
+    test: /^\/admin\/data-studio\/datasets\/[^/]+\/documents\/[^/]+\/chunks$/,
+  },
+  {
+    key: ADMIN_AGENT_CANVAS_ROUTE,
+    test: /^\/admin\/agent-studio\/agents\/[^/]+$/,
+  },
+  {
+    key: ADMIN_MEMORY_DETAIL_ROUTE,
+    test: /^\/admin\/agent-studio\/memory\/[^/]+$/,
+  },
+  {
+    key: ADMIN_CODE_GRAPH_ROUTE,
+    test: /^\/admin\/code-graph\/[^/]+$/,
+  },
+  {
+    key: '/search/apps/:appId',
+    test: /^\/search\/apps\/[^/]+$/,
+  },
+  {
+    key: '/search/share/:token',
+    test: /^\/search\/share\/[^/]+$/,
+  },
+]
+
+const ROUTE_PREFIX_MATCHES: Array<{
+  key: keyof typeof ROUTE_CONFIG
+  prefix: string
+}> = [
+  { key: ADMIN_DATASETS_ROUTE, prefix: `${ADMIN_DATASETS_ROUTE}/` },
+  { key: ADMIN_KNOWLEDGE_BASE_ROUTE, prefix: `${ADMIN_KNOWLEDGE_BASE_ROUTE}/` },
+  { key: ADMIN_AGENTS_ROUTE, prefix: `${ADMIN_AGENTS_ROUTE}/` },
+  { key: ADMIN_MEMORY_ROUTE, prefix: `${ADMIN_MEMORY_ROUTE}/` },
+  { key: ADMIN_USERS_ROUTE, prefix: `${ADMIN_USERS_ROUTE}/` },
+]
 
 /**
- * @description Resolves route metadata for a given pathname, supporting exact and prefix matching for dynamic routes
- * @param {string} pathname - The current URL pathname to look up
- * @returns {RouteMetadata} Route metadata for the matched route, or a default fallback
+ * @description Resolves route metadata for a given pathname using exact, regex, and prefix matching
+ * @param {string} pathname - Current URL pathname
+ * @returns {RouteMetadata} Matched route metadata or the application fallback metadata
  */
 export function getRouteMetadata(pathname: string): RouteMetadata {
-  // Exact match
   if (ROUTE_CONFIG[pathname]) {
-    return ROUTE_CONFIG[pathname]!;
+    return ROUTE_CONFIG[pathname]
   }
 
-  // Dynamic route prefix match — more specific paths checked first
-  if (pathname.match(/^\/data-studio\/datasets\/[^/]+\/documents\/[^/]+\/chunks$/)) {
-    return ROUTE_CONFIG['/data-studio/datasets/:id/documents/:docId/chunks']!;
-  }
-  // Match agent canvas route with dynamic ID
-  if (pathname.startsWith('/agent-studio/agents/')) {
-    return ROUTE_CONFIG['/agent-studio/agents/:id']!;
-  }
-  // Match memory detail route with dynamic ID
-  if (pathname.startsWith('/agent-studio/memory/')) {
-    return ROUTE_CONFIG['/agent-studio/memory/:id']!;
-  }
-  if (pathname.startsWith('/search/share/')) {
-    return ROUTE_CONFIG['/search/share/:token']!;
-  }
-  if (pathname.startsWith('/search/apps/')) {
-    return ROUTE_CONFIG['/search/apps/:appId']!;
-  }
-  if (pathname.startsWith('/data-studio/datasets/')) {
-    return ROUTE_CONFIG['/data-studio/datasets']!;
-  }
-  if (pathname.startsWith('/data-studio/knowledge-base/')) {
-    return ROUTE_CONFIG['/data-studio/knowledge-base']!;
+  // Match dynamic routes whose contract includes parameters or hidden admin paths.
+  for (const matcher of ROUTE_MATCHERS) {
+    if (matcher.test.test(pathname)) {
+      return ROUTE_CONFIG[matcher.key]!
+    }
   }
 
-  // Default fallback
+  // Reuse list metadata for nested detail pages that stay within the same section.
+  for (const prefixMatch of ROUTE_PREFIX_MATCHES) {
+    if (pathname.startsWith(prefixMatch.prefix)) {
+      return ROUTE_CONFIG[prefixMatch.key]!
+    }
+  }
+
   return {
     titleKey: 'common.appName',
-  };
+  }
 }

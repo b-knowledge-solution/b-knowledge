@@ -8,6 +8,7 @@
 import { Router } from 'express'
 import { SearchEmbedController } from '../controllers/search-embed.controller.js'
 import { requireAuth, requirePermission } from '@/shared/middleware/auth.middleware.js'
+import { markPublicRoute } from '@/shared/middleware/markPublicRoute.js'
 import { validate } from '@/shared/middleware/validate.middleware.js'
 import {
   createEmbedTokenSchema,
@@ -99,6 +100,9 @@ router.get(
  */
 router.post(
   '/embed/:token/search',
+  // Public embed endpoint: auth via signed embed token in the URL path, not session.
+  // The controller resolves the token and enforces its allow-list; no user permission applies.
+  markPublicRoute(),
   validate({ body: embedSearchSchema.shape.body, params: embedSearchSchema.shape.params }),
   controller.executeSearch.bind(controller)
 )
@@ -110,6 +114,8 @@ router.post(
  */
 router.post(
   '/embed/:token/ask',
+  // Public embed endpoint: auth via signed embed token in the URL path, not session.
+  markPublicRoute(),
   validate({ body: embedAskSchema, params: embedTokenParamSchema }),
   controller.askSearch.bind(controller)
 )
@@ -121,6 +127,8 @@ router.post(
  */
 router.post(
   '/embed/:token/related-questions',
+  // Public embed endpoint: auth via signed embed token in the URL path, not session.
+  markPublicRoute(),
   validate({ body: embedRelatedQuestionsSchema.shape.body, params: embedRelatedQuestionsSchema.shape.params }),
   controller.relatedQuestions.bind(controller)
 )
@@ -132,6 +140,8 @@ router.post(
  */
 router.post(
   '/embed/:token/mindmap',
+  // Public embed endpoint: auth via signed embed token in the URL path, not session.
+  markPublicRoute(),
   validate({ body: embedMindmapSchema.shape.body, params: embedMindmapSchema.shape.params }),
   controller.mindmap.bind(controller)
 )

@@ -13,6 +13,7 @@
 
 import { Router } from 'express'
 import { searchOpenaiController } from '../controllers/search-openai.controller.js'
+import { markPublicRoute } from '@/shared/middleware/markPublicRoute.js'
 
 const router = Router()
 
@@ -23,6 +24,9 @@ const router = Router()
  */
 router.post(
   '/search/completions',
+  // OpenAI-compatible endpoint: auth via Bearer API key (search_embed_tokens table),
+  // not session. Controller extracts/validates the token; no session permission applies.
+  markPublicRoute(),
   searchOpenaiController.completion.bind(searchOpenaiController)
 )
 

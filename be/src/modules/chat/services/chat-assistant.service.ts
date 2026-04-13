@@ -124,7 +124,7 @@ export class ChatAssistantService {
     const sortOrder = options.sortOrder ?? 'desc'
 
     // Apply RBAC filtering (admins see all, others see owned + public + shared)
-    if (userRole !== UserRole.ADMIN && userRole !== UserRole.SUPERADMIN) {
+    if (userRole !== UserRole.ADMIN && userRole !== UserRole.SUPER_ADMIN) {
       // Get assistant IDs the user has been explicitly granted access to
       const accessibleIds = await ModelFactory.chatAssistantAccess.findAccessibleAssistantIds(userId, teamIds)
 
@@ -254,7 +254,7 @@ export class ChatAssistantService {
     teamIds: string[]
   ): Promise<boolean> {
     // Admins always have access
-    if (userRole === UserRole.ADMIN || userRole === UserRole.SUPERADMIN) {
+    if (userRole === UserRole.ADMIN || userRole === UserRole.SUPER_ADMIN) {
       return true
     }
 

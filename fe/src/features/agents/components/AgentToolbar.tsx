@@ -32,6 +32,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { Switch } from '@/components/ui/switch'
+import { ADMIN_AGENTS_ROUTE } from '@/app/adminRoutes'
 import type { Agent, AgentStatus } from '../types/agent.types'
 
 /**
@@ -83,7 +84,7 @@ export function AgentToolbar({
    * @description Navigates back to the agent list page
    */
   const handleBack = () => {
-    navigate('/agent-studio/agents')
+    navigate(ADMIN_AGENTS_ROUTE)
   }
 
   /**
@@ -237,7 +238,7 @@ export function AgentToolbar({
               className="text-destructive"
               onClick={() => {
                 // Delete is handled at page level; for now just navigate back
-                navigate('/agent-studio/agents')
+                navigate(ADMIN_AGENTS_ROUTE)
               }}
             >
               <Trash2 className="h-4 w-4 mr-2" />

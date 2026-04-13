@@ -6,6 +6,7 @@
 import { Router } from 'express'
 import { AuthController } from '@/modules/auth/auth.controller.js'
 import { requireAuth } from '@/shared/middleware/auth.middleware.js'
+import { markPublicRoute } from '@/shared/middleware/markPublicRoute.js'
 
 const router = Router()
 const controller = new AuthController()
@@ -48,7 +49,9 @@ router.get('/callback', controller.handleCallback.bind(controller));
  * @access Private
  */
 // Destroy user session
-router.post('/logout', requireAuth, controller.logout.bind(controller));
+// markPublicRoute: gated by requireAuth; self-service session operation
+// (any authenticated user can log themselves out — no permission key needed).
+router.post('/logout', markPublicRoute(), requireAuth, controller.logout.bind(controller));
 
 /**
  * @route POST /api/auth/reauth
@@ -56,7 +59,8 @@ router.post('/logout', requireAuth, controller.logout.bind(controller));
  * @access Private
  */
 // Refresh session validity timestamp
-router.post('/reauth', requireAuth, controller.reauth.bind(controller));
+// markPublicRoute: gated by requireAuth; self-service session refresh.
+router.post('/reauth', markPublicRoute(), requireAuth, controller.reauth.bind(controller));
 
 /**
  * @route POST /api/auth/refresh-token
@@ -64,7 +68,9 @@ router.post('/reauth', requireAuth, controller.reauth.bind(controller));
  * @access Private
  */
 // External provider token refresh
-router.post('/refresh-token', requireAuth, controller.refreshToken.bind(controller));
+// markPublicRoute: gated by requireAuth; self-service refresh of the
+// caller's own OAuth provider token — no permission key applies.
+router.post('/refresh-token', markPublicRoute(), requireAuth, controller.refreshToken.bind(controller));
 
 /**
  * @route GET /api/auth/token-status
@@ -80,7 +86,9 @@ router.get('/token-status', requireAuth, controller.getTokenStatus.bind(controll
  * @access Public
  */
 // Authenticate using local root credentials config
-router.post('/login/root', controller.loginRoot.bind(controller));
+// Intentionally public: this IS the login endpoint — the point is that no
+// session/permission exists yet when the caller hits it.
+router.post('/login/root', markPublicRoute(), controller.loginRoot.bind(controller));
 
 /**
  * @route GET /api/auth/abilities
@@ -101,6 +109,9 @@ router.get('/orgs', requireAuth, controller.getOrgs.bind(controller));
  * @description Switches the user's active organization and recomputes CASL abilities.
  * @access Private
  */
-router.post('/switch-org', requireAuth, controller.switchOrg.bind(controller));
+// markPublicRoute: gated by requireAuth; self-service org switch — the
+// switchOrg handler itself enforces R-12 membership (verified Wave 0 P3.0c),
+// so no separate permission key applies here.
+router.post('/switch-org', markPublicRoute(), requireAuth, controller.switchOrg.bind(controller));
 
 export default router;

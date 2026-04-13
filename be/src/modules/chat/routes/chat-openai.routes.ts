@@ -13,6 +13,7 @@
 
 import { Router } from 'express'
 import { chatOpenaiController } from '../controllers/chat-openai.controller.js'
+import { markPublicRoute } from '@/shared/middleware/markPublicRoute.js'
 
 const router = Router()
 
@@ -21,8 +22,14 @@ const router = Router()
  * @description OpenAI-compatible chat completion endpoint.
  * @access Bearer token auth (chat embed token)
  */
+// OpenAI-compatible completion endpoint — authenticated by `Authorization:
+// Bearer <chat_embed_token>` and validated by the controller against
+// `chat_embed_tokens`. There is no session/user context for these API-key
+// callers, so a permission-key gate is not applicable. Marked public so the
+// route-sweep gate recognizes the intentional API-key auth model.
 router.post(
   '/chat/completions',
+  markPublicRoute(),
   chatOpenaiController.chatCompletion.bind(chatOpenaiController)
 )
 

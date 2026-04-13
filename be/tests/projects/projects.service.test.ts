@@ -206,7 +206,7 @@ describe('ProjectsService', () => {
       mockProjectFindByTenant.mockResolvedValue([{ id: 'p1' }])
 
       const result = await service.getAccessibleProjects(
-        createUser({ role: 'superadmin' }),
+        createUser({ role: 'super-admin' }),
         'tenant-1',
       )
 

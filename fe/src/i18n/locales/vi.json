@@ -112,6 +112,7 @@
     "userManagement": "Người dùng",
     "teamManagement": "Đội nhóm",
     "permissionManagement": "Phân quyền",
+    "effectiveAccess": "Quyền thực tế",
     "systemTools": "Công cụ Hệ thống",
     "systemMonitor": "Giám sát Hệ thống",
     "storage": "Kho Tài liệu",
@@ -128,6 +129,7 @@
     "collapseMenu": "Thu gọn menu",
     "glossary": "Từ điển",
     "apiKeys": "Khóa API",
+    "administrator": "Quản trị viên",
     "agents": "Tác tử",
     "agentStudio": "Agent Studio",
     "agentList": "Danh sách Tác tử",
@@ -204,7 +206,71 @@
   "permissions": {
     "noTeamsAvailable": "Không có nhóm nào",
     "noUsersAvailable": "Không có người dùng nào",
-    "noMatches": "Không có kết quả khớp"
+    "noMatches": "Không có kết quả khớp",
+    "admin": {
+      "sessionRefreshNotice": "Đã lưu. Người dùng bị ảnh hưởng sẽ thấy thay đổi ở yêu cầu tiếp theo — họ có thể cần làm mới trang.",
+      "overrides": {
+        "title": "Ghi đè quyền",
+        "allowSection": "Quyền được cấp thêm",
+        "denySection": "Quyền bị từ chối",
+        "addAllow": "Thêm quyền cho phép",
+        "addDeny": "Thêm quyền từ chối",
+        "remove": "Xoá ghi đè",
+        "searchPlaceholder": "Tìm kiếm quyền...",
+        "addError": "Không thể thêm ghi đè",
+        "removeError": "Không thể xoá ghi đè",
+        "empty": "Không có ghi đè nào. Người dùng này kế thừa toàn bộ quyền từ vai trò."
+      },
+      "effective": {
+        "title": "Quyền thực tế ({{count}})"
+      },
+      "effectiveAccess": {
+        "title": "Quyền thực tế",
+        "subtitle": "Xem người dùng nào trong tenant có thể thực hiện hành động đã chọn.",
+        "selectFeature": "Chọn một quyền để xem ai đang có",
+        "user": "Người dùng",
+        "email": "Email",
+        "role": "Vai trò",
+        "has": "Có quyền",
+        "empty": "Không có người dùng nào trong tenant có quyền này.",
+        "error": "Không thể tra cứu quyền thực tế."
+      },
+      "grants": {
+        "title": "Quyền tài nguyên",
+        "currentGrants": "Quyền hiện có",
+        "addGrant": "Thêm quyền",
+        "addButton": "Thêm",
+        "empty": "Chưa có quyền nào. Người có quyền theo vai trò vẫn có thể xem tài nguyên này.",
+        "addError": "Không thể thêm quyền",
+        "removeError": "Không thể xoá quyền",
+        "scopeKb": "Toàn bộ kho tri thức",
+        "scopeCategory": "Danh mục cụ thể",
+        "scopeCategoryHint": "Mở một danh mục từ giao diện kho tri thức để quản lý quyền của nó."
+      },
+      "picker": {
+        "searchPlaceholder": "Tìm kiếm người dùng, nhóm, vai trò...",
+        "empty": "Không có kết quả",
+        "chip": { "all": "Tất cả", "user": "Người dùng", "team": "Nhóm", "role": "Vai trò" },
+        "type": { "user": "Người dùng", "team": "Nhóm", "role": "Vai trò" }
+      }
+    }
+  },
+  "users": {
+    "detail": {
+      "title": "Chi tiết người dùng",
+      "notFound": "Không tìm thấy người dùng",
+      "backToList": "Quay lại danh sách",
+      "tabs": {
+        "profile": "Hồ sơ",
+        "permissions": "Quyền"
+      },
+      "fields": {
+        "displayName": "Tên hiển thị",
+        "email": "Email",
+        "role": "Vai trò",
+        "department": "Phòng ban"
+      }
+    }
   },
   "chatWidget": {
     "title": "Trò chuyện",
@@ -2617,6 +2683,11 @@
     "documentsTab": "Tài liệu",
     "standardTab": "Tiêu chuẩn",
     "codeTab": "Mã nguồn",
+    "orgChartTab": "Sơ đồ tổ chức",
+    "orgChart": {
+      "highlightLabel": "Làm nổi bật nút",
+      "selectPlaceholder": "Chọn một nút để làm nổi bật…"
+    },
     "newCategory": "Danh mục mới",
     "newVersion": "Phiên bản mới",
     "selectCategory": "Chọn danh mục để xem nội dung",

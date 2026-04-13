@@ -1,112 +1,90 @@
 # Auth System Overview
 
-## Overview
+> Entry point for the current authentication and authorization stack in B-Knowledge.
 
-B-Knowledge supports two authentication methods: Azure AD SSO for enterprise users and Local Root login for initial setup/administration. Sessions are stored in Valkey (Redis-compatible) and accessed via secure cookies.
+## 1. Overview
 
-## Authentication Flow
+B-Knowledge authenticates users through Azure AD SSO or the local root-login bootstrap path, then authorizes requests through the permission-system overhaul delivered in this milestone. The live authorization path is no longer a static role map first; it is a registry-backed, database-synced, CASL-driven system that feeds both backend middleware and frontend gates.
+
+This page is the high-level map. For the permission architecture, read [RBAC & ABAC Permission Model](/detail-design/auth/rbac-abac). For the fuller contract reference, read [RBAC & ABAC: Comprehensive Authorization Reference](/detail-design/auth/rbac-abac-comprehensive). For operational maintenance, use the `permission-maintenance-guide` path at `/detail-design/auth/permission-maintenance-guide` once that guide is published in this phase.
+
+## 2. Authentication Flow
 
 ```mermaid
 flowchart TD
-    A[User visits app] --> B{Login method?}
-    B -->|Enterprise| C[Azure AD SSO]
-    B -->|Root admin| D[Local Root Login]
+    A[User opens app] --> B{Login method}
+    B -->|Enterprise| C[Azure AD OAuth2 Authorization Code flow]
+    B -->|Bootstrap admin| D[Local root login]
 
-    C --> E[OAuth2 Authorization Code Flow]
-    D --> F[Validate against env vars]
+    C --> E[Backend validates callback and identity claims]
+    D --> F[Backend validates configured local credentials]
 
-    E --> G[Create/Update user in DB]
+    E --> G[Create or update user and org context]
     F --> G
 
-    G --> H[Create session in Valkey]
-    H --> I[Set session cookie]
-    I --> J[Redirect to frontend]
-
-    J --> K[Subsequent requests]
-    K --> L{Session cookie present?}
-    L -->|Yes| M[Load session from Valkey]
-    L -->|No| N[401 Unauthorized]
-    M --> O{Session valid?}
-    O -->|Yes| P[Process request]
-    O -->|Expired| N
+    G --> H[Persist session in Valkey]
+    H --> I[Set secure session cookie]
+    I --> J[Frontend loads authenticated runtime state]
 ```
 
-## Session Lifecycle
-
-```mermaid
-stateDiagram-v2
-    [*] --> Created: Login success
-    Created --> Active: First request with cookie
-    Active --> Active: Subsequent requests
-    Active --> Refreshed: Session extended on activity
-    Refreshed --> Active: Continue using
-    Active --> Expired: TTL exceeded / inactivity
-    Active --> Destroyed: Explicit logout
-    Refreshed --> Expired: TTL exceeded
-    Expired --> [*]
-    Destroyed --> [*]
-```
-
-| Phase | Description |
-|-------|-------------|
-| **Created** | Session object stored in Valkey with TTL |
-| **Active** | Cookie sent on each request, session loaded from Valkey |
-| **Refreshed** | Rolling expiry extended on activity |
-| **Expired** | TTL exceeded, Valkey auto-deletes key |
-| **Destroyed** | `POST /api/auth/logout` deletes session from Valkey |
-
-## Permission Resolution Chain
+## 3. Authorization Resolution Chain
 
 ```mermaid
 flowchart LR
-    A[Incoming Request] --> B[requireAuth]
-    B --> C{Authenticated?}
-    C -->|No| D[401]
-    C -->|Yes| E[requireRole]
-    E --> F{Has min role?}
-    F -->|No| G[403]
-    F -->|Yes| H[requirePermission]
-    H --> I{Has permission?}
-    I -->|No| G
-    I -->|Yes| J[requireAbility]
-    J --> K{CASL ability check?}
-    K -->|No| G
-    K -->|Yes| L[Route Handler]
+    A[Authenticated request] --> B[Resolve session and active org]
+    B --> C[buildAbilityFor]
+    C --> D[role_permissions]
+    C --> E[user_permission_overrides]
+    C --> F[resource_grants]
+    D --> G[CASL ability]
+    E --> G
+    F --> G
+    G --> H{Route uses requirePermission?}
+    H -->|Yes| I[Registry key resolves to action + subject]
+    H -->|No| J{Route uses requireAbility?}
+    I --> K[CASL check]
+    J --> K
+    K -->|Allow| L[Route handler]
+    K -->|Deny| M[403]
 ```
 
-Each middleware layer adds progressively finer checks:
+The canonical backend path is:
 
-1. **requireAuth** - Validates session exists and is not expired
-2. **requireRole** - Checks user role meets minimum level (e.g., admin+)
-3. **requirePermission** - Checks explicit permission flags (e.g., `manage_users`)
-4. **requireAbility** - CASL-based check for action + subject + conditions (ABAC)
+1. `definePermissions()` registers permission keys in code.
+2. Boot sync reconciles the registry with the `permissions` catalog table.
+3. `buildAbilityFor()` composes role defaults, active overrides, and row-scoped grants.
+4. Route middleware enforces either `requirePermission('<feature>.<action>')` or `requireAbility(action, subject, idParam?)`.
+5. The frontend consumes the same model through `PermissionCatalogProvider`, `useHasPermission`, `AbilityProvider`, and `<Can>`.
 
-## Multi-Organization Support
+## 4. Current Role Model
 
-```mermaid
-flowchart TD
-    A[User] -->|belongs to| B[Org A]
-    A -->|belongs to| C[Org B]
-    A -->|belongs to| D[Org C]
+The active tenant role set is:
 
-    E[Session] -->|active_org| B
-
-    F[PUT /api/auth/switch-org] --> G[Update session.active_org]
-    G --> H[Reload permissions for new org]
-    H --> I[Return updated user context]
-```
-
-- A user can belong to multiple organizations (tenants)
-- The session stores the currently active organization
-- `switch-org` endpoint changes `session.activeOrg` and reloads role/permissions
-- All data queries are scoped to the active organization via tenant isolation
-
-## Key Files
-
-| File | Purpose |
+| Role | Purpose |
 |------|---------|
-| `be/src/modules/auth/` | Auth module (controller, service, routes) |
-| `be/src/shared/middleware/auth.middleware.ts` | requireAuth, requireRole, requirePermission, requireAbility |
-| `be/src/shared/config/rbac.js` | Role hierarchy and permission definitions |
-| `be/src/modules/auth/auth.controller.ts` | Login, logout, callback, switch-org endpoints |
-| `be/src/modules/auth/auth.service.ts` | Session creation, Azure AD token exchange |
+| `super-admin` | Platform-wide operator with unrestricted access |
+| `admin` | Tenant administrator |
+| `leader` | Tenant operator with broader management access than standard users |
+| `user` | Baseline authenticated tenant user |
+
+The default role for newly provisioned tenant users is `user`. Historical aliases and older role labels are not the maintained model.
+
+## 5. Canonical Files
+
+| File | Why it matters |
+|------|----------------|
+| `be/src/shared/permissions/registry.ts` | Canonical in-code permission registry |
+| `be/src/shared/permissions/sync.ts` | Boot-time registry-to-catalog reconciliation |
+| `be/src/shared/services/ability.service.ts` | CASL ability construction and OpenSearch access filters |
+| `be/src/shared/middleware/auth.middleware.ts` | `requireAuth`, `requirePermission`, `requireAbility`, and compatibility gates |
+| `be/src/shared/config/rbac.ts` | Compatibility shim and role hierarchy, not the primary extension surface |
+| `be/src/modules/permissions/routes/permissions.routes.ts` | `/api/permissions/*` admin and catalog API |
+| `fe/src/lib/permissions.tsx` | Runtime catalog provider and `useHasPermission` |
+| `fe/src/lib/ability.tsx` | Frontend CASL provider and `<Can>` |
+
+## 6. Related Docs
+
+- [Auth: Azure AD OAuth2 Flow](/detail-design/auth/azure-ad-flow)
+- [RBAC & ABAC Permission Model](/detail-design/auth/rbac-abac)
+- [RBAC & ABAC: Comprehensive Authorization Reference](/detail-design/auth/rbac-abac-comprehensive)
+- `/detail-design/auth/permission-maintenance-guide` for the operational “add or maintain a permission” workflow

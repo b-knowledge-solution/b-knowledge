@@ -1,0 +1,244 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`V1 ability snapshot — DO NOT REGENERATE without intentional V1 change > admin 1`] = `
+"[
+  {
+    "action": "manage",
+    "subject": "Agent",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "manage",
+    "subject": "ChatAssistant",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "manage",
+    "subject": "Dataset",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "manage",
+    "subject": "Document",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "manage",
+    "subject": "KnowledgeBase",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "manage",
+    "subject": "Memory",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "manage",
+    "subject": "SearchApp",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "manage",
+    "subject": "User",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "read",
+    "subject": "AuditLog",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "read",
+    "subject": "Dataset",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "read",
+    "subject": "Document",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  }
+]"
+`;
+
+exports[`V1 ability snapshot — DO NOT REGENERATE without intentional V1 change > leader 1`] = `
+"[
+  {
+    "action": "create",
+    "subject": "Dataset",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "delete",
+    "subject": "Dataset",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "manage",
+    "subject": "Agent",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "manage",
+    "subject": "ChatAssistant",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "manage",
+    "subject": "Document",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "manage",
+    "subject": "KnowledgeBase",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "manage",
+    "subject": "Memory",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "manage",
+    "subject": "SearchApp",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "read",
+    "subject": "Dataset",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "read",
+    "subject": "Document",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "update",
+    "subject": "Dataset",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  }
+]"
+`;
+
+exports[`V1 ability snapshot — DO NOT REGENERATE without intentional V1 change > super-admin 1`] = `
+"[
+  {
+    "action": "manage",
+    "subject": "all",
+    "conditions": null,
+    "inverted": false,
+    "fields": null
+  }
+]"
+`;
+
+exports[`V1 ability snapshot — DO NOT REGENERATE without intentional V1 change > user 1`] = `
+"[
+  {
+    "action": "read",
+    "subject": "Dataset",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  },
+  {
+    "action": "read",
+    "subject": "Document",
+    "conditions": {
+      "tenant_id": "org-fixture-1"
+    },
+    "inverted": false,
+    "fields": null
+  }
+]"
+`;
