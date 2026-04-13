@@ -3,13 +3,13 @@
 | Field          | Value                              |
 |----------------|------------------------------------|
 | Version        | 1.1                                |
-| Date           | 2026-03-25                         |
+| Date           | 2026-04-13                         |
 | Status         | Draft                              |
 | Classification | Internal                           |
 
 ## 1. Purpose
 
-This document defines the functional and non-functional requirements for **B-Knowledge**, an open-source AI knowledge platform covering document ingestion, AI chat, AI search, agent workflows, memory, projects, administration, and external APIs. It serves as the source-oriented reference for developers, QA engineers, and stakeholders.
+This document defines the functional and non-functional requirements for **B-Knowledge**, an open-source AI knowledge platform covering document ingestion, AI chat, AI search, agent workflows, memory, administration, and external APIs. It serves as the source-oriented reference for developers, QA engineers, and stakeholders.
 
 ## 2. Project Scope
 
@@ -20,7 +20,7 @@ B-Knowledge enables organisations to:
 - Run AI Search with retrieval, streamed summaries, related questions, mind maps, SQL fallback, and public share/embed pages.
 - Design and execute agent workflows with canvas editing, webhook triggers, embed triggers, and tool credentials.
 - Persist searchable memory pools and import history into memory.
-- Manage projects, users, teams, audit, dashboard, glossary, sync, broadcast, and external API access.
+- Manage users, teams, permission matrix administration, audit, dashboard, glossary, sync, broadcast, and external API access.
 
 ### 2.1 System Context
 
@@ -86,7 +86,7 @@ C4Context
 |----------|-------|
 | [RAG Strategy & Architecture](/srs/core-platform/fr-rag-strategy) | Retrieval stack, ingestion, indexing |
 | [Authentication](/srs/core-platform/fr-authentication) | Azure AD, local login, sessions, org switching |
-| [User & Team Management](/srs/core-platform/fr-user-team-management) | Users, teams, roles, permissions |
+| [User & Team Management](/srs/core-platform/fr-user-team-management) | Users, teams, roles, permission matrix, overrides, effective access |
 | [Dataset Management](/srs/core-platform/fr-dataset-management) | Dataset CRUD, access, versions, settings |
 | [Document Processing](/srs/core-platform/fr-document-processing) | Upload, parse, enrich, convert, index |
 | [AI Chat](/srs/ai-features/fr-ai-chat) | Assistants, conversations, streaming, embed, OpenAI API |

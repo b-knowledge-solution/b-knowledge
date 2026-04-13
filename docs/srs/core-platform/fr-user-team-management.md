@@ -4,7 +4,7 @@
 |---------|------------|
 | Parent  | [SRS Index](./index.md) |
 | Version | 1.1        |
-| Date    | 2026-04-12 |
+| Date    | 2026-04-13 |
 
 ## 1. Overview
 
@@ -95,6 +95,17 @@ flowchart TD
 | PERM-006  | Flat and row-scoped enforcement | Permission evaluation must support both flat capability checks and row-scoped subject checks so tenant-wide actions and resource-level access use the same permission engine. | Must |
 | PERM-007  | Tenant isolation | Roles, overrides, and grants must remain tenant-scoped unless the caller is a platform-level `super-admin`. | Must |
 
+## 5.1 Functional Requirements — Permission Matrix Administration
+
+| ID        | Requirement | Description | Priority |
+|-----------|-------------|-------------|----------|
+| PMX-001   | Catalog-driven rows | The permission matrix UI must render permission rows from the live registry-backed catalog rather than from a separately maintained static FE list. | Must |
+| PMX-002   | Role-column editing | Authorized admins can review and replace the complete permission set for each role through the role matrix workflow. | Must |
+| PMX-003   | User exception workflow | Authorized admins can create allow or deny exceptions for a single user without changing the tenant-wide role matrix. | Must |
+| PMX-004   | Resource-sharing workflow | Authorized admins can grant row-scoped resource access without broadening tenant-wide role defaults. | Must |
+| PMX-005   | Effective-access inspection | Authorized admins can inspect which users currently hold one selected capability and drill into user-level details for remediation. | Must |
+| PMX-006   | Maintainer clarity | Documentation must clearly explain when to use role defaults, overrides, or resource grants so new team members do not misuse the matrix. | Must |
+
 ## 6. Current Role Model
 
 ```mermaid
@@ -167,3 +178,20 @@ flowchart TD
 | BR-USR-04 | Team membership remains part of the domain model, but permission enforcement must be expressed through the shared permission engine rather than isolated team-only rule tables. |
 | BR-USR-05 | Permission-management endpoints and UI surfaces must be restricted to authorized administrators through dedicated permission keys such as `permissions.view` and `permissions.manage`. |
 | BR-USR-06 | Knowledge Base and related resource access must be represented through the shared grant vocabulary so the permission model stays extensible. |
+
+## 9. Maintainer Guidance
+
+For new team members handling IAM and permission work:
+
+- use the role matrix when the default access for a role must change
+- use per-user overrides when only one person needs an exception
+- use resource grants when access should be limited to a specific KB or category
+- avoid implementing new authorization logic by checking role strings in the UI
+- avoid treating legacy JSON permission fields as the source of truth for new work
+
+## 10. Related Docs
+
+- [Database Design: Core Tables](/basic-design/database/database-design-core)
+- [Security Architecture](/basic-design/system-infra/security-architecture)
+- [User Management Overview](/detail-design/user-team/user-management-overview)
+- [Permission Matrix System](/detail-design/auth/permission-matrix-system)

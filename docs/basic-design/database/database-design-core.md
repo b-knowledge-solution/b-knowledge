@@ -1,17 +1,18 @@
 # Database Design: Core Tables
 
-> Core tenant, identity, and authorization tables used by the current permission system.
+> Current tenant, identity, and authorization schema aligned with the live permission-system implementation.
 
 ## 1. Overview
 
-The permission-system milestone moved authorization state into explicit catalog and assignment tables. The core database design is no longer centered on legacy user-row permission payloads or ad hoc role-only rules. Instead, the live control surfaces are:
+The core database design for B-Knowledge is centered on tenant-scoped identity plus a registry-backed permission system. The important point for maintainers is that the permission matrix is **not** driven by a hardcoded role map in the frontend and **not** by a `permission_id` foreign-key chain. The active schema uses canonical permission keys and composes access from:
 
 - `permissions`
 - `role_permissions`
 - `user_permission_overrides`
 - `resource_grants`
+- `users`, `teams`, and `user_teams`
 
-These tables work alongside the existing `users`, `teams`, tenant-scoping, and audit tables.
+This document focuses on the schema and lookup patterns that new contributors need to understand before changing auth, IAM, or row-level sharing behavior.
 
 ## 2. Core Authorization ER Diagram
 
@@ -20,16 +21,19 @@ erDiagram
     users {
         text id PK
         text email UK
-        text role "default 'user'"
+        text role
         boolean is_superuser
-        text tenant_id
+        text current_org_id
+        jsonb permissions "legacy compatibility payload"
         timestamptz created_at
         timestamptz updated_at
     }
 
     teams {
         text id PK
+        text tenant_id
         text name
+        jsonb permissions "team-local compatibility payload"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -41,7 +45,7 @@ erDiagram
     }
 
     permissions {
-        uuid id PK
+        text id PK
         text key UK
         text feature
         text action
@@ -53,34 +57,38 @@ erDiagram
     }
 
     role_permissions {
-        uuid id PK
-        text tenant_id
+        text id PK
         text role
-        uuid permission_id
+        text permission_key
+        text tenant_id
         timestamptz created_at
-        timestamptz updated_at
     }
 
     user_permission_overrides {
-        uuid id PK
+        text id PK
         text tenant_id
-        text user_id
-        uuid permission_id
+        text user_id FK
+        text permission_key
         text effect
         timestamptz expires_at
+        text created_by
         timestamptz created_at
         timestamptz updated_at
     }
 
     resource_grants {
-        uuid id PK
-        text tenant_id
+        text id PK
+        text knowledge_base_id
         text resource_type
         text resource_id
         text grantee_type
         text grantee_id
-        text actions
+        text permission_level "legacy compatibility column"
+        text[] actions
+        text tenant_id
         timestamptz expires_at
+        text created_by
+        text updated_by
         timestamptz created_at
         timestamptz updated_at
     }
@@ -96,113 +104,160 @@ erDiagram
         timestamptz created_at
     }
 
-    permissions ||--o{ role_permissions : "granted to role"
-    permissions ||--o{ user_permission_overrides : "overridden for user"
-    users ||--o{ user_permission_overrides : "receives override"
-    users ||--o{ user_teams : "belongs to"
-    teams ||--o{ user_teams : "contains users"
+    users ||--o{ user_teams : belongs_to
+    teams ||--o{ user_teams : contains
+    users ||--o{ user_permission_overrides : receives
 ```
 
-## 3. Authorization Table Roles
+## 3. Canonical Authorization Tables
 
 ### 3.1 `permissions`
 
-Registry-backed permission catalog synchronized at backend boot.
-
-| Column | Purpose |
-|--------|---------|
-| `key` | Stable permission identifier such as `permissions.manage` |
-| `feature` | Feature namespace used for grouping |
-| `action` | CASL action emitted by the registry definition |
-| `subject` | CASL subject associated with the key |
-| `label` / `description` | Human-readable admin and documentation metadata |
-
-This table is the database reflection of backend code definitions. Maintainers add new permission definitions in backend registry files, and startup sync upserts them here.
-
-### 3.2 `role_permissions`
-
-Tenant-scoped role defaults. Each row assigns one catalog permission to one role inside one tenant.
-
-This table now represents the default capability matrix for:
-
-- `super-admin`
-- `admin`
-- `leader`
-- `user`
-
-The ability service joins `role_permissions` with `permissions` to emit class-level CASL rules.
-
-### 3.3 `user_permission_overrides`
-
-Per-user allow or deny exceptions layered on top of role defaults.
+This is the registry mirror table. It is populated by backend boot sync from `definePermissions(...)` registrations.
 
 | Column | Meaning |
 |--------|---------|
-| `effect` | `allow` or `deny` |
-| `expires_at` | Optional expiration for temporary access changes |
+| `id` | Hex UUID text primary key generated by the database |
+| `key` | Canonical permission key such as `permissions.manage` |
+| `feature` | Feature grouping used by admin UI sections |
+| `action` | Canonical CASL action such as `read`, `create`, `update`, `delete`, `manage` |
+| `subject` | Canonical CASL subject such as `User`, `KnowledgeBase`, `SystemTool` |
+| `label` / `description` | Human-readable metadata consumed by admin docs and UI |
 
-The ability builder applies allow rules before ABAC compatibility overlays and applies deny rules last so deny wins.
+Important design rule:
+
+- `permissions.key` is the stable join/input value used across the admin APIs and frontend permission matrix
+- maintainers should not introduce parallel frontend-only permission lists
+
+### 3.2 `role_permissions`
+
+This table defines the baseline permission matrix per role.
+
+| Column | Meaning |
+|--------|---------|
+| `role` | Role name such as `super-admin`, `admin`, `leader`, `user` |
+| `permission_key` | Canonical key from the registry, for example `users.view` |
+| `tenant_id` | Nullable. `NULL` means global default; non-null means tenant-specific overlay |
+
+Key implementation detail:
+
+- there is **no foreign key** from `role_permissions.permission_key` to `permissions.key`
+- boot sync and registry discipline keep the catalog aligned without blocking deploy-time drift
+
+This choice is intentional. The code-side registry is the source of truth, and the boot process reconciles it into the database.
+
+### 3.3 `user_permission_overrides`
+
+This table stores one-user exceptions layered on top of role defaults.
+
+| Column | Meaning |
+|--------|---------|
+| `tenant_id` | Tenant scope |
+| `user_id` | Target user |
+| `permission_key` | Canonical permission key |
+| `effect` | `allow` or `deny` |
+| `expires_at` | Optional expiration timestamp |
+| `created_by` | Actor who issued the override |
+
+Operational rule:
+
+- allow and deny rows can both exist for the same `(tenant_id, user_id, permission_key)` as long as the `effect` differs
+- CASL precedence is implemented by emitting deny rules last, so deny wins
 
 ### 3.4 `resource_grants`
 
-Row-scoped access grants used by the current milestone for `KnowledgeBase` and `DocumentCategory`.
+This is the row-scoped sharing table used by the permission engine.
 
-Each row identifies:
+| Column | Meaning |
+|--------|---------|
+| `knowledge_base_id` | Optional owning KB for KB/category-sharing flows |
+| `resource_type` | CASL subject-like target, currently including `KnowledgeBase` and `DocumentCategory` |
+| `resource_id` | Specific row id being shared |
+| `grantee_type` | `user`, `team`, or reserved `role` |
+| `grantee_id` | User id, team id, or role identifier |
+| `actions` | Canonical `text[]` of CASL actions. This is the active source for grant evaluation |
+| `permission_level` | Legacy compatibility column retained for older rows and compatibility paths |
+| `tenant_id` | Tenant scope |
+| `expires_at` | Optional expiry evaluated in SQL |
 
-- which resource is being granted (`resource_type`, `resource_id`)
-- who receives the grant (`grantee_type`, `grantee_id`)
-- which actions are granted (`actions[]`)
-- whether the grant expires (`expires_at`)
+Important design rule:
 
-`resource_grants` is part of the active authorization core even though some granted resources are RAG-facing. It participates directly in ability construction and search/retrieval filtering.
+- `actions[]` is the canonical grant payload
+- `permission_level` exists for backward compatibility and migration carry-over, not as the primary design surface for new work
 
-## 4. Identity and Tenant Context Tables
+## 4. Identity and Membership Tables
 
 ### 4.1 `users`
 
-The user table still carries the tenant role field and super-admin flag, but it is no longer the place where maintainers should look for the live permission matrix.
+The `users` table still contains legacy compatibility fields, but its live meaning in the permission system is narrower than older docs implied.
 
-Important notes:
-
-- `role` selects the base role whose defaults are loaded from `role_permissions`
-- `is_superuser` enables the super-admin shortcut in the ability builder
-- any legacy `permissions` column should be treated as historical baggage, not as the active permission source
+| Column | Live purpose |
+|--------|--------------|
+| `role` | Selects the baseline role whose defaults are loaded from `role_permissions` |
+| `is_superuser` | Platform-level bypass used by the ability service |
+| `current_org_id` | Current active tenant/org used for tenant-scoped ability evaluation |
+| `permissions` | Legacy JSON payload that still exists in surrounding code paths; not the canonical permission matrix source |
 
 ### 4.2 `teams` and `user_teams`
 
-Teams remain relevant because grant resolution can target team principals in `resource_grants`, even though the current phase’s main documentation focus is on catalog and grant tables rather than on older team-specific permission storage.
+Teams now participate in two different ways:
 
-## 5. Audit and Operational Tables
+- `user_teams` supplies team membership so `resource_grants` can target a team principal
+- `teams.permissions` exists as a compatibility/local team-management field after the 2026-04-13 migration, but it is **not** the canonical permission matrix engine
 
-### 5.1 `audit_logs`
+For new permission-system work:
 
-Permission and grant changes must remain observable. The audit log records actor, action, resource type, resource id, tenant id, and structured details. This supports:
+- use `role_permissions`, `user_permission_overrides`, and `resource_grants`
+- treat `teams.permissions` as a local compatibility feature until its longer-term role is clarified
 
-- reviewing authorization changes
-- investigating access issues
-- correlating permission admin actions with effective-access results
+## 5. How the Permission Matrix Reads This Schema
 
-## 6. Indexing Guidance
+The admin permission matrix page does not infer access from role names alone. Its current source chain is:
 
-Authorization-sensitive lookups should remain indexed around their live access patterns:
+```mermaid
+flowchart LR
+    A[Backend registry<br/>`*.permissions.ts`] --> B[`permissions`]
+    B --> C[FE generated catalog + runtime catalog]
+    C --> D[PermissionMatrix rows]
+    E[`role_permissions`] --> F[GET /api/permissions/roles/:role]
+    F --> D
+    D --> G[PUT /api/permissions/roles/:role]
+    G --> E
+    H[`user_permission_overrides`] --> I[OverrideEditor]
+    J[`resource_grants`] --> K[ResourceGrantEditor]
+```
 
-| Table | Important lookup shape |
-|-------|------------------------|
-| `permissions` | by `key` |
-| `role_permissions` | by `(tenant_id, role)` and permission join columns |
-| `user_permission_overrides` | by `(tenant_id, user_id)` and active-expiration filters |
-| `resource_grants` | by `(tenant_id, resource_type, resource_id)` and grantee lookup columns |
-| `audit_logs` | by `tenant_id`, `user_id`, `resource_type`, `created_at` |
+That means the matrix is:
 
-## 7. Design Notes
+- catalog-driven for rows
+- role-permission-table-driven for checked cells
+- full-replacement on save for each role
 
-- The canonical permission schema is catalog-backed and tenant-scoped
-- `rbac.ts` compatibility code must not be mistaken for the database source of truth
-- The active role vocabulary is `super-admin`, `admin`, `leader`, `user`
-- Legacy references to user-row permission payloads as the control surface should be treated as historical only
+## 6. Hot-Path Indexing and Query Shapes
+
+These are the important lookup patterns to preserve when extending the schema:
+
+| Table | Hot path |
+|-------|----------|
+| `permissions` | `key` lookup, ordered catalog scans, `(action, subject)` queries for `whoCanDo` |
+| `role_permissions` | `(role, tenant_id)` for ability construction and matrix reads |
+| `user_permission_overrides` | `(tenant_id, user_id)` plus SQL expiry filter |
+| `resource_grants` | `(tenant_id, resource_type, resource_id)` and tenant-first user/team grant scans |
+| `user_teams` | user-to-team membership lookup for team-targeted grants |
+| `audit_logs` | tenant/user/resource/time correlation for IAM audit trails |
+
+## 7. Schema Rules for Maintainers
+
+1. New permissions start in backend registry files, not by inserting rows manually.
+2. New role defaults belong in `role_permissions`.
+3. One-user exceptions belong in `user_permission_overrides`.
+4. Row-scoped sharing belongs in `resource_grants`.
+5. New work should prefer `permission_key` and `actions[]` over legacy JSON permission payloads or `permission_level`.
+6. Knex owns the schema lifecycle for these tables even when Python workers read related records.
 
 ## 8. Related Docs
 
 - [Security Architecture](/basic-design/system-infra/security-architecture)
 - [Database Design: RAG Tables](/basic-design/database/database-design-rag)
-- [API Endpoint Reference](/basic-design/component/api-design-endpoints)
+- [SRS: User & Team Management](/srs/core-platform/fr-user-team-management)
+- [Permission Matrix System](/detail-design/auth/permission-matrix-system)

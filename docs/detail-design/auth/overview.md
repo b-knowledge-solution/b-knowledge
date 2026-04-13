@@ -6,7 +6,7 @@
 
 B-Knowledge authenticates users through Azure AD SSO or the local root-login bootstrap path, then authorizes requests through the permission-system overhaul delivered in this milestone. The live authorization path is no longer a static role map first; it is a registry-backed, database-synced, CASL-driven system that feeds both backend middleware and frontend gates.
 
-This page is the high-level map. For the permission architecture, read [RBAC & ABAC Permission Model](/detail-design/auth/rbac-abac). For the fuller contract reference, read [RBAC & ABAC: Comprehensive Authorization Reference](/detail-design/auth/rbac-abac-comprehensive). For operational maintenance, use the `permission-maintenance-guide` path at `/detail-design/auth/permission-maintenance-guide` once that guide is published in this phase.
+This page is the high-level map. For the permission architecture, read [RBAC & ABAC Permission Model](/detail-design/auth/rbac-abac). For the fuller contract reference, read [RBAC & ABAC: Comprehensive Authorization Reference](/detail-design/auth/rbac-abac-comprehensive). For day-to-day onboarding and ownership of the role matrix, overrides, grants, and effective-access tooling, read [Permission Matrix System](/detail-design/auth/permission-matrix-system). For operational maintenance, use [Permission Maintenance Guide](/detail-design/auth/permission-maintenance-guide).
 
 ## 2. Authentication Flow
 
@@ -85,6 +85,7 @@ The default role for newly provisioned tenant users is `user`. Historical aliase
 ## 6. Related Docs
 
 - [Auth: Azure AD OAuth2 Flow](/detail-design/auth/azure-ad-flow)
+- [Permission Matrix System](/detail-design/auth/permission-matrix-system)
 - [RBAC & ABAC Permission Model](/detail-design/auth/rbac-abac)
 - [RBAC & ABAC: Comprehensive Authorization Reference](/detail-design/auth/rbac-abac-comprehensive)
-- `/detail-design/auth/permission-maintenance-guide` for the operational “add or maintain a permission” workflow
+- [Permission Maintenance Guide](/detail-design/auth/permission-maintenance-guide)

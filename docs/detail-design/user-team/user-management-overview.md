@@ -110,6 +110,19 @@ Key consequences for user-management documentation:
 
 The FE admin workflow is intentionally split. `PermissionManagementPage` owns role-wide changes, while the user detail page owns per-user exceptions.
 
+## 6.1 Which admin surface should a maintainer use?
+
+New maintainers should choose the surface based on the scope of the request:
+
+| Request type | Correct surface | Reason |
+|-------------|-----------------|--------|
+| "All leaders should gain this capability" | `PermissionMatrix` | Role default change |
+| "Only this user should gain or lose this capability" | `OverrideEditor` | User-specific exception |
+| "This user/team should access this KB or category" | `ResourceGrantEditor` or KB sharing flow | Row-scoped grant |
+| "Who currently has this access?" | `EffectiveAccessPage` | Effective-access inspection |
+
+If the request sounds one-user or one-resource specific, do not start by editing the role matrix.
+
 ## 7. Invalidation and Visibility of Changes
 
 Permission mutations are persisted immediately, but the system does not promise an instant push refresh to every active browser tab. Current behavior is:
@@ -140,3 +153,4 @@ The canonical maintenance model is registry plus overrides plus grants, but some
 | `fe/src/features/permissions/components/PermissionMatrix.tsx` | Role-by-role permission editing UI |
 | `fe/src/features/permissions/components/OverrideEditor.tsx` | Per-user overrides UI |
 | `fe/src/features/permissions/pages/EffectiveAccessPage.tsx` | "Who can do X?" inspection UI |
+| `docs/detail-design/auth/permission-matrix-system.md` | New-member onboarding and maintainer workflow |

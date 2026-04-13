@@ -212,6 +212,7 @@ export default withMermaid(
               { text: 'Local Login', link: '/detail-design/auth/local-login' },
               { text: 'RBAC & ABAC', link: '/detail-design/auth/rbac-abac' },
               { text: 'RBAC & ABAC Comprehensive', link: '/detail-design/auth/rbac-abac-comprehensive' },
+              { text: 'Permission Matrix System', link: '/detail-design/auth/permission-matrix-system' },
               { text: 'Permission Maintenance Guide', link: '/detail-design/auth/permission-maintenance-guide' },
             ],
           },

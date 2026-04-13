@@ -1,6 +1,6 @@
 # System Architecture
 
-> Source-aligned container view of the current monorepo as of 2026-03-25.
+> Source-aligned container view of the current monorepo as of 2026-04-13.
 
 ## C4 Container Diagram
 
@@ -15,8 +15,8 @@ C4Container
     }
 
     Container_Boundary(app, "Application Layer") {
-        Container(fe, "Frontend SPA", "React 19 / Vite 7.3 / TypeScript", "24 feature areas including chat, search, datasets, projects, agents, and memory")
-        Container(be, "Backend API", "Node.js 22 / Express 4.21 / TypeScript", "22 modules mounted under /api including auth, rag, search, chat, projects, agents, memory, and external APIs")
+        Container(fe, "Frontend SPA", "React 19 / Vite 7.3 / TypeScript", "25 feature areas including chat, search, widgets, datasets, agents, memory, IAM, and system administration")
+        Container(be, "Backend API", "Node.js 22 / Express 4.21 / TypeScript", "23 modules mounted under /api including auth, permissions, rag, knowledge base, search, chat, agents, memory, and external APIs")
         Container(worker, "Advance-RAG Worker", "Python 3.11 / FastAPI / Peewee", "Parsing, chunking, embedding, indexing, and agent node execution")
         Container(converter, "Converter", "Python 3 / LibreOffice", "Office-to-PDF conversion via Redis queue")
     }
@@ -109,4 +109,5 @@ graph TB
 2. **NX-style module boundaries** -- feature domains are isolated by module and barrel export.
 3. **Session auth plus scoped public tokens** -- browser sessions for internal UX, token-based access for public chat/search/agent embeds, and API keys for external APIs.
 4. **Node.js orchestration with Python workers** -- the API owns CRUD and orchestration, while Python handles ingestion-heavy and compute-heavy execution.
-5. **OpenSearch-centered retrieval** -- the same search engine supports hybrid retrieval, SQL fallback, graph tasks, and memory search.
+5. **OpenSearch-centered retrieval** -- the same search engine supports hybrid retrieval, search, code graph, and memory search workloads.
+6. **Registry-backed authorization** -- permission definitions live in backend source, sync into catalog tables, and drive both admin UI and runtime checks.

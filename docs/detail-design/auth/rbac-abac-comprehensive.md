@@ -6,7 +6,7 @@
 
 The implemented authorization stack is a CASL-based engine fed by a backend permission registry plus database-backed role defaults, overrides, and resource grants. This page documents the live architecture and its remaining compatibility debt. It should be read as a code-aligned reference, not as a replacement permission model written in prose.
 
-For the shorter overview, see [RBAC & ABAC Permission Model](/detail-design/auth/rbac-abac). For operational maintenance steps, use the `permission-maintenance-guide` path at `/detail-design/auth/permission-maintenance-guide`.
+For the shorter overview, see [RBAC & ABAC Permission Model](/detail-design/auth/rbac-abac). For maintainer onboarding, see [Permission Matrix System](/detail-design/auth/permission-matrix-system). For operational maintenance steps, use [Permission Maintenance Guide](/detail-design/auth/permission-maintenance-guide).
 
 ## 2. Architecture
 
@@ -44,12 +44,15 @@ The registry is the canonical place to add a new permission. The boot sync then 
 
 ### 3.2 Runtime Ability Inputs
 
-`be/src/shared/services/ability.service.ts` composes abilities from these data sources:
+`be/src/shared/services/ability.service.ts` composes abilities in this order:
 
-1. `role_permissions`
-2. `resource_grants`
-3. `user_permission_overrides`
-4. Existing ABAC policy overlays where still supported
+1. super-admin shortcut
+2. `role_permissions`
+3. `resource_grants`
+4. Knowledge Base to `DocumentCategory` read cascade
+5. allow rows from `user_permission_overrides`
+6. existing ABAC policy overlays where still supported
+7. deny rows from `user_permission_overrides` last
 
 Important implemented behaviors:
 
@@ -187,5 +190,6 @@ When adding or changing a permission, maintainers should follow this sequence:
 
 - [Auth System Overview](/detail-design/auth/overview)
 - [Auth: Azure AD OAuth2 Flow](/detail-design/auth/azure-ad-flow)
+- [Permission Matrix System](/detail-design/auth/permission-matrix-system)
 - [RBAC & ABAC Permission Model](/detail-design/auth/rbac-abac)
-- `/detail-design/auth/permission-maintenance-guide`
+- [Permission Maintenance Guide](/detail-design/auth/permission-maintenance-guide)

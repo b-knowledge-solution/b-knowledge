@@ -6,6 +6,8 @@
 
 Use this guide when you need to add a new permission, rename an existing permission, or debug why a permission is not propagating correctly through the system.
 
+If you are new to the codebase and need the full mental model first, read [Permission Matrix System](/detail-design/auth/permission-matrix-system) before using this checklist.
+
 The maintained workflow is:
 
 1. define the permission in the backend registry
@@ -286,6 +288,7 @@ Then run the smallest relevant BE and FE permission test commands for the files 
 ## 12. Related Docs
 
 - [Auth System Overview](/detail-design/auth/overview)
+- [Permission Matrix System](/detail-design/auth/permission-matrix-system)
 - [RBAC & ABAC Permission Model](/detail-design/auth/rbac-abac)
 - [RBAC & ABAC: Comprehensive Authorization Reference](/detail-design/auth/rbac-abac-comprehensive)
 - [User Management Overview](/detail-design/user-team/user-management-overview)

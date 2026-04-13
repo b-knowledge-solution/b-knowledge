@@ -6,7 +6,7 @@
 
 B-Knowledge now uses a registry-backed authorization model that combines role defaults, per-user overrides, row-scoped resource grants, and CASL ability checks. The primary extension path is no longer a hardcoded role map. New permissions enter the system through the backend permission registry and then propagate through sync, middleware, frontend catalog hydration, and admin tooling.
 
-Use this page for the mental model. Use [RBAC & ABAC: Comprehensive Authorization Reference](/detail-design/auth/rbac-abac-comprehensive) for the full contracts and the `permission-maintenance-guide` path at `/detail-design/auth/permission-maintenance-guide` for the operational workflow.
+Use this page for the mental model. Use [RBAC & ABAC: Comprehensive Authorization Reference](/detail-design/auth/rbac-abac-comprehensive) for the full contracts, [Permission Matrix System](/detail-design/auth/permission-matrix-system) for maintainer onboarding, and [Permission Maintenance Guide](/detail-design/auth/permission-maintenance-guide) for the operational workflow.
 
 ## 2. Canonical Permission Flow
 
@@ -45,12 +45,15 @@ flowchart LR
 - `requireAbility(action, subject, idParam?)`
   Uses CASL directly for subject checks that can be row-scoped through `{ tenant_id, id }`.
 
-The ability builder currently pulls from:
+The live ability builder order is:
 
-1. `role_permissions`
-2. `resource_grants`
-3. `user_permission_overrides`
-4. ABAC policy overlays where they still exist
+1. super-admin shortcut
+2. `role_permissions`
+3. `resource_grants`
+4. Knowledge Base to `DocumentCategory` read cascade
+5. allow rows from `user_permission_overrides`
+6. ABAC policy overlays where they still exist
+7. deny rows from `user_permission_overrides` last so deny wins
 
 ## 5. Frontend Consumption
 
@@ -74,5 +77,6 @@ Decision rule:
 ## 7. Related Docs
 
 - [Auth System Overview](/detail-design/auth/overview)
+- [Permission Matrix System](/detail-design/auth/permission-matrix-system)
 - [RBAC & ABAC: Comprehensive Authorization Reference](/detail-design/auth/rbac-abac-comprehensive)
-- `/detail-design/auth/permission-maintenance-guide` for the end-to-end maintenance checklist
+- [Permission Maintenance Guide](/detail-design/auth/permission-maintenance-guide)

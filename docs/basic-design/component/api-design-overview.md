@@ -4,7 +4,7 @@
 
 ## 1. Overview
 
-The B-Knowledge API is a session-backed REST API with Zod validation, structured errors, rate limiting, and SSE for streaming features. The permission-system milestone changed the authorization layer from static role-first route descriptions to a registry-backed permission and CASL ability pipeline.
+The B-Knowledge API is a session-backed REST API with Zod validation, rate limiting, and SSE for streaming features. The permission-system milestone changed the authorization layer from static role-first route descriptions to a registry-backed permission and CASL ability pipeline.
 
 Current API authorization has two distinct enforcement modes:
 
@@ -102,17 +102,19 @@ This split allows the FE to support both `<Can>`-style subject checks and key-ba
 
 ## 5. Error Response Expectations
 
-All routes still use a consistent JSON error shape:
+The backend does **not** expose one single universal error envelope across every module. The current source uses a few families of responses:
+
+- most internal routes return flat payloads such as `{ error: 'Unauthorized' }`
+- Zod validation middleware returns `{ error: 'Validation Error', details: [...] }`
+- permission middleware returns targeted flat payloads such as `{ error: 'permission_denied', key }`
+- selected external/OpenAI-compatible routes return nested error objects
 
 ```json
 {
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid input data",
-    "details": [
-      { "field": "email", "message": "Must be a valid email address" }
-    ]
-  }
+  "error": "Validation Error",
+  "details": [
+    { "target": "body", "field": "email", "message": "Must be a valid email address" }
+  ]
 }
 ```
 
@@ -130,6 +132,8 @@ Authorization-specific behavior:
 
 - Unknown permission keys are treated as server misconfiguration, not as an ordinary deny
 - Permission and ability middleware both fail closed in production when the ability build cannot complete
+
+When documenting or extending a route, do not assume a nested `{ error: { code, message } }` contract unless the source file actually implements it.
 
 ## 6. Validation and Mutation Rules
 

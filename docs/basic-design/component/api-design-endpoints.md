@@ -19,11 +19,13 @@ This page highlights the authentication and authorization contracts that maintai
 | `GET` | `/api/auth/me` | No | Returns the current session user when present |
 | `POST` | `/api/auth/logout` | Yes | Destroys the current session |
 | `POST` | `/api/auth/reauth` | Yes | Refreshes recent-auth timestamps for sensitive flows |
+| `POST` | `/api/auth/refresh-token` | Yes | Refreshes provider token state for the current authenticated session |
+| `GET` | `/api/auth/token-status` | Yes | Returns token freshness / expiry metadata for the current session |
 | `GET` | `/api/auth/abilities` | Yes | Returns serialized CASL rules for the current session |
 | `GET` | `/api/auth/orgs` | Yes | Lists the user’s available org memberships |
 | `POST` | `/api/auth/switch-org` | Yes | Switches active org and recomputes session-scoped access |
 
-`/api/auth/abilities` is the subject/action contract consumed by the frontend ability provider. It is complementary to, not a replacement for, the permission catalog API.
+`/api/auth/abilities` is the subject/action contract consumed by the frontend ability provider. It is complementary to, not a replacement for, the permission catalog API. `refresh-token` and `token-status` remain auth/session endpoints rather than permission-catalog endpoints.
 
 ## 3. Permission Module Endpoints
 

@@ -4,7 +4,7 @@
 |---------|------------|
 | Parent  | [SRS Index](./index.md) |
 | Version | 1.1        |
-| Date    | 2026-04-12 |
+| Date    | 2026-04-13 |
 
 ## 1. Overview
 
@@ -16,6 +16,7 @@ Authentication is therefore not a standalone concern in the current system. The 
 - `/api/auth/orgs` for available organisations
 - `/api/auth/switch-org` for active-organisation changes
 - `/api/auth/abilities` for the CASL rules used by frontend and backend authorization surfaces
+- `/api/auth/refresh-token` and `/api/auth/token-status` for provider token/session health flows where configured
 
 This page defines the requirements for that auth-to-permission flow. Detailed design references live in [Auth Overview](/detail-design/auth/overview), [Azure AD Flow](/detail-design/auth/azure-ad-flow), [Auth: RBAC & ABAC Permission Model](/detail-design/auth/rbac-abac), and [RBAC & ABAC: Comprehensive Authorization Reference](/detail-design/auth/rbac-abac-comprehensive).
 

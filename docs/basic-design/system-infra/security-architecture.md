@@ -92,7 +92,24 @@ The live permission model is no longer a static route-to-role map. Instead:
 - `user_permission_overrides` applies allow or deny exceptions for individual users
 - `resource_grants` adds row-scoped access for `KnowledgeBase` and `DocumentCategory`
 
-### 3.3 Ability construction
+### 3.3 Permission matrix system
+
+The current permission matrix system spans four surfaces instead of one monolithic admin table:
+
+| Layer | Source | Responsibility |
+|------|--------|----------------|
+| Catalog | `permissions` + backend registry | Defines which rows exist in the matrix |
+| Role defaults | `role_permissions` | Baseline role-by-role matrix |
+| User exceptions | `user_permission_overrides` | One-user allow/deny changes |
+| Row-scoped sharing | `resource_grants` | Instance-level KB/category access |
+
+For maintainers, the main rule is:
+
+- use the matrix for role defaults
+- use overrides for one-user exceptions
+- use grants for resource sharing
+
+### 3.4 Ability construction
 
 [`ability.service.ts`](/mnt/d/Project/b-solution/b-knowledge/be/src/shared/services/ability.service.ts) builds a tenant-scoped CASL ability using this order:
 
@@ -154,6 +171,19 @@ Frontend guidance:
 - Use `<Can I="read" a="KnowledgeBase">` or the equivalent app ability hook for subject-aware checks
 - Do not implement new UI gates by comparing role strings
 
+### 5.1 Permission admin UI mapping
+
+The admin frontend exposes the permission system through specialized screens:
+
+| UI surface | Primary file | Backend contract |
+|-----------|--------------|------------------|
+| Role matrix | `fe/src/features/permissions/components/PermissionMatrix.tsx` | `GET/PUT /api/permissions/roles/:role` |
+| User overrides | `fe/src/features/permissions/components/OverrideEditor.tsx` | `GET/POST /api/permissions/users/:userId/overrides`, `DELETE /api/permissions/overrides/:id` |
+| Resource sharing | `ResourceGrantEditor` and KB/category flows | `GET/POST/DELETE /api/permissions/grants` |
+| Effective access | `fe/src/features/permissions/pages/EffectiveAccessPage.tsx` | `GET /api/permissions/who-can-do` |
+
+This split is intentional. New contributors should not try to force all authorization changes through a single page.
+
 ## 6. Security Controls Around Authorization
 
 ### 6.1 Headers and transport
@@ -179,6 +209,7 @@ Helmet, CORS, secure cookies, and Nginx remain the outer security envelope:
 - `rbac.ts` should be read as compatibility and helper infrastructure, not as the place to add or remove permissions
 - Older route-role narratives are obsolete; current authorization depends on the catalog and ability engine
 - Legacy ABAC concepts may still appear in selected code paths, but the active permission data model is `permissions` + `role_permissions` + `user_permission_overrides` + `resource_grants`
+- `users.permissions`, `teams.permissions`, and `resource_grants.permission_level` can still appear in the source tree, but they are compatibility surfaces, not the primary design target for new permission-matrix work
 
 ## 8. Related Docs
 
@@ -186,3 +217,4 @@ Helmet, CORS, secure cookies, and Nginx remain the outer security envelope:
 - [API Endpoint Reference](/basic-design/component/api-design-endpoints)
 - [Database Design: Core Tables](/basic-design/database/database-design-core)
 - [Database Design: RAG Tables](/basic-design/database/database-design-rag)
+- [Permission Matrix System](/detail-design/auth/permission-matrix-system)

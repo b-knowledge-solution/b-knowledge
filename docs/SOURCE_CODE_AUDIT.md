@@ -1,8 +1,10 @@
 # B-Knowledge Source Code Audit Report
 
-**Date:** 2026-03-31
-**Codebase Size:** ~349K lines across 1,566 source files
-**Components:** Backend (52K LOC), Frontend (89K LOC), RAG Worker (126K LOC), Converter (5.5K LOC)
+> Historical audit snapshot from 2026-03-31. This page is **not** the live source-of-truth for current module counts, schema shape, or permission architecture. Use the SRS, basic-design, detail-design, and code itself for current behavior.
+
+**Snapshot Date:** 2026-03-31
+**Snapshot Scope:** Point-in-time quality audit
+**Current Status:** Historical reference only
 
 ---
 
