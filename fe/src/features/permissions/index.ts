@@ -5,6 +5,8 @@
 export * from './api/permissionsApi'
 export * from './api/permissionsQueries'
 export * from './types/permissions.types'
+export { default as PermissionManagementPage } from './pages/PermissionManagementPage'
+export { default as EffectiveAccessPage } from './pages/EffectiveAccessPage'
 export { PrincipalPicker } from './components/PrincipalPicker'
 export type { Principal, PrincipalPickerProps } from './components/PrincipalPicker'
 export { ResourceGrantEditor } from './components/ResourceGrantEditor'

@@ -164,7 +164,7 @@ vi.mock('@/components/ErrorPage', async () => {
 // full feature trees into this regression harness.
 vi.mock('@/features/users/pages/UserManagementPage', () => ({ default: () => null }))
 vi.mock('@/features/users/pages/UserDetailPage', () => ({ default: () => null }))
-vi.mock('@/features/users/pages/PermissionManagementPage', () => ({ default: () => null }))
+vi.mock('@/features/permissions/pages/PermissionManagementPage', () => ({ default: () => null }))
 vi.mock('@/features/permissions/pages/EffectiveAccessPage', () => ({ default: () => null }))
 vi.mock('@/features/teams/pages/TeamManagementPage', () => ({ default: () => null }))
 vi.mock('@/features/system/pages/SystemToolsPage', () => ({ default: () => null }))

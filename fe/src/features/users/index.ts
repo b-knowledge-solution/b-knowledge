@@ -7,7 +7,6 @@
 // Pages
 export { default as UserManagementPage } from './pages/UserManagementPage'
 export { default as UserDetailPage } from './pages/UserDetailPage'
-export { default as PermissionManagementPage } from './pages/PermissionManagementPage'
 
 // Components
 export { default as UserMultiSelect } from './components/UserMultiSelect'
