@@ -16,7 +16,8 @@ import {
   ADMIN_AGENTS_ROUTE,
   ADMIN_AUDIT_LOG_ROUTE,
   ADMIN_BROADCAST_MESSAGES_ROUTE,
-  ADMIN_CHAT_ASSISTANTS_ROUTE,
+
+  
   ADMIN_CODE_GRAPH_ROUTE,
   ADMIN_DASHBOARD_ROUTE,
   ADMIN_DATASETS_ROUTE,
@@ -27,7 +28,8 @@ import {
   ADMIN_MEMORY_DETAIL_ROUTE,
   ADMIN_MEMORY_ROUTE,
   ADMIN_PERMISSIONS_ROUTE,
-  ADMIN_SEARCH_APPS_ROUTE,
+
+  
   ADMIN_SYSTEM_MONITOR_ROUTE,
   ADMIN_SYSTEM_TOOLS_ROUTE,
   ADMIN_TEAMS_ROUTE,
@@ -109,8 +111,6 @@ const HistoriesPage = lazy(() => import('@/features/histories/pages/HistoriesPag
 const AdminDashboardPage = lazy(() => import('@/features/dashboard/pages/AdminDashboardPage'))
 const DatasetsPage = lazy(() => import('@/features/datasets/pages/DatasetsPage'))
 const DatasetDetailPage = lazy(() => import('@/features/datasets/pages/DatasetDetailPage'))
-const ChatAssistantManagementPage = lazy(() => import('@/features/chat/pages/ChatAssistantManagementPage'))
-const SearchAppManagementPage = lazy(() => import('@/features/search/pages/SearchAppManagementPage'))
 const KnowledgeBaseListPage = lazy(() => import('@/features/knowledge-base/pages/KnowledgeBaseListPage'))
 const KnowledgeBaseDetailPage = lazy(() => import('@/features/knowledge-base/pages/KnowledgeBaseDetailPage'))
 const LLMProviderPage = lazy(() => import('@/features/llm-provider/pages/LLMProviderPage'))
@@ -220,8 +220,6 @@ function App() {
               <Route path={toAdminChildPath(ADMIN_AGENT_CANVAS_ROUTE)} element={<FeatureErrorBoundary><NavRoleGuard><AgentCanvasPage /></NavRoleGuard></FeatureErrorBoundary>} />
               <Route path={toAdminChildPath(ADMIN_MEMORY_ROUTE)} element={<FeatureErrorBoundary><NavRoleGuard><MemoryListPage /></NavRoleGuard></FeatureErrorBoundary>} />
               <Route path={toAdminChildPath(ADMIN_MEMORY_DETAIL_ROUTE)} element={<FeatureErrorBoundary><NavRoleGuard><MemoryDetailPage /></NavRoleGuard></FeatureErrorBoundary>} />
-              <Route path={toAdminChildPath(ADMIN_CHAT_ASSISTANTS_ROUTE)} element={<FeatureErrorBoundary><NavRoleGuard><ChatAssistantManagementPage /></NavRoleGuard></FeatureErrorBoundary>} />
-              <Route path={toAdminChildPath(ADMIN_SEARCH_APPS_ROUTE)} element={<FeatureErrorBoundary><NavRoleGuard><SearchAppManagementPage /></NavRoleGuard></FeatureErrorBoundary>} />
               <Route path={toAdminChildPath(ADMIN_HISTORIES_ROUTE)} element={<FeatureErrorBoundary><NavRoleGuard><HistoriesPage /></NavRoleGuard></FeatureErrorBoundary>} />
 
               <Route path={toAdminChildPath(ADMIN_USERS_ROUTE)} element={<FeatureErrorBoundary><NavRoleGuard><UserManagementPage /></NavRoleGuard></FeatureErrorBoundary>} />

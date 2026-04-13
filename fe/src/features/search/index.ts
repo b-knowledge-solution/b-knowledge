@@ -17,11 +17,13 @@ export { default as SearchFilters } from './components/SearchFilters'
 export { SearchHighlight } from './components/SearchHighlight'
 export { default as SearchAppAccessDialog } from './components/SearchAppAccessDialog'
 export { default as SearchAppConfig } from './components/SearchAppConfig'
+export { default as SearchAppEmbedDialog } from './components/SearchAppEmbedDialog'
 export { SearchCrossLanguage } from './components/SearchCrossLanguage'
 export { SearchRetrievalTest } from './components/SearchRetrievalTest'
 
-// API (embed)
+// API (embed + admin)
 export { searchEmbedApi } from './api/searchEmbedApi'
+export { searchApi } from './api/searchApi'
 
 // Query hooks (TanStack Query)
 export { useSearch, useSearchApps, useAccessibleSearchApps } from './api/searchQueries'

@@ -3088,6 +3088,8 @@
     "templates": "Mẫu",
     "agent": "Tác tử",
     "pipeline": "Quy trình",
+    "chat": "Trò chuyện",
+    "search": "Tìm kiếm",
     "draft": "Nháp",
     "published": "Đã xuất bản",
     "searchPlaceholder": "Tìm kiếm tác tử...",

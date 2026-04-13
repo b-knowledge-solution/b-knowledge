@@ -3074,6 +3074,8 @@
     "templates": "テンプレート",
     "agent": "エージェント",
     "pipeline": "パイプライン",
+    "chat": "チャット",
+    "search": "検索",
     "draft": "下書き",
     "published": "公開済み",
     "searchPlaceholder": "エージェントを検索...",

@@ -13,8 +13,8 @@
 // Enum-like Union Types
 // ============================================================================
 
-/** @description Agent execution mode: free-form agent or fixed pipeline */
-export type AgentMode = 'agent' | 'pipeline'
+/** @description Agent execution mode: free-form agent, fixed pipeline, chat assistant, or search app */
+export type AgentMode = 'agent' | 'pipeline' | 'chat' | 'search'
 
 /** @description Agent lifecycle status */
 export type AgentStatus = 'draft' | 'published'

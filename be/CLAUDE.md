@@ -214,6 +214,69 @@ export async function createKnowledgeBase(data: CreateKnowledgeBaseDto, userId: 
 }
 ```
 
+## Permission Matrix System (Mandatory)
+
+The project uses a **three-source authorization model** managed via a permission registry, CASL ability builder, and admin UI. All BE permission code MUST follow these rules. See `fe/CLAUDE.md` for FE-specific permission gating rules.
+
+### Architecture
+
+| Layer | Location | Purpose |
+|-------|----------|---------|
+| Registry | `shared/permissions/registry.ts` | Code-side permission definitions via `definePermissions()` |
+| Module catalogs | `modules/<domain>/<domain>.permissions.ts` | Per-module permission declarations |
+| Constants | `shared/constants/permissions.ts` | Table names, subjects (`PermissionSubjects`), cache keys |
+| DB tables | `permissions`, `role_permissions`, `user_permission_overrides`, `resource_grants` | Persistence layer |
+| Boot sync | `shared/permissions/sync.ts` | Upserts registry -> DB at startup |
+| Cache | `shared/services/role-permission-cache.service.ts` | In-process atomic-swap snapshot (`ReadonlyMap`) |
+
+### Three Authorization Sources
+
+Permissions are resolved from three sources, unioned together with deny-wins precedence:
+
+1. **Role defaults** (`role_permissions` table) — global or tenant-scoped role->key grants
+2. **Per-user overrides** (`user_permission_overrides` table) — allow/deny overrides with optional expiry
+3. **Resource grants** (`resource_grants` table) — row-scoped grants for user/team/role principals
+
+### Adding a New Permission
+
+1. Create/update `modules/<domain>/<domain>.permissions.ts` using `definePermissions()`
+2. Use `PermissionSubjects` constants from `shared/constants/permissions.ts` for subjects
+3. Run `npm run permissions:export-catalog` to regenerate the FE snapshot
+4. Add seed rows in a migration for default role grants
+5. Gate BE routes with `requirePermission('<feature>.<action>')`
+6. Gate FE with `<Can>` (instance checks) or `useHasPermission(PERMISSION_KEYS.X)` (flat checks) — see `fe/CLAUDE.md`
+
+### Team Permission Save/Load Consistency (CRITICAL)
+
+When saving team permissions via `POST /api/teams/:id/permissions`, the handler MUST:
+1. Persist to the team record (`teamService.setTeamPermissions`) — so GET returns correct state
+2. Propagate to team members (`teamService.grantPermissionsToTeam`) — so members get the grants
+
+Failure to do both causes a **read/write mismatch** where saves go to user profiles but loads read from the team JSONB column.
+
+### Cache Invalidation After Mutations
+
+- Role mutation -> `rolePermissionCacheService.refresh()` + `abilityService.invalidateAllAbilities()`
+- User override mutation -> `abilityService.invalidateAllAbilities()`
+- Resource grant mutation -> `abilityService.invalidateAllAbilities()`
+- Always emit `SocketEvents.PermissionsCatalogUpdated` after mutations for FE refresh
+
+### Expiry Handling
+
+- ALWAYS filter `expires_at` in SQL (`expires_at IS NULL OR expires_at > NOW()`) — NEVER in JavaScript
+- This keeps checks index-friendly and consistent with the Postgres clock
+
+### Audit Logging
+
+- Every permission mutation MUST emit an audit log via `auditService.logPermissionMutation()`
+- Use `PermissionAuditAction` constants — never bare strings for audit action codes
+- Audit is fire-and-forget (`.catch()`) so logging outages never block admin operations
+
+### `whoCanDo` Introspection
+
+- Currently resolves only `grantee_type='user'` for resource grants
+- Team/role grant resolution is deferred to Phase 5 — document this limitation in UI where relevant
+
 ## Gotchas
 
 - **No hardcoded string literals:** Never use bare strings in comparisons for statuses, factory names, Redis keys, or sentinel values. Always use constants from `shared/constants/`. See root `CLAUDE.md` "No Hardcoded String Literals" section for full rules.

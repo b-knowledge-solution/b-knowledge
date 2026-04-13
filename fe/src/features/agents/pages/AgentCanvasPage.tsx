@@ -102,6 +102,7 @@ function AgentCanvasPageInner() {
           isSaving={isSaving}
           onSave={save}
           onNameChange={handleNameChange}
+          onOpenPalette={handleOpenPalette}
         />
       </TooltipProvider>
 

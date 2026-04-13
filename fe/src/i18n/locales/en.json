@@ -3104,6 +3104,8 @@
     "templates": "Templates",
     "agent": "Agent",
     "pipeline": "Pipeline",
+    "chat": "Chat",
+    "search": "Search",
     "draft": "Draft",
     "published": "Published",
     "searchPlaceholder": "Search agents...",

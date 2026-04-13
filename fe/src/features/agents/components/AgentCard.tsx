@@ -1,13 +1,14 @@
 /**
  * @fileoverview Agent card component for the agent list grid.
- * Displays agent metadata with actions via kebab dropdown menu.
+ * Displays agent metadata with mode-specific actions via kebab dropdown menu.
+ * Supports agent, pipeline, chat, and search modes with distinct colors and actions.
  *
  * @module features/agents/components/AgentCard
  */
 
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { MoreVertical, Pencil, Copy, Trash2, Download } from 'lucide-react'
+import { MoreVertical, Pencil, Copy, Trash2, Download, Shield, ExternalLink, Code2 } from 'lucide-react'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -16,28 +17,56 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { buildAdminAgentCanvasPath } from '@/app/adminRoutes'
 
-import type { Agent } from '../types/agent.types'
+import type { AgentMode } from '../types/agent.types'
 
 // ============================================================================
 // Types
 // ============================================================================
 
 /**
+ * @description Unified item shape rendered by AgentCard.
+ * Supports all 4 modes (agent, pipeline, chat, search) with a common interface.
+ */
+export interface AgentCardItem {
+  /** Unique identifier */
+  id: string
+  /** Display name */
+  name: string
+  /** Optional description */
+  description?: string | undefined
+  /** Agent mode determines border color and available actions */
+  mode: AgentMode
+  /** Lifecycle status (only for agent/pipeline modes) */
+  status?: 'draft' | 'published' | undefined
+  /** ISO timestamp of last update */
+  updated_at: string
+}
+
+/**
  * @description Props for the AgentCard component
  */
 interface AgentCardProps {
-  /** Agent record to display */
-  agent: Agent
-  /** Callback when duplicate action is triggered */
-  onDuplicate: (agent: Agent) => void
+  /** Item record to display */
+  item: AgentCardItem
+  /** Callback when duplicate action is triggered (agent/pipeline only) */
+  onDuplicate?: (item: AgentCardItem) => void
   /** Callback when delete action is triggered */
-  onDelete: (agent: Agent) => void
-  /** Callback when export JSON action is triggered */
-  onExport: (agent: Agent) => void
+  onDelete: (item: AgentCardItem) => void
+  /** Callback when export JSON action is triggered (agent/pipeline only) */
+  onExport?: (item: AgentCardItem) => void
+  /** Callback when edit action is triggered (chat/search: opens config dialog) */
+  onEdit?: (item: AgentCardItem) => void
+  /** Callback when manage access action is triggered (chat/search only) */
+  onAccess?: (item: AgentCardItem) => void
+  /** Callback when embed action is triggered (search only) */
+  onEmbed?: (item: AgentCardItem) => void
+  /** Callback when open action is triggered (search only: opens search app page) */
+  onOpen?: (item: AgentCardItem) => void
 }
 
 // ============================================================================
@@ -45,9 +74,11 @@ interface AgentCardProps {
 // ============================================================================
 
 /** @description Border color mapping by agent mode for visual distinction */
-const MODE_BORDER_COLOR: Record<string, string> = {
+const MODE_BORDER_COLOR: Record<AgentMode, string> = {
   agent: 'border-l-violet-500',
   pipeline: 'border-l-cyan-500',
+  chat: 'border-l-blue-500',
+  search: 'border-l-emerald-500',
 }
 
 // ============================================================================
@@ -55,34 +86,57 @@ const MODE_BORDER_COLOR: Record<string, string> = {
 // ============================================================================
 
 /**
- * @description Card component for agent list items displaying name, mode/status badges,
- * description, and a kebab dropdown menu with edit, duplicate, delete, and export actions.
- * @param {AgentCardProps} props - Agent data and action callbacks
+ * @description Card component for the unified agent list.
+ * Renders name, mode/status badges, description, and a kebab dropdown menu
+ * with mode-specific actions (edit, duplicate, delete, export, access, embed).
+ * @param {AgentCardProps} props - Item data and action callbacks
  * @returns {JSX.Element} Rendered agent card
  */
-export function AgentCard({ agent, onDuplicate, onDelete, onExport }: AgentCardProps) {
+export function AgentCard({
+  item,
+  onDuplicate,
+  onDelete,
+  onExport,
+  onEdit,
+  onAccess,
+  onEmbed,
+  onOpen,
+}: AgentCardProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
 
+  // Determine if this is a canvas-based mode (navigable to agent canvas)
+  const isCanvasMode = item.mode === 'agent' || item.mode === 'pipeline'
+
   /**
-   * @description Navigate to the agent canvas editor for this agent
+   * @description Handle primary edit action based on mode.
+   * Agent/pipeline → navigate to canvas. Chat/search → trigger onEdit callback.
    */
   const handleEdit = () => {
-    navigate(buildAdminAgentCanvasPath(agent.id))
+    if (isCanvasMode) {
+      navigate(buildAdminAgentCanvasPath(item.id))
+    } else {
+      onEdit?.(item)
+    }
   }
 
   /**
-   * @description Navigate to agent canvas on card body click (not dropdown)
+   * @description Handle card body click.
+   * Agent/pipeline → navigate to canvas. Chat/search → open config dialog.
    */
   const handleCardClick = () => {
-    navigate(buildAdminAgentCanvasPath(agent.id))
+    if (isCanvasMode) {
+      navigate(buildAdminAgentCanvasPath(item.id))
+    } else {
+      onEdit?.(item)
+    }
   }
 
   // Format the last modified date for display
-  const lastModified = new Date(agent.updated_at).toLocaleDateString()
+  const lastModified = new Date(item.updated_at).toLocaleDateString()
 
   // Determine left border accent color based on agent mode
-  const borderClass = MODE_BORDER_COLOR[agent.mode] ?? 'border-l-slate-400'
+  const borderClass = MODE_BORDER_COLOR[item.mode] ?? 'border-l-slate-400'
 
   return (
     <Card
@@ -93,7 +147,7 @@ export function AgentCard({ agent, onDuplicate, onDelete, onExport }: AgentCardP
         {/* Header row: name + kebab menu */}
         <div className="flex items-start justify-between mb-2">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white truncate pr-2">
-            {agent.name}
+            {item.name}
           </h3>
 
           {/* Kebab dropdown menu - stop propagation to avoid card click */}
@@ -104,20 +158,58 @@ export function AgentCard({ agent, onDuplicate, onDelete, onExport }: AgentCardP
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+              {/* Edit action — available for all modes */}
               <DropdownMenuItem onClick={handleEdit}>
                 <Pencil size={14} className="mr-2" />
                 {t('agents.edit')}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onDuplicate(agent)}>
-                <Copy size={14} className="mr-2" />
-                {t('agents.duplicate')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onExport(agent)}>
-                <Download size={14} className="mr-2" />
-                {t('agents.exportJson')}
-              </DropdownMenuItem>
+
+              {/* Agent/pipeline-specific actions */}
+              {isCanvasMode && (
+                <>
+                  {onDuplicate && (
+                    <DropdownMenuItem onClick={() => onDuplicate(item)}>
+                      <Copy size={14} className="mr-2" />
+                      {t('agents.duplicate')}
+                    </DropdownMenuItem>
+                  )}
+                  {onExport && (
+                    <DropdownMenuItem onClick={() => onExport(item)}>
+                      <Download size={14} className="mr-2" />
+                      {t('agents.exportJson')}
+                    </DropdownMenuItem>
+                  )}
+                </>
+              )}
+
+              {/* Search-specific: Open search app page */}
+              {item.mode === 'search' && onOpen && (
+                <DropdownMenuItem onClick={() => onOpen(item)}>
+                  <ExternalLink size={14} className="mr-2" />
+                  {t('searchAdmin.openApp')}
+                </DropdownMenuItem>
+              )}
+
+              {/* Chat/search access management */}
+              {!isCanvasMode && onAccess && (
+                <DropdownMenuItem onClick={() => onAccess(item)}>
+                  <Shield size={14} className="mr-2" />
+                  {t('searchAdmin.manageAccess')}
+                </DropdownMenuItem>
+              )}
+
+              {/* Search-specific: Embed */}
+              {item.mode === 'search' && onEmbed && (
+                <DropdownMenuItem onClick={() => onEmbed(item)}>
+                  <Code2 size={14} className="mr-2" />
+                  {t('searchAdmin.embedApp')}
+                </DropdownMenuItem>
+              )}
+
+              {/* Delete action — available for all modes */}
+              <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => onDelete(agent)}
+                onClick={() => onDelete(item)}
                 className="text-red-600 dark:text-red-400"
               >
                 <Trash2 size={14} className="mr-2" />
@@ -130,20 +222,23 @@ export function AgentCard({ agent, onDuplicate, onDelete, onExport }: AgentCardP
         {/* Mode and status badges */}
         <div className="flex gap-1.5 mb-2">
           <Badge variant="outline" className="text-xs">
-            {t(`agents.${agent.mode}`)}
+            {t(`agents.${item.mode}`)}
           </Badge>
-          <Badge
-            variant={agent.status === 'published' ? 'default' : 'secondary'}
-            className="text-xs"
-          >
-            {t(`agents.${agent.status}`)}
-          </Badge>
+          {/* Status badge only for agent/pipeline modes */}
+          {isCanvasMode && item.status && (
+            <Badge
+              variant={item.status === 'published' ? 'default' : 'secondary'}
+              className="text-xs"
+            >
+              {t(`agents.${item.status}`)}
+            </Badge>
+          )}
         </div>
 
         {/* Description (truncated to 2 lines) */}
-        {agent.description && (
+        {item.description && (
           <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-2">
-            {agent.description}
+            {item.description}
           </p>
         )}
 

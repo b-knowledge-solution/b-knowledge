@@ -35,7 +35,6 @@ import {
   ADMIN_AGENTS_ROUTE,
   ADMIN_AUDIT_LOG_ROUTE,
   ADMIN_BROADCAST_MESSAGES_ROUTE,
-  ADMIN_CHAT_ASSISTANTS_ROUTE,
   ADMIN_CODE_GRAPH_ROUTE,
   ADMIN_DASHBOARD_ROUTE,
   ADMIN_DATASETS_ROUTE,
@@ -44,7 +43,6 @@ import {
   ADMIN_LLM_PROVIDERS_ROUTE,
   ADMIN_MEMORY_ROUTE,
   ADMIN_PERMISSIONS_ROUTE,
-  ADMIN_SEARCH_APPS_ROUTE,
   ADMIN_SYSTEM_MONITOR_ROUTE,
   ADMIN_SYSTEM_TOOLS_ROUTE,
   ADMIN_TEAMS_ROUTE,
@@ -147,24 +145,7 @@ export const ADMIN_SIDEBAR_NAV: SidebarNavEntry[] = [
     icon: Workflow,
     requiredPermission: PERMISSION_KEYS.AGENTS_VIEW,
     children: [
-      {
-        path: ADMIN_CHAT_ASSISTANTS_ROUTE,
-        labelKey: 'nav.chatAssistants',
-        icon: MessageSquare,
-        requiredPermission: PERMISSION_KEYS.CHAT_VIEW,
-      },
-      {
-        path: ADMIN_SEARCH_APPS_ROUTE,
-        labelKey: 'nav.searchApps',
-        icon: Search,
-        requiredPermission: PERMISSION_KEYS.SEARCH_APPS_VIEW,
-      },
-      {
-        path: ADMIN_HISTORIES_ROUTE,
-        labelKey: 'nav.histories',
-        icon: History,
-        requiredPermission: PERMISSION_KEYS.SYSTEM_HISTORY_VIEW,
-      },
+
       {
         path: ADMIN_AGENTS_ROUTE,
         labelKey: 'nav.agentList',
@@ -178,6 +159,12 @@ export const ADMIN_SIDEBAR_NAV: SidebarNavEntry[] = [
         icon: Brain,
         iconSize: 18,
         requiredPermission: PERMISSION_KEYS.MEMORY_VIEW,
+      },
+      {
+        path: ADMIN_HISTORIES_ROUTE,
+        labelKey: 'nav.histories',
+        icon: History,
+        requiredPermission: PERMISSION_KEYS.SYSTEM_HISTORY_VIEW,
       },
     ],
   },

@@ -17,6 +17,7 @@ import {
   MoreHorizontal,
   Download,
   Trash2,
+  Plus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -54,6 +55,7 @@ interface AgentToolbarProps {
   onContinueRun?: () => void
   /** Run the agent normally (non-debug) */
   onRunAgent?: () => void
+  onOpenPalette?: () => void
 }
 
 /**
@@ -74,6 +76,7 @@ export function AgentToolbar({
   onStepNext,
   onContinueRun,
   onRunAgent,
+  onOpenPalette,
 }: AgentToolbarProps) {
   const navigate = useNavigate()
   const { t } = useTranslation()
@@ -180,6 +183,12 @@ export function AgentToolbar({
 
       {/* Right section: save, debug toggle, run/step/continue, more */}
       <div className="flex items-center gap-2">
+        {onOpenPalette && (
+          <Button variant="outline" size="sm" onClick={onOpenPalette} className="mr-1 border-dashed">
+            <Plus className="h-4 w-4 mr-1" />
+            {t('agents.addComponent', 'Add Component')}
+          </Button>
+        )}
         <Button onClick={onSave} disabled={isSaving || !isDirty} size="sm">
           <Save className="h-4 w-4 mr-1" />
           {isSaving ? t('common.saving', 'Saving...') : t('agents.agentSaved', 'Save Agent').replace(' saved', '')}

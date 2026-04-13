@@ -157,6 +157,17 @@ if (!canCreateDataset) return null
 | `fe/src/lib/permissions.tsx` | `useHasPermission(key)` flat-key hook |
 | `fe/src/constants/permission-keys.ts` | `PERMISSION_KEYS` const map (AUTO-GENERATED — do not edit) |
 | `fe/src/generated/permissions-catalog.json` | Committed snapshot exported from BE catalog |
+| `fe/src/features/permissions/components/PrincipalPermissionMatrix.tsx` | Jenkins-style principal × feature matrix (admin UI) |
+| `fe/src/features/permissions/components/PrincipalPicker.tsx` | `PRINCIPAL_TYPE_USER`, `PRINCIPAL_TYPE_TEAM` constants |
+| `fe/src/features/permissions/components/AddPrincipalDialog.tsx` | Dialog for adding users/teams to the matrix |
+
+### Principal Permission Matrix rules
+
+- **Use principal type constants:** `PRINCIPAL_TYPE_USER` / `PRINCIPAL_TYPE_TEAM` from `PrincipalPicker.tsx` — never bare `'user'`/`'team'` strings in comparisons
+- **Use `UserRole.*` constants** from `constants/roles.ts` for any role filtering (e.g. `UserRole.USER`, `UserRole.LEADER`)
+- **Pre-load existing permissions** when adding principals — pass `user.permissions` / `team.permissions` through `AddPrincipalDialog`, never initialize as empty `[]`
+- **Use `<Fragment key={...}>`** when mapping multiple sibling elements — never keyless `<>` inside `.map()`
+- **Save must match load:** When saving team permissions, the BE MUST persist to BOTH the team record AND propagate to members. See root `CLAUDE.md` "Permission Matrix System" for full rules.
 
 ## Documentation Comments (Mandatory)
 

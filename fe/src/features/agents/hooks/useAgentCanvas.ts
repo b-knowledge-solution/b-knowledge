@@ -21,7 +21,8 @@ const AUTO_SAVE_INTERVAL = 30_000
  * @param {Record<string, AgentNodeDef>} dslNodes - Nodes from the agent DSL keyed by ID
  * @returns {Node[]} ReactFlow-compatible nodes with type, position, and data
  */
-function dslNodesToReactFlow(dslNodes: Record<string, AgentNodeDef>): Node[] {
+function dslNodesToReactFlow(dslNodes: Record<string, AgentNodeDef> | undefined | null): Node[] {
+  if (!dslNodes) return []
   return Object.entries(dslNodes).map(([id, def]) => ({
     id,
     type: 'canvasNode',
@@ -39,7 +40,8 @@ function dslNodesToReactFlow(dslNodes: Record<string, AgentNodeDef>): Node[] {
  * @param {AgentEdgeDef[]} dslEdges - Edges from the agent DSL
  * @returns {Edge[]} ReactFlow-compatible edges with source, target, and optional handles
  */
-function dslEdgesToReactFlow(dslEdges: AgentEdgeDef[]): Edge[] {
+function dslEdgesToReactFlow(dslEdges: AgentEdgeDef[] | undefined | null): Edge[] {
+  if (!dslEdges) return []
   return dslEdges.map((e, i) => ({
     id: `e-${e.source}-${e.target}-${i}`,
     source: e.source,

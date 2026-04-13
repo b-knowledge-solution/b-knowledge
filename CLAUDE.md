@@ -13,6 +13,67 @@ B-Knowledge is an open-source UI to centralize and manage AI Search, Chat, and K
 
 **Sub-module CLAUDE.md files:** Each workspace has its own `CLAUDE.md` with architecture, conventions, and gotchas. Claude auto-discovers them.
 
+## Behavioral Guidelines
+
+These guidelines reduce common LLM coding mistakes. They are mandatory for all code generation in this project.
+
+### 1. Think Before Coding
+
+Don't assume. Don't hide confusion. Surface tradeoffs.
+
+Before implementing:
+
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them — don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+### 2. Simplicity First
+
+Minimum code that solves the problem. Nothing speculative.
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+- Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+### 3. Surgical Changes
+
+Touch only what you must. Clean up only your own mess.
+
+When editing existing code:
+
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it — don't delete it.
+
+When your changes create orphans:
+
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+- The test: Every changed line should trace directly to the user's request.
+
+### 4. Goal-Driven Execution
+
+Define success criteria. Loop until verified.
+
+Transform tasks into verifiable goals:
+
+- "Add validation" -> "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" -> "Write a test that reproduces it, then make it pass"
+- "Refactor X" -> "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+
+1. [Step] -> verify: [check]
+2. [Step] -> verify: [check]
+3. [Step] -> verify: [check]
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
 ## Monorepo Structure
 
 ```
@@ -179,112 +240,12 @@ r.set(HEALTH_KEY, json.dumps({"status": WorkerStatus.READY}))
 
 ### Documentation Comments (Mandatory)
 
-**This is a mandatory convention — all generated code MUST include documentation comments.**
+All generated code MUST include documentation comments. Each workspace `CLAUDE.md` has the full rules and examples:
 
-#### TypeScript (BE + FE): JSDoc
-
-Every exported function, class, method, interface, and type alias MUST have a JSDoc block:
-
-```typescript
-/**
- * @description Retrieves paginated audit logs filtered by date range and user
- * @param {AuditLogQuery} query - Filter criteria including dateFrom, dateTo, userId
- * @returns {Promise<PaginatedResult<AuditLog>>} Paginated audit log entries
- */
-export async function getAuditLogs(query: AuditLogQuery): Promise<PaginatedResult<AuditLog>> {
-  // Validate date range before querying to prevent unbounded scans
-  const validRange = clampDateRange(query.dateFrom, query.dateTo)
-
-  // Use cursor-based pagination for large result sets
-  const results = await AuditLogModel.findPaginated(validRange)
-  return results
-}
-```
-
-**Required JSDoc tags:**
-| Tag | When Required |
-|-----|--------------|
-| `@description` | Always — one-line summary of purpose |
-| `@param` | Every parameter with type and meaning |
-| `@returns` | Every function that returns a value |
-| `@throws` | If function throws specific errors |
-| `@example` | Complex utility functions or non-obvious usage |
-
-**React components:**
-```typescript
-/**
- * @description Displays a filterable, sortable data table with pagination controls
- * @param {DataTableProps<T>} props - Table configuration including columns, data source, and filter options
- * @returns {JSX.Element} Rendered data table with toolbar and pagination
- */
-export function DataTable<T>({ columns, data, filters }: DataTableProps<T>) {
-  // Track sort state locally — not URL-synced since tables appear in dialogs too
-  const [sortConfig, setSortConfig] = useState<SortConfig>(defaultSort)
-  ...
-}
-```
-
-#### Python (advance-rag + converter): Google-style Docstrings
-
-Every function, class, and method MUST have a Google-style docstring:
-
-```python
-def chunk_document(content: str, method: ChunkMethod, config: ChunkConfig) -> list[Chunk]:
-    """Split document content into chunks using the specified method.
-
-    Args:
-        content: Raw document text content to be chunked.
-        method: Chunking strategy (e.g., RECURSIVE, SEMANTIC, FIXED_SIZE).
-        config: Chunking parameters including size, overlap, and separators.
-
-    Returns:
-        List of Chunk objects with text content and metadata.
-
-    Raises:
-        ChunkingError: If content is empty or method is unsupported.
-    """
-    # Normalize whitespace before chunking to prevent empty chunks
-    normalized = normalize_text(content)
-
-    # Select chunking strategy based on method enum
-    splitter = get_splitter(method, config)
-    return splitter.split(normalized)
-```
-
-**Required docstring sections:**
-| Section | When Required |
-|---------|--------------|
-| Summary line | Always — imperative mood, one line |
-| `Args` | Every parameter with type hint and meaning |
-| `Returns` | Every function that returns a value |
-| `Raises` | If function raises specific exceptions |
-
-#### Inline Comments (All Languages)
-
-Inline comments are MANDATORY above:
-- **Control flow:** `if`/`else` branches, `switch` cases, loops with non-obvious conditions
-- **Business logic:** Domain rules, calculations, thresholds, status transitions
-- **Integration points:** API calls, database queries, Redis operations, queue interactions
-- **Non-obvious code:** Workarounds, performance optimizations, regex patterns, bitwise operations
-- **Early returns / guard clauses:** Explain what condition is being guarded
-
-```typescript
-// Reject files exceeding 100MB to prevent memory exhaustion during parsing
-if (file.size > MAX_FILE_SIZE) {
-  throw new FileTooLargeError(file.name, file.size)
-}
-
-// Fall back to keyword search when embedding service is unavailable
-const results = embeddingAvailable
-  ? await vectorSearch(query, topK)
-  : await keywordSearch(query, topK)
-```
-
-#### What NOT to Comment
-
-- Obvious code (`i++`, `return result`, simple assignments)
-- Restating the code in English (`// set x to 5` above `x = 5`)
-- Commented-out code — delete it, git has history
+- **TypeScript (BE + FE):** JSDoc with `@description`, `@param`, `@returns`, `@throws` — see `be/CLAUDE.md` and `fe/CLAUDE.md`
+- **Python (advance-rag + converter):** Google-style docstrings — see `advance-rag/CLAUDE.md` and `converter/CLAUDE.md`
+- **Inline comments** are mandatory above control flow, business logic, integration points, non-obvious code, and guard clauses
+- **Do NOT comment** obvious code, restate code in English, or leave commented-out code (git has history)
 
 ### NX-Style Module Boundary Rules
 
@@ -294,80 +255,6 @@ These apply to **both** `be/src/modules/` and `fe/src/features/`:
 - **Barrel exports:** Every module has `index.ts` as its public API. Import only from barrel files.
 - **No deep imports:** Never `modules/<domain>/internal-file.ts` — always `modules/<domain>/index.ts`.
 - **Shared code:** `shared/` (BE) or `components/`, `hooks/`, `lib/`, `utils/` (FE).
-
-### Backend Conventions (details in `be/CLAUDE.md`)
-
-- Factory Pattern for models in `shared/models/` (singleton ModelFactory)
-- Singleton Pattern for all global services
-- Sub-directory layout for modules with ≥5 files; flat layout for ≤4 files
-- All mutations use Zod validation via `validate()` middleware
-- Config access only through `config` object, never `process.env`
-- Knex ORM for all models; raw SQL only when Knex cannot support the query
-- Migration naming: `YYYYMMDDhhmmss_<name>.ts`
-- **All DB migrations through Knex** — including schema changes to Peewee-managed tables (`document`, `knowledgebase`, `task`, `file`, `tenant_llm`, etc.). Never use Peewee migrators. The backend owns the migration lifecycle; Python workers only read/write data via their ORM.
-
-#### Layering Rules (STRICT — No Exceptions)
-
-**The backend follows a strict 3-layer architecture: Controller → Service → Model**
-
-##### Controller Layer Rules
-Controllers handle HTTP request/response only. Controllers must **NEVER**:
-- Import `ModelFactory` or any model class
-- Call `ModelFactory.*` methods directly
-- Import `db` from `@/shared/db/knex.js`
-
-Controllers must **ONLY** call services. If a controller needs data, it calls a service method — never the model layer directly.
-
-```typescript
-// ✅ CORRECT — Controller calls service:
-const user = await userService.getUserById(id)
-const templates = await agentService.listTemplates(tenantId)
-
-// ❌ WRONG — Controller calls model directly:
-const user = await ModelFactory.user.findById(id)
-const templates = await ModelFactory.agentTemplate.findByTenant(tenantId)
-```
-
-**When a service lacks the needed method:** Add a new method to the service class that wraps the model call — NEVER import ModelFactory in the controller.
-
-##### Service Layer Rules
-Services contain business logic and may call `ModelFactory` for data access. Services must **NEVER**:
-- Import `db` from `@/shared/db/knex.js`
-- Call `db('table')`, `db.raw()`, `db.transaction()` directly
-- Use `.getKnex()` on models to build inline queries
-
-##### Model Layer Rules
-**All database queries MUST live in model files.** Only models may access the database directly.
-
-**When a model lacks the needed query:** Add a new method to the model class — NEVER bypass via raw `db()` in the caller.
-
-**Model query best practices:**
-- **Single responsibility:** Each model method does ONE query or one transaction
-- **Batch operations:** Use `whereIn()` for multi-ID lookups, avoid N+1 patterns
-- **Pagination:** Accept `limit`/`offset` params, return `{ data, total }` for paginated queries
-- **Transactions:** Models own transaction boundaries via `this.knex.transaction()`
-- **Index-aware queries:** Use indexed columns in WHERE/JOIN/ORDER BY clauses
-- **Select only needed columns:** Use `.select(columns)` for large tables, avoid `SELECT *` in list queries
-- **Cross-table analytics:** Create dedicated module-level models (e.g. `DashboardModel`, `AdminHistoryModel`)
-
-### Frontend Conventions (details in `fe/CLAUDE.md`)
-
-- API layer split: `<domain>Api.ts` (raw HTTP) + `<domain>Queries.ts` (TanStack Query hooks)
-- Never use `*Service.ts` naming — always `*Api.ts`
-- No manual memoization (`React.memo`, `useMemo`, `useCallback`) — React Compiler handles it
-- `hooks/` for UI-only hooks; `useQuery`/`useMutation` go in `api/<domain>Queries.ts`
-- i18n: All UI strings in 3 locales (`en`, `vi`, `ja`)
-- Dark mode: Class-based, always support both themes
-- State management: See `fe/STATE_MANAGEMENT.md`
-- URL state for filterable views (bookmarkable filters/pagination)
-- Forms: Native `useState`, no form libraries
-
-### Python Conventions (advance-rag, converter)
-
-- Shared `.venv` at project root for development
-- Each module has own `pyproject.toml` for independent Docker builds
-- Loguru for logging (both modules)
-- Redis for inter-service communication (queues, pub/sub, status)
 
 ## Environment Files
 
