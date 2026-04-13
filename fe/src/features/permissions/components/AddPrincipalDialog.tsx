@@ -18,6 +18,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { UserRole } from '@/constants/roles'
 import type { PrincipalEntry } from './PrincipalPermissionMatrix'
 
 // ============================================================================
@@ -33,6 +34,8 @@ export interface DialogUser {
   display_name?: string
   email: string
   role: string
+  /** Current permission keys — used to pre-populate the matrix on add */
+  permissions?: string[]
 }
 
 /**
@@ -41,6 +44,8 @@ export interface DialogUser {
 export interface DialogTeam {
   id: string
   name: string
+  /** Current permission keys stored on the team record */
+  permissions?: string[]
 }
 
 /**
@@ -104,7 +109,7 @@ export function AddPrincipalDialog({
 
   // Filter users to leader/user roles and apply search
   const filteredUsers = users
-    .filter((u) => u.role === 'user' || u.role === 'leader')
+    .filter((u) => u.role === UserRole.USER || u.role === UserRole.LEADER)
     .filter((u) => {
       const name = getUserDisplayName(u).toLowerCase()
       const search = userSearch.toLowerCase()
@@ -128,7 +133,7 @@ export function AddPrincipalDialog({
       type: 'user',
       id: user.id,
       name: getUserDisplayName(user),
-      permissions: [],
+      permissions: user.permissions ?? [],
     })
     // Close dialog after selection
     onOpenChange(false)
@@ -146,7 +151,7 @@ export function AddPrincipalDialog({
       type: 'team',
       id: team.id,
       name: team.name,
-      permissions: [],
+      permissions: team.permissions ?? [],
     })
     // Close dialog after selection
     onOpenChange(false)

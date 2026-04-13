@@ -245,7 +245,9 @@ export class TeamController {
     try {
       // Capture user context for audit
       const user = req.user ? { id: req.user.id, email: req.user.email, ip: getClientIp(req) } : undefined
-      // Grant permissions via service
+      // Persist the permission set on the team record so GET /permissions returns the correct state
+      await teamService.setTeamPermissions(id, permissions)
+      // Propagate permissions to individual team members' user profiles
       await teamService.grantPermissionsToTeam(id, permissions, user)
       res.json({ message: 'Permissions granted successfully' })
     } catch (error) {

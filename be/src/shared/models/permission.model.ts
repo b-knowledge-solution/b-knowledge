@@ -316,8 +316,10 @@ export class PermissionModel extends BaseModel<PermissionRow> {
         `${USER_PERMISSION_OVERRIDES_TABLE}.id as source_id`,
       )
 
-    // Step 2c — resource grants. Phase 2 only resolves `grantee_type='user'`
-    // here; team/role grants land in Phase 5 alongside user_team membership.
+    // Step 2c — resource grants. Only resolves `grantee_type='user'` today;
+    // TODO(Phase 5): expand to include team/role grants — join user_team to
+    // resolve users who hold access through team-level grants, so the Effective
+    // Access page shows team-inherited access alongside direct user grants.
     // When `resourceId` is provided, narrow to that specific row so the query
     // answers "who can do X on resource R" rather than "who can do X anywhere".
     const grantQuery = this.knex('users')

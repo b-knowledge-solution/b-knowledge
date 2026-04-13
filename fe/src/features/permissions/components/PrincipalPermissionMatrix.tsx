@@ -20,7 +20,7 @@
  *
  * @module features/permissions/components/PrincipalPermissionMatrix
  */
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserPlus, X } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -33,6 +33,7 @@ import { globalMessage } from '@/lib/globalMessage'
 import { queryKeys } from '@/lib/queryKeys'
 import { userApi } from '@/features/users'
 import { teamApi } from '@/features/teams'
+import { PRINCIPAL_TYPE_USER } from './PrincipalPicker'
 import { AddPrincipalDialog } from './AddPrincipalDialog'
 import catalog from '@/generated/permissions-catalog.json'
 
@@ -320,7 +321,7 @@ export default function PrincipalPermissionMatrix() {
         const principal = principals.find((p) => principalKey(p) === key)
         if (!principal) continue
 
-        if (principal.type === 'user') {
+        if (principal.type === PRINCIPAL_TYPE_USER) {
           // Save user-level permissions
           savePromises.push(
             updateUserPermsMutation.mutateAsync({ userId: principal.id, permissions }),
@@ -421,26 +422,23 @@ export default function PrincipalPermissionMatrix() {
                   {/* ── Row 2: View / Add/Edit / Delete sub-columns ── */}
                   <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
                     {FEATURE_GROUPS.map((group) => (
-                      <>
+                      <Fragment key={group.feature}>
                         <th
-                          key={`${group.feature}-view`}
                           className="px-2 py-1 text-center text-xs font-medium text-slate-500 dark:text-slate-400 border-l border-slate-200 dark:border-slate-700 whitespace-nowrap"
                         >
                           {t('permissions.admin.principalMatrix.featureHeader.view')}
                         </th>
                         <th
-                          key={`${group.feature}-addedit`}
                           className="px-2 py-1 text-center text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap"
                         >
                           {t('permissions.admin.principalMatrix.featureHeader.addEdit')}
                         </th>
                         <th
-                          key={`${group.feature}-delete`}
                           className="px-2 py-1 text-center text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap"
                         >
                           {t('permissions.admin.principalMatrix.featureHeader.delete')}
                         </th>
-                      </>
+                      </Fragment>
                     ))}
                   </tr>
                 </thead>
