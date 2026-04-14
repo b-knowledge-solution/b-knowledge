@@ -108,7 +108,7 @@ vi.mock('@/modules/rag/index.js', () => ({
 }))
 
 vi.mock('@/shared/utils/language-detect.js', () => ({
-  detectLanguage: () => 'en',
+  detectLanguage: async () => 'en',
   buildLanguageInstruction: () => '',
 }))
 

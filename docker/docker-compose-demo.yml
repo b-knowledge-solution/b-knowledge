@@ -27,7 +27,7 @@ services:
   # All-in-One Demo Container
   # ==========================================================================
   kb-demo:
-    image: ${DEMO_IMAGE:-kb-demo}:${DEMO_VERSION:-latest}
+    image: bbsolution/kb-demo:0.0.2
     restart: unless-stopped
     cpus: 2.00
     mem_limit: 4g

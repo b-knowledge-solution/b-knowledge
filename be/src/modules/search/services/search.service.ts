@@ -16,7 +16,8 @@ import { ragRerankService } from '@/modules/rag/services/rag-rerank.service.js'
 import { ragCitationService } from '@/modules/rag/services/rag-citation.service.js'
 import { ragSqlService } from '@/modules/rag/index.js'
 import { llmClientService } from '@/shared/services/llm-client.service.js'
-import { askSummaryPrompt, citationPrompt } from '@/shared/prompts/index.js'
+import { askSummaryPrompt, citationPrompt, languageInstructionPrompt } from '@/shared/prompts/index.js'
+import { detectLanguage } from '@/shared/utils/language-detect.js'
 import { relatedQuestionsService } from '@/shared/services/related-questions.service.js'
 import { htmlToMarkdown } from '@/shared/utils/html-to-markdown.js'
 import { log } from '@/shared/services/logger.service.js'
@@ -871,8 +872,13 @@ export class SearchService {
       return
     }
 
-    // Build system prompt with knowledge context and citation instructions
-    const systemPrompt = `${askSummaryPrompt.build(knowledge)}\n\n${citationPrompt.system}`
+    // Detect query language so the LLM responds in the same language as the user's search query
+    const detectedLang = await detectLanguage(query)
+    const langInstruction = languageInstructionPrompt.build(detectedLang)
+    const langReminder = languageInstructionPrompt.buildReminder(detectedLang)
+
+    // Build system prompt: language directive → knowledge context → citation rules → language reminder
+    const systemPrompt = `${langInstruction}\n\n${askSummaryPrompt.build(knowledge)}\n\n${citationPrompt.system}\n\n${langReminder}`
 
     // Create main-completion span for the LLM streaming call
     let mainSpan: ReturnType<typeof langfuseTraceService.createSpan> | undefined

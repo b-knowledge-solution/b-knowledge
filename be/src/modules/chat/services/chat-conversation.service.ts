@@ -851,7 +851,7 @@ export class ChatConversationService {
       // ── Step 2b: Detect user input language for response language matching ──
       // Runs before prompt assembly so the language instruction can be prepended to the system prompt.
       // This ensures the LLM responds in the same language as the user's question.
-      const detectedLang = detectLanguage(content)
+      const detectedLang = await detectLanguage(content)
       // Log a short normalized preview to debug misclassification without storing full user content.
       const contentPreview = content.replace(/\s+/g, ' ').trim().slice(0, 120)
       log.debug('Detected user input language', {

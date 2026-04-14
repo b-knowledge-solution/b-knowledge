@@ -170,6 +170,12 @@ export const config = {
   /** Enable local user login (username/password auth) */
   enableLocalLogin: process.env['ENABLE_LOCAL_LOGIN'] === 'true',
 
+  /** Force language detection to always return a fixed language (e.g. 'eng'). Useful for demos. */
+  forceLanguage: process.env['FORCE_LANGUAGE'] ?? '',
+
+  /** Language detection method: 'builtin' (franc heuristics) or 'llm' (LLM-based). Default: builtin */
+  languageDetectMethod: (process.env['LANGUAGE_DETECT_METHOD'] || 'builtin') as 'builtin' | 'llm',
+
   // --------------------------------------------------------------------------
   // Session Store Configuration
   // --------------------------------------------------------------------------

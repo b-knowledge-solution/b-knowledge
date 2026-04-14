@@ -92,7 +92,7 @@ vi.mock('@/shared/prompts/index.js', () => ({
 }))
 
 vi.mock('@/shared/utils/language-detect.js', () => ({
-  detectLanguage: vi.fn().mockReturnValue('en'),
+  detectLanguage: vi.fn().mockResolvedValue('en'),
   buildLanguageInstruction: vi.fn().mockReturnValue(''),
 }))
 
