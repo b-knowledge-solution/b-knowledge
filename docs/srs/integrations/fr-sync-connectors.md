@@ -1,5 +1,11 @@
 # FR: Sync Connectors
 
+| Field   | Value      |
+|---------|------------|
+| Parent  | [SRS Index](../index.md) |
+| Version | 1.2        |
+| Date    | 2026-04-14 |
+
 ## 1. Overview
 
 This document specifies the functional requirements for B-Knowledge sync connectors. Sync connectors let administrators configure external data source adapters that synchronize content into datasets for normal document processing and retrieval.
@@ -62,12 +68,21 @@ graph LR
 | SYN-FR-32 | System SHALL support built-in adapters exposed by the current sync module registry | Must | Implemented | Exact set is implementation-defined |
 | SYN-FR-33 | Each adapter SHALL expose its required configuration schema for UI rendering | Should | Implemented | JSON Schema for dynamic forms |
 
-### 3.5 Security
+### 3.5 Delta Sync
 
 | ID | Requirement | Priority | Status | Notes |
 |----|-------------|----------|--------|-------|
-| SYN-FR-40 | Connector credentials SHALL be encrypted at rest using AES-256-CBC | Must | Implemented | Uses cryptoService with RAGF wire format |
-| SYN-FR-41 | API responses SHALL mask sensitive credential values | Must | Implemented | Replaces tokens/passwords with ******** |
+| SYN-FR-50 | System SHALL track `source_doc_id` per synced document to identify external origin | Must | Implemented | Added in migration `20260328160459_add_delta_sync_fields` |
+| SYN-FR-51 | System SHALL track `source_updated_at` per synced document for change detection | Must | Implemented | Timestamp from external source; used for incremental sync |
+| SYN-FR-52 | Delete cascade SHALL only remove documents with `source_doc_id` set (preserves manual uploads) | Must | Implemented | Prevents accidental removal of user-uploaded content |
+
+### 3.6 Security
+
+| ID | Requirement | Priority | Status | Notes |
+|----|-------------|----------|--------|-------|
+| SYN-FR-40 | Connector credentials SHALL be encrypted at rest using AES-256-CBC | Must | Implemented | Uses `cryptoService` from `@/shared/services/crypto.service.js` |
+| SYN-FR-41 | API responses SHALL mask sensitive credential values with `'********'` | Must | Implemented | Controller replaces tokens/passwords before response |
+| SYN-FR-42 | Existing credentials sent back as masked `'********'` SHALL be preserved on update | Must | Implemented | Service merges masked fields with stored encrypted values |
 
 ## 4. Sync Flow
 
@@ -145,11 +160,53 @@ classDiagram
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| POST | `/api/sync/connectors` | Create connector | manage_knowledge_base |
-| GET | `/api/sync/connectors` | List connectors | authenticated |
+| POST | `/api/sync/connectors/test-connection` | Test connection credentials | `sync_connectors.create` |
+| POST | `/api/sync/connectors` | Create connector | `sync_connectors.create` |
+| GET | `/api/sync/connectors` | List connectors (optional `?kb_id=` filter) | authenticated |
 | GET | `/api/sync/connectors/:id` | Get connector | authenticated |
-| PUT | `/api/sync/connectors/:id` | Update connector config | manage_knowledge_base |
-| DELETE | `/api/sync/connectors/:id` | Delete connector | manage_knowledge_base |
-| POST | `/api/sync/connectors/:id/sync` | Trigger manual sync | manage_knowledge_base |
+| PUT | `/api/sync/connectors/:id` | Update connector config | `sync_connectors.edit` |
+| DELETE | `/api/sync/connectors/:id` | Delete connector (optional `?cascade=true`) | `sync_connectors.delete` |
+| POST | `/api/sync/connectors/:id/sync` | Trigger manual sync | `sync_connectors.run` |
 | GET | `/api/sync/connectors/:id/logs` | Get sync logs (paginated) | authenticated |
-| POST | `/api/sync/connectors/test-connection` | Test connection credentials | manage_knowledge_base |
+| GET | `/api/sync/connectors/:id/progress` | Stream sync progress events (SSE) | authenticated |
+
+### 7.1 Schedule Registration
+
+Connectors with a `schedule` field (cron expression) are registered at startup via `syncSchedulerService`. The scheduler loads all active connectors with schedules from the database and registers `node-cron` tasks for each. Schedule changes on connector update/create automatically re-register the cron task.
+
+## 8. FileSource Connector Types
+
+The `FileSource` enum (defined in `advance-rag/common/constants.py`) lists all supported connector types:
+
+| # | Connector | Enum Value |
+|---|-----------|------------|
+| 1 | Local upload | `""` (empty) |
+| 2 | Knowledge base | `knowledgebase` |
+| 3 | Amazon S3 | `s3` |
+| 4 | Notion | `notion` |
+| 5 | Discord | `discord` |
+| 6 | Confluence | `confluence` |
+| 7 | Gmail | `gmail` |
+| 8 | Google Drive | `google_drive` |
+| 9 | Jira | `jira` |
+| 10 | SharePoint | `sharepoint` |
+| 11 | Slack | `slack` |
+| 12 | Microsoft Teams | `teams` |
+| 13 | WebDAV | `webdav` |
+| 14 | Moodle | `moodle` |
+| 15 | Dropbox | `dropbox` |
+| 16 | Box | `box` |
+| 17 | Cloudflare R2 | `r2` |
+| 18 | Oracle Cloud Storage | `oci_storage` |
+| 19 | Google Cloud Storage | `google_cloud_storage` |
+| 20 | Airtable | `airtable` |
+| 21 | Asana | `asana` |
+| 22 | GitHub | `github` |
+| 23 | GitLab | `gitlab` |
+| 24 | IMAP (email) | `imap` |
+| 25 | Bitbucket | `bitbucket` |
+| 26 | Zendesk | `zendesk` |
+| 27 | Seafile | `seafile` |
+| 28 | MySQL | `mysql` |
+| 29 | PostgreSQL | `postgresql` |
+| 30 | DingTalk AI Table | `dingtalk_ai_table` |

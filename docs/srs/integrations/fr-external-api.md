@@ -1,5 +1,11 @@
 # FR: External API & API Key Management
 
+| Field   | Value      |
+|---------|------------|
+| Parent  | [SRS Index](../index.md) |
+| Version | 1.2        |
+| Date    | 2026-04-14 |
+
 > Provide a programmatic REST API for external systems to access RAG chat, search, and retrieval capabilities using scoped API keys, enabling evaluation pipelines, third-party integrations, and automated testing.
 
 ## 1. Overview
@@ -35,7 +41,7 @@ The External API module exposes evaluation-ready endpoints for chat, search, and
 
 - **FR-EA-010**: The system shall provide a chat endpoint that performs full RAG (retrieval + LLM generation) and returns a structured JSON response.
 - **FR-EA-011**: The chat endpoint shall require the `chat` scope on the API key.
-- **FR-EA-012**: Responses shall include the answer, retrieved chunks with scores, and metadata.
+- **FR-EA-012**: Responses shall include the answer, retrieved chunks with scores, and metadata, using the `EvalChatResponse` type.
 
 ### 2.3 External Search Endpoint
 
@@ -89,7 +95,13 @@ The External API module exposes evaluation-ready endpoints for chat, search, and
 | `EXTERNAL_TRACE_CACHE_TTL` | `300` | Email validation cache TTL (seconds) |
 | `EXTERNAL_TRACE_LOCK_TIMEOUT` | `5000` | Race condition lock timeout (ms) |
 
-## 6. Dependencies
+## 6. Response Types
+
+### EvalChatResponse
+
+The external chat and search endpoints return structured `EvalChatResponse` objects (defined in `be/src/modules/external/services/external-api.service.ts`) containing the answer text, retrieved contexts with relevance scores, source metadata, and execution metadata. This structured format is designed for evaluation pipelines and automated testing rather than streaming UI consumption.
+
+## 7. Dependencies
 
 - [AI Chat](/srs/ai-features/fr-ai-chat) — Chat completion pipeline reused by external chat endpoint
 - [AI Search](/srs/ai-features/fr-ai-search) — Search pipeline reused by external search endpoint

@@ -3,12 +3,14 @@
 | Field   | Value      |
 |---------|------------|
 | Parent  | [SRS Index](./index.md) |
-| Version | 1.0        |
-| Date    | 2026-03-25 |
+| Version | 1.2        |
+| Date    | 2026-04-14 |
 
 ## 1. Overview
 
-A **Dataset** in B-Knowledge is a Knowledge Base — a collection of documents sharing parser configuration, embedding settings, enrichment options, and access control policies. Datasets are tenant-scoped and support version uploads, parser overrides, web crawl ingestion, retrieval testing, graph tasks, and structured-data field maps.
+A **Dataset** in B-Knowledge is organized in a **Knowledge Base -> Category -> Version -> Document** hierarchy. The Knowledge Base (KB) module exposes 38+ endpoints covering this full hierarchy.
+
+A KB contains categories, each category can have versioned document sets, and each document belongs to a dataset that carries parser configuration, embedding settings, enrichment options, and access control policies. Datasets are auto-created when a KB or category is created. Datasets are tenant-scoped and support version uploads, parser overrides, web crawl ingestion, retrieval testing, graph tasks, and structured-data field maps.
 
 ## 2. Use Case Diagram
 
@@ -67,6 +69,39 @@ flowchart TD
 | DS-018   | Bulk document operations   | Bulk parse, toggle, and delete documents                                                          | Must     |
 | DS-019   | Enrichment tasks           | Generate keywords, questions, tags, and metadata for documents                                    | Should   |
 | DS-020   | Graph tasks                | Trigger GraphRAG, RAPTOR, and mindmap jobs                                                        | Could    |
+| DS-021   | Cross-KB datasets          | Retrieve datasets across multiple knowledge bases. Endpoint: `GET /api/knowledge-base/cross-knowledge-base-datasets` | Must     |
+| DS-022   | KB members management      | Manage knowledge base member access. Endpoints: `GET /POST /DELETE /api/knowledge-base/:id/members` | Must     |
+| DS-023   | KB activity log            | View activity history for a knowledge base. Endpoint: `GET /api/knowledge-base/:id/activity`      | Should   |
+| DS-024   | Dataset bind/unbind        | Bind or unbind datasets to a knowledge base. Endpoints: `POST /api/knowledge-base/:id/datasets/bind`, `DELETE /api/knowledge-base/:id/datasets/:datasetId/unbind` | Must     |
+| DS-025   | KB entity permissions      | Manage entity-level permissions on a knowledge base. Endpoints: `GET /POST /DELETE /api/knowledge-base/:id/entity-permissions` | Must     |
+| DS-026   | Bulk metadata update       | Update metadata across multiple datasets in a single operation. Endpoint: `POST /api/rag/datasets/bulk-metadata` | Should   |
+| DS-027   | Tag aggregations           | Retrieve aggregated tag statistics across datasets. Endpoint: `GET /api/rag/tags/aggregations`    | Should   |
+| DS-028   | Dataset re-embed           | Re-embed all chunks in a dataset without re-parsing or re-chunking. Endpoint: `POST /api/rag/datasets/:id/re-embed` | Must     |
+| DS-029   | Dataset settings           | Read and update dataset-level settings independently of full config. Endpoints: `GET /PUT /api/rag/datasets/:id/settings` | Must     |
+| DS-030   | Dataset overview and logs  | View dataset overview statistics and processing logs. Endpoints: `GET /api/rag/datasets/:id/overview`, `GET /api/rag/datasets/:id/logs` | Must     |
+| DS-031   | GraphRAG graph data        | Retrieve graph visualization data and metrics for a dataset. Endpoints: `GET /api/rag/datasets/:id/graph`, `GET /api/rag/datasets/:datasetId/graph/metrics` | Should   |
+| DS-032   | Chunk images               | Serve chunk-associated images. Endpoint: `GET /api/rag/images/:imageId`                           | Must     |
+| DS-033   | Converter job status       | Check status of a converter job for a dataset. Endpoint: `GET /api/rag/datasets/:id/converter-jobs/:jobId/status` | Must     |
+| DS-034   | Parsing scheduler config   | Read and update global parsing scheduler configuration. Endpoints: `GET /PUT /api/rag/system/config/parsing_scheduler` | Should   |
+| DS-035   | Dataset auto-creation      | System automatically creates a dataset when a knowledge base or category is created                | Must     |
+
+## 3.1 Knowledge Base Hierarchy
+
+```mermaid
+flowchart TD
+    KB[Knowledge Base] --> CAT[Category]
+    CAT --> VER[Version]
+    VER --> DOC[Document]
+    KB --> DS[Dataset - auto-created]
+    CAT --> DS2[Dataset - auto-created]
+    DS --> CHUNKS[Chunks / Vectors]
+    DS2 --> CHUNKS
+    KB --> MEM[Members]
+    KB --> ACT[Activity Log]
+    KB --> EP[Entity Permissions]
+```
+
+The KB module manages the full hierarchy with endpoints under `/api/knowledge-base/` for KB-level operations (members, activity, entity permissions, dataset bind/unbind) and `/api/rag/` for dataset-level operations (settings, overview, logs, re-embed, graph, images, converter jobs).
 
 ## 4. Document Lifecycle
 
@@ -177,3 +212,6 @@ Dataset access is no longer documented through legacy role labels or standalone 
 | BR-DS-09 | Changing embedding model requires full re-indexing; system warns user before proceeding |
 | BR-DS-10 | Per-document parser changes are supported without recreating the dataset |
 | BR-DS-11 | Structured datasets can auto-generate a field map for SQL fallback flows |
+| BR-DS-12 | Re-embed (DS-028) only regenerates vectors; it does NOT re-parse or re-chunk existing documents |
+| BR-DS-13 | Datasets are auto-created when a knowledge base or category is created; manual dataset creation outside KB context is also supported |
+| BR-DS-14 | KB members and entity permissions are managed independently from tenant-wide role permissions |

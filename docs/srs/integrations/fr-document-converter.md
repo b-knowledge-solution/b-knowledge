@@ -1,8 +1,16 @@
 # FR: Document Converter
 
+| Field   | Value      |
+|---------|------------|
+| Parent  | [SRS Index](../index.md) |
+| Version | 1.2        |
+| Date    | 2026-04-14 |
+
 ## 1. Overview
 
-This document specifies the functional requirements for the B-Knowledge document converter subsystem. The converter transforms Office documents (Word, PowerPoint, Excel) into PDF format using LibreOffice via the UNO bridge, then performs PDF post-processing (empty page removal, whitespace trimming). Jobs are managed through a Redis queue with progress tracking.
+This document specifies the functional requirements for the B-Knowledge document converter subsystem. The converter is a **Redis queue worker** (NOT a FastAPI service) that transforms Office documents (Word, PowerPoint, Excel) into PDF format using LibreOffice, then performs PDF post-processing (empty page removal, whitespace trimming, margin padding). Jobs are managed through a Redis queue with progress tracking.
+
+The worker polls Redis every 30 seconds (`POLL_INTERVAL`) for pending conversion jobs.
 
 ## 2. Actors & Use Cases
 
@@ -44,21 +52,24 @@ graph LR
 
 | Extension | Source Format | Method | Tool |
 |-----------|--------------|--------|------|
-| `.doc`, `.docx` | Word | UNO bridge | LibreOffice |
-| `.ppt`, `.pptx` | PowerPoint | UNO bridge | LibreOffice |
-| `.xls`, `.xlsx` | Excel | UNO bridge | LibreOffice |
-| `.odt` | OpenDocument Text | UNO bridge | LibreOffice |
-| `.odp` | OpenDocument Presentation | UNO bridge | LibreOffice |
-| `.ods` | OpenDocument Spreadsheet | UNO bridge | LibreOffice |
+| `.doc`, `.docx`, `.docm` | Word | LibreOffice CLI (`soffice --convert-to pdf`) | LibreOffice |
+| `.ppt`, `.pptx`, `.pptm` | PowerPoint | LibreOffice CLI (`soffice --convert-to pdf`) | LibreOffice |
+| `.xls`, `.xlsx`, `.xlsm` | Excel | Python-UNO bridge (per-sheet fit-to-page scaling) | LibreOffice UNO |
+| `.odt` | OpenDocument Text | LibreOffice CLI | LibreOffice |
+| `.odp` | OpenDocument Presentation | LibreOffice CLI | LibreOffice |
+| `.ods` | OpenDocument Spreadsheet | LibreOffice CLI | LibreOffice |
 | `.pdf` | PDF | Pass-through | Post-processing only |
+
+**Excel special handling:** Excel files use the Python-UNO bridge for advanced page setup control including per-sheet `FitToPagesWide=1` (fit all columns on one page width) with `FitToPagesTall=0` (auto). Falls back to basic LibreOffice CLI if UNO connection fails.
 
 ### 3.4 PDF Post-Processing
 
 | ID | Requirement | Priority | Notes |
 |----|-------------|----------|-------|
-| CNV-FR-20 | System SHALL remove empty pages from converted PDFs | Must | Pages with no text or images |
-| CNV-FR-21 | System SHALL trim excessive whitespace margins from PDF pages | Should | Improves readability |
-| CNV-FR-22 | Post-processing SHALL preserve original content fidelity | Must | No content loss |
+| CNV-FR-20 | System SHALL remove empty pages from converted PDFs | Must | pdfminer content detection; pages with no text or images |
+| CNV-FR-21 | System SHALL trim excessive whitespace margins from PDF pages | Should | Analyzes content bounds, applies CropBox with margin padding |
+| CNV-FR-22 | System SHALL add margin padding after whitespace trimming | Should | Prevents content from touching page edges |
+| CNV-FR-23 | Post-processing SHALL preserve original content fidelity | Must | No content loss |
 
 ### 3.5 Scheduling & Execution
 
@@ -76,19 +87,29 @@ graph LR
 | CNV-FR-40 | System SHALL publish job progress updates via Redis pub/sub | Must | Real-time UI updates |
 | CNV-FR-41 | Admin SHALL be able to view current conversion queue status and per-job progress | Must | Dashboard view |
 
-## 4. Job State Diagram
+## 4. Job State Machine
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Pending : Job created
-    Pending --> Processing : Worker picks up job
-    Processing --> PostProcessing : Conversion complete
-    PostProcessing --> Completed : Post-processing done
-    Processing --> Failed : Conversion error
-    PostProcessing --> Failed : Post-processing error
-    Failed --> Pending : Manual retry
-    Completed --> [*]
+    [*] --> pending : Job created by BE
+    pending --> converting : BE dequeues from waiting queue
+    converting --> completed : All files processed successfully
+    converting --> failed : Conversion error
+    failed --> pending : Manual retry
+    completed --> [*]
 ```
+
+**Note:** The Node.js backend sets job status to `converting` when it dequeues from the waiting queue. The converter worker looks for jobs in `converting` status that still have pending files to process.
+
+## 4.1 Redis Key Layout
+
+| Key Pattern | Type | Description |
+|-------------|------|-------------|
+| `converter:vjob:{jobId}` | Hash | Version job metadata (status, file count, timestamps) |
+| `converter:vjob:pending` | Sorted Set | Pending job IDs (FIFO by timestamp) |
+| `converter:vjob:status:{status}` | Set | Job IDs grouped by status (`converting`, `completed`, `failed`) |
+| `converter:files:{jobId}` | Set | File tracking IDs belonging to a job |
+| `converter:file:{fileId}` | Hash | Per-file tracking record (status, progress, error) |
 
 ## 5. Conversion Flow
 
@@ -135,8 +156,12 @@ flowchart TD
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| POST | `/api/converter/trigger` | Manual conversion trigger | Admin |
-| GET | `/api/converter/status` | Queue status and progress | Admin |
-| GET | `/api/converter/jobs/:datasetId` | Jobs for a dataset | Authenticated |
-| PUT | `/api/converter/schedule` | Update schedule window | Admin |
-| POST | `/api/converter/retry/:jobId` | Retry a failed job | Admin |
+| GET | `/api/rag/datasets/:id/converter-jobs/:jobId/status` | Check converter job status | Authenticated |
+
+**Note:** The converter is a background Redis worker, not a REST service. Job creation happens automatically during document upload via the RAG module. The single status endpoint above allows the frontend to poll job progress.
+
+## 8. Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `POLL_INTERVAL` | `30` | Seconds between Redis queue polls |

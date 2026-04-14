@@ -58,6 +58,8 @@ export class RagService {
         return allDatasets.filter(d => {
             const ac = typeof d.access_control === 'string' ? JSON.parse(d.access_control) : d.access_control;
             if (!ac) return false;
+            // Preserve owner visibility so "me" datasets remain visible after creation.
+            if (d.created_by === user.id) return true;
             if (ac.public === true) return true;
             if (ac.user_ids?.includes(user.id)) return true;
             // Check team intersection between user's teams and dataset's team grants

@@ -3,8 +3,8 @@
 | Field   | Value      |
 |---------|------------|
 | Parent  | [SRS Index](./index.md) |
-| Version | 1.0        |
-| Date    | 2026-03-21 |
+| Version | 1.2        |
+| Date    | 2026-04-14 |
 
 ## 1. Overview
 
@@ -44,7 +44,7 @@ flowchart TD
 |----------|----------------------------|--------------------------------------------------------------------------------------|----------|
 | DOC-001  | File upload                | Accept files via multipart upload; store originals in RustFS (S3)                    | Must     |
 | DOC-002  | File type detection        | Auto-detect MIME type and map to appropriate parser                                  | Must     |
-| DOC-003  | Parser selection           | User can override auto-detected parser; 18 parser types available                    | Must     |
+| DOC-003  | Parser selection           | User can override auto-detected parser; 20 parser types available (see Section 4)    | Must     |
 | DOC-004  | Text extraction            | Parser extracts structured text, tables, and metadata from the document              | Must     |
 | DOC-005  | Office conversion          | DOCX/XLSX/PPTX/DOC/XLS/PPT are converted to PDF via LibreOffice before parsing      | Must     |
 | DOC-006  | Chunking                   | Split extracted text into chunks using the configured strategy                       | Must     |
@@ -79,6 +79,10 @@ flowchart TD
 | 16| openapi   | OpenAPI/Swagger specifications           | Endpoint extraction, schema parsing          |
 | 17| one       | OneNote exports                          | Section/page hierarchy extraction            |
 | 18| tag       | Tagged/annotated documents               | Tag-based segmentation and metadata          |
+| 19| sdlc_checklist | SDLC checklists                   | Phase classification, checklist structured parsing |
+| 20| knowledge_graph | Knowledge graph (reuses naive)    | Alias for naive parser; used when GraphRAG is primary goal |
+
+**Parser factory mapping:** Defined in `advance-rag/rag/svr/task_executor.py` as `FACTORY` dict. The `knowledge_graph` parser maps to the `naive` parser implementation.
 
 ## 5. Chunking Strategies
 
@@ -107,15 +111,18 @@ flowchart TD
     OCR --> CHUNK
     PARSE --> |Text-based| CHUNK[Chunk Content<br/>Fixed / Recursive /<br/>Semantic / Layout-aware]
 
-    CHUNK --> EMB[Generate Embeddings<br/>Batch API calls]
+    CHUNK --> ENRICH[Document Enrichment<br/>keywords / questions /<br/>tags / metadata]
+    ENRICH --> EMB[Generate Embeddings<br/>Batch API calls]
     EMB --> IDX[Index in OpenSearch<br/>Vector + text + metadata]
 
     IDX --> |if GraphRAG| GRAPH[Entity Extraction<br/>+ Community Detection]
     IDX --> |if RAPTOR| RAPT[Hierarchical<br/>Summarisation]
+    IDX --> |if Mindmap| MIND[Mindmap Generation]
 
     IDX --> DONE[Document Ready]
     GRAPH --> DONE
     RAPT --> DONE
+    MIND --> DONE
 
     PROG[Redis Pub/Sub<br/>Progress Updates] -.-> PARSE & CHUNK & EMB & IDX
 

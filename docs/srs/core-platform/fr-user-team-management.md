@@ -3,8 +3,8 @@
 | Field   | Value      |
 |---------|------------|
 | Parent  | [SRS Index](./index.md) |
-| Version | 1.1        |
-| Date    | 2026-04-13 |
+| Version | 1.2        |
+| Date    | 2026-04-14 |
 
 ## 1. Overview
 
@@ -71,6 +71,9 @@ flowchart TD
 | USR-006  | Review effective access | Authorized admins can inspect the effective access a user receives from role defaults, overrides, and resource grants. | Must |
 | USR-007  | Override user permissions | Authorized admins can add explicit allow or deny rows for a single user without creating a new tenant role. | Must |
 | USR-008  | Audit permission changes | Role changes, overrides, and grant mutations must be auditable so administrators can trace who changed access and when. | Must |
+| USR-009  | View IP history | Admin can view login IP address history for any user. Endpoints: `GET /api/users/ip-history` (all users), `GET /api/users/:id/ip-history` (specific user). Permission: `users.view_ip`. | Should |
+| USR-010  | View active sessions | Admin can view active Redis sessions for any user. Endpoint: `GET /api/users/:id/sessions`. Permission: `users.view_sessions`. Returns masked session IDs, IP, creation/activity timestamps. | Should |
+| USR-011  | Role assignment security | Role changes enforce: (a) self-modification prevention, (b) privilege escalation prevention (cannot assign role higher than own), (c) requires recent re-authentication via `requireRecentAuth` middleware. | Must |
 
 ## 4. Functional Requirements — Team Management
 
@@ -82,6 +85,7 @@ flowchart TD
 | TEAM-004 | Add user to team | Admin or otherwise authorized leaders can add an existing tenant user to a team. | Must |
 | TEAM-005 | Remove user from team | Admin or otherwise authorized leaders can remove a user from a team. | Must |
 | TEAM-006 | Team-scoped access inputs | Team membership remains a valid access input for permission evaluation and future grant expansion, even when final access is enforced through the central permission engine. | Must |
+| TEAM-007 | Team permissions | Teams can have direct permission keys assigned. Endpoints: `GET /api/teams/:id/permissions`, `POST /api/teams/:id/permissions`. Permission: `teams.permissions`. Stored as JSONB `permissions` column on teams table (added Apr 13 2026 migration). | Must |
 
 ## 5. Functional Requirements — Permission Model
 
@@ -105,6 +109,61 @@ flowchart TD
 | PMX-004   | Resource-sharing workflow | Authorized admins can grant row-scoped resource access without broadening tenant-wide role defaults. | Must |
 | PMX-005   | Effective-access inspection | Authorized admins can inspect which users currently hold one selected capability and drill into user-level details for remediation. | Must |
 | PMX-006   | Maintainer clarity | Documentation must clearly explain when to use role defaults, overrides, or resource grants so new team members do not misuse the matrix. | Must |
+
+## 5.2 Complete Permission Key Registry
+
+All permission keys discovered from the backend permission registry, organized by domain:
+
+| Domain | Permission Key | Description |
+|--------|---------------|-------------|
+| Users | `users.view` | View user list and profiles |
+| Users | `users.create` | Create new users |
+| Users | `users.edit` | Edit user profiles and settings |
+| Users | `users.delete` | Deactivate or delete users |
+| Users | `users.assign_perms` | Assign permission overrides to users |
+| Users | `users.view_ip` | View user login IP history |
+| Users | `users.view_sessions` | View user active sessions |
+| Teams | `teams.view` | View team list |
+| Teams | `teams.create` | Create teams |
+| Teams | `teams.edit` | Edit team metadata |
+| Teams | `teams.delete` | Delete teams |
+| Teams | `teams.members` | Manage team membership |
+| Teams | `teams.permissions` | Manage team-level permissions |
+| Permissions | `permissions.view` | View permission catalog and matrix |
+| Permissions | `permissions.manage` | Modify role defaults, overrides, grants |
+| Datasets | `datasets.create` | Create datasets / knowledge bases |
+| Datasets | `datasets.view` | View dataset list and details |
+| Datasets | `datasets.edit` | Edit dataset configuration |
+| Datasets | `datasets.delete` | Delete datasets |
+| Datasets | `datasets.advanced` | Access advanced dataset settings |
+| Datasets | `datasets.reindex` | Trigger dataset re-indexing |
+| Documents | `documents.create` | Upload documents |
+| Documents | `documents.parse` | Trigger document parsing |
+| Documents | `documents.enrich` | Run enrichment tasks on documents |
+| Chunks | `chunks.view` | View document chunks |
+| Chunks | `chunks.edit` | Edit individual chunks |
+| Feedback | `feedback.submit` | Submit feedback on search/chat results |
+| Broadcast | `broadcast.view` | View broadcast messages |
+| Broadcast | `broadcast.create` | Create broadcast messages |
+| Broadcast | `broadcast.edit` | Edit broadcast messages |
+| Broadcast | `broadcast.delete` | Delete broadcast messages |
+| Audit | `audit.view` | View audit log entries |
+| System Tools | `system_tools.view` | View system diagnostic tools |
+| System Tools | `system_tools.run` | Execute system diagnostic tools |
+| LLM Providers | `llm_providers.view` | View LLM provider configurations |
+| LLM Providers | `llm_providers.create` | Add LLM provider configurations |
+| LLM Providers | `llm_providers.edit` | Edit LLM provider configurations |
+| LLM Providers | `llm_providers.delete` | Remove LLM provider configurations |
+| Sync Connectors | `sync_connectors.create` | Create sync connectors |
+| Sync Connectors | `sync_connectors.edit` | Edit sync connectors |
+| Sync Connectors | `sync_connectors.delete` | Delete sync connectors |
+| Sync Connectors | `sync_connectors.run` | Execute sync connector jobs |
+| API Keys | `api_keys.create` | Create API keys |
+| Glossary | `glossary.create` | Create glossary entries |
+| Glossary | `glossary.edit` | Edit glossary entries |
+| Glossary | `glossary.delete` | Delete glossary entries |
+| Code Graph | `code_graph.view` | View code knowledge graph |
+| Code Graph | `code_graph.manage` | Manage code knowledge graph |
 
 ## 6. Current Role Model
 

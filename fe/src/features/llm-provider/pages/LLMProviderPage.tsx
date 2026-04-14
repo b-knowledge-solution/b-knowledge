@@ -159,6 +159,7 @@ export function LLMProviderPage() {
   /** Open dialog in create mode */
   const handleAdd = () => {
     setEditingProvider(null)
+    setCloningFrom(null)
     setDialogOpen(true)
   }
 
@@ -182,12 +183,15 @@ export function LLMProviderPage() {
 
   /**
    * Handle dialog form submission (create or update).
+   * Uses the explicit providerId from the dialog to determine mode,
+   * avoiding stale closure issues with editingProvider state.
    * @param data - Provider payload from the form
+   * @param providerId - Provider UUID when editing, undefined when creating
    */
-  const handleSubmit = async (data: CreateProviderDTO | UpdateProviderDTO) => {
-    if (editingProvider) {
-      // Update existing provider
-      await updateProvider(editingProvider.id, data as UpdateProviderDTO)
+  const handleSubmit = async (data: CreateProviderDTO | UpdateProviderDTO, providerId?: string) => {
+    if (providerId) {
+      // Update existing provider — use providerId passed explicitly from dialog
+      await updateProvider(providerId, data as UpdateProviderDTO)
       toast.success(t('llmProviders.providerSaved'))
     } else {
       // Create new provider

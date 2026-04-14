@@ -64,8 +64,8 @@ interface ProviderFormDialogProps {
   open: boolean
   /** Callback to close the dialog */
   onClose: () => void
-  /** Callback fired on successful submit */
-  onSubmit: (data: CreateProviderDTO | UpdateProviderDTO) => Promise<void>
+  /** Callback fired on successful submit — includes providerId for edit mode */
+  onSubmit: (data: CreateProviderDTO | UpdateProviderDTO, providerId?: string) => Promise<void>
   /** Existing provider for edit mode; null/undefined for create */
   provider?: ModelProvider | null
   /** Source provider to clone settings from (create mode with pre-populated fields) */
@@ -242,7 +242,8 @@ export function ProviderFormDialog({
 
     setSaving(true)
     try {
-      await onSubmit(data)
+      // Pass provider ID explicitly to avoid stale closure issues in the parent
+      await onSubmit(data, provider?.id)
       onClose()
     } finally {
       setSaving(false)

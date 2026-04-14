@@ -1,5 +1,7 @@
 # FR-AGENTS: Agent Workflow Engine
 
+> Version 1.2 | Updated 2026-04-14
+
 ## 1. Purpose
 
 Provide a visual, no-code/low-code agent builder that allows users to design, execute, and monitor AI workflows (agents and pipelines) using a drag-and-drop canvas. Agents orchestrate multi-step tasks combining LLM reasoning, knowledge retrieval, external tool usage, and conditional logic.
@@ -51,6 +53,9 @@ Provide a visual, no-code/low-code agent builder that allows users to design, ex
 - Edge drawing with conditional routing support
 - Smart copy/paste for subgraph duplication
 - Undo/redo support
+- **27 node types** defined in `AgentNodeType` constants
+
+> **Note:** `memory_read` and `memory_write` agent nodes are listed in the frontend palette but are NOT yet implemented in backend code (node types missing from backend constants).
 
 ### FR-AGT-03: Execution Modes
 
@@ -61,10 +66,11 @@ Provide a visual, no-code/low-code agent builder that allows users to design, ex
 
 ### FR-AGT-04: Execution Engine
 
-- Graph traversal using Kahn's algorithm (topological sort)
+- Graph traversal using **Kahn's algorithm** (topological sort)
 - Nodes classified as **inline** (executed in Node.js) or **dispatch** (sent to the Python worker through Redis)
 - Inline nodes currently include lightweight logic/content nodes such as `begin`, `answer`, `message`, `switch`, `condition`, `merge`, `note`, `concentrator`, `template`, and `keyword_extract`
 - Dispatch nodes currently include LLM, retrieval, loop, and external-tool nodes such as `generate`, `categorize`, `retrieval`, `code`, `api`, `email`, web search tools, finance tools, and similar integrations
+- `getDownstreamNodes()` handles routing for switch/condition nodes, selecting the correct downstream branch
 - Real-time progress tracking (completed_nodes / total_nodes)
 - Configurable max execution time
 - Cancellation support via Redis signal
@@ -84,6 +90,7 @@ Provide a visual, no-code/low-code agent builder that allows users to design, ex
 - Continue from breakpoint
 - Inspect input/output data at each step
 - View full execution trace
+- In-memory breakpoint state using `Map<runId, DebugRunState>`
 
 ### FR-AGT-07: Webhook Triggers
 
@@ -119,8 +126,8 @@ Provide a visual, no-code/low-code agent builder that allows users to design, ex
 ### FR-AGT-11: MCP Server Integration
 
 - Connect to external MCP servers via HTTP streaming transport
-- List available tools from MCP servers
-- Call MCP tools during agent execution
+- List available tools from MCP servers (`listTools`)
+- Call MCP tools during agent execution (`callTool`) with timeout (30s)
 - Connection caching by URL
 
 ### FR-AGT-12: Export/Import
@@ -135,7 +142,94 @@ Provide a visual, no-code/low-code agent builder that allows users to design, ex
 - View per-node step details with input/output data
 - Filter by status (pending, running, completed, failed, cancelled)
 
-## 5. Authorization
+### FR-AGT-14: Sandbox Execution
+
+- Docker containers for code execution nodes
+- Sandbox limits: **256MB memory**, no network access, read-only filesystem, **30-second timeout**
+- Supported languages: Python, JavaScript, Bash
+
+### FR-AGT-15: Redis Streams Worker Communication
+
+- `queueNodeExecution` dispatches node work to the Python worker via Redis Streams
+- `subscribeToRunOutput` listens for execution progress from worker
+- `publishNodeResult` returns node results from worker to orchestrator
+
+## 5. API Endpoints
+
+### 5.1 Agent CRUD
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/agents` | Create agent |
+| GET | `/api/agents` | List agents |
+| GET | `/api/agents/:id` | Get agent details |
+| PUT | `/api/agents/:id` | Update agent |
+| DELETE | `/api/agents/:id` | Delete agent |
+| POST | `/api/agents/:id/duplicate` | Duplicate agent |
+| POST | `/api/agents/:id/publish` | Publish agent |
+
+### 5.2 Execution
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/agents/:id/run` | Start agent run |
+| POST | `/api/agents/:id/run/:runId/cancel` | Cancel running agent |
+| GET | `/api/agents/:id/runs` | List runs for agent |
+| GET | `/api/agents/:id/runs/:runId` | Get run details |
+| GET | `/api/agents/:id/runs/:runId/steps` | Get run step details |
+
+### 5.3 Debug Mode
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/agents/:id/debug` | Start debug run with breakpoints |
+| POST | `/api/agents/:id/debug/:runId/step` | Step to next node |
+| POST | `/api/agents/:id/debug/:runId/continue` | Continue from breakpoint |
+| POST | `/api/agents/:id/debug/breakpoints` | Set breakpoints |
+| DELETE | `/api/agents/:id/debug/breakpoints` | Clear breakpoints |
+| GET | `/api/agents/:id/debug/:runId/steps/:stepId` | Get step details |
+
+### 5.4 Version Management
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/agents/:id/versions` | List versions |
+| POST | `/api/agents/:id/versions` | Save new version |
+| DELETE | `/api/agents/:id/versions/:versionId` | Delete version |
+| POST | `/api/agents/:id/versions/:versionId/restore` | Restore to version |
+
+### 5.5 Tool Credentials
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/agents/tools/credentials` | List tool credentials |
+| POST | `/api/agents/tools/credentials` | Create tool credential |
+| PUT | `/api/agents/tools/credentials/:id` | Update tool credential |
+| DELETE | `/api/agents/tools/credentials/:id` | Delete tool credential |
+
+### 5.6 Templates
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/agents/templates` | List templates |
+| POST | `/api/agents/templates` | Create template |
+| POST | `/api/agents/:id/from-template` | Create agent from template |
+
+### 5.7 Webhook
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/agents/webhook/:agentId` | Public webhook trigger (rate-limited 100/15min per IP) |
+
+### 5.8 Embed Widget
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/agents/embed/:token/:agentId/config` | Get public agent config via token |
+| POST | `/api/agents/embed/:token/:agentId/config` | Create/update embed config |
+| POST | `/api/agents/embed/:token/:agentId/run` | Execute agent via embed token (SSE streaming) |
+
+## 6. Authorization
 
 | Action | Required Ability |
 |--------|-----------------|
@@ -149,7 +243,7 @@ Provide a visual, no-code/low-code agent builder that allows users to design, ex
 
 See [RBAC & ABAC Detail](/detail-design/auth/rbac-abac) for full permission model.
 
-## 6. Non-Functional Requirements
+## 7. Non-Functional Requirements
 
 | Requirement | Target |
 |-------------|--------|
@@ -159,14 +253,18 @@ See [RBAC & ABAC Detail](/detail-design/auth/rbac-abac) for full permission mode
 | Webhook rate limit | 100 requests / 15 minutes per IP |
 | Tool credential encryption | AES-256-CBC |
 | Multi-tenant isolation | All queries filtered by tenant_id |
+| Sandbox memory limit | 256MB per container |
+| Sandbox timeout | 30 seconds |
+| MCP tool call timeout | 30 seconds |
 
-## 7. Dependencies
+## 8. Dependencies
 
 | Dependency | Purpose |
 |------------|---------|
 | PostgreSQL | Agent, run, step, template, credential storage |
-| Redis Streams | Node execution dispatch to Python worker |
+| Redis Streams | Node execution dispatch to Python worker (`queueNodeExecution`, `subscribeToRunOutput`, `publishNodeResult`) |
 | Redis Pub/Sub | Real-time SSE event delivery |
 | OpenSearch | Retrieval nodes (knowledge base search) |
 | Python Worker | LLM, retrieval, code, API node execution |
 | React Flow | Visual canvas editor |
+| Docker | Sandbox container execution for code nodes |

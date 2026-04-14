@@ -1,5 +1,11 @@
 # FR: Code Knowledge Graph
 
+| Field   | Value      |
+|---------|------------|
+| Parent  | [SRS Index](../index.md) |
+| Version | 1.2        |
+| Date    | 2026-04-14 |
+
 > Visualize and query code structure as a knowledge graph using Memgraph, enabling developers to explore call hierarchies, dependencies, and code relationships within ingested source code datasets.
 
 ## 1. Overview
@@ -68,7 +74,7 @@ The Code Knowledge Graph feature builds a graph representation of source code st
 ### 2.10 Raw Cypher Execution
 
 - **FR-CG-090**: Admin users shall be able to execute arbitrary Cypher queries against the code graph.
-- **FR-CG-091**: Raw Cypher execution shall be restricted to users with the `admin` role.
+- **FR-CG-091**: Raw Cypher execution shall be restricted to users with the `code_graph.manage` permission.
 
 ## 3. API Endpoints
 
@@ -83,8 +89,8 @@ The Code Knowledge Graph feature builds a graph representation of source code st
 | GET | `/api/code-graph/:kbId/schema` | Yes | Graph schema |
 | GET | `/api/code-graph/:kbId/search` | Yes | Search entities |
 | GET | `/api/code-graph/:kbId/dependencies` | Yes | Dependencies |
-| POST | `/api/code-graph/:kbId/nl-query` | Yes | NL query |
-| POST | `/api/code-graph/:kbId/cypher` | Admin | Raw Cypher |
+| POST | `/api/code-graph/:kbId/nl-query` | `code_graph.view` | NL query (AI-generated Cypher) |
+| POST | `/api/code-graph/:kbId/cypher` | `code_graph.manage` | Raw Cypher execution |
 
 ## 4. Infrastructure
 
@@ -97,9 +103,10 @@ The Code Knowledge Graph feature builds a graph representation of source code st
 
 ## 5. Non-Functional Requirements
 
-- All endpoints require authentication (session-based)
-- Raw Cypher restricted to admin role to prevent destructive queries
-- Memgraph driver uses lazy singleton pattern (connects on first use)
+- All 11 endpoints require authentication (session-based); all scoped to `/api/code-graph/:kbId/`
+- NL query requires `code_graph.view` permission
+- Raw Cypher requires `code_graph.manage` permission to prevent destructive queries
+- Memgraph Bolt driver uses lazy singleton pattern (connects on first use)
 - Graph data is scoped per knowledge base to enforce tenant isolation
 
 ## 6. Dependencies

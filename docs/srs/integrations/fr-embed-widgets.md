@@ -1,8 +1,22 @@
 # FR: Embed Widgets
 
+| Field   | Value      |
+|---------|------------|
+| Parent  | [SRS Index](../index.md) |
+| Version | 1.2        |
+| Date    | 2026-04-14 |
+
 ## 1. Overview
 
 This document specifies the functional requirements for B-Knowledge embed experiences. The current source supports token-based public chat, search, and agent embeds. Search is explicitly iframe/share-page based, while chat and agents expose token-authenticated public endpoints. Anonymous end users interact through token-based access without a browser session.
+
+### 1.1 Frontend Features
+
+| Widget Type | FE Location | Description |
+|-------------|-------------|-------------|
+| Chat embed | `fe/src/features/chat-widget/` | Floating chat button + window (`ChatWidget`, `ChatWidgetButton`, `ChatWidgetWindow`) |
+| Search embed | `fe/src/features/search-widget/` | Full search bar + results page (`SearchWidget`, `SearchWidgetBar`, `SearchWidgetResults`) |
+| Agent embed | `fe/src/features/agent-widget/` | Agent button + widget (`AgentWidgetButton`) |
 
 ## 2. Actors & Use Cases
 
@@ -139,10 +153,11 @@ sequenceDiagram
 | GET | `/api/chat/embed/:token/info` | Get chat public info |
 | POST | `/api/chat/embed/:token/sessions` | Create anonymous chat session |
 | POST | `/api/chat/embed/:token/completions` | Chat completion (SSE) |
-| GET | `/api/search/embed/:token/config` | Get public search app config |
-| POST | `/api/search/embed/:token/ask` | Search ask (SSE) |
+| GET | `/api/search/embed/:token/info` | Get public search app info (name, description) |
+| GET | `/api/search/embed/:token/config` | Get public search app config (avatar, empty_response, search_config) |
 | POST | `/api/search/embed/:token/search` | Paginated search |
+| POST | `/api/search/embed/:token/ask` | Search ask (SSE) |
 | POST | `/api/search/embed/:token/related-questions` | Public related questions |
 | POST | `/api/search/embed/:token/mindmap` | Public mind map |
 | GET | `/api/agents/embed/:token/:agentId/config` | Get public agent config |
-| POST | `/api/agents/embed/:token/:agentId/run` | Run embedded agent |
+| POST | `/api/agents/embed/:token/:agentId/run` | Run embedded agent (SSE) |
