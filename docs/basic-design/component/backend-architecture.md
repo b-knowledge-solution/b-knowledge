@@ -2,7 +2,7 @@
 
 ## Overview
 
-The B-Knowledge backend is a Node.js 22+ / Express 4.21 / TypeScript application using Knex with PostgreSQL. It currently mounts 23 feature modules under `/api`, with strict module boundaries, singleton services, and shared infrastructure such as `ModelFactory`, auth middleware, rate limiting, and a registry-backed permission system.
+The B-Knowledge backend is a Node.js 22+ / Express 4.21 / TypeScript application using Knex with PostgreSQL. It currently mounts 23 feature modules under `/api`, with strict module boundaries, singleton services, and shared infrastructure such as `ModelFactory`, auth middleware, rate limiting, and a registry-backed permission system. The backend exposes 270+ API endpoints across all modules, organized in a 3-layer architecture: controller -> service -> model.
 
 ## Request Flow
 
@@ -34,6 +34,11 @@ graph LR
 | 4 | Session | Valkey-backed session management |
 | 5 | Rate Limiter | 1000/15min general, 20/15min auth |
 | 6 | Auth (`requireAuth`) | Verify session, attach `req.user` |
+| 6a | `requirePermission(key)` | Flat catalog-key permission check via CASL |
+| 6b | `requireAbility(action, subject, idParam?)` | Row-scoped CASL ability check on a specific resource |
+| 6c | `requireRecentAuth(maxAgeMinutes?)` | Enforce re-authentication for sensitive operations |
+| 6d | `requireTenant` | Enforce active tenant context on `req.user` |
+| 6e | `markPublicRoute()` | Exempt route from auth (embed widgets, webhooks) |
 | 7 | Validate (`validate(schema)`) | Zod schema coercion of `req.body` |
 | 8 | Route Handler | Controller method execution |
 
@@ -184,31 +189,61 @@ Representative internal response shapes:
 
 ## Module List (23 Modules)
 
-| Module | Domain |
-|--------|--------|
-| `auth` | Authentication, sessions, ability bootstrap |
-| `agents` | Agent workflows, runs, templates, embeds |
-| `audit` | Audit logging |
-| `broadcast` | Broadcast messages |
-| `chat` | Assistants, conversations, files, embeds, OpenAI API |
-| `code-graph` | Code graph endpoints |
-| `dashboard` | Dashboard analytics |
-| `external` | API keys and external APIs |
-| `feedback` | Generic feedback endpoints |
-| `glossary` | Glossary features |
-| `knowledge-base` | Knowledge base CRUD, memberships, entity permissions |
-| `llm-provider` | Model/provider management |
-| `memory` | Memory pools and memory message search |
-| `permissions` | Catalog, role matrix, overrides, grants, effective access |
-| `preview` | Document/file preview serving |
-| `rag` | Datasets, documents, chunks, enrichment, graph tasks |
-| `search` | Search apps, search embed/share, OpenAI search API |
-| `sync` | Sync connectors and jobs |
-| `system` | Core system info and history endpoints |
-| `system-tools` | Diagnostics and system actions |
-| `teams` | Team management |
-| `user-history` | Chat and search history |
-| `users` | User management |
+| Module | Domain | Mount Path |
+|--------|--------|------------|
+| `agents` | Agent workflows, runs, templates, embeds, webhooks | `/api/agents/*` |
+| `audit` | Audit logging | `/api/audit/*` |
+| `auth` | Authentication, sessions, ability bootstrap | `/api/auth/*` |
+| `broadcast` | Broadcast messages | `/api/broadcast-messages/*` |
+| `chat` | Assistants, conversations, files, embeds, OpenAI API | `/api/chat/*` |
+| `code-graph` | Code graph endpoints | `/api/code-graph/*` |
+| `dashboard` | Dashboard analytics | `/api/system/dashboard/*` |
+| `external` | API keys and external APIs | `/api/external/api-keys/*`, `/api/v1/external/*` |
+| `feedback` | Generic feedback endpoints | `/api/feedback/*` |
+| `glossary` | Glossary features | `/api/glossary/*` |
+| `knowledge-base` | Knowledge base CRUD, memberships, entity permissions | `/api/knowledge-base/*` |
+| `llm-provider` | Model/provider management | `/api/llm-provider/*`, `/api/models/*` |
+| `memory` | Memory pools and memory message search | `/api/memory/*` |
+| `permissions` | Catalog, role matrix, overrides, grants, effective access | `/api/permissions/*` |
+| `preview` | Document/file preview serving | `/api/preview/*` |
+| `rag` | Datasets, documents, chunks, enrichment, graph tasks | `/api/rag/*` |
+| `search` | Search apps, search embed/share, OpenAI search API | `/api/search/*` |
+| `sync` | Sync connectors and jobs | `/api/sync/*` |
+| `system` | Core system info and history endpoints | `/api/system/*` |
+| `system-tools` | Diagnostics and system actions | `/api/system-tools/*` |
+| `teams` | Team management | `/api/teams/*` |
+| `user-history` | Chat and search history | `/api/user/history/*` |
+| `users` | User management | `/api/users/*` |
+
+## Real-Time Communication
+
+| Transport | Usage |
+|-----------|-------|
+| Socket.IO (WebSocket) | Real-time notifications, permission catalog updates, agent debug events |
+| SSE (`text/event-stream`) | Streaming LLM responses for chat, search, and agent completions |
+
+## Redis (Valkey) Usage
+
+| Feature | Pattern |
+|---------|---------|
+| Sessions | Valkey-backed session store (7-day TTL default) |
+| Caching | Role-permission cache, ability cache, model metadata |
+| Task queues | Document conversion jobs, RAG pipeline tasks |
+| Pub/Sub | Backend-to-worker coordination for task dispatch |
+| Redis Streams | Agent execution pipeline (`agent-executor.service`, `agent-redis.service`), embedding worker status (`embedding-stream.service`) |
+
+## Permission System
+
+The permission system is registry-backed with three data sources:
+
+| Source | Table | Purpose |
+|--------|-------|---------|
+| Catalog | `permissions` | Registry of all permission keys, synced from `*.permissions.ts` at boot |
+| Role defaults | `role_permissions` | Baseline role-by-role grant matrix |
+| User overrides | `user_permission_overrides` | Per-user allow/deny exceptions with optional expiry |
+| Resource grants | `resource_grants` | Row-scoped access for KnowledgeBase and DocumentCategory |
+
+The CASL ability builder composes all three sources into a single ability set per user session.
 
 ## Authorization-Specific Request Flow
 

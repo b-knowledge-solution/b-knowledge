@@ -14,6 +14,9 @@ import { Dataset, Document, AccessControl, UserContext } from '@/shared/models/t
 import { teamService } from '@/modules/teams/services/team.service.js';
 import { getUuid } from '@/shared/utils/uuid.js';
 import { ComparisonLiteral, UserRole, DatasetStatus } from '@/shared/constants/index.js';
+import { RAG_PERMISSIONS } from '../rag.permissions.js'
+import { buildAbilityFor } from '@/shared/services/ability.service.js'
+import { PermissionSubjects } from '@/shared/constants/permissions.js'
 
 /**
  * @description Core service for dataset CRUD, RBAC access control, and document operations.
@@ -21,6 +24,31 @@ import { ComparisonLiteral, UserRole, DatasetStatus } from '@/shared/constants/i
  * stale reference cleanup, and audit logging.
  */
 export class RagService {
+    /**
+     * @description Normalize user permissions from session payload.
+     * @param {unknown} rawPermissions - Raw permissions payload from session user
+     * @returns {Set<string>} Parsed permission key set
+     */
+    private getPermissionSet(rawPermissions: unknown): Set<string> {
+        // Handle stringified JSON payload persisted in some session rows.
+        if (typeof rawPermissions === 'string') {
+            try {
+                const parsed = JSON.parse(rawPermissions)
+                if (Array.isArray(parsed)) {
+                    return new Set(parsed.filter((p): p is string => typeof p === 'string'))
+                }
+            } catch {
+                return new Set()
+            }
+        }
+
+        if (Array.isArray(rawPermissions)) {
+            return new Set(rawPermissions.filter((p): p is string => typeof p === 'string'))
+        }
+
+        return new Set()
+    }
+
     // -------------------------------------------------------------------------
     // Dataset CRUD
     // -------------------------------------------------------------------------
@@ -46,8 +74,31 @@ export class RagService {
             });
         }
 
-        // Admins see all datasets without filtering
-        if (user.role === UserRole.ADMIN) {
+        const permissions = this.getPermissionSet(user.permissions)
+
+        let canViewAllDatasets =
+            user.role === UserRole.ADMIN ||
+            user.role === UserRole.SUPER_ADMIN ||
+            permissions.has('*') ||
+            permissions.has(RAG_PERMISSIONS.view.key)
+
+        // Prefer ability-engine evaluation so role_permissions overrides are respected.
+        if (!canViewAllDatasets) {
+            try {
+                const ability = await buildAbilityFor({
+                    id: user.id,
+                    role: user.role || UserRole.USER,
+                    is_superuser: user.is_superuser ?? null,
+                    current_org_id: user.current_org_id || '',
+                })
+                canViewAllDatasets = ability.can('read', PermissionSubjects.Dataset)
+            } catch {
+                // Fall back to role/session-permission checks above when ability building fails.
+            }
+        }
+
+        // Permission-driven admin scope: users with datasets.view should see all active datasets.
+        if (canViewAllDatasets) {
             return allDatasets;
         }
 

@@ -84,11 +84,10 @@ export default defineConfig(({ mode }) => {
       drop: ['console', 'debugger'],
     },
     build: {
-      // esbuild minification avoids terser TDZ bugs when babel-plugin-react-compiler
-      // is in the pipeline — terser's module-merge pass can reorder class/const
-      // initializations incorrectly, producing "Cannot access 'X' before initialization"
+      // Disable minification to avoid a production runtime TDZ regression in the bundled
+      // scroll-lock sidecar chunk (e.g. "Cannot access 'kb' before initialization").
       sourcemap: false,
-      minify: 'esbuild',
+      minify: false,
       rollupOptions: {
         output: {
           manualChunks: {

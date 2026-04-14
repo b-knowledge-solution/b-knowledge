@@ -47,6 +47,10 @@ interface SearchAppConfigProps {
   onSave: (data: CreateSearchAppPayload) => void
   /** Existing search app data for editing (null for new) */
   app?: SearchApp | null
+  /** Initial name prefilled from upstream create flow (create mode only) */
+  initialName?: string
+  /** Initial description prefilled from upstream create flow (create mode only) */
+  initialDescription?: string
   /** Available datasets for selection */
   datasets?: KnowledgeBaseItem[]
   /** Available knowledge bases for selection */
@@ -71,6 +75,8 @@ function SearchAppConfig({
   onClose,
   onSave,
   app,
+  initialName = '',
+  initialDescription = '',
   datasets = [],
   knowledgeBases = [],
 }: SearchAppConfigProps) {
@@ -185,8 +191,8 @@ function SearchAppConfig({
       }
     } else {
       // Reset for new search app
-      setName('')
-      setDescription('')
+      setName(initialName)
+      setDescription(initialDescription)
       setAvatar('')
       setEmptyResponse('')
       setSelectedDatasets([])
@@ -216,7 +222,7 @@ function SearchAppConfig({
       })
       setMetadataFilter({ logic: 'and', conditions: [] })
     }
-  }, [app, open])
+  }, [app, open, initialName, initialDescription])
 
 
 

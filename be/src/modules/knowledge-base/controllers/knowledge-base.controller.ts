@@ -24,7 +24,15 @@ import { getUuid } from '@/shared/utils/uuid.js'
 function getUserContext(req: Request) {
   // Guard: reject unauthenticated requests
   if (!req.user) return undefined
-  return { id: req.user.id, email: req.user.email, role: req.user.role, ip: getClientIp(req) }
+  return {
+    id: req.user.id,
+    email: req.user.email,
+    role: req.user.role,
+    permissions: req.user.permissions,
+    is_superuser: req.user.is_superuser ?? null,
+    current_org_id: req.session?.currentOrgId || req.user.current_org_id || '',
+    ip: getClientIp(req),
+  }
 }
 
 /**

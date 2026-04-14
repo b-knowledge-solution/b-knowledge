@@ -151,13 +151,31 @@ graph LR
 
 ## 7. Streaming Endpoints
 
-Chat and search still use SSE for streaming responses. The permission overhaul did not change the transport, but it changed who may reach those handlers because dataset, knowledge-base, and category access can now be enforced through the shared ability and grant pipeline.
+Chat, search, and agent completions use SSE for streaming responses. The permission overhaul did not change the transport, but it changed who may reach those handlers because dataset, knowledge-base, and category access can now be enforced through the shared ability and grant pipeline.
 
 | Header | Value |
 |--------|-------|
 | `Content-Type` | `text/event-stream` |
 | `Cache-Control` | `no-cache` |
 | `Connection` | `keep-alive` |
+
+## 7.1 WebSocket (Socket.IO)
+
+Socket.IO provides real-time push notifications for permission catalog updates, agent debug events, and general system notifications. The Nginx reverse proxy upgrades `/socket.io/*` connections to WebSocket.
+
+## 7.2 OpenAI-Compatible Endpoints
+
+The backend exposes OpenAI-compatible API endpoints under `/api/v1/` for chat completions and search, authenticated via API key bearer tokens. These allow external tools to interact with B-Knowledge using the OpenAI SDK format.
+
+## 7.3 Public Embed Endpoints
+
+Embed widgets use token-based public access without session authentication:
+
+| Base Path | Purpose |
+|-----------|---------|
+| `/api/chat/embed/*` | Public chat embed widget endpoints |
+| `/api/search/embed/*` | Public search embed widget endpoints |
+| `/api/agents/embed/*` | Public agent embed widget endpoints |
 
 ## 8. Compatibility Notes
 

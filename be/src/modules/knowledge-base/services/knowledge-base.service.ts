@@ -10,12 +10,40 @@ import { KnowledgeBase, KnowledgeBasePermission, KnowledgeBaseDataset, UserConte
 import { knowledgeBaseCategoryService } from './knowledge-base-category.service.js'
 import { config } from '@/shared/config/index.js'
 import { UserRole } from '@/shared/constants/index.js'
+import { KNOWLEDGE_BASE_PERMISSIONS } from '../knowledge-base.permissions.js'
+import { buildAbilityFor } from '@/shared/services/ability.service.js'
+import { PermissionSubjects } from '@/shared/constants/permissions.js'
 
 /**
  * @description Core knowledge base service handling CRUD operations, auto-dataset creation on knowledge base setup,
  *   RBAC-based knowledge base listing, permission management, and entity-level access control
  */
 export class KnowledgeBaseService {
+  /**
+   * @description Normalize user permissions from the session user context.
+   * @param {UserContext['permissions']} rawPermissions - Raw permission payload
+   * @returns {Set<string>} Parsed permission key set
+   */
+  private getPermissionSet(rawPermissions: UserContext['permissions']): Set<string> {
+    // Support legacy stringified JSON values.
+    if (typeof rawPermissions === 'string') {
+      try {
+        const parsed = JSON.parse(rawPermissions)
+        if (Array.isArray(parsed)) {
+          return new Set(parsed.filter((p): p is string => typeof p === 'string'))
+        }
+      } catch {
+        return new Set()
+      }
+    }
+
+    if (Array.isArray(rawPermissions)) {
+      return new Set(rawPermissions.filter((p): p is string => typeof p === 'string'))
+    }
+
+    return new Set()
+  }
+
   /**
    * @description Get all knowledge bases accessible to the given user based on RBAC rules and tenant isolation.
    *   Admins see all knowledge bases within the tenant. Other users see public knowledge bases and those
@@ -25,8 +53,30 @@ export class KnowledgeBaseService {
    * @returns {Promise<KnowledgeBase[]>} Array of accessible knowledge bases
    */
   async getAccessibleKnowledgeBases(user: UserContext, tenantId: string): Promise<KnowledgeBase[]> {
-    // Admins see all active knowledge bases within the tenant scope
-    if (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN) {
+    const permissions = this.getPermissionSet(user.permissions)
+    let canViewAllKnowledgeBases =
+      user.role === UserRole.ADMIN ||
+      user.role === UserRole.SUPER_ADMIN ||
+      permissions.has('*') ||
+      permissions.has(KNOWLEDGE_BASE_PERMISSIONS.view.key)
+
+    // Prefer ability-engine evaluation so role_permissions overrides are respected.
+    if (!canViewAllKnowledgeBases) {
+      try {
+        const ability = await buildAbilityFor({
+          id: user.id,
+          role: user.role || UserRole.USER,
+          is_superuser: user.is_superuser ?? null,
+          current_org_id: user.current_org_id || '',
+        })
+        canViewAllKnowledgeBases = ability.can('read', PermissionSubjects.KnowledgeBase)
+      } catch {
+        // Fall back to role/session-permission checks above when ability building fails.
+      }
+    }
+
+    // Permission-driven admin scope: users with knowledge_base.view should see all tenant KBs.
+    if (canViewAllKnowledgeBases) {
       return ModelFactory.knowledgeBase.findByTenant(tenantId)
     }
 

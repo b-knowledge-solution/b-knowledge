@@ -147,6 +147,27 @@ function approxTokens(text: string): number {
   return Math.ceil(text.length / 4)
 }
 
+/**
+ * @description Extract and parse JSON payload from an LLM response that may include markdown fences.
+ * Returns null for empty/invalid payloads instead of throwing.
+ * @param raw - Raw LLM response content
+ * @returns Parsed JSON object or null when payload is empty/invalid
+ */
+function parseJsonFromLlmResponse(raw: string): unknown | null {
+  // Guard against blank or whitespace-only model output.
+  if (!raw || !raw.trim()) return null
+
+  // Remove fenced markdown wrappers before parsing.
+  const cleaned = raw.replace(/```json\s*|```/g, '').trim()
+  if (!cleaned) return null
+
+  try {
+    return JSON.parse(cleaned)
+  } catch {
+    return null
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
@@ -185,11 +206,25 @@ export class RagDeepResearchService {
         max_tokens: 256,
       })
 
-      // Handle both field name conventions (is_sufficient from RAGFlow, sufficient from legacy)
-      const parsed = JSON.parse(result.replace(/```json\s*|```/g, '').trim())
+      // Handle both field name conventions (is_sufficient from RAGFlow, sufficient from legacy).
+      const parsed = parseJsonFromLlmResponse(result)
+      if (!parsed || typeof parsed !== 'object') {
+        // Empty/truncated model JSON can happen under load; treat as sufficient fallback.
+        log.info('Sufficiency check returned non-JSON/empty payload, assuming sufficient', {
+          hasResult: !!result,
+          preview: result?.slice(0, 120) || '',
+        })
+        return { isSufficient: true, missingInfo: [] }
+      }
+
+      const parsedObj = parsed as Record<string, unknown>
       return {
-        isSufficient: !!(parsed.is_sufficient ?? parsed.sufficient),
-        missingInfo: Array.isArray(parsed.missing_information) ? parsed.missing_information : Array.isArray(parsed.missing) ? parsed.missing : [],
+        isSufficient: !!(parsedObj.is_sufficient ?? parsedObj.sufficient),
+        missingInfo: Array.isArray(parsedObj.missing_information)
+          ? (parsedObj.missing_information as string[])
+          : Array.isArray(parsedObj.missing)
+            ? (parsedObj.missing as string[])
+            : [],
       }
     } catch (err) {
       log.warn('Sufficiency check failed, assuming sufficient', { error: String(err) })
@@ -235,8 +270,16 @@ export class RagDeepResearchService {
       })
 
       // Parse response: RAGFlow format has { reasoning, questions: [...] }
-      const parsed = JSON.parse(result.replace(/```json\s*|```/g, '').trim())
-      const questions = Array.isArray(parsed) ? parsed : Array.isArray(parsed.questions) ? parsed.questions : []
+      const parsed = parseJsonFromLlmResponse(result)
+      if (!parsed) return []
+
+      const parsedObj = parsed as Record<string, unknown>
+      const questions = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsedObj.questions)
+          ? parsedObj.questions
+          : []
+
       return questions.filter(
         (item: any) => item.question && item.query
       )

@@ -63,6 +63,17 @@ function getClient(): Client {
  */
 export class RagSearchService {
     /**
+     * @description Detect whether an OpenSearch error indicates an invalid kNN vector mapping.
+     * @param {unknown} error - Error thrown by OpenSearch client
+     * @returns {boolean} True when the error matches known knn_vector mapping/type failures
+     */
+    private isVectorFieldTypeError(error: unknown): boolean {
+        const message = String(error || '')
+        return message.includes('is not knn_vector type')
+            || (message.includes('query_shard_exception') && message.includes('knn'))
+    }
+
+    /**
      * @description Build combined access filters including optional ABAC filters.
      * Note: Tenant isolation is already guaranteed by the index name (`knowledge_{tenantId}`).
      * We MUST NOT filter by `tenant_id` field here, because the Python RAG worker
@@ -334,7 +345,22 @@ export class RagSearchService {
             return textResult
         }
 
-        const semanticResult = await this.semanticSearch(tenantId, datasetId, queryVector, topK, threshold, extraFilters, abacFilters, highlight)
+        let semanticResult: { chunks: ChunkResult[]; total: number }
+        try {
+            semanticResult = await this.semanticSearch(tenantId, datasetId, queryVector, topK, threshold, extraFilters, abacFilters, highlight)
+        } catch (error: unknown) {
+            // Fall back to full-text when vector field mapping is incompatible for this index.
+            if (this.isVectorFieldTypeError(error)) {
+                log.warn('Semantic scoring skipped due incompatible vector field mapping', {
+                    tenantId,
+                    datasetId,
+                    vectorDimension: queryVector.length,
+                    error: String(error),
+                })
+                return textResult
+            }
+            throw error
+        }
 
         // Apply weighted scoring: vectorWeight controls the balance
         const textWeight = 1 - vectorWeight
@@ -424,7 +450,22 @@ export class RagSearchService {
                 if (!queryVector?.length) {
                     result = await this.fullTextSearch(tenantId, datasetId, req.query, topK, extraFilters, abacFilters, '30%', highlight)
                 } else {
-                    result = await this.semanticSearch(tenantId, datasetId, queryVector, topK, threshold, extraFilters, abacFilters, highlight)
+                    try {
+                        result = await this.semanticSearch(tenantId, datasetId, queryVector, topK, threshold, extraFilters, abacFilters, highlight)
+                    } catch (error: unknown) {
+                        // Degrade to full-text instead of failing the whole request on mapping drift.
+                        if (this.isVectorFieldTypeError(error)) {
+                            log.warn('Semantic search failed due incompatible vector field mapping, falling back to full-text', {
+                                tenantId,
+                                datasetId,
+                                vectorDimension: queryVector.length,
+                                error: String(error),
+                            })
+                            result = await this.fullTextSearch(tenantId, datasetId, req.query, topK, extraFilters, abacFilters, '30%', highlight)
+                        } else {
+                            throw error
+                        }
+                    }
                 }
                 break
             case 'hybrid':
@@ -590,6 +631,22 @@ export class RagSearchService {
             })
         } catch (err: any) {
             if (String(err).includes('index_not_found_exception')) return { chunks: [], total: 0 }
+            // Some indices may have mismatched vector field mappings (e.g. q_1024_vec not knn_vector).
+            // In that case, retry with full-text to keep retrieval functional.
+            if (method !== 'full_text' && queryVector?.length && this.isVectorFieldTypeError(err)) {
+                log.warn('Cross-dataset semantic search failed due incompatible vector field mapping, falling back to full-text', {
+                    tenantId,
+                    vectorDimension: queryVector.length,
+                    datasetCount: kbIds.length,
+                    error: String(err),
+                })
+
+                const fallbackRequest: SearchRequest = {
+                    ...req,
+                    method: 'full_text',
+                }
+                return this.searchMultipleDatasets(tenantId, cappedIds, fallbackRequest, null, abacFilters, highlight)
+            }
             throw err
         }
 

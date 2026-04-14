@@ -75,6 +75,10 @@ interface ChatAssistantConfigProps {
   onSave: (data: CreateAssistantPayload) => void
   /** Existing dialog data for editing (null for new) */
   dialog?: ChatAssistant | null
+  /** Initial name prefilled from upstream create flow (create mode only) */
+  initialName?: string
+  /** Initial description prefilled from upstream create flow (create mode only) */
+  initialDescription?: string
   /** Available datasets for selection */
   datasets?: KnowledgeBaseItem[]
   /** Available knowledge bases for selection */
@@ -100,6 +104,8 @@ function ChatAssistantConfig({
   onClose,
   onSave,
   dialog,
+  initialName = '',
+  initialDescription = '',
   datasets = [],
   knowledgeBases = [],
 }: ChatAssistantConfigProps) {
@@ -207,8 +213,8 @@ function ChatAssistantConfig({
       if (pc.metadata_filter) setMetadataFilter(pc.metadata_filter)
     } else {
       // Reset all state for new assistant
-      setName('')
-      setDescription('')
+      setName(initialName)
+      setDescription(initialDescription)
       setSelectedKbs([])
       setIsPublic(false)
       setLanguage('')
@@ -240,7 +246,7 @@ function ChatAssistantConfig({
       })
       setMetadataFilter({ logic: 'and', conditions: [] })
     }
-  }, [dialog, open])
+  }, [dialog, open, initialName, initialDescription])
 
   /**
    * @description Validate and submit the form, building a full prompt config payload.

@@ -68,45 +68,55 @@ flowchart TD
 | Embedding | Chunk text | Float vectors | BGE-M3, text-embedding-3 | Model selection, batch size |
 | Indexing | Vectors + text | OpenSearch docs | OpenSearch 3.5 | Index settings, similarity metric |
 
-## Supported Parsers (18)
+## Supported Parsers (20)
 
-| Parser | File Types | Method |
-|--------|-----------|--------|
-| PDF (DeepDoc) | `.pdf` | Layout analysis + OCR |
-| PDF (Basic) | `.pdf` | PyMuPDF text extraction |
-| DOCX | `.docx` | python-docx |
-| PPTX | `.pptx` | python-pptx |
-| XLSX/CSV | `.xlsx`, `.csv` | openpyxl / pandas |
-| HTML | `.html`, `.htm` | BeautifulSoup |
-| Markdown | `.md` | markdown-it |
-| Plain Text | `.txt`, `.log` | Direct read |
-| Image | `.png`, `.jpg`, `.tiff` | Tesseract OCR |
-| Audio | `.mp3`, `.wav` | Whisper STT |
-| JSON | `.json` | Structured parse |
-| XML | `.xml` | ElementTree |
-| Email | `.eml` | email parser |
-| Code | `.py`, `.js`, `.ts` | Syntax-aware split |
-| LaTeX | `.tex` | LaTeX parser |
-| EPUB | `.epub` | EPUB reader |
-| RTF | `.rtf` | RTF parser |
-| ODT | `.odt` | LibreOffice |
+The `FACTORY` mapping in `task_executor.py` registers all 20 parser types:
 
-## Advanced RAG Features
+| Parser ID | File Types | Method |
+|-----------|-----------|--------|
+| `naive` / `general` | pdf, docx, txt, html, md, xml | General-purpose text extraction (DeepDoc, MinerU, Docling, PaddleOCR, or PlainText layout engines) |
+| `paper` | pdf | Academic/research paper extraction |
+| `book` | pdf, docx, epub | Long-form book content with chapter detection |
+| `presentation` | pptx, ppt | Slide-by-slide extraction with speaker notes |
+| `manual` | pdf, docx | Technical manual/guide parsing |
+| `laws` | pdf, docx | Legal/regulatory document parsing |
+| `qa` | txt, md, json | Question-answer pair detection |
+| `table` | xlsx, xls, csv, tsv | Tabular data with sheet iteration |
+| `resume` | pdf, docx | Resume/CV section detection |
+| `picture` | png, jpg, jpeg, tiff, bmp | OCR text extraction + vision model description |
+| `one` | any | Single-chunk mode (entire document as one chunk) |
+| `audio` | mp3, wav, flac, ogg | Speech-to-text transcription |
+| `email` | eml, msg | Email header parsing + attachment extraction |
+| `knowledge_graph` | any (maps to naive) | GraphRAG entity/relation extraction |
+| `tag` | txt, md | Tag-delimited content splitting |
+| `code` | py, js, ts, java, go, rs, c, cpp, rb | Syntax-aware source code splitting |
+| `openapi` | json, yaml | OpenAPI/Swagger spec extraction |
+| `adr` | json, yaml, md | Architecture Decision Record parsing |
+| `clinical` | pdf | Clinical/medical document parsing |
+| `sdlc_checklist` | md, json | SDLC checklist extraction |
+
+## Advanced RAG Features (Optional Steps)
+
+Beyond the core 7-step pipeline, two optional advanced steps can be enabled per dataset:
 
 ```mermaid
 graph TD
-    subgraph "GraphRAG"
+    subgraph "GraphRAG (Optional)"
         GR1[Entity Extraction] --> GR2[Relation Extraction]
-        GR2 --> GR3[Knowledge Graph Build]
-        GR3 --> GR4[Graph-Augmented Retrieval]
+        GR2 --> GR3[Community Detection - Leiden]
+        GR3 --> GR4[Community Report Generation]
+        GR4 --> GR5[Graph-Augmented Retrieval]
     end
 
-    subgraph "RAPTOR"
-        RP1[Leaf Chunks] --> RP2[Cluster Chunks]
-        RP2 --> RP3[Summarize Clusters]
-        RP3 --> RP4[Hierarchical Tree Index]
+    subgraph "RAPTOR (Optional)"
+        RP1[Leaf Chunks] --> RP2[Cluster via GMM]
+        RP2 --> RP3[Summarize Clusters via LLM]
+        RP3 --> RP4[Recurse: re-cluster summaries]
+        RP4 --> RP5[Hierarchical Tree Index]
     end
 ```
+
+Both are configured via `parser_config.graphrag` and `parser_config.raptor` on the dataset record. The task executor dispatches them as separate pipeline task types (`PipelineTaskType.GRAPH_RAG` and `PipelineTaskType.RAPTOR`).
 
 ## Concurrency Model
 

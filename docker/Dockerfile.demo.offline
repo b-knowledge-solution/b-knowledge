@@ -11,7 +11,7 @@
 #                            e.g. nexus.example.com:8083
 #   NEXUS_NPM_REGISTRY    — Full URL to Nexus npm proxy/group repo
 #                            e.g. http://nexus.example.com:8081/repository/npm-group/
-#   NEXUS_APT_MIRROR       — Full URL to Nexus APT proxy (Debian bullseye)
+#   NEXUS_APT_MIRROR       — Full URL to Nexus APT proxy (Debian bookworm)
 #                            e.g. http://nexus.example.com:8081/repository/apt-debian-proxy/
 #   RAGFLOW_DEPS_IMAGE     — Local registry path to ragflow_deps image
 #                            e.g. nexus.example.com:8083/infiniflow/ragflow_deps:latest
@@ -19,11 +19,11 @@
 #                            e.g. nexus.example.com:8083/kb-worker:latest
 #
 # Prerequisites — push to local registry first:
-#   docker tag python:3.11-slim-bullseye  <NEXUS_REGISTRY>/python:3.11-slim-bullseye
+#   docker tag python:3.11-slim-bookworm  <NEXUS_REGISTRY>/python:3.11-slim-bookworm
 #   docker tag node:22-alpine             <NEXUS_REGISTRY>/node:22-alpine
 #   docker tag node:22-slim               <NEXUS_REGISTRY>/node:22-slim
 #   docker tag infiniflow/ragflow_deps:latest <NEXUS_REGISTRY>/infiniflow/ragflow_deps:latest
-#   docker push <NEXUS_REGISTRY>/python:3.11-slim-bullseye
+#   docker push <NEXUS_REGISTRY>/python:3.11-slim-bookworm
 #   docker push <NEXUS_REGISTRY>/node:22-alpine
 #   docker push <NEXUS_REGISTRY>/node:22-slim
 #   docker push <NEXUS_REGISTRY>/infiniflow/ragflow_deps:latest
@@ -89,8 +89,8 @@ RUN rm -rf be/node_modules && \
 # Copy BE runtime assets (public/icons etc.)
 COPY be/public ./be/public
 
-# ── Stage 3: Runtime — Debian bullseye with all services ────────────────────
-FROM ${NEXUS_REGISTRY}/python:3.11-slim-bullseye
+# ── Stage 3: Runtime — Debian bookworm with all services ────────────────────
+FROM ${NEXUS_REGISTRY}/python:3.11-slim-bookworm
 
 ARG NEXUS_APT_MIRROR=http://nexus.example.com:8081/repository/apt-debian-proxy/
 
@@ -99,12 +99,12 @@ ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /app
 
 # Overwrite APT sources to point exclusively at the Nexus Debian proxy.
-RUN printf 'deb %s bullseye main contrib non-free\n\
-deb %s bullseye-security main contrib non-free\n\
-deb %s bullseye-updates main contrib non-free\n' \
+RUN printf 'deb %s bookworm main contrib non-free non-free-firmware\n\
+deb %s bookworm-security main contrib non-free non-free-firmware\n\
+deb %s bookworm-updates main contrib non-free non-free-firmware\n' \
     "${NEXUS_APT_MIRROR}" "${NEXUS_APT_MIRROR}" "${NEXUS_APT_MIRROR}" \
     > /etc/apt/sources.list && \
-    apt-get update && apt-get install -y --no-install-recommends \
+    apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
         # Web server and process management
         nginx \
         tini \
@@ -146,9 +146,30 @@ RUN --mount=type=bind,from=ragflow_deps,source=/huggingface.co,target=/huggingfa
 
 # Copy NLTK data, tika JAR, and tiktoken encoding from ragflow_deps
 RUN --mount=type=bind,from=ragflow_deps,source=/,target=/deps \
-    cp -r /deps/nltk_data /root/ && \
-    cp /deps/tika-server-standard-3.2.3.jar /deps/tika-server-standard-3.2.3.jar.md5 /app/advance-rag/ && \
-    cp /deps/cl100k_base.tiktoken /app/advance-rag/9b5ad71b2ce5302211f9c61530b329a4922fc6a4
+        NLTK_DIR="$(find /deps -type d -name nltk_data | head -n 1)" && \
+        if [ -n "$NLTK_DIR" ]; then \
+            cp -r "$NLTK_DIR" /root/; \
+        else \
+            echo "Missing nltk_data directory in ragflow_deps image" >&2; \
+            exit 1; \
+        fi && \
+        TIKA_JAR="$(find /deps -type f -name 'tika-server-standard-*.jar' | head -n 1)" && \
+        if [ -n "$TIKA_JAR" ]; then \
+            cp "$TIKA_JAR" /app/advance-rag/tika-server-standard-3.2.3.jar; \
+            if [ -f "${TIKA_JAR}.md5" ]; then \
+                cp "${TIKA_JAR}.md5" /app/advance-rag/tika-server-standard-3.2.3.jar.md5; \
+            fi; \
+        else \
+            echo "Missing tika-server-standard JAR in ragflow_deps image" >&2; \
+            exit 1; \
+        fi && \
+        TIKTOKEN_FILE="$(find /deps -type f -name cl100k_base.tiktoken | head -n 1)" && \
+        if [ -n "$TIKTOKEN_FILE" ]; then \
+            cp "$TIKTOKEN_FILE" /app/advance-rag/9b5ad71b2ce5302211f9c61530b329a4922fc6a4; \
+        else \
+            echo "Missing cl100k_base.tiktoken in ragflow_deps image" >&2; \
+            exit 1; \
+        fi
 
 # ── Copy built frontend assets ──────────────────────────────────────────────
 RUN rm -f /etc/nginx/sites-enabled/default

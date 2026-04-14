@@ -1334,6 +1334,9 @@ export interface UserContext {
     id: string;
     email: string;
     role?: string;
+    permissions?: string[] | string | null;
+    is_superuser?: boolean | null;
+    current_org_id?: string;
     ip?: string;
 }
 

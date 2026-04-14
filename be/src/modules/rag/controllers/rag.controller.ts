@@ -47,7 +47,14 @@ export class RagController {
      */
     async listDatasets(req: Request, res: Response): Promise<void> {
         try {
-            const datasets = await ragService.getAvailableDatasets(req.user);
+            const datasets = await ragService.getAvailableDatasets(
+                req.user
+                    ? {
+                        ...req.user,
+                        current_org_id: req.session?.currentOrgId || req.user.current_org_id || '',
+                    }
+                    : undefined,
+            );
             res.json(datasets);
         } catch (error) {
             log.error('Failed to list datasets', { error: String(error) });

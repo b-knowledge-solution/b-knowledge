@@ -1,5 +1,7 @@
 # Database Design: Chat & Search Tables
 
+> Updated: 2026-04-14
+
 ## Chat Tables ER Diagram
 
 ```mermaid
@@ -11,9 +13,9 @@ erDiagram
         varchar icon "varchar(256)"
         jsonb kb_ids "default '[]'"
         varchar llm_id "varchar(128)"
-        jsonb prompt_config "system_prompt, temperature, top_p, max_tokens"
-        boolean is_public
-        text memory_id
+        jsonb prompt_config "system_prompt, temperature, top_p, max_tokens, language"
+        boolean is_public "default false"
+        text memory_id FK "memories, nullable"
         text created_by FK "users SET NULL"
         text updated_by FK "users SET NULL"
         timestamp created_at
@@ -92,9 +94,11 @@ erDiagram
         text id PK
         varchar name "varchar(128)"
         text description
+        varchar avatar "varchar(64), nullable, added 20260325"
+        text empty_response "nullable, added 20260325"
         jsonb dataset_ids "default '[]'"
         jsonb search_config "similarity_threshold, top_k, rerank, weights"
-        boolean is_public
+        boolean is_public "default false"
         text created_by FK "users SET NULL"
         text updated_by FK "users SET NULL"
         timestamp created_at
@@ -220,7 +224,7 @@ erDiagram
 
 ### Chat Assistants
 
-A chat assistant is an AI conversation agent configured with an LLM model, system prompt, and linked knowledge bases. The `prompt_config` JSONB stores the system prompt template, temperature, top_p, max_tokens, and other generation parameters. `kb_ids` is a JSONB array linking the assistant to knowledge bases for RAG retrieval. The `icon` column stores the assistant's display icon path. The `is_public` boolean controls whether the assistant is visible to all users. The `memory_id` links to an optional memory configuration for context retention across sessions.
+A chat assistant is an AI conversation agent configured with an LLM model, system prompt, and linked knowledge bases. The `prompt_config` JSONB stores the system prompt template, temperature, top_p, max_tokens, language, and other generation parameters. `kb_ids` is a JSONB array linking the assistant to knowledge bases for RAG retrieval. The `icon` column stores the assistant's display icon path. The `is_public` boolean controls whether the assistant is visible to all users. The `memory_id` is a nullable FK to the `memories` table, linking to an optional memory configuration for context retention across sessions.
 
 ### Chat Sessions & Messages
 
@@ -229,6 +233,10 @@ Sessions group messages into conversations. Each session has a `title` and belon
 ### Chat Files
 
 Files uploaded within chat sessions (e.g., images, documents for analysis). Each file is linked to a `session_id` and optionally a `message_id`. Files are stored in RustFS with `s3_key` and `s3_bucket` for retrieval. The `original_name` preserves the user's filename, and `expires_at` supports automatic cleanup of temporary files.
+
+### Search Apps
+
+Search app configurations with linked datasets and search parameters. The `avatar` column (varchar 64, nullable, added by migration `20260325101152`) stores an emoji icon for UI display. The `empty_response` column (text, nullable, same migration) stores a custom message shown when search returns no results. The `is_public` boolean controls visibility to all users.
 
 ### Access Control (chat_assistant_access, search_app_access)
 
@@ -244,7 +252,7 @@ History tables store shared or archived session data. Each history session has a
 
 ### answer_feedback
 
-Tracks user feedback on AI responses across both chat and search. The `source` column (chat or search) and `source_id` identify the originating assistant or search app. Stores the original `query`, `answer`, and `chunks_used` JSONB for analysis. The `thumbup` boolean captures positive/negative sentiment, with an optional free-text `comment`. The `trace_id` links to observability traces for debugging.
+Tracks user feedback on AI responses across chat, search, and agent sources. The `source` column (check constraint: `chat`, `search`, `agent` -- extended by migration `20260331000000`) and `source_id` identify the originating assistant, search app, or agent run. Stores the original `query`, `answer`, and `chunks_used` JSONB for analysis. The `thumbup` boolean captures positive/negative sentiment, with an optional free-text `comment`. The `trace_id` links to observability traces for debugging.
 
 ### query_log
 

@@ -4,7 +4,7 @@ FROM debian:bookworm-slim
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install LibreOffice (calc, writer, impress), Python 3, and python3-uno bridge
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     libreoffice-calc \
     libreoffice-writer \
     libreoffice-impress \

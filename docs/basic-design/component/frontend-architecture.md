@@ -2,7 +2,7 @@
 
 ## Overview
 
-The B-Knowledge frontend is a React 19 SPA built with TypeScript, Vite 7.3, TanStack Query, Tailwind CSS, and shadcn/ui. It follows a feature-module architecture with 24 top-level feature areas, central route metadata in `routeConfig.ts`, and i18n support for three locales.
+The B-Knowledge frontend is a React 19 SPA built with TypeScript, Vite 7.3, TanStack Query, Tailwind CSS, and shadcn/ui. It follows a feature-module architecture with 25 top-level feature areas, central route metadata in `routeConfig.ts`, and i18n support for three locales.
 
 ## Application Component Tree
 
@@ -72,9 +72,62 @@ graph LR
     Auth -->|unauthenticated| Login[Login Page]
 ```
 
-Pages are lazy-loaded via `React.lazy()` and defined in a central `routeConfig.ts` file. The `MainLayout` component provides the sidebar navigation and renders child routes via `<Outlet />`.
+Pages are lazy-loaded via `React.lazy()` and defined in a central `routeConfig.ts` file. The `MainLayout` component provides the sidebar navigation and renders child routes via `<Outlet />`. Route constants are centralized in `adminRoutes.ts`.
 
-Current route families include chat, search, search share pages, datasets, projects, users, teams, agent studio, memory studio, audit, dashboard, broadcasts, llm providers, and system tools.
+### Route Map
+
+**User-facing routes:**
+
+| Route | Purpose |
+|-------|---------|
+| `/chat` | AI Chat conversation page |
+| `/search` | AI Search page |
+| `/search/apps/:appId` | Search app-specific page |
+| `/search/share/:token` | Public shared search page |
+
+**Admin Data Studio:**
+
+| Route | Purpose |
+|-------|---------|
+| `/admin/data-studio/knowledge-base` | Knowledge base list (admin home) |
+| `/admin/data-studio/datasets` | Dataset list |
+| `/admin/data-studio/datasets/:id` | Dataset detail |
+| `/admin/data-studio/datasets/:id/documents/:docId/chunks` | Document chunk detail |
+| `/admin/code-graph/:kbId` | Code graph for a knowledge base |
+
+**Admin Agent Studio:**
+
+| Route | Purpose |
+|-------|---------|
+| `/admin/agent-studio/agents` | Agent list |
+| `/admin/agent-studio/agents/:id` | Agent canvas (create/edit) |
+| `/admin/agent-studio/memory` | Memory pool list |
+| `/admin/agent-studio/memory/:id` | Memory pool detail |
+| `/admin/agent-studio/chat-assistants` | Chat assistant management |
+| `/admin/agent-studio/search-apps` | Search app management |
+| `/admin/agent-studio/histories` | Global histories browser |
+
+**Admin IAM:**
+
+| Route | Purpose |
+|-------|---------|
+| `/admin/iam/users` | User management |
+| `/admin/iam/users/:id` | User detail |
+| `/admin/iam/teams` | Team management |
+| `/admin/iam/permissions` | Permission matrix |
+| `/admin/iam/effective-access` | Effective access inspector |
+
+**Admin System:**
+
+| Route | Purpose |
+|-------|---------|
+| `/admin/system/dashboard` | Dashboard analytics |
+| `/admin/system/audit-log` | Audit log |
+| `/admin/system/system-tools` | System tools |
+| `/admin/system/system-monitor` | System monitor |
+| `/admin/system/tokenizer` | Tokenizer tool |
+| `/admin/system/broadcast-messages` | Broadcast messages |
+| `/admin/system/llm-providers` | LLM provider management |
 
 ## State Management Strategy
 
@@ -107,8 +160,23 @@ graph TD
 | Server state | TanStack Query | API data, caching, background sync |
 | Local UI state | `useState` | Form inputs, modals, toggles |
 | URL state | URL search params | Filterable/sortable views (bookmarkable) |
+| App-wide client state | React Context | Auth, theme, settings, guidelines |
+| Real-time | Socket.IO | Permission catalog updates, notifications, agent debug events |
 
 > No form libraries are used. Forms rely on native `useState` for simplicity.
+
+## Permission Gating
+
+The frontend implements two complementary permission-gating approaches:
+
+| Approach | Component/Hook | When to Use |
+|----------|---------------|-------------|
+| CASL subject checks | `<Can I="action" a="Subject">` / `useAppAbility()` | Instance-aware or class-level subject checks |
+| Flat catalog keys | `useHasPermission(PERMISSION_KEYS.X)` | Feature capability gates with no instance reasoning |
+
+Permission data is loaded from two backend endpoints:
+- `GET /api/auth/abilities` provides serialized CASL rules for `<Can>` checks
+- `GET /api/permissions/catalog` provides the key catalog for `useHasPermission()`
 
 ## i18n (Internationalization)
 
@@ -159,7 +227,7 @@ The compiler determines optimal re-render boundaries at build time.
 | `lib/` | Shared utilities (api client, auth helpers) |
 | `utils/` | Pure utility functions (formatting, validation) |
 
-## Feature Module List (24 Feature Areas)
+## Feature Module List (25 Feature Areas)
 
 | Module | Domain |
 |--------|--------|
@@ -178,10 +246,11 @@ The compiler determines optimal re-render boundaries at build time.
 | `glossary` | Glossary UI |
 | `guideline` | Product guideline/help system |
 | `histories` | History browsing |
+| `knowledge-base` | Knowledge base management UI |
 | `landing` | Landing pages |
 | `llm-provider` | LLM configuration |
 | `memory` | Memory pool management |
-| `projects` | Project management |
+| `permissions` | Permission matrix, overrides, grants, effective access |
 | `search` | Search apps, queries |
 | `search-widget` | Public search embed UI |
 | `system` | System monitor and tools UI |

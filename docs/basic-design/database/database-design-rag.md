@@ -1,6 +1,7 @@
 # Database Design: RAG Tables
 
 > RAG-side storage surfaces that interact with the current permission and resource-grant model.
+> Updated: 2026-04-14
 
 ## 1. Overview
 
@@ -49,17 +50,45 @@ erDiagram
 
     datasets {
         text id PK
-        text tenant_id
-        text knowledge_base_id
-        text document_category_id
+        varchar name "varchar(128)"
+        text description
+        varchar language "default English"
+        varchar embedding_model "varchar(128)"
+        varchar parser_id "default naive"
+        jsonb parser_config "default '{}'"
+        jsonb access_control "default '{public: true}'"
+        varchar status "default active"
+        int doc_count "default 0"
+        int chunk_count "default 0"
+        int token_count "default 0"
+        int pagerank "default 0"
+        text parent_dataset_id FK "versioning"
+        int version_number "nullable"
+        text version_label "nullable"
+        text tenant_id "nullable"
+        float similarity_threshold "default 0.2"
+        float vector_similarity_weight "default 0.3"
+        text created_by FK
+        text updated_by FK
         timestamptz created_at
         timestamptz updated_at
     }
 
     documents {
         text id PK
-        text dataset_id
-        text tenant_id
+        text dataset_id FK "CASCADE"
+        varchar name "varchar(255)"
+        bigint size "default 0"
+        varchar type "varchar(32)"
+        varchar status "default pending"
+        float progress "default 0"
+        text progress_msg
+        int chunk_count "default 0"
+        int token_count "default 0"
+        varchar storage_path "varchar(512)"
+        varchar source_doc_id "varchar(512), delta sync"
+        timestamp source_updated_at "delta sync"
+        text created_by FK
         timestamptz created_at
         timestamptz updated_at
     }

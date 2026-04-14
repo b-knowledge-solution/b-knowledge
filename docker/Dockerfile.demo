@@ -1,7 +1,7 @@
 # ============================================================
 # Demo All-in-One Dockerfile
 # ============================================================
-# Builds a single Debian bullseye image containing ALL B-Knowledge
+# Builds a single Debian bookworm image containing ALL B-Knowledge
 # application services: Frontend (nginx), Backend (Node.js),
 # RAG Worker (Python), and Converter (Python + LibreOffice).
 #
@@ -59,12 +59,12 @@ COPY be/public ./be/public
 # ── Stage 2: Python builder — install all pip packages ───────────────────────
 # Build Python packages on the same distro family used by the final image so
 # native modules and stdlib extensions resolve against matching system libs.
-FROM python:3.11-slim-bullseye AS python-builder
+FROM python:3.11-slim-bookworm AS python-builder
 
 WORKDIR /build
 
 # Install build deps for compiled Python packages (psycopg2, etc.)
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -84,15 +84,15 @@ RUN pip install --no-cache-dir -e "./advance-rag[all]" 2>/dev/null || \
 COPY converter/requirements.txt ./converter/
 RUN pip install --no-cache-dir -r ./converter/requirements.txt
 
-# ── Stage 3: Runtime — Debian bullseye with all services ─────────────────────
-FROM python:3.11-slim-bullseye
+# ── Stage 3: Runtime — Debian bookworm with all services ─────────────────────
+FROM python:3.11-slim-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /app
 
 # Install system runtime dependencies only.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     # Web server and process management
     nginx \
     tini \
@@ -134,9 +134,30 @@ RUN --mount=type=bind,from=ragflow_deps,source=/huggingface.co,target=/huggingfa
 
 # Copy NLTK data, tika JAR, and tiktoken encoding from ragflow_deps
 RUN --mount=type=bind,from=ragflow_deps,source=/,target=/deps \
-    cp -r /deps/nltk_data /root/ && \
-    cp /deps/tika-server-standard-3.2.3.jar /deps/tika-server-standard-3.2.3.jar.md5 /app/advance-rag/ && \
-    cp /deps/cl100k_base.tiktoken /app/advance-rag/9b5ad71b2ce5302211f9c61530b329a4922fc6a4
+        NLTK_DIR="$(find /deps -type d -name nltk_data | head -n 1)" && \
+        if [ -n "$NLTK_DIR" ]; then \
+            cp -r "$NLTK_DIR" /root/; \
+        else \
+            echo "Missing nltk_data directory in ragflow_deps image" >&2; \
+            exit 1; \
+        fi && \
+        TIKA_JAR="$(find /deps -type f -name 'tika-server-standard-*.jar' | head -n 1)" && \
+        if [ -n "$TIKA_JAR" ]; then \
+            cp "$TIKA_JAR" /app/advance-rag/tika-server-standard-3.2.3.jar; \
+            if [ -f "${TIKA_JAR}.md5" ]; then \
+                cp "${TIKA_JAR}.md5" /app/advance-rag/tika-server-standard-3.2.3.jar.md5; \
+            fi; \
+        else \
+            echo "Missing tika-server-standard JAR in ragflow_deps image" >&2; \
+            exit 1; \
+        fi && \
+        TIKTOKEN_FILE="$(find /deps -type f -name cl100k_base.tiktoken | head -n 1)" && \
+        if [ -n "$TIKTOKEN_FILE" ]; then \
+            cp "$TIKTOKEN_FILE" /app/advance-rag/9b5ad71b2ce5302211f9c61530b329a4922fc6a4; \
+        else \
+            echo "Missing cl100k_base.tiktoken in ragflow_deps image" >&2; \
+            exit 1; \
+        fi
 
 # ── Copy built frontend assets ──────────────────────────────────────────────
 RUN rm -f /etc/nginx/sites-enabled/default

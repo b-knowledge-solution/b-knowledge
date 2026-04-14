@@ -1,6 +1,7 @@
 # Database Design: Core Tables
 
 > Current tenant, identity, and authorization schema aligned with the live permission-system implementation.
+> Updated: 2026-04-14
 
 ## 1. Overview
 
@@ -21,19 +22,30 @@ erDiagram
     users {
         text id PK
         text email UK
-        text role
-        boolean is_superuser
-        text current_org_id
-        jsonb permissions "legacy compatibility payload"
+        text display_name
+        text role "super-admin | admin | leader | user"
+        text permissions "legacy JSON payload"
+        text department
+        text job_title
+        text mobile_phone
+        text password_hash "nullable, bcrypt"
+        text avatar
+        string language "default English"
+        boolean is_superuser "default false"
+        text created_by
+        text updated_by
         timestamptz created_at
         timestamptz updated_at
     }
 
     teams {
         text id PK
-        text tenant_id
         text name
-        jsonb permissions "team-local compatibility payload"
+        text project_name
+        text description
+        jsonb permissions "default '[]', added Apr 13"
+        text created_by
+        text updated_by
         timestamptz created_at
         timestamptz updated_at
     }
@@ -41,7 +53,23 @@ erDiagram
     user_teams {
         text user_id PK
         text team_id PK
+        text role "default 'member'"
         timestamptz joined_at
+    }
+
+    user_ip_history {
+        int id PK
+        text user_id FK
+        text ip_address
+        timestamptz last_accessed_at
+    }
+
+    system_configs {
+        text key PK
+        text value
+        text created_by
+        text updated_by
+        timestamptz updated_at
     }
 
     permissions {
@@ -106,6 +134,7 @@ erDiagram
 
     users ||--o{ user_teams : belongs_to
     teams ||--o{ user_teams : contains
+    users ||--o{ user_ip_history : tracks
     users ||--o{ user_permission_overrides : receives
 ```
 
@@ -193,22 +222,82 @@ The `users` table still contains legacy compatibility fields, but its live meani
 
 | Column | Live purpose |
 |--------|--------------|
-| `role` | Selects the baseline role whose defaults are loaded from `role_permissions` |
+| `role` | Selects the baseline role whose defaults are loaded from `role_permissions`. Values: `super-admin`, `admin`, `leader`, `user` |
 | `is_superuser` | Platform-level bypass used by the ability service |
-| `current_org_id` | Current active tenant/org used for tenant-scoped ability evaluation |
 | `permissions` | Legacy JSON payload that still exists in surrounding code paths; not the canonical permission matrix source |
+| `password_hash` | Nullable bcrypt hash for local-auth users; Azure AD users remain null |
+| `display_name` | Required display name |
 
 ### 4.2 `teams` and `user_teams`
 
 Teams now participate in two different ways:
 
 - `user_teams` supplies team membership so `resource_grants` can target a team principal
-- `teams.permissions` exists as a compatibility/local team-management field after the 2026-04-13 migration, but it is **not** the canonical permission matrix engine
+- `user_teams.role` stores the team-level role (default `'member'`; values: `leader`, `member`)
+- `teams.permissions` is a JSONB column (default `'[]'`) added by migration `20260413000000`. It stores an array of permission key strings directly on the team record, independent of member-level permissions
 
 For new permission-system work:
 
 - use `role_permissions`, `user_permission_overrides`, and `resource_grants`
 - treat `teams.permissions` as a local compatibility feature until its longer-term role is clarified
+
+### 4.3 `user_ip_history`
+
+Tracks user login IP addresses for security auditing.
+
+| Column | Meaning |
+|--------|---------|
+| `id` | Auto-incrementing integer primary key |
+| `user_id` | FK to `users.id` with `ON DELETE CASCADE` |
+| `ip_address` | IP address string |
+| `last_accessed_at` | Timestamp of last access from this IP |
+
+Unique constraint on `(user_id, ip_address)` prevents duplicate entries per user/IP pair.
+
+### 4.4 `system_configs`
+
+Key-value store for application settings.
+
+| Column | Meaning |
+|--------|---------|
+| `key` | Text primary key (setting name) |
+| `value` | Text value (required) |
+| `created_by` / `updated_by` | Audit trail |
+| `updated_at` | Last modification timestamp |
+
+### 4.5 `platform_policies`
+
+Super-admin managed ABAC policies for platform-wide governance.
+
+| Column | Meaning |
+|--------|---------|
+| `id` | Hex UUID text primary key |
+| `name` | Policy name (required) |
+| `description` | Optional description |
+| `rules` | JSONB array of policy rule definitions (default `'[]'`) |
+| `is_active` | Boolean toggle (default `true`) |
+
+## 4a. Role Constants
+
+### UserRole (migration 20260409 legacy cleanup)
+
+Migration `20260409093432_phase06_legacy_role_cleanup` renamed legacy values: `'superadmin'` to `'super-admin'`, `'member'` to `'user'`. The canonical values are defined in `be/src/shared/constants/roles.ts`:
+
+| Constant | Value |
+|----------|-------|
+| `UserRole.SUPER_ADMIN` | `'super-admin'` |
+| `UserRole.ADMIN` | `'admin'` |
+| `UserRole.LEADER` | `'leader'` |
+| `UserRole.USER` | `'user'` |
+
+### TeamRole
+
+| Constant | Value |
+|----------|-------|
+| `TeamRole.LEADER` | `'leader'` |
+| `TeamRole.MEMBER` | `'member'` |
+
+Note: `TeamRole.MEMBER` (`'member'`) on `user_teams.role` was intentionally preserved during the Phase 6 legacy cleanup. It is a separate domain from `UserRole`.
 
 ## 5. How the Permission Matrix Reads This Schema
 

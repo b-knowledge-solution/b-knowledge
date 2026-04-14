@@ -80,16 +80,15 @@ export default defineConfig(function (_a) {
         optimizeDeps: {
             exclude: ['tiktoken'],
         },
+        // Drop console/debugger at the esbuild transform stage (runs before Rollup)
+        esbuild: {
+            drop: ['console', 'debugger'],
+        },
         build: {
-            // Production optimizations
+            // Disable minification to avoid a production runtime TDZ regression in the bundled
+            // scroll-lock sidecar chunk (e.g. "Cannot access 'kb' before initialization").
             sourcemap: false,
-            minify: 'terser',
-            terserOptions: {
-                compress: {
-                    drop_console: true,
-                    drop_debugger: true,
-                },
-            },
+            minify: false,
             rollupOptions: {
                 output: {
                     manualChunks: {
@@ -97,6 +96,9 @@ export default defineConfig(function (_a) {
                         i18n: ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
                         ui: ['lucide-react', '@headlessui/react'],
                         tiktoken: ['js-tiktoken'],
+                        // Keep pdfjs-dist in a separate chunk so the PDF engine is only
+                        // loaded when the previewer is actually needed.
+                        pdfjs: ['pdfjs-dist'],
                     },
                 },
             },

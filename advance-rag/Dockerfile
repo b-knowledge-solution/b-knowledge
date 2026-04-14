@@ -3,7 +3,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # System dependencies for ONNX, PDF parsing, tika (requires JRE), etc.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     libgl1 \

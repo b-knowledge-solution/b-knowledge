@@ -852,6 +852,13 @@ export class ChatConversationService {
       // Runs before prompt assembly so the language instruction can be prepended to the system prompt.
       // This ensures the LLM responds in the same language as the user's question.
       const detectedLang = detectLanguage(content)
+      // Log a short normalized preview to debug misclassification without storing full user content.
+      const contentPreview = content.replace(/\s+/g, ' ').trim().slice(0, 120)
+      log.debug('Detected user input language', {
+        detected_language: detectedLang,
+        content_length: content.length,
+        content_preview: contentPreview,
+      })
       const langInstruction = buildLanguageInstruction(detectedLang)
 
       // Flag to skip retrieval pipeline (set when no KBs configured on assistant)

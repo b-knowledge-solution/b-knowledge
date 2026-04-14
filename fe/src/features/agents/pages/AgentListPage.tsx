@@ -19,7 +19,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigateWithLoader } from '@/components/NavigationLoader'
 import { useConfirm } from '@/components/ConfirmDialog'
 import { Plus, Search, Workflow } from 'lucide-react'
@@ -44,8 +44,10 @@ import {
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { globalMessage } from '@/lib/globalMessage'
+import { api } from '@/lib/api'
 import { buildAdminAgentCanvasPath } from '@/app/adminRoutes'
 import { queryKeys } from '@/lib/queryKeys'
+import type { KnowledgeBaseItem } from '@/components/knowledge-base-picker/KnowledgeBasePicker'
 
 // Agent feature imports
 import { useAgents, useCreateAgent, useDeleteAgent, useDuplicateAgent } from '../api/agentQueries'
@@ -170,6 +172,7 @@ export default function AgentListPage() {
   // Create dialog state
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [createForm, setCreateForm] = useState({ name: '', description: '', mode: 'agent' as AgentMode })
+  const [nextConfigPrefill, setNextConfigPrefill] = useState({ name: '', description: '' })
 
   // Chat config dialog state
   const [isChatConfigOpen, setIsChatConfigOpen] = useState(false)
@@ -225,6 +228,30 @@ export default function AgentListPage() {
   const { apps: searchApps, isLoading: searchLoading } = useSearchApps(
     shouldFetchSearch ? { search: searchTerm || undefined } : { search: '__skip_query__' },
   )
+
+  // Fetch available datasets/knowledge bases for create chat/search config dialogs.
+  const { data: rawDatasets = [] } = useQuery({
+    queryKey: queryKeys.datasets.list(),
+    queryFn: () => api.get<{ id: string; name: string; doc_count?: number }[]>('/api/rag/datasets'),
+  })
+  const { data: rawKnowledgeBases = [] } = useQuery({
+    queryKey: queryKeys.knowledgeBase.all,
+    queryFn: () => api.get<{ id: string; name: string; dataset_count?: number }[]>('/api/knowledge-base'),
+  })
+
+  // Map API payloads to the picker's unified item shape.
+  const datasetItems: KnowledgeBaseItem[] = rawDatasets.map((d) => ({
+    id: d.id,
+    name: d.name,
+    type: 'dataset',
+    docCount: d.doc_count,
+  }))
+  const knowledgeBaseItems: KnowledgeBaseItem[] = rawKnowledgeBases.map((kb) => ({
+    id: kb.id,
+    name: kb.name,
+    type: 'knowledgeBase',
+    docCount: kb.dataset_count,
+  }))
 
   // Merge all items into a unified list
   const allItems: AgentCardItem[] = [
@@ -309,6 +336,45 @@ export default function AgentListPage() {
   // --------------------------------------------------------------------------
 
   /**
+   * @description Reset create dialog form to default values.
+   */
+  const resetCreateForm = () => {
+    setCreateForm({ name: '', description: '', mode: 'agent' })
+  }
+
+  /**
+   * @description Close create dialog and ensure the next open starts blank.
+   */
+  const closeCreateDialog = () => {
+    setIsCreateOpen(false)
+    resetCreateForm()
+  }
+
+  /**
+   * @description Open create dialog from a clean blank state.
+   */
+  const openCreateDialog = () => {
+    resetCreateForm()
+    setIsCreateOpen(true)
+  }
+
+  /**
+   * @description Close chat config dialog and clear one-time prefill handoff.
+   */
+  const closeChatConfigDialog = () => {
+    setIsChatConfigOpen(false)
+    setNextConfigPrefill({ name: '', description: '' })
+  }
+
+  /**
+   * @description Close search config dialog and clear one-time prefill handoff.
+   */
+  const closeSearchConfigDialog = () => {
+    setIsSearchConfigOpen(false)
+    setNextConfigPrefill({ name: '', description: '' })
+  }
+
+  /**
    * @description Handle create form submission.
    * Agent/pipeline → create via agent API and navigate to canvas.
    * Chat → open ChatAssistantConfig dialog.
@@ -317,9 +383,15 @@ export default function AgentListPage() {
   const handleCreate = async () => {
     if (!createForm.name.trim()) return
 
+    const handoff = {
+      name: createForm.name.trim(),
+      description: createForm.description.trim(),
+    }
+
     // For chat mode, close create dialog and open chat config
     if (createForm.mode === 'chat') {
-      setIsCreateOpen(false)
+      setNextConfigPrefill(handoff)
+      closeCreateDialog()
       setEditingChat(null)
       setIsChatConfigOpen(true)
       return
@@ -327,7 +399,8 @@ export default function AgentListPage() {
 
     // For search mode, close create dialog and open search config
     if (createForm.mode === 'search') {
-      setIsCreateOpen(false)
+      setNextConfigPrefill(handoff)
+      closeCreateDialog()
       setEditingSearch(null)
       setIsSearchConfigOpen(true)
       return
@@ -337,12 +410,11 @@ export default function AgentListPage() {
     try {
       const desc = createForm.description.trim()
       const newAgent = await createAgent.mutateAsync({
-        name: createForm.name.trim(),
+        name: handoff.name,
         mode: createForm.mode,
         ...(desc ? { description: desc } : {}),
       })
-      setIsCreateOpen(false)
-      setCreateForm({ name: '', description: '', mode: 'agent' })
+      closeCreateDialog()
       globalMessage.success(t('agents.agentCreated'))
       // Navigate to the new agent's canvas
       navigateWithLoader(buildAdminAgentCanvasPath(newAgent.id))
@@ -592,7 +664,7 @@ export default function AgentListPage() {
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
           {t('agents.pageTitle')}
         </h1>
-        <Button onClick={() => setIsCreateOpen(true)}>
+        <Button onClick={openCreateDialog}>
           <Plus size={16} className="mr-1" />
           {t('agents.createAgent')}
         </Button>
@@ -692,7 +764,13 @@ export default function AgentListPage() {
       </Tabs>
 
       {/* Create Agent Dialog */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+      <Dialog open={isCreateOpen} onOpenChange={(open: boolean) => {
+        if (open) {
+          openCreateDialog()
+        } else {
+          closeCreateDialog()
+        }
+      }}>
         <DialogContent className="dark:bg-slate-900">
           <DialogHeader>
             <DialogTitle>{t('agents.createAgent')}</DialogTitle>
@@ -740,7 +818,7 @@ export default function AgentListPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+            <Button variant="outline" onClick={closeCreateDialog}>
               {t('common.cancel')}
             </Button>
             <Button
@@ -756,17 +834,25 @@ export default function AgentListPage() {
       {/* Chat Assistant Config Dialog */}
       <ChatAssistantConfig
         open={isChatConfigOpen}
-        onClose={() => setIsChatConfigOpen(false)}
+        onClose={closeChatConfigDialog}
         onSave={handleChatSave}
         dialog={editingChat}
+        initialName={nextConfigPrefill.name}
+        initialDescription={nextConfigPrefill.description}
+        datasets={datasetItems}
+        knowledgeBases={knowledgeBaseItems}
       />
 
       {/* Search App Config Dialog */}
       <SearchAppConfig
         open={isSearchConfigOpen}
-        onClose={() => setIsSearchConfigOpen(false)}
+        onClose={closeSearchConfigDialog}
         onSave={handleSearchSave}
         app={editingSearch}
+        initialName={nextConfigPrefill.name}
+        initialDescription={nextConfigPrefill.description}
+        datasets={datasetItems}
+        knowledgeBases={knowledgeBaseItems}
       />
 
       {/* Chat Access Dialog */}
