@@ -174,9 +174,9 @@ export function Sidebar({ navEntries }: SidebarProps) {
     <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-sidebar-bg dark:bg-slate-900 text-white flex flex-col transition-all duration-300 border-r border-white/10 dark:border-slate-700`}>
       <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} h-16 px-4 border-b border-white/10`}>
         {!isCollapsed && (
-          <div className="flex items-center justify-start w-full transition-all duration-300">
+          <Link to="/chat" className="flex items-center justify-start w-full transition-all duration-300">
             <img src={logoDark} alt="Knowledge Base" className="w-48 object-contain object-left" />
-          </div>
+          </Link>
         )}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}

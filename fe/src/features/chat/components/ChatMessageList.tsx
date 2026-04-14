@@ -83,12 +83,21 @@ function ChatMessageList({
     isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < threshold
   }
 
-  // Auto-scroll only when user is near the bottom
+  // Auto-scroll during streaming only when user is near the bottom
   useEffect(() => {
     if (isNearBottomRef.current) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
-  }, [messages.length, currentAnswer])
+  }, [currentAnswer])
+
+  // Force scroll when streaming begins (user just sent a message).
+  // Resets isNearBottomRef so subsequent streaming chunks also auto-scroll.
+  useEffect(() => {
+    if (isStreaming) {
+      isNearBottomRef.current = true
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [isStreaming])
 
   // Always scroll to bottom when conversation changes (messages reset)
   useEffect(() => {
