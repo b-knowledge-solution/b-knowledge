@@ -326,6 +326,7 @@ export default withMermaid(
           {
             text: 'RAG Ingestion Pipeline',
             items: [
+              { text: 'RAG Newcomer Guide', link: '/detail-design/rag-pipeline/rag-newcomer-guide' },
               { text: 'Pipeline Overview', link: '/detail-design/rag-pipeline/overview' },
             ],
           },
