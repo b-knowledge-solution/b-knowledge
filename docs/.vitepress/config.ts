@@ -15,6 +15,7 @@ export default withMermaid(
 
       nav: [
         { text: 'Home', link: '/' },
+        { text: 'RAG Guide', link: '/rag-guide/' },
         { text: 'SRS', link: '/srs/' },
         { text: 'Basic Design', link: '/basic-design/system-infra/system-architecture' },
         { text: 'Detail Design', link: '/detail-design/auth/overview' },
@@ -24,6 +25,26 @@ export default withMermaid(
       ],
 
       sidebar: {
+        '/rag-guide/': [
+          {
+            text: 'RAG Guide',
+            items: [
+              { text: 'RAG Pipeline Overview', link: '/rag-guide/' },
+            ],
+          },
+          {
+            text: 'Dive Deeper',
+            collapsed: false,
+            items: [
+              { text: 'Basic Design: Pipeline Steps', link: '/basic-design/rag-pipeline/rag-pipeline-overview' },
+              { text: 'Detail Design: Ingestion', link: '/detail-design/rag-pipeline/overview' },
+              { text: 'Detail Design: Chat Pipeline', link: '/detail-design/chat/overview' },
+              { text: 'Detail Design: Search Pipeline', link: '/detail-design/search/overview' },
+              { text: 'SRS: RAG Strategy', link: '/srs/core-platform/fr-rag-strategy' },
+            ],
+          },
+        ],
+
         '/srs/core-platform/': [
           {
             text: 'Core Platform',
