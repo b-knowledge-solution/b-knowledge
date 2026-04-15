@@ -10,7 +10,7 @@ httpx==0.25.0                 # Async HTTP client (for SSE streaming)
 # Data processing
 pandas==2.1.0                 # Data manipulation
 numpy==1.24.3                 # Numerical computing
-Pillow==10.0.0                # Image processing (for report generation)
+Pillow==12.2.0                # Image processing (for report generation)
 
 # Evaluation metrics
 ragas==0.1.0                  # Framework for RAG evaluation
